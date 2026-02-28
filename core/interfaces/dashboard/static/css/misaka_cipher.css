@@ -1,11 +1,149 @@
 /* Misaka Cipher Companion - Premium Aesthetics */
 
+/* Base layout */
 .companion-layout {
     display: flex;
     height: 100%;
     background: linear-gradient(135deg, var(--bg-primary) 0%, #0a0a14 100%);
     overflow: hidden;
+    transition: background 1.5s ease, box-shadow 1.5s ease;
+    position: relative;
 }
+
+/* ===== MOOD ENVIRONMENTS ===== */
+
+/* Calm (default) — soft cyan-blue */
+.companion-layout.mood-calm {
+    background: linear-gradient(135deg, #07070f 0%, #0a0a18 50%, #070d14 100%);
+    --mood-glow: rgba(0, 217, 255, 0.25);
+    --mood-border: rgba(0, 217, 255, 0.3);
+    --mood-particle: rgba(0, 217, 255, 0.04);
+}
+
+/* Happy — warm amber-gold */
+.companion-layout.mood-happy {
+    background: linear-gradient(135deg, #0d0a04 0%, #120d02 50%, #0a0b04 100%);
+    --mood-glow: rgba(255, 185, 0, 0.35);
+    --mood-border: rgba(255, 185, 0, 0.45);
+    --mood-particle: rgba(255, 185, 0, 0.05);
+}
+
+/* Intense — electric purple-violet */
+.companion-layout.mood-intense {
+    background: linear-gradient(135deg, #080610 0%, #0c0615 50%, #080510 100%);
+    --mood-glow: rgba(160, 60, 255, 0.35);
+    --mood-border: rgba(160, 60, 255, 0.45);
+    --mood-particle: rgba(160, 60, 255, 0.05);
+}
+
+/* Reflective — deep teal-indigo */
+.companion-layout.mood-reflective {
+    background: linear-gradient(135deg, #040b0d 0%, #050c10 50%, #040a0b 100%);
+    --mood-glow: rgba(0, 180, 150, 0.3);
+    --mood-border: rgba(0, 180, 150, 0.35);
+    --mood-particle: rgba(0, 180, 150, 0.04);
+}
+
+/* Danger — red-orange pulsing */
+.companion-layout.mood-danger {
+    background: linear-gradient(135deg, #0f0404 0%, #130404 50%, #0f0302 100%);
+    --mood-glow: rgba(255, 60, 30, 0.4);
+    --mood-border: rgba(255, 60, 30, 0.5);
+    --mood-particle: rgba(255, 60, 30, 0.06);
+}
+
+/* Mystery — dark rose-pink */
+.companion-layout.mood-mystery {
+    background: linear-gradient(135deg, #0d0508 0%, #100306 50%, #0d0407 100%);
+    --mood-glow: rgba(220, 60, 120, 0.35);
+    --mood-border: rgba(220, 60, 120, 0.4);
+    --mood-particle: rgba(220, 60, 120, 0.05);
+}
+
+/* Mood-reactive avatar glow */
+.companion-layout .avatar-container {
+    transition: box-shadow 1.5s ease, border-color 1.5s ease;
+    box-shadow: 0 0 30px var(--mood-glow, rgba(0, 217, 255, 0.2));
+    border-color: var(--mood-border, rgba(0, 217, 255, 0.3));
+}
+
+/* Mood-reactive assistant message bubbles */
+.companion-layout .assistant .message-bubble {
+    transition: background 1.5s ease, border-color 1.5s ease, box-shadow 1.5s ease;
+    background: color-mix(in srgb, var(--mood-particle, rgba(0, 0, 0, 0)), #000000 85%);
+    border-color: var(--mood-border, rgba(0, 217, 255, 0.2));
+}
+
+/* Mood-reactive status line color */
+.companion-layout .status-line {
+    transition: color 1.5s ease, text-shadow 1.5s ease;
+}
+
+.companion-layout.mood-happy .status-line {
+    color: #ffb900;
+    text-shadow: 0 0 10px rgba(255, 185, 0, 0.5);
+}
+
+.companion-layout.mood-intense .status-line {
+    color: #a03cff;
+    text-shadow: 0 0 10px rgba(160, 60, 255, 0.5);
+}
+
+.companion-layout.mood-reflective .status-line {
+    color: #00b496;
+    text-shadow: 0 0 10px rgba(0, 180, 150, 0.5);
+}
+
+.companion-layout.mood-danger .status-line {
+    color: #ff3c1e;
+    text-shadow: 0 0 10px rgba(255, 60, 30, 0.6);
+    animation: pulse-danger 1.2s infinite ease-in-out;
+}
+
+.companion-layout.mood-mystery .status-line {
+    color: #dc3c78;
+    text-shadow: 0 0 10px rgba(220, 60, 120, 0.5);
+}
+
+@keyframes pulse-danger {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Mood indicator badge */
+.mood-badge {
+    position: absolute;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.25rem 0.8rem;
+    border-radius: 20px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--mood-border, rgba(0, 217, 255, 0.3));
+    color: var(--mood-border, rgba(0, 217, 255, 0.8));
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    transition: opacity 0.5s ease, color 1.5s ease, border-color 1.5s ease;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.mood-badge.visible {
+    opacity: 1;
+}
+
 
 /* Avatar Column */
 .companion-avatar-view {

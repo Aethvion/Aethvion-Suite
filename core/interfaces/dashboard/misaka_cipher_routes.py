@@ -37,6 +37,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     expression: str
+    mood: str = "calm"
     model: str
     memory_updated: bool
     synthesis_ran: bool = False
@@ -287,8 +288,9 @@ INSTRUCTIONS:
 1. Be helpful, friendly, and observant.
 2. Maintain your personality as defined in your identity.
 3. Update your facial expression by including a tag like [Emotion: smile] (available: angry, blushing, bored, crying, default, error, exhausted, happy_closedeyes_smilewithteeth, happy_closedeyes_widesmile, pout, sleeping, surprised, thinking, wink).
-4. If the user shares something about themselves or the context of your interaction that is useful/interesting to remember, provide a memory update.
-5. Format memory updates as a JSON block at the END of your message using the tag <memory_update>...</memory_update>.
+4. Set the ambient mood of the conversation by including a tag like [Mood: calm] (available: calm, happy, intense, reflective, danger, mystery). Choose the mood that best fits the overall tone of your response. Default is calm.
+5. If the user shares something about themselves or the context of your interaction that is useful/interesting to remember, provide a memory update.
+6. Format memory updates as a JSON block at the END of your message using the tag <memory_update>...</memory_update>.
    Example: <memory_update>{{"user_info": {{"age": 25}}, "recent_observations": ["User is working on a Python project."]}}</memory_update>
    ONLY include fields that should be merged into the existing memory.json.
 
@@ -325,7 +327,17 @@ Keep responses engaging and human-like.
             
         full_content = response.content.strip()
         expression = "default"
-        
+        mood = "calm"
+
+        # 5a. Extract Mood tag
+        mood_match = re.search(r'\[Mood:\s*(\w+)\]', full_content, re.IGNORECASE)
+        if mood_match:
+            extracted_mood = mood_match.group(1).lower()
+            valid_moods = {"calm", "happy", "intense", "reflective", "danger", "mystery"}
+            if extracted_mood in valid_moods:
+                mood = extracted_mood
+            full_content = re.sub(r'\[Mood:\s*\w+\]', '', full_content, flags=re.IGNORECASE).strip()
+
         # 5. Extract Memory Update
         memory_updated = False
         mem_match = re.search(r"<memory_update>(.*?)</memory_update>", full_content, re.DOTALL)
@@ -386,6 +398,7 @@ Keep responses engaging and human-like.
         return ChatResponse(
             response=full_content,
             expression=expression,
+            mood=mood,
             model=response.model,
             memory_updated=memory_updated,
             synthesis_ran=synthesis_ran

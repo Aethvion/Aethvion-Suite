@@ -8,6 +8,7 @@ let isMisakaTyping = false;
 let historyOffsetDays = 0;
 const HISTORY_LIMIT_DAYS = 3;
 let hasInitializedMisaka = false;
+let currentMisakaMood = 'calm';
 
 async function initializeMisakaCipher() {
     if (hasInitializedMisaka) {
@@ -28,10 +29,24 @@ async function initializeMisakaCipher() {
         loadMoreBtn.id = 'misaka-load-more-btn';
         loadMoreBtn.className = 'load-more-btn';
         loadMoreBtn.textContent = "Load Previous Conversations";
-        loadMoreBtn.style.display = 'none'; // Hidden by default
+        loadMoreBtn.style.display = 'none';
         loadMoreBtn.onclick = () => loadMoreHistory();
         chatMessages.prepend(loadMoreBtn);
     }
+
+    // 1b. Add mood badge to companion layout
+    const layout = document.querySelector('.companion-layout');
+    if (layout && !document.getElementById('misaka-mood-badge')) {
+        const badge = document.createElement('div');
+        badge.id = 'misaka-mood-badge';
+        badge.className = 'mood-badge';
+        const avatarView = layout.querySelector('.companion-avatar-view');
+        if (avatarView) avatarView.style.position = 'relative';
+        if (avatarView) avatarView.appendChild(badge);
+        else layout.appendChild(badge);
+    }
+    // Apply default mood
+    updateMisakaMood('calm');
 
     // 2. Clear current messages (except load more) for fresh init
     const blocks = chatMessages.querySelectorAll('.history-day-block');
@@ -246,6 +261,9 @@ async function sendMisakaMessage() {
             misakaChatHistory = misakaChatHistory.slice(-misakaMaxHistory);
         }
 
+        // Apply mood environment
+        if (data.mood) updateMisakaMood(data.mood);
+
         await addAssistantMessageTyped(data.response);
 
         if (data.memory_updated || data.synthesis_ran) {
@@ -367,6 +385,39 @@ function updateMisakaExpression(expression) {
     tempImg.onload = () => { img.src = path; };
     tempImg.onerror = () => { img.src = "/static/misakacipher/expressions/misakacipher_default.png"; };
     tempImg.src = path;
+}
+
+function updateMisakaMood(mood) {
+    if (mood === currentMisakaMood) return;
+    currentMisakaMood = mood;
+
+    const layout = document.querySelector('.companion-layout');
+    if (!layout) return;
+
+    // Remove all existing mood classes
+    layout.classList.remove('mood-calm', 'mood-happy', 'mood-intense', 'mood-reflective', 'mood-danger', 'mood-mystery');
+
+    // Apply new mood
+    layout.classList.add(`mood-${mood}`);
+
+    // Update badge
+    const badge = document.getElementById('misaka-mood-badge');
+    if (badge) {
+        const moodLabels = {
+            calm: '◈ Calm',
+            happy: '✦ Happy',
+            intense: '⚡ Intense',
+            reflective: '◌ Reflective',
+            danger: '⚠ Alert',
+            mystery: '✧ Mystery'
+        };
+        badge.textContent = moodLabels[mood] || mood;
+        badge.classList.add('visible');
+
+        // Hide badge after 5 seconds
+        clearTimeout(badge._hideTimer);
+        badge._hideTimer = setTimeout(() => badge.classList.remove('visible'), 5000);
+    }
 }
 
 window.initializeMisakaCipher = initializeMisakaCipher;
