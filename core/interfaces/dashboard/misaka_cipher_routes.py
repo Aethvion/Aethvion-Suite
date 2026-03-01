@@ -47,6 +47,7 @@ class InitiateRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+    responses: List[str] = []  # multi-message support
     expression: str
     mood: str = "calm"
     model: str
@@ -673,6 +674,8 @@ INSTRUCTIONS:
    - [tool:system_stats] — check CPU, RAM, disk usage
    Only use tools for paths within your configured workspaces above. Tools run silently; results are returned in the next step.
 
+8. MULTI-MESSAGE: If your response is naturally multiple separate thoughts, sections, or actions, you can split them into separate chat bubbles by inserting the exact text [msg_break] between them. Use this sparingly — only when a topic or action genuinely warrants its own message bubble.
+
 Keep responses engaging and human-like.
 """
         
@@ -708,20 +711,25 @@ Keep responses engaging and human-like.
         expression = "default"
         mood = "calm"
 
-        # 5. Tool-use loop — if Misaka used any [tool:X] tags, execute them and do a second LLM pass
-        if workspaces and re.search(r'\[tool:', full_content, re.IGNORECASE):
-            cleaned_content, tool_results = await _execute_tool_calls(full_content, workspaces)
-            if tool_results:
+        # 5. Iterative tool-use loop — allows chained tool calls (up to 3 passes)
+        if workspaces:
+            for _tool_pass in range(3):
+                if not re.search(r'\[tool:', full_content, re.IGNORECASE):
+                    break
+                cleaned_content, tool_results = await _execute_tool_calls(full_content, workspaces)
+                if not tool_results:
+                    full_content = cleaned_content
+                    break
                 tool_results_str = "\n\n".join(tool_results)
                 followup_prompt = (
                     formatted_prompt +
-                    f"Misaka (thinking): {cleaned_content}\n\n"
+                    f"Misaka (thinking, tool pass {_tool_pass + 1}): {cleaned_content}\n\n"
                     f"[Tool Results]:\n{tool_results_str}\n\n"
-                    "Misaka (final response, using the above tool results to help the user):"
+                    "Misaka (continue response, you may use more tools if needed or give the final answer):"
                 )
                 followup = pm.call_with_failover(
                     prompt=followup_prompt,
-                    trace_id=f"{trace_id}-tool",
+                    trace_id=f"{trace_id}-tool{_tool_pass}",
                     temperature=0.7,
                     model=model,
                     request_type="generation",
@@ -729,6 +737,9 @@ Keep responses engaging and human-like.
                 )
                 if followup.success:
                     full_content = followup.content.strip()
+                else:
+                    full_content = cleaned_content
+                    break
 
         # 5a. Extract Mood tag
         mood_match = re.search(r'\[Mood:\s*(\w+)\]', full_content, re.IGNORECASE)
@@ -796,8 +807,16 @@ Keep responses engaging and human-like.
         except Exception as se:
             logger.error(f"Synthesis check failed: {se}")
 
+        # Split multi-message response on [msg_break]
+        response_parts = [
+            p.strip() for p in re.split(r'\[msg_break\]', full_content, flags=re.IGNORECASE)
+            if p.strip()
+        ]
+        primary_response = response_parts[0] if response_parts else full_content
+
         return ChatResponse(
-            response=full_content,
+            response=primary_response,
+            responses=response_parts,
             expression=expression,
             mood=mood,
             model=response.model,

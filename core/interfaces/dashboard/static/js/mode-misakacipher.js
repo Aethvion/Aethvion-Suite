@@ -4,6 +4,7 @@
 
 let misakaChatHistory = [];
 let misakaMaxHistory = 6;
+let misakaTypingSpeed = 20;
 let isMisakaTyping = false;
 let historyOffsetDays = 0;
 const HISTORY_LIMIT_DAYS = 3;
@@ -72,11 +73,20 @@ async function initializeMisakaCipher() {
 
     // 6. Listen for changes from settings page
     window.addEventListener('misakaSettingsUpdated', (e) => {
-        if (e.detail && e.detail.context_limit) {
-            misakaMaxHistory = e.detail.context_limit;
-            console.log("Misaka context limit updated to:", misakaMaxHistory);
-        }
+        if (e.detail && e.detail.context_limit) misakaMaxHistory = e.detail.context_limit;
+        if (e.detail && e.detail.typing_speed !== undefined) misakaTypingSpeed = e.detail.typing_speed;
     });
+
+    // 7. Cache typing speed from prefs
+    try {
+        const prefsRes2 = await fetch('/api/preferences');
+        if (prefsRes2.ok) {
+            const prefsData2 = await prefsRes2.json();
+            if (prefsData2.misakacipher && prefsData2.misakacipher.typing_speed !== undefined) {
+                misakaTypingSpeed = prefsData2.misakacipher.typing_speed;
+            }
+        }
+    } catch (e) { }
 
     // 7. Start proactive scheduler (runs once, sets up timers)
     startProactiveScheduler();
@@ -270,7 +280,12 @@ async function sendMisakaMessage() {
         // Apply mood environment
         if (data.mood) updateMisakaMood(data.mood);
 
-        await addAssistantMessageTyped(data.response);
+        // Deliver messages — supports multi-message via data.responses
+        const parts = (data.responses && data.responses.length > 0) ? data.responses : [data.response];
+        for (let i = 0; i < parts.length; i++) {
+            if (i > 0) await new Promise(r => setTimeout(r, 700));
+            await addAssistantMessageTyped(parts[i]);
+        }
 
         if (data.memory_updated || data.synthesis_ran) {
             await refreshMisakaMemory();
@@ -321,7 +336,11 @@ async function addAssistantMessageTyped(fullText) {
     div.appendChild(bubble);
     container.appendChild(div);
 
-    let remainingText = fullText.replace(/<memory_update>[\s\S]*?<\/memory_update>/gi, '').trim();
+    let remainingText = fullText
+        .replace(/<memory_update>[\s\S]*?<\/memory_update>/gi, '')
+        .replace(/\[tool:[\w_]+[^\]]*\]/gi, '')
+        .replace(/\[msg_break\]/gi, '')
+        .trim();
 
     let triggers = [];
     const emotionRegex = /\[Emotion:\s*(\w+)\]/gi;

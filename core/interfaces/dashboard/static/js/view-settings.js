@@ -151,6 +151,9 @@ async function loadPreferences() {
         misakaTypingSpeed.onchange = async (e) => {
             const val = parseInt(e.target.value, 10);
             await savePreference('misakacipher.typing_speed', val);
+            window.dispatchEvent(new CustomEvent('misakaSettingsUpdated', {
+                detail: { typing_speed: val }
+            }));
         };
     }
 
