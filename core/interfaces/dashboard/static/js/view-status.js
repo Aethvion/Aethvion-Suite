@@ -131,13 +131,34 @@ async function loadSystemStatusTab() {
             `;
         };
 
-        html += renderSection('FEATURES', roadmap.features || roadmap.working, 'working');
-        html += renderSection('WORK IN PROGRESS', roadmap.wip, 'wip');
-        html += renderSection('PLANNED', roadmap.planned, 'planned');
+        html += renderSection('CORE FEATURES', roadmap.features || roadmap.working, 'working');
+        html += renderSection('CORE WORK IN PROGRESS', roadmap.wip, 'wip');
+        html += renderSection('CORE PLANNED', roadmap.planned, 'planned');
+
+        const modules = roadmapData.modules || [];
+        if (modules.length > 0) {
+            html += `<div class="roadmap-divider roadmap-full-width" style="margin: 2.5rem 0; border-top: 1px solid var(--border-color); opacity: 0.5;"></div>`;
+            html += `<div class="section-label roadmap-full-width" style="margin-bottom: 1.5rem; justify-content: center; font-size: 1.2rem; letter-spacing: 0.2em;">MODULE ROADMAPS</div>`;
+
+            // Group all module data into matching categories for a unified 3-column grid
+            const moduleFeatures = {};
+            const moduleWip = {};
+            const modulePlanned = {};
+
+            modules.forEach(mod => {
+                if (mod.features && mod.features.length > 0) moduleFeatures[mod.name] = mod.features;
+                if (mod.wip && mod.wip.length > 0) moduleWip[mod.name] = mod.wip;
+                if (mod.planned && mod.planned.length > 0) modulePlanned[mod.name] = mod.planned;
+            });
+
+            html += renderSection('FEATURES', moduleFeatures, 'working');
+            html += renderSection('WORK IN PROGRESS', moduleWip, 'wip');
+            html += renderSection('PLANNED', modulePlanned, 'planned');
+        }
 
         if (!html) {
-            console.warn('[StatusTab] Roadmap HTML is empty!');
-            html = '<div class="placeholder-text">No roadmap data available.</div>';
+            console.warn('[StatusTab] Content HTML is empty!');
+            html = '<div class="placeholder-text">No system or module data available.</div>';
         }
 
         container.innerHTML = html;

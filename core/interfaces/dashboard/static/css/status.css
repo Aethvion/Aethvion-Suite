@@ -173,6 +173,10 @@
     padding: 0;
 }
 
+.roadmap-full-width {
+    grid-column: 1 / -1;
+}
+
 @media (max-width: 1024px) {
     .roadmap-tree {
         grid-template-columns: 1fr;
@@ -328,4 +332,15 @@
     margin-left: 0;
     min-width: auto;
     min-height: 39px;
+}
+
+.roadmap-divider {
+    position: relative;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border), transparent);
+    border: none !important;
+}
+
+.roadmap-items .roadmap-item {
+    margin-bottom: 0.4rem;
 }

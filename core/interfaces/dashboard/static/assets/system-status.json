@@ -153,5 +153,51 @@
                 }
             ]
         }
-    }
+    },
+    "modules": [
+        {
+            "id": "nexus",
+            "name": "Nexus Module",
+            "desc": "The central bridge between Misaka and external hardware/software.",
+            "features": [
+                {
+                    "name": "Media Sentinel (SMTC)",
+                    "desc": "Real-time detection of system-wide media playback (Spotify, YouTube, etc.)."
+                },
+                {
+                    "name": "Spotify Integration",
+                    "desc": "OAuth2 powered link to play, pause, and control your Spotify account."
+                }
+            ],
+            "wip": [
+                {
+                    "name": "Local File Indexing",
+                    "desc": "Scanning of specific directories to allow Misaka to understand your local file structure better."
+                }
+            ],
+            "planned": [
+                {
+                    "name": "Home Automation Link",
+                    "desc": "Integration with Home Assistant / Philips Hue for physical environmental control."
+                },
+                {
+                    "name": "System Task Scheduler",
+                    "desc": "Allow Misaka to schedule tasks like system updates or backups."
+                }
+            ]
+        },
+        {
+            "id": "specter",
+            "name": "Specter Module",
+            "desc": "Rigging engine for vtuber avatars",
+            "features": [],
+            "wip": [],
+            "planned": [
+                {
+                    "name": "Rigging Engine",
+                    "desc": "Allows to rig 2d avatars."
+                }
+            ]
+        }
+    ]
 }
