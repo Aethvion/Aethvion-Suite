@@ -38,29 +38,71 @@ def _get_media_info_powershell() -> dict:
         }
     } catch {}
 
-    # Tier 3: Window Title Fallback (For when SMTC is 'tone-deaf')
+    # Tier 3: Window Title Fallback (Comprehensive Scan)
     try {
-        $procs = Get-Process | Where-Object { $_.MainWindowTitle -ne "" }
-        
-        # 1. Spotify Check
-        $spotify = $procs | Where-Object { $_.ProcessName -eq "Spotify" }
-        if ($spotify -and $spotify.MainWindowTitle -ne "Spotify") {
-            # Usually "Artist - Track" or "Track"
-            return @{ title = $spotify.MainWindowTitle; artist = ""; source = "Spotify" } | ConvertTo-Json -Compress
+        $definition = @"
+        using System;
+        using System.Collections.Generic;
+        using System.Runtime.InteropServices;
+        using System.Text;
+
+        public class WindowScanner {
+            [DllImport("user32.dll")]
+            private static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
+            private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+            [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+            private static extern int GetWindowText(IntPtr hWnd, StringBuilder strText, int maxCount);
+
+            [DllImport("user32.dll")]
+            private static extern bool IsWindowVisible(IntPtr hWnd);
+
+            public static List<string> GetVisibleWindowTitles() {
+                var titles = new List<string>();
+                EnumWindows((hWnd, lParam) => {
+                    if (IsWindowVisible(hWnd)) {
+                        var sb = new StringBuilder(256);
+                        GetWindowText(hWnd, sb, 256);
+                        var title = sb.ToString();
+                        if (!string.IsNullOrEmpty(title)) { titles.Add(title); }
+                    }
+                    return true;
+                }, IntPtr.Zero);
+                return titles;
+            }
         }
+"@
+        Add-Type -TypeDefinition $definition -ErrorAction SilentlyContinue
+        $titles = [WindowScanner]::GetVisibleWindowTitles()
         
-        # 2. Browser/YouTube Check
-        $browser = $procs | Where-Object { $_.MainWindowTitle -match " - YouTube" }
-        if ($browser) {
-            $rawTitle = $browser.MainWindowTitle
-            $cleanTitle = $rawTitle -replace " - YouTube.*$", ""
-            return @{ title = $cleanTitle; artist = "YouTube"; source = $browser.ProcessName } | ConvertTo-Json -Compress
+        # 1. Spotify Check (Precise)
+        $spotifyTitle = $titles | Where-Object { $_ -match "^Spotify$" -or $_ -match " - " } | Where-Object { 
+            # If it's just "Spotify", it's not playing anything specific or is in a weird state
+            # Usually Spotify titles are "Artist - Track" or just "Spotify"
+            $_ -ne "Spotify" -and ($titles -contains "Spotify")
+        } | Select-Object -First 1
+        
+        if ($spotifyTitle) {
+             return @{ title = $spotifyTitle; artist = ""; source = "Spotify" } | ConvertTo-Json -Compress
+        }
+        # Backup Spotify check (if only one window exists)
+        $spotifyProc = Get-Process -Name "Spotify" -ErrorAction SilentlyContinue
+        if ($spotifyProc -and $spotifyProc.MainWindowTitle -ne "Spotify" -and $spotifyProc.MainWindowTitle -ne "") {
+            return @{ title = $spotifyProc.MainWindowTitle; artist = ""; source = "Spotify" } | ConvertTo-Json -Compress
         }
 
-        # 3. Generic Browser Media (SoundCloud, etc. often put name in title)
-        $mediaBrowsers = $procs | Where-Object { $_.ProcessName -match "chrome|msedge|firefox" -and $_.MainWindowTitle -match "▶|Playing|Music" }
-        if ($mediaBrowsers) {
-            return @{ title = $mediaBrowsers[0].MainWindowTitle; artist = ""; source = $mediaBrowsers[0].ProcessName } | ConvertTo-Json -Compress
+        # 2. YouTube Check (Aggressive)
+        $ytTitle = $titles | Where-Object { $_ -match "YouTube" } | Select-Object -First 1
+        if ($ytTitle) {
+            $cleanTitle = $ytTitle -replace " - YouTube.*$", ""
+            $cleanTitle = $cleanTitle -replace "^\\(\\d+\\) ", "" # Remove (1) notification counts
+            return @{ title = $cleanTitle; artist = "YouTube"; source = "Browser" } | ConvertTo-Json -Compress
+        }
+
+        # 3. Generic Media (SoundCloud, Netflix, etc.)
+        $genericMedia = $titles | Where-Object { $_ -match "▶|Playing|Music|Netflix|SoundCloud" } | Select-Object -First 1
+        if ($genericMedia) {
+             return @{ title = $genericMedia; artist = ""; source = "Web Browser" } | ConvertTo-Json -Compress
         }
     } catch {}
 
