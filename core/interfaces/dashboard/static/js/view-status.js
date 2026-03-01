@@ -131,30 +131,23 @@ async function loadSystemStatusTab() {
             `;
         };
 
-        html += renderSection('CORE FEATURES', roadmap.features || roadmap.working, 'working');
-        html += renderSection('CORE WORK IN PROGRESS', roadmap.wip, 'wip');
-        html += renderSection('CORE PLANNED', roadmap.planned, 'planned');
+        // --- Core System Roadmap ---
+        html += `<div class="section-label roadmap-full-width" style="margin-top: 1rem; margin-bottom: 1.5rem; justify-content: flex-start; font-size: 1.2rem; letter-spacing: 0.2em; color: var(--text-bright);">MISAKA CIPHER</div>`;
+        html += renderSection('FEATURES', roadmap.features || roadmap.working, 'working');
+        html += renderSection('WORK IN PROGRESS', roadmap.wip, 'wip');
+        html += renderSection('PLANNED', roadmap.planned, 'planned');
 
+        // --- Individual Module Roadmaps ---
         const modules = roadmapData.modules || [];
-        if (modules.length > 0) {
+        modules.forEach(mod => {
             html += `<div class="roadmap-divider roadmap-full-width" style="margin: 2.5rem 0; border-top: 1px solid var(--border-color); opacity: 0.5;"></div>`;
-            html += `<div class="section-label roadmap-full-width" style="margin-bottom: 1.5rem; justify-content: center; font-size: 1.2rem; letter-spacing: 0.2em;">MODULE ROADMAPS</div>`;
+            html += `<div class="section-label roadmap-full-width" style="margin-bottom: 1.5rem; justify-content: flex-start; font-size: 1.2rem; letter-spacing: 0.2em; color: var(--text-bright);">${mod.name.toUpperCase()}</div>`;
 
-            // Group all module data into matching categories for a unified 3-column grid
-            const moduleFeatures = {};
-            const moduleWip = {};
-            const modulePlanned = {};
-
-            modules.forEach(mod => {
-                if (mod.features && mod.features.length > 0) moduleFeatures[mod.name] = mod.features;
-                if (mod.wip && mod.wip.length > 0) moduleWip[mod.name] = mod.wip;
-                if (mod.planned && mod.planned.length > 0) modulePlanned[mod.name] = mod.planned;
-            });
-
-            html += renderSection('FEATURES', moduleFeatures, 'working');
-            html += renderSection('WORK IN PROGRESS', moduleWip, 'wip');
-            html += renderSection('PLANNED', modulePlanned, 'planned');
-        }
+            // Only render sections if they have items or if it's the standard roadmap feel
+            html += renderSection('FEATURES', mod.features, 'working');
+            html += renderSection('WORK IN PROGRESS', mod.wip, 'wip');
+            html += renderSection('PLANNED', mod.planned, 'planned');
+        });
 
         if (!html) {
             console.warn('[StatusTab] Content HTML is empty!');
