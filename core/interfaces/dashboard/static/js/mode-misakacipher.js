@@ -167,8 +167,14 @@ function renderDayHistory(day, isInitial) {
     dayBlock.appendChild(separator);
 
     day.messages.forEach(msg => {
-        const msgDiv = createMessageElement(msg.role, msg.content);
-        dayBlock.appendChild(msgDiv);
+        // Handle [msg_break] in history by creating multiple bubbles
+        const parts = msg.content.split(/\[msg_break\]/i);
+        parts.forEach(part => {
+            if (part.trim()) {
+                const msgDiv = createMessageElement(msg.role, part.trim());
+                dayBlock.appendChild(msgDiv);
+            }
+        });
     });
 
     if (isInitial) {
@@ -192,7 +198,10 @@ function createMessageElement(role, text) {
 
     if (role === 'assistant') {
         const cleanText = text.replace(/<memory_update>[\s\S]*?<\/memory_update>/gi, '')
-            .replace(/\[Emotion:\s*\w+\]/gi, '').trim();
+            .replace(/\[Emotion:\s*\w+\]/gi, '')
+            .replace(/\[tool:[\w_]+[^\]]*\]/gi, '')
+            .replace(/\[msg_break\]/gi, '')
+            .trim();
         bubble.innerHTML = renderMarkdown(cleanText);
     } else {
         bubble.textContent = text;
