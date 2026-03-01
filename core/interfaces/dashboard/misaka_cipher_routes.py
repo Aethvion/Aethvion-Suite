@@ -503,16 +503,14 @@ Do NOT include memory updates in this initiation message.
         if not response.success:
             raise HTTPException(status_code=500, detail=response.error)
 
-        full_content = response.content.strip()
-        mood = "calm"
-        expression = "default"
-
-        mood_match = re.search(r'\[Mood:\s*(\w+)\]', full_content, re.IGNORECASE)
-        if mood_match:
-            extracted_mood = mood_match.group(1).lower()
-            if extracted_mood in {"calm", "happy", "intense", "reflective", "danger", "mystery"}:
-                mood = extracted_mood
             full_content = re.sub(r'\[Mood:\s*\w+\]', '', full_content, flags=re.IGNORECASE).strip()
+        
+        # Extract Expression tag
+        exp_match = re.search(r'\[Emotion:\s*(\w+)\]', full_content, re.IGNORECASE)
+        if exp_match:
+            expression = exp_match.group(1).lower()
+            # We don't strip it here yet because frontend might want it for individual bubbles, 
+            # but we save it as a top-level state for history restoration.
 
         # Save to persistence (role = "assistant", no user message)
         try:
@@ -523,7 +521,15 @@ Do NOT include memory updates in this initiation message.
             if day_file.exists():
                 with open(day_file, "r", encoding="utf-8") as df:
                     day_history = json.load(df)
-            day_history.append({"role": "assistant", "content": full_content, "timestamp": timestamp, "proactive": True})
+            
+            day_history.append({
+                "role": "assistant", 
+                "content": full_content, 
+                "timestamp": timestamp, 
+                "proactive": True,
+                "mood": mood,
+                "expression": expression
+            })
             with open(day_file, "w", encoding="utf-8") as df:
                 json.dump(day_history, df, indent=4)
         except Exception as se:
@@ -753,14 +759,14 @@ Keep responses engaging and human-like.
                     full_content = cleaned_content
                     break
 
-        # 5a. Extract Mood tag
-        mood_match = re.search(r'\[Mood:\s*(\w+)\]', full_content, re.IGNORECASE)
-        if mood_match:
-            extracted_mood = mood_match.group(1).lower()
-            valid_moods = {"calm", "happy", "intense", "reflective", "danger", "mystery"}
-            if extracted_mood in valid_moods:
-                mood = extracted_mood
             full_content = re.sub(r'\[Mood:\s*\w+\]', '', full_content, flags=re.IGNORECASE).strip()
+
+        # Extract Expression tag
+        exp_match = re.search(r'\[Emotion:\s*(\w+)\]', full_content, re.IGNORECASE)
+        if exp_match:
+            # Note: We don't sub it here because the frontend's typing effect relies on finding these tags.
+            # But we extract it to save as the 'last state'.
+            expression = exp_match.group(1).lower()
 
         # 5. Extract Memory Update
         memory_updated = False
@@ -800,7 +806,13 @@ Keep responses engaging and human-like.
                     day_history = json.load(df)
             
             day_history.append({"role": "user", "content": request.message, "timestamp": timestamp})
-            day_history.append({"role": "assistant", "content": full_content, "timestamp": timestamp})
+            day_history.append({
+                "role": "assistant", 
+                "content": full_content, 
+                "timestamp": timestamp,
+                "mood": mood,
+                "expression": expression
+            })
             
             with open(day_file, "w", encoding="utf-8") as df:
                 json.dump(day_history, df, indent=4)

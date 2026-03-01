@@ -134,6 +134,25 @@ async function loadHistory(offset = 0, limit = 3, isInitial = false) {
                         role: m.role,
                         content: m.content
                     }));
+
+                    // Restore last state (mood and expression)
+                    // We look backwards through the most recent day for the last assistant message
+                    for (let j = mostRecentDay.messages.length - 1; j >= 0; j--) {
+                        const m = mostRecentDay.messages[j];
+                        if (m.role === 'assistant') {
+                            if (m.mood) updateMisakaMood(m.mood);
+
+                            // Try to extract expression either from saved field or content tag
+                            let exp = m.expression;
+                            if (!exp) {
+                                const expMatch = m.content.match(/\[Emotion:\s*(\w+)\]/i);
+                                if (expMatch) exp = expMatch[1].toLowerCase();
+                            }
+                            if (exp) updateMisakaExpression(exp);
+
+                            break; // Only need the latest one
+                        }
+                    }
                 }
             }
 
