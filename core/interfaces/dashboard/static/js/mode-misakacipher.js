@@ -188,9 +188,12 @@ function renderDayHistory(day, isInitial) {
     day.messages.forEach(msg => {
         // Handle [msg_break] in history by creating multiple bubbles
         const parts = msg.content.split(/\[msg_break\]/i);
-        parts.forEach(part => {
+        parts.forEach((part, index) => {
             if (part.trim()) {
-                const msgDiv = createMessageElement(msg.role, part.trim());
+                // Only attach timestamp to the last bubble of a multi-break message if possible, 
+                // or just attach to all. For now, attach to all for simplicity or just the last one.
+                const isLastPart = index === parts.length - 1;
+                const msgDiv = createMessageElement(msg.role, part.trim(), isLastPart ? msg.timestamp : null);
                 dayBlock.appendChild(msgDiv);
             }
         });
@@ -208,7 +211,7 @@ function renderDayHistory(day, isInitial) {
     }
 }
 
-function createMessageElement(role, text) {
+function createMessageElement(role, text, timestamp = null) {
     const div = document.createElement('div');
     div.className = `chat-message ${role}`;
 
@@ -218,6 +221,7 @@ function createMessageElement(role, text) {
     if (role === 'assistant') {
         const cleanText = text.replace(/<memory_update>[\s\S]*?<\/memory_update>/gi, '')
             .replace(/\[Emotion:\s*\w+\]/gi, '')
+            .replace(/\[Mood:\s*\w+\]/gi, '')
             .replace(/\[tool:[\w_]+[^\]]*\]/gi, '')
             .replace(/\[msg_break\]/gi, '')
             .trim();
@@ -227,6 +231,27 @@ function createMessageElement(role, text) {
     }
 
     div.appendChild(bubble);
+
+    if (timestamp) {
+        const tsDiv = document.createElement('div');
+        tsDiv.className = 'message-timestamp';
+
+        // Format: "YYYY-MM-DD HH:MM:SS" -> "HH:MM"
+        try {
+            const timePart = timestamp.split(' ')[1] || timestamp;
+            const bluePrint = timePart.split(':');
+            if (bluePrint.length >= 2) {
+                tsDiv.textContent = `${bluePrint[0]}:${bluePrint[1]}`;
+            } else {
+                tsDiv.textContent = timestamp;
+            }
+        } catch (e) {
+            tsDiv.textContent = timestamp;
+        }
+
+        div.appendChild(tsDiv);
+    }
+
     return div;
 }
 
@@ -273,7 +298,15 @@ async function sendMisakaMessage() {
     const text = chatInput.value.trim();
     if (!text) return;
 
-    addAssistantMessageStatic('user', text);
+    const now = new Date();
+    const ts = now.getFullYear() + "-" +
+        String(now.getMonth() + 1).padStart(2, '0') + "-" +
+        String(now.getDate()).padStart(2, '0') + " " +
+        String(now.getHours()).padStart(2, '0') + ":" +
+        String(now.getMinutes()).padStart(2, '0') + ":" +
+        String(now.getSeconds()).padStart(2, '0');
+
+    addAssistantMessageStatic('user', text, ts);
     chatInput.value = '';
 
     const payload = {
@@ -333,11 +366,11 @@ async function sendMisakaMessage() {
     }
 }
 
-function addAssistantMessageStatic(role, text) {
+function addAssistantMessageStatic(role, text, timestamp = null) {
     const container = document.getElementById('misaka-chat-messages');
     if (!container) return;
 
-    const div = createMessageElement(role, text);
+    const div = createMessageElement(role, text, timestamp);
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
 }
@@ -426,6 +459,15 @@ async function addAssistantMessageTyped(fullText) {
 
     bubble.innerHTML = renderMarkdown(cleanText);
     bubble.classList.remove('typing-glow');
+
+    // Add timestamp after typing is done
+    const now = new Date();
+    const ts = String(now.getHours()).padStart(2, '0') + ":" + String(now.getMinutes()).padStart(2, '0');
+    const tsDiv = document.createElement('div');
+    tsDiv.className = 'message-timestamp';
+    tsDiv.textContent = ts;
+    div.appendChild(tsDiv);
+
     container.scrollTop = container.scrollHeight;
     isMisakaTyping = false;
 }
