@@ -176,6 +176,13 @@ class SemanticSearchRequest(BaseModel):
     limit: int = 10
     domain: Optional[str] = None
 
+class AudioProcessRequest(BaseModel):
+    """Audio processing request."""
+    prompt: str
+    model: str
+    mode: str
+    input_audio: Optional[str] = None
+
 
 # Startup/Shutdown events
 @app.on_event("startup")
@@ -318,8 +325,8 @@ async def shutdown_event():
 
 # Preferences API
 class PreferenceUpdate(BaseModel):
-    key: str
-    value: Any
+    key: Optional[str] = None
+    value: Any = None
 
 @app.get("/api/preferences")
 async def get_preferences():
@@ -362,7 +369,8 @@ async def set_preference(key: str, update: PreferenceUpdate):
     try:
         from core.workspace.preferences_manager import get_preferences_manager
         prefs = get_preferences_manager()
-        prefs.set(update.key, update.value)
+        # Use key from URL path, value from body (or None)
+        prefs.set(key, update.value)
         return {"status": "success", "key": key, "value": update.value}
     except Exception as e:
         logger.error(f"Failed to set preference {key}: {e}")
@@ -604,6 +612,98 @@ async def search_workspace_files(req: SemanticSearchRequest):
     except Exception as e:
         logger.error(f"Semantic file search error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/audio/process")
+async def process_audio(req: AudioProcessRequest):
+    """Process audio requests (TTS, STT, Edit, Music)."""
+    trace_id = f"aud-{datetime.now().strftime('%H%M%S')}"
+    try:
+        from core.providers import ProviderManager
+        manager = ProviderManager() # Initialize locally to avoid circular imports if needed
+        
+        import base64
+        def decode_b64(b64_str: str) -> bytes:
+            if "," in b64_str:
+                b64_str = b64_str.split(",", 1)[1]
+            return base64.b64decode(b64_str)
+
+        if req.mode == 'stt':
+            if not req.input_audio:
+                raise HTTPException(status_code=400, detail="Input audio is required for transcription.")
+            
+            audio_bytes = decode_b64(req.input_audio)
+            
+            # Identify provider/model
+            # If model is specified, find the provider for it
+            target_provider = None
+            if req.model:
+                target_provider = manager.model_to_provider_map.get(req.model)
+            
+            response = manager.transcribe(
+                audio_bytes=audio_bytes,
+                trace_id=trace_id,
+                provider=target_provider,
+                model=req.model if req.model else None
+            )
+            
+            if not response.success:
+                return {"success": False, "error": response.error}
+                
+            return {
+                "success": True,
+                "text": response.content,
+                "model": response.model,
+                "provider": response.provider
+            }
+            
+        elif req.mode == 'tts':
+            if not req.prompt:
+                raise HTTPException(status_code=400, detail="Prompt text is required for speech generation.")
+            
+            # Identify provider/model
+            target_provider = None
+            if req.model:
+                target_provider = manager.model_to_provider_map.get(req.model)
+            
+            # Get voice/format from kwargs if we had them, otherwise defaults
+            # For now use defaults or simple extraction from prompt/model
+            voice = "alloy"
+            
+            response = manager.generate_speech(
+                text=req.prompt,
+                trace_id=trace_id,
+                provider=target_provider,
+                model=req.model if req.model else None,
+                voice=voice
+            )
+            
+            if not response.success:
+                return {"success": False, "error": response.error}
+            
+            audio_bytes = response.metadata.get('audio')
+            if not audio_bytes:
+                return {"success": False, "error": "Provider returned success but no audio data found."}
+                
+            # Return as base64 for the frontend player
+            audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')
+            mime_type = f"audio/{response.metadata.get('format', 'mp3')}"
+            
+            return {
+                "success": True,
+                "audio": f"data:{mime_type};base64,{audio_b64}",
+                "model": response.model,
+                "provider": response.provider
+            }
+            
+        else:
+            return {
+                "success": False,
+                "error": f"Mode '{req.mode}' is not yet implemented in the backend."
+            }
+            
+    except Exception as e:
+        logger.error(f"Audio processing error: {str(e)}", exc_info=True)
+        return {"success": False, "error": str(e)}
 
 @app.post("/api/workspace/files/reindex")
 async def reindex_workspace_files():

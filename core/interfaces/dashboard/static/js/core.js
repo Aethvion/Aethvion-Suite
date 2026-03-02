@@ -253,15 +253,17 @@ function initializeUI() {
 }
 
 function switchMainTab(tabName, save = true) {
+    if (!tabName) return;
+
     currentMainTab = tabName;
-    if (save) {
+    if (save && typeof savePreference === 'function') {
         savePreference('active_tab', tabName);
     }
 
     // Update tab buttons
     document.querySelectorAll('.main-tab').forEach(tab => {
         if (tab.closest('.main-tab-dropdown')) {
-            const categories = ['chat', 'agent', 'image', 'arena', 'aiconv', 'advaiconv'];
+            const categories = ['chat', 'agent', 'image', 'audio', 'arena', 'aiconv', 'advaiconv'];
             const isActive = categories.includes(tabName);
 
             if (tab.classList.contains('split-main-action')) {
@@ -273,6 +275,7 @@ function switchMainTab(tabName, save = true) {
                     let label = 'Chat';
                     if (tabName === 'agent') { icon = '🤖'; label = 'Agent'; }
                     if (tabName === 'image') { icon = '🎨'; label = 'Image'; }
+                    if (tabName === 'audio') { icon = '🎙️'; label = 'Audio'; }
                     if (tabName === 'arena') { icon = '⚔️'; label = 'Arena'; }
                     if (tabName === 'aiconv') { icon = '🎭'; label = 'AI Conv'; }
                     if (tabName === 'advaiconv') { icon = '🧪'; label = 'Adv AI Conv'; }
@@ -328,12 +331,24 @@ function switchMainTab(tabName, save = true) {
     }
     else if (tabName === 'aiconv' && typeof loadArenaModels === 'function') loadArenaModels();
     else if (tabName === 'status' && typeof loadSystemStatusTab === 'function') loadSystemStatusTab();
-    else if ((tabName === 'misaka-cipher' || tabName === 'misaka-memory') && typeof initializeMisakaCipher === 'function') {
-        initializeMisakaCipher();
+    else if (tabName === 'audio' && typeof initializeAudioStudio === 'function') {
+        initializeAudioStudio();
     }
 
     // Update layout based on mode
     updateChatLayout();
+}
+
+/**
+ * Tab initialization registry
+ */
+const tabInitializers = {};
+function registerTabInit(tabName, initFn) {
+    tabInitializers[tabName] = initFn;
+    // If we're already on this tab, run it now
+    if (typeof currentMainTab !== 'undefined' && currentMainTab === tabName) {
+        initFn();
+    }
 }
 
 /**

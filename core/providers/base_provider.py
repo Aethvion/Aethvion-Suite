@@ -108,21 +108,52 @@ class BaseProvider(ABC):
     ) -> ProviderResponse:
         """
         Generate or manipulate an image from the provider.
+        """
+        pass
+
+    @abstractmethod
+    def generate_speech(
+        self,
+        text: str,
+        trace_id: str,
+        model: Optional[str] = None,
+        voice: str = "alloy",
+        format: str = "mp3",
+        **kwargs
+    ) -> ProviderResponse:
+        """
+        Generate speech from text (TTS).
         
         Args:
-            prompt: Image prompt
-            trace_id: Trace ID for this request
+            text: Input text
+            trace_id: Trace ID
             model: Optional model override
-            n: Number of images to generate
-            size: Image size text (e.g. "1024x1024")
-            quality: Quality setting
-            action: "generate", "edit", "upscale", "expand"
-            input_image_bytes: Required if action is not "generate"
-            mask_image_bytes: Optional for inpainting mode
-            **kwargs: Additional provider-specific parameters
+            voice: Voice ID
+            format: Output format (mp3, wav, etc.)
             
         Returns:
-            ProviderResponse object (content will be URL or base64)
+            ProviderResponse (content=metadata summary, metadata['audio']=bytes)
+        """
+        pass
+
+    @abstractmethod
+    def transcribe(
+        self,
+        audio_bytes: bytes,
+        trace_id: str,
+        model: Optional[str] = None,
+        **kwargs
+    ) -> ProviderResponse:
+        """
+        Transcribe audio to text (STT).
+        
+        Args:
+            audio_bytes: Input audio data
+            trace_id: Trace ID
+            model: Optional model override
+            
+        Returns:
+            ProviderResponse (content=transcribed text)
         """
         pass
     

@@ -310,3 +310,74 @@ class GoogleAIProvider(BaseProvider):
                 trace_id=trace_id,
                 error=str(e)
             )
+
+    def generate_speech(
+        self,
+        text: str,
+        trace_id: str,
+        model: Optional[str] = None,
+        voice: str = "alloy",
+        format: str = "mp3",
+        **kwargs
+    ) -> ProviderResponse:
+        """Placeholder for Google AI TTS (not natively supported by Gemini AI Studio SDK)."""
+        return ProviderResponse(
+            content="",
+            model=model or "google_ai",
+            provider="google_ai",
+            trace_id=trace_id,
+            error="Native text-to-speech is currently not supported by the Google AI provider. Please use an OpenAI model for speech generation."
+        )
+
+    def transcribe(
+        self,
+        audio_bytes: bytes,
+        trace_id: str,
+        model: Optional[str] = None,
+        **kwargs
+    ) -> ProviderResponse:
+        """Transcribe audio using Gemini's multimodal capabilities."""
+        try:
+            active_model = model if model else "gemini-1.5-flash"
+            logger.debug(f"[{trace_id}] Transcribing with Google AI model {active_model}")
+
+            # Prepare contents with audio bytes
+            from google.genai import types
+            
+            # We use the generate_content method with a Part containing the audio bytes
+            # MIME type is hardcoded to audio/wav for now as most uploads are wrapped
+            contents = [
+                types.Part.from_bytes(
+                    data=audio_bytes,
+                    mime_type="audio/wav"
+                ),
+                types.Part.from_text(text="Transcribe this audio exactly as heard.")
+            ]
+
+            response = self.client.models.generate_content(
+                model=active_model,
+                contents=contents
+            )
+
+            self.record_success()
+            logger.info(f"[{trace_id}] Successfully transcribed audio with Google AI")
+
+            return ProviderResponse(
+                content=response.text if response.text else "",
+                model=active_model,
+                provider="google_ai",
+                trace_id=trace_id,
+                metadata={
+                    'model': active_model
+                }
+            )
+        except Exception as e:
+            logger.error(f"[{trace_id}] Google AI transcription failed: {str(e)}")
+            self.record_failure()
+            return ProviderResponse(
+                content="",
+                model=model or "gemini-1.5-flash",
+                provider="google_ai",
+                trace_id=trace_id,
+                error=str(e)
+            )

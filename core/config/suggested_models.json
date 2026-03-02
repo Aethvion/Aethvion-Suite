@@ -4,7 +4,8 @@
             "id": "gemini-2.0-flash",
             "tier": "fast",
             "capabilities": [
-                "CHAT"
+                "CHAT",
+                "AUDIO"
             ],
             "input_cost": 0.1,
             "output_cost": 0.4,
@@ -34,7 +35,8 @@
             "id": "gemini-3-flash-preview",
             "tier": "fast",
             "capabilities": [
-                "CHAT"
+                "CHAT",
+                "AUDIO"
             ],
             "input_cost": 0.5,
             "output_cost": 3,

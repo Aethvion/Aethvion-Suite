@@ -115,11 +115,17 @@ async def list_threads():
     """List all chat threads."""
     try:
         task_manager = get_task_queue_manager()
-        return {
-            'threads': [thread.to_dict() for thread in task_manager.threads.values()]
-        }
+        threads = []
+        for thread in list(task_manager.threads.values()):
+            try:
+                threads.append(thread.to_dict())
+            except Exception as te:
+                logger.error(f"Failed to serialize thread {getattr(thread, 'id', 'unknown')}: {te}")
+                continue
+        return {'threads': threads}
         
     except Exception as e:
+        logger.error(f"Error in list_threads: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

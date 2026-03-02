@@ -445,8 +445,6 @@ class TaskQueueManager:
             },
             'queue_size': self.queue.qsize()
         }
-
-        return True
                 
     def delete_thread(self, thread_id: str) -> bool:
         """

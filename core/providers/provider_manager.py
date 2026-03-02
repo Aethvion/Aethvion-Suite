@@ -536,3 +536,57 @@ class ProviderManager:
             'agent_priority': getattr(self, 'agent_priority_order', [])
         }
 
+    def get_provider_for_capability(self, capability: str) -> Optional[BaseProvider]:
+        """Find the first healthy provider that supports the given capability."""
+        # capability should be CHAT, IMAGE, AUDIO (case-insensitive)
+        cap = capability.upper()
+        
+        # Check model descriptor map for models with this capability
+        for model_id, info in self.model_descriptor_map.items():
+            if cap in [c.upper() for c in info.get('capabilities', [])]:
+                provider_name = info.get('provider')
+                if provider_name:
+                    p = self.providers.get(provider_name)
+                    if p and p.is_healthy:
+                        return p
+        
+        # Fallback to priority order if no descriptor match
+        for name in self.priority_order:
+            p = self.providers.get(name)
+            if p and p.is_healthy:
+                return p
+        
+        return None
+
+    def generate_speech(
+        self,
+        text: str,
+        trace_id: str,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
+        voice: str = "alloy",
+        format: str = "mp3",
+        **kwargs
+    ) -> ProviderResponse:
+        """Generate speech using a specific provider or model."""
+        p = self.get_provider(provider) if provider else self.get_provider_for_capability("AUDIO")
+        if not p:
+            return ProviderResponse(content="", model=model or "unknown", provider="unknown", trace_id=trace_id, error="No provider found for AUDIO capability")
+        
+        return p.generate_speech(text, trace_id, model=model, voice=voice, format=format, **kwargs)
+
+    def transcribe(
+        self,
+        audio_bytes: bytes,
+        trace_id: str,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
+        **kwargs
+    ) -> ProviderResponse:
+        """Transcribe audio using a specific provider or model."""
+        p = self.get_provider(provider) if provider else self.get_provider_for_capability("AUDIO")
+        if not p:
+            return ProviderResponse(content="", model=model or "unknown", provider="unknown", trace_id=trace_id, error="No provider found for AUDIO capability")
+        
+        return p.transcribe(audio_bytes, trace_id, model=model, **kwargs)
+

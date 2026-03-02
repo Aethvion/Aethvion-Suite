@@ -38,6 +38,48 @@ class Task:
     error: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     
+def _sanitize_for_json(data: Any) -> Any:
+    """Recursively sanitize data for JSON serialization."""
+    if isinstance(data, dict):
+        return {str(k): _sanitize_for_json(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [_sanitize_for_json(i) for i in data]
+    elif isinstance(data, (set, tuple)):
+        return [_sanitize_for_json(i) for i in list(data)]
+    elif isinstance(data, datetime):
+        return data.isoformat()
+    elif hasattr(data, 'to_dict') and callable(data.to_dict):
+        return data.to_dict()
+    elif hasattr(data, 'value') and hasattr(data, '__class__') and issubclass(data.__class__, Enum):
+        return data.value
+    else:
+        # Check if it's a basic type that JSON can handle
+        if isinstance(data, (str, int, float, bool, type(None))):
+            return data
+        # Fallback to string representation to avoid serialization errors
+        return str(data)
+
+
+@dataclass
+class Task:
+    """
+    Represents a task in the queue.
+    
+    A task is a user request that will be executed by a worker.
+    Multiple tasks can run in parallel.
+    """
+    id: str
+    thread_id: str  # Chat thread ID
+    prompt: str
+    status: TaskStatus = TaskStatus.QUEUED
+    created_at: datetime = field(default_factory=datetime.now)
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    worker_id: Optional[str] = None
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -45,30 +87,14 @@ class Task:
             'thread_id': self.thread_id,
             'prompt': self.prompt,
             'status': self.status.value,
-            'created_at': self.created_at.isoformat(),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
             'started_at': self.started_at.isoformat() if self.started_at else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
             'worker_id': self.worker_id,
-            'result': self._sanitize_for_json(self.result),
+            'result': _sanitize_for_json(self.result),
             'error': self.error,
-            'metadata': self._sanitize_for_json(self.metadata)
+            'metadata': _sanitize_for_json(self.metadata)
         }
-    
-    @staticmethod
-    def _sanitize_for_json(data: Any) -> Any:
-        """Recursively sanitize data for JSON serialization."""
-        if isinstance(data, dict):
-            return {k: Task._sanitize_for_json(v) for k, v in data.items()}
-        elif isinstance(data, list):
-            return [Task._sanitize_for_json(i) for i in data]
-        elif isinstance(data, set):
-            return list(data)
-        elif isinstance(data, datetime):
-            return data.isoformat()
-        elif hasattr(data, 'to_dict'):
-            return data.to_dict()
-        else:
-            return data
     
     @property
     def duration(self) -> Optional[float]:
@@ -100,30 +126,14 @@ class ChatThread:
         return {
             'id': self.id,
             'title': self.title,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat(),
-            'task_ids': self.task_ids,
-            'metadata': self._sanitize_for_json(self.metadata),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'task_ids': list(self.task_ids), # Ensure list copy
+            'metadata': _sanitize_for_json(self.metadata),
             'mode': self.mode,
-            'settings': self._sanitize_for_json(self.settings),
+            'settings': _sanitize_for_json(self.settings),
             'is_deleted': self.is_deleted
         }
-
-    @staticmethod
-    def _sanitize_for_json(data: Any) -> Any:
-        """Recursively sanitize data for JSON serialization."""
-        if isinstance(data, dict):
-            return {k: ChatThread._sanitize_for_json(v) for k, v in data.items()}
-        elif isinstance(data, list):
-            return [ChatThread._sanitize_for_json(i) for i in data]
-        elif isinstance(data, set):
-            return list(data)
-        elif isinstance(data, datetime):
-            return data.isoformat()
-        elif hasattr(data, 'to_dict'):
-            return data.to_dict()
-        else:
-            return data
 
 
 @dataclass
@@ -148,22 +158,6 @@ class Message:
             'role': self.role,
             'content': self.content,
             'task_id': self.task_id,
-            'created_at': self.created_at.isoformat(),
-            'metadata': self._sanitize_for_json(self.metadata)
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'metadata': _sanitize_for_json(self.metadata)
         }
-    
-    @staticmethod
-    def _sanitize_for_json(data: Any) -> Any:
-        """Recursively sanitize data for JSON serialization."""
-        if isinstance(data, dict):
-            return {k: Message._sanitize_for_json(v) for k, v in data.items()}
-        elif isinstance(data, list):
-            return [Message._sanitize_for_json(i) for i in data]
-        elif isinstance(data, set):
-            return list(data)
-        elif isinstance(data, datetime):
-            return data.isoformat()
-        elif hasattr(data, 'to_dict'):
-            return data.to_dict()
-        else:
-            return data

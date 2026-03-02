@@ -244,7 +244,103 @@ class OpenAIProvider(BaseProvider):
             self.record_failure()
             return ProviderResponse(
                 content="",
+                model=active_model if 'active_model' in locals() else "openai",
+                provider="openai",
+                trace_id=trace_id,
+                error=str(e)
+            )
+
+    def generate_speech(
+        self,
+        text: str,
+        trace_id: str,
+        model: Optional[str] = None,
+        voice: str = "alloy",
+        format: str = "mp3",
+        **kwargs
+    ) -> ProviderResponse:
+        """Generate speech using OpenAI TTS."""
+        try:
+            active_model = model if model else "tts-1"
+            logger.debug(f"[{trace_id}] Generating speech with OpenAI model {active_model}")
+
+            response = self.client.audio.speech.create(
                 model=active_model,
+                voice=voice,
+                input=text,
+                response_format=format
+            )
+
+            # Extract bytes from response (iter_bytes is available in the SDK response)
+            audio_bytes = response.content
+
+            self.record_success()
+            logger.info(f"[{trace_id}] Successfully generated speech with OpenAI")
+
+            return ProviderResponse(
+                content=f"Generated {len(audio_bytes)} bytes of speech",
+                model=active_model,
+                provider="openai",
+                trace_id=trace_id,
+                metadata={
+                    'audio': audio_bytes,
+                    'format': format,
+                    'voice': voice
+                }
+            )
+        except Exception as e:
+            logger.error(f"[{trace_id}] OpenAI speech generation failed: {str(e)}")
+            self.record_failure()
+            return ProviderResponse(
+                content="",
+                model=model or "tts-1",
+                provider="openai",
+                trace_id=trace_id,
+                error=str(e)
+            )
+
+    def transcribe(
+        self,
+        audio_bytes: bytes,
+        trace_id: str,
+        model: Optional[str] = None,
+        **kwargs
+    ) -> ProviderResponse:
+        """Transcribe audio using OpenAI Whisper."""
+        try:
+            active_model = model if model else "whisper-1"
+            logger.debug(f"[{trace_id}] Transcribing with OpenAI model {active_model}")
+
+            # OpenAI expects a file-like object for audio
+            import io
+            audio_file = io.BytesIO(audio_bytes)
+            # We need to give it a name so the SDK can infer the format/mimetype
+            audio_file.name = "audio.wav" 
+
+            response = self.client.audio.transcriptions.create(
+                model=active_model,
+                file=audio_file,
+                **kwargs
+            )
+
+            self.record_success()
+            logger.info(f"[{trace_id}] Successfully transcribed audio with OpenAI")
+
+            return ProviderResponse(
+                content=response.text,
+                model=active_model,
+                provider="openai",
+                trace_id=trace_id,
+                metadata={
+                    'model': active_model
+                }
+            )
+        except Exception as e:
+            logger.error(f"[{trace_id}] OpenAI transcription failed: {str(e)}")
+            self.record_failure()
+            return ProviderResponse(
+                content="",
+                model=model or "whisper-1",
                 provider="openai",
                 trace_id=trace_id,
                 error=str(e)

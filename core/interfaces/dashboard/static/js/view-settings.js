@@ -700,7 +700,7 @@ async function toggleAddProviderInline() {
 }
 
 // Available capability tags
-const AVAILABLE_CAPS = ['CHAT', 'IMAGE'];
+const AVAILABLE_CAPS = ['CHAT', 'IMAGE', 'AUDIO'];
 
 /**
  * Renders the inner HTML of a caps table cell.
@@ -713,55 +713,95 @@ function renderCapsTd(caps = [], modelKey = null) {
         </span>
     `).join('');
 
-    let gearBtn = '';
+    let gearBtns = '';
     const hasImageCap = caps.some(c => c.toLowerCase() === 'image' || c.toLowerCase() === 'image_generation');
     if (hasImageCap && modelKey) {
-        gearBtn = `<button class="icon-btn xs-btn toggle-image-settings" title="Image Settings" data-model="${modelKey}"><i class="fas fa-cog"></i></button>`;
+        gearBtns += `<button class="icon-btn xs-btn toggle-image-settings" title="Image Settings" data-model="${modelKey}"><i class="fas fa-cog"></i></button>`;
+    }
+
+    const hasAudioCap = caps.some(c => c.toLowerCase() === 'audio');
+    if (hasAudioCap && modelKey) {
+        gearBtns += `<button class="icon-btn xs-btn toggle-audio-settings" title="Audio Settings" data-model="${modelKey}"><i class="fas fa-microphone"></i></button>`;
     }
 
     const isEmpty = caps.length === 0 ? 'empty' : '';
-    return `<div class="caps-cell ${isEmpty}" style="position:relative;">${pills}<div class="caps-actions">${gearBtn}<button class="add-cap-btn" title="Add capability">+</button></div></div>`;
+    return `<div class="caps-cell ${isEmpty}" style="position:relative;">${pills}<div class="caps-actions">${gearBtns}<button class="add-cap-btn" title="Add capability">+</button></div></div>`;
 }
 
 function renderImageConfigRow(modelKey, m) {
     const config = m.image_config || {};
-    const ratios = Array.isArray(config.aspect_ratios) ? config.aspect_ratios : [];
-    const quality_options = Array.isArray(config.quality_options) ? config.quality_options.join(', ') : (config.quality_options || '');
-
-    const isChecked = (r) => ratios.includes(r) ? 'checked' : '';
-
+    const ar = config.aspect_ratios || ['1:1'];
     return `
         <tr class="image-config-row" data-model="${modelKey}" style="display:none;">
             <td colspan="5">
                 <div class="image-config-container">
                     <div class="image-config-header">
-                        <i class="fas fa-image"></i> Image Generation Capability Configuration
+                        <i class="fas fa-image"></i> Image Capability Configuration
                     </div>
                     <div class="image-config-grid">
                         <div class="config-field">
-                            <label>Allowed Aspect Ratios</label>
-                            <div class="ratio-toggles">
-                                <label class="ratio-toggle-item"><input type="checkbox" class="img-ar-1-1" ${isChecked('1:1')}> 1:1</label>
-                                <label class="ratio-toggle-item"><input type="checkbox" class="img-ar-16-9" ${isChecked('16:9')}> 16:9</label>
-                                <label class="ratio-toggle-item"><input type="checkbox" class="img-ar-9-16" ${isChecked('9:16')}> 9:16</label>
-                                <label class="ratio-toggle-item"><input type="checkbox" class="img-ar-custom" ${isChecked('custom')}> Custom</label>
+                            <label>Aspect Ratios</label>
+                            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem;"><input type="checkbox" class="img-ar-1-1" ${ar.includes('1:1') ? 'checked' : ''}> 1:1</label>
+                                <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem;"><input type="checkbox" class="img-ar-16-9" ${ar.includes('16:9') ? 'checked' : ''}> 16:9</label>
+                                <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem;"><input type="checkbox" class="img-ar-9-16" ${ar.includes('9:16') ? 'checked' : ''}> 9:16</label>
+                                <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem;"><input type="checkbox" class="img-ar-custom" ${ar.includes('custom') ? 'checked' : ''}> custom</label>
                             </div>
                         </div>
                         <div class="config-field">
-                            <label>Quality Options</label>
-                            <input type="text" class="img-quality-options" value="${quality_options}" placeholder="standard, hd">
+                            <label>Quality Options (comma-sep)</label>
+                            <input type="text" class="img-quality-options" value="${(config.quality_options || ['standard', 'hd']).join(', ')}" placeholder="standard, hd...">
                         </div>
                         <div class="config-field toggle-field">
-                            <label>Neg Prompt</label>
+                            <label>Negative Prompt</label>
                             <label class="switch small">
                                 <input type="checkbox" class="img-neg-prompt" ${config.supports_negative_prompt ? 'checked' : ''}>
                                 <span class="slider round"></span>
                             </label>
                         </div>
                         <div class="config-field toggle-field">
-                            <label>Seeds</label>
+                            <label>Supports Seed</label>
                             <label class="switch small">
                                 <input type="checkbox" class="img-supports-seed" ${config.supports_seed ? 'checked' : ''}>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+function renderAudioConfigRow(modelKey, m) {
+    const config = m.audio_config || {};
+    return `
+        <tr class="audio-config-row" data-model="${modelKey}" style="display:none;">
+            <td colspan="5">
+                <div class="image-config-container" style="border-color: var(--primary);">
+                    <div class="image-config-header" style="background: var(--primary); color: white;">
+                        <i class="fas fa-microphone"></i> Audio Capability Configuration
+                    </div>
+                    <div class="image-config-grid">
+                        <div class="config-field">
+                            <label>Preferred Voice</label>
+                            <input type="text" class="audio-voice" value="${config.voice || 'alloy'}" placeholder="alloy, echo, fable...">
+                        </div>
+                        <div class="config-field">
+                            <label>Format</label>
+                            <input type="text" class="audio-format" value="${config.format || 'mp3'}" placeholder="mp3, wav, pcm...">
+                        </div>
+                        <div class="config-field toggle-field">
+                            <label>STT Support</label>
+                            <label class="switch small">
+                                <input type="checkbox" class="audio-stt" ${config.supports_stt ? 'checked' : ''}>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <div class="config-field toggle-field">
+                            <label>TTS Support</label>
+                            <label class="switch small">
+                                <input type="checkbox" class="audio-tts" ${config.supports_tts ? 'checked' : ''}>
                                 <span class="slider round"></span>
                             </label>
                         </div>
@@ -799,6 +839,21 @@ function initCapsTd(cell) {
                     const modelKey = modelInput ? modelInput.value.trim() : '';
                     if (modelKey) {
                         const configRow = tr.parentNode.querySelector(`.image-config-row[data-model="${modelKey}"]`);
+                        if (configRow) configRow.style.display = 'none';
+                    }
+                }
+            }
+
+            if (removedCap && removedCap.toLowerCase() === 'audio') {
+                const gear = currentCell.querySelector('.toggle-audio-settings');
+                if (gear) gear.remove();
+
+                const tr = cell.closest('tr');
+                if (tr) {
+                    const modelInput = tr.querySelector('.model-id-input-small');
+                    const modelKey = modelInput ? modelInput.value.trim() : '';
+                    if (modelKey) {
+                        const configRow = tr.parentNode.querySelector(`.audio-config-row[data-model="${modelKey}"]`);
                         if (configRow) configRow.style.display = 'none';
                     }
                 }
@@ -868,22 +923,46 @@ function initCapsTd(cell) {
                             gear.innerHTML = '<i class="fas fa-cog"></i>';
                             actions.insertBefore(gear, actions.firstChild);
 
-                            // Re-init the click listener for the new gear button
                             gear.onclick = (ge) => {
                                 const providerItem = gear.closest('.compact-provider-item');
                                 let row = providerItem.querySelector(`.image-config-row[data-model="${modelKey}"]`);
 
-                                // Create row if it doesn't exist yet
                                 if (!row) {
-                                    const tbody = tr.parentNode;
-                                    const newRow = document.createElement('tr');
-                                    newRow.innerHTML = renderImageConfigRow(modelKey, {});
-                                    const tempTable = document.createElement('table');
-                                    tempTable.innerHTML = renderImageConfigRow(modelKey, {});
-                                    const actualRow = tempTable.querySelector('tr');
-                                    actualRow.style.display = 'none';
-                                    tr.parentNode.insertBefore(actualRow, tr.nextSibling);
-                                    row = actualRow;
+                                    tr.insertAdjacentHTML('afterend', renderImageConfigRow(modelKey, {}));
+                                    row = tr.nextElementSibling;
+                                }
+
+                                const isVisible = row.style.display !== 'none';
+                                row.style.display = isVisible ? 'none' : 'table-row';
+                                gear.classList.toggle('active', !isVisible);
+                                ge.stopPropagation();
+                            };
+                        }
+                    }
+                }
+
+                if (cap.toLowerCase() === 'audio') {
+                    const actions = cell.querySelector('.caps-actions');
+                    if (actions && !actions.querySelector('.toggle-audio-settings')) {
+                        const tr = cell.closest('tr');
+                        const modelInput = tr.querySelector('.model-id-input-small');
+                        const modelKey = modelInput ? modelInput.value.trim() : '';
+
+                        if (modelKey) {
+                            const gear = document.createElement('button');
+                            gear.className = 'icon-btn xs-btn toggle-audio-settings';
+                            gear.title = 'Audio Settings';
+                            gear.dataset.model = modelKey;
+                            gear.innerHTML = '<i class="fas fa-microphone"></i>';
+                            actions.insertBefore(gear, actions.firstChild);
+
+                            gear.onclick = (ge) => {
+                                const providerItem = gear.closest('.compact-provider-item');
+                                let row = providerItem.querySelector(`.audio-config-row[data-model="${modelKey}"]`);
+
+                                if (!row) {
+                                    tr.insertAdjacentHTML('afterend', renderAudioConfigRow(modelKey, {}));
+                                    row = tr.nextElementSibling;
                                 }
 
                                 const isVisible = row.style.display !== 'none';
@@ -1038,6 +1117,7 @@ function renderProviderCards(registry, expandedProviderName = null) {
                                         </td>
                                     </tr>
                                     ${renderImageConfigRow(key, m)}
+                                    ${renderAudioConfigRow(key, m)}
                                  `;
         }).join('')}
                         </tbody>
@@ -1076,7 +1156,26 @@ function renderProviderCards(registry, expandedProviderName = null) {
         };
     });
 
-    container.querySelectorAll('input').forEach(i => i.onchange = () => markSettingsDirty());
+    container.querySelectorAll('.toggle-audio-settings').forEach(btn => {
+        btn.onclick = (e) => {
+            const modelKey = btn.dataset.model;
+            // Find the audio config row for THIS model in THIS provider card
+            const providerItem = btn.closest('.compact-provider-item');
+            const row = providerItem.querySelector(`.audio-config-row[data-model="${modelKey}"]`);
+            if (row) {
+                const isVisible = row.style.display !== 'none';
+                row.style.display = isVisible ? 'none' : 'table-row';
+                btn.classList.toggle('active', !isVisible);
+            }
+            e.stopPropagation();
+        };
+    });
+
+    container.addEventListener('change', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+            markSettingsDirty();
+        }
+    });
     container.querySelectorAll('.caps-cell').forEach(cell => initCapsTd(cell));
     container.querySelectorAll('.chat-active-toggle, .agent-active-toggle').forEach(t => {
         t.onchange = (e) => {
@@ -1172,7 +1271,7 @@ async function saveProviderSettings() {
             // Image config (if row exists)
             const imgRow = item.querySelector(`.image-config-row[data-model="${modelName}"]`);
             let image_config = null;
-            if (imgRow && capabilities.includes('image')) {
+            if (imgRow && capabilities.includes('IMAGE')) {
                 const ar = [];
                 if (imgRow.querySelector('.img-ar-1-1').checked) ar.push('1:1');
                 if (imgRow.querySelector('.img-ar-16-9').checked) ar.push('16:9');
@@ -1191,12 +1290,25 @@ async function saveProviderSettings() {
                 };
             }
 
+            // Audio config (if row exists)
+            const audioRow = item.querySelector(`.audio-config-row[data-model="${modelName}"]`);
+            let audio_config = null;
+            if (audioRow && capabilities.includes('AUDIO')) {
+                audio_config = {
+                    voice: audioRow.querySelector('.audio-voice').value.trim(),
+                    format: audioRow.querySelector('.audio-format').value.trim(),
+                    supports_stt: audioRow.querySelector('.audio-stt').checked,
+                    supports_tts: audioRow.querySelector('.audio-tts').checked
+                };
+            }
+
             prov.models[modelName] = {
                 input_cost_per_1m_tokens: costIn,
                 output_cost_per_1m_tokens: costOut,
                 capabilities: capabilities,
                 ...(description ? { description } : {}),
-                ...(image_config ? { image_config } : {})
+                ...(image_config ? { image_config } : {}),
+                ...(audio_config ? { audio_config } : {})
             };
         });
     });

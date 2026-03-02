@@ -60,7 +60,15 @@ function initThreadManagement() {
 async function loadThreads() {
     try {
         const response = await fetch('/api/tasks/threads');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
+
+        if (!data || !Array.isArray(data.threads)) {
+            console.warn('Invalid thread data received from server:', data);
+            return;
+        }
 
         // Merge with existing threads (don't overwrite local-only threads like 'default')
         data.threads.forEach(thread => {
