@@ -759,4 +759,5 @@ function deliverQueuedProactiveMessage() {
 }
 
 window.initializeMisakaCipher = initializeMisakaCipher;
+window.refreshMisakaMemory = refreshMisakaMemory;
 window.deliverQueuedProactiveMessage = deliverQueuedProactiveMessage;

@@ -334,6 +334,12 @@ function switchMainTab(tabName, save = true) {
     else if (tabName === 'audio' && typeof initializeAudioStudio === 'function') {
         initializeAudioStudio();
     }
+    else if (tabName === 'misaka-cipher' && typeof initializeMisakaCipher === 'function') {
+        initializeMisakaCipher();
+    }
+    else if (tabName === 'misaka-memory' && typeof refreshMisakaMemory === 'function') {
+        refreshMisakaMemory();
+    }
 
     // Update layout based on mode
     updateChatLayout();
@@ -409,6 +415,10 @@ async function loadInitialData() {
 
     if (typeof initThreadManagement === 'function') {
         initThreadManagement();
+    }
+
+    if (currentMainTab === 'misaka-cipher' && typeof initializeMisakaCipher === 'function') {
+        initializeMisakaCipher();
     }
 
     if (typeof loadSystemStatus === 'function') setInterval(loadSystemStatus, 5000);
