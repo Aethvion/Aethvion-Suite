@@ -6,6 +6,7 @@ let currentViewMode = 'grid'; // 'grid' or 'list'
 let hideFolders = false;
 let semanticMode = false;
 let currentSort = { key: 'name', dir: 'asc' };
+let previousSort = { key: 'name', dir: 'asc' };
 let searchDebounceTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -236,6 +237,10 @@ function renderFiles() {
     filteredFiles.sort((a, b) => {
         let valA, valB;
         switch (currentSort.key) {
+            case 'relevance':
+                valA = a.relevance || 0;
+                valB = b.relevance || 0;
+                break;
             case 'name':
                 valA = a.filename.toLowerCase();
                 valB = b.filename.toLowerCase();
@@ -397,12 +402,23 @@ function handleSearchInput() {
 function toggleSemanticMode() {
     semanticMode = !semanticMode;
     const btn = document.getElementById('semantic-search-toggle');
+    const sortDropdown = document.getElementById('sort-filter');
+
     if (btn) {
         if (semanticMode) {
             btn.classList.add('active');
             btn.style.background = 'var(--primary)';
             btn.style.color = 'white';
             btn.title = 'Semantic Search Active';
+
+            // Save current sort before switching
+            if (currentSort.key !== 'relevance') {
+                previousSort = { ...currentSort };
+            }
+
+            // Switch to Best Match sort
+            currentSort = { key: 'relevance', dir: 'desc' };
+            if (sortDropdown) sortDropdown.value = 'relevance_desc';
 
             // Trigger search if something is already typed
             const query = document.getElementById('file-search')?.value;
@@ -412,6 +428,11 @@ function toggleSemanticMode() {
             btn.style.background = 'var(--bg-tertiary)';
             btn.style.color = 'var(--text-secondary)';
             btn.title = 'Semantic Search Mode';
+
+            // Restore previous sort
+            currentSort = { ...previousSort };
+            if (sortDropdown) sortDropdown.value = `${currentSort.key}_${currentSort.dir}`;
+
             renderFiles();
         }
     }
@@ -441,6 +462,14 @@ async function performSemanticSearch() {
 
         if (!response.ok) throw new Error('Search failed');
         const data = await response.json();
+
+        // Ensure we are sorting by relevance for these results
+        if (currentSort.key !== 'relevance') {
+            previousSort = { ...currentSort };
+        }
+        currentSort = { key: 'relevance', dir: 'desc' };
+        const sortDropdown = document.getElementById('sort-filter');
+        if (sortDropdown) sortDropdown.value = 'relevance_desc';
 
         // Temporarily override currentFiles with search results for rendering
         const originalFiles = [...currentFiles];
