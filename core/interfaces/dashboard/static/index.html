@@ -45,6 +45,7 @@
     <link rel="stylesheet" href="/static/css/misaka_timestamps.css">
     <link rel="stylesheet" href="/static/css/adv_aiconv.css">
     <link rel="stylesheet" href="/static/css/assistant.css">
+    <link rel="stylesheet" href="/static/css/audio_studio.css">
     <style>
         /* Audio Studio Specific Feedback */
         #audio-panel .radio-toggle input:checked+span {
@@ -1019,24 +1020,99 @@
 
                     <!-- Loading Overlay -->
                     <div class="audio-loading-overlay" id="audio-loading-overlay"
-                        style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 10; flex-direction: column; align-items: center; justify-content: center;">
                         <div class="loading-spinner"></div>
                         <div class="loading-text" style="margin-top: 1rem; font-weight: bold; letter-spacing: 2px;">
                             PROCESSING...</div>
                     </div>
 
-                    <!-- Result Area -->
-                    <div id="audio-result-area" style="width: 100%; max-width: 600px; margin-top: 2rem; display: none;">
-                        <div class="audio-player-card"
-                            style="background: var(--bg-tertiary); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
-                            <h4 id="audio-result-title" style="margin-top: 0; color: var(--primary);">Generated Audio
-                            </h4>
-                            <audio id="audio-result-player" controls style="width: 100%; margin: 1rem 0;"></audio>
-                            <div class="audio-result-meta"
-                                style="font-size: 0.85rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
-                                <span id="audio-result-duration">0:00</span>
-                                <span id="audio-result-format">WAV</span>
+                    <!-- Result Area: Premium Audio Player -->
+                    <div id="audio-result-area"
+                        style="width: 100%; display: none; flex-direction: column; align-items: center; gap: 2rem;">
+                        <!-- Transcription Display (New) -->
+                        <div id="audio-transcription-display" class="audio-transcription-container"
+                            style="display: none;">
+                            <div class="transcription-header">
+                                <i class="fas fa-quote-left"></i>
+                                <span>TRANSCRIPTION</span>
                             </div>
+                            <div id="audio-transcription-text" class="audio-transcription-text"></div>
+                        </div>
+
+                        <div class="audio-player-container">
+                            <!-- Source Switcher -->
+                            <div class="audio-source-tabs">
+                                <button class="audio-source-tab" id="audio-tab-input">Input</button>
+                                <button class="audio-source-tab active" id="audio-tab-output">Result</button>
+                            </div>
+
+                            <!-- Visualization -->
+                            <div class="audio-visual-area">
+                                <div class="audio-bars" id="audio-visualizer">
+                                    <div class="audio-bar active" style="animation-delay: 0.1s;"></div>
+                                    <div class="audio-bar active" style="animation-delay: 0.3s;"></div>
+                                    <div class="audio-bar active" style="animation-delay: 0.2s;"></div>
+                                    <div class="audio-bar active" style="animation-delay: 0.5s;"></div>
+                                    <div class="audio-bar active" style="animation-delay: 0.1s;"></div>
+                                    <div class="audio-bar active" style="animation-delay: 0.4s;"></div>
+                                    <div class="audio-bar active" style="animation-delay: 0.2s;"></div>
+                                    <div class="audio-bar active" style="animation-delay: 0.6s;"></div>
+                                    <div class="audio-bar active" style="animation-delay: 0.3s;"></div>
+                                    <div class="audio-bar active" style="animation-delay: 0.5s;"></div>
+                                    <div class="audio-bar active" style="animation-delay: 0.1s;"></div>
+                                    <div class="audio-bar active" style="animation-delay: 0.4s;"></div>
+                                    <div class="audio-bar active" style="animation-delay: 0.2s;"></div>
+                                    <div class="audio-bar active" style="animation-delay: 0.6s;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Metadata -->
+                            <div class="audio-info-row">
+                                <div class="audio-meta-left">
+                                    <div id="audio-result-title" class="audio-now-playing">GENERATED SPEECH</div>
+                                    <div id="audio-result-info" class="audio-source-info">OpenAI: tts-1 | MP3</div>
+                                </div>
+                                <div class="audio-meta-right">
+                                    <div id="audio-time-display" class="audio-time-display">00:00 / 00:00</div>
+                                </div>
+                            </div>
+
+                            <!-- Progress -->
+                            <div class="audio-progress-container">
+                                <div class="audio-progress-bar-wrap" id="audio-progress-bar">
+                                    <div class="audio-progress-fill" id="audio-progress-fill">
+                                        <div class="audio-progress-handle"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Main Controls -->
+                            <div class="audio-controls-main">
+                                <button class="audio-btn" id="audio-rewind" title="Rewind 10s"><i
+                                        class="fas fa-undo"></i></button>
+                                <button class="audio-btn play-pause" id="audio-play-pause"><i
+                                        class="fas fa-play"></i></button>
+                                <button class="audio-btn" id="audio-fastforward" title="Forward 10s"><i
+                                        class="fas fa-redo"></i></button>
+                            </div>
+
+                            <!-- Footer / Volume -->
+                            <div class="audio-footer-row">
+                                <div class="audio-volume-control">
+                                    <i class="fas fa-volume-up" style="color: var(--text-secondary); width: 20px;"></i>
+                                    <input type="range" class="volume-slider" id="audio-volume" min="0" max="1"
+                                        step="0.1" value="0.8">
+                                </div>
+                                <div class="audio-actions">
+                                    <button class="icon-btn xs-btn" id="audio-download" title="Download Audio"><i
+                                            class="fas fa-download"></i></button>
+                                    <button class="icon-btn xs-btn" id="audio-copy-link" title="Copy Audio URL"><i
+                                            class="fas fa-link"></i></button>
+                                </div>
+                            </div>
+
+                            <!-- Hidden Core Element -->
+                            <audio id="audio-core-player" style="display: none;"></audio>
                         </div>
                     </div>
                 </div>
