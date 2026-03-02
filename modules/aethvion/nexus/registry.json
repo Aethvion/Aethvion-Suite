@@ -30,6 +30,20 @@
                 "get_media_info": "Get what is currently playing on the system (YouTube, Spotify, etc.)"
             },
             "settings": []
+        },
+        {
+            "id": "weather",
+            "name": "Weather Link",
+            "description": "Get real-time weather data for any location.",
+            "module_path": "modules.aethvion.nexus.weather_link",
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "get_weather": "Get current weather info (takes 'location' as optional argument)"
+            },
+            "settings": [
+                "api_key"
+            ]
         }
     ]
 }
