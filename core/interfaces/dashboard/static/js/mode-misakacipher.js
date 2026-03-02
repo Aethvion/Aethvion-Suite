@@ -1,15 +1,19 @@
 /**
- * Misaka Cipher Companion - Persistence & History v1
+ * Misaka Cipher Companion - Persistence & History
  */
 
+// Global State
 let misakaChatHistory = [];
-let misakaMaxHistory = 6;
+let misakaMaxHistory = 20;
 let misakaTypingSpeed = 20;
 let isMisakaTyping = false;
 let historyOffsetDays = 0;
 const HISTORY_LIMIT_DAYS = 3;
 let hasInitializedMisaka = false;
 let currentMisakaMood = 'calm';
+
+let _proactiveSessionTimer = null;
+let _typingTimeout = null; // Timer to resume proactive check-ins after typing stops
 
 async function initializeMisakaCipher() {
     // Always deliver any queued proactive message when switching to this tab
@@ -93,17 +97,25 @@ async function initializeMisakaCipher() {
         }
     } catch (e) { }
 
+    // 1. Setup Input interactions
+    if (chatInput && sendBtn) {
+        sendBtn.onclick = sendMisakaMessage;
+        chatInput.onkeydown = (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMisakaMessage();
+            }
+        };
+        // Reset/Pause proactive timer when typing
+        chatInput.addEventListener('input', () => {
+            if (chatInput.value.trim().length > 0) {
+                pauseProactiveForTyping();
+            }
+        });
+    }
+
     // 7. Start proactive scheduler (runs once, sets up timers)
     startProactiveScheduler();
-
-    // Event Listeners
-    sendBtn.onclick = () => sendMisakaMessage();
-    chatInput.onkeydown = (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMisakaMessage();
-        }
-    };
 }
 
 async function loadHistory(offset = 0, limit = 3, isInitial = false) {
@@ -313,6 +325,9 @@ async function sendMisakaMessage() {
 
     addAssistantMessageStatic('user', text, ts);
     chatInput.value = '';
+
+    // Reset/Resume proportional to last activity
+    startProactiveScheduler();
 
     const payload = {
         message: text,
@@ -528,7 +543,6 @@ function updateMisakaMood(mood) {
 }
 
 // ===== PROACTIVE MESSAGING SYSTEM =====
-let _proactiveSessionTimer = null;
 let _queuedProactiveMessage = null; // { response, mood } — pending delivery when user opens Misaka tab
 
 function _randomBetween(min, max) {
@@ -606,6 +620,26 @@ async function startProactiveScheduler() {
         }, interval);
     }
     scheduleNextSession();
+}
+
+/**
+ * Temporarily pauses the proactive scheduler while the user is typing.
+ * Restarts the scheduler after a period of inactivity if the user doesn't send a message.
+ */
+function pauseProactiveForTyping() {
+    if (_proactiveSessionTimer) {
+        console.log('[Misaka] User is typing... pausing proactive scheduler.');
+        clearTimeout(_proactiveSessionTimer);
+        _proactiveSessionTimer = null;
+    }
+
+    if (_typingTimeout) clearTimeout(_typingTimeout);
+
+    // If they stop typing for 45 seconds without sending, resume the scheduler
+    _typingTimeout = setTimeout(() => {
+        console.log('[Misaka] Typing idle detected, resuming scheduler.');
+        startProactiveScheduler();
+    }, 45000);
 }
 
 async function triggerProactiveMessage(trigger, hoursSince) {
