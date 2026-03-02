@@ -150,6 +150,8 @@
                     <div class="nav-dropdown-menu">
                         <button class="nav-dropdown-item" data-subtab="logs"><span
                                 class="tab-icon">📜</span>Logs</button>
+                        <button class="nav-dropdown-item" data-subtab="documentation"><span
+                                class="tab-icon">📖</span>Documentation</button>
                         <button class="nav-dropdown-item" data-subtab="usage"><span
                                 class="tab-icon">📊</span>Usage</button>
                         <button class="nav-dropdown-item" data-subtab="status"><span
@@ -1548,6 +1550,19 @@
             </div> <!-- closes settings-dashboard -->
         </div> <!-- closes main-tab-panel (settings) -->
 
+        <!-- Documentation Panel -->
+        <div class="main-tab-panel" id="documentation-panel">
+            <div class="panel-header borderless">
+                <h2 class="status-header-title">Repository Documentation</h2>
+                <div class="status-meta">
+                    <span class="meta-primary">Aggregated Markdown Docs</span>
+                </div>
+            </div>
+            <div class="status-container scrollable" id="documentation-container">
+                <div class="loading-placeholder">Scanning repository for .md files...</div>
+            </div>
+        </div>
+
         <!-- System Status Panel -->
         <div class="main-tab-panel" id="status-panel">
             <div class="panel-header borderless">
@@ -1656,6 +1671,7 @@
         <script src="/static/js/view-usage.js?v=1"></script>
         <script src="/static/js/view-status.js?v=1"></script>
         <script src="/static/js/view-settings.js?v=3"></script>
+        <script src="/static/js/view-documentation.js?v=1"></script>
 
         <!-- Modes (Active Interactive Panels) -->
         <script src="/static/js/mode-image.js?v=1"></script>
