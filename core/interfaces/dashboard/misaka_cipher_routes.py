@@ -97,45 +97,74 @@ def _validate_path(target_path: str, workspaces: List[dict], required_permission
         except ValueError:
             continue
     return False, f"Path '{target_path}' is not within any workspace with '{required_permission}' permission."
-
 async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str, List[str]]:
     """
     Scan Misaka's raw response for [tool:X ...] tags, execute them, and return
     (cleaned_content_without_tool_tags, list_of_tool_results).
     """
     results = []
-    # Robust tool match: handles quoted values containing brackets ] without stopping early
-    tool_pattern = re.compile(
-        r'\[tool:(\w+)(?:\s+([^\]]*?(?:(["\'])(?:\\.|(?!\3).)*\3[^\]]*?)*))?\]',
-        re.IGNORECASE | re.DOTALL
-    )
+    
+    def robust_parse_tool_blocks(text: str):
+        idx = text.find("[tool:")
+        blocks = []
+        while idx != -1:
+            depth = 0
+            start = idx
+            end_idx = -1
+            for i in range(idx, len(text)):
+                if text[i] == '[':
+                    depth += 1
+                elif text[i] == ']':
+                    depth -= 1
+                    if depth == 0:
+                        end_idx = i + 1
+                        blocks.append((start, end_idx, text[start:end_idx]))
+                        break
+            else:
+                # Malformed, take till end to clean it out but maybe it won't parse properly
+                blocks.append((start, len(text), text[start:]))
+                end_idx = len(text)
+            
+            idx = text.find("[tool:", end_idx)
+        return blocks
 
     def parse_attrs(attr_str: str) -> dict:
-        """Parse key="value" or key='value' or key=value pairs from attribute string."""
         attrs = {}
-        # Supports key="val", key='val', and key=val (no spaces)
-        # Quoted values support backslash escapes: \" or \'
-        attr_regex = re.compile(r'(\w+)=(?:(["\'])((?:\\.|(?!\2).)*)\2|([^\s>\]]+))', re.DOTALL)
-        for m in attr_regex.finditer(attr_str or ""):
-            key = m.group(1)
-            # If quoted, value is in group 3. If unquoted, value is in group 4.
-            val = m.group(3) if m.group(3) is not None else m.group(4)
-            
-            if val is not None:
-                # Basic unescaping for all (quotes and backslashes)
-                val = val.replace('\\"', '"').replace("\\'", "'").replace("\\\\", "\\")
+        # Known keys
+        for key in ["path", "query", "module", "cmd"]:
+            m = re.search(rf'{key}=([\'"])(.*?)\1', attr_str)
+            if m:
+                attrs[key] = m.group(2)
                 
-                # Context-aware unescaping: paths vs content
-                # Paths should NOT unescape \n, \t etc to preserve Windows backslashes
-                if key not in ["path", "dir", "directory", "folder"]:
-                    val = val.replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t")
-            
-            attrs[key] = val
+        # Content specifically
+        if 'content="' in attr_str:
+            start_c = attr_str.find('content="') + 9
+            end_c = attr_str.rfind('"')
+            if end_c > start_c:
+                attrs['content'] = attr_str[start_c:end_c]
+                
+        for k, v in attrs.items():
+            # Apply unescaping
+            v = v.replace('\\"', '"').replace("\\'", "'").replace("\\\\", "\\")
+            if k not in ["path", "dir", "directory", "folder"]:
+                v = v.replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t")
+            attrs[k] = v
         return attrs
 
-    for match in tool_pattern.finditer(content):
-        tool_name = match.group(1).lower()
-        attrs = parse_attrs(match.group(2))
+    blocks = robust_parse_tool_blocks(content)
+    
+    cleaned = content
+    # Remove from end to start to not mess up indices, or just string replace 
+    for start, end, tool_str in reversed(blocks):
+        # We also want to execute it
+        inner = tool_str[6:-1].strip() if tool_str.endswith(']') else tool_str[6:].strip()
+        parts = inner.split(None, 1)
+        if not parts:
+            continue
+            
+        tool_name = parts[0].lower()
+        args_str = parts[1] if len(parts) > 1 else ""
+        attrs = parse_attrs(args_str)
 
         try:
             if tool_name == "read_file":
@@ -162,7 +191,6 @@ async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str
                 else:
                     p = Path(path)
                     p.parent.mkdir(parents=True, exist_ok=True)
-                    # Content is already unescaped by parse_attrs
                     p.write_text(file_content, encoding="utf-8")
                     results.append(f"[write_file OK] Written {len(file_content)} chars to {path}")
 
@@ -195,11 +223,11 @@ async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str
                     for file in p.rglob("*") if True else p.glob("*"):
                         if file.is_file() and len(matches) < 20:
                             try:
-                                text = file.read_text(encoding="utf-8", errors="ignore")
-                                if query.lower() in text.lower():
+                                text_file = file.read_text(encoding="utf-8", errors="ignore")
+                                if query.lower() in text_file.lower():
                                     line_matches = [
                                         f"  L{i+1}: {line.strip()}"
-                                        for i, line in enumerate(text.splitlines())
+                                        for i, line in enumerate(text_file.splitlines())
                                         if query.lower() in line.lower()
                                     ][:3]
                                     matches.append(f"{file} ({len(line_matches)} matches):\n" + "\n".join(line_matches))
@@ -211,25 +239,28 @@ async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str
                         results.append(f"[search_files] No matches for '{query}' in {search_path}")
 
             elif tool_name == "nexus":
-                # External module bridge (Spotify, Media Sentinel, etc.)
                 module_id = attrs.get("module", "")
                 command = attrs.get("cmd", "")
-                # Any other attributes are passed as args
-                args = {k: v for k, v in attrs.items() if k not in ["module", "cmd"]}
-                
-                result = nexus_manager.call_module(module_id, command, args)
+                # Pass any args the LLM happened to append (path is technically an arg too if she re-uses it)
+                args_dict = {k: v for k, v in attrs.items() if k not in ["module", "cmd"]}
+                result = nexus_manager.call_module(module_id, command, args_dict)
                 results.append(f"[nexus:{module_id}.{command}] {result}")
 
         except Exception as e:
             results.append(f"[{tool_name} ERROR] {str(e)}")
+            
+        # Strip tool from content string
+        cleaned = cleaned.replace(tool_str, '')
 
-    # Strip tool tags from content
-    cleaned = tool_pattern.sub("", content).strip()
-    
-    # Final safety cleanup for any leaked/partial fragments if the LLM hallucinated
-    cleaned = re.sub(r'\[tool:\s*\w+[^\]]*\]?', '', cleaned, flags=re.IGNORECASE)
-    cleaned = cleaned.replace('\\n}"]', '').replace('\n}"]', '').replace('}"]', '').strip()
-    
+    # Safety cleanup of dangling fragments
+    cleaned = cleaned.strip()
+    if cleaned.endswith('\\n}"]'):
+        cleaned = cleaned[:-len('\\n}"]')].strip()
+    elif cleaned.endswith('\n}"]'):
+        cleaned = cleaned[:-len('\n}"]')].strip()
+    elif cleaned.endswith('}"]'):
+        cleaned = cleaned[:-len('}"]')].strip()
+        
     return cleaned, results
 
 

@@ -239,7 +239,7 @@ function createMessageElement(role, text, timestamp = null) {
         const cleanText = text.replace(/<memory_update>[\s\S]*?<\/memory_update>/gi, '')
             .replace(/\[Emotion:\s*\w+\]/gi, '')
             .replace(/\[Mood:\s*\w+\]/gi, '')
-            .replace(/\[tool:[\w_]+[^\]]*\]/gi, '')
+            .replace(/\[tool:[\s\S]*?\](?=(?:\s*\[tool:)|(?:\s*$)|(?:\s*\[msg_break\]))/gi, '')
             .replace(/\[msg_break\]/gi, '')
             .trim();
         bubble.innerHTML = renderMarkdown(cleanText);
@@ -419,7 +419,7 @@ async function addAssistantMessageTyped(fullText) {
 
     let remainingText = fullText
         .replace(/<memory_update>[\s\S]*?<\/memory_update>/gi, '')
-        .replace(/\[tool:[\w_]+[^\]]*\]/gi, '')
+        .replace(/\[tool:[\s\S]*?\](?=(?:\s*\[tool:)|(?:\s*$)|(?:\s*\[msg_break\]))/gi, '')
         .replace(/\[msg_break\]/gi, '')
         .trim();
 
