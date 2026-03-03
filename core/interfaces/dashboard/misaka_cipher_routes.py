@@ -227,8 +227,8 @@ async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str
     cleaned = tool_pattern.sub("", content).strip()
     
     # Final safety cleanup for any leaked/partial fragments if the LLM hallucinated
-    cleaned = re.sub(r'\[tool:\s*\w+.*?\]?', '', cleaned, flags=re.IGNORECASE | re.DOTALL)
-    cleaned = re.sub(r'\\?n? ?"? ?\}? ?\]', '', cleaned).strip() # Specific fix for \n}"] fragments
+    cleaned = re.sub(r'\[tool:\s*\w+[^\]]*\]?', '', cleaned, flags=re.IGNORECASE)
+    cleaned = cleaned.replace('\\n}"]', '').replace('\n}"]', '').replace('}"]', '').strip()
     
     return cleaned, results
 
@@ -489,7 +489,8 @@ It could be a question, an observation, or a light comment. Keep it short and fe
                     history_lines = []
                     for h in recent:
                         role = "Misaka" if h["role"] == "assistant" else "User"
-                        history_lines.append(f"{role}: {h['content']}")
+                        clean_content = h.get('content', '').replace('[msg_break]', '\n\n')
+                        history_lines.append(f"{role}: {clean_content}")
                     if history_lines:
                         history_context = "RECENT CONVERSATION HISTORY:\n" + "\n".join(history_lines) + "\n\n"
         except Exception as he:
@@ -570,7 +571,7 @@ Do NOT include memory updates in this initiation message.
                     break
                     
                 tool_results_str = "\n\n".join(tool_results)
-                cumulative_context = " [msg_break] ".join(response_parts)
+                cumulative_context = "\n\n".join(response_parts)
                 
                 followup_prompt = (
                     system_prompt +
@@ -793,7 +794,8 @@ Keep responses engaging and human-like.
         
         formatted_prompt = system_prompt + "\n\n--- Conversation History ---\n"
         for msg in history_to_send:
-            formatted_prompt += f"{msg.role.capitalize()}: {msg.content}\n"
+            clean_content = msg.content.replace('[msg_break]', '\n\n')
+            formatted_prompt += f"{msg.role.capitalize()}: {clean_content}\n"
         formatted_prompt += f"User: {request.message}\n"
         formatted_prompt += "Misaka:"
         
@@ -835,7 +837,7 @@ Keep responses engaging and human-like.
                 break
             
             tool_results_str = "\n\n".join(tool_results)
-            cumulative_context = " [msg_break] ".join(response_parts)
+            cumulative_context = "\n\n".join(response_parts)
             
             followup_prompt = (
                 formatted_prompt +
