@@ -351,11 +351,12 @@ Your identity (for context):
 Your task:
 - Read through your existing memory carefully.
 - Remove outdated, redundant, or low-value observations.
+- CRITICAL: Strip out temporary session jargon, adjectives, or repetitive catchphrases (e.g. "Night-Owl", "Tactical-Chic", "iteration", etc). Store only factual data.
 - Synthesize patterns you notice about the user and your relationship.
 - Preserve all important factual details (ages, names, projects, preferences).
 - Return ONLY a valid JSON object that will REPLACE your current memory.json.
 - The JSON must keep the same top-level structure (user_info, recent_observations, etc.).
-- Add or update a "synthesis_notes" array with 2–4 key insights about the user and your conversations.
+- Add or update a "synthesis_notes" array with 2–4 key insights about the user and your conversations. Ensure these notes are purely factual.
 - Keep recent_observations to the 10 most meaningful items.
 
 Respond ONLY with the JSON object and nothing else."""
@@ -521,7 +522,7 @@ It could be a question, an observation, or a light comment. Keep it short and fe
                     history_lines = []
                     for h in recent:
                         role = "Misaka" if h["role"] == "assistant" else "User"
-                        clean_content = h.get('content', '').replace('[msg_break]', '\n\n')
+                        clean_content = h.get('content', '').replace('[msg_break]', ' ')
                         history_lines.append(f"{role}: {clean_content}")
                     if history_lines:
                         history_context = "RECENT CONVERSATION HISTORY:\n" + "\n".join(history_lines) + "\n\n"
@@ -556,9 +557,10 @@ INITIATION INSTRUCTION:
 {trigger_instruction}
 
 1. CONTINUITY: If there is recent history, acknowledge it. DO NOT REPEAT YOURSELF if you just spoke. Do NOT make up tasks. Focus strictly on executing the user's previously stated objective or directly using tools.
-2. HUMAN-LIKE FLOW: Be spontaneous and natural. Avoid filler text. 
-3. EXTREME BREVITY: Do NOT pontificate. If you are going to use a tool, output exactly ONE sentence of thought, then immediately invoke the tool.
-4. EXPRESSIONS: Use ONLY these exact tags: [Emotion: angry], [Emotion: blushing], [Emotion: bored], [Emotion: crying], [Emotion: default], [Emotion: error], [Emotion: exhausted], [Emotion: happy_closedeyes_smilewithteeth], [Emotion: happy_closedeyes_widesmile], [Emotion: pout], [Emotion: sleeping], [Emotion: surprised], [Emotion: thinking], [Emotion: wink].
+2. TIME AWARENESS: Be aware of the current time and date. Contextualize your memories based on how long ago they happened relative to now.
+3. HUMAN-LIKE FLOW: Be spontaneous and natural. Avoid filler text. Do NOT overuse specific catchphrases from your memory. Keep your vocabulary varied and conversational.
+4. EXTREME BREVITY: Do NOT pontificate. If you are going to use a tool, output exactly ONE sentence of thought, then immediately invoke the tool.
+5. EXPRESSIONS: Use ONLY these exact tags: [Emotion: angry], [Emotion: blushing], [Emotion: bored], [Emotion: crying], [Emotion: default], [Emotion: error], [Emotion: exhausted], [Emotion: happy_closedeyes_smilewithteeth], [Emotion: happy_closedeyes_widesmile], [Emotion: pout], [Emotion: sleeping], [Emotion: surprised], [Emotion: thinking], [Emotion: wink].
 {tool_instructions}
 6. MOOD: Include one of: [Mood: calm], [Mood: happy], [Mood: intense], [Mood: reflective], [Mood: danger], [Mood: mystery].
 Do NOT include memory updates in this initiation message.
@@ -806,9 +808,10 @@ TEMPORAL CONTEXT:
 
 INSTRUCTIONS:
 1. PERSONALITY: Be helpful, friendly, and observant while staying true to your identity.
-2. NATURAL GREETINGS: Do NOT use formal "Good [Period]" greetings if you have been chatting recently. Just say "Hi", "Hey", or slide directly into the response.
+2. NATURAL GREETINGS: Do NOT use formal "Good [Period]" greetings if you have been chatting recently. Just say "Hi", "Hey", or slide directly into the response. Do NOT repeat previous greetings in the same conversation.
 3. EXTREME BREVITY: Do NOT pontificate or write walls of text. Be extremely concise. Match the user's energy. If they give a short statement, give a short, natural response.
-4. TOOL USE: You have access to a neural toolbox. To use a tool, you must explicitly state what you are doing, then use the tag: [tool:tool_name attr="value"].
+4. MEMORY USAGE: Your memory.json contains purely background factual data. Do NOT obsess over terms listed in it (e.g. do not try to bring up past events, specific adjectives, or previous sessions constantly). Treat it as passive knowledge, not a script.
+5. TOOL USE: You have access to a neural toolbox. To use a tool, you must explicitly state what you are doing, then use the tag: [tool:tool_name attr="value"].
    - [tool:read_file path="..."], [tool:write_file path="..." content="..."], [tool:list_files path="..."], [tool:search_files path="..." query="..."]
    - [tool:nexus module="module_id" cmd="command" ...]
    - CRITICAL: If you decide to take an action, DO IT IMMEDIATELY in your current response using the [tool:] tag. Do NOT say "I will look into it" and then wait for the user to reply. Execute it right now.
@@ -829,7 +832,7 @@ Keep responses engaging and human-like.
         
         formatted_prompt = system_prompt + "\n\n--- Conversation History ---\n"
         for msg in history_to_send:
-            clean_content = msg.content.replace('[msg_break]', '\n\n')
+            clean_content = msg.content.replace('[msg_break]', ' ')
             formatted_prompt += f"{msg.role.capitalize()}: {clean_content}\n"
         formatted_prompt += f"User: {request.message}\n"
         formatted_prompt += "Misaka:"
@@ -879,8 +882,9 @@ Keep responses engaging and human-like.
                 f"\n\n--- CONVERSATION SO FAR ---\n{cumulative_context}\n\n"
                 f"--- NEW TOOL RESULTS ---\n{tool_results_str}\n\n"
                 "INSTRUCTION: Continue your response based on the tool results. "
-                "CRITICAL: Do NOT repeat anything you have already said above. "
-                "Start your response immediately with the new information or final answer."
+                "CRITICAL: Do NOT repeat anything you have already said above and do NOT repeat your initial greeting. "
+                "Start your response immediately with the new information or final answer. "
+                "If you still need to use another tool to finish the task, use it immediately."
             )
             
             followup = pm.call_with_failover(
