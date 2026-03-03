@@ -44,6 +44,18 @@
             "settings": [
                 "api_key"
             ]
+        },
+        {
+            "id": "system_link",
+            "name": "System Link",
+            "description": "Read system hardware telemetry.",
+            "module_path": "modules.aethvion.nexus.system_link",
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "get_hardware_telemetry": "Get system CPU, RAM, and Disk usage stats"
+            },
+            "settings": []
         }
     ]
 }

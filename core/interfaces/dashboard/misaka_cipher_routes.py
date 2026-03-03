@@ -138,20 +138,7 @@ async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str
         attrs = parse_attrs(match.group(2))
 
         try:
-            if tool_name == "system_stats":
-                if HAS_PSUTIL:
-                    cpu = psutil.cpu_percent(interval=0.5)
-                    vm = psutil.virtual_memory()
-                    disk = psutil.disk_usage(str(PROJECT_ROOT))
-                    results.append(
-                        f"[system_stats] CPU: {cpu}% | RAM: {vm.percent}% used "
-                        f"({vm.used // (1024**2)}MB / {vm.total // (1024**2)}MB) | "
-                        f"Disk: {disk.percent}% used ({disk.free // (1024**3)}GB free)"
-                    )
-                else:
-                    results.append("[system_stats] psutil not installed — cannot read system stats.")
-
-            elif tool_name == "read_file":
+            if tool_name == "read_file":
                 path = attrs.get("path", "")
                 allowed, reason = _validate_path(path, workspaces, "read")
                 if not allowed:
@@ -515,7 +502,6 @@ It could be a question, an observation, or a light comment. Keep it short and fe
         if allow_proactive_tools:
             tool_instructions = """
 4. TOOL USE: You have access to a neural toolbox. To use a tool, you must explicitly state what you are doing, then use the tag: [tool:tool_name attr="value"]. Chained calls are supported.
-   - [tool:system_stats] - Check CPU, RAM, Disk.
    - [tool:read_file path="..."], [tool:write_file path="..." content="..."], [tool:list_files path="..."], [tool:search_files path="..." query="..."]
    - [tool:nexus module="module_id" cmd="command" ...] - Use Nexus modules.
    - Only use tools if relevant or requested. TOOLS RUN SILENTLY; always acknowledge BEFORE calling them.
@@ -789,7 +775,6 @@ INSTRUCTIONS:
 2. NATURAL GREETINGS: Do NOT use formal "Good [Period]" greetings if you have been chatting recently (e.g., within the last hour). Just say "Hi", "Hey", or slide directly into the response.
 3. BREVITY & SCALE: Match the user's energy. If they give short answers, give short, natural responses. Avoid multi-paragraph responses for simple interactions.
 4. TOOL USE: You have access to a neural toolbox. To use a tool, you must explicitly state what you are doing, then use the tag: [tool:tool_name attr="value"]. Chained calls are supported.
-   - [tool:system_stats] - Check CPU, RAM, Disk.
    - [tool:read_file path="..."], [tool:write_file path="..." content="..."], [tool:list_files path="..."], [tool:search_files path="..." query="..."]
    - [tool:nexus module="module_id" cmd="command" ...] - Use Nexus modules.
      * Example: [tool:nexus module="weather_link" cmd="get_weather" location="London"]
