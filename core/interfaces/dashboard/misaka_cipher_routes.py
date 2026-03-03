@@ -826,9 +826,14 @@ Keep responses engaging and human-like.
         
         # 4. Prepare conversation history
         # History length is determined by the frontend based on the context window setting
-        # But we'll apply a reasonable maximum backend limit (e.g., last 20 messages) 
-        # instead of a hardcoded 6 to respect the user's config slider.
-        history_to_send = request.history[-20:]
+        # However, to be absolutely certain we don't blow up the context window, 
+        # we will strictly slice it based on the preferred context limit immediately before sending.
+        prefs = get_preferences_manager()
+        context_limit = prefs.get('misakacipher', {}).get('context_limit', 6)
+        
+        # history_to_send needs to be correctly sliced. But wait!
+        # request.history is an array from the client.
+        history_to_send = request.history[-context_limit:] if context_limit > 0 else []
         
         formatted_prompt = system_prompt + "\n\n--- Conversation History ---\n"
         for msg in history_to_send:
@@ -841,7 +846,6 @@ Keep responses engaging and human-like.
         pm = ProviderManager()
         trace_id = f"misaka-{uuid.uuid4().hex[:8]}"
         
-        prefs = get_preferences_manager()
         model = prefs.get('misakacipher', {}).get('model', 'gemini-1.5-flash')
         
         response = pm.call_with_failover(
