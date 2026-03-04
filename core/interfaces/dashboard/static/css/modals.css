@@ -7,8 +7,9 @@
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(5px);
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     align-items: center;
     justify-content: center;
 }
@@ -23,26 +24,42 @@
     width: 100%;
     height: 100%;
     overflow: auto;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(5px);
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 .modal-content {
-    background-color: var(--bg-secondary);
-    margin: 15% auto;
-    padding: 20px;
+    background-color: rgba(24, 24, 27, 0.95);
+    margin: 10% auto;
+    padding: 2rem;
     border: 1px solid var(--border);
     width: 500px;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    animation: dropInModal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes dropInModal {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 .close-modal {
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     float: right;
-    font-size: 28px;
-    font-weight: bold;
+    font-size: 24px;
+    font-weight: 400;
     cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s;
 }
 
 .close-modal:hover,
@@ -60,28 +77,32 @@
     display: block;
     margin-bottom: 0.5rem;
     font-weight: 500;
+    color: var(--text-primary);
 }
 
 .radio-group label {
     display: block;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.4rem;
     font-weight: normal;
     cursor: pointer;
+    color: var(--text-secondary);
 }
 
 .radio-group input {
     margin-right: 0.5rem;
+    accent-color: var(--primary);
 }
 
 /* Thread Settings Foldout */
 .thread-settings-panel {
     display: none;
-    /* Hidden by default */
     background: rgba(0, 0, 0, 0.2);
-    border-top: 1px solid var(--border);
-    padding: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 12px;
     font-size: 0.9em;
     animation: slideDown 0.2s ease-out;
+    border-bottom-left-radius: var(--radius-md);
+    border-bottom-right-radius: var(--radius-md);
 }
 
 .thread-item.active .thread-settings-panel {
@@ -126,17 +147,23 @@
 .context-window-input {
     width: 60px;
     padding: 4px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border);
-    background: var(--bg-primary);
+    background: rgba(0, 0, 0, 0.2);
     color: var(--text-primary);
+    text-align: center;
+}
+
+.context-window-input:focus {
+    outline: none;
+    border-color: var(--primary);
 }
 
 /* Switch Toggle */
 .switch {
     position: relative;
     display: inline-block;
-    width: 34px;
+    width: 36px;
     height: 20px;
 }
 
@@ -153,9 +180,9 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: var(--bg-tertiary);
-    transition: .4s;
-    border: 1px solid var(--border);
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
     border-radius: 20px;
 }
 
@@ -164,21 +191,21 @@
     content: "";
     height: 14px;
     width: 14px;
-    left: 2px;
+    left: 3px;
     bottom: 2px;
-    background-color: var(--text-secondary);
-    transition: .4s;
+    background-color: var(--text-primary);
+    transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 50%;
+    box-shadow: var(--shadow-sm);
 }
 
 input:checked+.slider {
     background-color: var(--primary);
-    border-color: var(--primary);
 }
 
 input:checked+.slider:before {
-    transform: translateX(14px);
-    background-color: var(--bg-primary);
+    transform: translateX(16px);
+    background-color: #fff;
 }
 
 /* Compact Terminal Settings */
@@ -186,20 +213,20 @@ input:checked+.slider:before {
     cursor: pointer;
     color: var(--text-secondary);
     margin-top: 4px;
-    padding: 2px 4px;
-    border-radius: 2px;
+    padding: 4px 6px;
+    border-radius: var(--radius-sm);
     transition: all 0.2s;
     user-select: none;
-    font-size: 0.85em;
+    font-size: 0.8em;
+    font-weight: 500;
     display: flex;
-    /* Flex to align icon */
     align-items: center;
-    gap: 4px;
+    gap: 6px;
 }
 
 .thread-settings-toggle:hover {
     color: var(--primary);
-    background: rgba(0, 217, 255, 0.1);
+    background: rgba(99, 102, 241, 0.1);
 }
 
 .thread-settings-toggle .toggle-icon {

@@ -1,8 +1,4 @@
-.btn-primary:active {
-    transform: translateY(0);
-}
-
-/* ===== Usage Dashboard ===== */
+/* ===== Usage Dashboard (Premium Redesign) ===== */
 .usage-dashboard {
     padding: 1.5rem;
     display: flex;
@@ -10,22 +6,32 @@
     gap: 1.5rem;
     overflow-y: auto;
     max-height: calc(100vh - 120px);
+    background: radial-gradient(circle at 50% -20%, rgba(99, 102, 241, 0.05), transparent 60%);
 }
 
 .usage-stat-row {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 1rem;
+    gap: 1.2rem;
 }
 
 .usage-stat-card {
-    background: var(--bg-tertiary);
+    background: rgba(24, 24, 27, 0.6);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     padding: 1.5rem;
     text-align: center;
     position: relative;
     overflow: hidden;
+    box-shadow: var(--shadow-md);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s, border-color 0.2s;
+}
+
+.usage-stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.3);
 }
 
 .usage-stat-card::before {
@@ -34,44 +40,66 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 3px;
+    height: 4px;
     background: linear-gradient(90deg, var(--primary), var(--accent));
+    opacity: 0.8;
 }
 
 .usage-stat-card .stat-value {
-    font-size: 1.8rem;
+    font-size: 2rem;
     font-weight: 700;
-    font-family: 'Fira Code', monospace;
-    color: var(--primary);
-    margin-bottom: 0.3rem;
+    font-family: 'Outfit', sans-serif;
+    background: linear-gradient(135deg, #fff, var(--primary-hover));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
 }
 
 .usage-stat-card .stat-label {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    font-weight: 600;
 }
 
 .usage-charts-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    gap: 1.5rem;
 }
 
 .usage-chart-container {
-    background: var(--bg-tertiary);
+    background: rgba(24, 24, 27, 0.6);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.2rem;
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
 }
 
 .usage-chart-container h3 {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.usage-chart-container h3::before {
+    content: '';
+    display: block;
+    width: 8px;
+    height: 8px;
+    background: var(--primary);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--primary);
 }
 
 .usage-chart-container canvas {
@@ -79,13 +107,15 @@
 }
 
 .usage-controls-row {
-    background: var(--bg-tertiary);
+    background: rgba(24, 24, 27, 0.6);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     padding: 1rem 1.5rem;
     display: flex;
     justify-content: flex-start;
     align-items: center;
+    box-shadow: var(--shadow-sm);
 }
 
 .usage-date-picker {
@@ -97,129 +127,163 @@
 
 .date-presets {
     display: flex;
-    background: var(--bg-primary);
+    background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 2px;
+    border-radius: var(--radius-md);
+    padding: 4px;
 }
 
 .date-preset-btn {
     background: transparent;
     border: none;
     color: var(--text-secondary);
-    padding: 0.2rem 0.6rem;
-    font-size: 0.75rem;
-    font-weight: 600;
+    padding: 0.4rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 500;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     transition: all 0.2s;
 }
 
 .date-preset-btn:hover {
-    color: var(--primary);
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .date-preset-btn.active {
     background: var(--primary);
-    color: var(--bg-primary);
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
 .date-custom {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.6rem;
 }
 
 .date-input {
-    background: var(--bg-primary);
+    background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
-    padding: 0.2rem 0.4rem;
-    font-size: 0.75rem;
-    font-family: 'Inter', sans-serif;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    font-family: inherit;
     outline: none;
+    transition: border-color 0.2s;
 }
 
 .date-input:focus {
     border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
 .date-sep {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
 }
 
 .usage-table-full {
-    background: var(--bg-tertiary);
+    background: rgba(24, 24, 27, 0.6);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.2rem;
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
     overflow-x: auto;
     min-height: 300px;
+    box-shadow: var(--shadow-md);
 }
 
 .usage-table-full h3 {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.usage-table-full h3::before {
+    content: '';
+    display: block;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent);
 }
 
 .usage-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: 0.85rem;
 }
 
 .usage-table thead th {
-    padding: 0.6rem 0.8rem;
+    padding: 0.8rem 1rem;
     text-align: left;
     color: var(--text-secondary);
     font-weight: 600;
     font-size: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid var(--border);
+    letter-spacing: 1px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .usage-table tbody td {
-    padding: 0.5rem 0.8rem;
+    padding: 0.8rem 1rem;
     color: var(--text-primary);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    transition: background 0.2s;
 }
 
-.usage-table tbody tr:hover {
-    background: rgba(0, 217, 255, 0.04);
+.usage-table tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.usage-table tbody tr:last-child td {
+    border-bottom: none;
 }
 
 .usage-table .provider-badge {
-    display: inline-block;
-    padding: 0.1rem 0.5rem;
-    border-radius: 3px;
-    font-size: 0.75rem;
-    font-family: 'Fira Code', monospace;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--radius-full);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .provider-badge.google_ai {
-    color: #4285F4;
-    border: 1px solid rgba(66, 133, 244, 0.3);
+    color: #8ab4f8;
+    background: rgba(66, 133, 244, 0.1);
+    border: 1px solid rgba(66, 133, 244, 0.2);
 }
 
 .provider-badge.openai {
-    color: #10A37F;
-    border: 1px solid rgba(16, 163, 127, 0.3);
+    color: #10a37f;
+    background: rgba(16, 163, 127, 0.1);
+    border: 1px solid rgba(16, 163, 127, 0.2);
 }
 
 .provider-badge.grok {
-    color: #FF6600;
-    border: 1px solid rgba(255, 102, 0, 0.3);
+    color: #fb923c;
+    background: rgba(255, 102, 0, 0.1);
+    border: 1px solid rgba(255, 102, 0, 0.2);
 }
 
 .provider-badge.local {
     color: var(--warning);
-    border: 1px solid rgba(255, 170, 0, 0.3);
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
 @media (max-width: 900px) {
