@@ -416,29 +416,41 @@ async function loadGlobalSettings() {
         // For simplicity, we'll render output_validation and system blocks
         let html = '';
 
+        // Tooltip descriptions for global settings
+        const tooltips = {
+            'output_validation.check_file_content': 'Verifies that the generated file contains valid content.',
+            'output_validation.check_file_location': 'Ensures the generated file is saved in the correct directory.',
+            'output_validation.min_file_size': 'Minimum file size (in bytes) to be considered valid.',
+            'output_validation.min_content_length': 'Minimum character length for content to be considered valid.',
+            'system.open_browser_on_startup': 'Automatically opens the dashboard in your default web browser when Misaka Cipher starts.'
+        };
+
         // Flatten settings for editing
         const renderGroup = (title, obj, prefix = '') => {
             let groupHtml = `<div class="settings-subgroup"><h4>${title}</h4>`;
             for (const [key, value] of Object.entries(obj)) {
+                const fullKey = prefix ? `${prefix}.${key}` : key;
+                const tooltipText = tooltips[fullKey] ? ` title="${tooltips[fullKey]}"` : '';
+
                 if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                    groupHtml += renderGroup(key, value, prefix ? `${prefix}.${key}` : key);
+                    groupHtml += renderGroup(key, value, fullKey);
                 } else if (typeof value === 'boolean') {
                     groupHtml += `
-                        <div class="compact-item toggle-item">
+                        <div class="compact-item toggle-item" ${tooltipText}>
                             <div class="item-label">${key.replace(/_/g, ' ')}</div>
                             <label class="switch small">
-                                <input type="checkbox" class="global-setting-input" data-key="${prefix ? prefix + '.' + key : key}" ${value ? 'checked' : ''}>
+                                <input type="checkbox" class="global-setting-input" data-key="${fullKey}" ${value ? 'checked' : ''}>
                                 <span class="slider round"></span>
                             </label>
                         </div>
                     `;
                 } else {
                     groupHtml += `
-                        <div class="compact-item">
+                        <div class="compact-item" ${tooltipText}>
                             <div class="item-label">${key.replace(/_/g, ' ')}</div>
                             <input type="${typeof value === 'number' ? 'number' : 'text'}"
                                 class="global-setting-input control-input-small"
-                                data-key="${prefix ? prefix + '.' + key : key}"
+                                data-key="${fullKey}"
                                 value="${value}">
                         </div>
                     `;
