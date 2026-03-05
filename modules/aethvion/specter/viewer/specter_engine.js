@@ -16,8 +16,17 @@ class SpecterEngine {
         this.bloomFilter = null;
         this.colorFilter = null;
 
+        // Panning/Zooming
+        this.isDragging = false;
+        this.dragStart = { x: 0, y: 0 };
+        this.stageStart = { x: 0, y: 0 };
+
         this.onLoadingComplete = null;
         this.onModelLoaded = null;
+
+        // Track the ticker wrapper so we don't bind it raw repeatedly
+        this._updateRef = this.update.bind(this);
+        this.isTickerRunning = false;
     }
 
     async init() {
@@ -43,6 +52,10 @@ class SpecterEngine {
         window.updateParam = (key, val) => this.setParam(key, parseFloat(val));
         window.resetParams = () => this.resetParams();
         window.playAnimation = (name) => this.playAnimation(name);
+        window.pauseAnimation = () => this.pauseAnimation();
+        window.stopAllAnimations = () => this.stopAllAnimations();
+        window.isPlayingAnimation = (name) => this.activeAnimations.has(name) && this.isTickerRunning;
+
         window.updateEffect = (name, val) => this.setEffect(name, parseFloat(val));
         window.toggleBoneEditor = (active) => this.setBoneEditor(active);
 
@@ -57,6 +70,35 @@ class SpecterEngine {
 
         this.bonesContainer = new PIXI.Container();
         this.app.stage.addChild(this.bonesContainer);
+
+        // Camera Controls Setup (Zoom/Pan)
+        this.app.stage.interactive = true;
+        this.app.view.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const sf = e.deltaY > 0 ? 0.9 : 1.1;
+            this.app.stage.scale.x *= sf;
+            this.app.stage.scale.y *= sf;
+        });
+
+        this.app.stage.on('pointerdown', (e) => {
+            // Only drag stage if we aren't dragging a bone node (bone nodes intercept events)
+            if (e.target !== this.app.stage) return;
+            this.isDragging = true;
+            this.dragStart.x = e.data.global.x;
+            this.dragStart.y = e.data.global.y;
+            this.stageStart.x = this.app.stage.x;
+            this.stageStart.y = this.app.stage.y;
+        });
+
+        this.app.stage.on('pointerup', () => this.isDragging = false);
+        this.app.stage.on('pointerupoutside', () => this.isDragging = false);
+        this.app.stage.on('pointermove', (e) => {
+            if (this.isDragging) {
+                const dx = e.data.global.x - this.dragStart.x;
+                const dy = e.data.global.y - this.dragStart.y;
+                this.app.stage.position.set(this.stageStart.x + dx, this.stageStart.y + dy);
+            }
+        });
 
         if (this.onLoadingComplete) this.onLoadingComplete();
     }
@@ -131,14 +173,28 @@ class SpecterEngine {
 
             // Rebuild bone UI if active
             this.setBoneEditor(this.editBonesMode);
+            this.resetParams(); // Start from clean state
 
             if (this.onModelLoaded) this.onModelLoaded(config);
 
-            // Start update loop
-            this.app.ticker.add((delta) => this.update(delta));
+            // Safe start update loop
+            if (!this.isTickerRunning) {
+                this.app.ticker.add(this._updateRef);
+                this.isTickerRunning = true;
+            }
 
-            // Auto-play idle if exists
-            if (this.animations.idle) this.playAnimation('idle');
+            // Load and Play IDLE if exists
+            if (this.animations.idle) {
+                // UI hack since we don't have direct access here easily without emitting,
+                // but we know index.html populates select on load.
+                setTimeout(() => {
+                    const select = document.getElementById('anim-select');
+                    if (select) select.value = 'idle';
+                    this.playAnimation('idle');
+                    const icon = document.getElementById('play-icon');
+                    if (icon) icon.className = 'fas fa-pause';
+                }, 100);
+            }
 
         } catch (e) {
             console.error("[Specter] Model load failed:", e);
@@ -147,9 +203,28 @@ class SpecterEngine {
 
     playAnimation(name) {
         if (this.animations[name]) {
+            this.activeAnimations.clear(); // Only play one at a time for basic setups
             this.activeAnimations.add(name);
+            if (!this.isTickerRunning) {
+                this.app.ticker.add(this._updateRef);
+                this.isTickerRunning = true;
+            }
             console.log(`[Specter] Playing animation: ${name}`);
         }
+    }
+
+    pauseAnimation() {
+        if (this.isTickerRunning) {
+            this.app.ticker.remove(this._updateRef);
+            this.isTickerRunning = false;
+            console.log(`[Specter] Animation paused`);
+        }
+    }
+
+    stopAllAnimations() {
+        this.activeAnimations.clear();
+        this.pauseAnimation();
+        this.resetParams(); // Send rig back to 0
     }
 
     setParam(key, val) {
@@ -258,9 +333,10 @@ class SpecterEngine {
 
                 if (config.type === 'sine') {
                     const offset = config.offset || 0;
-                    this.params[paramKey].value = (Math.sin(this.time * config.speed + offset) + 1) / 2 * config.amplitude;
+                    const val = (Math.sin(this.time * config.speed + offset) + 1) / 2 * config.amplitude;
+                    this.setParam(paramKey, val); // Using setParam syncs the UI sliders visually
                 } else if (config.type === 'fixed') {
-                    this.params[paramKey].value = config.value;
+                    this.setParam(paramKey, config.value);
                 }
             }
         }

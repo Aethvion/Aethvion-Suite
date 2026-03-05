@@ -216,7 +216,11 @@
                 </select>
                 <button id="play-anim-btn"
                     style="background: var(--accent); border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; color: black; font-weight: bold;">
-                    Play
+                    <i id="play-icon" class="fas fa-play"></i>
+                </button>
+                <button id="stop-anim-btn"
+                    style="background: #ff4757; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; color: white; font-weight: bold;">
+                    <i class="fas fa-stop"></i>
                 </button>
             </div>
         </div>
@@ -339,10 +343,30 @@
                 }
             };
 
-            // Play Animation Button
+            // Play / Pause Animation Button
             document.getElementById('play-anim-btn').addEventListener('click', () => {
                 const name = document.getElementById('anim-select').value;
+                const icon = document.getElementById('play-icon');
+                if (window.isPlayingAnimation(name)) {
+                    if (window.pauseAnimation) window.pauseAnimation();
+                    icon.className = 'fas fa-play';
+                } else {
+                    if (window.playAnimation) window.playAnimation(name);
+                    icon.className = 'fas fa-pause';
+                }
+            });
+
+            // Stop Animation Button
+            document.getElementById('stop-anim-btn').addEventListener('click', () => {
+                if (window.stopAllAnimations) window.stopAllAnimations();
+                document.getElementById('play-icon').className = 'fas fa-play';
+            });
+
+            // Handle Anim Select Change
+            document.getElementById('anim-select').addEventListener('change', () => {
+                const name = document.getElementById('anim-select').value;
                 if (window.playAnimation) window.playAnimation(name);
+                document.getElementById('play-icon').className = 'fas fa-pause';
             });
 
             // Fetch Specter Models for Library
