@@ -140,6 +140,46 @@
                 transform: rotate(360deg);
             }
         }
+
+        /* Library Panel */
+        .library-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 250px;
+            background: var(--panel);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            max-height: calc(100% - 40px);
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+        }
+
+        .model-list-item {
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255, 255, 255, 0.02);
+            font-size: 0.85rem;
+        }
+
+        .model-list-item:hover {
+            border-color: var(--accent);
+            background: rgba(0, 217, 255, 0.1);
+        }
+
+        .model-list-item.active {
+            border-color: var(--accent);
+            background: var(--accent);
+            color: black;
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -148,6 +188,16 @@
     <div id="loading-overlay">
         <div class="spinner"></div>
         <div id="loading-text">Initializing Specter Core...</div>
+    </div>
+
+    <div class="library-panel">
+        <div class="panel-header">
+            <i class="fas fa-folder-open"></i>
+            <h2>Model Library</h2>
+        </div>
+        <div id="model-list">
+            <div class="placeholder-text" style="font-size: 0.8rem; opacity: 0.5;">Loading models...</div>
+        </div>
     </div>
 
     <div id="canvas-container"></div>
@@ -171,9 +221,44 @@
             </div>
         </div>
 
+        <div class="param-group" id="editor-group"
+            style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+            <div class="param-label" style="margin: 0;"><span>Bone Editor Mode</span></div>
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                <input type="checkbox" id="bone-edit-toggle" onchange="window.toggleBoneEditor(this.checked)">
+                <span style="font-size: 0.8rem;">Show Vertices</span>
+            </label>
+        </div>
+
         <div id="params-list">
             <!-- Dynamic parameters will be added here -->
             <div class="placeholder-text" style="font-size: 0.8rem; opacity: 0.5;">No active model loaded.</div>
+        </div>
+
+        <div class="param-group" id="effects-group"
+            style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 15px;">
+            <div class="panel-header" style="margin-bottom: 0.5rem; border: none; padding: 0;">
+                <i class="fas fa-magic"></i>
+                <h2>Stage Effects</h2>
+            </div>
+
+            <div class="param-label" style="margin-top:10px;">
+                <span>Bloom Intensity</span>
+                <span id="val-fx-bloom">0.0</span>
+            </div>
+            <div class="slider-container">
+                <input type="range" id="fx-bloom" min="0" max="2" step="0.1" value="0"
+                    oninput="window.updateEffect('bloom', this.value)">
+            </div>
+
+            <div class="param-label" style="margin-top:10px;">
+                <span>Brightness</span>
+                <span id="val-fx-brightness">1.0</span>
+            </div>
+            <div class="slider-container">
+                <input type="range" id="fx-brightness" min="0" max="3" step="0.1" value="1.0"
+                    oninput="window.updateEffect('brightness', this.value)">
+            </div>
         </div>
 
         <div style="margin-top: 2rem; display: flex; flex-direction: column; gap: 10px;">
@@ -260,6 +345,42 @@
                 if (window.playAnimation) window.playAnimation(name);
             });
 
+            // Fetch Specter Models for Library
+            const loadLibrary = () => {
+                fetch('/api/models')
+                    .then(r => r.json())
+                    .then(models => {
+                        const list = document.getElementById('model-list');
+                        list.innerHTML = '';
+                        if (models.length === 0) {
+                            list.innerHTML = `<div class="placeholder-text" style="font-size: 0.8rem; opacity: 0.5;">No models generated yet.</div>`;
+                            return;
+                        }
+
+                        models.forEach(model => {
+                            const div = document.createElement('div');
+                            div.className = 'model-list-item';
+                            // Store the raw id to mark active state
+                            div.setAttribute('data-id', model.id);
+                            div.innerHTML = `<i class="fas fa-user"></i> ${model.name}`;
+                            div.onclick = () => {
+                                document.querySelectorAll('.model-list-item').forEach(el => el.classList.remove('active'));
+                                div.classList.add('active');
+                                engine.loadModel(model.path);
+                            };
+                            list.appendChild(div);
+                        });
+
+                        // Highlight current model if exists
+                        if (engine.currentModelConfigPath) {
+                            const activeId = engine.currentModelConfigPath.split('/')[2];
+                            const activeEl = document.querySelector(`.model-list-item[data-id="${activeId}"]`);
+                            if (activeEl) activeEl.classList.add('active');
+                        }
+                    })
+                    .catch(err => console.error("Failed to load library", err));
+            };
+
             // Fetch Models
             fetch('/api/provider-models')
                 .then(r => r.json())
@@ -292,8 +413,11 @@
                         if (models.length > 0) {
                             engine.loadModel(models[0].path);
                         } else {
-                            document.getElementById('loading-text').textContent = "No models found. Please add a .specter.json model.";
+                            document.getElementById('loading-text').textContent = "No models found. Please generate or auto-rig one.";
+                            // Hide loading overlay anyway so they can use the UI
+                            setTimeout(() => { document.getElementById('loading-overlay').style.display = 'none'; }, 1000);
                         }
+                        loadLibrary();
                     });
             });
 
@@ -329,6 +453,7 @@
 
                     if (result.status === 'success') {
                         engine.loadModel(result.path);
+                        loadLibrary();
                     } else {
                         alert("Auto-rigging failed: " + result.message);
                         document.getElementById('loading-overlay').style.display = 'none';
@@ -372,6 +497,7 @@
 
                     if (result.status === 'success') {
                         engine.loadModel(result.path);
+                        loadLibrary();
                     } else {
                         alert("Generation failed: " + result.message);
                         document.getElementById('loading-overlay').style.display = 'none';

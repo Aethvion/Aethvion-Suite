@@ -312,6 +312,16 @@ class AutoRigger:
             processed_image_path = nobg_path
             
         print(f"🔍 Analyzing {processed_image_path}...")
+        
+        # Save original and processed backups to the textures folder
+        textures_dir = os.path.join(output_dir, "textures")
+        os.makedirs(textures_dir, exist_ok=True)
+        
+        import shutil
+        shutil.copy2(image_path, os.path.join(textures_dir, "original.png"))
+        if processed_image_path != image_path:
+             shutil.copy2(processed_image_path, os.path.join(textures_dir, "nobg.png"))
+        
         coords = self.analyze_avatar(processed_image_path, chat_model=chat_model)
         
         print(f"✂️ Extracting layers to {output_dir}...")

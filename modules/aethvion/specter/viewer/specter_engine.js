@@ -8,6 +8,13 @@ class SpecterEngine {
         this.animations = {};
         this.activeAnimations = new Set();
         this.time = 0;
+        this.currentModelConfigPath = null;
+        this.editBonesMode = false;
+        this.bonesContainer = null;
+
+        // Effects
+        this.bloomFilter = null;
+        this.colorFilter = null;
 
         this.onLoadingComplete = null;
         this.onModelLoaded = null;
@@ -36,6 +43,20 @@ class SpecterEngine {
         window.updateParam = (key, val) => this.setParam(key, parseFloat(val));
         window.resetParams = () => this.resetParams();
         window.playAnimation = (name) => this.playAnimation(name);
+        window.updateEffect = (name, val) => this.setEffect(name, parseFloat(val));
+        window.toggleBoneEditor = (active) => this.setBoneEditor(active);
+
+        // Setup PIXI filters
+        // PIXI.filters is available in pixi.js out of the box for basic things. Advanced Bloom requires pixi-filters.
+        // For standard we use standard Blur as bloom proxy for now to avoid external dependencies if not present.
+        this.bloomFilter = new PIXI.filters.BlurFilter();
+        this.bloomFilter.blur = 0;
+
+        this.colorFilter = new PIXI.ColorMatrixFilter();
+        this.app.stage.filters = [this.bloomFilter, this.colorFilter];
+
+        this.bonesContainer = new PIXI.Container();
+        this.app.stage.addChild(this.bonesContainer);
 
         if (this.onLoadingComplete) this.onLoadingComplete();
     }
@@ -53,10 +74,14 @@ class SpecterEngine {
 
             // Clear current model
             if (this.currentModel) {
-                this.app.stage.removeChildren();
+                // Remove all children except bonesContainer
+                const childrenToRemove = this.app.stage.children.filter(c => c !== this.bonesContainer);
+                childrenToRemove.forEach(c => this.app.stage.removeChild(c));
+                this.bonesContainer.removeChildren();
             }
 
             this.currentModel = config;
+            this.currentModelConfigPath = configPath;
             this.params = config.params || {};
             this.animations = config.animations || {};
             this.layers = {};
@@ -95,13 +120,17 @@ class SpecterEngine {
 
                 displayObject.x = part.x || 0;
                 displayObject.y = part.y || 0;
-                this.app.stage.addChild(displayObject);
+                // Add right before bonesContainer to keep bones on top
+                this.app.stage.addChildAt(displayObject, this.app.stage.children.length - 1);
                 this.layers[part.id] = displayObject;
             }
 
             // Center stage
             this.app.stage.x = this.app.screen.width / 2;
             this.app.stage.y = this.app.screen.height / 2;
+
+            // Rebuild bone UI if active
+            this.setBoneEditor(this.editBonesMode);
 
             if (this.onModelLoaded) this.onModelLoaded(config);
 
@@ -140,6 +169,81 @@ class SpecterEngine {
             const valEl = document.getElementById(`val-${key}`);
             if (valEl) valEl.textContent = this.params[key].value.toFixed(2);
         });
+    }
+
+    setEffect(name, val) {
+        if (name === 'bloom') {
+            this.bloomFilter.blur = val * 10;
+            const el = document.getElementById('val-fx-bloom');
+            if (el) el.textContent = val.toFixed(1);
+        } else if (name === 'brightness') {
+            this.colorFilter.brightness(val, false);
+            const el = document.getElementById('val-fx-brightness');
+            if (el) el.textContent = val.toFixed(1);
+        }
+    }
+
+    setBoneEditor(active) {
+        this.editBonesMode = active;
+        this.bonesContainer.removeChildren();
+
+        if (!active || !this.currentModel) return;
+
+        // Create interactive bone nodes for any meshes
+        for (const [partId, layer] of Object.entries(this.layers)) {
+            if (layer instanceof PIXI.SimpleMesh) {
+                const partConfig = this.currentModel.parts.find(p => p.id === partId);
+                if (!partConfig || !partConfig.mesh) continue;
+
+                // Create a node for each vertex
+                for (let i = 0; i < partConfig.mesh.vertices.length; i += 2) {
+                    const node = new PIXI.Graphics();
+                    node.beginFill(0xffffff, 0.8);
+                    node.lineStyle(2, 0x00d9ff, 1);
+                    node.drawCircle(0, 0, 8);
+                    node.endFill();
+
+                    // Position node relative to the layer's local space
+                    node.x = layer.x + (partConfig.mesh.vertices[i] * partConfig.mesh.width);
+                    node.y = layer.y + (partConfig.mesh.vertices[i + 1] * partConfig.mesh.height);
+
+                    node.interactive = true;
+                    node.cursor = 'pointer';
+
+                    // Drag logic
+                    let dragging = false;
+                    node.on('pointerdown', (e) => {
+                        dragging = true;
+                        node.alpha = 0.5;
+                        this.app.stage.interactive = true;
+                    });
+
+                    node.on('pointerup', () => { dragging = false; node.alpha = 1; });
+                    node.on('pointerupoutside', () => { dragging = false; node.alpha = 1; });
+
+                    node.on('pointermove', (e) => {
+                        if (dragging) {
+                            const newPos = e.data.getLocalPosition(this.bonesContainer);
+                            node.x = newPos.x;
+                            node.y = newPos.y;
+
+                            // Map screen coordinate back to relative vertex percentage
+                            const rawX = node.x - layer.x;
+                            const rawY = node.y - layer.y;
+
+                            layer.vertices[i] = rawX;
+                            layer.vertices[i + 1] = rawY;
+
+                            // Save permanently into the array (so deformations stack over rest pos)
+                            partConfig.mesh.vertices[i] = rawX / partConfig.mesh.width;
+                            partConfig.mesh.vertices[i + 1] = rawY / partConfig.mesh.height;
+                        }
+                    });
+
+                    this.bonesContainer.addChild(node);
+                }
+            }
+        }
     }
 
     update(delta) {
