@@ -2,6 +2,8 @@ import os
 import sys
 import json
 import base64
+import numpy as np
+import io
 from PIL import Image, ImageDraw
 from typing import Dict, Any, List
 
@@ -275,16 +277,45 @@ class AutoRigger:
         }
         return config
 
+    def remove_background(self, image_path: str, output_path: str) -> bool:
+        """Attempt to remove background using rembg if installed."""
+        try:
+            from rembg import remove
+            from PIL import Image
+            
+            print(f"🧹 Removing background for {os.path.basename(image_path)}...")
+            with open(image_path, "rb") as input_file:
+                input_data = input_file.read()
+                
+            output_data = remove(input_data)
+            
+            with open(output_path, "wb") as output_file:
+                output_file.write(output_data)
+                
+            return True
+        except ImportError:
+            print("⚠️ 'rembg' is not installed. Skipping background removal. (Run 'pip install rembg onnxruntime' to enable)")
+            return False
+        except Exception as e:
+            print(f"❌ Background removal failed: {e}")
+            return False
+
     def process_model(self, image_path: str, output_name: str, chat_model: str = None):
         """Full pipeline: Analyze -> Extract -> Rig."""
         output_dir = os.path.join(os.path.dirname(image_path), output_name)
         os.makedirs(output_dir, exist_ok=True)
         
-        print(f"🔍 Analyzing {image_path}...")
-        coords = self.analyze_avatar(image_path, chat_model=chat_model)
+        # Optional: Remove background
+        processed_image_path = image_path
+        nobg_path = os.path.join(output_dir, f"{output_name}_nobg.png")
+        if self.remove_background(image_path, nobg_path):
+            processed_image_path = nobg_path
+            
+        print(f"🔍 Analyzing {processed_image_path}...")
+        coords = self.analyze_avatar(processed_image_path, chat_model=chat_model)
         
         print(f"✂️ Extracting layers to {output_dir}...")
-        parts = self.extract_layers(image_path, coords, output_dir)
+        parts = self.extract_layers(processed_image_path, coords, output_dir)
         
         print(f"✨ Generating rig...")
         config = self.generate_rig(parts)
