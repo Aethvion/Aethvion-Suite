@@ -4,28 +4,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Specter - VTuber Rigging Viewer</title>
+    <title>Specter — VTuber Studio</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg: #0f111a;
-            --panel: #1a1d2bbd;
-            --accent: #00d9ff;
-            --text: #e0e0e0;
-            --border: #2a2e3f;
+            --bg: #0a0c14;
+            --surface: #111422;
+            --surface2: #181b2a;
+            --panel: rgba(17, 20, 34, 0.9);
+            --accent: #7c6ff7;
+            --accent2: #00d9ff;
+            --pink: #ff4fa3;
+            --text: #e2e4f0;
+            --text-dim: #8891b0;
+            --border: #252840;
+            --border-strong: #3a3f5c;
+            --success: #00e676;
+            --warning: #ffab40;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body,
         html {
-            margin: 0;
-            padding: 0;
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: var(--bg);
+            background: var(--bg);
             color: var(--text);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+        }
+
+        /* ── Layout ── */
+        #app {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Left sidebar */
+        #sidebar {
+            width: 260px;
+            min-width: 260px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        .sidebar-logo {
+            padding: 20px 18px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-logo .logo-icon {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, var(--accent), var(--pink));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .sidebar-logo h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .sidebar-logo .version {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            margin-top: 1px;
+        }
+
+        /* Tab Nav */
+        .tab-nav {
+            display: flex;
+            padding: 10px;
+            gap: 5px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px 4px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-align: center;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.5px;
+        }
+
+        .tab-btn i {
+            display: block;
+            font-size: 1rem;
+            margin-bottom: 3px;
+        }
+
+        .tab-btn:hover {
+            color: var(--text);
+            border-color: var(--border-strong);
+        }
+
+        .tab-btn.active {
+            background: rgba(124, 111, 247, 0.15);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Tab Panels */
+        .tab-panel {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px;
+            gap: 12px;
+        }
+
+        .tab-panel.active {
+            display: flex;
+        }
+
+        /* Model Library */
+        #library-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .model-item {
+            padding: 9px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.18s;
+            background: rgba(255, 255, 255, 0.02);
+            font-size: 0.83rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .model-item .pipeline-tag {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: rgba(124, 111, 247, 0.15);
+            color: var(--accent);
+            margin-left: auto;
+        }
+
+        .model-item:hover {
+            border-color: var(--accent);
+            background: rgba(124, 111, 247, 0.08);
+        }
+
+        .model-item.active {
+            border-color: var(--accent);
+            background: rgba(124, 111, 247, 0.15);
+            color: white;
+            font-weight: 600;
+        }
+
+        /* ── Main Area ── */
+        #main {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
         }
 
         #canvas-container {
@@ -36,103 +209,354 @@
             justify-content: center;
         }
 
-        /* Control Panel */
-        .control-panel {
-            position: absolute;
-            top: 20px;
-            right: 20px;
+        /* ── Right Panel ── */
+        #right-panel {
             width: 300px;
-            background: var(--panel);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1.5rem;
-            max-height: calc(100% - 40px);
+            min-width: 300px;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
             overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            z-index: 100;
         }
 
-        .panel-header {
+        .right-section {
+            padding: 14px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-dim);
+            margin-bottom: 10px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 1.5rem;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 0.8rem;
+            gap: 7px;
         }
 
-        .panel-header h2 {
-            margin: 0;
-            font-size: 1.1rem;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: var(--accent);
+        /* ── Form Controls ── */
+        label {
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            display: block;
+            margin-bottom: 4px;
         }
 
-        .param-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .param-label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.8rem;
-            margin-bottom: 0.5rem;
-            color: var(--text-secondary);
-        }
-
-        .slider-container {
+        input[type=text],
+        textarea,
+        select {
             width: 100%;
+            padding: 8px 10px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.85rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type=text]:focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--accent);
+        }
+
+        select option {
+            background: var(--surface2);
         }
 
         input[type=range] {
             width: 100%;
             cursor: pointer;
+            accent-color: var(--accent);
         }
 
-        /* Status Bar */
-        .status-bar {
+        /* ── Buttons ── */
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            padding: 9px 14px;
+            border-radius: 7px;
+            border: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.18s;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #6a5fe0;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(124, 111, 247, 0.1);
+        }
+
+        .btn-pink {
+            background: var(--pink);
+            color: white;
+        }
+
+        .btn-pink:hover {
+            opacity: 0.85;
+        }
+
+        .btn-danger {
+            background: transparent;
+            border: 1px solid #ff4757;
+            color: #ff4757;
+        }
+
+        .btn-danger:hover {
+            background: rgba(255, 71, 87, 0.1);
+        }
+
+        .btn-sm {
+            padding: 6px 10px;
+            font-size: 0.78rem;
+            width: auto;
+        }
+
+        .btn-icon {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border-radius: 6px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 7px;
+        }
+
+        /* ── Mode Selector ── */
+        .mode-pills {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 14px;
+        }
+
+        .mode-pill {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.18s;
+        }
+
+        .mode-pill i {
+            display: block;
+            font-size: 1rem;
+            margin-bottom: 3px;
+        }
+
+        .mode-pill:hover {
+            border-color: var(--border-strong);
+            color: var(--text);
+        }
+
+        .mode-pill.active {
+            border-color: var(--accent);
+            background: rgba(124, 111, 247, 0.12);
+            color: var(--accent);
+        }
+
+        .mode-pill.local-mode.active {
+            border-color: var(--success);
+            background: rgba(0, 230, 118, 0.1);
+            color: var(--success);
+        }
+
+        /* Conditional panels */
+        .mode-panel {
+            display: none;
+        }
+
+        .mode-panel.active {
+            display: block;
+        }
+
+        /* ── Concept Preview ── */
+        #concept-preview-wrap {
+            display: none;
+            margin-top: 10px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-strong);
+            position: relative;
+        }
+
+        #concept-preview-wrap img {
+            width: 100%;
+            display: block;
+        }
+
+        .concept-overlay {
             position: absolute;
             bottom: 0;
             left: 0;
-            width: 100%;
-            padding: 5px 20px;
-            background: rgba(0, 0, 0, 0.3);
-            font-size: 0.75rem;
-            color: #888;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+            padding: 30px 10px 10px;
             display: flex;
-            gap: 20px;
+            gap: 6px;
         }
 
-        .live-tag {
-            color: #00ff88;
-            font-weight: bold;
+        /* ── Layer Panel ── */
+        .layer-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 8px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            margin-bottom: 4px;
+            font-size: 0.82rem;
+            background: rgba(255, 255, 255, 0.02);
         }
 
-        /* Overlay */
+        .layer-item-name {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .layer-z {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            background: var(--surface2);
+            padding: 1px 5px;
+            border-radius: 4px;
+        }
+
+        .layer-controls {
+            display: flex;
+            gap: 4px;
+        }
+
+        .layer-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 3px 5px;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+
+        .layer-btn:hover {
+            background: var(--surface2);
+            color: var(--text);
+        }
+
+        .layer-btn.hidden {
+            color: #ff4757;
+        }
+
+        /* ── Param Sliders ── */
+        .param-group {
+            margin-bottom: 12px;
+        }
+
+        .param-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+
+        .param-label span:last-child {
+            color: var(--accent);
+        }
+
+        /* ── Anim Controls ── */
+        .anim-controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .anim-controls select {
+            flex: 1;
+        }
+
+        /* ── Live Tab Background Picker ── */
+        .bg-options {
+            display: flex;
+            gap: 6px;
+        }
+
+        .bg-swatch {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .bg-swatch:hover,
+        .bg-swatch.active {
+            border-color: var(--accent);
+        }
+
+        /* ── Loading Overlay ── */
         #loading-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--bg);
+            inset: 0;
+            background: rgba(10, 12, 20, 0.93);
+            backdrop-filter: blur(4px);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 1000;
+            gap: 18px;
         }
 
         .spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(0, 217, 255, 0.1);
-            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            border: 3px solid rgba(124, 111, 247, 0.15);
             border-top-color: var(--accent);
-            animation: spin 1s ease-in-out infinite;
-            margin-bottom: 1rem;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        #loading-text {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            text-align: center;
+            max-width: 280px;
         }
 
         @keyframes spin {
@@ -141,77 +565,89 @@
             }
         }
 
-        /* Concept Modals */
+        /* ── Status Bar ── */
+        #status-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 4px 16px;
+            background: rgba(0, 0, 0, 0.4);
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            display: flex;
+            gap: 18px;
+            z-index: 5;
+        }
+
+        .live-badge {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        /* ── Greenscreen effect ── */
+        #canvas-container.greenscreen canvas {
+            background: #00ff00 !important;
+        }
+
+        /* ── Concept Modal (fullscreen preview) ── */
         #concept-modal {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            inset: 0;
+            background: rgba(0, 0, 0, 0.84);
             z-index: 500;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(6px);
         }
 
         .concept-card {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 2rem;
+            background: var(--surface);
+            border: 1px solid var(--border-strong);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 480px;
+            width: 90%;
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            text-align: center;
-            max-width: 500px;
+            gap: 14px;
+        }
+
+        .concept-card h3 {
+            color: var(--accent);
+            font-size: 1rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
         }
 
         .concept-card img {
-            max-width: 100%;
-            border-radius: 4px;
-            border: 1px solid var(--accent);
-        }
-
-        /* Library Panel */
-        .library-panel {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 250px;
-            background: var(--panel);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 1.5rem;
-            max-height: calc(100% - 40px);
-            overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            z-index: 100;
+            border: 1px solid var(--border-strong);
+            width: 100%;
         }
 
-        .model-list-item {
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: rgba(255, 255, 255, 0.02);
-            font-size: 0.85rem;
+        .concept-card .hint {
+            font-size: 0.8rem;
+            color: var(--text-dim);
         }
 
-        .model-list-item:hover {
-            border-color: var(--accent);
-            background: rgba(0, 217, 255, 0.1);
+        .spacer {
+            margin-top: 8px;
         }
 
-        .model-list-item.active {
-            border-color: var(--accent);
-            background: var(--accent);
-            color: black;
-            font-weight: bold;
+        /* scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-strong);
+            border-radius: 10px;
         }
     </style>
 </head>
@@ -223,156 +659,303 @@
         <div id="loading-text">Initializing Specter Core...</div>
     </div>
 
-    <div class="library-panel">
-        <div class="panel-header">
-            <i class="fas fa-folder-open"></i>
-            <h2>Model Library</h2>
-        </div>
-        <div id="model-list">
-            <div class="placeholder-text" style="font-size: 0.8rem; opacity: 0.5;">Loading models...</div>
-        </div>
-    </div>
-
     <div id="concept-modal">
         <div class="concept-card">
-            <h2 style="margin:0; color:var(--accent);">Design Concept</h2>
+            <h3><i class="fas fa-image"></i> Concept Preview</h3>
             <img id="concept-img" src="" alt="Concept Art">
-            <div style="font-size: 0.85rem; color: #888;">If you like this design, we can generate the modular
-                piece-by-piece rig.</div>
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button id="concept-cancel-btn"
-                    style="flex:1; padding: 10px; background: transparent; border: 1px solid #ff4757; color: #ff4757; cursor:pointer; border-radius:4px;">Cancel</button>
-                <button id="concept-rig-btn"
-                    style="flex:1; padding: 10px; background: var(--accent); border: none; color: black; font-weight:bold; cursor:pointer; border-radius:4px;"><i
-                        class="fas fa-hammer"></i> Rig Modular Components</button>
+            <p class="hint">Review the generated concept. If you're happy with it, click <strong>Rig It</strong> to
+                generate the modular rig.</p>
+            <div class="btn-row">
+                <button id="concept-cancel-btn" class="btn btn-danger"><i class="fas fa-times"></i> Cancel</button>
+                <button id="concept-rig-btn" class="btn btn-primary"><i class="fas fa-hammer"></i> Rig It</button>
             </div>
         </div>
     </div>
 
-    <div id="canvas-container"></div>
+    <div id="app">
 
-    <div class="control-panel">
-        <div class="panel-header">
-            <i class="fas fa-ghost"></i>
-            <h2>Specter Rig</h2>
-        </div>
-
-        <div class="param-group" id="animations-group" style="display: none; margin-bottom: 2rem;">
-            <div class="param-label"><span>Animations</span></div>
-            <div style="display: flex; gap: 8px;">
-                <select id="anim-select"
-                    style="flex: 1; background: #2a2e3f; border: 1px solid var(--border); color: white; border-radius: 4px; padding: 5px;">
-                </select>
-                <button id="play-anim-btn"
-                    style="background: var(--accent); border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; color: black; font-weight: bold;">
-                    <i id="play-icon" class="fas fa-play"></i>
-                </button>
-                <button id="stop-anim-btn"
-                    style="background: #ff4757; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; color: white; font-weight: bold;">
-                    <i class="fas fa-stop"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="param-group" id="editor-group"
-            style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between;">
-            <div class="param-label" style="margin: 0;"><span>Bone Editor Mode</span></div>
-            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                <input type="checkbox" id="bone-edit-toggle" onchange="window.toggleBoneEditor(this.checked)">
-                <span style="font-size: 0.8rem;">Show Vertices</span>
-            </label>
-        </div>
-
-        <div id="params-list">
-            <!-- Dynamic parameters will be added here -->
-            <div class="placeholder-text" style="font-size: 0.8rem; opacity: 0.5;">No active model loaded.</div>
-        </div>
-
-        <div class="param-group" id="effects-group"
-            style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 15px;">
-            <div class="panel-header" style="margin-bottom: 0.5rem; border: none; padding: 0;">
-                <i class="fas fa-magic"></i>
-                <h2>Stage Effects</h2>
-            </div>
-
-            <div class="param-label" style="margin-top:10px;">
-                <span>Bloom Intensity</span>
-                <span id="val-fx-bloom">0.0</span>
-            </div>
-            <div class="slider-container">
-                <input type="range" id="fx-bloom" min="0" max="2" step="0.1" value="0"
-                    oninput="window.updateEffect('bloom', this.value)">
-            </div>
-
-            <div class="param-label" style="margin-top:10px;">
-                <span>Brightness</span>
-                <span id="val-fx-brightness">1.0</span>
-            </div>
-            <div class="slider-container">
-                <input type="range" id="fx-brightness" min="0" max="3" step="0.1" value="1.0"
-                    oninput="window.updateEffect('brightness', this.value)">
-            </div>
-        </div>
-
-        <div style="margin-top: 2rem; display: flex; flex-direction: column; gap: 10px;">
-            <div style="border-top: 1px solid var(--border); padding-top: 15px; margin-bottom: 5px;">
-                <div style="margin-bottom: 5px; font-size: 0.8rem; color: var(--text-secondary);">Analyzer Model
-                    (Auto-Rig)</div>
-                <select id="chat-model-select"
-                    style="width: 100%; padding: 0.6rem; background: #2a2e3f; border: 1px solid var(--border); color: white; border-radius: 4px;">
-                    <option value="">Default (Auto)</option>
-                </select>
-            </div>
-
-            <button id="reset-btn"
-                style="width: 100%; padding: 0.8rem; background: transparent; border: 1px solid var(--accent); color: var(--accent); border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
-                Reset Parameters
-            </button>
-            <button id="auto-rig-btn"
-                style="width: 100%; padding: 0.8rem; background: var(--accent); border: none; color: black; border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">
-                <i class="fas fa-magic"></i> AI Auto-Rig Image
-            </button>
-            <input type="file" id="auto-rig-input" style="display: none;" accept="image/*">
-
-            <div style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 5px;">
-                <div style="margin-bottom: 10px; font-size: 0.85rem; color: var(--text);">Modular Studio Generator:
-                </div>
-                <div style="margin-bottom: 5px; font-size: 0.8rem; color: var(--text-secondary);">Generation Model</div>
-                <select id="image-model-select"
-                    style="width: 100%; padding: 0.6rem; background: #2a2e3f; border: 1px solid var(--border); color: white; border-radius: 4px; margin-bottom: 10px;">
-                    <option value="">Default (Auto)</option>
-                </select>
-
-                <div style="margin-bottom: 5px; font-size: 0.8rem; color: var(--text-secondary);">Rigging Instructions
-                    (Optional)</div>
-                <input type="text" id="rig-instructions-input" placeholder="e.g. 'Add extra vertices for cat ears'"
-                    style="width: calc(100% - 1.2rem - 2px); padding: 0.6rem; background: #2a2e3f; border: 1px solid var(--border); color: white; border-radius: 4px; margin-bottom: 10px;">
-
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="gen-prompt-input" placeholder="VTuber character reference prompt..."
-                        style="flex: 1; padding: 0.6rem; background: #2a2e3f; border: 1px solid var(--border); color: white; border-radius: 4px;">
-                    <button id="gen-rig-btn"
-                        style="padding: 0.6rem 0.8rem; background: #ff007f; border: none; color: white; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">
-                        <i class="fas fa-paint-brush"></i> Draft Concept
-                    </button>
+        <!-- ── LEFT SIDEBAR ── -->
+        <div id="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">👻</div>
+                <div>
+                    <h1>Specter</h1>
+                    <div class="version">VTuber Studio</div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <div class="status-bar">
-        <span>FPS: <span id="fps-val">--</span></span>
-        <span>ENGINE: <span class="live-tag">READY</span></span>
-        <span id="model-name">MODEL: NONE</span>
+            <!-- Tab Nav -->
+            <div class="tab-nav">
+                <button class="tab-btn active" data-tab="generate">
+                    <i class="fas fa-paint-brush"></i>Generate
+                </button>
+                <button class="tab-btn" data-tab="edit">
+                    <i class="fas fa-sliders-h"></i>Edit
+                </button>
+                <button class="tab-btn" data-tab="live">
+                    <i class="fas fa-broadcast-tower"></i>Live
+                </button>
+            </div>
+
+            <!-- ── GENERATE TAB ── -->
+            <div class="tab-panel active" id="tab-generate">
+
+                <!-- Pipeline mode -->
+                <div>
+                    <label>Generation Mode</label>
+                    <div class="mode-pills">
+                        <button class="mode-pill" data-mode="simple">
+                            <i class="fas fa-image"></i>Simple
+                        </button>
+                        <button class="mode-pill active" data-mode="sheet">
+                            <i class="fas fa-layer-group"></i>Sheet
+                        </button>
+                        <button class="mode-pill local-mode" data-mode="local">
+                            <i class="fas fa-server"></i>Local
+                        </button>
+                    </div>
+
+                    <!-- Simple mode hint -->
+                    <div class="mode-panel" id="mode-simple">
+                        <p style="font-size:0.78rem; color:var(--text-dim); margin-bottom:10px;">
+                            Upload an existing character image and Specter will analyse and rig it automatically.
+                        </p>
+                        <button class="btn btn-primary" id="simple-upload-btn"><i class="fas fa-upload"></i> Upload
+                            &amp; Rig</button>
+                        <input type="file" id="simple-upload-input" style="display:none;" accept="image/*">
+                    </div>
+
+                    <!-- Sheet mode -->
+                    <div class="mode-panel active" id="mode-sheet">
+                        <p style="font-size:0.78rem; color:var(--text-dim); margin-bottom:10px;">
+                            AI generates a sprite sheet with all character parts on one canvas, guaranteeing style
+                            consistency.
+                        </p>
+                        <div style="display:flex; gap:8px; margin-bottom:8px;">
+                            <div style="flex:1;">
+                                <label>Image Model</label>
+                                <select id="image-model-select">
+                                    <option value="">Default (Auto)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Local mode -->
+                    <div class="mode-panel" id="mode-local">
+                        <p style="font-size:0.78rem; color:var(--text-dim); margin-bottom:8px;">
+                            Uses your local Stable Diffusion server (A1111) for generation. Make sure it is running.
+                        </p>
+                        <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+                            <span style="font-size:0.78rem; color:var(--text-dim);">Status:</span>
+                            <span id="local-status" style="font-size:0.78rem; color:#ff4757;">⚪ Not Connected</span>
+                        </div>
+                        <label>SD Server URL</label>
+                        <input type="text" id="local-sd-url" value="http://127.0.0.1:7860" style="margin-bottom:8px;">
+                        <button class="btn btn-secondary" id="local-check-btn"><i class="fas fa-plug"></i> Test
+                            Connection</button>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:8px;">
+                    <div style="flex:1;">
+                        <label>Chat / Vision Model</label>
+                        <select id="chat-model-select">
+                            <option value="">Default (Auto)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label>Character Prompt</label>
+                    <input type="text" id="gen-prompt-input" placeholder="e.g. catgirl anime VTuber with blue hair">
+                </div>
+
+                <div>
+                    <label>Rigging Instructions <span style="color:var(--text-dim)">(optional)</span></label>
+                    <input type="text" id="rig-instructions-input" placeholder="e.g. add extra ear bones">
+                </div>
+
+                <button class="btn btn-pink" id="gen-draft-btn"><i class="fas fa-palette"></i> Draft Concept</button>
+
+                <!-- Inline thumbnail after generation -->
+                <div id="concept-preview-wrap">
+                    <img id="concept-thumb" src="" alt="concept">
+                    <div class="concept-overlay">
+                        <button class="btn btn-primary" style="flex:1;" id="rig-it-btn"><i class="fas fa-hammer"></i>
+                            Rig It</button>
+                        <button class="btn btn-secondary" style="flex:1;" id="redraft-btn"><i class="fas fa-redo"></i>
+                            Re-Draft</button>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border); padding-top:12px;">
+                    <div class="section-title"><i class="fas fa-folder-open"></i> Model Library</div>
+                    <div id="library-list">
+                        <div style="font-size:0.78rem; color:var(--text-dim);">No models yet.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── EDIT TAB ── -->
+            <div class="tab-panel" id="tab-edit">
+                <div class="section-title"><i class="fas fa-layer-group"></i> Rig Layers</div>
+                <div id="layer-list">
+                    <div style="font-size:0.78rem; color:var(--text-dim);">Load a model first.</div>
+                </div>
+                <button class="btn btn-secondary spacer" id="save-layers-btn"><i class="fas fa-save"></i> Save Layer
+                    Order</button>
+
+                <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
+                    <div class="section-title"><i class="fas fa-project-diagram"></i> Bone Editor</div>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" id="bone-edit-toggle" onchange="window.toggleBoneEditor(this.checked)">
+                        <span>Show Vertex Nodes</span>
+                    </label>
+                </div>
+
+                <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
+                    <div class="section-title"><i class="fas fa-film"></i> Animations</div>
+                    <div id="animations-group" style="display:none;">
+                        <div class="anim-controls" style="margin-bottom:8px;">
+                            <select id="anim-select"></select>
+                            <button class="btn btn-primary btn-icon" id="play-anim-btn"><i id="play-icon"
+                                    class="fas fa-play"></i></button>
+                            <button class="btn btn-danger btn-icon" id="stop-anim-btn"><i
+                                    class="fas fa-stop"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
+                    <div class="section-title"><i class="fas fa-sliders-h"></i> Parameters</div>
+                    <div id="params-list">
+                        <div style="font-size:0.78rem; color:var(--text-dim);">No model loaded.</div>
+                    </div>
+                    <button class="btn btn-secondary spacer" id="reset-btn"><i class="fas fa-undo"></i> Reset
+                        Parameters</button>
+                </div>
+            </div>
+
+            <!-- ── LIVE TAB ── -->
+            <div class="tab-panel" id="tab-live">
+                <div class="section-title"><i class="fas fa-fill-drip"></i> Background</div>
+                <div class="bg-options" style="margin-bottom:10px;">
+                    <div class="bg-swatch active" data-bg="dark" style="background:#0a0c14;" title="Dark"></div>
+                    <div class="bg-swatch" data-bg="green" style="background:#00b140;" title="Greenscreen"></div>
+                    <div class="bg-swatch" data-bg="blue" style="background:#0011aa;" title="Blue Screen"></div>
+                    <div class="bg-swatch" data-bg="white" style="background:#ffffff;" title="White"></div>
+                    <div class="bg-swatch" data-bg="transparent"
+                        style="background: repeating-conic-gradient(#3a3f5c 0% 25%, #252840 0% 50%) 0 0 / 12px 12px;"
+                        title="Transparent"></div>
+                </div>
+
+                <label>Custom Hex Color</label>
+                <div style="display:flex; gap:6px; margin-bottom:14px;">
+                    <input type="text" id="bg-custom-color" placeholder="#rrggbb">
+                    <button class="btn btn-secondary btn-sm" id="bg-apply-btn">Apply</button>
+                </div>
+
+                <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
+                    <div class="section-title"><i class="fas fa-magic"></i> Stage Effects</div>
+                    <div class="param-group">
+                        <div class="param-label"><span>Bloom / Blur</span><span id="val-fx-bloom">0.0</span></div>
+                        <input type="range" id="fx-bloom" min="0" max="2" step="0.1" value="0"
+                            oninput="window.updateEffect('bloom', this.value)">
+                    </div>
+                    <div class="param-group">
+                        <div class="param-label"><span>Brightness</span><span id="val-fx-brightness">1.0</span></div>
+                        <input type="range" id="fx-brightness" min="0" max="3" step="0.1" value="1.0"
+                            oninput="window.updateEffect('brightness', this.value)">
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
+                    <div class="section-title"><i class="fas fa-webcam"></i> Tracking</div>
+                    <p style="font-size:0.78rem; color:var(--text-dim); margin-bottom:10px;">
+                        Webcam-based face tracking — coming in a future release.
+                    </p>
+                    <button class="btn btn-secondary" disabled style="opacity:0.4; cursor:not-allowed;"><i
+                            class="fas fa-webcam"></i> Enable Tracking (Soon)</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ── MAIN CANVAS ── -->
+        <div id="main">
+            <div id="canvas-container"></div>
+            <div id="status-bar">
+                <span>FPS: <span id="fps-val">--</span></span>
+                <span>ENGINE: <span class="live-badge">READY</span></span>
+                <span id="model-name">MODEL: NONE</span>
+            </div>
+        </div>
+
     </div>
 
     <script src="/viewer/specter_engine.js"></script>
     <script>
-        // Start engine
         window.addEventListener('load', () => {
             const engine = new SpecterEngine('canvas-container');
 
-            // Register UI hooks
+            // ── Tab switching ──
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                    btn.classList.add('active');
+                    document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+                });
+            });
+
+            // ── Mode pills ──
+            let currentMode = 'sheet';
+            document.querySelectorAll('.mode-pill').forEach(pill => {
+                pill.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-pill').forEach(p => p.classList.remove('active'));
+                    document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+                    pill.classList.add('active');
+                    currentMode = pill.dataset.mode;
+                    document.getElementById(`mode-${currentMode}`).classList.add('active');
+                });
+            });
+
+            // ── Layer UI builder (called by engine) ──
+            window.rebuildLayerUI = (layersObj) => {
+                const list = document.getElementById('layer-list');
+                list.innerHTML = '';
+                const sortedIds = Object.keys(layersObj).sort((a, b) => layersObj[b].zIndex - layersObj[a].zIndex);
+                if (!sortedIds.length) {
+                    list.innerHTML = '<div style="font-size:0.78rem;color:var(--text-dim)">No layers.</div>';
+                    return;
+                }
+                sortedIds.forEach(id => {
+                    const layer = layersObj[id];
+                    const div = document.createElement('div');
+                    div.className = 'layer-item';
+                    div.innerHTML = `
+                <div class="layer-item-name">
+                    <i class="fas fa-square" style="font-size:0.6rem; color:var(--accent);"></i>
+                    <span style="${!layer.visible ? 'opacity:0.45' : ''}">${id}</span>
+                    <span class="layer-z">z:${layer.zIndex}</span>
+                </div>
+                <div class="layer-controls">
+                    <button class="layer-btn ${layer.visible ? '' : 'hidden'}" title="Toggle Visibility" onclick="engine.toggleLayerVisibility('${id}')">
+                        <i class="fas ${layer.visible ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                    </button>
+                    <button class="layer-btn" title="Bring Forward" onclick="engine.reorderLayer('${id}', 1)">
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <button class="layer-btn" title="Send Backward" onclick="engine.reorderLayer('${id}', -1)">
+                        <i class="fas fa-arrow-down"></i>
+                    </button>
+                </div>`;
+                    list.appendChild(div);
+                });
+            };
+
+            // ── Engine callbacks ──
             engine.onLoadingComplete = () => {
                 document.getElementById('loading-overlay').style.display = 'none';
             };
@@ -381,8 +964,9 @@
                 document.getElementById('model-name').textContent = `MODEL: ${model.name}`;
                 updateParamsUI(model.params);
                 document.getElementById('loading-overlay').style.display = 'none';
+                if (engine.layers) window.rebuildLayerUI(engine.layers);
 
-                // Populate animations
+                // Animations dropdown
                 const animGroup = document.getElementById('animations-group');
                 const animSelect = document.getElementById('anim-select');
                 if (model.animations && Object.keys(model.animations).length > 0) {
@@ -399,7 +983,64 @@
                 }
             };
 
-            // Play / Pause Animation Button
+            // ── Load library ──
+            const loadLibrary = () => {
+                fetch('/api/models').then(r => r.json()).then(models => {
+                    const list = document.getElementById('library-list');
+                    list.innerHTML = '';
+                    if (!models.length) {
+                        list.innerHTML = '<div style="font-size:0.78rem;color:var(--text-dim)">No models generated yet.</div>';
+                        return;
+                    }
+                    models.forEach(m => {
+                        const div = document.createElement('div');
+                        div.className = 'model-item';
+                        div.setAttribute('data-id', m.id);
+                        div.innerHTML = `<i class="fas fa-user"></i> ${m.name}`;
+                        div.onclick = () => {
+                            document.querySelectorAll('.model-item').forEach(el => el.classList.remove('active'));
+                            div.classList.add('active');
+                            engine.loadModel(m.path);
+                        };
+                        list.appendChild(div);
+                    });
+                    if (engine.currentModelConfigPath) {
+                        const activeId = engine.currentModelConfigPath.split('/')[2];
+                        const el = document.querySelector(`.model-item[data-id="${activeId}"]`);
+                        if (el) el.classList.add('active');
+                    }
+                });
+            };
+
+            // ── Populate model dropdowns ──
+            fetch('/api/provider-models').then(r => r.json()).then(data => {
+                const chatSel = document.getElementById('chat-model-select');
+                const imgSel = document.getElementById('image-model-select');
+                data.chat_models.forEach(m => {
+                    const o = document.createElement('option');
+                    o.value = m.id; o.textContent = `${m.id} (${m.provider})`;
+                    chatSel.appendChild(o);
+                });
+                data.image_models.forEach(m => {
+                    const o = document.createElement('option');
+                    o.value = m.id; o.textContent = `${m.id} (${m.provider})`;
+                    imgSel.appendChild(o);
+                });
+            });
+
+            // ── Start engine ──
+            engine.init().then(() => {
+                fetch('/api/models').then(r => r.json()).then(models => {
+                    if (models.length) engine.loadModel(models[0].path);
+                    else {
+                        document.getElementById('loading-text').textContent = 'No models found. Generate one in the Generate tab.';
+                        setTimeout(() => { document.getElementById('loading-overlay').style.display = 'none'; }, 1500);
+                    }
+                    loadLibrary();
+                });
+            });
+
+            // ── Animation controls ──
             document.getElementById('play-anim-btn').addEventListener('click', () => {
                 const name = document.getElementById('anim-select').value;
                 const icon = document.getElementById('play-icon');
@@ -412,246 +1053,197 @@
                 }
             });
 
-            // Stop Animation Button
             document.getElementById('stop-anim-btn').addEventListener('click', () => {
                 if (window.stopAllAnimations) window.stopAllAnimations();
                 document.getElementById('play-icon').className = 'fas fa-play';
             });
 
-            // Handle Anim Select Change
             document.getElementById('anim-select').addEventListener('change', () => {
                 const name = document.getElementById('anim-select').value;
                 if (window.playAnimation) window.playAnimation(name);
                 document.getElementById('play-icon').className = 'fas fa-pause';
             });
 
-            // Fetch Specter Models for Library
-            const loadLibrary = () => {
-                fetch('/api/models')
-                    .then(r => r.json())
-                    .then(models => {
-                        const list = document.getElementById('model-list');
-                        list.innerHTML = '';
-                        if (models.length === 0) {
-                            list.innerHTML = `<div class="placeholder-text" style="font-size: 0.8rem; opacity: 0.5;">No models generated yet.</div>`;
-                            return;
-                        }
+            document.getElementById('reset-btn').addEventListener('click', () => engine.resetParams());
 
-                        models.forEach(model => {
-                            const div = document.createElement('div');
-                            div.className = 'model-list-item';
-                            // Store the raw id to mark active state
-                            div.setAttribute('data-id', model.id);
-                            div.innerHTML = `<i class="fas fa-user"></i> ${model.name}`;
-                            div.onclick = () => {
-                                document.querySelectorAll('.model-list-item').forEach(el => el.classList.remove('active'));
-                                div.classList.add('active');
-                                engine.loadModel(model.path);
-                            };
-                            list.appendChild(div);
-                        });
-
-                        // Highlight current model if exists
-                        if (engine.currentModelConfigPath) {
-                            const activeId = engine.currentModelConfigPath.split('/')[2];
-                            const activeEl = document.querySelector(`.model-list-item[data-id="${activeId}"]`);
-                            if (activeEl) activeEl.classList.add('active');
-                        }
-                    })
-                    .catch(err => console.error("Failed to load library", err));
-            };
-
-            // Fetch Models
-            fetch('/api/provider-models')
-                .then(r => r.json())
-                .then(data => {
-                    const chatSelect = document.getElementById('chat-model-select');
-                    const imageSelect = document.getElementById('image-model-select');
-
-                    data.chat_models.forEach(m => {
-                        const opt = document.createElement('option');
-                        opt.value = m.id;
-                        opt.textContent = `${m.id} (${m.provider})`;
-                        chatSelect.appendChild(opt);
-                    });
-
-                    data.image_models.forEach(m => {
-                        const opt = document.createElement('option');
-                        opt.value = m.id;
-                        opt.textContent = `${m.id} (${m.provider})`;
-                        imageSelect.appendChild(opt);
-                    });
-                })
-                .catch(err => console.error("Failed to fetch models", err));
-
-            // Start engine after hooks are ready
-            engine.init().then(() => {
-                // Fetch first available model
-                fetch('/api/models')
-                    .then(r => r.json())
-                    .then(models => {
-                        if (models.length > 0) {
-                            engine.loadModel(models[0].path);
-                        } else {
-                            document.getElementById('loading-text').textContent = "No models found. Please generate or auto-rig one.";
-                            // Hide loading overlay anyway so they can use the UI
-                            setTimeout(() => { document.getElementById('loading-overlay').style.display = 'none'; }, 1000);
-                        }
-                        loadLibrary();
-                    });
+            // ── Save layer order ──
+            document.getElementById('save-layers-btn').addEventListener('click', async () => {
+                if (!engine.currentModelConfigPath) return;
+                const modelId = engine.currentModelConfigPath.split('/')[2];
+                const layers = Object.entries(engine.layers).map(([id, l]) => ({ id, z: l.zIndex }));
+                const r = await fetch('/api/save-layer-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model_id: modelId, layers })
+                });
+                const data = await r.json();
+                if (data.status === 'success') alert('Layer order saved!');
+                else alert('Failed: ' + data.message);
             });
 
-            // Reset Button
-            document.getElementById('reset-btn').addEventListener('click', () => {
-                engine.resetParams();
+            // ── Simple mode: upload ──
+            document.getElementById('simple-upload-btn').addEventListener('click', () => {
+                document.getElementById('simple-upload-input').click();
             });
 
-            // AI Auto-Rigging
-            const rigBtn = document.getElementById('auto-rig-btn');
-            const rigInput = document.getElementById('auto-rig-input');
-
-            rigBtn.addEventListener('click', () => rigInput.click());
-
-            rigInput.addEventListener('change', async (e) => {
+            document.getElementById('simple-upload-input').addEventListener('change', async (e) => {
                 if (!e.target.files[0]) return;
-
                 const file = e.target.files[0];
                 const chatModel = document.getElementById('chat-model-select').value;
-                const formData = new FormData();
-                formData.append('file', file);
-                if (chatModel) formData.append('chat_model', chatModel);
+                const instructions = document.getElementById('rig-instructions-input').value.trim();
 
-                document.getElementById('loading-overlay').style.display = 'flex';
-                document.getElementById('loading-text').textContent = "AI is rigging your avatar...";
+                const fd = new FormData();
+                fd.append('file', file);
+                if (chatModel) fd.append('chat_model', chatModel);
+                if (instructions) fd.append('instructions', instructions);
 
+                showLoading('Simple Mode: Analysing and rigging your image...');
                 try {
-                    const response = await fetch('/api/auto-rig', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const result = await response.json();
-
-                    if (result.status === 'success') {
-                        engine.loadModel(result.path);
-                        loadLibrary();
-                    } else {
-                        alert("Auto-rigging failed: " + result.message);
-                        document.getElementById('loading-overlay').style.display = 'none';
-                    }
-                } catch (err) {
-                    alert("Upload error: " + err.message);
-                    document.getElementById('loading-overlay').style.display = 'none';
-                }
+                    const r = await fetch('/api/simple/upload-and-rig', { method: 'POST', body: fd });
+                    const data = await r.json();
+                    if (data.status === 'success') { engine.loadModel(data.path); loadLibrary(); }
+                    else { alert('Rigging failed: ' + data.message); hideLoading(); }
+                } catch (err) { alert('Error: ' + err.message); hideLoading(); }
             });
 
-            // AI Avatar Generation - Step 1: Concept
-            const genBtn = document.getElementById('gen-rig-btn');
-            const genInput = document.getElementById('gen-prompt-input');
-            const rigInstructionsInput = document.getElementById('rig-instructions-input');
-
+            // ── Generate concept (Sheet / Local mode) ──
             let currentConceptData = null;
 
-            genBtn.addEventListener('click', async () => {
-                const promptVal = genInput.value.trim();
-                if (!promptVal) {
-                    alert('Please enter a character reference prompt.');
-                    return;
-                }
-
-                document.getElementById('loading-overlay').style.display = 'flex';
-                document.getElementById('loading-text').textContent = "Step 1: Drafting Artificial Concept...";
-                document.getElementById('concept-modal').style.display = 'none';
+            document.getElementById('gen-draft-btn').addEventListener('click', async () => {
+                const prompt = document.getElementById('gen-prompt-input').value.trim();
+                if (!prompt) { alert('Please enter a character prompt.'); return; }
 
                 const imageModel = document.getElementById('image-model-select').value;
+                showLoading('Drafting Concept Art...');
 
                 try {
-                    const response = await fetch('/api/generate-concept', {
+                    const r = await fetch('/api/generate-concept', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            prompt: promptVal,
-                            image_model: imageModel || null
-                        })
+                        body: JSON.stringify({ prompt, image_model: imageModel || null, pipeline: currentMode })
                     });
-                    const result = await response.json();
-
-                    if (result.status === 'success') {
-                        document.getElementById('loading-overlay').style.display = 'none';
-                        document.getElementById('concept-img').src = result.concept_path + '?t=' + new Date().getTime();
-                        document.getElementById('concept-modal').style.display = 'flex';
-
+                    const data = await r.json();
+                    if (data.status === 'success') {
+                        hideLoading();
                         currentConceptData = {
-                            concept_path: result.concept_path,
-                            prompt: promptVal,
-                            image_model: imageModel,
+                            concept_path: data.concept_path,
+                            pipeline: currentMode,
                             chat_model: document.getElementById('chat-model-select').value,
-                            instructions: rigInstructionsInput.value.trim()
+                            instructions: document.getElementById('rig-instructions-input').value.trim()
                         };
+                        // Show inline thumb
+                        const thumb = document.getElementById('concept-thumb');
+                        thumb.src = data.concept_path + '?t=' + Date.now();
+                        document.getElementById('concept-preview-wrap').style.display = 'block';
+                        // Also show modal
+                        document.getElementById('concept-img').src = thumb.src;
+                        document.getElementById('concept-modal').style.display = 'flex';
                     } else {
-                        alert("Concept generation failed: " + result.message);
-                        document.getElementById('loading-overlay').style.display = 'none';
+                        alert('Concept generation failed: ' + data.message);
+                        hideLoading();
                     }
-                } catch (err) {
-                    alert("Concept error: " + err.message);
-                    document.getElementById('loading-overlay').style.display = 'none';
-                }
+                } catch (err) { alert('Error: ' + err.message); hideLoading(); }
+            });
+
+            document.getElementById('redraft-btn').addEventListener('click', () => {
+                document.getElementById('gen-draft-btn').click();
             });
 
             document.getElementById('concept-cancel-btn').addEventListener('click', () => {
                 document.getElementById('concept-modal').style.display = 'none';
             });
 
-            document.getElementById('concept-rig-btn').addEventListener('click', async () => {
+            const startRig = async () => {
                 if (!currentConceptData) return;
-
                 document.getElementById('concept-modal').style.display = 'none';
-                document.getElementById('loading-overlay').style.display = 'flex';
-                document.getElementById('loading-text').textContent = "Step 2: Rendering Modular Physics & Mesh Parts... (This takes a while!)";
+                showLoading('Rigging modular components... (this takes a while)');
 
                 try {
-                    const response = await fetch('/api/generate-rig-modular', {
+                    const r = await fetch('/api/generate-rig-modular', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(currentConceptData)
                     });
-                    const result = await response.json();
+                    const data = await r.json();
+                    if (data.status === 'success') { engine.loadModel(data.path); loadLibrary(); }
+                    else { alert('Rigging failed: ' + data.message); hideLoading(); }
+                } catch (err) { alert('Error: ' + err.message); hideLoading(); }
+            };
 
-                    if (result.status === 'success') {
-                        engine.loadModel(result.path);
-                        loadLibrary();
-                    } else {
-                        alert("Modular Rigging failed: " + result.message);
-                        document.getElementById('loading-overlay').style.display = 'none';
-                    }
-                } catch (err) {
-                    alert("Modular Rigging error: " + err.message);
-                    document.getElementById('loading-overlay').style.display = 'none';
+            document.getElementById('concept-rig-btn').addEventListener('click', startRig);
+            document.getElementById('rig-it-btn').addEventListener('click', startRig);
+
+            // ── Local check ──
+            document.getElementById('local-check-btn').addEventListener('click', async () => {
+                const btn = document.getElementById('local-status');
+                btn.textContent = '⟳ Checking...';
+                btn.style.color = 'var(--warning)';
+                try {
+                    const r = await fetch('http://127.0.0.1:7860/sdapi/v1/sd-models', { signal: AbortSignal.timeout(3000) });
+                    if (r.ok) {
+                        btn.textContent = '✅ Connected';
+                        btn.style.color = 'var(--success)';
+                    } else throw new Error();
+                } catch {
+                    btn.textContent = '❌ Not Reachable';
+                    btn.style.color = '#ff4757';
                 }
             });
-        });
 
-        function updateParamsUI(params) {
-            const list = document.getElementById('params-list');
-            list.innerHTML = '';
-
-            Object.keys(params).forEach(key => {
-                const p = params[key];
-                const div = document.createElement('div');
-                div.className = 'param-group';
-                div.innerHTML = `
-                    <div class="param-label">
-                        <span>${p.name || key}</span>
-                        <span id="val-${key}">${p.value.toFixed(2)}</span>
-                    </div>
-                    <div class="slider-container">
-                        <input type="range" min="${p.min}" max="${p.max}" step="0.01" value="${p.value}" 
-                               oninput="window.updateParam('${key}', this.value)">
-                    </div>
-                `;
-                list.appendChild(div);
+            // ── Background controls ──
+            const bgColorMap = {
+                dark: 0x0a0c14, green: 0x00b140, blue: 0x0011aa, white: 0xffffff, transparent: 0x0a0c14
+            };
+            document.querySelectorAll('.bg-swatch').forEach(swatch => {
+                swatch.addEventListener('click', () => {
+                    document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
+                    swatch.classList.add('active');
+                    const bg = swatch.dataset.bg;
+                    if (bg === 'transparent') {
+                        engine.app.renderer.background.color = 0x00ff00;
+                        engine.app.renderer.background.alpha = 0;
+                    } else {
+                        engine.app.renderer.background.alpha = 1;
+                        engine.app.renderer.background.color = bgColorMap[bg];
+                    }
+                });
             });
-        }
+
+            document.getElementById('bg-apply-btn').addEventListener('click', () => {
+                const hex = document.getElementById('bg-custom-color').value.trim();
+                const color = parseInt(hex.replace('#', ''), 16);
+                if (!isNaN(color)) engine.app.renderer.background.color = color;
+            });
+
+            // ── Helpers ──
+            function showLoading(msg) {
+                document.getElementById('loading-overlay').style.display = 'flex';
+                document.getElementById('loading-text').textContent = msg;
+            }
+            function hideLoading() {
+                document.getElementById('loading-overlay').style.display = 'none';
+            }
+
+            function updateParamsUI(params) {
+                const list = document.getElementById('params-list');
+                list.innerHTML = '';
+                Object.keys(params).forEach(key => {
+                    const p = params[key];
+                    const div = document.createElement('div');
+                    div.className = 'param-group';
+                    div.innerHTML = `
+                <div class="param-label">
+                    <span>${p.name || key}</span>
+                    <span id="val-${key}">${p.value.toFixed(2)}</span>
+                </div>
+                <input type="range" min="${p.min}" max="${p.max}" step="0.01" value="${p.value}"
+                       oninput="window.updateParam('${key}', this.value)">`;
+                    list.appendChild(div);
+                });
+            }
+        });
     </script>
+
 </body>
 
 </html>

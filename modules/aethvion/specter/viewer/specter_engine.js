@@ -60,15 +60,18 @@ class SpecterEngine {
         window.toggleBoneEditor = (active) => this.setBoneEditor(active);
 
         // Setup PIXI filters
-        // PIXI.filters is available in pixi.js out of the box for basic things. Advanced Bloom requires pixi-filters.
         // For standard we use standard Blur as bloom proxy for now to avoid external dependencies if not present.
-        this.bloomFilter = new PIXI.filters.BlurFilter();
+        this.bloomFilter = new PIXI.BlurFilter();
         this.bloomFilter.blur = 0;
 
         this.colorFilter = new PIXI.ColorMatrixFilter();
         this.app.stage.filters = [this.bloomFilter, this.colorFilter];
 
+        // Enable sorting for Z-Index
+        this.app.stage.sortableChildren = true;
+
         this.bonesContainer = new PIXI.Container();
+        this.bonesContainer.zIndex = 9999; // Keep bones on top
         this.app.stage.addChild(this.bonesContainer);
 
         // Camera Controls Setup (Zoom/Pan)
@@ -162,8 +165,11 @@ class SpecterEngine {
 
                 displayObject.x = part.x || 0;
                 displayObject.y = part.y || 0;
-                // Add right before bonesContainer to keep bones on top
-                this.app.stage.addChildAt(displayObject, this.app.stage.children.length - 1);
+                displayObject.zIndex = part.z || 0;
+                // Save original reference config for re-exporting later
+                displayObject.specterConfig = part;
+
+                this.app.stage.addChild(displayObject);
                 this.layers[part.id] = displayObject;
             }
 
@@ -233,6 +239,28 @@ class SpecterEngine {
             const valEl = document.getElementById(`val-${key}`);
             if (valEl) valEl.textContent = val.toFixed(2);
         }
+    }
+
+    reorderLayer(partId, direction) {
+        if (!this.layers[partId]) return;
+
+        const layer = this.layers[partId];
+        // Move zIndex up or down
+        layer.zIndex += direction;
+
+        // Update the config so it persists if we save
+        if (layer.specterConfig) {
+            layer.specterConfig.z = layer.zIndex;
+        }
+
+        this.app.stage.sortChildren();
+        window.rebuildLayerUI(this.layers); // Ask the frontend to redraw the list
+    }
+
+    toggleLayerVisibility(partId) {
+        if (!this.layers[partId]) return;
+        this.layers[partId].visible = !this.layers[partId].visible;
+        window.rebuildLayerUI(this.layers);
     }
 
     resetParams() {
