@@ -24,13 +24,16 @@ class AutoRigger:
             raise ValueError("Google AI provider not initialized in Misaka Cipher.")
             
         # Access the underlying genai.Client from the provider
-        self.client = self.provider.client
-        # Use the model configured in the provider, or fallback to stable flash
-        self.model_id = self.provider.config.model or "gemini-1.5-flash"
+        if hasattr(self.provider, 'client'):
+            self.client = self.provider.client
+        else:
+            self.client = None
+        # Default fallback
+        self.model_id = self.provider.config.model if self.provider else "gemini-1.5-flash"
         
         print(f"👻 Specter AutoRigger linked to Misaka Core (Provider: {self.provider.config.name}, Model: {self.model_id})")
 
-    def analyze_avatar(self, image_path: str) -> Dict[str, Any]:
+    def analyze_avatar(self, image_path: str, chat_model: str = None) -> Dict[str, Any]:
         """Analyze an avatar image and return coordinates for features."""
         with open(image_path, "rb") as f:
             image_data = f.read()
@@ -48,30 +51,64 @@ class AutoRigger:
         Return the results strictly as a JSON object with the part names as keys and the box as value.
         Example: {"head": [100, 200, 500, 600], ...}
         """
+        
+        target_model = chat_model or self.model_id
+        
+        # We need the appropriate provider based on the model if chat_model is provided
+        target_provider = None
+        if target_model:
+            provider_name = self.pm.model_to_provider_map.get(target_model)
+            if provider_name:
+                target_provider = self.pm.get_provider(provider_name)
+        
+        if not target_provider:
+             target_provider = self.provider # Fallback to google_ai
+             
+        if target_provider and target_provider.config.name == "google_ai":
+            try:
+                # Use generating client if it exists (Gemini specifically)
+                client = getattr(target_provider, 'client', self.client)
+                response = client.models.generate_content(
+                    model=target_model,
+                    contents=[
+                        types.Part.from_bytes(data=image_data, mime_type="image/png"),
+                        prompt
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
+                )
+                return json.loads(response.text)
+            except Exception as e:
+                print(f"Error parsing Google AI response: {e}")
+                return {}
+        else:
+            # For OpenAI with vision or others, we'll route it through the provider generate if it supports multimodal.
+            # Usually Misaka base provider requires image formats for GPT vision depending on implementation.
+            # To be safe and simple: log and fallback, or we can just send text if base_provider supports it.
+            # For this MVP specter, if it's not Google we print warning since specter relies on Gemini Vision.
+             print(f"Warning: {target_provider.config.name} may not support Google AI Vision Part formats directly. Attempting text-only analysis.")
+             return {}
 
-        response = self.client.models.generate_content(
-            model=self.model_id,
-            contents=[
-                types.Part.from_bytes(data=image_data, mime_type="image/png"),
-                prompt
-            ],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json"
-            )
-        )
 
-        try:
-            return json.loads(response.text)
-        except Exception as e:
-            print(f"Error parsing AI response: {e}")
-            return {}
 
-    def generate_avatar(self, prompt: str, output_path: str) -> bool:
+    def generate_avatar(self, prompt: str, output_path: str, image_model: str = None) -> bool:
         """Generate a character image from a design prompt."""
         print(f"🎨 Generating avatar from design: {prompt}")
         
         # Determine image capability
-        image_provider = self.pm.get_provider_for_capability("IMAGE")
+        image_provider = None
+        target_model = None
+        
+        if image_model:
+            provider_name = self.pm.model_to_provider_map.get(image_model)
+            if provider_name:
+                image_provider = self.pm.get_provider(provider_name)
+                target_model = image_model
+        
+        if not image_provider:
+             image_provider = self.pm.get_provider_for_capability("IMAGE")
+             
         if not image_provider:
             # Fallback
             image_provider = self.pm.get_provider("openai") or self.pm.get_provider("google_ai")
@@ -87,12 +124,14 @@ class AutoRigger:
         )
 
         trace_id = f"specter-gen-{uuid.uuid4().hex[:8]}"
-        model = "imagen-3.0-generate-002" if image_provider.config.name == "google_ai" else "dall-e-3"
+        
+        if not target_model:
+             target_model = "imagen-3.0-generate-002" if image_provider.config.name == "google_ai" else "dall-e-3"
 
         response = image_provider.generate_image(
             prompt=full_prompt,
             trace_id=trace_id,
-            model=model,
+            model=target_model,
             size="1024x1024"
         )
 
@@ -236,13 +275,13 @@ class AutoRigger:
         }
         return config
 
-    def process_model(self, image_path: str, output_name: str):
+    def process_model(self, image_path: str, output_name: str, chat_model: str = None):
         """Full pipeline: Analyze -> Extract -> Rig."""
         output_dir = os.path.join(os.path.dirname(image_path), output_name)
         os.makedirs(output_dir, exist_ok=True)
         
         print(f"🔍 Analyzing {image_path}...")
-        coords = self.analyze_avatar(image_path)
+        coords = self.analyze_avatar(image_path, chat_model=chat_model)
         
         print(f"✂️ Extracting layers to {output_dir}...")
         parts = self.extract_layers(image_path, coords, output_dir)

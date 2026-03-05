@@ -177,6 +177,15 @@
         </div>
 
         <div style="margin-top: 2rem; display: flex; flex-direction: column; gap: 10px;">
+            <div style="border-top: 1px solid var(--border); padding-top: 15px; margin-bottom: 5px;">
+                <div style="margin-bottom: 5px; font-size: 0.8rem; color: var(--text-secondary);">Analyzer Model
+                    (Auto-Rig)</div>
+                <select id="chat-model-select"
+                    style="width: 100%; padding: 0.6rem; background: #2a2e3f; border: 1px solid var(--border); color: white; border-radius: 4px;">
+                    <option value="">Default (Auto)</option>
+                </select>
+            </div>
+
             <button id="reset-btn"
                 style="width: 100%; padding: 0.8rem; background: transparent; border: 1px solid var(--accent); color: var(--accent); border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
                 Reset Parameters
@@ -189,6 +198,11 @@
 
             <div style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 5px;">
                 <div style="margin-bottom: 10px; font-size: 0.85rem; color: var(--text);">Or create from design:</div>
+                <div style="margin-bottom: 5px; font-size: 0.8rem; color: var(--text-secondary);">Generation Model</div>
+                <select id="image-model-select"
+                    style="width: 100%; padding: 0.6rem; background: #2a2e3f; border: 1px solid var(--border); color: white; border-radius: 4px; margin-bottom: 10px;">
+                    <option value="">Default (Auto)</option>
+                </select>
                 <div style="display: flex; gap: 8px;">
                     <input type="text" id="gen-prompt-input" placeholder="VTuber character reference prompt..."
                         style="flex: 1; padding: 0.6rem; background: #2a2e3f; border: 1px solid var(--border); color: white; border-radius: 4px;">
@@ -246,6 +260,29 @@
                 if (window.playAnimation) window.playAnimation(name);
             });
 
+            // Fetch Models
+            fetch('/api/provider-models')
+                .then(r => r.json())
+                .then(data => {
+                    const chatSelect = document.getElementById('chat-model-select');
+                    const imageSelect = document.getElementById('image-model-select');
+
+                    data.chat_models.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m.id;
+                        opt.textContent = `${m.id} (${m.provider})`;
+                        chatSelect.appendChild(opt);
+                    });
+
+                    data.image_models.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m.id;
+                        opt.textContent = `${m.id} (${m.provider})`;
+                        imageSelect.appendChild(opt);
+                    });
+                })
+                .catch(err => console.error("Failed to fetch models", err));
+
             // Start engine after hooks are ready
             engine.init().then(() => {
                 // Fetch first available model
@@ -275,8 +312,10 @@
                 if (!e.target.files[0]) return;
 
                 const file = e.target.files[0];
+                const chatModel = document.getElementById('chat-model-select').value;
                 const formData = new FormData();
                 formData.append('file', file);
+                if (chatModel) formData.append('chat_model', chatModel);
 
                 document.getElementById('loading-overlay').style.display = 'flex';
                 document.getElementById('loading-text').textContent = "AI is rigging your avatar...";
@@ -314,13 +353,20 @@
                 document.getElementById('loading-overlay').style.display = 'flex';
                 document.getElementById('loading-text').textContent = "AI is designing and rigging your avatar...";
 
+                const chatModel = document.getElementById('chat-model-select').value;
+                const imageModel = document.getElementById('image-model-select').value;
+
                 try {
                     const response = await fetch('/api/generate-rig', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({ prompt: promptVal })
+                        body: JSON.stringify({
+                            prompt: promptVal,
+                            chat_model: chatModel || null,
+                            image_model: imageModel || null
+                        })
                     });
                     const result = await response.json();
 

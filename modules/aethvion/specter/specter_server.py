@@ -12,14 +12,18 @@ if PROJECT_ROOT not in sys.path:
 # Load environment variables
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
-from fastapi import FastAPI, Request, UploadFile, File
+from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from typing import Optional
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from auto_rigger import AutoRigger
+from core.providers.provider_manager import ProviderManager
 
 app = FastAPI(title="Specter Rigging Engine")
+
+pm = ProviderManager()
 
 # Enable CORS for embedding
 app.add_middleware(
@@ -51,8 +55,36 @@ async def list_models():
                     })
     return models
 
+@app.get("/api/provider-models")
+async def get_provider_models():
+    """Returns available Misaka Cipher models for CHAT (analysis) and IMAGE (generation)."""
+    chat_models = []
+    image_models = []
+    
+    for model_id, info in pm.model_descriptor_map.items():
+        caps = info.get('capabilities', [])
+        caps_upper = [c.upper() for c in caps]
+        entry = {
+            "id": model_id,
+            "provider": info.get('provider'),
+            "description": info.get('description', '')
+        }
+        
+        if "CHAT" in caps_upper:
+            chat_models.append(entry)
+        if "IMAGE" in caps_upper:
+            image_models.append(entry)
+            
+    return JSONResponse({
+        "chat_models": chat_models,
+        "image_models": image_models
+    })
+
 @app.post("/api/auto-rig")
-async def auto_rig(file: UploadFile = File(...)):
+async def auto_rig(
+    file: UploadFile = File(...),
+    chat_model: Optional[str] = Form(None)
+):
     """Upload an image and auto-rig it using AI."""
     temp_path = os.path.join(MODELS_DIR, f"temp_{file.filename}")
     os.makedirs(MODELS_DIR, exist_ok=True)
@@ -63,7 +95,7 @@ async def auto_rig(file: UploadFile = File(...)):
     try:
         rigger = AutoRigger()
         model_name = file.filename.split('.')[0] or "auto_rigged"
-        rigger.process_model(temp_path, model_name)
+        rigger.process_model(temp_path, model_name, chat_model=chat_model)
         
         return JSONResponse({
             "status": "success",
@@ -78,6 +110,8 @@ async def auto_rig(file: UploadFile = File(...)):
 
 class GenerateRigRequest(BaseModel):
     prompt: str
+    chat_model: Optional[str] = None
+    image_model: Optional[str] = None
 
 @app.post("/api/generate-rig")
 async def generate_rig_api(request: GenerateRigRequest):
@@ -92,10 +126,10 @@ async def generate_rig_api(request: GenerateRigRequest):
         model_name = f"generated_avatar_{uid}"
         
         # Generate the avatar image
-        rigger.generate_avatar(request.prompt, temp_path)
+        rigger.generate_avatar(request.prompt, temp_path, image_model=request.image_model)
         
         # Process and rig
-        rigger.process_model(temp_path, model_name)
+        rigger.process_model(temp_path, model_name, chat_model=request.chat_model)
         
         return JSONResponse({
             "status": "success",
