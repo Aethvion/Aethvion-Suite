@@ -655,16 +655,44 @@ async function sendMessage() {
     const input = document.getElementById('chat-input');
     const message = input.value.trim();
 
-    if (!message) return;
+    // Store which thread this message belongs to
+    const messageThreadId = currentThreadId;
+
+    let attachedContext = null;
+    let attachedFileName = window._mainChatAttachedFile ? window._mainChatAttachedFile.name : null;
+
+    if (!message && !window._mainChatAttachedFile) return;
+
+    // Upload file if attached
+    if (window._mainChatAttachedFile) {
+        try {
+            const formData = new FormData();
+            formData.append('file', window._mainChatAttachedFile.file, window._mainChatAttachedFile.name);
+            const uploadRes = await fetch('/api/misakacipher/upload-context', {
+                method: 'POST',
+                body: formData
+            });
+            if (uploadRes.ok) {
+                const uploadData = await uploadRes.json();
+                attachedContext = uploadData.content;
+            } else {
+                console.warn('File upload failed:', await uploadRes.text());
+            }
+        } catch (uploadErr) {
+            console.error('File upload error:', uploadErr);
+        }
+        if (typeof window.clearMainChatAttachment === 'function') {
+            window.clearMainChatAttachment();
+        }
+    }
 
     // Clear input
     input.value = '';
 
-    // Store which thread this message belongs to
-    const messageThreadId = currentThreadId;
+    const displayText = message || `[Attached: ${attachedFileName}]`;
 
     // Add user message to current thread
-    addMessageToThread(messageThreadId, 'user', message);
+    addMessageToThread(messageThreadId, 'user', displayText);
 
     // Get model selection
     const modelSelect = document.getElementById('model-select');
@@ -672,17 +700,23 @@ async function sendMessage() {
 
     try {
         // Submit task to queue
+        const payload = {
+            prompt: message || `Please review the attached file: ${attachedFileName || 'file'}`,
+            thread_id: messageThreadId,
+            thread_title: threads[messageThreadId]?.title,
+            model_id: modelId || 'auto'  // Always send a value; 'auto' triggers routing
+        };
+
+        if (attachedContext) {
+            payload.attached_context = attachedContext;
+        }
+
         const response = await fetch('/api/tasks/submit', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                prompt: message,
-                thread_id: messageThreadId,
-                thread_title: threads[messageThreadId]?.title,
-                model_id: modelId || 'auto'  // Always send a value; 'auto' triggers routing
-            })
+            body: JSON.stringify(payload)
         });
 
         const data = await response.json();

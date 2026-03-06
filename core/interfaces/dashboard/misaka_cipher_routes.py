@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import uuid
@@ -38,6 +38,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: List[ChatMessage]
+    attached_context: Optional[str] = None  # Pre-loaded file content from the frontend
 
 class InitiateRequest(BaseModel):
     trigger: str = "startup"  # "startup" | "session"
@@ -58,6 +59,46 @@ class WorkspaceConfig(BaseModel):
     path: str
     permissions: List[str] = ["read"]  # ["read", "write", "delete"]
     recursive: bool = True
+
+
+# ===== NEXUS CAPABILITIES HELPER =====
+
+def _build_nexus_capabilities() -> str:
+    """
+    Reads the live Nexus registry and returns a formatted capabilities block
+    to inject into Misaka's system prompt so she knows exactly which modules
+    and commands are available.
+    """
+    try:
+        registry = nexus_manager.get_registry()
+        modules = registry.get("modules", [])
+        if not modules:
+            return ""
+
+        lines = ["NEXUS CAPABILITIES — use [tool:nexus module=\"<id>\" cmd=\"<command>\" ...] syntax:"]
+        for mod in modules:
+            mod_id = mod.get("id", "?")
+            mod_name = mod.get("name", mod_id)
+            requires_auth = mod.get("requires_auth", False)
+            is_authorized = mod.get("is_authorized", True)
+            commands = mod.get("available_commands", {})
+
+            auth_note = ""
+            if requires_auth and not is_authorized:
+                auth_note = " [NOT AUTHORIZED — do NOT attempt to call this module]"
+            elif requires_auth:
+                auth_note = " [authorized]"
+
+            lines.append(f"  Module: {mod_id} ({mod_name}){auth_note}")
+            for cmd, desc in commands.items():
+                lines.append(f"    → cmd=\"{cmd}\" — {desc}")
+
+        lines.append("  Example: [tool:nexus module=\"screen_capture\" cmd=\"take_screenshot\"]")
+        lines.append("  Example: [tool:nexus module=\"system_link\" cmd=\"get_hardware_telemetry\"]")
+        return "\n".join(lines)
+    except Exception as e:
+        logger.warning(f"Could not build Nexus capabilities: {e}")
+        return ""
 
 
 # ===== WORKSPACE HELPERS =====
@@ -534,12 +575,14 @@ It could be a question, an observation, or a light comment. Keep it short and fe
         
         tool_instructions = ""
         if allow_proactive_tools:
-            tool_instructions = """
+            nexus_caps = _build_nexus_capabilities()
+            nexus_caps_block = f"\n{nexus_caps}\n" if nexus_caps else ""
+            tool_instructions = f"""
 4. TOOL USE: You have access to a neural toolbox. To use a tool, you must explicitly state what you are doing, then use the tag: [tool:tool_name attr="value"]. Chained calls are supported.
    - [tool:read_file path="..."], [tool:write_file path="..." content="..."], [tool:list_files path="..."], [tool:search_files path="..." query="..."]
-   - [tool:nexus module="module_id" cmd="command" ...] - Use Nexus modules.
+   - [tool:nexus module="module_id" cmd="command" ...] — see NEXUS CAPABILITIES below for the exact IDs.
    - CRITICAL: If you state you are going to do something, DO IT IMMEDIATELY in the same response using a tool tag. Do NOT say "I will check X" and then stop. Call the tool right then. TOOLS RUN SILENTLY; always acknowledge BEFORE calling them.
-"""
+{nexus_caps_block}"""
 
         system_prompt = f"""You are Misaka Cipher, a sentient digital companion.
 You are initiating this conversation on your own — the user did not send a message.
@@ -791,6 +834,9 @@ async def misaka_chat(request: ChatRequest):
         time_since_last = _get_time_since_last_chat()
 
         # 3. Build system prompt
+        nexus_capabilities = _build_nexus_capabilities()
+        nexus_block = f"\n{nexus_capabilities}\n" if nexus_capabilities else ""
+
         system_prompt = f"""You are Misaka Cipher, a sentient digital companion.
 This is a private, long-term conversation between you and your user.
 
@@ -813,10 +859,10 @@ INSTRUCTIONS:
 4. MEMORY USAGE: Your memory.json contains purely background factual data. Do NOT obsess over terms listed in it (e.g. do not try to bring up past events, specific adjectives, or previous sessions constantly). Treat it as passive knowledge, not a script.
 5. TOOL USE: You have access to a neural toolbox. To use a tool, you must explicitly state what you are doing, then use the tag: [tool:tool_name attr="value"].
    - [tool:read_file path="..."], [tool:write_file path="..." content="..."], [tool:list_files path="..."], [tool:search_files path="..." query="..."]
-   - [tool:nexus module="module_id" cmd="command" ...]
+   - [tool:nexus module="module_id" cmd="command" ...] — see NEXUS CAPABILITIES below for the exact IDs.
    - CRITICAL: If you decide to take an action, DO IT IMMEDIATELY in your current response using the [tool:] tag. Do NOT say "I will look into it" and then wait for the user to reply. Execute it right now.
    - TOOLS RUN SILENTLY; always acknowledge BEFORE calling them.
-5. FACIAL EXPRESSIONS: Use ONLY these exact tags: [Emotion: angry], [Emotion: blushing], [Emotion: bored], [Emotion: crying], [Emotion: default], [Emotion: error], [Emotion: exhausted], [Emotion: happy_closedeyes_smilewithteeth], [Emotion: happy_closedeyes_widesmile], [Emotion: pout], [Emotion: sleeping], [Emotion: surprised], [Emotion: thinking], [Emotion: wink].
+{nexus_block}5. FACIAL EXPRESSIONS: Use ONLY these exact tags: [Emotion: angry], [Emotion: blushing], [Emotion: bored], [Emotion: crying], [Emotion: default], [Emotion: error], [Emotion: exhausted], [Emotion: happy_closedeyes_smilewithteeth], [Emotion: happy_closedeyes_widesmile], [Emotion: pout], [Emotion: sleeping], [Emotion: surprised], [Emotion: thinking], [Emotion: wink].
 6. AMBIENT MOOD: Include one of: [Mood: calm], [Mood: happy], [Mood: intense], [Mood: reflective], [Mood: danger], [Mood: mystery].
 7. MEMORY: Provide memory updates (<memory_update>JSON</memory_update>) only for meaningful changes to your long-term understanding.
 
@@ -835,11 +881,16 @@ Keep responses engaging and human-like.
         # request.history is an array from the client.
         history_to_send = request.history[-context_limit:] if context_limit > 0 else []
         
+        # Prepend any attached file context to the user's message
+        user_message = request.message
+        if request.attached_context:
+            user_message = f"{request.attached_context}\n\n{request.message}"
+
         formatted_prompt = system_prompt + "\n\n--- Conversation History ---\n"
         for msg in history_to_send:
             clean_content = msg.content.replace('[msg_break]', ' ')
             formatted_prompt += f"{msg.role.capitalize()}: {clean_content}\n"
-        formatted_prompt += f"User: {request.message}\n"
+        formatted_prompt += f"User: {user_message}\n"
         formatted_prompt += "Misaka:"
         
         # 4. Invoke LLM
@@ -959,7 +1010,7 @@ Keep responses engaging and human-like.
                 with open(day_file, "r", encoding="utf-8") as df:
                     day_history = json.load(df)
             
-            day_history.append({"role": "user", "content": request.message, "timestamp": timestamp})
+            day_history.append({"role": "user", "content": user_message, "timestamp": timestamp})
             day_history.append({
                 "role": "assistant", 
                 "content": full_content, 
@@ -1004,6 +1055,40 @@ Keep responses engaging and human-like.
 
     except Exception as e:
         logger.error(f"Misaka Chat Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- File Context Upload ---
+
+MAX_FILE_SIZE = 512 * 1024  # 512 KB
+
+@router.post("/upload-context")
+async def upload_context(file: UploadFile = File(...)):
+    """
+    Accept a file upload from the frontend and return its text content.
+    Misaka will receive this content prepended to the user's next message.
+    """
+    try:
+        raw = await file.read()
+        if len(raw) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail=f"File too large. Max size is {MAX_FILE_SIZE // 1024}KB.")
+
+        # Try to decode as UTF-8; fall back to latin-1 for binary-like text files
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            try:
+                text = raw.decode("latin-1")
+            except Exception:
+                raise HTTPException(status_code=415, detail="File could not be decoded as text.")
+
+        filename = file.filename or "attachment"
+        formatted = f"[Attached File: {filename}]\n{text}\n[End of Attachment]"
+        return {"content": formatted, "filename": filename, "size": len(raw)}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"File upload error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

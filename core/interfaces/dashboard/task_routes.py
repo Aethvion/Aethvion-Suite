@@ -21,6 +21,7 @@ class TaskSubmitRequest(BaseModel):
     thread_id: Optional[str] = "default"
     thread_title: Optional[str] = None
     model_id: Optional[str] = None
+    attached_context: Optional[str] = None
 
 
 class ThreadSettingsRequest(BaseModel):
@@ -44,8 +45,14 @@ async def submit_task(request: TaskSubmitRequest):
     """
     try:
         task_manager = get_task_queue_manager()
+        
+        # Prepend any attached file context before sending to orchestrator
+        prompt_text = request.prompt
+        if request.attached_context:
+            prompt_text = f"{request.attached_context}\n\n{prompt_text}"
+            
         task_id = await task_manager.submit_task(
-            prompt=request.prompt,
+            prompt=prompt_text,
             thread_id=request.thread_id,
             thread_title=request.thread_title,
             model_id=request.model_id

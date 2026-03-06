@@ -265,12 +265,96 @@
 
 /* Input Area */
 .chat-input-area {
-    padding: 1.5rem 2rem;
+    padding: 1rem 2rem 1.5rem 2rem;
     background: rgba(255, 255, 255, 0.02);
     border-top: 1px solid var(--border);
     display: flex;
-    gap: 1rem;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Horizontal row: paperclip | textarea | send */
+.misaka-input-row {
+    display: flex;
+    gap: 0.75rem;
     align-items: center;
+}
+
+/* Attach pill — shown above input row when a file is loaded */
+.misaka-attach-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(0, 217, 255, 0.08);
+    border: 1px solid rgba(0, 217, 255, 0.3);
+    border-radius: 20px;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--primary);
+    animation: pill-fadein 0.2s ease;
+    width: fit-content;
+}
+
+.misaka-attach-pill i {
+    font-size: 0.85rem;
+}
+
+.attach-clear-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0 0.2rem;
+    font-size: 0.85rem;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.attach-clear-btn:hover {
+    color: #ff4d4d;
+}
+
+/* File pill for the main AI chat bar */
+.chat-file-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(0, 217, 255, 0.08);
+    border: 1px solid rgba(0, 217, 255, 0.3);
+    border-radius: 20px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.78rem;
+    color: var(--primary);
+    animation: pill-fadein 0.2s ease;
+    vertical-align: middle;
+}
+
+.chat-file-pill .pill-clear {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.8rem;
+    line-height: 1;
+    margin-left: 0.2rem;
+    transition: color 0.2s;
+}
+
+.chat-file-pill .pill-clear:hover {
+    color: #ff4d4d;
+}
+
+@keyframes pill-fadein {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .chat-input-area textarea {
@@ -452,7 +536,7 @@
     display: flex;
     align-items: flex-start;
     gap: 0.85rem;
-    box-shadow: 0 0 30px rgba(0, 217, 255, 0.15), 0 8px 32px rgba(0,0,0,0.6);
+    box-shadow: 0 0 30px rgba(0, 217, 255, 0.15), 0 8px 32px rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(16px);
     cursor: pointer;
     z-index: 99999;
@@ -460,10 +544,12 @@
     opacity: 0;
     transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
 }
+
 .misaka-proactive-popup.show {
     transform: translateX(0);
     opacity: 1;
 }
+
 .misaka-proactive-popup .popup-avatar {
     width: 48px;
     height: 48px;
@@ -472,10 +558,12 @@
     border: 1px solid rgba(0, 217, 255, 0.3);
     flex-shrink: 0;
 }
+
 .misaka-proactive-popup .popup-body {
     flex: 1;
     min-width: 0;
 }
+
 .misaka-proactive-popup .popup-name {
     font-family: 'Orbitron', sans-serif;
     font-size: 0.7rem;
@@ -484,6 +572,7 @@
     text-transform: uppercase;
     margin-bottom: 0.3rem;
 }
+
 .misaka-proactive-popup .popup-text {
     font-size: 0.88rem;
     color: var(--text-primary);
@@ -493,6 +582,7 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
 }
+
 .misaka-proactive-popup .popup-dismiss {
     position: absolute;
     top: 0.5rem;
@@ -505,9 +595,11 @@
     padding: 0.25rem;
     transition: color 0.2s;
 }
+
 .misaka-proactive-popup .popup-dismiss:hover {
     color: var(--text-primary);
 }
+
 .misaka-proactive-popup .popup-progress {
     position: absolute;
     bottom: 0;
@@ -519,7 +611,13 @@
     transform-origin: left;
     animation: popup-countdown 12s linear forwards;
 }
+
 @keyframes popup-countdown {
-    from { transform: scaleX(1); }
-    to   { transform: scaleX(0); }
+    from {
+        transform: scaleX(1);
+    }
+
+    to {
+        transform: scaleX(0);
+    }
 }

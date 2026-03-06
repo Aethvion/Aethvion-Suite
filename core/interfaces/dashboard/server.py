@@ -846,7 +846,12 @@ async def websocket_chat(websocket: WebSocket):
         while True:
             data = await websocket.receive_json()
             if "message" in data:
-                result = await asyncio.to_thread(orchestrator.process_message, data["message"])
+                user_message = data["message"]
+                # Prepend any attached file context before sending to orchestrator
+                attached_context = data.get("attached_context")
+                if attached_context:
+                    user_message = f"{attached_context}\n\n{user_message}"
+                result = await asyncio.to_thread(orchestrator.process_message, user_message)
                 await websocket.send_json({"type": "response", "trace_id": result.trace_id, "response": result.response, "actions": result.actions_taken, "success": result.success})
     except (WebSocketDisconnect, RuntimeError):
         pass # Client disconnected or connection closed

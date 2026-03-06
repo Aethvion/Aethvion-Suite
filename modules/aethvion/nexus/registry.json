@@ -56,6 +56,18 @@
                 "get_hardware_telemetry": "Get system CPU, RAM, and Disk usage stats"
             },
             "settings": []
+        },
+        {
+            "id": "screen_capture",
+            "name": "Screen Capture",
+            "description": "Take a screenshot of the screen and save it to disk.",
+            "module_path": "modules.aethvion.nexus.screen_capture",
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "take_screenshot": "Capture the current screen and save it as a PNG file (optional arg: 'monitor' int)"
+            },
+            "settings": []
         }
     ]
 }

@@ -114,6 +114,14 @@ async function initializeMisakaCipher() {
         });
     }
 
+    // 2. Wire attach button
+    const attachBtn = document.getElementById('misaka-attach-btn');
+    const fileInput = document.getElementById('misaka-file-input');
+    if (attachBtn && fileInput) {
+        attachBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleMisakaFileSelected);
+    }
+
     // 7. Start proactive scheduler (runs once, sets up timers)
     startProactiveScheduler();
 }
@@ -313,7 +321,7 @@ async function sendMisakaMessage() {
 
     const chatInput = document.getElementById('misaka-chat-input');
     const text = chatInput.value.trim();
-    if (!text) return;
+    if (!text && !_misakaAttachedFile) return;
 
     const now = new Date();
     const ts = now.getFullYear() + "-" +
@@ -323,15 +331,40 @@ async function sendMisakaMessage() {
         String(now.getMinutes()).padStart(2, '0') + ":" +
         String(now.getSeconds()).padStart(2, '0');
 
-    addAssistantMessageStatic('user', text, ts);
+    const displayText = text || `[Attached: ${_misakaAttachedFile?.name}]`;
+    addAssistantMessageStatic('user', displayText, ts);
     chatInput.value = '';
 
     // Reset/Resume proportional to last activity
     startProactiveScheduler();
 
+    // Upload file if attached
+    let attachedContext = null;
+    const attachedFileName = _misakaAttachedFile ? _misakaAttachedFile.name : null;
+    if (_misakaAttachedFile) {
+        try {
+            const formData = new FormData();
+            formData.append('file', _misakaAttachedFile.file, _misakaAttachedFile.name);
+            const uploadRes = await fetch('/api/misakacipher/upload-context', {
+                method: 'POST',
+                body: formData
+            });
+            if (uploadRes.ok) {
+                const uploadData = await uploadRes.json();
+                attachedContext = uploadData.content;
+            } else {
+                console.warn('File upload failed:', await uploadRes.text());
+            }
+        } catch (uploadErr) {
+            console.error('File upload error:', uploadErr);
+        }
+        clearMisakaAttachment();
+    }
+
     const payload = {
-        message: text,
-        history: misakaChatHistory
+        message: text || `Please review the attached file: ${attachedFileName || 'file'}`,
+        history: misakaChatHistory,
+        ...(attachedContext ? { attached_context: attachedContext } : {})
     };
 
     const statusLine = document.getElementById('misaka-status-line');
@@ -351,7 +384,7 @@ async function sendMisakaMessage() {
 
         const data = await response.json();
 
-        misakaChatHistory.push({ role: 'user', content: text });
+        misakaChatHistory.push({ role: 'user', content: displayText });
         misakaChatHistory.push({ role: 'assistant', content: data.response });
 
         if (misakaChatHistory.length > misakaMaxHistory) {
@@ -757,6 +790,35 @@ function deliverQueuedProactiveMessage() {
         }
     }, 800);
 }
+
+// ===== FILE ATTACHMENT =====
+
+let _misakaAttachedFile = null; // { name, file }
+
+async function handleMisakaFileSelected(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    _misakaAttachedFile = { name: file.name, file };
+
+    const pill = document.getElementById('misaka-attach-pill');
+    const pillName = document.getElementById('misaka-attach-name');
+    if (pill && pillName) {
+        pillName.textContent = file.name;
+        pill.style.display = 'flex';
+    }
+
+    // Reset input so same file can be reselected
+    e.target.value = '';
+}
+
+function clearMisakaAttachment() {
+    _misakaAttachedFile = null;
+    const pill = document.getElementById('misaka-attach-pill');
+    if (pill) pill.style.display = 'none';
+}
+
+window.clearMisakaAttachment = clearMisakaAttachment;
 
 window.initializeMisakaCipher = initializeMisakaCipher;
 window.refreshMisakaMemory = refreshMisakaMemory;

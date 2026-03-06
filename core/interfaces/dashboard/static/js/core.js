@@ -191,13 +191,55 @@ function initializeUI() {
         });
     }
 
-    // Add File Button
+    // Add File Button (Main Chat)
     const addFileBtn = document.querySelector('.add-file-btn');
-    if (addFileBtn) {
+    const chatFileInput = document.getElementById('chat-file-input');
+    window._mainChatAttachedFile = null;
+
+    if (addFileBtn && chatFileInput) {
         addFileBtn.addEventListener('click', () => {
-            alert('File upload coming soon!');
+            chatFileInput.click();
+        });
+
+        chatFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            window._mainChatAttachedFile = { name: file.name, file: file };
+
+            // Find or create the pill
+            let pill = document.getElementById('chat-file-pill');
+            if (!pill) {
+                pill = document.createElement('div');
+                pill.id = 'chat-file-pill';
+                pill.className = 'chat-file-pill';
+                // Insert it before the add-file-btn
+                addFileBtn.parentNode.insertBefore(pill, addFileBtn);
+            }
+
+            pill.innerHTML = `
+                <i class="fas fa-file-alt"></i>
+                <span>${file.name}</span>
+                <button class="pill-clear" title="Remove attachment">✕</button>
+            `;
+
+            pill.querySelector('.pill-clear').addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                window.clearMainChatAttachment();
+            });
+
+            // Reset input
+            e.target.value = '';
         });
     }
+
+    window.clearMainChatAttachment = function () {
+        window._mainChatAttachedFile = null;
+        const pill = document.getElementById('chat-file-pill');
+        if (pill) {
+            pill.remove();
+        }
+    };
 
     // Package tab switching
     document.querySelectorAll('.package-tab').forEach(tab => {

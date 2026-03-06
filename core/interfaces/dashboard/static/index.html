@@ -284,6 +284,7 @@
                                 <button class="icon-btn add-file-btn" title="Add File">
                                     <i class="fas fa-plus"></i>
                                 </button>
+                                <input type="file" id="chat-file-input" style="display:none;" accept="*/*">
 
                                 <select id="model-select" class="control-select" title="Select Chat Profile / Model">
                                     <option value="auto">Auto</option>
@@ -662,8 +663,20 @@
                         </div>
                     </div>
                     <div class="chat-input-area">
-                        <textarea id="misaka-chat-input" placeholder="Type a message to Misaka..."></textarea>
-                        <button id="send-misaka-msg" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+                        <div class="misaka-attach-pill" id="misaka-attach-pill" style="display:none;">
+                            <i class="fas fa-file-alt"></i>
+                            <span id="misaka-attach-name"></span>
+                            <button onclick="clearMisakaAttachment()" class="attach-clear-btn"
+                                title="Remove attachment">✕</button>
+                        </div>
+                        <div class="misaka-input-row">
+                            <button id="misaka-attach-btn" class="icon-btn" title="Attach a file">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                            <input type="file" id="misaka-file-input" style="display:none;" accept="*/*">
+                            <textarea id="misaka-chat-input" placeholder="Type a message to Misaka..."></textarea>
+                            <button id="send-misaka-msg" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+                        </div>
                     </div>
                 </div>
             </div>
