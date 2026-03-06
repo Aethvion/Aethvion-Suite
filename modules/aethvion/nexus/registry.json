@@ -65,7 +65,7 @@
             "requires_auth": false,
             "is_authorized": true,
             "available_commands": {
-                "take_screenshot": "Capture the current screen and save it as a PNG file (optional arg: 'monitor' int)"
+                "take_screenshot": "Capture a specific monitor (0=all merged, 1=primary, 2+=secondary) and save as PNG. Optional arg: 'monitor' (int)."
             },
             "settings": []
         }

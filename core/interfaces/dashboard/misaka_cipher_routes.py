@@ -176,44 +176,36 @@ async def _execute_tool_calls_stream(content: str, workspaces: List[dict]):
 
     def parse_attrs(attr_str: str) -> dict:
         attrs = {}
-        # Known keys
-        for key in ["path", "query", "module", "cmd"]:
-            m = re.search(rf'{key}=([\'"])(.*?)\1', attr_str)
-            if m:
-                attrs[key] = m.group(2)
-                
-        # Content specifically
-        if 'content="' in attr_str:
-            start_c = attr_str.find('content="') + 9
-            end_c = attr_str.rfind('"')
-            if end_c > start_c:
-                attrs['content'] = attr_str[start_c:end_c]
-                
-        for k, v in attrs.items():
-            # Apply unescaping
-            v = v.replace('\\"', '"').replace("\\'", "'").replace("\\\\", "\\")
-            if k not in ["path", "dir", "directory", "folder"]:
-                v = v.replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t")
-            attrs[k] = v
+        # Match key="value", key='value', or key=value (supports spaces if quoted, otherwise stops at space)
+        # Using a more robust approach:
+        pos = 0
+        while pos < len(attr_str):
+            m = re.search(r'(\w+)=', attr_str[pos:])
+            if not m: break
+            key = m.group(1)
+            pos += m.end()
+            
+            if pos < len(attr_str) and attr_str[pos] in ['"', "'"]:
+                q = attr_str[pos]
+                pos += 1
+                end = attr_str.find(q, pos)
+                if end == -1: end = len(attr_str)
+                val = attr_str[pos:end]
+                pos = end + 1
+            else:
+                end = attr_str.find(" ", pos)
+                if end == -1: end = len(attr_str)
+                val = attr_str[pos:end]
+                pos = end + 1
+            
+            # Unescape
+            val = val.replace('\\"', '"').replace("\\'", "'").replace("\\\\", "\\")
+            if key not in ["path", "dir", "directory", "folder"]:
+                val = val.replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t")
+            attrs[key] = val.strip()
         return attrs
 
-    blocks = robust_parse_tool_blocks(content)
-    
-    cleaned = content
-    # Remove from end to start to not mess up indices, or just string replace 
-    for start, end, tool_str in reversed(blocks):
-        # We also want to execute it
-        inner = tool_str[6:-1].strip() if tool_str.endswith(']') else tool_str[6:].strip()
-        parts = inner.split(None, 1)
-        if not parts:
-            continue
-            
-        tool_name = parts[0].lower()
-        args_str = parts[1] if len(parts) > 1 else ""
-        attrs = parse_attrs(args_str)
-
-        # Yield tool start for UI
-        yield {"type": "tool_start", "tool": tool_name, "args": attrs}
+    # Execution loop moved to follow definition of execute_tool_sync
 
     def execute_tool_sync(tool_name, attrs, workspaces):
         try:
@@ -274,11 +266,30 @@ async def _execute_tool_calls_stream(content: str, workspaces: List[dict]):
                 module_id = attrs.get("module", "")
                 command = attrs.get("cmd", "")
                 args_dict = {k: v for k, v in attrs.items() if k not in ["module", "cmd"]}
+                logger.info(f"Executing Nexus module: {module_id}.{command} with args: {args_dict}")
                 result = nexus_manager.call_module(module_id, command, args_dict)
                 return f"[nexus:{module_id}.{command}] {result}"
             
+            # AUTO-ROUTE to Nexus if it's a module
+            registry = nexus_manager.get_registry()
+            module_info = next((m for m in registry.get("modules", []) if m["id"] == tool_name), None)
+            if module_info:
+                # Default to the first available command if not specified? No, usually she adds the command in the registry text
+                # But if we want to be very smart: if she says [tool:screen_capture], she might have missed the cmd
+                # Registry says: take_screenshot
+                command = attrs.get("cmd", "")
+                if not command and module_info.get("available_commands"):
+                    command = list(module_info["available_commands"].keys())[0]
+                
+                args_dict = {k: v for k, v in attrs.items() if k != "cmd"}
+                logger.info(f"Auto-routed Nexus tool: {tool_name}.{command} with args: {args_dict}")
+                result = nexus_manager.call_module(tool_name, command, args_dict)
+                return f"[{tool_name}:{command}] {result}"
+
+            logger.warning(f"Unknown tool called: {tool_name}")
             return f"[{tool_name} ERROR] Unknown tool"
         except Exception as e:
+            logger.error(f"execute_tool_sync error ({tool_name}): {e}", exc_info=True)
             return f"[{tool_name} ERROR] {str(e)}"
 
     blocks = robust_parse_tool_blocks(content)
@@ -922,9 +933,14 @@ Keep responses engaging and human-like.
 
             # 1. Main Stream Loop (Token streaming)
             full_content = ""
-            current_chunk = ""
+            buffer = ""
+            inside_tool = False
             
-            # Use call_with_failover_stream for the first pass
+            def clean_text(t):
+                t = re.sub(r'\[Mood:\s*\w+\]?', '', t, flags=re.IGNORECASE)
+                t = re.sub(r'\[Emotion:\s*\w+\]?', '', t, flags=re.IGNORECASE).strip()
+                return t
+
             for chunk in pm.call_with_failover_stream(
                 prompt=formatted_prompt,
                 trace_id=trace_id,
@@ -935,43 +951,37 @@ Keep responses engaging and human-like.
                 images=images
             ):
                 full_content += chunk
-                current_chunk += chunk
+                buffer += chunk
                 
-                # Check if we have a tool tag starting
-                if '[' in current_chunk:
-                    # If we have a complete thought before the tool, or just text
-                    split_parts = current_chunk.split('[tool:', 1)
-                    if len(split_parts) > 1:
-                        # Yield the part before the tool
-                        pre_tool = split_parts[0]
-                        if pre_tool.strip():
-                            clean_pre = re.sub(r'\[Mood:\s*\w+\]?', '', pre_tool, flags=re.IGNORECASE)
-                            clean_pre = re.sub(r'\[Emotion:\s*\w+\]?', '', clean_pre, flags=re.IGNORECASE).strip()
-                            if clean_pre:
-                                yield json.dumps({"type": "message", "content": clean_pre}) + "\n"
-                        
-                        # Stop streaming tokens for this pass once we hit a tool
-                        # We will process the rest after the model finishes this turn
-                        current_chunk = "[tool:" + split_parts[1]
-                        # (The loop continues but we should ideally just accumulate now)
+                if not inside_tool:
+                    if "[tool:" in buffer:
+                        parts = buffer.split("[tool:", 1)
+                        pre = parts[0]
+                        if pre:
+                            c_pre = clean_text(pre)
+                            if c_pre:
+                                yield json.dumps({"type": "message", "content": c_pre}) + "\n"
+                        buffer = "[tool:" + parts[1]
+                        inside_tool = True
                     else:
-                        # Still just text or a partial bracket
-                        pass
-                else:
-                    # No tool detected yet, yield in chunks to feel responsive
-                    if len(current_chunk) > 20:
-                        clean_c = re.sub(r'\[Mood:\s*\w+\]?', '', current_chunk, flags=re.IGNORECASE)
-                        clean_c = re.sub(r'\[Emotion:\s*\w+\]?', '', clean_c, flags=re.IGNORECASE).strip()
-                        if clean_c:
-                            yield json.dumps({"type": "message", "content": clean_c}) + "\n"
-                            current_chunk = ""
-
-            # Yield any remaining text before starting tools
-            if current_chunk:
-                clean_final = re.sub(r'\[Mood:\s*\w+\]?', '', current_chunk, flags=re.IGNORECASE)
-                clean_final = re.sub(r'\[Emotion:\s*\w+\]?', '', clean_final, flags=re.IGNORECASE).strip()
-                if clean_final and not clean_final.startswith('[tool:'):
-                    yield json.dumps({"type": "message", "content": clean_final}) + "\n"
+                        if len(buffer) > 20:
+                            c_buf = clean_text(buffer)
+                            if c_buf:
+                                yield json.dumps({"type": "message", "content": c_buf}) + "\n"
+                                buffer = ""
+                
+                if inside_tool:
+                    if "]" in buffer:
+                        parts = buffer.split("]", 1)
+                        buffer = parts[1]
+                        inside_tool = False
+                        # If there's content after the closed tag, we'll hit the 'if not inside_tool' next chunk
+            
+            # Final buffer yield (if it's not a tool)
+            if buffer and not inside_tool:
+                c_final = clean_text(buffer)
+                if c_final:
+                    yield json.dumps({"type": "message", "content": c_final}) + "\n"
 
             expression = "default"
             mood = "calm"
@@ -986,37 +996,32 @@ Keep responses engaging and human-like.
                 if not re.search(r'\[tool:', last_part, re.IGNORECASE):
                     break
                 
-                # Yield tool start
-                tool_results = []
-                cleaned_last = last_part
-                
-                # WAIT FOR TOOLS WITH HEARTBEAT
-                tool_task = asyncio.create_task(_execute_tool_calls_stream(last_part, workspaces).__anext__())
+                # WAIT FOR TOOLS WITH HEARTBEAT (Single generator instance)
                 tool_gen = _execute_tool_calls_stream(last_part, workspaces)
                 
                 while True:
                     try:
                         # Wait for next event or heartbeat timeout
-                        done, pending = await asyncio.wait([tool_gen.__anext__()], timeout=3)
-                        if done:
-                            event = await done.pop()
-                            if event["type"] == "tool_start":
-                                tool = event["tool"]
-                                args = event["args"]
-                                desc = f"Executing {tool}..."
-                                if tool == "read_file": desc = f"Reading file: {args.get('path', '...')}"
-                                elif tool == "write_file": desc = f"Writing to file: {args.get('path', '...')}"
-                                elif tool == "list_files": desc = f"Listing files in: {args.get('path', '...')}"
-                                elif tool == "nexus": desc = f"Interacting with {args.get('module', 'nexus')}: {args.get('cmd', '...')}"
-                                yield json.dumps({"type": "tool_start", "content": desc}) + "\n"
-                            elif event["type"] == "tool_result": pass
-                            elif event["type"] == "final_cleaned":
-                                cleaned_last = event["content"]
-                                tool_results = event["results"]
-                                break
-                        else:
-                            # Heartbeat to keep connection alive
+                        try:
+                            event = await asyncio.wait_for(tool_gen.__anext__(), timeout=3)
+                        except asyncio.TimeoutError:
                             yield json.dumps({"type": "heartbeat", "content": "Neural processing in progress..."}) + "\n"
+                            continue
+
+                        if event["type"] == "tool_start":
+                            tool = event["tool"]
+                            args = event["args"]
+                            desc = f"Executing {tool}..."
+                            if tool == "read_file": desc = f"Reading file: {args.get('path', '...')}"
+                            elif tool == "write_file": desc = f"Writing to file: {args.get('path', '...')}"
+                            elif tool == "list_files": desc = f"Listing files in: {args.get('path', '...')}"
+                            elif tool == "nexus": desc = f"Interacting with {args.get('module', 'nexus')}: {args.get('cmd', '...')}"
+                            yield json.dumps({"type": "tool_start", "content": desc}) + "\n"
+                        elif event["type"] == "tool_result": pass
+                        elif event["type"] == "final_cleaned":
+                            cleaned_last = event["content"]
+                            tool_results = event["results"]
+                            break
                     except StopAsyncIteration:
                         break
                     except Exception as te:
