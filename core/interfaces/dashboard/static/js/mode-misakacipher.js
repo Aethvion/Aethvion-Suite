@@ -317,6 +317,57 @@ function createMessageElement(role, text, timestamp = null, attachments = null) 
     return div;
 }
 
+/**
+ * Appends media attachments to an existing message element.
+ */
+function appendAttachmentsToMessage(messageDiv, attachments) {
+    if (!attachments || attachments.length === 0) return;
+
+    const bubble = messageDiv.querySelector('.message-bubble');
+    if (!bubble) return;
+
+    let attachContainer = bubble.querySelector('.message-attachments');
+    if (!attachContainer) {
+        attachContainer = document.createElement('div');
+        attachContainer.className = 'message-attachments';
+        attachContainer.style.marginTop = '8px';
+        attachContainer.style.display = 'flex';
+        attachContainer.style.flexWrap = 'wrap';
+        attachContainer.style.gap = '8px';
+        bubble.appendChild(attachContainer);
+    }
+
+    attachments.forEach(att => {
+        // Avoid duplicates
+        const existingImg = Array.from(attachContainer.querySelectorAll('img')).find(i => i.src.includes(att.url));
+        if (att.url && existingImg) return;
+
+        if (att.is_image && att.url) {
+            const img = document.createElement('img');
+            img.src = att.url;
+            img.className = 'chat-attached-image';
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '250px';
+            img.style.borderRadius = '8px';
+            img.style.objectFit = 'contain';
+            img.onload = () => {
+                const container = document.getElementById('misaka-chat-messages');
+                if (container) container.scrollTop = container.scrollHeight;
+            };
+            attachContainer.appendChild(img);
+        } else if (att.filename) {
+            const pill = document.createElement('div');
+            pill.className = 'chat-attached-file-pill';
+            pill.textContent = `📄 ${att.filename}`;
+            pill.style.fontSize = '0.85em';
+            pill.style.padding = '4px 8px';
+            pill.style.background = 'rgba(255,255,255,0.1)';
+            pill.style.borderRadius = '4px';
+            attachContainer.appendChild(pill);
+        }
+    });
+}
+
 function formatDate(dateStr) {
     const date = new Date(dateStr);
     const now = new Date();
@@ -456,7 +507,19 @@ async function sendMisakaMessage() {
                         // Final metadata
                         if (data.mood) updateMisakaMood(data.mood);
                         if (data.expression) {
-                            // Update expressions if any
+                            updateMisakaExpression(data.expression);
+                        }
+
+                        // --- INSTANT MEDIA RENDERING ---
+                        if (data.attachments && data.attachments.length > 0) {
+                            const container = document.getElementById('misaka-chat-messages');
+                            const assistantMsgs = container.querySelectorAll('.chat-message.assistant');
+                            const lastAssistantMsg = assistantMsgs[assistantMsgs.length - 1];
+                            if (lastAssistantMsg) {
+                                appendAttachmentsToMessage(lastAssistantMsg, data.attachments);
+                                // Force scroll after images start loading
+                                setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
+                            }
                         }
 
                         if (data.memory_updated || data.synthesis_ran) {
@@ -607,7 +670,7 @@ async function addAssistantMessageTyped(fullText) {
     if (speed >= 98) {
         if (triggers.length > 0) updateMisakaExpression(triggers[triggers.length - 1].emotion);
         bubble.innerHTML = renderMarkdown(cleanText);
-        container.scrollTop = container.scrollHeight;
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
         isMisakaTyping = false;
         return;
     }
@@ -643,7 +706,14 @@ async function addAssistantMessageTyped(fullText) {
     tsDiv.textContent = ts;
     div.appendChild(tsDiv);
 
-    container.scrollTop = container.scrollHeight;
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+
+    // Final check for layout shift
+    setTimeout(() => {
+        container.scrollTop = container.scrollHeight;
+        bubble.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 150);
+
     isMisakaTyping = false;
 }
 
