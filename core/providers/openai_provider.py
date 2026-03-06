@@ -4,7 +4,7 @@ OpenAI GPT implementation (fallback provider)
 """
 
 import os
-from typing import Iterator, Optional
+from typing import Iterator, Optional, List, Dict, Any
 # from openai import OpenAI
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig
 from core.utils.logger import get_logger
@@ -44,6 +44,7 @@ class OpenAIProvider(BaseProvider):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
+        images: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> ProviderResponse:
         """Generate response using OpenAI."""
@@ -58,7 +59,20 @@ class OpenAIProvider(BaseProvider):
             messages = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
+                
+            if images:
+                import base64
+                content_list = [{"type": "text", "text": prompt}]
+                for img in images:
+                    b64_data = base64.b64encode(img['data']).decode('utf-8')
+                    mime = img.get('mime_type', 'image/jpeg')
+                    content_list.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime};base64,{b64_data}"}
+                    })
+                messages.append({"role": "user", "content": content_list})
+            else:
+                messages.append({"role": "user", "content": prompt})
             
             # Remove unsupported kwargs
             kwargs.pop('model', None)

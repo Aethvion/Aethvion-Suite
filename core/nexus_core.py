@@ -7,7 +7,7 @@ All agent-to-agent calls, tool executions, and external API requests
 MUST route through Nexus Core.
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -33,6 +33,7 @@ class Request:
     temperature: float = 0.7
     max_tokens: Optional[int] = None
     trace_id: Optional[str] = None  # Caller-provided trace ID for usage log correlation
+    images: Optional[List[Dict[str, Any]]] = None
 
     def __post_init__(self):
         # Sanitize prompt
@@ -193,7 +194,8 @@ class NexusCore:
                     max_tokens=request.max_tokens,
                     preferred_provider=request.preferred_provider,
                     model=request.model,
-                    request_type=request.request_type
+                    request_type=request.request_type,
+                    images=request.images
                 )
 
                 # Build response

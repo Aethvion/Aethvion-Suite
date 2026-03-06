@@ -11,6 +11,7 @@ import re
 import psutil
 HAS_PSUTIL = True
 from core.nexus import nexus_manager
+import mimetypes
 
 from core.providers.provider_manager import ProviderManager
 from core.workspace.preferences_manager import get_preferences_manager
@@ -38,7 +39,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: List[ChatMessage]
-    attached_context: Optional[str] = None  # Pre-loaded file content from the frontend
+    attached_files: Optional[List[Dict[str, Any]]] = None  # Structured file context from frontend
 
 class InitiateRequest(BaseModel):
     trigger: str = "startup"  # "startup" | "session"
@@ -881,10 +882,23 @@ Keep responses engaging and human-like.
         # request.history is an array from the client.
         history_to_send = request.history[-context_limit:] if context_limit > 0 else []
         
-        # Prepend any attached file context to the user's message
+        # Process attached files
         user_message = request.message
-        if request.attached_context:
-            user_message = f"{request.attached_context}\n\n{request.message}"
+        images = []
+        if request.attached_files:
+            for file_data in request.attached_files:
+                if file_data.get("is_image"):
+                    try:
+                        with open(file_data["path"], "rb") as f:
+                            img_bytes = f.read()
+                        images.append({
+                            "data": img_bytes,
+                            "mime_type": file_data.get("mime_type", "image/jpeg")
+                        })
+                    except Exception as e:
+                        logger.error(f"Failed to load attached image '{file_data.get('filename')}': {e}")
+                elif file_data.get("content"):
+                    user_message = f"[Attached File: {file_data.get('filename')}]\n{file_data['content']}\n[End of Attachment]\n\n{user_message}"
 
         formatted_prompt = system_prompt + "\n\n--- Conversation History ---\n"
         for msg in history_to_send:
@@ -905,7 +919,8 @@ Keep responses engaging and human-like.
             temperature=0.7,
             model=model,
             request_type="generation",
-            source="misakacipher"
+            source="misakacipher",
+            images=images
         )
         
         if not response.success:
@@ -1010,7 +1025,11 @@ Keep responses engaging and human-like.
                 with open(day_file, "r", encoding="utf-8") as df:
                     day_history = json.load(df)
             
-            day_history.append({"role": "user", "content": user_message, "timestamp": timestamp})
+            user_history_entry = {"role": "user", "content": user_message, "timestamp": timestamp}
+            if request.attached_files:
+                user_history_entry["attachments"] = request.attached_files
+                
+            day_history.append(user_history_entry)
             day_history.append({
                 "role": "assistant", 
                 "content": full_content, 
@@ -1059,31 +1078,56 @@ Keep responses engaging and human-like.
 
 # --- File Context Upload ---
 
-MAX_FILE_SIZE = 512 * 1024  # 512 KB
+MAX_FILE_SIZE = 4 * 1024 * 1024  # 4 MB for images
 
 @router.post("/upload-context")
 async def upload_context(file: UploadFile = File(...)):
     """
-    Accept a file upload from the frontend and return its text content.
-    Misaka will receive this content prepended to the user's next message.
+    Accept a file upload from the frontend, save it to disk,
+    and return structured metadata about the file including path and url.
     """
     try:
         raw = await file.read()
         if len(raw) > MAX_FILE_SIZE:
-            raise HTTPException(status_code=413, detail=f"File too large. Max size is {MAX_FILE_SIZE // 1024}KB.")
-
-        # Try to decode as UTF-8; fall back to latin-1 for binary-like text files
-        try:
-            text = raw.decode("utf-8")
-        except UnicodeDecodeError:
-            try:
-                text = raw.decode("latin-1")
-            except Exception:
-                raise HTTPException(status_code=415, detail="File could not be decoded as text.")
+            raise HTTPException(status_code=413, detail=f"File too large. Max size is {MAX_FILE_SIZE // (1024*1024)}MB.")
 
         filename = file.filename or "attachment"
-        formatted = f"[Attached File: {filename}]\n{text}\n[End of Attachment]"
-        return {"content": formatted, "filename": filename, "size": len(raw)}
+        mime_type, _ = mimetypes.guess_type(filename)
+        if not mime_type:
+            mime_type = "application/octet-stream"
+            
+        is_image = mime_type.startswith("image/")
+
+        # Try to decode as text if not an image
+        text_content = None
+        if not is_image:
+            try:
+                text_content = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                try:
+                    text_content = raw.decode("latin-1")
+                except Exception:
+                    pass # Leave text_content as None
+
+        # Save to disk
+        uploads_dir = PROJECT_ROOT / "data" / "workspace" / "uploads"
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        
+        safe_filename = f"{uuid.uuid4().hex[:8]}_{filename}"
+        file_path = uploads_dir / safe_filename
+        
+        with open(file_path, "wb") as f:
+            f.write(raw)
+
+        return {
+            "filename": filename,
+            "path": str(file_path),
+            "url": f"/api/workspace/files/content?path={file_path}", # We will need to ensure this route exists or matches frontend
+            "is_image": is_image,
+            "mime_type": mime_type,
+            "content": text_content,
+            "size": len(raw)
+        }
 
     except HTTPException:
         raise

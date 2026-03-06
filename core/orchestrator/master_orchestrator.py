@@ -99,7 +99,7 @@ class MasterOrchestrator:
         """Set callback for real-time step monitoring."""
         self.step_callback = callback
     
-    def process_message(self, user_message: str, mode: str = "auto", trace_id: Optional[str] = None, model_id: Optional[str] = None) -> ExecutionResult:
+    def process_message(self, user_message: str, mode: str = "auto", trace_id: Optional[str] = None, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None) -> ExecutionResult:
         """
         Process user message end-to-end.
         
@@ -147,7 +147,7 @@ class MasterOrchestrator:
                  })
 
             # Step 2: Create action plan
-            plan = self.decide_action(intent, trace_id, model_id=model_id)
+            plan = self.decide_action(intent, trace_id, model_id=model_id, images=images)
             logger.info(f"[{trace_id}] Action plan: {', '.join(plan.actions)}")
             
             # Step 3: Execute plan
@@ -224,7 +224,7 @@ class MasterOrchestrator:
                 error=str(e)
             )
     
-    def decide_action(self, intent: IntentAnalysis, trace_id: str, model_id: Optional[str] = None) -> ActionPlan:
+    def decide_action(self, intent: IntentAnalysis, trace_id: str, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None) -> ActionPlan:
         """
         Decide what actions to take based on intent.
         
@@ -246,7 +246,7 @@ class MasterOrchestrator:
         # Route based on intent type
         if intent.intent_type == IntentType.CHAT:
             actions.append("direct_response")
-            resp_obj = self._generate_chat_response(intent, model_id=model_id, trace_id=trace_id)
+            resp_obj = self._generate_chat_response(intent, model_id=model_id, trace_id=trace_id, images=images)
             plan.direct_response = resp_obj.content
             if resp_obj.metadata and 'model' in resp_obj.metadata:
                 plan.model_used = resp_obj.metadata['model']
@@ -286,7 +286,7 @@ class MasterOrchestrator:
         else:
             # Unknown intent - try to have a conversation
             actions.append("direct_response")
-            resp_obj = self._generate_chat_response(intent, model_id=model_id, trace_id=trace_id)
+            resp_obj = self._generate_chat_response(intent, model_id=model_id, trace_id=trace_id, images=images)
             plan.direct_response = resp_obj.content
             if resp_obj.metadata and 'model' in resp_obj.metadata:
                 plan.model_used = resp_obj.metadata['model']
@@ -595,7 +595,7 @@ class MasterOrchestrator:
             temperature=0.7
         )
     
-    def _generate_chat_response(self, intent: IntentAnalysis, model_id: Optional[str] = None, trace_id: Optional[str] = None) -> Response:
+    def _generate_chat_response(self, intent: IntentAnalysis, model_id: Optional[str] = None, trace_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None) -> Response:
         """Generate direct chat response via Nexus Core."""
         request = Request(
             prompt=intent.prompt,
@@ -603,6 +603,7 @@ class MasterOrchestrator:
             temperature=0.7,
             model=model_id,
             trace_id=trace_id,  # propagate so usage log matches task.id
+            images=images
         )
         
         response = self.nexus.route_request(request)

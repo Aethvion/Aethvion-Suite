@@ -21,7 +21,7 @@ class TaskSubmitRequest(BaseModel):
     thread_id: Optional[str] = "default"
     thread_title: Optional[str] = None
     model_id: Optional[str] = None
-    attached_context: Optional[str] = None
+    attached_files: Optional[List[Dict[str, Any]]] = None
 
 
 class ThreadSettingsRequest(BaseModel):
@@ -46,16 +46,19 @@ async def submit_task(request: TaskSubmitRequest):
     try:
         task_manager = get_task_queue_manager()
         
-        # Prepend any attached file context before sending to orchestrator
+        # Any text content from attachments can be prepended if needed
         prompt_text = request.prompt
-        if request.attached_context:
-            prompt_text = f"{request.attached_context}\n\n{prompt_text}"
+        if request.attached_files:
+            for file_data in request.attached_files:
+                if not file_data.get('is_image') and file_data.get('content'):
+                    prompt_text = f"{file_data['content']}\n\n{prompt_text}"
             
         task_id = await task_manager.submit_task(
             prompt=prompt_text,
             thread_id=request.thread_id,
             thread_title=request.thread_title,
-            model_id=request.model_id
+            model_id=request.model_id,
+            attached_files=request.attached_files
         )
         
         return TaskResponse(

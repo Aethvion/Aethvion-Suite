@@ -4,7 +4,7 @@ Abstract base class for all LLM providers
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Iterator, Any
+from typing import Dict, Optional, Iterator, Any, List
 from dataclasses import dataclass
 from enum import Enum
 
@@ -74,6 +74,7 @@ class BaseProvider(ABC):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
+        images: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> ProviderResponse:
         """

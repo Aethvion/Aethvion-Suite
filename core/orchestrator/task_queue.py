@@ -125,10 +125,26 @@ class TaskWorker:
 
                     model_id = task.metadata.get('selected_model')
                     
+                    # Parse attached files for images
+                    images = []
+                    attached_files = task.metadata.get('attached_files')
+                    if attached_files:
+                        for file_data in attached_files:
+                            if file_data.get("is_image"):
+                                try:
+                                    with open(file_data["path"], "rb") as f:
+                                        img_bytes = f.read()
+                                    images.append({
+                                        "data": img_bytes,
+                                        "mime_type": file_data.get("mime_type", "image/jpeg")
+                                    })
+                                except Exception as e:
+                                    logger.error(f"Failed to load attached image '{file_data.get('filename')}': {e}")
+                                    
                     # Use lambda to pass mode argument since run_in_executor only takes args for the callable
                     result = await loop.run_in_executor(
                         None,  # Use default executor
-                        lambda: self.orchestrator.process_message(context_prompt, mode=mode, trace_id=task.id, model_id=model_id)
+                        lambda: self.orchestrator.process_message(context_prompt, mode=mode, trace_id=task.id, model_id=model_id, images=images)
                     )
                     
                     # Convert ExecutionResult to dict
@@ -339,7 +355,7 @@ class TaskQueueManager:
         logger.info(f"Updated settings for thread {thread_id}: {settings}")
         return True
 
-    async def submit_task(self, prompt: str, thread_id: str = "default", thread_title: str = None, model_id: Optional[str] = None) -> str:
+    async def submit_task(self, prompt: str, thread_id: str = "default", thread_title: str = None, model_id: Optional[str] = None, attached_files: Optional[List[Dict[str, Any]]] = None) -> str:
         """
         Submit a task to the queue.
         
@@ -348,6 +364,7 @@ class TaskQueueManager:
             thread_id: Chat thread ID
             thread_title: Optional title for the thread
             model_id: Optional specific model ID to use
+            attached_files: Optional list of attached files
             
         Returns:
             Task ID
@@ -385,6 +402,10 @@ class TaskQueueManager:
         # Store user's model selection (e.g. 'auto', specific model ID, profile string)
         if model_id:
             task.metadata['selected_model'] = model_id
+            
+        # Store file attachments
+        if attached_files:
+            task.metadata['attached_files'] = attached_files
         
         # Save thread state
         self._save_thread(thread_id)

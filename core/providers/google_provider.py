@@ -4,7 +4,7 @@ Google Generative AI (Gemini) implementation
 """
 
 import os
-from typing import Iterator, Optional, Dict, Any
+from typing import Iterator, Optional, Dict, Any, List
 # from google import genai
 # from google.genai import types
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig
@@ -46,6 +46,7 @@ class GoogleAIProvider(BaseProvider):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
+        images: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> ProviderResponse:
         """Generate response using Google AI."""
@@ -92,9 +93,19 @@ class GoogleAIProvider(BaseProvider):
 
             # Generate response via client
             from google.genai import types
+            
+            contents = []
+            if images:
+                for img in images:
+                    contents.append(types.Part.from_bytes(
+                        data=img['data'], 
+                        mime_type=img.get('mime_type', 'image/jpeg')
+                    ))
+            contents.append(prompt)
+            
             response = self.client.models.generate_content(
                 model=active_model,
-                contents=prompt,
+                contents=contents,
                 config=types.GenerateContentConfig(**config_params)
             )
             

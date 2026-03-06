@@ -218,7 +218,8 @@ function renderDayHistory(day, isInitial) {
                 // Only attach timestamp to the last bubble of a multi-break message if possible, 
                 // or just attach to all. For now, attach to all for simplicity or just the last one.
                 const isLastPart = index === parts.length - 1;
-                const msgDiv = createMessageElement(msg.role, part.trim(), isLastPart ? msg.timestamp : null);
+                const atts = isLastPart ? msg.attachments : null;
+                const msgDiv = createMessageElement(msg.role, part.trim(), isLastPart ? msg.timestamp : null, atts);
                 dayBlock.appendChild(msgDiv);
             }
         });
@@ -236,13 +237,14 @@ function renderDayHistory(day, isInitial) {
     }
 }
 
-function createMessageElement(role, text, timestamp = null) {
+function createMessageElement(role, text, timestamp = null, attachments = null) {
     const div = document.createElement('div');
     div.className = `chat-message ${role}`;
 
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble';
 
+    const textContainer = document.createElement('div');
     if (role === 'assistant') {
         const cleanText = text.replace(/<memory_update>[\s\S]*?<\/memory_update>/gi, '')
             .replace(/\[Emotion:\s*\w+\]/gi, '')
@@ -250,9 +252,42 @@ function createMessageElement(role, text, timestamp = null) {
             .replace(/\[tool:[\s\S]*?\](?=(?:\s*\[tool:)|(?:\s*$)|(?:\s*\[msg_break\]))/gi, '')
             .replace(/\[msg_break\]/gi, '')
             .trim();
-        bubble.innerHTML = renderMarkdown(cleanText);
+        textContainer.innerHTML = renderMarkdown(cleanText);
     } else {
-        bubble.textContent = text;
+        textContainer.textContent = text;
+    }
+    bubble.appendChild(textContainer);
+
+    if (attachments && attachments.length > 0) {
+        const attachContainer = document.createElement('div');
+        attachContainer.className = 'message-attachments';
+        attachContainer.style.marginTop = '8px';
+        attachContainer.style.display = 'flex';
+        attachContainer.style.flexWrap = 'wrap';
+        attachContainer.style.gap = '8px';
+
+        attachments.forEach(att => {
+            if (att.is_image && att.url) {
+                const img = document.createElement('img');
+                img.src = att.url;
+                img.className = 'chat-attached-image';
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '250px';
+                img.style.borderRadius = '8px';
+                img.style.objectFit = 'contain';
+                attachContainer.appendChild(img);
+            } else if (att.filename) {
+                const pill = document.createElement('div');
+                pill.className = 'chat-attached-file-pill';
+                pill.textContent = `📄 ${att.filename}`;
+                pill.style.fontSize = '0.85em';
+                pill.style.padding = '4px 8px';
+                pill.style.background = 'rgba(255,255,255,0.1)';
+                pill.style.borderRadius = '4px';
+                attachContainer.appendChild(pill);
+            }
+        });
+        bubble.appendChild(attachContainer);
     }
 
     div.appendChild(bubble);
@@ -331,15 +366,11 @@ async function sendMisakaMessage() {
         String(now.getMinutes()).padStart(2, '0') + ":" +
         String(now.getSeconds()).padStart(2, '0');
 
-    const displayText = text || `[Attached: ${_misakaAttachedFile?.name}]`;
-    addAssistantMessageStatic('user', displayText, ts);
-    chatInput.value = '';
-
     // Reset/Resume proportional to last activity
     startProactiveScheduler();
 
     // Upload file if attached
-    let attachedContext = null;
+    let attachedFiles = null;
     const attachedFileName = _misakaAttachedFile ? _misakaAttachedFile.name : null;
     if (_misakaAttachedFile) {
         try {
@@ -351,7 +382,7 @@ async function sendMisakaMessage() {
             });
             if (uploadRes.ok) {
                 const uploadData = await uploadRes.json();
-                attachedContext = uploadData.content;
+                attachedFiles = [uploadData];
             } else {
                 console.warn('File upload failed:', await uploadRes.text());
             }
@@ -361,10 +392,14 @@ async function sendMisakaMessage() {
         clearMisakaAttachment();
     }
 
+    const displayText = text || `[Attached: ${attachedFileName}]`;
+    addAssistantMessageStatic('user', displayText, ts, attachedFiles);
+    chatInput.value = '';
+
     const payload = {
         message: text || `Please review the attached file: ${attachedFileName || 'file'}`,
         history: misakaChatHistory,
-        ...(attachedContext ? { attached_context: attachedContext } : {})
+        ...(attachedFiles ? { attached_files: attachedFiles } : {})
     };
 
     const statusLine = document.getElementById('misaka-status-line');
@@ -419,11 +454,11 @@ async function sendMisakaMessage() {
     }
 }
 
-function addAssistantMessageStatic(role, text, timestamp = null) {
+function addAssistantMessageStatic(role, text, timestamp = null, attachments = null) {
     const container = document.getElementById('misaka-chat-messages');
     if (!container) return;
 
-    const div = createMessageElement(role, text, timestamp);
+    const div = createMessageElement(role, text, timestamp, attachments);
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
 }

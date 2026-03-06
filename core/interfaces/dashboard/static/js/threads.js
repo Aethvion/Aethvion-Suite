@@ -232,16 +232,32 @@ function renderThreadMessages() {
 }
 
 // Add message to specific thread
-function addMessageToThread(threadId, role, content, taskId = null, taskData = null) {
+function addMessageToThread(threadId, role, content, taskId = null, taskData = null, attachments = null) {
     // Ensure thread message storage exists
     if (!threadMessages[threadId]) {
         threadMessages[threadId] = [];
     }
 
+    if (!attachments && taskData && taskData.metadata && taskData.metadata.attached_files) {
+        attachments = taskData.metadata.attached_files;
+    }
+
     let messageContent = '';
+    let attachmentsHtml = '';
+    if (attachments && attachments.length > 0) {
+        attachmentsHtml += '<div class="message-attachments" style="margin-top:8px; margin-bottom: 4px; display:flex; flex-wrap:wrap; gap:8px;">';
+        attachments.forEach(att => {
+            if (att.is_image && att.url) {
+                attachmentsHtml += `<img src="${att.url}" class="chat-attached-image" style="max-width:100%; max-height:250px; border-radius:8px; object-fit:contain;">`;
+            } else if (att.filename) {
+                attachmentsHtml += `<div class="chat-attached-file-pill" style="font-size:0.85em; padding:4px 8px; background:rgba(255,255,255,0.1); border-radius:4px;">📄 ${att.filename}</div>`;
+            }
+        });
+        attachmentsHtml += '</div>';
+    }
 
     if (role === 'user') {
-        messageContent = `<strong>You:</strong> ${content}`;
+        messageContent = `<strong>You:</strong> <div style="display:inline-block; width:100%;">${content}</div>${attachmentsHtml}`;
     } else if (role === 'assistant') {
         let parsedContent = content;
         try {
@@ -658,7 +674,7 @@ async function sendMessage() {
     // Store which thread this message belongs to
     const messageThreadId = currentThreadId;
 
-    let attachedContext = null;
+    let attachedFiles = null;
     let attachedFileName = window._mainChatAttachedFile ? window._mainChatAttachedFile.name : null;
 
     if (!message && !window._mainChatAttachedFile) return;
@@ -674,7 +690,7 @@ async function sendMessage() {
             });
             if (uploadRes.ok) {
                 const uploadData = await uploadRes.json();
-                attachedContext = uploadData.content;
+                attachedFiles = [uploadData];
             } else {
                 console.warn('File upload failed:', await uploadRes.text());
             }
@@ -692,7 +708,7 @@ async function sendMessage() {
     const displayText = message || `[Attached: ${attachedFileName}]`;
 
     // Add user message to current thread
-    addMessageToThread(messageThreadId, 'user', displayText);
+    addMessageToThread(messageThreadId, 'user', displayText, null, null, attachedFiles);
 
     // Get model selection
     const modelSelect = document.getElementById('model-select');
@@ -707,8 +723,8 @@ async function sendMessage() {
             model_id: modelId || 'auto'  // Always send a value; 'auto' triggers routing
         };
 
-        if (attachedContext) {
-            payload.attached_context = attachedContext;
+        if (attachedFiles) {
+            payload.attached_files = attachedFiles;
         }
 
         const response = await fetch('/api/tasks/submit', {
