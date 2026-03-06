@@ -44,6 +44,10 @@ def capture_image(args=None):
             logger.info(f"Warmup frame {i+1}...")
 
         logger.info("Capturing final frame...")
+        # Read several frames to clear the hardware buffer for a fresh capture
+        for _ in range(5):
+            cap.read()
+            
         ret, frame = cap.read()
         cap.release()
 

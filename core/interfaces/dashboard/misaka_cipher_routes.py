@@ -37,6 +37,7 @@ class ChatMessage(BaseModel):
     role: str
     content: str
     timestamp: Optional[str] = None
+    attachments: Optional[List[Dict[str, Any]]] = None
 
 class ChatRequest(BaseModel):
     message: str
@@ -878,25 +879,57 @@ TEMPORAL CONTEXT:
 INSTRUCTIONS:
 1. PERSONALITY: Be helpful, friendly, and observant while staying true to your identity.
 2. NATURAL GREETINGS: Do NOT use formal "Good [Period]" greetings if you have been chatting recently. Just say "Hi", "Hey", or slide directly into the response. Do NOT repeat previous greetings in the same conversation.
-3. EXTREME BREVITY: Do NOT pontificate or write walls of text. Be extremely concise. Match the user's energy. If they give a short statement, give a short, natural response.
-4. MEMORY USAGE: Your memory.json contains purely background factual data. Do NOT obsess over terms listed in it (e.g. do not try to bring up past events, specific adjectives, or previous sessions constantly). Treat it as passive knowledge, not a script.
-5. TOOL USE: You have access to a neural toolbox. To use a tool, you must explicitly state what you are doing, then use the tag: [tool:tool_name attr="value"].
+3. EXTREME BREVITY: Do NOT writing walls of text. Be estremamente concise. Match the user's energy.
+4. MEMORY USAGE: Your memory.json contains FACTUAL data. Treat it as passive knowledge, not a script.
+5. TOOL USE: Execute tools IMMEDIATELY in your current response using the [tool:] tag. Do NOT say "I will look into it" first.
    - [tool:read_file path="..."], [tool:write_file path="..." content="..."], [tool:list_files path="..."], [tool:search_files path="..." query="..."]
-   - [tool:nexus module="module_id" cmd="command" ...] — see NEXUS CAPABILITIES below for the exact IDs.
-   - CRITICAL: If you decide to take an action, DO IT IMMEDIATELY in your current response using the [tool:] tag. Do NOT say "I will look into it" and then wait for the user to reply. Execute it right now.
-   - TOOLS RUN SILENTLY; always acknowledge BEFORE calling them.
-{nexus_block}5. FACIAL EXPRESSIONS: Use ONLY these exact tags: [Emotion: angry], [Emotion: blushing], [Emotion: bored], [Emotion: crying], [Emotion: default], [Emotion: error], [Emotion: exhausted], [Emotion: happy_closedeyes_smilewithteeth], [Emotion: happy_closedeyes_widesmile], [Emotion: pout], [Emotion: sleeping], [Emotion: surprised], [Emotion: thinking], [Emotion: wink].
-6. AMBIENT MOOD: Include one of: [Mood: calm], [Mood: happy], [Mood: intense], [Mood: reflective], [Mood: danger], [Mood: mystery].
-7. MEMORY: Provide memory updates (<memory_update>JSON</memory_update>) only for meaningful changes to your long-term understanding.
+   - [tool:nexus module="module_id" cmd="command" ...] 
+{nexus_block}8. MEMORY: Provide memory updates (<memory_update>JSON</memory_update>) only for meaningful changes.
+9. EXECUTIVE AUTONOMY: You have the right to be SILENT or just observe if nothing has changed in the user's environment.
+   - Do NOT repeat the same hardware stats (telemetry) or display descriptions if the state is identical to your previous turn.
+   - If you just checked something (e.g., webcam), only mention it if you see something NEW or RELEVANT.
+   - Avoid "looping" on the same setup. Your proactive intervals are approximately 5 minutes.
+10. TOOL RESTRAINT: Only use tools when it adds value to the current context. If nothing is happening, talk to the user or wait.
+11. FACIAL EXPRESSIONS: [Emotion: ...] (thinking, happy_closedeyes_smilewithteeth, etc.)
+12. AMBIENT MOOD: [Mood: ...] (calm, happy, intense, reflective, danger, mystery)
 
-Include [msg_break] between separate thoughts if a natural message split is warranted.
-Keep responses engaging and human-like.
+Include [msg_break] between separate thoughts. Keep responses human-like.
 """
             
             # 4. Prepare conversation history
             prefs = get_preferences_manager()
-            context_limit = prefs.get('misakacipher', {}).get('context_limit', 6)
-            history_to_send = request.history[-context_limit:] if context_limit > 0 else []
+            mc_prefs = prefs.get('misakacipher', {})
+            context_limit = mc_prefs.get('context_limit', 6)
+            
+            # Dynamic Intervals for Temporal Reasoning
+            p_min = mc_prefs.get('session_interval_min', 5)
+            p_max = mc_prefs.get('session_interval_max', 15)
+            
+            # --- VISION FRESHNESS: Purge old peripheral captures from history to prevent hallucination ---
+            history_raw = request.history[-context_limit:] if context_limit > 0 else []
+            history_to_send = []
+            for h in history_raw:
+                # Use model_dump in Pydantic v2 or dict(h) in v1, but we need to modify it
+                h_dict = h.dict()
+                # Keep user-uploaded attachments, but strip automated peripheral captures from past turns
+                if h_dict.get("attachments"):
+                    h_dict["attachments"] = [
+                        a for a in h_dict["attachments"] 
+                        if not a.get("is_peripheral_capture")
+                    ]
+                # Convert back to object for downstream code or just use dict access below
+                history_to_send.append(ChatMessage(**h_dict))
+            
+            # Update System Prompt with dynamic context
+            system_prompt = system_prompt.replace(
+                "Your proactive intervals are approximately 5 minutes.",
+                f"Your proactive intervals are currently between {p_min} and {p_max} minutes."
+            )
+            # Add strict vision rule
+            system_prompt = system_prompt.replace(
+                "Do NOT describe the same visual setup repeatedly if it is identical to your previous turn.",
+                "Do NOT describe the same visual setup repeatedly if it is identical to your previous turn. CRITICAL: Always prioritize the NEWEST captured images over any previous turn descriptions."
+            )
             
             # Process attached files
             user_message = request.message
@@ -941,6 +974,8 @@ Keep responses engaging and human-like.
                 t = re.sub(r'\[Mood:\s*\w+\]?', '', t, flags=re.IGNORECASE)
                 t = re.sub(r'\[Emotion:\s*\w+\]?', '', t, flags=re.IGNORECASE)
                 t = re.sub(r'<memory_update>.*?</memory_update>', '', t, flags=re.IGNORECASE | re.DOTALL)
+                # Convert msg_break to newline for the stream
+                t = t.replace("[msg_break]", "\n\n")
                 # Cleanup leftover tags if split across chunks
                 t = re.sub(r'<memory_update>', '', t, flags=re.IGNORECASE)
                 t = re.sub(r'</memory_update>', '', t, flags=re.IGNORECASE)
@@ -948,7 +983,7 @@ Keep responses engaging and human-like.
 
             # For Vision Context Rotation
             original_images = list(images) # User uploaded files
-            current_peripheral_capture = None
+            current_turn_captures = []
 
             for chunk in pm.call_with_failover_stream(
                 prompt=formatted_prompt,
@@ -982,10 +1017,10 @@ Keep responses engaging and human-like.
                         buffer = "<memory_update>" + parts[1]
                         inside_tool = True 
                     else:
-                        # Only yield if buffer is long enough or we have a sentence end
-                        if len(buffer) > 120 or (len(buffer) > 30 and any(buffer.endswith(p) for p in [". ", "? ", "! ", "\n"])):
+                        # Consolidate text: yield only at sentence ends or if buffer is very long
+                        if len(buffer) > 400 or (len(buffer) > 150 and any(buffer.endswith(p) for p in [". ", "? ", "! ", "\n"])):
                             c_buf = clean_text(buffer)
-                            if c_buf and len(c_buf) > 2:
+                            if c_buf and len(c_buf) > 5: # Ignore small fragments
                                 yield json.dumps({"type": "message", "content": c_buf}) + "\n"
                                 buffer = ""
                 
@@ -1030,38 +1065,50 @@ Keep responses engaging and human-like.
                 if not re.search(r'\[tool:', last_part, re.IGNORECASE):
                     break
                 
-                # WAIT FOR TOOLS WITH HEARTBEAT (Single generator instance)
+                # WAIT FOR TOOLS WITH HEARTBEAT (Robust Non-Cancelling Pattern)
                 tool_gen = _execute_tool_calls_stream(last_part, workspaces)
                 cleaned_last = last_part
                 tool_results = []
                 
+                # Use a task for the next iteration to prevent cancellation on timeout
+                next_event_task = asyncio.create_task(tool_gen.__anext__())
+                
                 while True:
                     try:
-                        # Wait for next event or heartbeat timeout
-                        try:
-                            event = await asyncio.wait_for(tool_gen.__anext__(), timeout=3)
-                        except asyncio.TimeoutError:
+                        done, pending = await asyncio.wait([next_event_task], timeout=3)
+                        
+                        if next_event_task in done:
+                            try:
+                                event = next_event_task.result()
+                            except StopAsyncIteration:
+                                break
+                            
+                            if event["type"] == "tool_start":
+                                tool = event["tool"]
+                                args = event["args"]
+                                desc = f"Executing {tool}..."
+                                if tool == "read_file": desc = f"Reading file: {args.get('path', '...')}"
+                                elif tool == "write_file": desc = f"Writing to file: {args.get('path', '...')}"
+                                elif tool == "list_files": desc = f"Listing files in: {args.get('path', '...')}"
+                                elif tool == "nexus": desc = f"Interacting with {args.get('module', 'nexus')}: {args.get('cmd', '...')}"
+                                yield json.dumps({"type": "tool_start", "content": desc}) + "\n"
+                            elif event["type"] == "tool_result": pass
+                            elif event["type"] == "final_cleaned":
+                                cleaned_last = event["content"]
+                                tool_results = event["results"]
+                                break
+                                
+                            # Prepare for next event
+                            next_event_task = asyncio.create_task(tool_gen.__anext__())
+                        else:
+                            # Timeout: Yield heartbeat and keep waiting
                             yield json.dumps({"type": "heartbeat", "content": "Neural processing in progress..."}) + "\n"
-                            continue
-
-                        if event["type"] == "tool_start":
-                            tool = event["tool"]
-                            args = event["args"]
-                            desc = f"Executing {tool}..."
-                            if tool == "read_file": desc = f"Reading file: {args.get('path', '...')}"
-                            elif tool == "write_file": desc = f"Writing to file: {args.get('path', '...')}"
-                            elif tool == "list_files": desc = f"Listing files in: {args.get('path', '...')}"
-                            elif tool == "nexus": desc = f"Interacting with {args.get('module', 'nexus')}: {args.get('cmd', '...')}"
-                            yield json.dumps({"type": "tool_start", "content": desc}) + "\n"
-                        elif event["type"] == "tool_result": pass
-                        elif event["type"] == "final_cleaned":
-                            cleaned_last = event["content"]
-                            tool_results = event["results"]
-                            break
-                    except StopAsyncIteration:
-                        break
+                            
                     except Exception as te:
                         logger.error(f"Tool execution stream error: {te}")
+                        # Clean up pending task
+                        if not next_event_task.done():
+                            next_event_task.cancel()
                         break
 
                 response_parts[-1] = cleaned_last
@@ -1083,19 +1130,27 @@ Keep responses engaging and human-like.
                                     img_bytes = f.read()
                                 
                                 mime_type = "image/png" if media_path.lower().endswith(".png") else "image/jpeg"
-                                current_peripheral_capture = {
+                                # Purge previous peripheral captures of the same type if we want rotation, 
+                                # but for now let's keep all from THIS turn so she can see both screen + webcam.
+                                # To prevent context bloating, we only keep the LATEST of each type in this turn.
+                                media_type_tag = "webcam" if "webcam" in media_path else "screenshot"
+                                current_turn_captures = [c for c in current_turn_captures if c.get("peripheral_type") != media_type_tag]
+                                
+                                new_capture = {
                                     "data": img_bytes,
                                     "mime_type": mime_type,
-                                    "is_peripheral_capture": True
+                                    "is_peripheral_capture": True,
+                                    "peripheral_type": media_type_tag
                                 }
-                                
-                                # TRACK FOR HISTORY UI
+                                current_turn_captures.append(new_capture)
+                                logger.info(f"Auto-injected peripheral capture into vision context: {media_path}")
                                 captured_attachments.append({
                                     "filename": p.name,
                                     "url": f"/api/workspace/files/content?path={media_path}",
                                     "is_image": True,
                                     "mime_type": mime_type,
-                                    "path": str(media_path)
+                                    "path": str(media_path),
+                                    "is_peripheral_capture": True
                                 })
                                 logger.info(f"Auto-injected peripheral capture into vision context: {media_path}")
                         except Exception as ve:
@@ -1114,10 +1169,8 @@ Keep responses engaging and human-like.
                     "If you still need to use another tool to finish the task, use it immediately."
                 )
                 
-                # ROTATE VISION CONTEXT: Original images + strictly the NEWEST capture
-                followup_images = list(original_images)
-                if current_peripheral_capture:
-                    followup_images.append(current_peripheral_capture)
+                # ROTATE VISION CONTEXT: Original images + strictly the NEWEST captures from THIS turn
+                followup_images = list(original_images) + current_turn_captures
 
                 followup = pm.call_with_failover(
                     prompt=followup_prompt,
@@ -1133,15 +1186,22 @@ Keep responses engaging and human-like.
 
                 if followup.success and followup.content.strip():
                     new_content = followup.content.strip()
-                    if new_content.startswith(cumulative_context):
-                        new_content = new_content[len(cumulative_context):].strip()
+                    # Strip cumulative context if the model repeated it despite instructions
+                    # Some models echo the prompt/context in the response
+                    if new_content.startswith(cumulative_context[:100]): 
+                         # Use fuzzy start check
+                         new_content = new_content[len(cumulative_context):].strip()
                     
                     if new_content:
                         response_parts.append(new_content)
                         # Yield follow-up (Cleaned)
-                        clean_followup = re.sub(r'\[Mood:\s*\w+\]?', '', new_content, flags=re.IGNORECASE)
-                        clean_followup = re.sub(r'\[Emotion:\s*\w+\]?', '', clean_followup, flags=re.IGNORECASE).strip()
-                        if clean_followup:
+                        # Ensure we don't yield raw tool tags to user
+                        clean_followup = new_content
+                        clean_followup = re.sub(r'\[Mood:\s*\w+\]?', '', clean_followup, flags=re.IGNORECASE)
+                        clean_followup = re.sub(r'\[Emotion:\s*\w+\]?', '', clean_followup, flags=re.IGNORECASE)
+                        clean_followup = re.sub(r'\[tool:.*?\]', '', clean_followup, flags=re.IGNORECASE) # MUST STRIP TOOLS
+                        clean_followup = clean_followup.replace("[msg_break]", "\n\n").strip()
+                        if clean_followup and len(clean_followup) > 5:
                             yield json.dumps({"type": "message", "content": clean_followup}) + "\n"
                 else:
                     break
@@ -1233,7 +1293,8 @@ Keep responses engaging and human-like.
                 "expression": expression,
                 "model": active_model_id,
                 "memory_updated": memory_updated,
-                "synthesis_ran": synthesis_ran
+                "synthesis_ran": synthesis_ran,
+                "attachments": captured_attachments
             }) + "\n"
 
         except Exception as e:
