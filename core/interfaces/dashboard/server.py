@@ -818,6 +818,41 @@ async def serve_workspace_file(path: str):
         logger.error(f"File serve error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/workspace/files/content")
+async def get_workspace_file_content(path: str):
+    """
+    Serve the content of a file from the workspace data directory.
+    This is used to render captured screenshots, webcam images, and uploads in the UI.
+    Supports absolute paths if they are within the project data directory.
+    """
+    try:
+        requested_path = Path(path).resolve()
+        # Define project root relative to this file: core/interfaces/dashboard/server.py
+        project_root = Path(__file__).parent.parent.parent.parent.resolve()
+        data_parent = (project_root / "data").resolve()
+        
+        # Security check: Ensure the path is within the data directory
+        if not str(requested_path).startswith(str(data_parent)):
+            logger.warning(f"Unauthorized path access attempt: {path}")
+            raise HTTPException(status_code=403, detail="Unauthorized: Path outside of workspace data.")
+
+        if not requested_path.exists() or not requested_path.is_file():
+            logger.warning(f"File not found: {path}")
+            raise HTTPException(status_code=404, detail="File not found.")
+
+        import mimetypes
+        mime_type, _ = mimetypes.guess_type(str(requested_path))
+        if not mime_type:
+            mime_type = "application/octet-stream"
+
+        return FileResponse(str(requested_path), media_type=mime_type)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error serving file content: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/traces/{trace_id}")
 async def get_trace_details(trace_id: str):
     """Get trace details."""

@@ -6,7 +6,7 @@ from core.utils.logger import get_logger
 logger = get_logger(__name__)
 
 # Base directory for media storage
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 WEBCAM_DIR = PROJECT_ROOT / "data" / "workspace" / "media" / "webcam"
 
 def capture_image(args=None):

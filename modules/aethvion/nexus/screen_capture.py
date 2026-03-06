@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 # Screenshots are saved here, relative to the project root
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-SCREENSHOT_DIR = PROJECT_ROOT / "data" / "screenshots"
+SCREENSHOT_DIR = PROJECT_ROOT / "data" / "workspace" / "media" / "screenshots"
 
 
 def take_screenshot(args: dict) -> str:

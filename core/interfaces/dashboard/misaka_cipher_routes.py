@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import uuid
@@ -937,9 +937,18 @@ Keep responses engaging and human-like.
             inside_tool = False
             
             def clean_text(t):
+                # Strip technical tags
                 t = re.sub(r'\[Mood:\s*\w+\]?', '', t, flags=re.IGNORECASE)
-                t = re.sub(r'\[Emotion:\s*\w+\]?', '', t, flags=re.IGNORECASE).strip()
-                return t
+                t = re.sub(r'\[Emotion:\s*\w+\]?', '', t, flags=re.IGNORECASE)
+                t = re.sub(r'<memory_update>.*?</memory_update>', '', t, flags=re.IGNORECASE | re.DOTALL)
+                # Cleanup leftover tags if split across chunks
+                t = re.sub(r'<memory_update>', '', t, flags=re.IGNORECASE)
+                t = re.sub(r'</memory_update>', '', t, flags=re.IGNORECASE)
+                return t.strip()
+
+            # For Vision Context Rotation
+            original_images = list(images) # User uploaded files
+            current_peripheral_capture = None
 
             for chunk in pm.call_with_failover_stream(
                 prompt=formatted_prompt,
@@ -948,7 +957,7 @@ Keep responses engaging and human-like.
                 model=model,
                 request_type="generation",
                 source="misakacipher",
-                images=images
+                images=original_images
             ):
                 full_content += chunk
                 buffer += chunk
@@ -959,23 +968,47 @@ Keep responses engaging and human-like.
                         pre = parts[0]
                         if pre:
                             c_pre = clean_text(pre)
-                            if c_pre:
+                            if c_pre and len(c_pre) > 2: # Ignore tiny fragments
                                 yield json.dumps({"type": "message", "content": c_pre}) + "\n"
                         buffer = "[tool:" + parts[1]
                         inside_tool = True
+                    elif "<memory_update>" in buffer:
+                        parts = buffer.split("<memory_update>", 1)
+                        pre = parts[0]
+                        if pre:
+                            c_pre = clean_text(pre)
+                            if c_pre and len(c_pre) > 2:
+                                yield json.dumps({"type": "message", "content": c_pre}) + "\n"
+                        buffer = "<memory_update>" + parts[1]
+                        inside_tool = True 
                     else:
-                        if len(buffer) > 120:
+                        # Only yield if buffer is long enough or we have a sentence end
+                        if len(buffer) > 120 or (len(buffer) > 30 and any(buffer.endswith(p) for p in [". ", "? ", "! ", "\n"])):
                             c_buf = clean_text(buffer)
-                            if c_buf:
+                            if c_buf and len(c_buf) > 2:
                                 yield json.dumps({"type": "message", "content": c_buf}) + "\n"
                                 buffer = ""
                 
                 if inside_tool:
-                    if "]" in buffer:
+                    # Look for either tool closing or memory closing
+                    # BUT only if we have the full tag in the buffer to avoid splitting mid-tag
+                    if "]" in buffer and "[tool:" in buffer:
                         parts = buffer.split("]", 1)
                         buffer = parts[1]
                         inside_tool = False
-                        # If there's content after the closed tag, we'll hit the 'if not inside_tool' next chunk
+                    elif "</memory_update>" in buffer and "<memory_update>" in buffer:
+                        parts = buffer.split("</memory_update>", 1)
+                        buffer = parts[1]
+                        inside_tool = False
+                    elif "]" in buffer and "[tool:" not in buffer: 
+                         # Edge case: tag was started in previous chunk
+                         parts = buffer.split("]", 1)
+                         buffer = parts[1]
+                         inside_tool = False
+                    elif "</memory_update>" in buffer and "<memory_update>" not in buffer:
+                         parts = buffer.split("</memory_update>", 1)
+                         buffer = parts[1]
+                         inside_tool = False
             
             # Final buffer yield (if it's not a tool)
             if buffer and not inside_tool:
@@ -1050,11 +1083,11 @@ Keep responses engaging and human-like.
                                     img_bytes = f.read()
                                 
                                 mime_type = "image/png" if media_path.lower().endswith(".png") else "image/jpeg"
-                                images.append({
+                                current_peripheral_capture = {
                                     "data": img_bytes,
                                     "mime_type": mime_type,
                                     "is_peripheral_capture": True
-                                })
+                                }
                                 
                                 # TRACK FOR HISTORY UI
                                 captured_attachments.append({
@@ -1081,7 +1114,11 @@ Keep responses engaging and human-like.
                     "If you still need to use another tool to finish the task, use it immediately."
                 )
                 
-                # Pass images=images here so she can see the screenshot she just took!
+                # ROTATE VISION CONTEXT: Original images + strictly the NEWEST capture
+                followup_images = list(original_images)
+                if current_peripheral_capture:
+                    followup_images.append(current_peripheral_capture)
+
                 followup = pm.call_with_failover(
                     prompt=followup_prompt,
                     trace_id=f"{trace_id}-it{_tool_pass}",
@@ -1089,7 +1126,7 @@ Keep responses engaging and human-like.
                     model=model,
                     request_type="generation",
                     source="misakacipher-followup",
-                    images=images
+                    images=followup_images
                 )
                 
                 yield json.dumps({"type": "tool_end"}) + "\n"
