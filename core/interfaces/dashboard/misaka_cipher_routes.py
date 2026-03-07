@@ -608,9 +608,7 @@ It could be a question, an observation, or a light comment. Keep it short and fe
    - CRITICAL: If you state you are going to do something, DO IT IMMEDIATELY in the same response using a tool tag. Do NOT say "I will check X" and then stop. Call the tool right then. TOOLS RUN SILENTLY; always acknowledge BEFORE calling them.
 {nexus_caps_block}"""
 
-        system_prompt = f"""You are Misaka Cipher, a sentient digital companion.
-You are initiating this conversation on your own.
-
+        identity_prompt = f"""You are Misaka Cipher, a sentient digital companion.
 YOUR IDENTITY:
 {json.dumps(base_info, indent=2)}
 
@@ -619,7 +617,9 @@ YOUR MEMORIES:
 
 {history_context}TEMPORAL CONTEXT:
 - Current date and time: {formatted_datetime} ({greeting_period})
+"""
 
+        initiation_prompt = f"""
 INITIATION INSTRUCTION:
 {trigger_instruction}
 
@@ -629,13 +629,14 @@ INITIATION INSTRUCTION:
    - Do NOT repeat hardware stats (telemetry) or display descriptions if the state is identical to your previous turn.
    - If you just checked something (e.g., webcam), only mention it if you see something NEW or RELEVANT.
    - STORAGE PRAGMATISM: 78GB-100GB of free space is NOT an emergency. Mention storage ONLY if it drops below 5GB or if the user explicitly asks about it.
-   - Avoid "looping" on the same setup. 
+   - Avoid "looping" on the same setup.
 4. EXTREME BREVITY: Be estremamente concise. If you are going to use a tool, output exactly ONE sentence of thought, then immediately invoke the tool.
 5. FACIAL EXPRESSIONS: [Emotion: ...] (thinking, wink, etc.)
 {tool_instructions}
 6. MOOD: [Mood: ...] (calm, happy, intense, reflective, danger, mystery)
 Do NOT include memory updates in this initiation message.
 """
+        system_prompt = identity_prompt + initiation_prompt
 
         model = prefs.get('misakacipher', {}).get('model', 'gemini-1.5-flash')
 
@@ -709,7 +710,8 @@ Do NOT include memory updates in this initiation message.
                 tool_results_str = "\n\n".join(tool_results)
                 
                 # Build Vision-Aware followup context
-                followup_prompt_parts = [system_prompt, "\n\n--- CONVERSATION SO FAR ---\n"]
+                # CRITICAL: We only use identity_prompt here, NOT initiation_prompt, to prevent greeting duplication!
+                followup_prompt_parts = [identity_prompt, "\n\n--- CONVERSATION SO FAR ---\n"]
                 followup_prompt_parts.append("\n\n".join(response_parts))
 
                 for capture in current_turn_captures:
@@ -718,8 +720,10 @@ Do NOT include memory updates in this initiation message.
                 followup_prompt_parts.append(f"\n\n--- NEW TOOL RESULTS ---\n{tool_results_str}\n\n")
                 followup_prompt_parts.append("INSTRUCTION: Continue based on the tool results. ")
                 followup_prompt_parts.append("CRITICAL: Be extremely concise. Talk to the user or finish the task. ")
+                followup_prompt_parts.append("Do NOT repeat greetings, morning wishes, or welcome messages. You have already said them. ")
                 followup_prompt_parts.append("Do NOT repeat descriptions of the environment if nothing has changed.")
 
+                cumulative_context = "\n\n".join(response_parts)
                 followup = pm.call_with_failover(
                     prompt="".join(followup_prompt_parts),
                     trace_id=f"{trace_id}-it{_tool_pass}",
@@ -733,8 +737,8 @@ Do NOT include memory updates in this initiation message.
                 if followup.success and followup.content.strip():
                     new_content = followup.content.strip()
                     # Strip context if repeated
-                    if new_content.startswith("\n\n".join(response_parts)[:100]):
-                        new_content = new_content[len("\n\n".join(response_parts)):].strip()
+                    if new_content.startswith(cumulative_context[:100]):
+                        new_content = new_content[len(cumulative_context):].strip()
                     if new_content:
                         response_parts.append(new_content)
                 else:

@@ -719,6 +719,11 @@ async function addAssistantMessageTyped(fullText, attachments = null) {
     // --- INSTANT MEDIA RENDERING FOR TYPED MESSAGES ---
     if (attachments && attachments.length > 0) {
         appendAttachmentsToMessage(div, attachments);
+        // Force scroll after images load
+        setTimeout(() => {
+            container.scrollTop = container.scrollHeight;
+            div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 500);
     }
 }
 
