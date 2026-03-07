@@ -621,7 +621,7 @@ function removeAssistantToolStatus() {
     }
 }
 
-async function addAssistantMessageTyped(fullText) {
+async function addAssistantMessageTyped(fullText, attachments = null) {
     const container = document.getElementById('misaka-chat-messages');
     if (!container) return;
 
@@ -715,6 +715,11 @@ async function addAssistantMessageTyped(fullText) {
     }, 150);
 
     isMisakaTyping = false;
+
+    // --- INSTANT MEDIA RENDERING FOR TYPED MESSAGES ---
+    if (attachments && attachments.length > 0) {
+        appendAttachmentsToMessage(div, attachments);
+    }
 }
 
 function updateMisakaExpression(expression) {
@@ -892,8 +897,8 @@ async function triggerProactiveMessage(trigger, hoursSince) {
         if (isMisakaVisible) {
             // Deliver directly
             if (data.mood) updateMisakaMood(data.mood);
-            await addAssistantMessageTyped(data.response);
-            misakaChatHistory.push({ role: 'assistant', content: data.response });
+            await addAssistantMessageTyped(data.response, data.attachments);
+            misakaChatHistory.push({ role: 'assistant', content: data.response, attachments: data.attachments });
             if (misakaChatHistory.length > misakaMaxHistory) {
                 misakaChatHistory = misakaChatHistory.slice(-misakaMaxHistory);
             }
@@ -975,8 +980,8 @@ function deliverQueuedProactiveMessage() {
 
     setTimeout(async () => {
         if (data.mood) updateMisakaMood(data.mood);
-        await addAssistantMessageTyped(data.response);
-        misakaChatHistory.push({ role: 'assistant', content: data.response });
+        await addAssistantMessageTyped(data.response, data.attachments);
+        misakaChatHistory.push({ role: 'assistant', content: data.response, attachments: data.attachments });
         if (misakaChatHistory.length > misakaMaxHistory) {
             misakaChatHistory = misakaChatHistory.slice(-misakaMaxHistory);
         }

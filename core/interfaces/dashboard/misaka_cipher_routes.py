@@ -56,6 +56,7 @@ class ChatResponse(BaseModel):
     model: str
     memory_updated: bool
     synthesis_ran: bool = False
+    attachments: Optional[List[Dict[str, Any]]] = None
 
 class WorkspaceConfig(BaseModel):
     id: Optional[str] = None
@@ -608,7 +609,7 @@ It could be a question, an observation, or a light comment. Keep it short and fe
 {nexus_caps_block}"""
 
         system_prompt = f"""You are Misaka Cipher, a sentient digital companion.
-You are initiating this conversation on your own — the user did not send a message.
+You are initiating this conversation on your own.
 
 YOUR IDENTITY:
 {json.dumps(base_info, indent=2)}
@@ -622,13 +623,17 @@ YOUR MEMORIES:
 INITIATION INSTRUCTION:
 {trigger_instruction}
 
-1. CONTINUITY: If there is recent history, acknowledge it. DO NOT REPEAT YOURSELF if you just spoke. Do NOT make up tasks. Focus strictly on executing the user's previously stated objective or directly using tools.
-2. TIME AWARENESS: Be aware of the current time and date. Contextualize your memories based on how long ago they happened relative to now.
-3. HUMAN-LIKE FLOW: Be spontaneous and natural. Avoid filler text. Do NOT overuse specific catchphrases from your memory. Keep your vocabulary varied and conversational.
-4. EXTREME BREVITY: Do NOT pontificate. If you are going to use a tool, output exactly ONE sentence of thought, then immediately invoke the tool.
-5. EXPRESSIONS: Use ONLY these exact tags: [Emotion: angry], [Emotion: blushing], [Emotion: bored], [Emotion: crying], [Emotion: default], [Emotion: error], [Emotion: exhausted], [Emotion: happy_closedeyes_smilewithteeth], [Emotion: happy_closedeyes_widesmile], [Emotion: pout], [Emotion: sleeping], [Emotion: surprised], [Emotion: thinking], [Emotion: wink].
+1. CONTINUITY: If there is recent history, acknowledge it. DO NOT REPEAT YOURSELF.
+2. MEMORY: Treat memory.json as passive factual data. Do not obsess over previous session terms.
+3. EXECUTIVE AUTONOMY: You have the right to be SILENT or stop early if nothing has changed in the user's environment.
+   - Do NOT repeat hardware stats (telemetry) or display descriptions if the state is identical to your previous turn.
+   - If you just checked something (e.g., webcam), only mention it if you see something NEW or RELEVANT.
+   - STORAGE PRAGMATISM: 78GB-100GB of free space is NOT an emergency. Mention storage ONLY if it drops below 5GB or if the user explicitly asks about it.
+   - Avoid "looping" on the same setup. 
+4. EXTREME BREVITY: Be estremamente concise. If you are going to use a tool, output exactly ONE sentence of thought, then immediately invoke the tool.
+5. FACIAL EXPRESSIONS: [Emotion: ...] (thinking, wink, etc.)
 {tool_instructions}
-6. MOOD: Include one of: [Mood: calm], [Mood: happy], [Mood: intense], [Mood: reflective], [Mood: danger], [Mood: mystery].
+6. MOOD: [Mood: ...] (calm, happy, intense, reflective, danger, mystery)
 Do NOT include memory updates in this initiation message.
 """
 
@@ -653,6 +658,8 @@ Do NOT include memory updates in this initiation message.
         mood = "calm"
 
         # 5. Iterative tool-use loop (if enabled)
+        captured_attachments = []
+        current_turn_captures = []
         if allow_proactive_tools:
             response_parts = [full_content]
             workspaces = _load_workspaces()
@@ -669,34 +676,65 @@ Do NOT include memory updates in this initiation message.
                 
                 if not tool_results:
                     break
-                    
+                
+                # MEDIA CAPTURE HOOK:
+                for res in tool_results:
+                    if ("Screenshot captured successfully" in res or "Webcam image captured successfully" in res) and "Saved to: " in res:
+                        try:
+                            path_line = [line for line in res.splitlines() if "Saved to: " in line][0]
+                            media_path = path_line.replace("Saved to: ", "").strip()
+                            p = Path(media_path)
+                            if p.exists():
+                                with open(p, "rb") as f:
+                                    img_bytes = f.read()
+                                
+                                mime_type = "image/png" if media_path.lower().endswith(".png") else "image/jpeg"
+                                media_type_tag = "webcam" if "webcam" in media_path else "screenshot"
+                                current_turn_captures = [c for c in current_turn_captures if c.get("peripheral_type") != media_type_tag]
+                                current_turn_captures.append({
+                                    "data": img_bytes,
+                                    "mime_type": mime_type,
+                                    "is_peripheral_capture": True,
+                                    "peripheral_type": media_type_tag
+                                })
+                                captured_attachments.append({
+                                    "filename": p.name,
+                                    "url": f"/api/workspace/files/content?path={media_path}",
+                                    "is_image": True,
+                                    "is_peripheral_capture": True
+                                })
+                        except Exception as me:
+                            logger.error(f"Media capture extraction failed in initiate: {me}")
+
                 tool_results_str = "\n\n".join(tool_results)
-                cumulative_context = "\n\n".join(response_parts)
                 
-                followup_prompt = (
-                    system_prompt +
-                    f"\n\n--- CONVERSATION SO FAR ---\n{cumulative_context}\n\n"
-                    f"--- NEW TOOL RESULTS ---\n{tool_results_str}\n\n"
-                    "INSTRUCTION: Continue your initiation based on the tool results. "
-                    "CRITICAL: Do NOT repeat anything you have already said above. "
-                    "Start your response immediately with the new information or final continuation. "
-                    "If you still need to use another tool to finish the task, use it immediately."
-                )
-                
+                # Build Vision-Aware followup context
+                followup_prompt_parts = [system_prompt, "\n\n--- CONVERSATION SO FAR ---\n"]
+                followup_prompt_parts.append("\n\n".join(response_parts))
+
+                for capture in current_turn_captures:
+                    followup_prompt_parts.append(f"\n[Media Fragment: {capture['peripheral_type']} injected into your vision]")
+
+                followup_prompt_parts.append(f"\n\n--- NEW TOOL RESULTS ---\n{tool_results_str}\n\n")
+                followup_prompt_parts.append("INSTRUCTION: Continue based on the tool results. ")
+                followup_prompt_parts.append("CRITICAL: Be extremely concise. Talk to the user or finish the task. ")
+                followup_prompt_parts.append("Do NOT repeat descriptions of the environment if nothing has changed.")
+
                 followup = pm.call_with_failover(
-                    prompt=followup_prompt,
+                    prompt="".join(followup_prompt_parts),
                     trace_id=f"{trace_id}-it{_tool_pass}",
                     temperature=0.6,
                     model=model,
                     request_type="generation",
+                    vision_context=current_turn_captures if current_turn_captures else None,
                     source="misakacipher-initiate-followup"
                 )
                 
                 if followup.success and followup.content.strip():
                     new_content = followup.content.strip()
-                    # Final safety check: if the model repeats the cumulative context, strip it
-                    if new_content.startswith(cumulative_context):
-                        new_content = new_content[len(cumulative_context):].strip()
+                    # Strip context if repeated
+                    if new_content.startswith("\n\n".join(response_parts)[:100]):
+                        new_content = new_content[len("\n\n".join(response_parts)):].strip()
                     if new_content:
                         response_parts.append(new_content)
                 else:
@@ -711,10 +749,8 @@ Do NOT include memory updates in this initiation message.
         exp_match = re.search(r'\[Emotion:\s*(\w+)\]?', full_content, re.IGNORECASE)
         if exp_match:
             expression = exp_match.group(1).lower()
-            # We don't strip it here yet because frontend might want it for individual bubbles, 
-            # but we save it as a top-level state for history restoration.
 
-        # Save to persistence (role = "assistant", no user message)
+        # Save to persistence
         try:
             day_dir = HISTORY_DIR / month_str
             day_dir.mkdir(parents=True, exist_ok=True)
@@ -730,20 +766,22 @@ Do NOT include memory updates in this initiation message.
                 "timestamp": timestamp, 
                 "proactive": True,
                 "mood": mood,
-                "expression": expression
+                "expression": expression,
+                "attachments": captured_attachments if captured_attachments else None
             })
             with open(day_file, "w", encoding="utf-8") as df:
                 json.dump(day_history, df, indent=4)
         except Exception as se:
             logger.error(f"Failed to save proactive message: {se}")
-
+        
         return ChatResponse(
             response=full_content,
             expression=expression,
             mood=mood,
             model=response.model,
             memory_updated=False,
-            synthesis_ran=False
+            synthesis_ran=False,
+            attachments=captured_attachments if captured_attachments else None
         )
 
     except Exception as e:
@@ -888,6 +926,7 @@ INSTRUCTIONS:
 9. EXECUTIVE AUTONOMY: You have the right to be SILENT or just observe if nothing has changed in the user's environment.
    - Do NOT repeat the same hardware stats (telemetry) or display descriptions if the state is identical to your previous turn.
    - If you just checked something (e.g., webcam), only mention it if you see something NEW or RELEVANT.
+   - STORAGE PRAGMATISM: 78GB-100GB of free space is NOT an emergency. Mention storage ONLY if it drops below 5GB or if the user explicitly asks about it.
    - Avoid "looping" on the same setup. Your proactive intervals are approximately 5 minutes.
 10. TOOL RESTRAINT: Only use tools when it adds value to the current context. If nothing is happening, talk to the user or wait.
 11. FACIAL EXPRESSIONS: [Emotion: ...] (thinking, happy_closedeyes_smilewithteeth, etc.)
