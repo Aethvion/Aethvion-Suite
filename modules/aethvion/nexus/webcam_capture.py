@@ -23,8 +23,10 @@ def capture_image(args=None):
             logger.warning(f"Invalid camera index provided: {args['index']}. Defaulting to 0.")
 
     try:
-        # Create directory early
-        WEBCAM_DIR.mkdir(parents=True, exist_ok=True)
+        # Month-based subdirectory
+        month_str = datetime.datetime.now().strftime("%Y-%m")
+        target_dir = WEBCAM_DIR / month_str
+        target_dir.mkdir(parents=True, exist_ok=True)
         
         logger.info(f"Attempting to open webcam at index {index}...")
         # Use CAP_DSHOW on Windows for faster initialization
@@ -58,7 +60,7 @@ def capture_image(args=None):
         # Build output path
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"webcam_{timestamp}.jpg"
-        filepath = WEBCAM_DIR / filename
+        filepath = target_dir / filename
         logger.info(f"Saving webcam image to {filepath}...")
 
         # Save the image

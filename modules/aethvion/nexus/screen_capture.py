@@ -48,10 +48,13 @@ def take_screenshot(args: dict) -> str:
             sct_img = sct.grab(target_monitor)
 
             # Build output path within project
-            SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
+            month_str = datetime.datetime.now().strftime("%Y-%m")
+            target_dir = SCREENSHOT_DIR / month_str
+            target_dir.mkdir(parents=True, exist_ok=True)
+            
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"screenshot_{timestamp}.png"
-            filepath = SCREENSHOT_DIR / filename
+            filepath = target_dir / filename
 
             # Convert to PNG using mss.tools
             mss.tools.to_png(sct_img.rgb, sct_img.size, output=str(filepath))
