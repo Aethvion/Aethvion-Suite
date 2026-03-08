@@ -1734,6 +1734,8 @@ async function initSettingsSubNav() {
             const data = await response.json();
             if (data.value) savedSubTab = data.value;
         }
+        // Redirect 'assistant' to 'assistant' (default) if that's what was intended
+        // or stay on 'assistant' if it was renamed from something else.
         switchSettingsSubTab(savedSubTab, false);
     } catch (e) {
         switchSettingsSubTab('assistant', false);
