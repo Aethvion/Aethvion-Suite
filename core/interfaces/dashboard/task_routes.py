@@ -22,6 +22,8 @@ class TaskSubmitRequest(BaseModel):
     thread_title: Optional[str] = None
     model_id: Optional[str] = None
     attached_files: Optional[List[Dict[str, Any]]] = None
+    mode: Optional[str] = "auto"
+    settings: Optional[Dict[str, Any]] = None
 
 
 class ThreadSettingsRequest(BaseModel):
@@ -58,7 +60,9 @@ async def submit_task(request: TaskSubmitRequest):
             thread_id=request.thread_id,
             thread_title=request.thread_title,
             model_id=request.model_id,
-            attached_files=request.attached_files
+            attached_files=request.attached_files,
+            mode=request.mode,
+            settings=request.settings
         )
         
         return TaskResponse(

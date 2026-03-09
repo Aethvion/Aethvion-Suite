@@ -78,23 +78,31 @@ class TaskWorker:
                 # Let's do that in a minute.
                 
                 # Actually, I can just update the code to pass the callback.
-                if hasattr(self, 'save_callback') and self.save_callback:
-                    self.save_callback(task)
-                
                 try:
                     # Execute task via orchestrator in executor (it's synchronous)
                     loop = asyncio.get_event_loop()
                     mode = task.metadata.get('mode', 'auto')
-                    # Retrieve thread settings
+                    
+                    if hasattr(self, 'save_callback') and self.save_callback:
+                        self.save_callback(task)
+                    
+                    # RETRIEVE SETTINGS: Prefer task metadata, fallback to thread
+                    task_settings = task.metadata.get('settings')
                     thread = self.threads.get(task.thread_id)
+                    
+                    settings = {}
+                    if thread and hasattr(thread, 'settings'):
+                        settings.update(thread.settings)
+                    if task_settings:
+                        settings.update(task_settings)
+                    
                     context_prompt = task.prompt
                     
-                    if thread and hasattr(thread, 'settings'):
-                        settings = thread.settings
+                    if settings:
                         context_mode = settings.get('context_mode', 'none')
                         context_window = int(settings.get('context_window', 5))
                         
-                        if context_mode in ['full', 'smart'] and thread.task_ids:
+                        if context_mode in ['full', 'smart'] and thread and thread.task_ids:
                             # Fetch previous tasks
                             history_tasks = []
                             # Get task IDs excluding current one triggers infinite loop? No, current task is not in thread.task_ids yet?
@@ -109,14 +117,10 @@ class TaskWorker:
                                 if tid in self.tasks:
                                     t = self.tasks[tid]
                                     if t.status == TaskStatus.COMPLETED and t.result:
-                                        role = "user"
-                                        content = t.prompt
                                         # Approximate history format
-                                        history_tasks.append(f"User: {content}")
+                                        history_tasks.append(f"User: {t.prompt}")
                                         if t.result.get('response'):
-                                            # Truncate response if too long? For now, keep it.
-                                            resp = t.result.get('response')
-                                            history_tasks.append(f"Assistant: {resp}")
+                                            history_tasks.append(f"Assistant: {t.result.get('response')}")
                             
                             if history_tasks:
                                 history_str = "\n".join(history_tasks)
@@ -355,7 +359,9 @@ class TaskQueueManager:
         logger.info(f"Updated settings for thread {thread_id}: {settings}")
         return True
 
-    async def submit_task(self, prompt: str, thread_id: str = "default", thread_title: str = None, model_id: Optional[str] = None, attached_files: Optional[List[Dict[str, Any]]] = None) -> str:
+    async def submit_task(self, prompt: str, thread_id: str = "default", thread_title: str = None, 
+                    model_id: Optional[str] = None, attached_files: Optional[List[Dict[str, Any]]] = None,
+                    mode: Optional[str] = None, settings: Optional[Dict[str, Any]] = None) -> str:
         """
         Submit a task to the queue.
         
@@ -365,6 +371,8 @@ class TaskQueueManager:
             thread_title: Optional title for the thread
             model_id: Optional specific model ID to use
             attached_files: Optional list of attached files
+            mode: Optional explicit mode (auto/chat_only)
+            settings: Optional explicit thread settings (context_mode, etc)
             
         Returns:
             Task ID
@@ -393,11 +401,21 @@ class TaskQueueManager:
             if thread_title and thread_title != f"Thread {thread_id}":
                  self.threads[thread_id].title = thread_title
         
+        if mode:
+            self.threads[thread_id].mode = mode
+        if settings:
+            if not hasattr(self.threads[thread_id], 'settings'):
+                self.threads[thread_id].settings = {}
+            self.threads[thread_id].settings.update(settings)
+
         self.threads[thread_id].task_ids.append(task.id)
         self.threads[thread_id].updated_at = datetime.now()
         
         # Propagate thread mode to task metadata (for worker/orchestrator to see)
         task.metadata['mode'] = self.threads[thread_id].mode
+        
+        # Propagate settings to task metadata for worker logic
+        task.metadata['settings'] = self.threads[thread_id].settings
         
         # Store user's model selection (e.g. 'auto', specific model ID, profile string)
         if model_id:
