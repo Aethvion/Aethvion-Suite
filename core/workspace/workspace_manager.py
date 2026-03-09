@@ -58,14 +58,11 @@ class WorkspaceManager:
     def __init__(self, workspace_root: Optional[Path] = None, create_dirs: bool = True):
         """
         Initialize Workspace Manager.
-        
-        Args:
-            workspace_root: Root directory for user outputs (default: data/outputfiles/)
-            create_dirs: Whether to create the directory structure automatically (default: True)
         """
+        self.project_root = Path(__file__).parent.parent.parent
+        
         if workspace_root is None:
-            project_root = Path(__file__).parent.parent.parent
-            workspace_root = project_root / "data" / "outputfiles"
+            workspace_root = self.project_root / "data" / "outputfiles"
         
         self.workspace_root = Path(workspace_root)
         
@@ -203,12 +200,27 @@ class WorkspaceManager:
         }
         
         # Save cache
-        cache_path = self.workspace_root / "files.json"
+        # Always try to save in data/ folder
+        cache_dir = self.project_root / "data"
+        if not cache_dir.exists():
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            
+        cache_path = cache_dir / "files.json"
+        
+        # Cleanup old root-level files.json if it exists
+        old_root_cache = self.project_root / "files.json"
+        if old_root_cache.exists():
+            try:
+                old_root_cache.unlink()
+                logger.info("Removed old files.json from project root")
+            except Exception:
+                pass
+
         try:
             with open(cache_path, 'w', encoding='utf-8') as f:
                 json.dump(result_dict, f, indent=2)
         except Exception as e:
-            logger.error(f"Failed to save files.json cache: {e}")
+            logger.error(f"Failed to save files.json cache to {cache_path}: {e}")
             
         return result_dict
     
