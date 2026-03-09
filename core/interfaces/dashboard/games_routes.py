@@ -200,6 +200,11 @@ async def create_game(req: NewGameRequest):
     # Merge AI fields
     resp.update(parsed)
     
+    # Update session status
+    if parsed.get("completed"):
+        session.completed = True
+        session.result = parsed.get("result")
+    
     # Save initial session state
     session.save_history()
     
@@ -264,6 +269,7 @@ async def game_action(req: GameActionRequest):
         if action_type == "correct":
             session.history.append({"action": "guess", "guess": guess, "result": "correct"})
             session.completed = True
+            session.result = "win" # Logic Quest guess is always a win if correct
             session.score = max(100 - (session.attempts * 8), 10)
             session.save_history()
             return {
@@ -331,7 +337,9 @@ async def game_action(req: GameActionRequest):
         if not result["success"]: return {"success": False, "error": result["error"]}
         
         parsed = result["parsed"]
-        if parsed.get("completed"): session.completed = True
+        if parsed.get("completed"):
+            session.completed = True
+            session.result = parsed.get("result")
         session.save_history()
         return {"success": True, **parsed}
 
@@ -342,7 +350,9 @@ async def game_action(req: GameActionRequest):
         if not result["success"]: return {"success": False, "error": result["error"]}
         
         parsed = result["parsed"]
-        session.completed = True
+        if parsed.get("completed"):
+            session.completed = True
+            session.result = parsed.get("result")
         session.save_history()
         return {"success": True, **parsed}
 
@@ -354,7 +364,9 @@ async def game_action(req: GameActionRequest):
         if not result["success"]: return {"success": False, "error": result["error"]}
         
         parsed = result["parsed"]
-        if parsed.get("completed"): session.completed = True
+        if parsed.get("completed"):
+            session.completed = True
+            session.result = parsed.get("result")
         session.save_history()
         return {"success": True, **parsed}
 
@@ -417,27 +429,24 @@ async def get_game_stats():
                                 type_stats["total"] += 1
                                 stats["total_games"] += 1
                                 
-                                # Blackjack results
-                                result = entry.get("result")
-                                if result == "win":
+                                res = entry.get("result")
+                                if res == "win":
                                     type_stats["wins"] += 1
                                     stats["wins"] += 1
-                                elif result == "loss":
+                                elif res == "loss":
                                     type_stats["losses"] += 1
                                     stats["losses"] += 1
-                                elif result == "push":
+                                elif res == "push":
                                     type_stats["pushes"] += 1
-                                
-                                # Logic Quest results
-                                if entry.get("game_type") == "logic-quest" and entry.get("completed"):
-                                    # Logic quest is always a win if completed
+                                # Fallback if result is missing but it's completed (for legacy/logic-quest)
+                                elif entry.get("game_type") == "logic-quest":
                                     type_stats["wins"] += 1
                                     stats["wins"] += 1
 
                                 recent_games.append({
                                     "id": entry.get("session_id", "")[:8],
                                     "type": entry.get("game_type", ""),
-                                    "result": result or ("win" if entry.get("completed") else "active"),
+                                    "result": res or "completed",
                                     "score": entry.get("score", 0),
                                     "date": entry.get("created_at") or entry.get("updated_at", "")
                                 })

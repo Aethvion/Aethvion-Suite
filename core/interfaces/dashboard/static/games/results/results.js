@@ -30,6 +30,38 @@
         const rate = stats.total_games > 0 ? ((stats.wins / stats.total_games) * 100).toFixed(1) : 0;
         document.getElementById(elements.winRate).textContent = `${rate}%`;
 
+        // Update Breakdown
+        const breakdown = document.getElementById('res-breakdown');
+        if (breakdown) {
+            breakdown.innerHTML = '';
+            for (const [gameType, gameStats] of Object.entries(stats.game_types)) {
+                const total = gameStats.total || 0;
+                const winRatio = total > 0 ? ((gameStats.wins / total) * 100).toFixed(1) : 0;
+                const card = document.createElement('div');
+                card.className = 'game-type-card';
+                card.innerHTML = `
+                    <h3>${gameType.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</h3>
+                    <div class="type-stat-row">
+                        <span class="type-stat-lbl">Played</span>
+                        <span class="type-stat-val">${total}</span>
+                    </div>
+                    <div class="type-stat-row">
+                        <span class="type-stat-lbl">Wins</span>
+                        <span class="type-stat-val">${gameStats.wins}</span>
+                    </div>
+                    <div class="type-stat-row">
+                        <span class="type-stat-lbl">Losses</span>
+                        <span class="type-stat-val">${gameStats.losses}</span>
+                    </div>
+                    <div class="type-stat-row">
+                        <span class="type-stat-lbl">Win Rate</span>
+                        <span class="type-stat-val">${winRatio}%</span>
+                    </div>
+                `;
+                breakdown.appendChild(card);
+            }
+        }
+
         // Update Table
         const body = document.getElementById(elements.historyBody);
         body.innerHTML = '';

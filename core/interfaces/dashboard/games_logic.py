@@ -36,6 +36,7 @@ class AIGameSession:
         self.attempts = 0
         self.completed = False
         self.score = 0
+        self.result = None # "win", "loss", "push"
         self.ai_context: List[Dict[str, str]] = []
         
         # Load the specific modular game instance
@@ -89,6 +90,7 @@ class AIGameSession:
                 "attempts": self.attempts,
                 "completed": self.completed,
                 "score": self.score,
+                "result": self.result,
                 "history": self.history,
                 "updated_at": datetime.now().isoformat()
             }
