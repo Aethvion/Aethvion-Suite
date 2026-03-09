@@ -55,8 +55,12 @@ async function initializeMisakaCipher() {
         if (avatarView) avatarView.appendChild(badge);
         else layout.appendChild(badge);
     }
-    // Apply default mood
-    updateMisakaMood('calm');
+    // Apply default or restored mood/expression
+    const lastMood = localStorage.getItem('misaka_last_mood') || 'calm';
+    updateMisakaMood(lastMood);
+
+    const lastExpr = localStorage.getItem('misaka_last_expression') || 'default';
+    updateMisakaExpression(lastExpr);
 
     // 2. Clear current messages (except load more) for fresh init
     const blocks = chatMessages.querySelectorAll('.history-day-block');
@@ -79,8 +83,12 @@ async function initializeMisakaCipher() {
 
     // 6. Listen for changes from settings page
     window.addEventListener('misakaSettingsUpdated', (e) => {
+        console.log('[Misaka] Settings update received:', e.detail);
         if (e.detail && e.detail.context_limit) misakaMaxHistory = e.detail.context_limit;
-        if (e.detail && e.detail.typing_speed !== undefined) misakaTypingSpeed = e.detail.typing_speed;
+        if (e.detail && e.detail.typing_speed !== undefined) {
+            misakaTypingSpeed = parseInt(e.detail.typing_speed, 10);
+            console.log('[Misaka] Typing speed updated to:', misakaTypingSpeed);
+        }
 
         // Restart proactive scheduler if proactive settings might have changed
         if (e.detail && e.detail.proactive_change) {
@@ -89,15 +97,10 @@ async function initializeMisakaCipher() {
     });
 
     // 7. Cache typing speed from prefs
-    try {
-        const prefsRes2 = await fetch('/api/preferences');
-        if (prefsRes2.ok) {
-            const prefsData2 = await prefsRes2.json();
-            if (prefsData2.misakacipher && prefsData2.misakacipher.typing_speed !== undefined) {
-                misakaTypingSpeed = prefsData2.misakacipher.typing_speed;
-            }
-        }
-    } catch (e) { }
+    if (window.prefs) {
+        misakaTypingSpeed = window.prefs.get('misakacipher.typing_speed', 20);
+        console.log('[Misaka] Initial typing speed from prefs:', misakaTypingSpeed);
+    }
 
     // 1. Setup Input interactions
     if (chatInput && sendBtn) {
@@ -455,6 +458,10 @@ async function sendMisakaMessage() {
         ...(attachedFiles ? { attached_files: attachedFiles } : {})
     };
 
+    let currentStreamingBubble = null;
+    let untypedText = ""; // Text received but not yet revealed in bubbles
+    let currentContentForHistory = ""; // Correct content including ALL turns
+
     try {
         const statusLine = document.getElementById('misaka-status-line');
         if (statusLine) statusLine.textContent = "Processing neural paths...";
@@ -488,47 +495,91 @@ async function sendMisakaMessage() {
                     const data = JSON.parse(line);
 
                     if (data.type === 'message') {
-                        // Remove status if any
                         removeAssistantToolStatus();
-                        // Deliver message immediately
-                        await addAssistantMessageTyped(data.content);
-                        misakaChatHistory.push({ role: 'assistant', content: data.content });
+                        untypedText += data.content;
+
+                        // Process the untyped buffer for breaks and packets
+                        while (true) {
+                            const breakIdx = untypedText.toLowerCase().indexOf('[msg_break]');
+                            if (breakIdx !== -1) {
+                                // 1. Found a full break. Deliver everything before it.
+                                const before = untypedText.substring(0, breakIdx);
+                                if (before.length > 0) {
+                                    if (!currentStreamingBubble) currentStreamingBubble = createStreamingBubble();
+                                    await appendToStreamingBubble(currentStreamingBubble, before);
+                                    currentContentForHistory += before;
+                                }
+
+                                // 2. Finalize bubble
+                                if (currentStreamingBubble) {
+                                    currentStreamingBubble.classList.remove('typing-glow');
+                                    // Add timestamp if desired later
+                                    currentStreamingBubble = null;
+                                }
+
+                                // 3. Advance buffer past the break
+                                currentContentForHistory += "[msg_break]";
+                                untypedText = untypedText.substring(breakIdx + '[msg_break]'.length);
+                            } else {
+                                // 4. No full break. Deliver "safe" text that isn't a partial [msg_break]
+                                const partial = "[msg_break]";
+                                let safeLen = untypedText.length;
+                                for (let l = 1; l < partial.length; l++) {
+                                    if (untypedText.toLowerCase().endsWith(partial.substring(0, l))) {
+                                        safeLen = untypedText.length - l;
+                                        break;
+                                    }
+                                }
+
+                                if (safeLen > 0) {
+                                    const part = untypedText.substring(0, safeLen);
+                                    if (!currentStreamingBubble) currentStreamingBubble = createStreamingBubble();
+                                    await appendToStreamingBubble(currentStreamingBubble, part);
+                                    currentContentForHistory += part;
+                                    untypedText = untypedText.substring(safeLen);
+                                }
+                                break; // Wait for next packet
+                            }
+                        }
                     }
                     else if (data.type === 'tool_start') {
                         addAssistantToolStatus(data.content || "Executing neural tools...");
                         if (statusLine) statusLine.textContent = data.content || "Executing neural tools...";
                     }
-                    else if (data.type === 'tool_end') {
-                        // We can keep it until the next message or remove it
-                        // The user wants it to disappear when done and responds
-                    }
                     else if (data.type === 'done') {
                         removeAssistantToolStatus();
-                        // Final metadata
-                        if (data.mood) updateMisakaMood(data.mood);
-                        if (data.expression) {
-                            updateMisakaExpression(data.expression);
+
+                        if (currentStreamingBubble) {
+                            currentStreamingBubble.classList.remove('typing-glow');
+                            const finishNow = new Date();
+                            const finishTs = String(finishNow.getHours()).padStart(2, '0') + ":" + String(finishNow.getMinutes()).padStart(2, '0');
+                            const tsDiv = document.createElement('div');
+                            tsDiv.className = 'message-timestamp';
+                            tsDiv.textContent = finishTs;
+                            currentStreamingBubble.parentElement.appendChild(tsDiv);
                         }
 
-                        // --- INSTANT MEDIA RENDERING ---
+                        misakaChatHistory.push({
+                            role: 'assistant',
+                            content: currentContentForHistory + untypedText
+                        });
+
+                        if (data.mood) updateMisakaMood(data.mood);
+                        if (data.expression) updateMisakaExpression(data.expression);
+
                         if (data.attachments && data.attachments.length > 0) {
                             const container = document.getElementById('misaka-chat-messages');
                             const assistantMsgs = container.querySelectorAll('.chat-message.assistant');
                             const lastAssistantMsg = assistantMsgs[assistantMsgs.length - 1];
                             if (lastAssistantMsg) {
                                 appendAttachmentsToMessage(lastAssistantMsg, data.attachments);
-                                // Force scroll after images start loading
                                 setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
                             }
                         }
 
                         if (data.memory_updated || data.synthesis_ran) {
                             await refreshMisakaMemory();
-                            if (data.synthesis_ran) {
-                                if (statusLine) statusLine.textContent = "Memory synthesis complete. Neural patterns updated.";
-                            } else {
-                                if (statusLine) statusLine.textContent = "Memory synchronized.";
-                            }
+                            if (statusLine) statusLine.textContent = "Memory synchronized.";
                             setTimeout(() => { if (statusLine) statusLine.textContent = "Neural core engaged."; }, 4000);
                         } else {
                             if (statusLine) statusLine.textContent = "Neural core engaged.";
@@ -550,7 +601,6 @@ async function sendMisakaMessage() {
     } catch (err) {
         console.error("Misaka send error:", err);
         addAssistantMessageStatic('misaka', `I encountered a neural synchronization error: ${err.message}`, ts);
-        const statusLine = document.getElementById('misaka-status-line');
         if (statusLine) statusLine.textContent = "Neural core error.";
     }
 }
@@ -570,6 +620,20 @@ function renderMarkdown(text) {
         if (typeof marked === 'function') return marked(text);
     }
     return text.replace(/\n/g, '<br>');
+}
+
+function cleanStreamingDisplay(rawText) {
+    // Aggressively remove tags, even if partially typed, to prevent UI flicker
+    // This matches: 
+    // - Full tags: [Emotion: smile], [Mood: calm], [msg_break]
+    // - Partial tags at end of string: [, [E, [Emotion, [Emotion:, [Emotion: sm
+    let clean = rawText
+        .replace(/\[Emotion:.*?\]/gi, '')
+        .replace(/\[Mood:.*?\]/gi, '')
+        .replace(/\[msg_break\]/gi, '')
+        .replace(/\[(E(m(o(t(i(o(n(:.*)?)?)?)?)?)?)?|M(o(o(d(:.*)?)?)?)?|m(s(g(_(b(r(e(a(k)?)?)?)?)?)?)?)?)?$/i, '');
+
+    return clean.trim();
 }
 
 function addAssistantToolStatus(text) {
@@ -621,109 +685,93 @@ function removeAssistantToolStatus() {
     }
 }
 
-async function addAssistantMessageTyped(fullText, attachments = null) {
+function createStreamingBubble() {
     const container = document.getElementById('misaka-chat-messages');
-    if (!container) return;
-
-    isMisakaTyping = true;
+    if (!container) return null;
 
     const div = document.createElement('div');
     div.className = 'chat-message assistant';
 
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble typing-glow';
+    bubble.setAttribute('data-raw', '');
+
+    // Aligned with createMessageElement: plain div inside bubble
+    const textContainer = document.createElement('div');
+    bubble.appendChild(textContainer);
+
     div.appendChild(bubble);
     container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
 
-    let remainingText = fullText
-        .replace(/<memory_update>[\s\S]*?<\/memory_update>/gi, '')
-        .replace(/\[tool:[\s\S]*?\](?=(?:\s*\[tool:)|(?:\s*$)|(?:\s*\[msg_break\]))/gi, '')
-        .replace(/\[msg_break\]/gi, '')
+    return bubble;
+}
+
+async function appendToStreamingBubble(bubble, newChunk) {
+    const container = document.getElementById('misaka-chat-messages');
+    const textContainer = bubble.querySelector('div'); // Get the internal div
+    if (!textContainer) return;
+
+    let raw = bubble.getAttribute('data-raw') || "";
+    const chars = Array.from(newChunk);
+
+    for (const char of chars) {
+        raw += char;
+        bubble.setAttribute('data-raw', raw);
+
+        // Immediate Expression/Mood trigger
+        if (raw.endsWith(']')) {
+            const emotionMatch = raw.match(/\[Emotion:\s*(\w+)\]$/i);
+            if (emotionMatch) updateMisakaExpression(emotionMatch[1].toLowerCase());
+            const moodMatch = raw.match(/\[Mood:\s*(\w+)\]$/i);
+            if (moodMatch) updateMisakaMood(moodMatch[1].toLowerCase());
+        }
+
+        // Display current state cleaned: removed msg_break replacement here, sendMisakaMessage handles it
+        let display = cleanStreamingDisplay(raw);
+
+        textContainer.innerHTML = renderMarkdown(display);
+
+        // Highlight code only if needed
+        if (typeof hljs !== 'undefined' && display.includes('```')) {
+            textContainer.querySelectorAll('pre code').forEach((block) => {
+                if (!block.classList.contains('hljs')) hljs.highlightElement(block);
+            });
+        }
+
+        container.scrollTop = container.scrollHeight;
+
+        // Steady typing pulse using calibrated speed
+        if (misakaTypingSpeed > 0) {
+            // Minimal catch-up only for extreme backlogs (>200 chars)
+            const factor = chars.length > 200 ? 0.2 : 1.0;
+            await new Promise(r => setTimeout(r, misakaTypingSpeed * factor));
+        }
+    }
+}
+
+function full_content_accumulator(text) {
+    return text.replace(/\[Emotion:\s*\w+\]/gi, '')
+        .replace(/\[Mood:\s*\w+\]/gi, '')
         .trim();
+}
 
-    let triggers = [];
-    const emotionRegex = /\[Emotion:\s*(\w+)\]?/gi;
-    let match;
-    let cleanText = "";
-    let lastIndex = 0;
+async function addAssistantMessageTyped(fullText, attachments = null) {
+    // This is now used mainly for static history loads or fallback
+    const bubble = createStreamingBubble();
+    if (bubble) {
+        await appendToStreamingBubble(bubble, fullText);
+        bubble.classList.remove('typing-glow');
 
-    while ((match = emotionRegex.exec(remainingText)) !== null) {
-        cleanText += remainingText.substring(lastIndex, match.index);
-        triggers.push({ pos: cleanText.length, emotion: match[1].toLowerCase() });
-        lastIndex = emotionRegex.lastIndex;
-    }
-    cleanText += remainingText.substring(lastIndex);
+        // Add timestamp
+        const now = new Date();
+        const ts = String(now.getHours()).padStart(2, '0') + ":" + String(now.getMinutes()).padStart(2, '0');
+        const tsDiv = document.createElement('div');
+        tsDiv.className = 'message-timestamp';
+        tsDiv.textContent = ts;
+        bubble.parentElement.appendChild(tsDiv);
 
-    let speed = 20;
-    try {
-        const res = await fetch('/api/preferences');
-        if (res.ok) {
-            const prefs = await res.json();
-            if (prefs.misakacipher && prefs.misakacipher.typing_speed !== undefined) {
-                speed = prefs.misakacipher.typing_speed;
-            }
-        }
-    } catch (e) { }
-
-    const delay = Math.max(5, 100 - speed);
-
-    if (speed >= 98) {
-        if (triggers.length > 0) updateMisakaExpression(triggers[triggers.length - 1].emotion);
-        bubble.innerHTML = renderMarkdown(cleanText);
-        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-        isMisakaTyping = false;
-        return;
-    }
-
-    let currentVisibleText = "";
-    const characters = Array.from(cleanText);
-    let triggerIdx = 0;
-
-    for (let i = 0; i < characters.length; i++) {
-        while (triggerIdx < triggers.length && triggers[triggerIdx].pos <= i) {
-            updateMisakaExpression(triggers[triggerIdx].emotion);
-            triggerIdx++;
-        }
-        currentVisibleText += characters[i];
-        bubble.innerHTML = renderMarkdown(currentVisibleText);
-        container.scrollTop = container.scrollHeight;
-        await new Promise(r => setTimeout(r, delay));
-    }
-
-    while (triggerIdx < triggers.length) {
-        updateMisakaExpression(triggers[triggerIdx].emotion);
-        triggerIdx++;
-    }
-
-    bubble.innerHTML = renderMarkdown(cleanText);
-    bubble.classList.remove('typing-glow');
-
-    // Add timestamp after typing is done
-    const now = new Date();
-    const ts = String(now.getHours()).padStart(2, '0') + ":" + String(now.getMinutes()).padStart(2, '0');
-    const tsDiv = document.createElement('div');
-    tsDiv.className = 'message-timestamp';
-    tsDiv.textContent = ts;
-    div.appendChild(tsDiv);
-
-    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-
-    // Final check for layout shift
-    setTimeout(() => {
-        container.scrollTop = container.scrollHeight;
-        bubble.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }, 150);
-
-    isMisakaTyping = false;
-
-    // --- INSTANT MEDIA RENDERING FOR TYPED MESSAGES ---
-    if (attachments && attachments.length > 0) {
-        appendAttachmentsToMessage(div, attachments);
-        // Force scroll after images load
-        setTimeout(() => {
-            container.scrollTop = container.scrollHeight;
-            div.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        }, 500);
+        if (attachments) appendAttachmentsToMessage(bubble.parentElement, attachments);
     }
 }
 
@@ -731,7 +779,7 @@ function updateMisakaExpression(expression) {
     const img = document.getElementById('misaka-expression-img');
     if (!img) return;
 
-    // Expression aliasing to prevent 404s
+    // Expression aliasing
     const aliases = {
         'smile': 'happy_closedeyes_widesmile',
         'smiling': 'happy_closedeyes_widesmile',
@@ -755,6 +803,9 @@ function updateMisakaExpression(expression) {
     tempImg.onload = () => { img.src = path; };
     tempImg.onerror = () => { img.src = "/static/misakacipher/expressions/misakacipher_default.png"; };
     tempImg.src = path;
+
+    // Persistence
+    localStorage.setItem('misaka_last_expression', expression);
 }
 
 function updateMisakaMood(mood) {
@@ -782,6 +833,9 @@ function updateMisakaMood(mood) {
         clearTimeout(badge._hideTimer);
         badge._hideTimer = setTimeout(() => badge.classList.remove('visible'), 5000);
     }
+
+    // Persistence
+    localStorage.setItem('misaka_last_mood', mood);
 }
 
 // ===== PROACTIVE MESSAGING SYSTEM =====

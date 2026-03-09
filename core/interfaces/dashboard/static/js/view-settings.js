@@ -1,7 +1,8 @@
 // Misaka Cipher - Preferences & Settings View
 // Handles interacting with user preferences and provider configuration data
 
-const prefs = {
+// Make prefs global for other scripts
+window.prefs = {
     data: {},
 
     async load() {
