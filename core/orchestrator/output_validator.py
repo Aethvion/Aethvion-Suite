@@ -12,7 +12,7 @@ from core.utils import get_logger
 logger = get_logger(__name__)
 
 # Use environment variable or default to relative path
-WORK_FOLDER = Path(os.environ.get("MISAKA_WORKSPACE", Path(__file__).parent.parent / "data/outputfiles"))
+WORK_FOLDER = Path(os.environ.get("MISAKA_WORKSPACE", Path(__file__).parent.parent.parent / "data/outputfiles"))
 
 
 @dataclass

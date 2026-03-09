@@ -64,7 +64,7 @@ class WorkspaceManager:
             create_dirs: Whether to create the directory structure automatically (default: True)
         """
         if workspace_root is None:
-            project_root = Path(__file__).parent.parent.parent.parent
+            project_root = Path(__file__).parent.parent.parent
             workspace_root = project_root / "data" / "outputfiles"
         
         self.workspace_root = Path(workspace_root)
