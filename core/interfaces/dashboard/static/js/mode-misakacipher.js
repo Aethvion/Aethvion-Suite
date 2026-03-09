@@ -742,10 +742,11 @@ async function appendToStreamingBubble(bubble, newChunk) {
         container.scrollTop = container.scrollHeight;
 
         // Steady typing pulse using calibrated speed
-        if (misakaTypingSpeed > 0) {
+        let delayMs = 100 - misakaTypingSpeed;
+        if (delayMs > 0) {
             // Minimal catch-up only for extreme backlogs (>200 chars)
             const factor = chars.length > 200 ? 0.2 : 1.0;
-            await new Promise(r => setTimeout(r, misakaTypingSpeed * factor));
+            await new Promise(r => setTimeout(r, delayMs * factor));
         }
     }
 }

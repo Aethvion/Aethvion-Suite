@@ -254,7 +254,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Apply target emotion immediately so it shows before typing begins
         setEmotion(finalEmotion);
 
-        if (typingSpeed <= 0) {
+        let delayMs = 100 - typingSpeed;
+        if (delayMs <= 0) {
             if (asMarkdown && typeof marked !== 'undefined') {
                 div.innerHTML = marked.parse(content);
             } else {
@@ -319,7 +320,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
 
                         // Wait for typing delay
-                        await new Promise(r => setTimeout(r, typingSpeed));
+                        if (delayMs > 0) {
+                            await new Promise(r => setTimeout(r, delayMs));
+                        }
                     }
                 } else if (node.nodeType === Node.ELEMENT_NODE) {
                     const clone = node.cloneNode(false); // shallow clone
