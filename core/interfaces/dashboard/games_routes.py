@@ -3,6 +3,7 @@ Misaka Cipher - Games Routes
 AI-powered thinking games API.
 """
 
+import re
 import uuid
 import json
 import asyncio
@@ -60,21 +61,27 @@ async def _call_ai(session: AIGameSession, user_message: str, expected_action: O
 
     for attempt in range(max_retries):
         try:
+            # Fallback: On the very last attempt, disable JSON mode in case the constraint is causing truncation
+            use_json_mode = True
+            if attempt == max_retries - 1:
+                use_json_mode = False
+
             response = await loop.run_in_executor(
                 None,
                 lambda: pm.call_with_failover(
                     prompt=latest_prompt,
                     system_prompt=system_prompt,
                     trace_id=f"game-{session.session_id[:8]}",
-                    temperature=0.1 if attempt == 0 else 0.4 if attempt == 1 else 0.8,
-                    max_tokens=600,
+                    temperature=0.1 if attempt == 0 else 0.5 if attempt == 1 else 0.9,
+                    max_tokens=1024,
                     model=session.model,
-                    json_mode=True,   
+                    json_mode=use_json_mode,   
                     source="game"
                 )
             )
 
             raw = response.content.strip() if response.success else ""
+            logger.info(f"[{session.session_id[:8]}] RAW AI CONTENT (Attempt {attempt+1}, JSON_MODE={use_json_mode}): {raw!r}")
             if not raw:
                 last_error = "Empty response"
                 continue
@@ -82,19 +89,33 @@ async def _call_ai(session: AIGameSession, user_message: str, expected_action: O
             # --- Extraction & Repair ---
             def repair_and_parse(text):
                 text = text.strip()
+                # If JSON mode was off, it might be wrapped in markdown
+                if "```json" in text:
+                    match = re.search(r'```json\s*(\{.*\})\s*```', text, re.DOTALL)
+                    if match: text = match.group(1).strip()
+
                 try: return json.loads(text)
                 except: pass
-                import re
+                
+                # Regex block extraction
                 match = re.search(r'(\{.*\})', text, re.DOTALL)
                 if match:
                     try: return json.loads(match.group(1))
                     except: text = match.group(1)
+
                 repaired = text
+                # Repair incomplete lists
+                if repaired.count('[') > repaired.count(']'):
+                    repaired = re.sub(r'\{\s*"rank":.*$', '', repaired).strip()
+                    repaired = re.sub(r',\s*$', '', repaired)
+                    repaired += ']'
+                
                 repaired = re.sub(r',\s*$', '', repaired) 
                 repaired = re.sub(r',\s*\}', '}', repaired)
                 if repaired.count('"') % 2 != 0: repaired += '"'
                 open_braces = repaired.count('{') - repaired.count('}')
                 if open_braces > 0: repaired += '}' * open_braces
+                
                 try: return json.loads(repaired)
                 except:
                     if ',' in repaired:
@@ -106,39 +127,41 @@ async def _call_ai(session: AIGameSession, user_message: str, expected_action: O
             parsed = repair_and_parse(raw)
 
             if parsed and isinstance(parsed, dict):
-                # Normalize keys and action
                 output = parsed.get("output")
                 action = parsed.get("action")
                 
+                # Auto-infer action
                 if not action:
                     if output is not None: action = "test_result"
+                    elif "player_hand" in parsed: action = "dealt"
                     elif "rule" in parsed: action = "correct"
                     elif "hint" in parsed: action = "hint"
                     parsed["action"] = action
 
-                # STRIKE 1: Explicit check for "?" or empty output for test results
-                if expected_action == "test" and (not output or str(output).strip() == "?"):
-                    last_error = f"AI returned invalid/empty output: '{output}'"
-                    logger.warning(f"[{session.session_id[:8]}] Retry {attempt+1}: {last_error}")
-                    continue
+                # VALIDATION: Essential keys for Blackjack
+                if session.game_type == "blackjack":
+                    p_hand = parsed.get("player_hand")
+                    a_hand = parsed.get("ai_hand")
+                    if not p_hand or not isinstance(p_hand, list) or len(p_hand) == 0:
+                        last_error = "Missing or empty player_hand"
+                        continue
+                    if not a_hand or not isinstance(a_hand, list) or len(a_hand) == 0:
+                        last_error = "Missing or empty ai_hand"
+                        continue
 
-                # STRIKE 2: If we expected an action and got nothing relevant
-                if expected_action == "test" and action != "test_result":
-                    last_error = f"AI returned unexpected action: {action}"
-                    continue
-
-                # Success! Persist to context
+                # Success!
+                logger.info(f"[{session.session_id[:8]}] AI Game Master response parsed successfully. Action: {action}")
                 session.ai_context.append({"role": "user", "content": user_message})
                 session.ai_context.append({"role": "assistant", "content": json.dumps(parsed)})
                 return {"success": True, "parsed": parsed, "model": response.model or session.model}
 
-            last_error = "Malformed JSON"
+            last_error = "Malformed or incomplete JSON structure"
         except Exception as e:
             last_error = str(e)
             logger.warning(f"[{session.session_id[:8]}] Attempt {attempt+1} failed: {last_error}")
             await asyncio.sleep(0.3)
 
-    logger.error(f"[{session.session_id[:8]}] Final failure after {max_retries} attempts. Last RAW: {raw!r}")
+    logger.error(f"[{session.session_id[:8]}] Final failure after {max_retries} attempts.")
     return {"success": False, "error": f"AI Game Master Error: {last_error}"}
 
 
@@ -165,17 +188,18 @@ async def create_game(req: NewGameRequest):
         }
 
     parsed = result["parsed"]
-    max_attempts = parsed.get("max_attempts", 10 if req.difficulty == "easy" else 6 if req.difficulty == "medium" else 4)
-
-    return {
+    
+    # Base response
+    resp = {
         "success": True,
         "session_id": session.session_id,
-        "hint": parsed.get("hint", ""),
-        "max_attempts": max_attempts,
-        "history": [],
         "model_used": result.get("model", req.model),
         "difficulty": req.difficulty
     }
+    
+    # Merge AI fields (like player_hand, hint, etc.)
+    resp.update(parsed)
+    return resp
 
 
 @router.post("/action")
@@ -256,6 +280,7 @@ async def game_action(req: GameActionRequest):
             }
 
     # ── HINT ──────────────────────────────────────────────────────
+    # ── HINT ──────────────────────────────────────────────────────
     elif action == "hint":
         ai_msg = "Give me a hint please."
         result = await _call_ai(session, ai_msg, expected_action="hint")
@@ -267,7 +292,8 @@ async def game_action(req: GameActionRequest):
         return {
             "success": True,
             "action": "hint",
-            "hint": parsed.get("hint", "The pattern is subtle..."),
+            "hint": parsed.get("hint", parsed.get("message", "The dealer looks confident...")),
+            **parsed
         }
 
     # ── REVEAL ────────────────────────────────────────────────────
@@ -284,11 +310,40 @@ async def game_action(req: GameActionRequest):
             "success": True,
             "action": "reveal",
             "rule": parsed.get("rule", "Rule revealed"),
-            "message": parsed.get("message", "Game ended.")
+            "message": parsed.get("message", "Game ended."),
+            **parsed # Include any extra fields like final hands
         }
 
+    # ── DRAW (Generic / Card Specific) ────────────────────────────
+    elif action == "draw":
+        ai_msg = "I want to draw a card."
+        result = await _call_ai(session, ai_msg, expected_action="draw_result")
+        if not result["success"]: return {"success": False, "error": result["error"]}
+        
+        parsed = result["parsed"]
+        if parsed.get("completed"): session.completed = True
+        return {"success": True, **parsed}
+
+    # ── STAY (Generic / Card Specific) ────────────────────────────
+    elif action == "stay":
+        ai_msg = "I stay. Dealer's turn."
+        result = await _call_ai(session, ai_msg, expected_action="stay_result")
+        if not result["success"]: return {"success": False, "error": result["error"]}
+        
+        parsed = result["parsed"]
+        session.completed = True
+        return {"success": True, **parsed}
+
+    # ── CATCH-ALL FOR NEW GAMES ──────────────────────────────────
     else:
-        raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
+        # Just pass the action and data as a message to the AI
+        ai_msg = f"ACTION: {action}, DATA: {json.dumps(data)}"
+        result = await _call_ai(session, ai_msg)
+        if not result["success"]: return {"success": False, "error": result["error"]}
+        
+        parsed = result["parsed"]
+        if parsed.get("completed"): session.completed = True
+        return {"success": True, **parsed}
 
 
 @router.get("/session/{session_id}")

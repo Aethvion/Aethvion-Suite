@@ -46,8 +46,9 @@
     <link rel="stylesheet" href="/static/css/adv_aiconv.css">
     <link rel="stylesheet" href="/static/css/assistant.css">
     <link rel="stylesheet" href="/static/css/audio_studio.css">
-    <link rel="stylesheet" href="/static/css/games/games-shared.css">
-    <link rel="stylesheet" href="/static/css/games/logic-quest.css">
+    <link rel="stylesheet" href="/static/games/common/games-shared.css">
+    <link rel="stylesheet" href="/static/games/logic-quest/logic-quest.css">
+    <link rel="stylesheet" href="/static/games/blackjack/blackjack.css">
     <style>
         /* Audio Studio Specific Feedback */
         #audio-panel .radio-toggle input:checked+span {
@@ -148,8 +149,8 @@
                         <div class="dropdown-category">[Intelligence]</div>
                         <button class="nav-dropdown-item" data-subtab="game-logic-quest"><span
                                 class="tab-icon">🧩</span>Logic Quest</button>
-                        <button class="nav-dropdown-item" data-subtab="game-cipher-mystery"><span
-                                class="tab-icon">🕵️</span>Cipher Mystery</button>
+                        <button class="nav-dropdown-item" data-subtab="game-blackjack"><span
+                                class="tab-icon">🃏</span>Blackjack</button>
                     </div>
                 </div>
 
@@ -1899,21 +1900,85 @@
             </div>
         </div>
 
-        <!-- Games Panel: Cipher Mystery -->
-        <div class="main-tab-panel" id="game-cipher-mystery-panel">
-            <div class="game-layout">
+        <!-- Games Panel: Playing Cards -->
+        <div class="main-tab-panel" id="game-blackjack-panel">
+            <div class="game-layout" id="pc-container">
                 <div class="game-header">
                     <div class="game-header-left">
-                        <span class="game-icon">🕵️</span>
+                        <span class="game-icon">🃏</span>
                         <div class="game-title-block">
-                            <h2>Cipher Mystery</h2>
-                            <p class="game-subtitle">[AI Cryptography] — Coming Soon</p>
+                            <h2>Blackjack</h2>
+                            <p class="game-subtitle">AI Dealer — Blackjack Variant</p>
+                        </div>
+                    </div>
+                    <div class="game-vitals">
+                        <div class="game-stat">
+                            <span class="stat-label">WIN STREAK</span>
+                            <span id="pc-streak" class="stat-value">0</span>
+                        </div>
+                        <div class="game-stat">
+                            <span class="stat-label">DECK</span>
+                            <span id="pc-deck-count" class="stat-value">52</span>
                         </div>
                     </div>
                 </div>
+
+                <div class="game-toolbar">
+                    <label>Model:</label>
+                    <select id="pc-model-select"></select>
+                    <div class="game-toolbar-divider"></div>
+                    <label>Aggro:</label>
+                    <select id="pc-difficulty-select">
+                        <option value="easy">Passive</option>
+                        <option value="medium" selected>Rational</option>
+                        <option value="hard">Aggressive</option>
+                        <option value="expert">Card Counter</option>
+                    </select>
+                    <div class="toolbar-spacer"></div>
+                    <button class="game-btn secondary" id="pc-hint-btn"
+                        style="padding: 0.35rem 0.8rem; font-size: 0.75rem;">Get AI Tip</button>
+                    <button class="game-btn danger" id="pc-reveal-btn"
+                        style="padding: 0.35rem 0.8rem; font-size: 0.75rem; margin-left: 0.5rem;">Fold</button>
+                </div>
+
                 <div class="game-main">
-                    <div class="game-canvas">
-                        <div class="lq-display">The terminal is encrypted. AI-driven challenges coming soon.</div>
+                    <div class="game-canvas" id="pc-table">
+                        <!-- AI Side -->
+                        <div class="pc-side pc-ai-side">
+                            <div class="pc-label">AI DEALER <span id="pc-ai-score" class="pc-score-badge">0</span></div>
+                            <div id="pc-ai-hand" class="pc-hand"></div>
+                        </div>
+
+                        <div class="pc-divider"></div>
+
+                        <!-- Player Side -->
+                        <div class="pc-side pc-player-side">
+                            <div class="pc-label">PLAYER <span id="pc-player-score" class="pc-score-badge">0</span>
+                            </div>
+                            <div id="pc-player-hand" class="pc-hand"></div>
+                        </div>
+
+                        <!-- Game Message -->
+                        <div id="pc-display" class="game-ai-comment">Table is open. Start a new duel.</div>
+
+                        <!-- Overlay -->
+                        <div id="game-overlay-playing-cards" class="game-overlay" style="display:none;">
+                            <div class="overlay-title" id="pc-overlay-title">BUSTED</div>
+                            <div class="overlay-subtitle" id="pc-overlay-msg"></div>
+                            <button class="game-btn" onclick="startPlayingCards()">New Hand</button>
+                        </div>
+                    </div>
+
+                    <div class="game-card">
+                        <div class="section-label">DUEL LOG</div>
+                        <div id="pc-history" class="game-history">
+                            <div class="placeholder-text" style="padding:0.5rem;">No history</div>
+                        </div>
+
+                        <div class="game-controls">
+                            <button id="pc-hit-btn" class="game-btn">Hit / Draw</button>
+                            <button id="pc-stay-btn" class="game-btn secondary">Stay / End Turn</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2052,9 +2117,9 @@
         <script src="/static/js/mode-misakacipher.js?v=1"></script>
         <script src="/static/js/assistant.js?v=1"></script>
         <!-- Games View -->
-        <script src="/static/js/games/games-shared.js?v=1"></script>
-        <script src="/static/js/games/logic-quest.js?v=1"></script>
-        <script src="/static/js/games/cipher-mystery.js?v=1"></script>
+        <script src="/static/games/common/games-shared.js?v=1"></script>
+        <script src="/static/games/logic-quest/logic-quest.js?v=1"></script>
+        <script src="/static/games/blackjack/blackjack.js?v=1"></script>
 </body>
 
 </html>
