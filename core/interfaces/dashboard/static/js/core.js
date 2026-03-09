@@ -389,6 +389,10 @@ function switchMainTab(tabName, save = true) {
     else if (actualTabName === 'misaka-memory' && typeof refreshMisakaMemory === 'function') {
         refreshMisakaMemory();
     }
+    else if (actualTabName.startsWith('game-') && typeof handleGameTabSwitch === 'function') {
+        const gameType = actualTabName.replace('game-', '');
+        handleGameTabSwitch(gameType);
+    }
 
     // Update layout based on mode
     updateChatLayout();

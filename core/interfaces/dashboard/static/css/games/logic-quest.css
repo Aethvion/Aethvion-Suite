@@ -1,0 +1,82 @@
+/* =====================================================
+   Logic Quest: The Black Box — Game-Specific Styles
+   ===================================================== */
+
+/* Oracle visual: the mysterious black box */
+.lq-oracle {
+    width: 180px;
+    height: 180px;
+    border: 2px solid var(--primary);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    color: var(--primary);
+    background: rgba(0, 217, 255, 0.08);
+    box-shadow: 0 0 30px rgba(0, 217, 255, 0.4), inset 0 0 20px rgba(0, 217, 255, 0.1);
+    margin-bottom: 1.5rem;
+    animation: pulseGlow 3s infinite ease-in-out;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.lq-oracle.processing {
+    animation: oracleProcess 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes oracleProcess {
+    0% {
+        box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
+        border-color: var(--primary);
+    }
+
+    100% {
+        box-shadow: 0 0 60px rgba(0, 217, 255, 0.9);
+        border-color: #fff;
+    }
+}
+
+/* Central display text (shows last input/output) */
+.lq-display {
+    font-size: 1.3rem;
+    text-align: center;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+    min-height: 2rem;
+    transition: color 0.3s;
+    font-family: 'Fira Code', monospace;
+    max-width: 400px;
+}
+
+.lq-display.error {
+    color: var(--error, #ff4444);
+}
+
+.lq-display.correct {
+    color: var(--primary);
+}
+
+/* Starting hint badge */
+.lq-hint-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(0, 217, 255, 0.1);
+    border: 1px solid rgba(0, 217, 255, 0.3);
+    border-radius: 20px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 1.5rem;
+}
+
+/* Input area */
+.lq-input-zone {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 400px;
+}

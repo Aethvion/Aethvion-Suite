@@ -46,6 +46,8 @@
     <link rel="stylesheet" href="/static/css/adv_aiconv.css">
     <link rel="stylesheet" href="/static/css/assistant.css">
     <link rel="stylesheet" href="/static/css/audio_studio.css">
+    <link rel="stylesheet" href="/static/css/games/games-shared.css">
+    <link rel="stylesheet" href="/static/css/games/logic-quest.css">
     <style>
         /* Audio Studio Specific Feedback */
         #audio-panel .radio-toggle input:checked+span {
@@ -137,6 +139,20 @@
                             Conversations</button>
                     </div>
                 </div>
+
+                <!-- Games Dropdown -->
+                <div class="nav-dropdown">
+                    <button class="main-tab dropdown-trigger"><span class="tab-icon">🎮</span>Games <span
+                            class="dropdown-arrow">▾</span></button>
+                    <div class="nav-dropdown-menu">
+                        <div class="dropdown-category">[Intelligence]</div>
+                        <button class="nav-dropdown-item" data-subtab="game-logic-quest"><span
+                                class="tab-icon">🧩</span>Logic Quest</button>
+                        <button class="nav-dropdown-item" data-subtab="game-cipher-mystery"><span
+                                class="tab-icon">🕵️</span>Cipher Mystery</button>
+                    </div>
+                </div>
+
                 <button class="main-tab" data-maintab="misaka-cipher"><span class="tab-icon">✨</span>Misaka
                     Cipher</button>
                 <div class="nav-dropdown">
@@ -1793,6 +1809,114 @@
             </div> <!-- closes settings-dashboard -->
         </div> <!-- closes main-tab-panel (settings) -->
 
+        <!-- Games Panel: Logic Quest -->
+        <div class="main-tab-panel" id="game-logic-quest-panel">
+            <div class="game-layout">
+                <!-- Header -->
+                <div class="game-header">
+                    <div class="game-header-left">
+                        <span class="game-icon">🧩</span>
+                        <div class="game-title-block">
+                            <h2>Logic Quest: The Black Box</h2>
+                            <p class="game-subtitle">[Neural Deduction Game] — AI Driven</p>
+                        </div>
+                    </div>
+                    <div class="game-vitals">
+                        <div class="game-stat">
+                            <span class="stat-label">Attempts</span>
+                            <span class="stat-value" id="lq-attempts-display">0 / 10</span>
+                        </div>
+                        <div class="game-stat">
+                            <span class="stat-label">Current Score</span>
+                            <span class="stat-value" id="lq-score-display">0</span>
+                        </div>
+                        <button class="action-btn small secondary" id="lq-reset-btn" title="Reset Game"><i
+                                class="fas fa-undo"></i></button>
+                    </div>
+                </div>
+
+                <!-- Toolbar (Model & Difficulty) -->
+                <div class="game-toolbar">
+                    <label>Model:</label>
+                    <select id="lq-model-select"></select>
+                    <div class="game-toolbar-divider"></div>
+                    <label>Level:</label>
+                    <select id="lq-difficulty-select">
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                        <option value="expert">Expert</option>
+                    </select>
+                    <div class="toolbar-spacer"></div>
+                    <button class="game-btn secondary" id="lq-hint-btn"
+                        style="padding: 0.35rem 0.8rem; font-size: 0.75rem;">Get AI Hint</button>
+                </div>
+
+                <div class="game-main">
+                    <div class="game-canvas">
+                        <div id="lq-oracle" class="lq-oracle">?</div>
+
+                        <div class="lq-hint-badge">
+                            <i class="fas fa-info-circle"></i>
+                            <span id="lq-hint-text">Waiting for game start...</span>
+                        </div>
+
+                        <div id="lq-display" class="lq-display">Choose a model and hit reset to start.</div>
+
+                        <div class="lq-input-zone">
+                            <div class="game-input-group">
+                                <input type="text" id="lq-test-input" class="chat-input"
+                                    placeholder="Type a number or word to test...">
+                                <button id="lq-test-btn" class="game-btn">Test Output</button>
+                            </div>
+                        </div>
+
+                        <!-- Win Overlay -->
+                        <div id="game-overlay-logic-quest" class="game-overlay" style="display:none;">
+                            <div class="overlay-title">MYSTERY SOLVED</div>
+                            <div class="overlay-subtitle" id="lq-win-msg"></div>
+                            <div class="overlay-score" id="lq-win-score">Score: 0</div>
+                            <button class="game-btn" onclick="startLogicQuest()">Next Challenge</button>
+                        </div>
+                    </div>
+
+                    <div class="game-card">
+                        <div class="section-label">BLACK BOX LOGS</div>
+                        <div id="lq-history" class="game-history">
+                            <div class="placeholder-text" style="padding:0.5rem;">No tests yet</div>
+                        </div>
+
+                        <div class="section-label" style="margin-top:1rem;">DEDUCE RULE</div>
+                        <div class="game-controls">
+                            <input type="text" id="lq-guess-input" class="chat-input"
+                                placeholder="What is the secret rule?">
+                            <button id="lq-guess-btn" class="game-btn secondary">Submit Guess</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Games Panel: Cipher Mystery -->
+        <div class="main-tab-panel" id="game-cipher-mystery-panel">
+            <div class="game-layout">
+                <div class="game-header">
+                    <div class="game-header-left">
+                        <span class="game-icon">🕵️</span>
+                        <div class="game-title-block">
+                            <h2>Cipher Mystery</h2>
+                            <p class="game-subtitle">[AI Cryptography] — Coming Soon</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="game-main">
+                    <div class="game-canvas">
+                        <div class="lq-display">The terminal is encrypted. AI-driven challenges coming soon.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Documentation Panel -->
         <div class="main-tab-panel" id="documentation-panel">
             <div class="panel-header borderless">
@@ -1925,6 +2049,10 @@
         <script src="/static/js/mode-chat.js?v=1"></script>
         <script src="/static/js/mode-misakacipher.js?v=1"></script>
         <script src="/static/js/assistant.js?v=1"></script>
+        <!-- Games View -->
+        <script src="/static/js/games/games-shared.js?v=1"></script>
+        <script src="/static/js/games/logic-quest.js?v=1"></script>
+        <script src="/static/js/games/cipher-mystery.js?v=1"></script>
 </body>
 
 </html>

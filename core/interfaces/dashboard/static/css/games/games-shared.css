@@ -1,0 +1,346 @@
+/* =====================================================
+   Misaka Cipher — Shared Games Framework Styles
+   Included once; all games use these base classes
+   ===================================================== */
+
+/* Layout shell */
+.game-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 1.5rem;
+    background: radial-gradient(circle at top right, rgba(0, 217, 255, 0.05), transparent 60%);
+    gap: 1.5rem;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* ── Header ── */
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+    flex-shrink: 0;
+}
+
+.game-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.game-header-left .game-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.game-title-block h2 {
+    margin: 0;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    color: var(--primary);
+    letter-spacing: 0.05em;
+}
+
+.game-subtitle {
+    margin: 0.2rem 0 0;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-family: 'Fira Code', monospace;
+}
+
+/* ── Toolbar (model + difficulty selector row) ── */
+.game-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.game-toolbar label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+.game-toolbar select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 4px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.game-toolbar-divider {
+    width: 1px;
+    height: 1.5rem;
+    background: var(--border);
+}
+
+.game-toolbar .toolbar-spacer {
+    flex: 1;
+}
+
+/* ── Vitals strip ── */
+.game-vitals {
+    display: flex;
+    gap: 1.5rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.85rem;
+    align-items: center;
+}
+
+.game-stat {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-label {
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.stat-value {
+    color: var(--primary);
+    font-weight: bold;
+    font-size: 0.95rem;
+}
+
+/* ── Main play area ── */
+.game-main {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 1.5rem;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ── Canvas ── */
+.game-canvas {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Subtle grid overlay */
+.game-canvas::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(0, 217, 255, 0.025) 0px, transparent 1px),
+        repeating-linear-gradient(90deg, rgba(0, 217, 255, 0.025) 0px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+}
+
+/* ── Sidebar card ── */
+.game-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow: hidden;
+}
+
+/* ── History log ── */
+.game-history {
+    flex: 1;
+    overflow-y: auto;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.78rem;
+    min-height: 0;
+    padding-right: 2px;
+}
+
+.history-item {
+    padding: 0.4rem 0.6rem;
+    border-left: 2px solid var(--primary);
+    background: rgba(0, 217, 255, 0.04);
+    margin-bottom: 0.4rem;
+    border-radius: 0 4px 4px 0;
+    animation: slideInRight 0.25s ease-out;
+}
+
+.history-input {
+    color: var(--text-muted);
+}
+
+.history-output {
+    color: var(--primary);
+    font-weight: bold;
+}
+
+.history-comment {
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 0.72rem;
+    margin-top: 2px;
+}
+
+/* ── Controls ── */
+.game-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    flex-shrink: 0;
+}
+
+.game-input-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.game-input-group input {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ── Buttons ── */
+.game-btn {
+    background: var(--primary);
+    color: #000;
+    border: none;
+    padding: 0.55rem 1.1rem;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.game-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px var(--primary);
+}
+
+.game-btn:active {
+    transform: translateY(0);
+}
+
+.game-btn.secondary {
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+}
+
+.game-btn.secondary:hover {
+    background: rgba(0, 217, 255, 0.1);
+}
+
+.game-btn.danger {
+    background: transparent;
+    border: 1px solid var(--error, #ff4444);
+    color: var(--error, #ff4444);
+}
+
+.game-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ── AI comment bubble ── */
+.game-ai-comment {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-style: italic;
+    text-align: center;
+    padding: 0.5rem;
+    min-height: 1.5rem;
+    transition: color 0.3s;
+}
+
+/* ── Win / fail overlays ── */
+.game-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    animation: fadeIn 0.4s ease-in;
+    gap: 1rem;
+    text-align: center;
+    padding: 2rem;
+}
+
+.overlay-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.5rem;
+    color: var(--primary);
+    text-shadow: 0 0 20px var(--primary);
+}
+
+.overlay-subtitle {
+    font-size: 1rem;
+    color: var(--text);
+    max-width: 400px;
+    line-height: 1.6;
+}
+
+.overlay-score {
+    font-family: 'Fira Code', monospace;
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+
+/* ── Animations ── */
+@keyframes slideInRight {
+    from {
+        transform: translateX(16px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes pulseGlow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px var(--primary);
+    }
+
+    50% {
+        box-shadow: 0 0 40px var(--primary), inset 0 0 20px var(--primary);
+    }
+}
