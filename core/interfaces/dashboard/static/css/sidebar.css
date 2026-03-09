@@ -1,0 +1,164 @@
+/* ===== Sidebar Navigation Layout ===== */
+
+.content-wrapper {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    overflow: hidden;
+    /* Contains the sidebar and main-container */
+    position: relative;
+}
+
+.sidebar-nav {
+    width: 240px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 1rem 0.5rem;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 40;
+    /* Below header, above main content */
+    overflow-y: hidden;
+    overflow-x: hidden;
+}
+
+.sidebar-nav:hover {
+    overflow-y: auto;
+}
+
+/* Scrollbar styling for sidebar */
+.sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+/* Collapsed State */
+.sidebar-nav.collapsed {
+    width: 65px;
+    align-items: center;
+}
+
+/* Main Tab Overrides for Vertical Layout */
+.sidebar-nav .main-tabs {
+    flex-direction: column;
+    width: 100%;
+    align-items: stretch;
+}
+
+.sidebar-nav .main-tab {
+    padding: 0.4rem 0.75rem;
+    margin-bottom: 0.15rem;
+    justify-content: flex-start;
+    border-radius: var(--radius-md);
+    position: relative;
+    /* Ensure text wraps cleanly when collapsing */
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.sidebar-nav .tab-icon {
+    font-size: 1rem;
+    min-width: 20px;
+    text-align: center;
+    margin-right: 0.4rem;
+}
+
+/* Hide text and arrows when collapsed */
+.sidebar-nav.collapsed .main-tab {
+    padding: 0.5rem;
+    justify-content: center;
+    border-radius: var(--radius-full);
+}
+
+.sidebar-nav.collapsed .main-tab span:not(.tab-icon),
+.sidebar-nav.collapsed .tab-label {
+    display: none;
+}
+
+.sidebar-nav.collapsed .tab-icon {
+    margin-right: 0;
+}
+
+/* Sidebar Categories & Hierarchy */
+.sidebar-category {
+    padding: 0.3rem 0.75rem 0.15rem;
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 0.4rem;
+    pointer-events: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.sidebar-category:first-of-type {
+    margin-top: 0.25rem;
+}
+
+.sidebar-subitem {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.75rem;
+    margin-bottom: 0.1rem;
+}
+
+/* Hide categories effectively when collapsed */
+.sidebar-nav.collapsed .sidebar-category {
+    font-size: 0;
+    padding: 0;
+    margin: 0.5rem auto;
+    width: 20px;
+    height: 1px;
+    background: var(--border);
+    border-radius: 1px;
+    color: transparent;
+}
+
+/* Sidebar Toggle Button */
+.sidebar-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin-left: 1rem;
+    transition: all 0.2s;
+}
+
+.sidebar-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.sidebar-open-icon {
+    display: block;
+}
+
+.sidebar-close-icon {
+    display: none;
+}
+
+.sidebar-nav.collapsed~* .sidebar-open-icon {
+    display: none;
+}
+
+.sidebar-nav.collapsed~* .sidebar-close-icon {
+    display: block;
+}

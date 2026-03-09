@@ -5,8 +5,12 @@
 let chatWs = null;
 let logsWs = null;
 let agentsWs = null;
+// Global UI State
 let currentMainTab = 'chat';
-let prevChatArenaMode = 'chat'; // Used to resume chat/arena
+let dashboardMode = 'enterprise'; // or 'rd'
+
+// Available Workspaces (from server config if any, mostly legacy but kept for reference)
+let availableWorkspaces = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Start polling startup status (non-blocking)
@@ -25,6 +29,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (response.ok) {
         const data = await response.json();
         if (data.value) switchMainTab(data.value, false);
+    }
+
+    // Restore persisted dashboard mode
+    const modeResponse = await fetch('/api/preferences/get?key=dashboard_mode');
+    if (modeResponse.ok) {
+        const modeData = await modeResponse.json();
+        if (modeData.value) {
+            setDashboardMode(modeData.value, false); // Load without saving again
+        } else {
+            setDashboardMode('enterprise', false); // Default to enterprise if not set
+        }
+    } else {
+        setDashboardMode('enterprise', false); // Default to enterprise if fetch fails
+    }
+
+    // Restore persisted sidebar state
+    const sidebarResponse = await fetch('/api/preferences/get?key=sidebar_collapsed');
+    if (sidebarResponse.ok) {
+        const sidebarData = await sidebarResponse.json();
+        if (sidebarData.value === true || sidebarData.value === 'true') {
+            const sidebarNav = document.getElementById('sidebar-nav');
+            if (sidebarNav) sidebarNav.classList.add('collapsed');
+        }
     }
 });
 
@@ -122,26 +149,34 @@ function updateConnectionStatus(connected) {
 // ===== UI Initialization =====
 
 function initializeUI() {
-    // Main tab switching (skip dropdown-managed tabs)
+    // Main tab switching
     document.querySelectorAll('.main-tab').forEach(tab => {
-        if (tab.closest('.main-tab-dropdown') || tab.closest('.nav-dropdown')) {
-            // Dropdowns are handled differently
-            if (tab.classList.contains('dropdown-trigger')) {
-                // Trigger itself doesn't switch tabs, just shows dropdown via CSS
-                return;
-            }
+        if (tab.dataset.maintab) {
+            tab.addEventListener('click', () => switchMainTab(tab.dataset.maintab));
         }
-        tab.addEventListener('click', () => switchMainTab(tab.dataset.maintab));
     });
 
-    // Nav Dropdown items
-    document.querySelectorAll('.nav-dropdown-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const subtab = item.dataset.subtab;
-            switchMainTab(subtab);
+    // Sidebar Toggle
+    const sidebarToggleBtn = document.getElementById('sidebar-toggle');
+    const sidebarNav = document.getElementById('sidebar-nav');
+    if (sidebarToggleBtn && sidebarNav) {
+        sidebarToggleBtn.addEventListener('click', () => {
+            sidebarNav.classList.toggle('collapsed');
+            if (typeof savePreference === 'function') {
+                savePreference('sidebar_collapsed', sidebarNav.classList.contains('collapsed'));
+            }
+        });
+    }
+
+    // Register mode toggle handlers
+    document.querySelectorAll('#dashboard-mode-toggle .mode-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            setDashboardMode(this.dataset.value);
         });
     });
+
+    // Start checking for external changes periodically
+    pollForExternalChanges();
 
     // Chat interaction
     const chatInput = document.getElementById('chat-input');
@@ -292,6 +327,64 @@ function initializeUI() {
 
     if (typeof initializeArena === 'function') initializeArena();
     if (typeof initializeImageStudio === 'function') initializeImageStudio();
+}
+
+// ------------------------------------------------------------------
+// Main Navigation Logic
+// ------------------------------------------------------------------
+function setDashboardMode(mode, save = true) {
+    if (mode !== 'enterprise' && mode !== 'rd') return;
+    dashboardMode = mode;
+
+    if (save && typeof savePreference === 'function') {
+        savePreference('dashboard_mode', dashboardMode);
+    }
+
+    // Update toggle buttons UI visually
+    document.querySelectorAll('#dashboard-mode-toggle .mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.value === dashboardMode);
+    });
+
+    // Toggle body classes for theme overrides
+    document.body.classList.remove('theme-enterprise', 'theme-rd');
+    document.body.classList.add(`theme-${dashboardMode}`);
+
+    // Hide/Show navigation elements based on mode
+    // mode-enterprise should be hidden if mode===rd
+    // mode-rd should be hidden if mode===enterprise
+    document.querySelectorAll('.mode-enterprise').forEach(el => {
+        if (dashboardMode !== 'enterprise') {
+            el.classList.add('mode-hidden');
+        } else {
+            el.classList.remove('mode-hidden');
+        }
+    });
+
+    document.querySelectorAll('.mode-rd').forEach(el => {
+        if (dashboardMode !== 'rd') {
+            el.classList.add('mode-hidden');
+        } else {
+            el.classList.remove('mode-hidden');
+        }
+    });
+
+    // Enforce active tab validation
+    // If the currently active tab belongs to the hidden mode, switch to the mode's default tab
+    let needsRedirect = false;
+    let fallbackTab = dashboardMode === 'enterprise' ? 'chat' : 'advaiconv';
+
+    // Check if current tab's button is hidden
+    const activeTabBtns = Array.from(document.querySelectorAll('.main-tab.active, .tab-dropdown-item.active, .nav-dropdown-item.active'));
+    for (const btn of activeTabBtns) {
+        if (btn.classList.contains('mode-hidden')) {
+            needsRedirect = true;
+            break;
+        }
+    }
+
+    if (needsRedirect) {
+        switchMainTab(fallbackTab);
+    }
 }
 
 function switchMainTab(tabName, save = true) {
