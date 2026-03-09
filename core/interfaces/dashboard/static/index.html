@@ -50,6 +50,8 @@
     <link rel="stylesheet" href="/static/games/logic-quest/logic-quest.css">
     <link rel="stylesheet" href="/static/games/blackjack/blackjack.css">
     <link rel="stylesheet" href="/static/games/results/results.css">
+    <link rel="stylesheet" href="/static/games/sudoku/sudoku.css">
+    <link rel="stylesheet" href="/static/games/word_search/word_search.css">
     <style>
         /* Audio Studio Specific Feedback */
         #audio-panel .radio-toggle input:checked+span {
@@ -154,6 +156,11 @@
                                 class="tab-icon">🧩</span>Logic Quest</button>
                         <button class="nav-dropdown-item" data-subtab="game-blackjack"><span
                                 class="tab-icon">🃏</span>Blackjack</button>
+                        <div class="dropdown-category">[Brain Games]</div>
+                        <button class="nav-dropdown-item" data-subtab="game-sudoku"><span
+                                class="tab-icon">🔢</span>Sudoku</button>
+                        <button class="nav-dropdown-item" data-subtab="game-word-search"><span
+                                class="tab-icon">🔠</span>Word Search</button>
                     </div>
                 </div>
 
@@ -2026,6 +2033,100 @@
             </div>
         </div>
 
+        <!-- Games Panel: Word Search -->
+        <div class="main-tab-panel" id="game-word-search-panel">
+            <div class="game-header">
+                <div class="game-header-left">
+                    <span class="game-icon">🔠</span>
+                    <div class="game-title-block">
+                        <h2>Word Search</h2>
+                        <p class="game-subtitle">Find the hidden tech terms</p>
+                    </div>
+                </div>
+                <div class="game-toolbar" style="background:transparent; border:none; margin:0; padding:0 15px;">
+                    <select id="ws-size-select" style="background: rgba(255,255,255,0.05);">
+                        <option value="10">10x10</option>
+                        <option value="12">12x12</option>
+                        <option value="15" selected>15x15</option>
+                        <option value="20">20x20</option>
+                    </select>
+                    <button id="ws-restart-btn" class="action-btn secondary">New Puzzle</button>
+                </div>
+            </div>
+            <div class="word-search-layout">
+                <div class="ws-progress-container">
+                    <div id="ws-progress-bar" class="ws-progress-bar"></div>
+                </div>
+                <div class="ws-main">
+                    <div class="ws-sidebar">
+                        <h3 style="margin-top: 0;">Words to Find</h3>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">
+                            Found <span id="ws-found-count">0</span> of <span id="ws-total-count">0</span>
+                        </div>
+                        <div id="ws-words-list" class="ws-words-list"></div>
+                    </div>
+                    <div class="ws-board-container">
+                        <div id="ws-grid" class="ws-grid" data-size="15"></div>
+                    </div>
+                </div>
+                <div id="game-overlay-word-search" class="game-overlay" style="display:none;">
+                    <div class="overlay-title">ALL WORDS FOUND</div>
+                    <button class="game-btn" onclick="document.getElementById('ws-restart-btn').click();">Next
+                        Puzzle</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Games Panel: Sudoku -->
+        <div class="main-tab-panel" id="game-sudoku-panel">
+            <div class="game-header">
+                <div class="game-header-left">
+                    <span class="game-icon">🔢</span>
+                    <div class="game-title-block">
+                        <h2>Sudoku</h2>
+                        <p class="game-subtitle">Logic-based number placement</p>
+                    </div>
+                </div>
+                <div class="game-toolbar" style="background:transparent; border:none; margin:0; padding:0 15px;">
+                    <button id="su-undo-btn" class="action-btn secondary" title="Undo"><i
+                            class="fas fa-undo"></i></button>
+                    <button id="su-hint-btn" class="action-btn secondary" title="Hint"><i
+                            class="fas fa-lightbulb"></i></button>
+                    <select id="su-difficulty-select" style="background: rgba(255,255,255,0.05); margin-left: 10px;">
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                    <button id="su-restart-btn" class="action-btn secondary">New Game</button>
+                </div>
+            </div>
+            <div class="sudoku-layout">
+                <div class="su-main">
+                    <div class="su-board-container">
+                        <div id="su-grid" class="su-grid"></div>
+                    </div>
+                    <div class="su-keypad">
+                        <button class="su-key" data-val="1">1</button>
+                        <button class="su-key" data-val="2">2</button>
+                        <button class="su-key" data-val="3">3</button>
+                        <button class="su-key" data-val="4">4</button>
+                        <button class="su-key" data-val="5">5</button>
+                        <button class="su-key" data-val="6">6</button>
+                        <button class="su-key" data-val="7">7</button>
+                        <button class="su-key" data-val="8">8</button>
+                        <button class="su-key" data-val="9">9</button>
+                        <button class="su-key" data-val="clear" style="color: #ff4757; font-size: 1rem;"><i
+                                class="fas fa-eraser"></i></button>
+                    </div>
+                </div>
+                <div id="game-overlay-sudoku" class="game-overlay" style="display:none;">
+                    <div class="overlay-title">PUZZLE SOLVED</div>
+                    <button class="game-btn" onclick="document.getElementById('su-restart-btn').click();">Next
+                        Puzzle</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Documentation Panel -->
         <div class="main-tab-panel" id="documentation-panel">
             <div class="panel-header borderless">
@@ -2163,6 +2264,8 @@
         <script src="/static/games/logic-quest/logic-quest.js?v=1"></script>
         <script src="/static/games/blackjack/blackjack.js?v=1"></script>
         <script src="/static/games/results/results.js?v=1"></script>
+        <script src="/static/games/word_search/word_search.js?v=1"></script>
+        <script src="/static/games/sudoku/sudoku.js?v=1"></script>
 </body>
 
 </html>

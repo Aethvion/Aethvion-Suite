@@ -1,0 +1,201 @@
+/**
+ * Misaka Cipher — Word Search (CSS)
+ */
+
+.word-search-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.ws-main {
+    display: flex;
+    flex-direction: row;
+    gap: 30px;
+    margin-top: 20px;
+    flex: 1;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+/* ─── Grid Area ─── */
+.ws-board-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.ws-grid {
+    display: grid;
+    gap: 2px;
+    background: var(--border);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    user-select: none;
+    touch-action: none;
+    /* Prevent scroll on touch drag */
+}
+
+.ws-cell {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 600;
+    font-family: 'Fira Code', monospace;
+    cursor: crosshair;
+    transition: all 0.1s ease;
+    text-transform: uppercase;
+}
+
+/* Default cell sizes */
+.ws-grid[data-size="10"] .ws-cell {
+    width: 40px;
+    height: 40px;
+    font-size: 1.4rem;
+}
+
+.ws-grid[data-size="12"] .ws-cell {
+    width: 35px;
+    height: 35px;
+    font-size: 1.2rem;
+}
+
+.ws-grid[data-size="15"] .ws-cell {
+    width: 30px;
+    height: 30px;
+    font-size: 1.1rem;
+}
+
+.ws-grid[data-size="20"] .ws-cell {
+    width: 25px;
+    height: 25px;
+    font-size: 0.9rem;
+}
+
+.ws-cell:hover {
+    background: rgba(0, 217, 255, 0.1);
+}
+
+.ws-cell.selected {
+    background: var(--primary);
+    color: #000;
+    font-weight: bold;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+.ws-cell.found {
+    background: rgba(0, 255, 136, 0.2);
+    color: #00ff88;
+    text-shadow: 0 0 5px rgba(0, 255, 136, 0.5);
+    border-color: rgba(0, 255, 136, 0.3);
+}
+
+.ws-cell.found.selected {
+    background: #00ff88;
+    color: #000;
+    text-shadow: none;
+}
+
+/* ─── Word List Area ─── */
+.ws-sidebar {
+    width: 250px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.ws-words-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 15px;
+    overflow-y: auto;
+    flex: 1;
+    max-height: 500px;
+}
+
+.ws-word-item {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-left: 3px solid transparent;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    letter-spacing: 1px;
+}
+
+.ws-word-item.found {
+    color: #00ff88;
+    background: rgba(0, 255, 136, 0.05);
+    border-left-color: #00ff88;
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+.ws-progress-container {
+    margin-top: 15px;
+    background: var(--bg-tertiary);
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.ws-progress-bar {
+    height: 100%;
+    background: var(--primary);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+/* ─── Toolbar ─── */
+.ws-toolbar {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .ws-main {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ws-sidebar {
+        width: 100%;
+        max-width: 500px;
+    }
+
+    .ws-words-list {
+        flex-direction: row;
+        flex-wrap: wrap;
+        max-height: auto;
+    }
+
+    .ws-word-item {
+        flex: 1 1 120px;
+        text-align: center;
+    }
+}
