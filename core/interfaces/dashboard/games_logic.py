@@ -40,30 +40,32 @@ class AIGameSession:
         """Build the system prompt for the game master AI based on game type and difficulty."""
         if self.game_type == "logic-quest":
             difficulty_hints = {
-                "easy":   "The rule should be simple (e.g., multiply by 2, add 5, reverse the string, append characters). Inputs will typically be single small integers or short words.",
-                "medium": "The rule should be moderate complexity (e.g., count vowels * 10, concatenate first and last char, square the length, sort characters alphabetically).",
-                "hard":   "The rule should be complex and non-obvious (e.g., sum of ASCII values mod 97, Fibonacci position lookup, count unique characters squared, Caesar cipher shift by length).",
-                "expert": "The rule should be very hard — multi-step, combinatorial, or involving unusual mathematical/string operations."
+                "easy":   "The rule should be simple (e.g., multiply by 2, add 5, reverse the string). Inputs will be small integers or words.",
+                "medium": "The rule should be moderate (e.g., count vowels * 10, concatenate first and last char, square the length).",
+                "hard":   "The rule should be complex (e.g., sum of ASCII values mod 97, Fibonacci position lookup, Caesar shift).",
+                "expert": "The rule should be very hard — multi-step or combinatorial logic."
             }
             hint = difficulty_hints.get(self.difficulty, difficulty_hints["easy"])
             return f"""You are the Game Master AI for 'Logic Quest: The Black Box'.
 
 == RULES ==
-- You hold a SECRET TRANSFORMATION RULE in your mind. NEVER reveal it directly.
-- When the user tests an input, apply your secret rule and return ONLY the output value.
-- When the user guesses the rule, evaluate their guess generously — accept paraphrases and synonyms if they capture the essence.
-- When starting a new game, silently pick a rule and confirm you're ready.
-- {hint}
+- You hold a SECRET rule. Inputs → Outputs. 
+- NEVER reveal the rule in the 'comment' or 'hint'.
+- When the user tests an input: apply the rule and return valid JSON.
+- When the user guesses: evaluate generously but accurately.
 
-== RESPONSE FORMAT ==
-You must respond ONLY with valid JSON. No prose, no markdown.
+== STRICT RESPONSE FORMAT (JSON ONLY) ==
+Every response MUST be a single JSON object. No markdown fences if possible, no preamble.
 
-For a new game start: {{"action": "ready", "hint": "<short vague hint like 'involves numbers' or 'about the characters'>", "max_attempts": <int>}}
-For a test input: {{"action": "test_result", "output": "<result>", "comment": "<optional witty 1-sentence comment, never reveal the rule>"}}
-For a correct guess: {{"action": "correct", "rule": "<your actual rule, now revealed>", "message": "<congratulations message>"}}
-For a wrong guess: {{"action": "wrong", "message": "<hint nudge without revealing the rule>"}}
-For a hint request: {{"action": "hint", "hint": "<a useful but vague nudge>"}}"""
-        return "You are a game master AI."
+1. New Game: {{"action": "ready", "hint": "vague hint", "max_attempts": 10}}
+2. Test Input: {{"action": "test_result", "output": "result", "comment": "witty remark"}}
+3. Correct Guess: {{"action": "correct", "rule": "reveal rule", "message": "congrats"}}
+4. Wrong Guess: {{"action": "wrong", "message": "nudge hint"}}
+5. Hint Request: {{"action": "hint", "hint": "help nudge"}}
+
+Current Difficulty: {self.difficulty}
+{hint}"""
+        return "You are a game master AI. Respond in JSON."
 
     def get_opening_message(self) -> Dict[str, Any]:
         """Get the message to send to AI on session start."""

@@ -66,6 +66,10 @@ class GoogleAIProvider(BaseProvider):
             if system_prompt:
                 config_params['system_instruction'] = system_prompt
             
+            # Support JSON mode if requested
+            if kwargs.get('json_mode'):
+                config_params['response_mime_type'] = 'application/json'
+            
             # Remove unsupported kwargs
             kwargs.pop('json_mode', None)
             kwargs.pop('model', None)

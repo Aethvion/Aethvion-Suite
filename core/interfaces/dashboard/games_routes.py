@@ -39,20 +39,19 @@ async def _call_ai(session: AIGameSession, user_message: str) -> Dict[str, Any]:
     """
     from core.providers import ProviderManager
 
-    # Build conversation: system prompt + history + new message
-    session.ai_context.append({"role": "user", "content": user_message})
+    # Manage context length to avoid token bloat (at most last 15 messages)
+    if len(session.ai_context) > 15:
+        session.ai_context = session.ai_context[-15:]
 
-    # Flatten to a single prompt (most providers support system + user turns via kwargs)
     system_prompt = session._build_system_prompt()
     history_text = ""
-    for msg in session.ai_context[:-1]:   # all except the latest
+    for msg in session.ai_context[:-1]:
         role = "User" if msg["role"] == "user" else "AI"
         history_text += f"{role}: {msg['content']}\n"
 
-    full_prompt = (
-        f"{system_prompt}\n\n"
-        f"== CONVERSATION HISTORY ==\n{history_text}\n"
-        f"== LATEST USER MESSAGE ==\n{user_message}"
+    latest_prompt = (
+        f"== HISTORY ==\n{history_text}\n"
+        f"== NEW INPUT ==\n{user_message}"
     )
 
     try:
@@ -61,33 +60,79 @@ async def _call_ai(session: AIGameSession, user_message: str) -> Dict[str, Any]:
         response = await loop.run_in_executor(
             None,
             lambda: pm.call_with_failover(
-                prompt=full_prompt,
+                prompt=latest_prompt,
+                system_prompt=system_prompt,
                 trace_id=f"game-{session.session_id[:8]}",
-                temperature=0.8,
-                max_tokens=400,
+                temperature=0.1,  
+                max_tokens=600,   # 600 is plenty for one JSON object
                 model=session.model,
+                json_mode=True,   
                 source="game"
             )
         )
 
         raw = response.content.strip() if response.success else ""
+        if not raw:
+            return {"success": False, "error": "AI returned empty response"}
 
-        # Strip optional markdown fences
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        raw = raw.strip()
+        # --- High-Resilience JSON Repair ---
+        def repair_and_parse(text):
+            text = text.strip()
+            # 1. Direct try
+            try:
+                return json.loads(text)
+            except:
+                pass
+            
+            # 2. Extract block
+            import re
+            match = re.search(r'(\{.*\})', text, re.DOTALL)
+            if match:
+                try: return json.loads(match.group(1))
+                except: text = match.group(1)
 
-        parsed = json.loads(raw)
-        session.ai_context.append({"role": "assistant", "content": raw})
-        return {"success": True, "parsed": parsed, "model": response.model or session.model}
+            # 3. Truncated Repair Logic
+            repaired = text
+            # Handle trailing comma inside object
+            repaired = re.sub(r',\s*$', '', repaired) 
+            repaired = re.sub(r',\s*\}', '}', repaired)
 
-    except json.JSONDecodeError as e:
-        logger.warning(f"Game AI returned non-JSON: {raw!r} — {e}")
-        # Try to salvage a text response
-        session.ai_context.append({"role": "assistant", "content": raw})
-        return {"success": False, "error": "AI returned malformed JSON", "raw": raw}
+            # Close open quotes
+            if repaired.count('"') % 2 != 0:
+                repaired += '"'
+            
+            # Balance braces
+            open_braces = repaired.count('{') - repaired.count('}')
+            if open_braces > 0:
+                repaired += '}' * open_braces
+            
+            # Final attempt
+            try:
+                return json.loads(repaired)
+            except:
+                # One last try: remove partial final key-value
+                if ',' in repaired:
+                    last_comma = repaired.rfind(',')
+                    try:
+                        return json.loads(repaired[:last_comma] + '}')
+                    except:
+                        pass
+            return None
+
+        parsed = repair_and_parse(raw)
+
+        if parsed and isinstance(parsed, dict):
+            # Action inference
+            if "action" not in parsed:
+                if "output" in parsed: parsed["action"] = "test_result"
+                elif "hint" in parsed: parsed["action"] = "hint"
+            
+            session.ai_context.append({"role": "assistant", "content": json.dumps(parsed)})
+            return {"success": True, "parsed": parsed, "model": response.model or session.model}
+
+        logger.error(f"Game AI extraction failed. Raw content: {raw!r}")
+        return {"success": False, "error": "AI response structure invalid", "raw": raw}
+
     except Exception as e:
         logger.error(f"Game AI call failed: {e}")
         return {"success": False, "error": str(e)}
