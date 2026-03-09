@@ -62,6 +62,7 @@ Every response MUST be a single JSON object. No markdown fences if possible, no 
 3. Correct Guess: {{"action": "correct", "rule": "reveal rule", "message": "congrats"}}
 4. Wrong Guess: {{"action": "wrong", "message": "nudge hint"}}
 5. Hint Request: {{"action": "hint", "hint": "help nudge"}}
+6. Reveal Answer: {{"action": "reveal", "rule": "reveal the rule", "message": "explanation"}}
 
 Current Difficulty: {self.difficulty}
 {hint}"""

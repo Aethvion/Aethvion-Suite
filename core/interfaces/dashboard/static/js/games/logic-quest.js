@@ -22,6 +22,7 @@
         hintBadge: 'lq-hint-text',
         resetBtn: 'lq-reset-btn',
         hintBtn: 'lq-hint-btn',
+        revealBtn: 'lq-reveal-btn',
         oracle: 'lq-oracle'
     };
 
@@ -182,6 +183,40 @@
         } catch (err) { }
     }
 
+    /**
+     * Reveal the secret rule
+     */
+    async function revealAnswer() {
+        if (!session || session.completed) return;
+
+        if (!confirm("Are you sure you want to give up and see the answer?")) return;
+
+        const oracle = document.getElementById(elements.oracle);
+        if (oracle) oracle.classList.add('processing');
+
+        try {
+            const data = await gameApiPost('action', {
+                session_id: session.id,
+                action: 'reveal',
+                data: {}
+            });
+
+            if (data.success) {
+                session.completed = true;
+                setGameDisplay(document.getElementById(elements.display), 'Game Over. Answer revealed.', 'error');
+                showGameOverlay('logic-quest', {
+                    title: 'GAVE UP',
+                    subtitle: `The secret rule was: ${data.rule}\n\n${data.message}`,
+                    score: 0
+                });
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            if (oracle) oracle.classList.remove('processing');
+        }
+    }
+
     // Initialize the module
     document.addEventListener('DOMContentLoaded', () => {
         // Models dropdown
@@ -192,6 +227,7 @@
         document.getElementById(elements.guessBtn)?.addEventListener('click', submitGuess);
         document.getElementById(elements.resetBtn)?.addEventListener('click', startNewGame);
         document.getElementById(elements.hintBtn)?.addEventListener('click', requestHint);
+        document.getElementById(elements.revealBtn)?.addEventListener('click', revealAnswer);
 
         document.getElementById(elements.testInput)?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') testInput();
