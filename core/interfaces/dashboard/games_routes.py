@@ -468,6 +468,21 @@ async def get_game_stats():
         return {"success": False, "error": str(e)}
 
 
+@router.delete("/stats/{game_type}")
+async def clear_game_history(game_type: str):
+    """Clear memory history for a specific game."""
+    try:
+        from pathlib import Path
+        root = Path(__file__).parent.parent.parent.parent
+        history_file = root / "data" / "memory" / "storage" / "games" / game_type / "history.json"
+        
+        if history_file.exists():
+            history_file.unlink()
+            return {"success": True, "message": f"History for {game_type} cleared."}
+        return {"success": False, "error": "History file not found."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @router.get("/models")
 async def get_available_models():
     """Return list of available models for game selection."""

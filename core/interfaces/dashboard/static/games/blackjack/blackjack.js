@@ -5,6 +5,8 @@
 (function () {
     let session = null;
     let streak = 0;
+    let lastAction = null;
+    let lastData = null;
 
     const elements = {
         panel: 'game-blackjack-panel',
@@ -18,6 +20,7 @@
         playerScore: 'pc-player-score',
         hitBtn: 'pc-hit-btn',
         stayBtn: 'pc-stay-btn',
+        resetBtn: 'pc-reset-btn',
         hintBtn: 'pc-hint-btn',
         revealBtn: 'pc-reveal-btn',
         overlay: 'game-overlay-playing-cards',
@@ -43,6 +46,8 @@
             });
 
             if (data.success) {
+                lastAction = 'new';
+                lastData = { game_type: 'blackjack', difficulty, model };
                 session = {
                     id: data.session_id,
                     completed: false
@@ -50,10 +55,10 @@
                 updateUI(data);
                 setTimeout(() => setDealerBubble('Cards dealt. Your move.'), 800);
             } else {
-                setDealerBubble(`Error: ${data.error}`, true);
+                handleError(data, 'new');
             }
         } catch (err) {
-            setDealerBubble('Failed to start duel.', true);
+            handleError({ error: 'Connection failed.' }, 'new');
         }
     }
 
@@ -64,19 +69,24 @@
         if (!session || session.completed) return;
         setDealerBubble('Dealing...', true);
 
+        lastAction = 'draw';
+        lastData = { target: 'player' };
+
         try {
             const data = await gameApiPost('action', {
                 session_id: session.id,
-                action: 'draw',
-                data: { target: 'player' }
+                action: lastAction,
+                data: lastData
             });
 
             if (data.success) {
                 updateUI(data);
                 if (data.completed) handleGameOver(data);
                 else setTimeout(() => setDealerBubble('Hit again, or stay?'), 500);
+            } else {
+                handleError(data, 'draw');
             }
-        } catch (err) { }
+        } catch (err) { handleError({ error: 'Action failed.' }, 'draw'); }
     }
 
     /**
@@ -86,18 +96,23 @@
         if (!session || session.completed) return;
         setDealerBubble('Dealer\'s turn...', true);
 
+        lastAction = 'stay';
+        lastData = {};
+
         try {
             const data = await gameApiPost('action', {
                 session_id: session.id,
-                action: 'stay',
-                data: {}
+                action: lastAction,
+                data: lastData
             });
 
             if (data.success) {
                 updateUI(data);
                 handleGameOver(data);
+            } else {
+                handleError(data, 'stay');
             }
-        } catch (err) { }
+        } catch (err) { handleError({ error: 'Action failed.' }, 'stay'); }
     }
 
     /**
@@ -107,13 +122,18 @@
         if (!session) return;
         setDealerBubble('Hm, let me think about that...', true);
 
+        lastAction = 'hint';
+        lastData = {};
+
         try {
-            const data = await gameApiPost('action', { session_id: session.id, action: 'hint', data: {} });
+            const data = await gameApiPost('action', { session_id: session.id, action: lastAction, data: lastData });
             if (data.success) {
                 const tip = data.message || data.hint || "The dealer looks confident.";
                 setTimeout(() => setDealerBubble(tip), 600);
+            } else {
+                handleError(data, 'hint');
             }
-        } catch (err) { }
+        } catch (err) { handleError({ error: 'Action failed.' }, 'hint'); }
     }
 
     /**
@@ -123,13 +143,44 @@
         if (!session || session.completed) return;
         if (!confirm("Fold and lose this hand?")) return;
 
+        lastAction = 'reveal';
+        lastData = {};
+
         try {
-            const data = await gameApiPost('action', { session_id: session.id, action: 'reveal', data: {} });
+            const data = await gameApiPost('action', { session_id: session.id, action: lastAction, data: lastData });
             if (data.success) {
                 updateUI(data);
                 handleGameOver(data);
+            } else {
+                handleError(data, 'reveal');
             }
-        } catch (err) { }
+        } catch (err) { handleError({ error: 'Action failed.' }, 'reveal'); }
+    }
+
+    async function retryLastAction() {
+        if (!lastAction) return;
+        if (lastAction === 'new') startNewDuel();
+        else if (lastAction === 'draw') hit();
+        else if (lastAction === 'stay') stay();
+        else if (lastAction === 'hint') getTip();
+        else if (lastAction === 'reveal') fold();
+    }
+
+    function handleError(data, action) {
+        lastAction = action;
+        const msg = data.error || "The AI is stuck. Try again?";
+        const bubble = document.getElementById(elements.display);
+
+        bubble.innerHTML = `
+            <div style="color:#ff7675; margin-bottom:10px;">⚠️ ${msg}</div>
+            <button class="bj-btn bj-btn-primary" style="padding:5px 15px; font-size:0.7rem;" id="bj-retry-ai">Retry AI</button>
+        `;
+        bubble.classList.add('active');
+
+        document.getElementById('bj-retry-ai')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            retryLastAction();
+        });
     }
 
     /**
@@ -233,6 +284,7 @@
 
         document.getElementById(elements.hitBtn)?.addEventListener('click', hit);
         document.getElementById(elements.stayBtn)?.addEventListener('click', stay);
+        document.getElementById(elements.resetBtn)?.addEventListener('click', startNewDuel);
         document.getElementById(elements.hintBtn)?.addEventListener('click', getTip);
         document.getElementById(elements.revealBtn)?.addEventListener('click', fold);
 

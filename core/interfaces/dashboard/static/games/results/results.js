@@ -21,6 +21,22 @@
         }
     }
 
+    async function clearHistory(gameType) {
+        if (!confirm(`Are you sure you want to clear history for ${gameType}?`)) return;
+
+        try {
+            const resp = await fetch(`/api/games/stats/${gameType}`, { method: 'DELETE' });
+            const data = await resp.json();
+            if (data.success) {
+                loadStats();
+            } else {
+                alert("Error: " + data.error);
+            }
+        } catch (err) {
+            console.error("Clear failed:", err);
+        }
+    }
+
     function updateUI(data) {
         const stats = data.stats;
         document.getElementById(elements.totalGames).textContent = stats.total_games;
@@ -58,6 +74,13 @@
                         <span class="type-stat-val">${winRatio}%</span>
                     </div>
                 `;
+
+                const clearBtn = document.createElement('button');
+                clearBtn.className = 'clear-hist-btn';
+                clearBtn.textContent = 'Clear History';
+                clearBtn.onclick = () => clearHistory(gameType);
+
+                card.appendChild(clearBtn);
                 breakdown.appendChild(card);
             }
         }

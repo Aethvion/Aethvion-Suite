@@ -49,6 +49,26 @@
     font-weight: 600;
 }
 
+.clear-hist-btn {
+    margin-top: 1rem;
+    padding: 5px 10px;
+    background: rgba(255, 75, 75, 0.1);
+    color: #ff4b4b;
+    border: 1px solid rgba(255, 75, 75, 0.2);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    width: 100%;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.clear-hist-btn:hover {
+    background: rgba(255, 75, 75, 0.2);
+    border-color: #ff4b4b;
+}
+
 .stat-card {
     background: var(--bg-card);
     padding: 1.5rem;
