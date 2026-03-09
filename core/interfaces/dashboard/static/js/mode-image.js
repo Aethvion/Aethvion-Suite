@@ -338,3 +338,7 @@ function updateImageStudioControls() {
         }
     });
 }
+
+if (typeof registerTabInit === 'function') {
+    registerTabInit('image', initializeImageStudio);
+}

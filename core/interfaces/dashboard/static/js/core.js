@@ -370,6 +370,7 @@ function switchMainTab(tabName, save = true) {
     else if (tabName === 'tools' && typeof loadTools === 'function') loadTools();
     else if (tabName === 'settings' && typeof loadProviderSettings === 'function') loadProviderSettings();
     else if (tabName === 'usage' && typeof loadUsageDashboard === 'function') loadUsageDashboard();
+    else if (tabName === 'image' && typeof loadImageModels === 'function') loadImageModels();
     else if (tabName === 'arena' && typeof loadArenaModels === 'function') {
         loadArenaModels();
         if (typeof loadArenaLeaderboard === 'function') loadArenaLeaderboard();
