@@ -1,0 +1,175 @@
+/**
+ * Misaka Cipher — Checkers (CSS)
+ */
+
+.checkers-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.chk-main {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-top: 10px;
+    align-items: center;
+}
+
+.chk-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    width: 100%;
+    max-width: 600px;
+    justify-content: space-between;
+}
+
+.chk-status-bar {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--text-primary);
+    text-align: center;
+    padding: 10px;
+    min-height: 24px;
+}
+
+.chk-board-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.chk-board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: 480px;
+    height: 480px;
+    border: 4px solid #1a1a2e;
+    background-color: #f7ede2;
+    /* Light squares */
+}
+
+.chk-square {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.chk-square.dark {
+    background-color: #16213e;
+    /* Dark squares (playable) */
+}
+
+/* Interaction Highlights */
+.chk-square.dark.playable {
+    cursor: pointer;
+}
+
+.chk-square.dark.valid-move {
+    box-shadow: inset 0 0 0 4px rgba(0, 255, 136, 0.5);
+    cursor: pointer;
+    background-color: rgba(0, 255, 136, 0.1);
+}
+
+.chk-square.dark.selected {
+    box-shadow: inset 0 0 0 4px var(--primary);
+    background-color: rgba(0, 217, 255, 0.2);
+}
+
+/* Pieces */
+.chk-piece {
+    width: 80%;
+    height: 80%;
+    border-radius: 50%;
+    position: absolute;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5), inset 0 2px 5px rgba(255, 255, 255, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    z-index: 2;
+    pointer-events: none;
+    /* Let the square catch the click */
+}
+
+/* Player (Cyan/Neon) */
+.chk-piece.player {
+    background: radial-gradient(circle at 30% 30%, #00f2fe, #4facfe);
+    border: 2px solid #00d9ff;
+}
+
+/* Opponent/AI (Red/Neon) */
+.chk-piece.opponent {
+    background: radial-gradient(circle at 30% 30%, #ff4757, #ff6b81);
+    border: 2px solid #ff4757;
+}
+
+/* King styles */
+.chk-piece.king::after {
+    content: '★';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.chk-square.dark:hover .chk-piece {
+    transform: scale(1.05);
+}
+
+/* Info sidebar / scores (Optional, depending on layout choice) */
+.chk-sidebar {
+    display: flex;
+    flex-direction: row;
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.chk-player-card {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.chk-player-card .color-indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+}
+
+.chk-player-card.active {
+    border-color: var(--primary);
+    box-shadow: 0 0 10px rgba(0, 217, 255, 0.2);
+}
+
+
+/* Responsive */
+@media (max-width: 600px) {
+    .chk-board {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1;
+    }
+
+    .chk-piece.king::after {
+        font-size: 1rem;
+    }
+}

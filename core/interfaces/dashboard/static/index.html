@@ -52,6 +52,7 @@
     <link rel="stylesheet" href="/static/games/results/results.css">
     <link rel="stylesheet" href="/static/games/sudoku/sudoku.css">
     <link rel="stylesheet" href="/static/games/word_search/word_search.css">
+    <link rel="stylesheet" href="/static/games/checkers/checkers.css">
     <style>
         /* Audio Studio Specific Feedback */
         #audio-panel .radio-toggle input:checked+span {
@@ -161,6 +162,8 @@
                                 class="tab-icon">🔢</span>Sudoku</button>
                         <button class="nav-dropdown-item" data-subtab="game-word-search"><span
                                 class="tab-icon">🔠</span>Word Search</button>
+                        <button class="nav-dropdown-item" data-subtab="game-checkers"><span
+                                class="tab-icon">🔴</span>Checkers (vs AI)</button>
                     </div>
                 </div>
 
@@ -2127,6 +2130,54 @@
             </div>
         </div>
 
+        <!-- Games Panel: Checkers -->
+        <div class="main-tab-panel" id="game-checkers-panel">
+            <div class="game-header">
+                <div class="game-header-left">
+                    <span class="game-icon">🔴</span>
+                    <div class="game-title-block">
+                        <h2>Checkers</h2>
+                        <p class="game-subtitle">Classic Board Game vs AI</p>
+                    </div>
+                </div>
+                <div class="game-toolbar" style="background:transparent; border:none; margin:0; padding:0 15px;">
+                    <select id="chk-difficulty-select" style="background: rgba(255,255,255,0.05);">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                    <button id="chk-restart-btn" class="action-btn secondary">New Game</button>
+                </div>
+            </div>
+
+            <div class="checkers-layout">
+                <div class="chk-status-bar" id="chk-status-bar">Waiting to start...</div>
+
+                <div class="chk-main">
+                    <div class="chk-board-container">
+                        <div id="chk-board" class="chk-board"></div>
+                    </div>
+                </div>
+
+                <div class="chk-sidebar" style="justify-content: center;">
+                    <div class="chk-player-card" id="chk-player1-card">
+                        <div class="color-indicator" style="background: #00d9ff; box-shadow: 0 0 10px #00d9ff;"></div>
+                        <span>You (Blue)</span>
+                    </div>
+                    <div class="chk-player-card" id="chk-player2-card">
+                        <div class="color-indicator" style="background: #ff4757; box-shadow: 0 0 10px #ff4757;"></div>
+                        <span>Nexus AI (Red)</span>
+                    </div>
+                </div>
+
+                <div id="game-overlay-checkers" class="game-overlay" style="display:none;">
+                    <div class="overlay-title" id="chk-win-title">GAME OVER</div>
+                    <button class="game-btn" onclick="document.getElementById('chk-restart-btn').click();">Play
+                        Again</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Documentation Panel -->
         <div class="main-tab-panel" id="documentation-panel">
             <div class="panel-header borderless">
@@ -2266,6 +2317,7 @@
         <script src="/static/games/results/results.js?v=1"></script>
         <script src="/static/games/word_search/word_search.js?v=1"></script>
         <script src="/static/games/sudoku/sudoku.js?v=1"></script>
+        <script src="/static/games/checkers/checkers.js?v=1"></script>
 </body>
 
 </html>
