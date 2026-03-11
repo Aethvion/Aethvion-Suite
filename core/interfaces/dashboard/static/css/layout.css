@@ -13,7 +13,19 @@
     grid-template-columns: 1fr 320px;
 }
 
+.three-column-layout.agents-collapsed {
+    grid-template-columns: 260px 1fr;
+}
+
+.three-column-layout.threads-collapsed.agents-collapsed {
+    grid-template-columns: 1fr;
+}
+
 .three-column-layout.threads-collapsed .threads-column {
+    display: none;
+}
+
+.three-column-layout.agents-collapsed .agents-column {
     display: none;
 }
 

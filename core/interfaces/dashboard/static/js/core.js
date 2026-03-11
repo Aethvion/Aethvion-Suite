@@ -572,18 +572,18 @@ function updateChatLayout() {
     const showAgents = (currentMainTab === 'chat' || currentMainTab === 'agent') && agentToggle && agentToggle.checked;
 
     if (agentsCol) {
-        agentsCol.style.display = showAgents ? 'flex' : 'none';
-        if (showAgents) {
-            // Apply a slight fade in if it was hidden
-            agentsCol.style.opacity = '1';
-        }
+        agentsCol.style.display = ''; // Clear legacy inline style
+        agentsCol.style.opacity = ''; // Clear legacy inline style
     }
 
     if (showAgents) {
-        layout.style.gridTemplateColumns = '260px 1fr 320px';
+        layout.classList.remove('agents-collapsed');
     } else {
-        layout.style.gridTemplateColumns = '260px 1fr';
+        layout.classList.add('agents-collapsed');
     }
+    
+    // Clear legacy inline grids
+    layout.style.gridTemplateColumns = '';
 }
 
 // ===== Common Utilities =====
