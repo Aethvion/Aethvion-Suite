@@ -56,6 +56,10 @@ class SettingsManager:
             },
             "system": {
                 "open_browser_on_startup": True
+            },
+            "voice": {
+                "input_model": "browser",
+                "input_provider": "browser"
             }
         }
     

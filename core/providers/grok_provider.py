@@ -215,6 +215,44 @@ class GrokProvider(BaseProvider):
             error="Grok does not support image generation"
         )
     
+    def generate_speech(
+        self,
+        text: str,
+        trace_id: str,
+        model: Optional[str] = None,
+        voice: str = "alloy",
+        format: str = "mp3",
+        **kwargs
+    ) -> 'ProviderResponse':
+        """Grok does not currently support speech synthesis."""
+        from .base_provider import ProviderResponse
+        logger.warning(f"[{trace_id}] Grok does not support speech synthesis")
+        return ProviderResponse(
+            content="",
+            model=model or self.config.model,
+            provider="grok",
+            trace_id=trace_id,
+            error="Grok does not support speech synthesis"
+        )
+
+    def transcribe(
+        self,
+        audio_bytes: bytes,
+        trace_id: str,
+        model: Optional[str] = None,
+        **kwargs
+    ) -> 'ProviderResponse':
+        """Grok does not currently support audio transcription."""
+        from .base_provider import ProviderResponse
+        logger.warning(f"[{trace_id}] Grok does not support audio transcription")
+        return ProviderResponse(
+            content="",
+            model=model or self.config.model,
+            provider="grok",
+            trace_id=trace_id,
+            error="Grok does not support audio transcription"
+        )
+
     def validate_credentials(self) -> bool:
         """Validate Grok API credentials."""
         try:

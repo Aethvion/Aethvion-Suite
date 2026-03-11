@@ -231,18 +231,7 @@ function initializeUI() {
     const voiceButton = document.getElementById('voice-mode-toggle');
     if (voiceButton) {
         voiceButton.addEventListener('click', () => {
-            voiceButton.classList.toggle('active');
-            const isActive = voiceButton.classList.contains('active');
-
-            if (isActive) {
-                voiceButton.innerHTML = '<i class="fas fa-stop"></i>';
-                voiceButton.style.color = 'var(--accent)';
-                if (typeof addMessage === 'function') addMessage('system', 'Voice mode activated (Simulation)');
-            } else {
-                voiceButton.innerHTML = '<i class="fas fa-microphone"></i>';
-                voiceButton.style.color = '';
-                if (typeof addMessage === 'function') addMessage('system', 'Voice mode deactivated');
-            }
+            startVoiceInput();
         });
     }
 
@@ -738,3 +727,177 @@ function closeModal() {
         modalOverlay.innerHTML = '';
     }
 }
+
+// ===== Voice Input =====
+
+// Voice input state
+let _voiceRecognition = null;
+let _voiceMediaRecorder = null;
+let _voiceAudioChunks = [];
+let _voiceInputActive = false;
+
+async function getVoiceInputModel() {
+    try {
+        const res = await fetch('/api/settings');
+        const settings = await res.json();
+        return {
+            model: (settings.voice && settings.voice.input_model) || 'browser',
+            provider: (settings.voice && settings.voice.input_provider) || 'browser'
+        };
+    } catch (e) {
+        return { model: 'browser', provider: 'browser' };
+    }
+}
+
+function startVoiceInput() {
+    const voiceButton = document.getElementById('voice-mode-toggle');
+    if (_voiceInputActive) {
+        stopVoiceInput();
+        return;
+    }
+
+    // Check voice model from settings asynchronously, default to browser
+    getVoiceInputModel().then(({ model, provider }) => {
+        if (model === 'browser' || provider === 'browser') {
+            _startBrowserSpeechRecognition(voiceButton);
+        } else {
+            _startMediaRecorderInput(voiceButton, model, provider);
+        }
+    });
+}
+
+function stopVoiceInput() {
+    const voiceButton = document.getElementById('voice-mode-toggle');
+    _voiceInputActive = false;
+
+    if (_voiceRecognition) {
+        _voiceRecognition.stop();
+        _voiceRecognition = null;
+    }
+    if (_voiceMediaRecorder && _voiceMediaRecorder.state !== 'inactive') {
+        _voiceMediaRecorder.stop();
+    }
+
+    if (voiceButton) {
+        voiceButton.classList.remove('active');
+        voiceButton.innerHTML = '<i class="fas fa-microphone"></i>';
+        voiceButton.style.color = '';
+        voiceButton.title = 'Voice Input';
+    }
+}
+
+function _startBrowserSpeechRecognition(voiceButton) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        showNotification('Speech recognition is not supported in this browser. Try Chrome or Edge.', 'warning');
+        return;
+    }
+
+    _voiceInputActive = true;
+    if (voiceButton) {
+        voiceButton.classList.add('active');
+        voiceButton.innerHTML = '<i class="fas fa-stop"></i>';
+        voiceButton.style.color = 'var(--accent)';
+        voiceButton.title = 'Stop listening';
+    }
+
+    _voiceRecognition = new SpeechRecognition();
+    _voiceRecognition.continuous = false;
+    _voiceRecognition.interimResults = false;
+    _voiceRecognition.lang = 'en-US';
+
+    _voiceRecognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        const chatInput = document.getElementById('chat-input');
+        if (chatInput && transcript) {
+            chatInput.value = (chatInput.value ? chatInput.value + ' ' : '') + transcript;
+            chatInput.dispatchEvent(new Event('input'));
+        }
+        stopVoiceInput();
+    };
+
+    _voiceRecognition.onerror = (event) => {
+        if (event.error !== 'aborted') {
+            showNotification(`Voice recognition error: ${event.error}`, 'error');
+        }
+        stopVoiceInput();
+    };
+
+    _voiceRecognition.onend = () => {
+        if (_voiceInputActive) stopVoiceInput();
+    };
+
+    _voiceRecognition.start();
+    showNotification('Listening... speak now', 'info');
+}
+
+function _startMediaRecorderInput(voiceButton, model, provider) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showNotification('Microphone access is not supported in this browser.', 'error');
+        return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        _voiceInputActive = true;
+        _voiceAudioChunks = [];
+
+        if (voiceButton) {
+            voiceButton.classList.add('active');
+            voiceButton.innerHTML = '<i class="fas fa-stop"></i>';
+            voiceButton.style.color = 'var(--accent)';
+            voiceButton.title = 'Stop recording';
+        }
+        showNotification('Recording... click mic to stop', 'info');
+
+        // Pick the best supported mimeType for cross-browser compatibility
+        const mimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+        const supportedMime = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || '';
+        _voiceMediaRecorder = new MediaRecorder(stream, supportedMime ? { mimeType: supportedMime } : {});
+        const recordedMime = _voiceMediaRecorder.mimeType || 'audio/webm';
+
+        _voiceMediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) _voiceAudioChunks.push(e.data);
+        };
+
+        _voiceMediaRecorder.onstop = async () => {
+            stream.getTracks().forEach(t => t.stop());
+            const blob = new Blob(_voiceAudioChunks, { type: recordedMime });
+            _voiceAudioChunks = [];
+
+            // Convert to base64 and send to backend for transcription
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                try {
+                    const res = await fetch('/api/voice/transcribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ audio: reader.result, model, provider })
+                    });
+                    const data = await res.json();
+                    if (data.success && data.text) {
+                        const chatInput = document.getElementById('chat-input');
+                        if (chatInput) {
+                            chatInput.value = (chatInput.value ? chatInput.value + ' ' : '') + data.text;
+                            chatInput.dispatchEvent(new Event('input'));
+                        }
+                        showNotification('Voice transcribed successfully', 'success');
+                    } else {
+                        showNotification('Transcription failed: ' + (data.error || 'Unknown error'), 'error');
+                    }
+                } catch (err) {
+                    showNotification('Voice transcription error: ' + err.message, 'error');
+                }
+            };
+            reader.readAsDataURL(blob);
+            stopVoiceInput();
+        };
+
+        _voiceMediaRecorder.start();
+    }).catch((err) => {
+        showNotification('Microphone access denied: ' + err.message, 'error');
+        stopVoiceInput();
+    });
+}
+
+window.startVoiceInput = startVoiceInput;
+window.stopVoiceInput = stopVoiceInput;

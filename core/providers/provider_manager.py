@@ -11,6 +11,7 @@ from .base_provider import BaseProvider, ProviderResponse, ProviderConfig, Provi
 from .google_provider import GoogleAIProvider
 from .openai_provider import OpenAIProvider
 from .grok_provider import GrokProvider
+from .anthropic_provider import AnthropicProvider
 from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -24,7 +25,8 @@ class ProviderManager:
     PROVIDER_CLASSES = {
         'google_ai': GoogleAIProvider,
         'openai': OpenAIProvider,
-        'grok': GrokProvider
+        'grok': GrokProvider,
+        'anthropic': AnthropicProvider
     }
     
     def __init__(self, config_path: Optional[str] = None):
@@ -641,9 +643,11 @@ class ProviderManager:
         **kwargs
     ) -> ProviderResponse:
         """Generate speech using a specific provider or model."""
-        p = self.get_provider(provider) if provider else self.get_provider_for_capability("AUDIO")
+        p = self.get_provider(provider) if provider else self.get_provider_for_capability("VOICEOUTPUT")
         if not p:
-            return ProviderResponse(content="", model=model or "unknown", provider="unknown", trace_id=trace_id, error="No provider found for AUDIO capability")
+            p = self.get_provider_for_capability("AUDIO")
+        if not p:
+            return ProviderResponse(content="", model=model or "unknown", provider="unknown", trace_id=trace_id, error="No provider found for speech synthesis capability")
         
         return p.generate_speech(text, trace_id, model=model, voice=voice, format=format, **kwargs)
 
@@ -656,9 +660,11 @@ class ProviderManager:
         **kwargs
     ) -> ProviderResponse:
         """Transcribe audio using a specific provider or model."""
-        p = self.get_provider(provider) if provider else self.get_provider_for_capability("AUDIO")
+        p = self.get_provider(provider) if provider else self.get_provider_for_capability("VOICEINPUT")
         if not p:
-            return ProviderResponse(content="", model=model or "unknown", provider="unknown", trace_id=trace_id, error="No provider found for AUDIO capability")
+            p = self.get_provider_for_capability("AUDIO")
+        if not p:
+            return ProviderResponse(content="", model=model or "unknown", provider="unknown", trace_id=trace_id, error="No provider found for audio transcription capability")
         
         return p.transcribe(audio_bytes, trace_id, model=model, **kwargs)
 

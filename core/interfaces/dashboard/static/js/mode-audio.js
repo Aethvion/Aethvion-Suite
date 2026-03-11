@@ -343,7 +343,10 @@ async function loadAudioModels() {
         if (!config.models) continue;
         for (const [key, info] of Object.entries(config.models)) {
             const caps = (info.capabilities || []).map(c => c.toUpperCase());
-            if (caps.includes('AUDIO')) {
+            const isAudioModel = caps.includes('AUDIO') ||
+                (mode === 'stt' && caps.includes('VOICEINPUT')) ||
+                (mode === 'tts' && caps.includes('VOICEOUTPUT'));
+            if (isAudioModel) {
                 const audioConfig = info.audio_config || {};
                 if (mode === 'stt' && audioConfig.supports_stt === false) continue;
                 if (mode === 'tts' && audioConfig.supports_tts === false) continue;

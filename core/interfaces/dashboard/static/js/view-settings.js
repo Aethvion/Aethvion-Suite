@@ -423,7 +423,8 @@ async function loadGlobalSettings() {
             'output_validation.check_file_location': 'Ensures the generated file is saved in the correct directory.',
             'output_validation.min_file_size': 'Minimum file size (in bytes) to be considered valid.',
             'output_validation.min_content_length': 'Minimum character length for content to be considered valid.',
-            'system.open_browser_on_startup': 'Automatically opens the dashboard in your default web browser when Misaka Cipher starts.'
+            'system.open_browser_on_startup': 'Automatically opens the dashboard in your default web browser when Misaka Cipher starts.',
+            'voice.input_model': 'Model used for voice input transcription. "browser" uses the built-in Web Speech API (free, no API key needed).'
         };
 
         // Flatten settings for editing
@@ -464,9 +465,13 @@ async function loadGlobalSettings() {
         if (settings.output_validation) html += renderGroup('Output Validation', settings.output_validation, 'output_validation');
         if (settings.system) html += renderGroup('System Settings', settings.system, 'system');
 
+        // Render voice settings with a special dropdown for input_model
+        const voiceSettings = settings.voice || { input_model: 'browser', input_provider: 'browser' };
+        html += renderVoiceSettings(voiceSettings);
+
         container.innerHTML = html;
 
-        // Attach listeners
+        // Attach listeners for standard inputs
         container.querySelectorAll('.global-setting-input').forEach(input => {
             input.addEventListener('change', async (e) => {
                 const key = e.target.dataset.key;
@@ -485,10 +490,81 @@ async function loadGlobalSettings() {
             });
         });
 
+        // Populate and attach voice model selector
+        await populateVoiceModelSelector(voiceSettings);
+
     } catch (error) {
         console.error('Failed to load settings.json:', error);
         container.innerHTML = '<div class="loading-placeholder">Failed to load settings</div>';
     }
+}
+
+function renderVoiceSettings(voiceSettings) {
+    const currentModel = voiceSettings.input_model || 'browser';
+    return `
+        <div class="settings-subgroup">
+            <h4>Voice Settings</h4>
+            <div class="compact-item" title="Model used for voice input transcription. 'browser' uses the built-in Web Speech API (free, no API key needed).">
+                <div class="item-label">voice input model</div>
+                <select id="voice-input-model-select" class="control-select" style="min-width:160px; font-size:0.82rem;">
+                    <option value="browser" ${currentModel === 'browser' ? 'selected' : ''}>Browser (Web Speech API)</option>
+                </select>
+            </div>
+        </div>
+    `;
+}
+
+async function populateVoiceModelSelector(voiceSettings) {
+    const select = document.getElementById('voice-input-model-select');
+    if (!select) return;
+
+    const currentModel = voiceSettings.input_model || 'browser';
+
+    try {
+        // Load registry to find VOICEINPUT-capable models
+        if (typeof _registryData === 'undefined' || !_registryData) {
+            if (typeof loadProviderSettings === 'function') await loadProviderSettings();
+        }
+
+        if (_registryData && _registryData.providers) {
+            for (const [providerName, config] of Object.entries(_registryData.providers)) {
+                if (!config.models) continue;
+                for (const [modelKey, info] of Object.entries(config.models)) {
+                    const caps = (info.capabilities || []).map(c => c.toUpperCase());
+                    if (caps.includes('VOICEINPUT')) {
+                        const option = document.createElement('option');
+                        option.value = modelKey;
+                        option.dataset.provider = providerName;
+                        option.textContent = `${providerName}: ${info.id || modelKey}`;
+                        if (modelKey === currentModel) option.selected = true;
+                        select.appendChild(option);
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('Could not load voice models:', e);
+    }
+
+    select.addEventListener('change', async (e) => {
+        const selectedOption = e.target.selectedOptions[0];
+        const model = e.target.value;
+        const provider = selectedOption ? (selectedOption.dataset.provider || 'browser') : 'browser';
+
+        try {
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    'voice.input_model': model,
+                    'voice.input_provider': model === 'browser' ? 'browser' : provider
+                })
+            });
+            showNotification('Voice input model updated.', 'success');
+        } catch (err) {
+            console.error('Failed to save voice model:', err);
+        }
+    });
 }
 
 // ===== Developer Mode & .env Management =====

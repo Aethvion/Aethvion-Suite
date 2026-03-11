@@ -778,6 +778,70 @@ async def process_audio(req: AudioProcessRequest):
         logger.error(f"Audio processing error: {str(e)}", exc_info=True)
         return {"success": False, "error": str(e)}
 
+
+@app.post("/api/voice/transcribe")
+async def voice_transcribe(request: Request):
+    """
+    Transcribe voice input for the chat interface.
+
+    Accepts base64-encoded audio and returns the transcribed text using
+    the voice input model configured in global settings.
+    """
+    trace_id = f"voice-{datetime.now().strftime('%H%M%S')}"
+    try:
+        body = await request.json()
+        audio_b64: str = body.get("audio", "")
+        model: Optional[str] = body.get("model")
+        provider_name: Optional[str] = body.get("provider")
+
+        if not audio_b64:
+            return {"success": False, "error": "No audio data provided"}
+
+        import base64
+        # Strip data URI prefix if present
+        if "," in audio_b64:
+            audio_b64 = audio_b64.split(",", 1)[1]
+        audio_bytes = base64.b64decode(audio_b64)
+
+        # Resolve model/provider from settings if not provided
+        if not model:
+            from core.config.settings_manager import get_settings_manager
+            sm = get_settings_manager()
+            model = sm.get("voice.input_model", "browser")
+            provider_name = sm.get("voice.input_provider", "browser")
+
+        # "browser" means Web Speech API - should not reach here, but handle gracefully
+        if model == "browser" or provider_name == "browser":
+            return {"success": False, "error": "Browser voice model is handled client-side"}
+
+        from core.providers import ProviderManager
+        manager = ProviderManager()
+
+        # Look up provider from model map if not specified
+        if not provider_name and model:
+            provider_name = manager.model_to_provider_map.get(model)
+
+        response = manager.transcribe(
+            audio_bytes=audio_bytes,
+            trace_id=trace_id,
+            provider=provider_name,
+            model=model
+        )
+
+        if not response.success:
+            return {"success": False, "error": response.error}
+
+        return {
+            "success": True,
+            "text": response.content,
+            "model": response.model,
+            "provider": response.provider
+        }
+
+    except Exception as e:
+        logger.error(f"Voice transcription error: {str(e)}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
 @app.post("/api/workspace/files/reindex")
 async def reindex_workspace_files():
     """Manually trigger a full re-index of workspace files."""

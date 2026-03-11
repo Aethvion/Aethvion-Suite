@@ -5,7 +5,9 @@
             "tier": "fast",
             "capabilities": [
                 "CHAT",
-                "AUDIO"
+                "AUDIO",
+                "VOICEINPUT",
+                "VOICEOUTPUT"
             ],
             "input_cost": 0.1,
             "output_cost": 0.4,
@@ -36,7 +38,9 @@
             "tier": "fast",
             "capabilities": [
                 "CHAT",
-                "AUDIO"
+                "AUDIO",
+                "VOICEINPUT",
+                "VOICEOUTPUT"
             ],
             "input_cost": 0.5,
             "output_cost": 3,
@@ -129,6 +133,44 @@
                     "standard",
                     "hd"
                 ]
+            }
+        },
+        {
+            "id": "whisper-1",
+            "tier": "specialized",
+            "capabilities": [
+                "VOICEINPUT"
+            ],
+            "input_cost": 0.006,
+            "output_cost": 0,
+            "description": "OpenAI Whisper for audio transcription (speech-to-text)."
+        },
+        {
+            "id": "tts-1",
+            "tier": "specialized",
+            "capabilities": [
+                "VOICEOUTPUT"
+            ],
+            "input_cost": 0.015,
+            "output_cost": 0,
+            "description": "OpenAI TTS-1 for speech synthesis (text-to-speech).",
+            "audio_config": {
+                "voices": ["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
+                "formats": ["mp3", "opus", "aac", "flac"]
+            }
+        },
+        {
+            "id": "tts-1-hd",
+            "tier": "specialized",
+            "capabilities": [
+                "VOICEOUTPUT"
+            ],
+            "input_cost": 0.03,
+            "output_cost": 0,
+            "description": "OpenAI TTS-1 HD for high-quality speech synthesis (text-to-speech).",
+            "audio_config": {
+                "voices": ["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
+                "formats": ["mp3", "opus", "aac", "flac"]
             }
         }
     ],
