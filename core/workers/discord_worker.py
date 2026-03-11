@@ -16,6 +16,7 @@ from core.security import IntelligenceFirewall, RoutingDecision
 
 from core.memory.history_manager import HistoryManager
 import mimetypes
+import os
 
 logger = get_logger(__name__)
 
@@ -268,7 +269,7 @@ class DiscordWorker(commands.Bot):
                         content=content,
                         platform="discord",
                         attachments=[{"url": task.metadata.get('media_url')}] if task.metadata.get('media_url') else None,
-                        metadata={"channel_id": channel_id, "task_id": task_id}
+                        metadata={"channel_id": channel_id, "task_id": task.id}
                     )
                 else:
                     raise ValueError(f"Could not find channel with ID {channel_id}")

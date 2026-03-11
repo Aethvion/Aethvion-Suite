@@ -21,6 +21,7 @@ from core.utils import get_logger, generate_trace_id
 
 from .intent_analyzer import IntentAnalyzer, IntentAnalysis, IntentType
 from core.memory.identity_manager import IdentityManager
+from core.memory.history_manager import HistoryManager
 from core.orchestrator.persona_manager import PersonaManager
 
 logger = get_logger(__name__)
@@ -279,6 +280,7 @@ class MasterOrchestrator:
         current_response = ""
         actions_taken = ["persona_chat"]
         media_paths = []
+        tool_results_str = ""
         
         for i in range(3): # Max 3 tool iterations
             request = Request(

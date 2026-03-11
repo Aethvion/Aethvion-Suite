@@ -21,8 +21,6 @@ class DiscordStatus(BaseModel):
 @router.get("/status", response_model=DiscordStatus)
 async def get_status():
     """Get the current status of the Discord worker."""
-    global discord_worker
-    
     if not discord_worker:
         return DiscordStatus(status="offline")
         
@@ -44,8 +42,6 @@ async def get_status():
 @router.post("/start")
 async def start_worker():
     """Start the Discord worker service."""
-    global discord_worker
-    
     # Lazy imports to avoid circular deps
     import core.interfaces.dashboard.server as server
     from core.workers.discord_worker import start_discord_service
@@ -83,8 +79,6 @@ async def start_worker():
 @router.post("/stop")
 async def stop_worker():
     """Stop the Discord worker service."""
-    global discord_worker
-    
     if not discord_worker:
         return {"status": "not_running"}
         
