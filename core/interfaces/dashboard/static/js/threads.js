@@ -22,6 +22,22 @@ function initThreadManagement() {
     const headerNewBtn = document.getElementById('header-new-thread-btn');
     if (headerNewBtn) headerNewBtn.addEventListener('click', createNewThread);
 
+    const activeThreadTitle = document.getElementById('active-thread-title');
+    if (activeThreadTitle) {
+        activeThreadTitle.addEventListener('dblclick', () => {
+            if (!currentThreadId || currentThreadId === 'default') return;
+            const thread = threads[currentThreadId];
+            if (thread) {
+                const newTitle = prompt('Enter new thread title:', thread.title);
+                if (newTitle && newTitle.trim() !== '' && newTitle !== thread.title) {
+                    editThreadTitle(thread.id, newTitle.trim());
+                }
+            }
+        });
+        activeThreadTitle.style.cursor = 'text';
+        activeThreadTitle.title = 'Double-click to edit title';
+    }
+
     // Global Settings Listeners
     ['global-ctx-mode', 'global-ctx-window', 'global-agent-toggle'].forEach(id => {
         const el = document.getElementById(id);
@@ -459,6 +475,18 @@ function renderThreadList() {
         const date = new Date(thread.updated_at || thread.created_at).toLocaleDateString();
         clone.querySelector('.thread-date').textContent = date;
 
+        // Edit Action
+        const editBtn = clone.querySelector('.edit-btn');
+        if (editBtn) {
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const newTitle = prompt('Enter new thread title:', thread.title);
+                if (newTitle && newTitle.trim() !== '' && newTitle !== thread.title) {
+                    editThreadTitle(thread.id, newTitle.trim());
+                }
+            });
+        }
+
         // Delete Action
         clone.querySelector('.delete-btn').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -469,6 +497,33 @@ function renderThreadList() {
 
         threadsList.appendChild(clone);
     });
+}
+
+// Edit a thread's title manually
+async function editThreadTitle(threadId, newTitle) {
+    if (!threads[threadId]) return;
+
+    // Optimistic UI update
+    threads[threadId].title = newTitle;
+    
+    // Update Sidebar
+    const uiThreadLink = document.querySelector(`.thread-item[data-thread-id="${threadId}"] .thread-title`);
+    if (uiThreadLink) uiThreadLink.textContent = newTitle;
+
+    // Update Header if it's the active thread
+    if (currentThreadId === threadId) {
+        document.getElementById('active-thread-title').textContent = newTitle;
+    }
+
+    try {
+        await fetch(`/api/tasks/thread/${threadId}/title`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: newTitle })
+        });
+    } catch (error) {
+        console.error('Failed to update thread title on server:', error);
+    }
 }
 
 
