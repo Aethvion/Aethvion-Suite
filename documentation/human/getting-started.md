@@ -1,6 +1,6 @@
 # Getting Started with Misaka Cipher
 
-**Note: This documentation was updated on 2026-02-25 to reflect the current system state.**
+**Note: This documentation was updated on 2026-03-11 to reflect the current system state.**
 
 ---
 
@@ -25,43 +25,46 @@ Result: $200 in API costs, but automatic execution
 
 ### The Misaka Cipher Difference
 
-**Intelligent Hybrid Approach:**
+**Current Approach (cloud providers + smart routing):**
 ```
 User: "I need to analyze 1000 CSV files and generate insights"
 
 Misaka Cipher:
-1. Recognizes this is data processing (high volume, low complexity)
-2. Routes file reading to local Llama model (near-zero cost)
-3. Processes all 1000 files quickly and cheaply
-4. Distills raw results with Gemini Flash ($0.10)
-5. Routes strategic insights to Gemini Pro ($1.50)
-6. If CSV tool doesn't exist, forges one automatically
-7. Stores learning in memory for future similar tasks
+1. Recognizes this is data processing
+2. Routes to Gemini Flash for fast, cheap bulk processing
+3. If CSV tool doesn't exist, forges one automatically
+4. Routes strategic insights to Gemini Pro
+5. Stores learning in memory for future similar tasks
 
-Result: $1.60 in API costs, fully automatic, self-improving system
+Result: Fully automatic, model-agnostic, self-improving system
 ```
+
+**Planned Future Approach (once local model support is added):**
+```
+1. Routes file reading to local Llama model (near-zero cost)
+2. Distills raw results with Gemini Flash ($0.10)
+3. Routes strategic insights to Gemini Pro ($1.50)
+Result: ~$1.60 in API costs vs. $200 with a naive GPT-4 wrapper
+```
+
+> **Note:** Local model routing (Ollama/vLLM) is on the roadmap but not yet implemented. All inference currently goes to cloud providers.
 
 ### The Exponential Advantage
 
-**Why Wrapper Support + Model Advancement = Exponential Progress**
+**Why Multi-Provider Support + Model Advancement = Compounding Progress**
 
 1. **Today's Reality:**
-   - GPT-4o excels at reasoning
-   - Gemini 2.0 Flash is incredibly fast and cheap
-   - Llama 3 runs locally for unlimited processing
-1.  **Today's Reality:**
     - GPT-4o excels at reasoning
     - Gemini 2.0 Flash is incredibly fast and cheap
-    - Llama 3 runs locally for unlimited processing
-    - Each model has strengths
+    - Each model has different strengths — Misaka routes between them
 
-2.  **Tomorrow's Advantage:**
+2. **Tomorrow's Advantage:**
     - GPT-5 releases → Misaka automatically uses it (config change only)
     - Gemini 3 releases → System routes high-stakes tasks there
     - Claude Opus 4 releases → Add to failover chain
-    - Local models improve → More tasks run at zero cost (Planned)
+    - Local models improve → More tasks run at zero cost (planned)
 
-3.  **The Compound Effect:**
+3. **The Compound Effect:**
     ```
     Week 1: GPT-4o + Gemini Flash
     → System is 2x better than single-model approach
@@ -73,9 +76,9 @@ Result: $1.60 in API costs, fully automatic, self-improving system
     → System is 20x better (model improvements + massive tool library + deep memory)
     ```
 
-4.  **Cost Efficiency at Scale:**
+4. **Cost Efficiency at Scale:**
     - Traditional: Every improvement costs more (better model = higher prices)
-    - Misaka Cipher: Cost per task decreases over time (more local processing + forged tools reduce cloud API needs)
+    - Misaka Cipher: Cost per task decreases over time (smart routing + forged tools reduce cloud API needs)
 
 ---
 
@@ -169,7 +172,7 @@ Launch the web interface:
 python -m core.main
 ```
 
-Open your browser to `http://localhost:8000`
+Open your browser to `http://localhost:8080`
 
 The dashboard includes tabs for Chat, Agent monitoring, Image Studio, LLM Arena, AI Conversation, Files, Tools, Packages, Memory, Logs, Usage analytics, Status, and Settings. See the [Dashboard Context docs](/documentation/ai/dashboard_interface_context.md) for full tab descriptions.
 
@@ -534,7 +537,7 @@ No human intervention needed.
 **Ready to start?** Fire up the system and let's forge something amazing! 🔥
 
 ```bash
-python main.py --cli
+python -m core.main --cli
 ```
 
 ---

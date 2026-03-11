@@ -74,6 +74,7 @@ These features are functional in the current build:
 | Status | ✅ Working | System and provider health |
 | Settings | ✅ Working | Providers, routing profiles, environment config |
 | Packages | 🧪 Experimental | Package install with safety scoring — unstable |
+| Discord | ✅ Working | Bot management, message history mirroring, Discord controls |
 | Assistant | 🛡️ Beta | Advanced in-dashboard AI assistant with tool-calling and feature awareness |
 
 ---
@@ -121,6 +122,7 @@ pip install -e ".[memory]"
 # Copy and fill in your API keys
 copy .env.example .env
 # edit .env — add GOOGLE_AI_API_KEY / OPENAI_API_KEY / GROK_API_KEY
+# Optional: add DISCORD_TOKEN to enable the Discord bot integration
 ```
 
 ### Launch
@@ -191,10 +193,15 @@ Misaka-Cipher/
 - Tool forge (basic)
 - Agent spawning (basic)
 - Intelligence Firewall
-- Web dashboard with 13+ tabs
+- Web dashboard with 14+ tabs
 - API usage tracking with cost estimates
 - LLM Arena, Image Studio, Advanced AI Conversation
 - Routing profiles with configurable model pools
+- Discord integration (bot worker, message mirroring, dashboard controls)
+- Unified chat history across Dashboard and Discord
+- PersonaManager (context + system prompt assembly)
+- IdentityManager and SocialRegistry (cross-platform identity)
+- File vector store (semantic workspace file search)
 
 ### 🔄 In Progress / Near-Term
 - Improved agent reliability for multi-step goals

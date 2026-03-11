@@ -1,5 +1,5 @@
 MISAKA CIPHER - SYSTEM SPECIFICATION
-Core architecture is consistent; tool implementations evolve during agentic sprints. Updated: 2026-02-25.
+Core architecture is consistent; tool implementations evolve during agentic sprints. Updated: 2026-03-11.
 
 SYSTEM IDENTITY
 Name: Misaka Cipher | Acronym: M.I.S.A.K.A. | Full Name: Multitask Intelligence & Strategic Analysis Kernel Architecture
@@ -10,7 +10,7 @@ main.py - entry point (CLI/Web/Test modes)
 cli.py - interactive CLI interface
 nexus_core.py - central orchestration hub [SINGLE POINT OF ENTRY]
 core/ - core system modules
-  core/interfaces/dashboard/ - web dashboard (FastAPI server, static files, route handlers: assistant, arena, image, advanced_aiconv, memory, package, registry, settings, task, tool, usage)
+  core/interfaces/dashboard/ - web dashboard (FastAPI server, static files, route handlers: assistant, arena, image, advanced_aiconv, discord, memory, package, registry, settings, task, tool, usage)
   core/interfaces/cli_modules/ - CLI module implementations (nexus, factory, forge, memory, system, arena, research, settings)
   core/system_retrieval.py - system data retrieval
 config/ - configuration files
@@ -28,6 +28,7 @@ orchestrator/ - master orchestrator (autonomous coordination)
   orchestrator/task_queue.py - task queueing system
   orchestrator/task_models.py - task data models
   orchestrator/output_validator.py - output validation
+  orchestrator/persona_manager.py - persona, system prompt building, and tool execution unifier (Dashboard + Discord)
 factory/ - the Factory (agent spawning)
   factory/agent_factory.py - main spawning engine [ENTRY]
   factory/base_agent.py - agent base class
@@ -45,10 +46,14 @@ forge/ - the Forge (tool generation)
   forge/validators/tool_validator.py - tool validation logic
 memory/ - the Memory Tier (knowledge persistence)
   memory/episodic_memory.py - vector-based interaction storage [ChromaDB]
+  memory/file_vector_store.py - semantic indexing and search for workspace files [FastEmbed + ChromaDB]
+  memory/history_manager.py - unified chat history across platforms (Dashboard + Discord); daily JSON files
+  memory/identity_manager.py - persistent system identity (base_info.json) and dynamic memory profile (memory.json)
   memory/knowledge_graph.py - relationship mapping [NetworkX]
+  memory/social_registry.py - maps platform-specific IDs (Discord, etc.) to internal profiles and episodic memory context
   memory/summarization.py - memory summarization
   memory/memory_spec.py - memory data models
-  memory/storage/ - persistent storage (chroma_db/, knowledge_graph.json)
+  memory/storage/ - persistent storage (chroma_db/, knowledge_graph.json, misakacipher/chathistory/YYYY-MM/)
 providers/ - provider abstraction layer
   providers/provider_manager.py - provider coordination and failover
   providers/base_provider.py - provider interface
@@ -64,9 +69,11 @@ tools/ - tool registry
   tools/generated/ - AI-generated tools [DYNAMIC]
   tools/register_standard_tools.py - standard tool registration
 workers/ - background workers
+  workers/discord_worker.py - persistent Discord bot service; inbound scanning, outbound polling, message mirroring to unified history, proactive conversations
   workers/package_installer.py - async package installation worker
 workspace/ - workspace management
   workspace/workspace_manager.py - file system operations
+  workspace/workspace_utils.py - shared workspace helpers: load_workspaces(), validate_path()
   workspace/package_manager.py - package request and approval management
   workspace/package_intelligence.py - package analysis and safety scoring
   workspace/usage_tracker.py - API usage and cost tracking
@@ -79,7 +86,7 @@ outputfiles/ - AI output directory
 tests/ - test suite (test_factory.py, test_forge.py, test_memory.py, test_integration.py, test_model_selection.py)
 
 DATA FLOW ARCHITECTURE
-Entry point: main.py -> mode selection -> CLI (cli.py/MisakaCLI), Test (run_verification_tests()), or Web (core/interfaces/dashboard/server.py with FastAPI+uvicorn at http://localhost:8000)
+Entry point: main.py -> mode selection -> CLI (cli.py/MisakaCLI), Test (run_verification_tests()), or Web (core/interfaces/dashboard/server.py with FastAPI+uvicorn at http://localhost:8080)
 All requests -> nexus_core.NexusCore.route_request() [SINGLE POINT OF ENTRY]
 Nexus -> security/firewall.py [PII detection, credential scanning, routing decision]
 Routing: CLEAN -> external providers; FLAGGED -> local (roadmap) or warn; BLOCKED -> reject
@@ -88,9 +95,12 @@ Orchestrator flow (web): Web Chat Input -> orchestrator/master_orchestrator.py -
 Factory flow: agent_factory.py::spawn(spec) -> validate Aethvion naming -> check resource limits (max 10 concurrent) -> create agent instance -> register in registry -> agent executes via Nexus -> agent returns result -> agent self-terminates -> unregister
 Forge flow: tool_forge.py::forge_tool(description) -> load model_registry.json -> build provider context -> analyze description via Nexus -> generate code (code_generator.py) -> validate tool (security + syntax + Aethvion) -> save to tools/generated/ -> register in tool_registry -> tool available system-wide
 Memory flow: interaction occurs -> episodic_memory.py -> generate embedding (sentence-transformers/all-MiniLM-L6-v2) -> store in ChromaDB (collection: episodic_memories) -> update knowledge graph (NetworkX) -> periodic summarization -> persist to memory/storage/knowledge_graph.json
+Discord worker flow: discord_worker.py (persistent) -> receives message -> social_registry maps Discord user to internal profile -> firewall scan -> PersonaManager builds system prompt + context -> NexusCore routes request -> response sent back to Discord channel -> history_manager mirrors full exchange to daily JSON log
+Chat history flow: any platform message -> history_manager.py -> append to daily file at memory/storage/misakacipher/chathistory/YYYY-MM/chat_YYYY-MM-DD.json -> fields: role, content, platform, timestamp, attachments, metadata
 
 EXTERNAL API TOUCHPOINTS
 Google AI | endpoint: https://generativelanguage.googleapis.com/v1beta | env: GOOGLE_AI_API_KEY | models: gemini-2.0-flash, gemini-1.5-pro-latest, imagen-3.0-generate-002 | priority: 1 (primary)
+Discord | env: DISCORD_TOKEN | service: discord.py gateway (persistent bot connection) | optional: system works without it
 OpenAI | endpoint: https://api.openai.com/v1 | env: OPENAI_API_KEY | models: gpt-4o, gpt-4o-mini, dall-e-3 | priority: 2 (fallback)
 xAI Grok | endpoint: https://api.x.ai/v1 | env: GROK_API_KEY | models: grok-3-mini-fast | priority: 3 (tertiary)
 Local (roadmap) | endpoint: http://localhost:11434 (Ollama) or custom vLLM | models: llama3, mistral, custom | priority: 2 for data processing | status: NOT IMPLEMENTED
@@ -118,6 +128,10 @@ Retrieval: natural language query, returns top-N similar memories (default 10), 
 Knowledge graph (NetworkX): node types: Domain, Tool, Agent, Concept, Insight; edge types: uses (Tool->Tool), spawned_by (Agent->Tool/User), related_to (Concept<->Concept), derived_from (Insight->Memory)
 Graph persistence: JSON format, file: memory/storage/knowledge_graph.json, updated on every tool forge / agent spawn / memory summarization
 Core insights: triggered every N episodic memories (default 100), method: LLM summarization via Nexus Core, format: {insight_id, content, source_memories, confidence (0.0-1.0), created_at (ISO-8601)}
+Unified chat history (history_manager.py): all platform messages (Dashboard + Discord) logged to daily JSON files; fields: role, content, platform, timestamp, attachments, metadata; path: memory/storage/misakacipher/chathistory/YYYY-MM/chat_YYYY-MM-DD.json
+Identity manager (identity_manager.py): persistent base identity at memory/storage/misakacipher/base_info.json; dynamic memory profile at memory/storage/misakacipher/memory.json
+Social registry (social_registry.py): platform-ID-to-profile mapping (Discord user IDs -> internal names + memory context); enables cross-platform identity resolution
+File vector store (file_vector_store.py): semantic indexing of workspace files using FastEmbed for embeddings + ChromaDB for storage; enables natural language file search within the workspace
 
 TRACE MANAGEMENT
 Format: MCTR-YYYYMMDDHHMMSS-UUID | Example: MCTR-20260218104223-a3f2c1b9
@@ -137,6 +151,7 @@ Structure: outputfiles/agents/[agent_name]/, outputfiles/tools/[tool_name]/, out
 Cleanup: temp: 24h, agents: 30 days (configurable), tools: persistent, reports: persistent
 Package management: workspace/package_manager.py tracks package requests with status (pending|approved|denied|installed|failed|uninstalled), safety scoring via workspace/package_intelligence.py
 Usage tracking: workspace/usage_tracker.py tracks API token consumption, costs, and request counts by provider, model, and time range
+Workspace utils (workspace_utils.py): shared helpers load_workspaces() (reads memory/storage/misakacipher/workspaces.json) and validate_path() (path traversal safety); used by PersonaManager and dashboard routes
 
 CONFIGURATION OVERRIDE PRIORITY
 1. runtime parameters (highest), 2. environment variables (.env), 3. config files (config/*.yaml, config/*.json, config/settings.json), 4. system defaults (lowest)
@@ -178,12 +193,12 @@ MEMORY-001: ChromaDB connection failed | MEMORY-002: embedding generation failed
 SECURITY-001: PII detected | SECURITY-002: credential detected | SECURITY-003: request blocked
 
 VERSION
-Current: Sprint 3+ (February 2026) | History: Sprint 1 (Nexus, Firewall), Sprint 2 (Factory, agents), Sprint 3 (Forge, tools, memory), Sprint 4 roadmap (local models)
-Breaking changes: Sprint 3 tool registry format (added status field), Sprint 3 Aethvion naming enforcement
+Current: v3 / Sprint 3+ (March 2026) | History: Sprint 1 (Nexus, Firewall), Sprint 2 (Factory, agents), Sprint 3 (Forge, tools, memory), v3 (Discord integration, PersonaManager, HistoryManager, IdentityManager, SocialRegistry, FileVectorStore), Sprint 4 roadmap (local models)
+Breaking changes: Sprint 3 tool registry format (added status field), Sprint 3 Aethvion naming enforcement; v3 chat history path changed to memory/storage/misakacipher/chathistory/
 
 PERFORMANCE TARGETS
 Request latency: <2s (Flash), <5s (Pro) | Tool generation: <30s (simple), <120s (complex) | Agent spawn: <1s | Memory retrieval: <500ms (10 results)
 
-LAST UPDATED: 2026-02-25
+LAST UPDATED: 2026-03-11
 MAINTAINED BY: Agentic Sprint Cycles
 STABILITY: Core architecture stable, tool implementations evolve rapidly
