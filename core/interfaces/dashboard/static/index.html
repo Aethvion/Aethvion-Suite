@@ -1925,11 +1925,14 @@
                         </button>
                     </div>
                     <div class="card-content">
-                        <div id="settings-version-banner" style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border);">
-                            <div class="loading-placeholder">Loading version data...</div>
+                        <div id="local-version-info" style="margin-bottom: 20px; padding: 15px; background: rgba(0, 217, 255, 0.05); border-radius: 6px; border: 1px solid rgba(0, 217, 255, 0.1);">
+                            <div class="loading-placeholder">Loading local version...</div>
                         </div>
+
+                        <div id="settings-version-banner"></div>
                         
-                        <h3>Remote Changelog (GitHub)</h3>
+                        <h3 style="margin-top: 25px;">Remote Changelog (GitHub)</h3>
+
                         <p class="section-hint">Recent improvements and fixes from the main repository.</p>
                         <ul id="settings-changelog-list" style="margin-top: 10px; padding-left: 20px; color: var(--text-secondary); line-height: 1.6;">
                             <li>Checking for remote changes...</li>

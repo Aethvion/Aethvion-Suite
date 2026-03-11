@@ -1994,7 +1994,6 @@ async function checkForUpdates(manual = false) {
 }
 
 async function renderVersionTabContent(localData = null, remoteData = null, isUpdateAvailable = false) {
-    // If no data provided, fetch local to at least show current version
     if (!localData) {
         try {
             const resp = await fetch('/static/assets/system-status.json');
@@ -2005,31 +2004,81 @@ async function renderVersionTabContent(localData = null, remoteData = null, isUp
         }
     }
 
+    const localInfo = document.getElementById('local-version-info');
     const versionBanner = document.getElementById('settings-version-banner');
     const changelogList = document.getElementById('settings-changelog-list');
     
-    if (versionBanner) {
-        let html = `
-            <h3>Misaka Cipher v${localData.system.version}</h3>
-            <p>Last Updated: ${localData.system.last_sync || 'Unknown'}</p>
+    // 1. Render Local Info Box
+    if (localInfo) {
+        localInfo.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="font-size: 2rem;">🛡️</div>
+                <div>
+                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary);">Currently Installed</div>
+                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--primary);">Misaka Cipher v${localData.system.version}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">Build Sync: ${localData.system.last_sync || 'Unknown'}</div>
+                </div>
+            </div>
         `;
+    }
+
+    // 2. Render Update Banner
+    if (versionBanner) {
         if (isUpdateAvailable && remoteData) {
-            html += `
-                <div style="margin-top: 15px; padding: 10px; background: rgba(85, 239, 196, 0.1); border-left: 3px solid #55efc4; border-radius: 4px;">
-                    <strong style="color: #55efc4;">Update Available!</strong>
-                    <br>Version ${remoteData.system.version} is available on <a href="https://github.com/Aethvion/Misaka-Cipher" target="_blank" style="color:var(--text-primary);">GitHub</a>.
+            versionBanner.innerHTML = `
+                <div style="margin-top: 15px; padding: 15px; background: rgba(85, 239, 196, 0.1); border-left: 4px solid #55efc4; border-radius: 4px; display: flex; align-items: center; gap: 15px;">
+                    <div style="font-size: 1.5rem;">🚀</div>
+                    <div style="flex: 1;">
+                        <strong style="color: #55efc4; font-size: 1rem;">Update Available!</strong>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 4px;">
+                            Version <strong>${remoteData.system.version}</strong> is now live on GitHub.
+                        </div>
+                    </div>
+                    <a href="https://github.com/Aethvion/Misaka-Cipher" target="_blank" class="action-btn small primary" style="text-decoration: none;">View Repo</a>
                 </div>
             `;
         } else if (remoteData) {
-            html += `<p style="color:var(--text-secondary); margin-top:10px;"><i class="fas fa-check-circle" style="color:#55efc4;"></i> You are running the latest version.</p>`;
+            versionBanner.innerHTML = `
+                <div style="margin-top: 15px; padding: 12px; border-radius: 4px; border: 1px solid var(--border); background: rgba(255,255,255,0.02); display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-check-circle" style="color:#55efc4;"></i>
+                    <span style="font-size: 0.9rem; color: var(--text-secondary);">System is up to date. No new versions found.</span>
+                </div>
+            `;
+        } else {
+            versionBanner.innerHTML = '';
         }
-        versionBanner.innerHTML = html;
     }
 
-    if (changelogList && remoteData && remoteData.system.changelog) {
-        changelogList.innerHTML = remoteData.system.changelog.map(item => `<li>${item}</li>`).join('');
-    } else if (changelogList && localData.system.changelog) {
-        changelogList.innerHTML = localData.system.changelog.map(item => `<li>${item}</li>`).join('');
+    // 3. Render Version-Grouped Changelog
+    if (changelogList) {
+        const dataToUse = (remoteData && remoteData.system.changelog) ? remoteData.system.changelog : localData.system.changelog;
+        
+        if (dataToUse && Array.isArray(dataToUse)) {
+            // Sort versions descending (assuming semver or incremental strings/numbers)
+            const sorted = [...dataToUse].sort((a, b) => b.version.localeCompare(a.version, undefined, {numeric: true, sensitivity: 'base'}));
+            
+            changelogList.innerHTML = sorted.map(entry => {
+                const isCurrent = entry.version === localData.system.version;
+                const highlightStyle = isCurrent ? 'border-left: 3px solid var(--primary); background: rgba(0, 217, 255, 0.03);' : '';
+                const currentBadge = isCurrent ? '<span style="background: var(--primary); color: #000; font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; font-weight: bold; margin-left: 10px;">INSTALLED</span>' : '';
+
+                return `
+                    <div style="margin-bottom: 25px; padding: 15px; border-radius: 8px; border: 1px solid var(--border); ${highlightStyle}">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div style="font-weight: bold; color: var(--text-primary); font-size: 1.1rem;">
+                                Version ${entry.version} ${currentBadge}
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">${entry.date || ''}</div>
+                        </div>
+                        <ul style="margin: 0; padding-left: 20px; color: var(--text-secondary);">
+                            ${entry.changes.map(change => `<li style="margin-bottom: 5px;">${change}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            changelogList.innerHTML = '<li style="color:var(--text-secondary);">No changelog data available.</li>';
+        }
     }
 }
 

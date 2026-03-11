@@ -6,9 +6,17 @@
         "last_sync": "2026-03-11",
         "contact": "contact@misakacipher.com",
         "changelog": [
-            "Started keeping a detailed changelog.",
-            "Implemented Instant Thread Creation & Auto-Titling for the Chat interface.",
-            "Added Token Savers (manual start overlays) for Logic Quest and Blackjack."
+            {
+                "version": "1",
+                "date": "2026-03-11",
+                "changes": [
+                    "Started keeping a detailed changelog.",
+                    "Implemented Instant Thread Creation & Auto-Titling for the Chat interface.",
+                    "Added Token Savers (manual start overlays) for Logic Quest and Blackjack.",
+                    "Refactored Version Tab into a standalone, bottom-pinned sidebar item.",
+                    "Optimized installation dependencies (replaced winsdk with winrt)."
+                ]
+            }
         ]
     },
     "roadmap": {
