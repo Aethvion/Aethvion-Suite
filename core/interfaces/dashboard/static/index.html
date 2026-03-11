@@ -1458,6 +1458,9 @@
                         <button class="settings-nav-item" data-settingsubtab="modules">
                             <i class="fas fa-cubes"></i> Modules
                         </button>
+                        <button class="settings-nav-item" data-settingsubtab="discord">
+                            <i class="fab fa-discord"></i> Discord Worker
+                        </button>
                     </div>
 
                     <!-- Settings Content Pane -->
@@ -1901,6 +1904,54 @@
                                             to include / exclude from Auto routing</span></div>
                                     <div id="auto-routing-agent-models" class="routing-model-list">
                                         <div class="loading-placeholder">Loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Panel: Discord Worker -->
+                        <div class="settings-panel" id="settings-panel-discord">
+                            <div class="setting-card" id="card-discord">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fab fa-discord"></i>
+                                        <span>Discord Worker Service</span>
+                                    </div>
+                                    <div id="discord-status-badge" class="status-badge offline">
+                                        <span class="status-dot"></span>
+                                        <span class="status-text">OFFLINE</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="section-hint">Manage the persistent Discord connection for inbound and outbound messages.</p>
+                                    
+                                    <div class="discord-vitals-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                                        <div class="vital-item" style="padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px;">
+                                            <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Bot Username</div>
+                                            <div id="discord-bot-user" style="font-size: 1.1rem; font-weight: bold; margin-top: 0.2rem;">Not Connected</div>
+                                        </div>
+                                        <div class="vital-item" style="padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px;">
+                                            <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Guilds Access</div>
+                                            <div id="discord-bot-guilds" style="font-size: 1.1rem; font-weight: bold; margin-top: 0.2rem;">0</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="control-group" style="margin-bottom: 1.5rem;">
+                                        <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: bold;">Bot Token</label>
+                                        <div class="input-with-button" style="display: flex; gap: 0.5rem;">
+                                            <input type="password" id="setting-discord-token" class="control-input" placeholder="Paste your Discord Bot Token here..." style="flex: 1;">
+                                            <button id="toggle-discord-token-visibility" class="icon-btn" title="Toggle Visibility"><i class="fas fa-eye"></i></button>
+                                        </div>
+                                        <p class="field-hint" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem;">Token is used to authenticate with the Discord API. Keep it secret.</p>
+                                    </div>
+
+                                    <div class="discord-controls" style="display: flex; gap: 1rem;">
+                                        <button id="btn-discord-start" class="term-btn primary" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                                            <i class="fas fa-play"></i> START WORKER
+                                        </button>
+                                        <button id="btn-discord-stop" class="term-btn danger" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.5rem;" disabled>
+                                            <i class="fas fa-stop"></i> STOP WORKER
+                                        </button>
                                     </div>
                                 </div>
                             </div>

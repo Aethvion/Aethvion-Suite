@@ -80,6 +80,21 @@
                 "capture_image": "Capture a photo from specified camera (index=0 for default)."
             },
             "settings": []
+        },
+        {
+            "id": "discord_link",
+            "name": "Discord Bridge",
+            "description": "Send and receive messages via Discord.",
+            "module_path": "modules.aethvion.nexus.discord_link",
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "send_message": "Send a message to a Discord channel (takes 'channel_id' and 'message').",
+                "get_messages": "Get recent messages from a channel (takes 'channel_id' and 'limit')."
+            },
+            "settings": [
+                "bot_token"
+            ]
         }
     ]
 }

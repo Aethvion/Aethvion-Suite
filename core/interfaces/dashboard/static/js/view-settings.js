@@ -1845,6 +1845,11 @@ async function switchSettingsSubTab(subTab, save = true) {
         loadNexusModules();
     }
 
+    if (subTab === 'discord') {
+        initDiscordSettings();
+        loadDiscordStatus();
+    }
+
     if (save && typeof savePreference === 'function') {
         savePreference('active_settings_subtab', subTab);
     }
@@ -2105,4 +2110,123 @@ document.addEventListener('click', (e) => {
         checkForUpdates(true);
     }
 });
+
+
+// ===== Discord Worker Management =====
+
+let _discordStatusInterval = null;
+
+function initDiscordSettings() {
+    const tokenInput = document.getElementById('setting-discord-token');
+    const toggleBtn = document.getElementById('toggle-discord-token-visibility');
+    const startBtn = document.getElementById('btn-discord-start');
+    const stopBtn = document.getElementById('btn-discord-stop');
+
+    if (tokenInput) {
+        tokenInput.value = prefs.get('nexus.discord_link.bot_token', '');
+        tokenInput.onchange = async (e) => {
+            await savePreference('nexus.discord_link.bot_token', e.target.value.trim());
+        };
+    }
+
+    if (toggleBtn && tokenInput) {
+        toggleBtn.onclick = () => {
+            const isPassword = tokenInput.type === 'password';
+            tokenInput.type = isPassword ? 'text' : 'password';
+            toggleBtn.innerHTML = isPassword ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+        };
+    }
+
+    if (startBtn) {
+        startBtn.onclick = async () => {
+            startBtn.disabled = true;
+            startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> STARTING...';
+            try {
+                const res = await fetch('/api/discord/start', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    showNotification('Discord Worker starting...', 'success');
+                    setTimeout(loadDiscordStatus, 2000);
+                } else {
+                    showNotification(data.detail || 'Failed to start Discord Worker', 'error');
+                }
+            } catch (e) {
+                showNotification('Network error starting worker', 'error');
+            } finally {
+                startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="fas fa-play"></i> START WORKER';
+            }
+        };
+    }
+
+    if (stopBtn) {
+        stopBtn.onclick = async () => {
+            stopBtn.disabled = true;
+            stopBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> STOPPING...';
+            try {
+                const res = await fetch('/api/discord/stop', { method: 'POST' });
+                if (res.ok) {
+                    showNotification('Discord Worker stopped', 'success');
+                    loadDiscordStatus();
+                } else {
+                    showNotification('Failed to stop Discord Worker', 'error');
+                }
+            } catch (e) {
+                showNotification('Network error stopping worker', 'error');
+            } finally {
+                stopBtn.disabled = false;
+                stopBtn.innerHTML = '<i class="fas fa-stop"></i> STOP WORKER';
+            }
+        };
+    }
+
+    // Start polling if not already
+    if (!_discordStatusInterval) {
+        _discordStatusInterval = setInterval(loadDiscordStatus, 5000);
+    }
+}
+
+async function loadDiscordStatus() {
+    // Only poll if the discord panel is active or if we're just starting
+    const panel = document.getElementById('settings-panel-discord');
+    if (!panel || !panel.classList.contains('active')) {
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/discord/status');
+        if (!res.ok) return;
+        const status = await res.json();
+        updateDiscordUI(status);
+    } catch (e) {
+        console.warn('Failed to fetch Discord status:', e);
+    }
+}
+
+function updateDiscordUI(status) {
+    const badge = document.getElementById('discord-status-badge');
+    const userDisplay = document.getElementById('discord-bot-user');
+    const guildsDisplay = document.getElementById('discord-bot-guilds');
+    const startBtn = document.getElementById('btn-discord-start');
+    const stopBtn = document.getElementById('btn-discord-stop');
+
+    if (!badge || !userDisplay || !guildsDisplay) return;
+
+    // Status Badge
+    badge.className = `status-badge ${status.status}`;
+    badge.querySelector('.status-text').textContent = status.status.toUpperCase();
+
+    // Vitals
+    userDisplay.textContent = status.user || (status.status === 'offline' ? 'Not Connected' : 'Connecting...');
+    guildsDisplay.textContent = status.guilds || 0;
+
+    // Buttons
+    if (startBtn) startBtn.disabled = (status.status === 'online' || status.status === 'connecting');
+    if (stopBtn) stopBtn.disabled = (status.status === 'offline');
+    
+    if (status.status === 'error' && status.error) {
+        userDisplay.textContent = 'ERROR';
+        userDisplay.title = status.error;
+    }
+}
 

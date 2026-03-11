@@ -64,6 +64,7 @@ orchestrator = None
 nexus = None
 factory = None
 forge = None
+discord_worker = None
 main_event_loop = None
 
 # Startup tracking
@@ -223,6 +224,7 @@ async def initialize_system_background():
         from .misaka_cipher_routes import router as misaka_cipher_router
         from .documentation_routes import router as documentation_router
         from .games_routes import router as games_router
+        from .discord_routes import router as discord_router
         
         # Immediate Router Inclusion (Sync but fast)
         app.include_router(package_router)
@@ -239,6 +241,7 @@ async def initialize_system_background():
         app.include_router(misaka_cipher_router)
         app.include_router(documentation_router)
         app.include_router(games_router)
+        app.include_router(discord_router)
 
         # Step 2: Offload Heavy Component Initialization to a Thread
         # This keeps the FastAPI event loop free to serve requests.
@@ -254,6 +257,33 @@ async def initialize_system_background():
         from core.orchestrator.task_queue import get_task_queue_manager
         task_manager = get_task_queue_manager(orchestrator, max_workers=4)
         await task_manager.start()
+        
+        # Step 4: Bootstrap Persistent Discord Worker
+        try:
+            from core.workspace.preferences_manager import get_preferences_manager
+            prefs = get_preferences_manager()
+            bot_token = prefs.get('nexus.discord_link.bot_token')
+            
+            if bot_token and bot_token.strip():
+                startup_status["status"] = "Bootstrapping Discord Service..."
+                from core.workers.discord_worker import start_discord_service
+                new_discord_worker = start_discord_service(orchestrator, task_manager, bot_token)
+                
+                # Store globally for API access
+                global discord_worker
+                discord_worker = new_discord_worker
+                
+                # Update router reference
+                from .discord_routes import set_worker_instance
+                set_worker_instance(new_discord_worker)
+                
+                # Run in background event loop
+                asyncio.create_task(new_discord_worker.run_worker())
+                logger.info("✓ Discord Persistent Worker bootstrapped")
+            else:
+                logger.info("Discord Bot Token not found in settings. Discord service skipped.")
+        except Exception as e:
+            logger.error(f"Failed to bootstrap Discord service: {e}")
         
         startup_status["status"] = "All systems operational"
         startup_status["progress"] = 95

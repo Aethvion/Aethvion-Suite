@@ -55,6 +55,9 @@ dependencies = [
 
     # Web server extensions
     "python-multipart>=0.0.7",
+
+    # Communication
+    "discord.py>=2.3.0",
 ]
 
 [project.optional-dependencies]

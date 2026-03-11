@@ -720,3 +720,89 @@ input::-webkit-inner-spin-button {
     opacity: 1;
     color: var(--primary);
 }
+
+/* ===== Discord Worker Styles ===== */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+}
+
+.status-badge .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+}
+
+/* Online/Live */
+.status-badge.online {
+    background: rgba(85, 239, 196, 0.1);
+    border-color: rgba(85, 239, 196, 0.3);
+    color: #55efc4;
+}
+.status-badge.online .status-dot {
+    background: #55efc4;
+    box-shadow: 0 0 8px #55efc4;
+}
+
+/* Offline */
+.status-badge.offline {
+    background: rgba(255, 118, 117, 0.1);
+    border-color: rgba(255, 118, 117, 0.3);
+    color: #ff7675;
+}
+.status-badge.offline .status-dot {
+    background: #ff7675;
+}
+
+/* Connecting */
+.status-badge.connecting {
+    background: rgba(255, 159, 67, 0.1);
+    border-color: rgba(255, 159, 67, 0.3);
+    color: #ff9f43;
+}
+.status-badge.connecting .status-dot {
+    background: #ff9f43;
+    animation: pulse 1.5s infinite;
+}
+
+/* Error */
+.status-badge.error {
+    background: rgba(255, 159, 67, 0.2);
+    border-color: #ff9f43;
+    color: #ff9f43;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.4; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.1); }
+    100% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.discord-vitals-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.vital-item {
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.field-hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.4rem;
+}

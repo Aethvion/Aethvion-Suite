@@ -53,6 +53,19 @@ class TaskWorker:
             try:
                 # Get task from queue (blocks until available)
                 task = await self.queue.get()
+                
+                # Check if this is a specialized task for another worker (e.g. Discord)
+                if task.metadata.get('task_type') == 'DISCORD_SEND':
+                    # Put it back or just ignore it because we assume DiscordWorker is polling the same tasks dict
+                    # Actually, if it's in the queue, it WILL be picked up by a TaskWorker.
+                    # We should prevent Discord tasks from entering this general queue, 
+                    # OR we make this worker ignore it and the DiscordWorker pulls it.
+                    # Best: DiscordWorker doesn't use the queue.put(), it just watches the tasks dict.
+                    # Wait, submit_task calls queue.put(task).
+                    # I'll update submit_task to NOT queue DISCORD_SEND tasks.
+                    self.queue.task_done()
+                    continue
+
                 self.current_task = task
                 
                 logger.info(f"Worker {self.worker_id} picked up task {task.id}")
@@ -361,7 +374,8 @@ class TaskQueueManager:
 
     async def submit_task(self, prompt: str, thread_id: str = "default", thread_title: str = None, 
                     model_id: Optional[str] = None, attached_files: Optional[List[Dict[str, Any]]] = None,
-                    mode: Optional[str] = None, settings: Optional[Dict[str, Any]] = None) -> str:
+                    mode: Optional[str] = None, settings: Optional[Dict[str, Any]] = None,
+                    task_type: Optional[str] = None, channel_id: Optional[str] = None) -> str:
         """
         Submit a task to the queue.
         
@@ -373,6 +387,8 @@ class TaskQueueManager:
             attached_files: Optional list of attached files
             mode: Optional explicit mode (auto/chat_only)
             settings: Optional explicit thread settings (context_mode, etc)
+            task_type: Optional specialized task type (e.g. 'DISCORD_SEND')
+            channel_id: Optional channel ID for output tasks
             
         Returns:
             Task ID
@@ -425,16 +441,23 @@ class TaskQueueManager:
         if attached_files:
             task.metadata['attached_files'] = attached_files
         
+        if task_type:
+            task.metadata['task_type'] = task_type
+        if channel_id:
+            task.metadata['channel_id'] = channel_id
+            
         # Save thread state
         self._save_thread(thread_id)
         
         # Save task state
         self._save_task(task)
         
-        # Add to queue
-        await self.queue.put(task)
-        
-        logger.info(f"Task {task.id} submitted to queue (thread: {thread_id}, mode: {task.metadata['mode']}, model: {model_id})")
+        # Add to queue ONLY if it's not a specialized persistent worker task
+        if task_type != 'DISCORD_SEND':
+            await self.queue.put(task)
+            logger.info(f"Task {task.id} submitted to queue (thread: {thread_id}, mode: {task.metadata['mode']}, model: {model_id})")
+        else:
+            logger.info(f"Task {task.id} (DISCORD_SEND) registered for DiscordWorker polling")
         
         return task.id
     
