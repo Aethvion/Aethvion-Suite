@@ -2083,21 +2083,19 @@ async function renderVersionTabContent(localData = null, remoteData = null, isUp
 }
 
 function runStartupUpdateCheck() {
-    const lastCheck = localStorage.getItem('last_update_check_time');
-    const now = new Date().getTime();
-    const ONE_DAY = 24 * 60 * 60 * 1000;
+    // 1. Always check once on startup/page load
+    console.log("Running startup update check...");
+    checkForUpdates(false);
 
-    if (!lastCheck || (now - parseInt(lastCheck)) > ONE_DAY) {
-        console.log("Running daily update check...");
-        localStorage.setItem('last_update_check_time', now.toString());
+    // 2. Set interval to check once every 24 hours for long-running sessions
+    const ONE_DAY = 24 * 60 * 60 * 1000;
+    setInterval(() => {
+        console.log("Running scheduled daily update check...");
         checkForUpdates(false);
-    } else {
-        // Silent check just to populate local UI states if wanted, but skipping network is better.
-        // We'll just fetch local to populate the Version tab.
-        renderVersionTabContent();
-    }
+    }, ONE_DAY);
 }
 window.checkForUpdates = checkForUpdates;
+window.runStartupUpdateCheck = runStartupUpdateCheck;
 
 // Initialize Manual Update Button
 document.addEventListener('click', (e) => {

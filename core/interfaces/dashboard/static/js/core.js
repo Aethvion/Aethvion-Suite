@@ -90,6 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         initDevMode();
         await loadInitialData();
+        if (window.runStartupUpdateCheck) window.runStartupUpdateCheck();
     } catch (e) {
         console.error("Error during initial data load:", e);
     }
