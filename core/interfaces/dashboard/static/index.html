@@ -1951,6 +1951,13 @@
                         <div class="game-canvas">
                             <div id="lq-oracle" class="lq-oracle">?</div>
 
+                            <!-- Start Screen Overlay -->
+                            <div id="game-overlay-logic-quest-start" class="game-overlay">
+                                <div class="overlay-title" style="color:var(--text-primary)">INITIALIZE ORACLE</div>
+                                <div class="overlay-subtitle" style="margin-bottom: 2rem;">Deduce the secret rule using logic.<br>Initializing this game will consume tokens.</div>
+                                <button class="game-btn" onclick="startLogicQuest()" id="lq-start-btn">Initialize Oracle</button>
+                            </div>
+
                             <div class="lq-hint-badge">
                                 <i class="fas fa-info-circle"></i>
                                 <span id="lq-hint-text">Waiting for game start...</span>
@@ -2084,6 +2091,13 @@
                         <div id="pc-status-banner" class="game-status-banner" style="display:none;">
                             <h2 id="pc-status-title">YOU WIN</h2>
                             <p id="pc-status-msg"></p>
+                        </div>
+
+                        <!-- Start Screen Overlay -->
+                        <div id="game-overlay-blackjack-start" class="game-overlay">
+                            <div class="overlay-title" style="color:var(--text-primary)">JOIN TABLE</div>
+                            <div class="overlay-subtitle" style="margin-bottom: 2rem;">The dealer is waiting.<br>Entering this game will consume tokens.</div>
+                            <button class="game-btn" onclick="startPlayingCards()" id="bj-start-btn">Join Table</button>
                         </div>
 
                         <div class="bj-hands-area">

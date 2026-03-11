@@ -63,6 +63,9 @@
                 setGameDisplay(document.getElementById(elements.display), 'The Oracle is ready. Enter a test input.');
 
                 hideGameOverlay('logic-quest');
+                
+                const startOverlay = document.getElementById('game-overlay-logic-quest-start');
+                if (startOverlay) startOverlay.style.display = 'none';
 
                 // Clear inputs
                 document.getElementById(elements.testInput).value = '';
@@ -239,7 +242,11 @@
         // Register with framework
         registerGame('logic-quest', {
             onTabSwitch: () => {
-                if (!session) startNewGame();
+                // If there is no active session, show the start overlay instead of auto-starting
+                if (!session) {
+                    const overlay = document.getElementById('game-overlay-logic-quest-start');
+                    if (overlay) overlay.style.display = 'flex';
+                }
             }
         });
     });

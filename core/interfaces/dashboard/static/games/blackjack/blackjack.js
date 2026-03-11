@@ -38,6 +38,8 @@
 
         setDealerBubble('Shuffling deck...', true);
         hideOverlay();
+        const startOverlay = document.getElementById('game-overlay-blackjack-start');
+        if (startOverlay) startOverlay.style.display = 'none';
         document.getElementById(elements.statusBanner).style.display = 'none';
 
         try {
@@ -335,7 +337,11 @@
 
         registerGame('blackjack', {
             onTabSwitch: () => {
-                if (!session) startNewDuel();
+                // If there is no active session, show the start overlay instead of auto-starting
+                if (!session) {
+                    const overlay = document.getElementById('game-overlay-blackjack-start');
+                    if (overlay) overlay.style.display = 'flex';
+                }
             }
         });
     });
