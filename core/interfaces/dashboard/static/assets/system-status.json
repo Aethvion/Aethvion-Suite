@@ -74,6 +74,10 @@
                 {
                     "name": "Web Dashboard",
                     "desc": "A clean, responsive UI for managing all aspects of the Misaka node."
+                },
+                {
+                    "name": "Intelligent Chat Interface",
+                    "desc": "Instant thread creation with seamless auto-titling and persistent layout memory across modes."
                 }
             ],
             "assistant": [

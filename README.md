@@ -37,6 +37,8 @@ These features are functional in the current build:
 ### 💬 Chat & Threads
 - Multi-provider chat (Google, OpenAI, Grok) with automatic failover
 - Persistent conversation threads with configurable context modes (none / smart / full)
+- Instant thread creation with automatic intelligent titling based on context
+- Collapsible, flush-edge chat UI with persistent layout state memory
 - Per-message model selection or **auto-routing** (LLM picks the best model from your enabled pool)
 - Thread memory: task JSONs stored on disk, model used + routing reasoning recorded
 
