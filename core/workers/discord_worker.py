@@ -81,6 +81,7 @@ class DiscordWorker(commands.Bot):
         # 1. Direct Messages (DMs)
         # 2. Mentions in a server
         is_dm = isinstance(message.channel, discord.DMChannel)
+        is_main_user = str(message.author.id) == str(self.main_user_id)
         is_mention = self.user.mentioned_in(message)
         
         if not (is_dm or is_mention):
@@ -104,17 +105,18 @@ class DiscordWorker(commands.Bot):
         trace_id = generate_trace_id()
         logger.info(f"[{trace_id}] Discord Inbound: From {profile['display_name']} in {message.channel}")
 
-        # Mirror User message to unified history
-        HistoryManager.log_message(
-            role="user",
-            content=message.content,
-            platform="discord",
-            metadata={
-                "discord_user_id": str(message.author.id),
-                "channel_id": str(message.channel.id),
-                "is_dm": is_dm
-            }
-        )
+        # Mirror User message to unified history ONLY if it's an authorized DM
+        if is_dm and is_main_user:
+            HistoryManager.log_message(
+                role="user",
+                content=message.content,
+                platform="discord",
+                metadata={
+                    "discord_user_id": str(message.author.id),
+                    "channel_id": str(message.channel.id),
+                    "is_dm": is_dm
+                }
+            )
 
         # Context injection for Misaka
         prompt = f"Context: USER={profile['display_name']} (ID: {profile['internal_id']})\n\nMessage: {message.content}"
@@ -140,21 +142,27 @@ class DiscordWorker(commands.Bot):
             history_context = "\n".join(context_lines) if context_lines else "No previous conversation history."
             
             # Security: Allow sensitive tasks ONLY for the main user in DM
-            is_main_user = str(message.author.id) == str(self.main_user_id)
             security_context = ""
+            allow_tools = False
+            
             if is_dm and is_main_user:
                 security_context = "\nSECURITY NOTICE: This is a Direct Message with the AUTHORIZED MAIN USER. Sensitive tools/tasks are ALLOWED."
+                allow_tools = True
             elif is_dm:
-                security_context = "\nSECURITY NOTICE: This is a DM with an UNKNOWN user. Administrative tasks are restricted."
+                security_context = "\nSECURITY NOTICE: This is a DM with an UNKNOWN user. Administrative tasks and tools are strictly forbidden."
+            else:
+                security_context = "\nSECURITY NOTICE: This is a public Discord server. You DO NOT have access to tools. Respond conversationally."
             
-            full_prompt = f"SHARED CONVERSATION HISTORY:\n---\n{history_context}\n---\n\n{prompt}{security_context}"
+            full_prompt = f"SHARED CONVERSATION HISTORY:\n---\n{history_context}\n---\n\n{prompt}"
 
             result = await loop.run_in_executor(
                 None,
                 lambda: self.orchestrator.process_message(
                     full_prompt, 
                     trace_id=trace_id,
-                    source="discord"
+                    source="discord",
+                    security_context=security_context,
+                    allow_tools=allow_tools
                 )
             )
             
@@ -173,19 +181,28 @@ class DiscordWorker(commands.Bot):
                     response_text = re.sub(r'\[Mood:\s*\w+\]?', '', response_text, flags=re.IGNORECASE)
                     response_text = re.sub(r'\[Emotion:\s*\w+\]?', '', response_text, flags=re.IGNORECASE).strip()
                     
-                    await message.reply(response_text)
+                    files = []
+                    if getattr(result, "media_paths", None):
+                        for m_path in result.media_paths:
+                            try:
+                                files.append(discord.File(m_path))
+                            except Exception as fe:
+                                logger.error(f"[{trace_id}] Failed to attach file {m_path}: {fe}")
+                                
+                    await message.reply(response_text, files=files if files else None)
 
-                    # Mirror Assistant response to unified history
-                    HistoryManager.log_message(
-                        role="assistant",
-                        content=response_text,
-                        platform="discord",
-                        metadata={
-                            "discord_user_id": str(message.author.id),
-                            "channel_id": str(message.channel.id),
-                            "trace_id": trace_id
-                        }
-                    )
+                    # Mirror Assistant response to unified history ONLY if it's an authorized DM
+                    if is_dm and is_main_user:
+                        HistoryManager.log_message(
+                            role="assistant",
+                            content=response_text,
+                            platform="discord",
+                            metadata={
+                                "discord_user_id": str(message.author.id),
+                                "channel_id": str(message.channel.id),
+                                "trace_id": trace_id
+                            }
+                        )
             elif not result.success:
                 logger.error(f"[{trace_id}] Orchestrator failed to process Discord message: {result.error}")
                 

@@ -21,6 +21,7 @@ from core.utils import get_logger, generate_trace_id
 
 from .intent_analyzer import IntentAnalyzer, IntentAnalysis, IntentType
 from core.memory.identity_manager import IdentityManager
+from core.orchestrator.persona_manager import PersonaManager
 
 logger = get_logger(__name__)
 
@@ -56,6 +57,7 @@ class ExecutionResult:
     error: Optional[str] = None
     model_id: Optional[str] = None
     usage: Optional[Dict[str, Any]] = None
+    media_paths: Optional[List[str]] = None
 
 
 class MasterOrchestrator:
@@ -101,7 +103,7 @@ class MasterOrchestrator:
         """Set callback for real-time step monitoring."""
         self.step_callback = callback
     
-    def process_message(self, user_message: str, mode: str = "auto", trace_id: Optional[str] = None, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, source: str = "unknown") -> ExecutionResult:
+    def process_message(self, user_message: str, mode: str = "auto", trace_id: Optional[str] = None, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, source: str = "unknown", security_context: str = "", allow_tools: bool = True) -> ExecutionResult:
         """
         Process user message end-to-end.
         
@@ -110,6 +112,10 @@ class MasterOrchestrator:
             mode: Execution mode ("auto" or "chat_only")
             trace_id: Optional trace ID (if provided by caller)
             model_id: Optional specific model ID to force
+            images: Optional list of attached images
+            source: Client source (dashboard, discord, etc)
+            security_context: Special security instructions appended to system prompt
+            allow_tools: Whether to allow tool usage and provide tool syntax to the model
             
         Returns:
             ExecutionResult with complete execution details
@@ -133,27 +139,37 @@ class MasterOrchestrator:
              })
         
         try:
-            # Step 1: Analyze intent
-            force_chat = (mode == "chat_only")
-            # Pass model_id via kwargs if needed, but IntentAnalyzer mostly uses 'flash' or default
-            intent = self.intent_analyzer.analyze(user_message, trace_id, force_chat=force_chat, source=source)
-            logger.info(f"[{trace_id}] Intent: {intent.intent_type.value} (confidence: {intent.confidence:.2f})")
+            # IDENTIFY PERSONA SOURCE (usually everything but specialized tool-only requests)
+            use_persona = (source in ["dashboard", "discord", "misakacipher"])
             
-            if self.step_callback:
-                 self.step_callback({
-                     "type": "agent_step",
-                     "title": "Intent Analysis",
-                     "content": f"Identified intent: **{intent.intent_type.value}** ({int(intent.confidence * 100)}% confidence)\nPrompt: {intent.prompt}",
-                     "trace_id": trace_id,
-                     "status": "completed"
-                 })
+            if use_persona:
+                logger.info(f"[{trace_id}] Routing directly to PersonaManager (source={source})")
+                import asyncio
+                try:
+                    result = asyncio.run(self._execute_persona_chat(user_message, trace_id, model_id, images, source, security_context, allow_tools))
+                except RuntimeError:
+                    # If this is called from a thread that already has an event loop (shouldn't happen with run_in_executor)
+                    loop = asyncio.get_event_loop()
+                    result = loop.run_until_complete(self._execute_persona_chat(user_message, trace_id, model_id, images, source, security_context, allow_tools))
 
-            # Step 2: Create action plan
-            plan = self.decide_action(intent, trace_id, model_id=model_id, images=images)
-            logger.info(f"[{trace_id}] Action plan: {', '.join(plan.actions)}")
-            
-            # Step 3: Execute plan
-            result = self.execute_plan(plan)
+                
+                # PersonaManager handles memory updates inside the loop or we do it here
+                result.response = IdentityManager.extract_and_update(result.response)
+            else:
+                # Step 1: Analyze intent
+                force_chat = (mode == "chat_only")
+                intent = self.intent_analyzer.analyze(user_message, trace_id, force_chat=force_chat, source=source)
+                logger.info(f"[{trace_id}] Intent: {intent.intent_type.value} (confidence: {intent.confidence:.2f})")
+
+                # Step 2: Create action plan for specialized tasks
+                plan = self.decide_action(intent, trace_id, model_id=model_id, images=images)
+                logger.info(f"[{trace_id}] Action plan: {', '.join(plan.actions)}")
+                
+                # Step 3: Execute plan
+                result = self.execute_plan(plan)
+                
+                # Extract and update memory tags (already generic)
+                result.response = IdentityManager.extract_and_update(result.response)
             
             # Calculate execution time
             execution_time = (datetime.now() - start_time).total_seconds()
@@ -166,22 +182,31 @@ class MasterOrchestrator:
             try:
                 logger.info(f"[{trace_id}] Starting memory creation...")
                 
+                if use_persona:
+                    intent_type_val = "chat"
+                    intent_prompt = user_message
+                    intent_domain = "General"
+                else:
+                    intent_type_val = intent.intent_type.value if hasattr(intent.intent_type, 'value') else str(intent.intent_type)
+                    intent_prompt = intent.prompt
+                    intent_domain = intent.domain or "General"
+                
                 # Default summary
-                summary_text = f"[{intent.intent_type.value}] {intent.prompt}"
+                summary_text = f"[{intent_type_val}] {intent_prompt}"
                 if len(summary_text) > 200:
                     summary_text = summary_text[:197] + "..."
                 
                 # Debug logging inputs
-                logger.info(f"[{trace_id}] Intent Type: {intent.intent_type}")
-                logger.info(f"[{trace_id}] Domain: {intent.domain}")
+                logger.info(f"[{trace_id}] Intent Type: {intent_type_val}")
+                logger.info(f"[{trace_id}] Domain: {intent_domain}")
                 
                 # Create episodic memory
                 memory = EpisodicMemory(
                     memory_id=generate_memory_id(),
                     trace_id=trace_id,
                     timestamp=datetime.now().isoformat(),
-                    event_type=intent.intent_type.value if hasattr(intent.intent_type, 'value') else str(intent.intent_type),
-                    domain=intent.domain or "General",
+                    event_type=intent_type_val,
+                    domain=intent_domain,
                     summary=summary_text,
                     content=f"User: {user_message}\n\nAssistant:\n{result.response}",
                     metadata={
@@ -228,6 +253,95 @@ class MasterOrchestrator:
                 execution_time=execution_time,
                 error=str(e)
             )
+
+    async def _execute_persona_chat(self, user_message: str, trace_id: str, model_id: Optional[str], images: Optional[List[Dict[str, Any]]], source: str, security_context: str = "", allow_tools: bool = True) -> ExecutionResult:
+        """Handle persona-based chat with iterative tool execution."""
+        # 1. Build System Prompt
+        system_prompt = PersonaManager.build_system_prompt(source=source, security_context=security_context, allow_tools=allow_tools)
+        
+        # 2. Get history from HistoryManager for the prompt
+        history_context = ""
+        try:
+            # We fetch last 10 messages for context
+            recent_msgs = HistoryManager.get_recent_history(limit=10)
+            if recent_msgs:
+                lines = []
+                for m in recent_msgs:
+                    role = "Misaka" if m["role"] == "assistant" else "User"
+                    lines.append(f"{role}: {m['content']}")
+                history_context = "\n".join(lines) + "\n\n"
+        except Exception as e:
+            logger.warning(f"[{trace_id}] Failed to load history for persona: {e}")
+
+        # Combine for initial LLM call
+        full_prompt = f"{system_prompt}\n\n--- RECENT CONVERSATION history ---\n{history_context}User: {user_message}\nMisaka:"
+        
+        current_response = ""
+        actions_taken = ["persona_chat"]
+        media_paths = []
+        
+        for i in range(3): # Max 3 tool iterations
+            request = Request(
+                prompt=full_prompt if i == 0 else f"{full_prompt}\n\n{current_response}\n\n--- NEW TOOL RESULTS ---\n{tool_results_str}",
+                request_type="generation",
+                trace_id=trace_id,
+                metadata={"source": source},
+                model=model_id,
+                images=images
+            )
+            
+            response = self.nexus.route_request(request)
+            if not response.success:
+                return ExecutionResult(trace_id, False, f"LLM Error: {response.error}", actions_taken, [], [], 0, 0)
+            
+            content = response.content.strip()
+            current_response = content
+            
+            # Execute tools only if allowed
+            if allow_tools:
+                cleaned_content, tool_results = await PersonaManager.execute_tools(content)
+                
+                # Extract media paths from tool results (like screenshots)
+                for res in tool_results:
+                    if "Saved to: " in res:
+                        try:
+                            path_line = [line for line in res.splitlines() if "Saved to: " in line][0]
+                            media_path = path_line.replace("Saved to: ", "").strip()
+                            media_paths.append(media_path)
+                        except Exception as e:
+                            logger.error(f"Failed to extract media path: {e}")
+            else:
+                # If tools are not allowed, strip any hallucinated tags but do not execute them
+                import re
+                cleaned_content = re.sub(r'\[tool:.*?\]', '', content).strip()
+                tool_results = []
+
+            
+            if not tool_results:
+                # No more tools, finish
+                return ExecutionResult(
+                    trace_id=trace_id,
+                    success=True,
+                    response=cleaned_content,
+                    actions_taken=actions_taken,
+                    tools_forged=[],
+                    agents_spawned=[],
+                    memories_queried=0,
+                    execution_time=0,
+                    media_paths=media_paths
+                )
+            
+            # Found tools, prepare for next iteration
+            tool_results_str = "\n".join(tool_results)
+            actions_taken.append(f"tools_executed_{len(tool_results)}")
+            
+            # Update prompt for followup (we append the conversation so far)
+            if i == 0:
+                full_prompt = f"{full_prompt}\n{cleaned_content}"
+            else:
+                full_prompt = f"{full_prompt}\n\n{current_response}\n\n--- NEW TOOL RESULTS ---\n{tool_results_str}"
+
+        return ExecutionResult(trace_id, True, current_response, actions_taken, [], [], 0, 0, media_paths=media_paths)
 
     def decide_action(self, intent: IntentAnalysis, trace_id: str, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None) -> ActionPlan:
         """
