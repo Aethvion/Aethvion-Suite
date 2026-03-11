@@ -17,8 +17,10 @@ function initThreadManagement() {
     // Load threads from API
     loadThreads();
 
-    // Set up event listeners
+    // Set up    // Listeners
     document.getElementById('new-thread-button').addEventListener('click', createNewThread);
+    const headerNewBtn = document.getElementById('header-new-thread-btn');
+    if (headerNewBtn) headerNewBtn.addEventListener('click', createNewThread);
 
     // Global Settings Listeners
     ['global-ctx-mode', 'global-ctx-window', 'global-agent-toggle'].forEach(id => {
