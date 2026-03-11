@@ -2,10 +2,23 @@
     "system": {
         "name": "Misaka Cipher",
         "company": "Aethvion",
-        "version": "2",
+        "version": "3",
         "last_sync": "2026-03-11",
         "contact": "contact@misakacipher.com",
         "changelog": [
+            {
+                "version": "3",
+                "date": "2026-03-11",
+                "changes": [
+                    "Checking for updates on startup.",
+                    "Complete integration of Nexus Bridge for bidirectional Discord messaging.",
+                    "Added Discord Worker settings panel (Start/Stop controls, secure Main User ID binding).",
+                    "Unified Identity & Memory System: base personality and chat histories persist cross-platform.",
+                    "Upgraded Master Orchestrator with native Persona chat loops and automatic memory extraction.",
+                    "Strict Discord Security enforced: Tools and history mirroring allowed only in private DMs with Main User.",
+                    "Discord Tool Output support added (e.g., executing screen capture and uploading image files to DMs)."
+                ]
+            },
             {
                 "version": "2",
                 "date": "2026-03-11",
@@ -100,12 +113,22 @@
                 {
                     "name": "Intelligent Chat Interface",
                     "desc": "Instant thread creation with seamless auto-titling and persistent layout memory across modes."
+                },
+                {
+                    "name": "Discord Bridge Integrations",
+                    "desc": "Full two-way communication with Discord servers and secured direct-messaging tools."
                 }
             ],
             "assistant": [
                 {
                     "name": "Misaka Cipher asistant window",
                     "desc": "Can help you with your tasks and understanding Misaka Cipher and its features."
+                }
+            ],
+            "memory": [
+                {
+                    "name": "Conversation - Evolving Context",
+                    "desc": "Dynamic memory system that extracts facts, traits, and context to reduce token bloat while maintaining long-term persona growth across platforms."
                 }
             ]
         },
@@ -128,12 +151,6 @@
                 {
                     "name": "Anthropic",
                     "desc": "Native support for Anthropic models."
-                }
-            ],
-            "memory": [
-                {
-                    "name": "Conversation - Evolving Context",
-                    "desc": "Instead of passing the entire conversation history, the system will pass only the most relevant information to the model, which will evolve over time."
                 }
             ],
             "research": [
@@ -193,6 +210,10 @@
                 {
                     "name": "Spotify Integration",
                     "desc": "OAuth2 powered link to play, pause, and control your Spotify account."
+                },
+                {
+                    "name": "Discord Bridge Integration",
+                    "desc": "Bi-directional bot integration supporting full sentient text chat, token persistence, and image uploads in servers and DMs."
                 }
             ],
             "wip": [
