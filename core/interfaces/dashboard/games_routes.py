@@ -495,3 +495,154 @@ async def get_available_models():
         return {"success": True, "models": [{"id": "auto", "provider": "auto", "description": "Auto-select best model"}] + models}
     except Exception as e:
         return {"success": False, "error": str(e), "models": [{"id": "auto", "provider": "auto", "description": "Auto"}]}
+
+
+# ── Word Search AI Generation ──────────────────────────────────────────────────
+
+class WordSearchGenerateRequest(BaseModel):
+    topic: str
+    count: int = 15
+    model: str = "auto"
+
+
+@router.post("/word-search/generate")
+async def generate_word_search(req: WordSearchGenerateRequest):
+    """
+    Generate a themed word list for Word Search using AI.
+    Returns a list of uppercase words (4–15 letters) related to the given topic.
+    """
+    from core.providers import ProviderManager
+
+    topic = req.topic.strip()
+    if not topic:
+        raise HTTPException(status_code=400, detail="Topic cannot be empty.")
+
+    count = max(8, min(req.count, 30))  # clamp between 8 and 30
+
+    # Ask explicitly for {"words": [...]} so the key is always predictable.
+    # json_mode is intentionally OFF — it forces providers to return an object
+    # with a model-chosen key name, making reliable extraction harder.
+    system_prompt = (
+        "You are a word search puzzle generator. "
+        'Respond with ONLY a JSON object in this exact format: {"words": ["WORD1", "WORD2", ...]}. '
+        "Words must be uppercase, 4-15 letters, A-Z only (no spaces, hyphens, or numbers). "
+        "No explanation, no markdown, no extra keys."
+    )
+    prompt = (
+        f'Generate exactly {count} words for a word search puzzle with the theme: "{topic}". '
+        f'Return ONLY: {{"words": ["EXAMPLE", "WORDS", "HERE"]}}'
+    )
+
+    pm = ProviderManager()
+    loop = asyncio.get_event_loop()
+
+    try:
+        response = await loop.run_in_executor(
+            None,
+            lambda: pm.call_with_failover(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                trace_id="word-search-gen",
+                temperature=0.8,
+                max_tokens=2048,
+                model=req.model,
+                json_mode=False,
+                source="game"
+            )
+        )
+
+        if not response.success:
+            raise HTTPException(status_code=502, detail="AI provider failed to respond.")
+
+        raw = response.content.strip() if response.content else ""
+        logger.info(f"[word-search-gen] Raw response for '{topic}': {raw!r}")
+
+        if not raw:
+            raise HTTPException(status_code=502, detail="AI returned an empty response.")
+
+        # ── Step 1: strip markdown code fences if present ──
+        fenced = re.search(r'```(?:json)?\s*([\s\S]*?)```', raw)
+        if fenced:
+            raw = fenced.group(1).strip()
+
+        # ── Step 2: try direct JSON parse ──
+        words = None
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                words = parsed
+            elif isinstance(parsed, dict):
+                # Check "words" first, then scan all values for the first list
+                if isinstance(parsed.get("words"), list):
+                    words = parsed["words"]
+                else:
+                    for v in parsed.values():
+                        if isinstance(v, list) and len(v) > 0:
+                            words = v
+                            break
+        except Exception:
+            pass
+
+        # ── Step 3: rescue truncated JSON — extract all double-quoted uppercase words ──
+        # Handles responses cut off mid-array: {"words": ["NARUTO", "BLEACH", "DRAGON...
+        if words is None:
+            quoted = re.findall(r'"([A-Z]{4,15})"', raw)
+            if len(quoted) >= 5:
+                words = quoted
+                logger.info(f"[word-search-gen] Rescued {len(quoted)} words from truncated JSON")
+
+        # ── Step 4: find any complete JSON array in the text ──
+        if words is None:
+            for m in re.finditer(r'\[[\s\S]*?\]', raw):
+                try:
+                    candidate = json.loads(m.group(0))
+                    if isinstance(candidate, list) and len(candidate) > 0:
+                        words = candidate
+                        break
+                except Exception:
+                    continue
+
+        # ── Step 4: last resort — extract bare uppercase words from the text ──
+        # Handles responses like "Here are your words: PLANET, GALAXY, NEBULA, ..."
+        if words is None:
+            bare = re.findall(r'\b([A-Z]{4,15})\b', raw)
+            if len(bare) >= 5:
+                words = bare
+                logger.info(f"[word-search-gen] Used bare-word fallback, found {len(bare)} words")
+
+        if not words or not isinstance(words, list):
+            snippet = raw[:300].replace('\n', ' ')
+            raise HTTPException(
+                status_code=502,
+                detail=f"Could not parse word list from AI response. Raw: {snippet!r}"
+            )
+
+        # ── Step 5: sanitise ──
+        seen = set()
+        clean = []
+        for w in words:
+            w = re.sub(r'[^A-Z]', '', str(w).upper())
+            if 4 <= len(w) <= 15 and w not in seen:
+                seen.add(w)
+                clean.append(w)
+
+        if len(clean) < 5:
+            snippet = raw[:200].replace('\n', ' ')
+            raise HTTPException(
+                status_code=502,
+                detail=f"Only {len(clean)} valid words found. Raw: {snippet!r}"
+            )
+
+        logger.info(f"[word-search-gen] Generated {len(clean)} words for topic '{topic}'")
+        return {
+            "success": True,
+            "words": clean,
+            "topic": topic,
+            "model_used": response.model or req.model
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Word search generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -213,6 +213,7 @@ function initializeUI() {
     });
 
     // Unified Module Launch Listener (Sidebar shortcuts and Panel buttons)
+    document.addEventListener('click', (e) => {
         const launchBtn = e.target.closest('.launch-shortcut, .module-launch-btn');
         if (launchBtn) {
             e.stopPropagation(); // Prevent tab switching if it's a shortcut inside a button
@@ -220,6 +221,7 @@ function initializeUI() {
             const moduleName = launchBtn.getAttribute('data-launch');
             launchModule(moduleName);
         }
+    });
 
     // Module Panel Action Listeners
     document.addEventListener('click', async (e) => {

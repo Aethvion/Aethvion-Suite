@@ -255,12 +255,14 @@
                 <button class="main-tab" data-maintab="settings" data-mode="both"><span class="tab-icon">⚙️</span><span
                         class="tab-label">Settings</span></button>
             </div>
-            
+
             <div class="sidebar-bottom">
                 <button class="main-tab" data-maintab="version" data-mode="both" title="Version Control">
                     <span class="tab-icon">🔖</span>
                     <span class="tab-label">Version</span>
-                    <div id="sidebar-version-dot" style="display:none; width:8px; height:8px; background:#ff7675; border-radius:50%; margin-left:auto;"></div>
+                    <div id="sidebar-version-dot"
+                        style="display:none; width:8px; height:8px; background:#ff7675; border-radius:50%; margin-left:auto;">
+                    </div>
                 </button>
             </div>
         </aside>
@@ -1936,39 +1938,65 @@
                                     </div>
                                 </div>
                                 <div class="card-content">
-                                    <p class="section-hint">Manage the persistent Discord connection for inbound and outbound messages.</p>
-                                    
-                                    <div class="discord-vitals-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-                                        <div class="vital-item" style="padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px;">
-                                            <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Bot Username</div>
-                                            <div id="discord-bot-user" style="font-size: 1.1rem; font-weight: bold; margin-top: 0.2rem;">Not Connected</div>
+                                    <p class="section-hint">Manage the persistent Discord connection for inbound and
+                                        outbound messages.</p>
+
+                                    <div class="discord-vitals-grid"
+                                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                                        <div class="vital-item"
+                                            style="padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px;">
+                                            <div
+                                                style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">
+                                                Bot Username</div>
+                                            <div id="discord-bot-user"
+                                                style="font-size: 1.1rem; font-weight: bold; margin-top: 0.2rem;">Not
+                                                Connected</div>
                                         </div>
-                                        <div class="vital-item" style="padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px;">
-                                            <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Guilds Access</div>
-                                            <div id="discord-bot-guilds" style="font-size: 1.1rem; font-weight: bold; margin-top: 0.2rem;">0</div>
+                                        <div class="vital-item"
+                                            style="padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px;">
+                                            <div
+                                                style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">
+                                                Guilds Access</div>
+                                            <div id="discord-bot-guilds"
+                                                style="font-size: 1.1rem; font-weight: bold; margin-top: 0.2rem;">0
+                                            </div>
                                         </div>
                                     </div>
 
                                     <div class="control-group" style="margin-bottom: 1.5rem;">
-                                        <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: bold;">Bot Token</label>
+                                        <label
+                                            style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: bold;">Bot
+                                            Token</label>
                                         <div class="input-with-button" style="display: flex; gap: 0.5rem;">
-                                            <input type="password" id="setting-discord-token" class="control-input" placeholder="Paste your Discord Bot Token here..." style="flex: 1;">
-                                            <button id="toggle-discord-token-visibility" class="icon-btn" title="Toggle Visibility"><i class="fas fa-eye"></i></button>
+                                            <input type="password" id="setting-discord-token" class="control-input"
+                                                placeholder="Paste your Discord Bot Token here..." style="flex: 1;">
+                                            <button id="toggle-discord-token-visibility" class="icon-btn"
+                                                title="Toggle Visibility"><i class="fas fa-eye"></i></button>
                                         </div>
-                                        <p class="field-hint" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem;">Token is used to authenticate with the Discord API. Keep it secret.</p>
+                                        <p class="field-hint"
+                                            style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem;">
+                                            Token is used to authenticate with the Discord API. Keep it secret.</p>
                                     </div>
 
                                     <div class="control-group" style="margin-bottom: 1.5rem;">
-                                        <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: bold;">Main User Discord ID</label>
-                                        <input type="text" id="setting-discord-main-user-id" class="control-input" placeholder="e.g. 182500917604515840" style="width: 100%;">
-                                        <p class="field-hint" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem;">Restricts sensitive actions (like screenshots) to this User ID only.</p>
+                                        <label
+                                            style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: bold;">Main
+                                            User Discord ID</label>
+                                        <input type="text" id="setting-discord-main-user-id" class="control-input"
+                                            placeholder="e.g. 182500917604515840" style="width: 100%;">
+                                        <p class="field-hint"
+                                            style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem;">
+                                            Restricts sensitive actions (like screenshots) to this User ID only.</p>
                                     </div>
 
                                     <div class="discord-controls" style="display: flex; gap: 1rem;">
-                                        <button id="btn-discord-start" class="term-btn primary" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                                        <button id="btn-discord-start" class="term-btn primary"
+                                            style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
                                             <i class="fas fa-play"></i> START WORKER
                                         </button>
-                                        <button id="btn-discord-stop" class="term-btn danger" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.5rem;" disabled>
+                                        <button id="btn-discord-stop" class="term-btn danger"
+                                            style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"
+                                            disabled>
                                             <i class="fas fa-stop"></i> STOP WORKER
                                         </button>
                                     </div>
@@ -1981,27 +2009,39 @@
 
             <!-- Ports Tab -->
             <div class="main-tab-panel" id="ports-panel">
-                <div class="header-with-actions" style="display: flex; justify-content: space-between; align-items: center; padding: 20px 30px; border-bottom: 1px solid var(--border); background: var(--bg-card);">
+                <div class="header-with-actions"
+                    style="display: flex; justify-content: space-between; align-items: center; padding: 20px 30px; border-bottom: 1px solid var(--border); background: var(--bg-card);">
                     <h2 style="margin: 0;"><span class="tab-icon">🔌</span> Dynamic Port Manager</h2>
-                    <button id="refresh-ports-btn" class="action-btn primary" title="Refresh Port List"><i class="fas fa-sync"></i> Refresh</button>
+                    <button id="refresh-ports-btn" class="action-btn primary" title="Refresh Port List"><i
+                            class="fas fa-sync"></i> Refresh</button>
                 </div>
                 <div class="status-cards" style="padding: 20px;">
                     <div class="status-card" style="grid-column: 1 / -1; width: 100%;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                             <h3 class="card-title" style="margin: 0;">Registered Modules</h3>
                             <span class="badge success" id="ports-count-badge">0 Active</span>
                         </div>
-                        <div class="table-container" style="background: rgba(0,0,0,0.2); border-radius: 8px; overflow: hidden; border: 1px solid var(--border);">
+                        <div class="table-container"
+                            style="background: rgba(0,0,0,0.2); border-radius: 8px; overflow: hidden; border: 1px solid var(--border);">
                             <table class="data-table" style="width: 100%; border-collapse: collapse;">
                                 <thead style="background: var(--bg-dark); text-align: left;">
                                     <tr>
-                                        <th style="padding: 12px 15px; border-bottom: 1px solid var(--border);">Module / Application</th>
-                                        <th style="width: 15%; padding: 12px 15px; border-bottom: 1px solid var(--border);">Port</th>
-                                        <th style="width: 15%; padding: 12px 15px; border-bottom: 1px solid var(--border);">Local Link</th>
+                                        <th style="padding: 12px 15px; border-bottom: 1px solid var(--border);">Module /
+                                            Application</th>
+                                        <th
+                                            style="width: 15%; padding: 12px 15px; border-bottom: 1px solid var(--border);">
+                                            Port</th>
+                                        <th
+                                            style="width: 15%; padding: 12px 15px; border-bottom: 1px solid var(--border);">
+                                            Local Link</th>
                                     </tr>
                                 </thead>
                                 <tbody id="ports-tbody">
-                                    <tr><td colspan="3" class="loading-placeholder" style="padding: 15px; text-align: center;">Scanning active TCP ports...</td></tr>
+                                    <tr>
+                                        <td colspan="3" class="loading-placeholder"
+                                            style="padding: 15px; text-align: center;">Scanning active TCP ports...</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -2021,7 +2061,8 @@
                             </div>
                         </div>
                         <div style="display: flex; gap: 10px; align-items: center;">
-                            <button class="action-btn header-launch-btn primary module-launch-btn" data-launch="specter" disabled>
+                            <button class="action-btn header-launch-btn primary module-launch-btn" data-launch="specter"
+                                disabled>
                                 <i class="fas fa-external-link-alt"></i> LAUNCH UI
                             </button>
                             <div id="specter-status-badge" class="status-badge offline">
@@ -2034,7 +2075,9 @@
                     <div class="module-content">
                         <div class="module-description-card card">
                             <h3>About Specter</h3>
-                            <p>Specter is a next-generation 2D avatar rigging engine. It allows you to transform static character sheets into fully articulated VTuber models with AI-assisted mesh generation and bone weight prediction.</p>
+                            <p>Specter is a next-generation 2D avatar rigging engine. It allows you to transform static
+                                character sheets into fully articulated VTuber models with AI-assisted mesh generation
+                                and bone weight prediction.</p>
                             <div class="feature-tags">
                                 <span class="tag">AI Rigging</span>
                                 <span class="tag">PIXI.js v7</span>
@@ -2044,23 +2087,19 @@
                         </div>
 
                         <div class="module-actions-grid">
-                            <div class="action-card launch" id="specter-launch-card">
-                                <i class="fas fa-external-link-alt"></i>
-                                <h4>Open Dashboard</h4>
-                                <p>Access the full Specter editor and rigging tools.</p>
-                                <button class="term-btn primary launch-shortcut" data-launch="specter">LAUNCH UI</button>
-                            </div>
                             <div class="action-card run" id="specter-run-card">
                                 <i class="fas fa-play"></i>
                                 <h4>System Control</h4>
                                 <p>Start or stop the Specter backend service.</p>
-                                <button class="term-btn run-module-btn" data-module="specter" data-action="run">START SERVICE</button>
+                                <button class="term-btn run-module-btn" data-module="specter" data-action="run">START
+                                    SERVICE</button>
                             </div>
                             <div class="action-card folder" id="specter-folder-card">
                                 <i class="fas fa-folder-open"></i>
                                 <h4>Workspace</h4>
                                 <p>Open the Specter module directory in Explorer.</p>
-                                <button class="term-btn open-folder-btn" data-path="modules/aethvion/specter">OPEN FOLDER</button>
+                                <button class="term-btn open-folder-btn" data-path="modules/aethvion/specter">OPEN
+                                    FOLDER</button>
                             </div>
                         </div>
                     </div>
@@ -2079,7 +2118,8 @@
                             </div>
                         </div>
                         <div style="display: flex; gap: 10px; align-items: center;">
-                            <button class="action-btn header-launch-btn primary module-launch-btn" data-launch="synapse" disabled>
+                            <button class="action-btn header-launch-btn primary module-launch-btn" data-launch="synapse"
+                                disabled>
                                 <i class="fas fa-external-link-alt"></i> LAUNCH UI
                             </button>
                             <div id="synapse-status-badge" class="status-badge offline">
@@ -2092,7 +2132,9 @@
                     <div class="module-content">
                         <div class="module-description-card card">
                             <h3>About Synapse</h3>
-                            <p>Synapse is the central nervous system for motion data. It integrates with MediaPipe and other tracking backends to provide high-fidelity face and pose data to Specter and other external consumers.</p>
+                            <p>Synapse is the central nervous system for motion data. It integrates with MediaPipe and
+                                other tracking backends to provide high-fidelity face and pose data to Specter and other
+                                external consumers.</p>
                             <div class="feature-tags">
                                 <span class="tag">MediaPipe Tasks</span>
                                 <span class="tag">Motion Capture</span>
@@ -2102,23 +2144,19 @@
                         </div>
 
                         <div class="module-actions-grid">
-                            <div class="action-card launch" id="synapse-launch-card">
-                                <i class="fas fa-external-link-alt"></i>
-                                <h4>Open Viewer</h4>
-                                <p>Open the live tracking viewer and calibration dashboard.</p>
-                                <button class="term-btn primary launch-shortcut" data-launch="synapse">LAUNCH UI</button>
-                            </div>
                             <div class="action-card run" id="synapse-run-card">
                                 <i class="fas fa-play"></i>
                                 <h4>System Control</h4>
                                 <p>Start or stop the Synapse tracking backend.</p>
-                                <button class="term-btn run-module-btn" data-module="synapse" data-action="run">START SERVICE</button>
+                                <button class="term-btn run-module-btn" data-module="synapse" data-action="run">START
+                                    SERVICE</button>
                             </div>
                             <div class="action-card folder" id="synapse-folder-card">
                                 <i class="fas fa-folder-open"></i>
                                 <h4>Workspace</h4>
                                 <p>Open the Synapse module directory in Explorer.</p>
-                                <button class="term-btn open-folder-btn" data-path="modules/aethvion/synapse">OPEN FOLDER</button>
+                                <button class="term-btn open-folder-btn" data-path="modules/aethvion/synapse">OPEN
+                                    FOLDER</button>
                             </div>
                         </div>
                     </div>
@@ -2136,21 +2174,24 @@
                             <i class="fas fa-code-branch"></i>
                             <span>System Build & Changelog</span>
                         </div>
-                        <button id="settings-check-update-btn" class="action-btn xs-btn secondary" style="min-width: 140px;">
+                        <button id="settings-check-update-btn" class="action-btn xs-btn secondary"
+                            style="min-width: 140px;">
                             <i class="fas fa-sync"></i> Check for Updates
                         </button>
                     </div>
                     <div class="card-content">
-                        <div id="local-version-info" style="margin-bottom: 20px; padding: 15px; background: rgba(0, 217, 255, 0.05); border-radius: 6px; border: 1px solid rgba(0, 217, 255, 0.1);">
+                        <div id="local-version-info"
+                            style="margin-bottom: 20px; padding: 15px; background: rgba(0, 217, 255, 0.05); border-radius: 6px; border: 1px solid rgba(0, 217, 255, 0.1);">
                             <div class="loading-placeholder">Loading local version...</div>
                         </div>
 
                         <div id="settings-version-banner"></div>
-                        
+
                         <h3 style="margin-top: 25px;">Remote Changelog (GitHub)</h3>
 
                         <p class="section-hint">Recent improvements and fixes from the main repository.</p>
-                        <ul id="settings-changelog-list" style="margin-top: 10px; padding-left: 20px; color: var(--text-secondary); line-height: 1.6;">
+                        <ul id="settings-changelog-list"
+                            style="margin-top: 10px; padding-left: 20px; color: var(--text-secondary); line-height: 1.6;">
                             <li>Checking for remote changes...</li>
                         </ul>
                     </div>
@@ -2210,8 +2251,10 @@
                             <!-- Start Screen Overlay -->
                             <div id="game-overlay-logic-quest-start" class="game-overlay">
                                 <div class="overlay-title" style="color:var(--text-primary)">INITIALIZE ORACLE</div>
-                                <div class="overlay-subtitle" style="margin-bottom: 2rem;">Deduce the secret rule using logic.<br>Initializing this game will consume tokens.</div>
-                                <button class="game-btn" onclick="startLogicQuest()" id="lq-start-btn">Initialize Oracle</button>
+                                <div class="overlay-subtitle" style="margin-bottom: 2rem;">Deduce the secret rule using
+                                    logic.<br>Initializing this game will consume tokens.</div>
+                                <button class="game-btn" onclick="startLogicQuest()" id="lq-start-btn">Initialize
+                                    Oracle</button>
                             </div>
 
                             <div class="lq-hint-badge">
@@ -2352,7 +2395,8 @@
                         <!-- Start Screen Overlay -->
                         <div id="game-overlay-blackjack-start" class="game-overlay">
                             <div class="overlay-title" style="color:var(--text-primary)">JOIN TABLE</div>
-                            <div class="overlay-subtitle" style="margin-bottom: 2rem;">The dealer is waiting.<br>Entering this game will consume tokens.</div>
+                            <div class="overlay-subtitle" style="margin-bottom: 2rem;">The dealer is
+                                waiting.<br>Entering this game will consume tokens.</div>
                             <button class="game-btn" onclick="startPlayingCards()" id="bj-start-btn">Join Table</button>
                         </div>
 
@@ -2399,7 +2443,8 @@
                             <p class="game-subtitle">Find the hidden tech terms</p>
                         </div>
                     </div>
-                    <div class="game-toolbar" style="background:transparent; border:none; margin:0; padding:0 15px; flex-wrap:wrap; gap:8px;">
+                    <div class="game-toolbar"
+                        style="background:transparent; border:none; margin:0; padding:0 15px; flex-wrap:wrap; gap:8px;">
                         <select id="ws-size-select" class="control-select">
                             <option value="10">10x10</option>
                             <option value="12">12x12</option>
@@ -2408,7 +2453,10 @@
                         </select>
                         <button id="ws-restart-btn" class="action-btn secondary">New Puzzle</button>
                         <div class="ws-divider"></div>
-                        <input id="ws-topic" type="text" class="ws-topic-input" placeholder="Topic — e.g. Space, Anime, Cooking…" maxlength="60" autocomplete="off" spellcheck="false" />
+                        <input id="ws-topic" type="text" class="ws-topic-input"
+                            placeholder="Topic — e.g. Space, Anime, Cooking…" maxlength="60" autocomplete="off"
+                            spellcheck="false" />
+                        <select id="ws-model-select" class="control-select"></select>
                         <button id="ws-ai-btn" class="action-btn primary ws-ai-btn">
                             <i class="fa-solid fa-wand-magic-sparkles"></i> AI Puzzle
                         </button>
