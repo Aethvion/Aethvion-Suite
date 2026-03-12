@@ -2,54 +2,90 @@
     "system": {
         "name": "Misaka Cipher",
         "company": "Aethvion",
-        "version": "3",
-        "last_sync": "2026-03-11",
+        "version": "4",
+        "last_sync": "2026-03-12",
         "contact": "contact@misakacipher.com",
         "changelog": [
+            {
+                "version": "4",
+                "date": "2026-03-12",
+                "added": [
+                    "Specter Module: v2.0 Release — full standalone VTuber rigging engine",
+                    "Specter Module: Custom .specter ZIP format (manifest + model + textures)",
+                    "Specter Module: 8-mode Editor (Mesh, Bones, Weights, Physics, Preview, Live)",
+                    "Specter Module: AI-assisted mesh topology and vertex weight prediction",
+                    "Specter Module: WebGL rendering via PIXI.js v7 with CPU-side Linear Blend Skinning",
+                    "Specter Module: Spring physics bone chain simulation for hair and accessories",
+                    "Specter Module: Integrated Documentation and Tutorial pages (/docs, /tutorial)",
+                    "Synapse Module: AI-powered motion tracking bridge (initial release)",
+                    "Synapse Module: High-precision Face Tracking via modern MediaPipe Tasks API",
+                    "Synapse Module: Face Blendshapes integration for accurate eye/mouth sync",
+                    "Synapse Module: Support for dual optical capture (Webcam and Monitor)",
+                    "Synapse Module: Live raw preview mode with persistent MJPEG fallback streaming",
+                    "Synapse Module: Centralized CaptureManager to manage hardware mutex",
+                    "Port Manager: Universal dynamic port allocation and registration system",
+                    "Port Manager: Self-healing registry with automatic stale port detection",
+                    "Port Manager: Diagnostics dashboard for live socket and registry visualization",
+                    "Sidebar: Integrated Aethvion Modules (Specter/Synapse) with dynamic launch support",
+                    "Word Search: AI Puzzle mode — generate themed grids from any topic via ProviderManager",
+                    "Word Search: Topic input field and AI Puzzle button in the game toolbar",
+                    "Word Search: Topic badge displayed in the word list sidebar during AI-generated puzzles",
+                    "Word Search: Grid shimmer loading animation while AI generates a word list"
+                ],
+                "improved": [
+                    "Specter Module: Decoupled architecture for full standalone operation",
+                    "Specter Module: Enhanced v1 → v2 model auto-migration on load",
+                    "Files Dashboard: Intelligent backend caching and immediate UI responsiveness",
+                    "Word Search: generatePuzzle() now accepts a custom word list parameter for AI and future expansion",
+                    "Word Search: Input validation with shake animation when AI topic is empty"
+                ],
+                "changed": [
+                    "Specter Module: Replaced directory-based storage with single-file .specter archives",
+                    "System: Migrated tracking and module services to dynamic negotiated port range"
+                ]
+            },
             {
                 "version": "3",
                 "date": "2026-03-11",
                 "added": [
-                    "Auto-check for updates on startup",
-                    "Full bidirectional Discord messaging (Nexus Bridge)",
-                    "Discord Worker settings panel (Start/Stop & User Binding)",
-                    "Discord Tool Output: Send screen captures & files directly to DMs",
-                    "Discord Worker, Hosting a discord bot via Misaka Cipher"
+                    "Nexus Module: Full bidirectional Discord messaging bridge",
+                    "Nexus Module: Discord Worker settings panel with User Binding control",
+                    "Nexus Module: Remote tool output (Screenshots and files delivered to DMs)",
+                    "System: Automated startup update check against remote registry"
                 ],
                 "improved": [
-                    "Unified Memory: Chat histories & personality now persist cross-platform"
+                    "Memory: Unified context persistence for histories and personas cross-platform"
                 ],
                 "changed": [
-                    "Security: History & Tool access restricted to private DMs with Main User"
+                    "Nexus Module: Security lockdown (DMs restricted to verified Main User)"
                 ],
                 "upgraded": [
-                    "Master Orchestrator: Native Persona loops & auto-memory extraction"
+                    "Orchestrator: Master Orchestrator with native Persona loops and memory synthesis"
                 ]
             },
             {
                 "version": "2",
                 "date": "2026-03-11",
                 "added": [
-                    "Local version highlighting & status cards"
+                    "Version: Local version highlighting and system status cards"
                 ],
                 "improved": [
-                    "Enhanced Version Tab with structured changelog grouping",
-                    "Release history visibility"
+                    "Version: Enhanced Version Tab with grouped changelogs and history visibility"
                 ]
             },
             {
                 "version": "1",
                 "date": "2026-03-11",
                 "added": [
-                    "Initial detailed changelog implementation",
-                    "Instant Thread Creation & Auto-Titling",
-                    "Token Savers: Manual start overlays for Logic Quest & Blackjack"
+                    "Chat: Instant Thread Creation and automated conversation titling",
+                    "Games: Token Savers (Manual start overlays for Logic Quest & Blackjack)",
+                    "System: Initial detailed changelog and release tracking implementation"
                 ],
                 "improved": [
-                    "Optimized installation: Replaced winsdk with winrt"
+                    "System: Optimized installation dependencies (Migrated to winrt-runtime)"
                 ],
                 "changed": [
-                    "Refactored Version Tab into bottom-pinned sidebar item"
+                    "Version: Refactored Version Tab into bottom-pinned sidebar navigation"
                 ]
             }
         ]
@@ -249,13 +285,90 @@
         {
             "id": "specter",
             "name": "Specter Module",
-            "desc": "Rigging engine for vtuber avatars",
-            "features": [],
-            "wip": [],
+            "desc": "Standalone VTuber engine — rig, animate, and generate 2D avatar models with AI assistance.",
+            "features": [
+                {
+                    "name": "VTuber Rigging Editor",
+                    "desc": "8-mode editor for mesh, bone, weight, physics, and preview workflows."
+                },
+                {
+                    "name": ".specter File Format",
+                    "desc": "Custom ZIP-based model format containing manifest, full model data, and embedded textures."
+                },
+                {
+                    "name": "AI-Assisted Rigging",
+                    "desc": "Auto-generate mesh topology, bone hierarchies, and vertex weights with AI assistance."
+                },
+                {
+                    "name": "Linear Blend Skinning",
+                    "desc": "CPU-side LBS deformation rendered via PIXI.js v7 SimpleMesh for smooth real-time animation."
+                },
+                {
+                    "name": "Spring Physics",
+                    "desc": "Per-bone spring chain simulation for hair and accessories."
+                },
+                {
+                    "name": "Documentation & Tutorial",
+                    "desc": "Built-in technical reference (/docs) and beginner tutorial (/tutorial) viewable alongside the editor."
+                }
+            ],
+            "wip": [
+                {
+                    "name": "Face Tracking Integration",
+                    "desc": "Live tracking via bridge interface — supports MediaPipe, OpenSeeFace, and VTube Studio backends."
+                }
+            ],
             "planned": [
                 {
-                    "name": "Rigging Engine",
-                    "desc": "Allows to rig 2d avatars."
+                    "name": "AI Character Generation",
+                    "desc": "Generate full VTuber character sheets and auto-rig them end-to-end."
+                },
+                {
+                    "name": "Local SD Pipeline",
+                    "desc": "Stable Diffusion integration for local character generation without cloud providers."
+                }
+            ]
+        },
+        {
+            "id": "synapse",
+            "name": "Synapse Module",
+            "desc": "Universal tracking bridge for optical and data-driven motion capture.",
+            "features": [
+                {
+                    "name": "MediaPipe AI Tracking",
+                    "desc": "Modern FaceLandmarker implementation using blendshapes for high-precision facial capture."
+                },
+                {
+                    "name": "Dual Input Capture",
+                    "desc": "Switch effortlessly between webcam feeds and desktop monitor regions."
+                },
+                {
+                    "name": "Raw Preview Mode",
+                    "desc": "Verify tracking alignment with real-time MJPEG fallback streaming."
+                },
+                {
+                    "name": "CaptureManager Shared Access",
+                    "desc": "Centralized hardware mutex preventing camera and screen capture conflicts."
+                }
+            ],
+            "wip": [
+                {
+                    "name": "OpenSeeFace Support",
+                    "desc": "Implementing backend for desktop-based tracking via local process bridge."
+                },
+                {
+                    "name": "VTube Studio API Link",
+                    "desc": "Forwarding tracking data directly to VTube Studio models via websocket."
+                }
+            ],
+            "planned": [
+                {
+                    "name": "Body & Pose Tracking",
+                    "desc": "Expanding optical engine to support full-body bone rigging via MediaPipe Pose."
+                },
+                {
+                    "name": "Hand & Finger Data",
+                    "desc": "Gesture-based control and animation using MediaPipe Hand landmarks."
                 }
             ]
         }
