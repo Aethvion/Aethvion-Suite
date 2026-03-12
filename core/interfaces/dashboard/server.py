@@ -267,8 +267,9 @@ async def initialize_system_background():
             from core.workspace.preferences_manager import get_preferences_manager
             prefs = get_preferences_manager()
             bot_token = prefs.get('nexus.discord_link.bot_token')
+            discord_enabled = prefs.get('nexus.discord_link.enabled', False)
             
-            if bot_token and bot_token.strip():
+            if discord_enabled and bot_token and bot_token.strip():
                 startup_status["status"] = "Bootstrapping Discord Service..."
                 from core.workers.discord_worker import start_discord_service
                 new_discord_worker = start_discord_service(orchestrator, task_manager, bot_token)
@@ -493,6 +494,77 @@ async def get_system_ports():
     """Get dynamically registered system ports."""
     from core.utils.port_manager import PortManager
     return PortManager.get_registered_ports()
+
+
+@app.post("/api/system/modules/run")
+async def run_module_script(request: dict):
+    """Execute a module startup script (.bat)."""
+    module_name = request.get("module")
+    action = request.get("action")
+    
+    if not module_name:
+        raise HTTPException(status_code=400, detail="Module name required")
+
+    import subprocess
+    import os
+    from pathlib import Path
+    
+    # Map module names to their startup scripts (relative to project root)
+    module_map = {
+        "specter": "modules/aethvion/specter/Start_Specter.bat",
+        "synapse": "modules/aethvion/synapse/Start_Synapse.bat"
+    }
+    
+    if module_name not in module_map:
+        raise HTTPException(status_code=404, detail=f"Module {module_name} not found in registry")
+        
+    # Get project root (3 levels up from core/interfaces/dashboard/server.py)
+    root_dir = Path(__file__).resolve().parent.parent.parent.parent
+    script_path = root_dir / module_map[module_name]
+    
+    if not script_path.exists():
+        # Try relative to cwd as fallback
+        script_path = Path(os.getcwd()) / module_map[module_name]
+        if not script_path.exists():
+            raise HTTPException(status_code=404, detail=f"Startup script not found at {script_path}")
+        
+    try:
+        if action == "run":
+            # For Windows, use 'cmd /c start' to open in a new visible console window
+            # This allows the user to see what's happening and interact if needed (e.g. installs)
+            cmd = f'start "{module_name.upper()} SERVICE" /D "{script_path.parent}" "{script_path}"'
+            subprocess.Popen(
+                cmd,
+                shell=True,
+                cwd=str(script_path.parent)
+            )
+            return {"status": "success", "message": f"Started {module_name} service in new window"}
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported action")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/system/modules/open-folder")
+async def open_module_folder(request: dict):
+    """Open a module folder in Windows Explorer."""
+    folder_path = request.get("path")
+    if not folder_path:
+        raise HTTPException(status_code=400, detail="Path required")
+        
+    import subprocess
+    import os
+    
+    full_path = os.path.abspath(os.path.join(os.getcwd(), folder_path))
+    
+    if not os.path.exists(full_path):
+         raise HTTPException(status_code=404, detail=f"Folder not found at {full_path}")
+         
+    try:
+        os.startfile(full_path)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/system/status")

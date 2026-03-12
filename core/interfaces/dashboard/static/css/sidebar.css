@@ -115,6 +115,33 @@
     margin-bottom: 0.1rem;
 }
 
+.launch-module {
+    display: flex;
+    align-items: center;
+    justify-content: space-between !important;
+}
+
+.launch-shortcut {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    opacity: 0.4;
+    transition: all 0.2s;
+    margin-left: auto;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.main-tab:hover .launch-shortcut {
+    opacity: 1;
+    color: var(--primary);
+    background: rgba(var(--primary-rgb), 0.1);
+    transform: scale(1.1);
+}
+
+.sidebar-nav.collapsed .launch-shortcut {
+    display: none;
+}
+
 /* Hide categories effectively when collapsed */
 .sidebar-nav.collapsed .sidebar-category {
     font-size: 0;

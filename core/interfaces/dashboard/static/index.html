@@ -48,6 +48,7 @@
     <link rel="stylesheet" href="/static/css/assistant.css">
     <link rel="stylesheet" href="/static/css/audio_studio.css">
     <link rel="stylesheet" href="/static/games/common/games-shared.css">
+    <link rel="stylesheet" href="/static/css/modules_view.css">
     <link rel="stylesheet" href="/static/games/logic-quest/logic-quest.css">
     <link rel="stylesheet" href="/static/games/blackjack/blackjack.css">
     <link rel="stylesheet" href="/static/games/results/results.css">
@@ -228,6 +229,16 @@
                         class="tab-icon">📓</span><span class="tab-label">Memory</span></button>
                 <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="misaka-memory"><span
                         class="tab-icon">🧬</span><span class="tab-label">Misaka Cipher Memory</span></button>
+
+                <div class="sidebar-category" data-mode="both">Aethvion Modules</div>
+                <button class="main-tab sidebar-subitem" data-maintab="specter" data-mode="both">
+                    <span class="tab-icon">🎭</span>
+                    <span class="tab-label">Specter</span>
+                </button>
+                <button class="main-tab sidebar-subitem" data-maintab="synapse" data-mode="both">
+                    <span class="tab-icon">🧠</span>
+                    <span class="tab-label">Synapse</span>
+                </button>
 
                 <div class="sidebar-category" data-mode="both">Diagnostics</div>
                 <button class="main-tab sidebar-subitem" data-maintab="logs" data-mode="both"><span
@@ -1998,6 +2009,122 @@
                 </div>
             </div>
 
+            <!-- Specter Module Panel -->
+            <div class="main-tab-panel" id="specter-panel">
+                <div class="module-page-container">
+                    <div class="module-header">
+                        <div class="module-title">
+                            <span class="module-icon">🎭</span>
+                            <div>
+                                <h2>Specter Engine</h2>
+                                <p class="module-subtitle">Advanced Standalone VTuber Rigging & Animation</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="action-btn header-launch-btn primary module-launch-btn" data-launch="specter" disabled>
+                                <i class="fas fa-external-link-alt"></i> LAUNCH UI
+                            </button>
+                            <div id="specter-status-badge" class="status-badge offline">
+                                <span class="status-dot"></span>
+                                <span class="status-text">NOT RUNNING</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-content">
+                        <div class="module-description-card card">
+                            <h3>About Specter</h3>
+                            <p>Specter is a next-generation 2D avatar rigging engine. It allows you to transform static character sheets into fully articulated VTuber models with AI-assisted mesh generation and bone weight prediction.</p>
+                            <div class="feature-tags">
+                                <span class="tag">AI Rigging</span>
+                                <span class="tag">PIXI.js v7</span>
+                                <span class="tag">Physics Engine</span>
+                                <span class="tag">LBS Deform</span>
+                            </div>
+                        </div>
+
+                        <div class="module-actions-grid">
+                            <div class="action-card launch" id="specter-launch-card">
+                                <i class="fas fa-external-link-alt"></i>
+                                <h4>Open Dashboard</h4>
+                                <p>Access the full Specter editor and rigging tools.</p>
+                                <button class="term-btn primary launch-shortcut" data-launch="specter">LAUNCH UI</button>
+                            </div>
+                            <div class="action-card run" id="specter-run-card">
+                                <i class="fas fa-play"></i>
+                                <h4>System Control</h4>
+                                <p>Start or stop the Specter backend service.</p>
+                                <button class="term-btn run-module-btn" data-module="specter" data-action="run">START SERVICE</button>
+                            </div>
+                            <div class="action-card folder" id="specter-folder-card">
+                                <i class="fas fa-folder-open"></i>
+                                <h4>Workspace</h4>
+                                <p>Open the Specter module directory in Explorer.</p>
+                                <button class="term-btn open-folder-btn" data-path="modules/aethvion/specter">OPEN FOLDER</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Synapse Module Panel -->
+            <div class="main-tab-panel" id="synapse-panel">
+                <div class="module-page-container">
+                    <div class="module-header">
+                        <div class="module-title">
+                            <span class="module-icon">🧠</span>
+                            <div>
+                                <h2>Synapse Bridge</h2>
+                                <p class="module-subtitle">Universal AI Tracking & Data Distribution</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="action-btn header-launch-btn primary module-launch-btn" data-launch="synapse" disabled>
+                                <i class="fas fa-external-link-alt"></i> LAUNCH UI
+                            </button>
+                            <div id="synapse-status-badge" class="status-badge offline">
+                                <span class="status-dot"></span>
+                                <span class="status-text">NOT RUNNING</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-content">
+                        <div class="module-description-card card">
+                            <h3>About Synapse</h3>
+                            <p>Synapse is the central nervous system for motion data. It integrates with MediaPipe and other tracking backends to provide high-fidelity face and pose data to Specter and other external consumers.</p>
+                            <div class="feature-tags">
+                                <span class="tag">MediaPipe Tasks</span>
+                                <span class="tag">Motion Capture</span>
+                                <span class="tag">MJPEG Stream</span>
+                                <span class="tag">Low Latency</span>
+                            </div>
+                        </div>
+
+                        <div class="module-actions-grid">
+                            <div class="action-card launch" id="synapse-launch-card">
+                                <i class="fas fa-external-link-alt"></i>
+                                <h4>Open Viewer</h4>
+                                <p>Open the live tracking viewer and calibration dashboard.</p>
+                                <button class="term-btn primary launch-shortcut" data-launch="synapse">LAUNCH UI</button>
+                            </div>
+                            <div class="action-card run" id="synapse-run-card">
+                                <i class="fas fa-play"></i>
+                                <h4>System Control</h4>
+                                <p>Start or stop the Synapse tracking backend.</p>
+                                <button class="term-btn run-module-btn" data-module="synapse" data-action="run">START SERVICE</button>
+                            </div>
+                            <div class="action-card folder" id="synapse-folder-card">
+                                <i class="fas fa-folder-open"></i>
+                                <h4>Workspace</h4>
+                                <p>Open the Synapse module directory in Explorer.</p>
+                                <button class="term-btn open-folder-btn" data-path="modules/aethvion/synapse">OPEN FOLDER</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Version Tab -->
             <div class="main-tab-panel" id="version-panel" style="overflow-y: auto; height: 100%;">
                 <div class="panel-header">
@@ -2272,7 +2399,7 @@
                             <p class="game-subtitle">Find the hidden tech terms</p>
                         </div>
                     </div>
-                    <div class="game-toolbar" style="background:transparent; border:none; margin:0; padding:0 15px;">
+                    <div class="game-toolbar" style="background:transparent; border:none; margin:0; padding:0 15px; flex-wrap:wrap; gap:8px;">
                         <select id="ws-size-select" class="control-select">
                             <option value="10">10x10</option>
                             <option value="12">12x12</option>
@@ -2280,7 +2407,13 @@
                             <option value="20">20x20</option>
                         </select>
                         <button id="ws-restart-btn" class="action-btn secondary">New Puzzle</button>
+                        <div class="ws-divider"></div>
+                        <input id="ws-topic" type="text" class="ws-topic-input" placeholder="Topic — e.g. Space, Anime, Cooking…" maxlength="60" autocomplete="off" spellcheck="false" />
+                        <button id="ws-ai-btn" class="action-btn primary ws-ai-btn">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> AI Puzzle
+                        </button>
                     </div>
+                    <div id="ws-ai-error" class="ws-ai-error" style="display:none;"></div>
                 </div>
                 <div class="word-search-layout">
                     <div class="ws-progress-container">
@@ -2289,6 +2422,7 @@
                     <div class="ws-main">
                         <div class="ws-sidebar">
                             <h3 style="margin-top: 0;">Words to Find</h3>
+                            <span id="ws-topic-badge" class="ws-topic-badge" style="display:none;"></span>
                             <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">
                                 Found <span id="ws-found-count">0</span> of <span id="ws-total-count">0</span>
                             </div>

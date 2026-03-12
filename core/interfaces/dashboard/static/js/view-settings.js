@@ -2150,9 +2150,17 @@ let _discordStatusInterval = null;
 function initDiscordSettings() {
     const tokenInput = document.getElementById('setting-discord-token');
     const mainUserIdInput = document.getElementById('setting-discord-main-user-id');
+    const enabledToggle = document.getElementById('setting-discord-enabled');
     const toggleBtn = document.getElementById('toggle-discord-token-visibility');
     const startBtn = document.getElementById('btn-discord-start');
     const stopBtn = document.getElementById('btn-discord-stop');
+
+    if (enabledToggle) {
+        enabledToggle.checked = prefs.get('nexus.discord_link.enabled', false);
+        enabledToggle.onchange = async (e) => {
+            await savePreference('nexus.discord_link.enabled', e.target.checked);
+        };
+    }
 
     if (tokenInput) {
         tokenInput.value = prefs.get('nexus.discord_link.bot_token', '');

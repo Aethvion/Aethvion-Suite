@@ -205,9 +205,40 @@ function initializeUI() {
     // Main tab switching
     document.querySelectorAll('.main-tab').forEach(tab => {
         if (tab.dataset.maintab) {
-            tab.addEventListener('click', () => switchMainTab(tab.dataset.maintab));
+            tab.addEventListener('click', (e) => {
+                if (e.target.closest('.launch-shortcut')) return;
+                switchMainTab(tab.dataset.maintab);
+            });
         }
     });
+
+    // Unified Module Launch Listener (Sidebar shortcuts and Panel buttons)
+        const launchBtn = e.target.closest('.launch-shortcut, .module-launch-btn');
+        if (launchBtn) {
+            e.stopPropagation(); // Prevent tab switching if it's a shortcut inside a button
+            if (launchBtn.disabled) return;
+            const moduleName = launchBtn.getAttribute('data-launch');
+            launchModule(moduleName);
+        }
+
+    // Module Panel Action Listeners
+    document.addEventListener('click', async (e) => {
+        const runBtn = e.target.closest('.run-module-btn');
+        if (runBtn) {
+            const moduleName = runBtn.getAttribute('data-module');
+            await runModuleService(moduleName);
+        }
+
+        const folderBtn = e.target.closest('.open-folder-btn');
+        if (folderBtn) {
+            const path = folderBtn.getAttribute('data-path');
+            await openModuleFolder(path);
+        }
+    });
+    
+    // Periodically update module badges
+    setInterval(updateModuleStatusBadges, 10000);
+    setTimeout(updateModuleStatusBadges, 2000);
 
     // Sidebar Toggle
     const sidebarToggleBtn = document.getElementById('sidebar-toggle');
@@ -597,6 +628,144 @@ function updateChatLayout() {
     
     // Clear legacy inline grids
     layout.style.gridTemplateColumns = '';
+}
+
+/**
+ * Launches an Aethvion module in a new tab by looking up its registered port.
+ */
+async function launchModule(name) {
+    try {
+        console.log(`Launching module: ${name}`);
+        const response = await fetch('/api/system/ports');
+        if (!response.ok) throw new Error("Failed to fetch registered ports");
+        
+        const ports = await response.json();
+        // Fuzzy search for the module name in the registered list
+        let port = null;
+        const nameLower = name.toLowerCase();
+        for (const [p, m] of Object.entries(ports)) {
+            if (m.toLowerCase().includes(nameLower)) {
+                port = p;
+                break;
+            }
+        }
+        if (port) {
+            window.open(`http://localhost:${port}`, '_blank');
+        } else {
+            // Fallback to default ports if not registered yet
+            const defaults = { 'specter': 8081, 'synapse': 8082 };
+            const defaultPort = defaults[name.toLowerCase()];
+            if (defaultPort) {
+                console.warn(`Module ${name} not found in dynamic ports, trying default :${defaultPort}`);
+                window.open(`http://localhost:${defaultPort}`, '_blank');
+            } else {
+                alert(`Error: Module "${name}" is not currently running or its port is unknown. Try starting the service first.`);
+            }
+        }
+    } catch (error) {
+        console.error("Module launch error:", error);
+        alert("Failed to launch module. See console for details.");
+    }
+}
+
+/**
+ * Runs a module startup script via the backend.
+ */
+async function runModuleService(moduleName) {
+    const btn = document.querySelector(`.run-module-btn[data-module="${moduleName}"]`);
+    const originalText = btn ? btn.innerText : 'START SERVICE';
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'STARTING...';
+    }
+
+    try {
+        const response = await fetch('/api/system/modules/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ module: moduleName, action: 'run' })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || "Failed to start module");
+        }
+
+        const result = await response.json();
+        console.log(result.message);
+        
+        // Wait a bit and then check for ports
+        setTimeout(() => {
+            if (window.updateRegisteredPorts) window.updateRegisteredPorts();
+            updateModuleStatusBadges();
+        }, 3000);
+
+    } catch (error) {
+        console.error("Run module error:", error);
+        alert(`Failed to start module: ${error.message}`);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = originalText;
+        }
+    }
+}
+
+/**
+ * Opens a folder path in Windows Explorer via the backend.
+ */
+async function openModuleFolder(path) {
+    try {
+        const response = await fetch('/api/system/modules/open-folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: path })
+        });
+
+        if (!response.ok) throw new Error("Failed to open folder");
+    } catch (error) {
+        console.error("Open folder error:", error);
+        alert("Failed to open folder.");
+    }
+}
+
+/**
+ * Updates status badges for modules based on registered ports.
+ */
+async function updateModuleStatusBadges() {
+    try {
+        const response = await fetch('/api/system/ports');
+        if (!response.ok) return;
+        const ports = await response.json();
+        
+        const registeredModules = Object.values(ports).map(m => m.toLowerCase());
+        
+        ['specter', 'synapse'].forEach(mod => {
+            const badge = document.getElementById(`${mod}-status-badge`);
+            const headerLaunchBtn = document.querySelector(`.module-launch-btn[data-launch="${mod}"]`);
+            if (!badge) return;
+            
+            const isOnline = registeredModules.some(m => m.includes(mod));
+            if (isOnline) {
+                badge.className = 'status-badge online';
+                badge.querySelector('.status-text').innerText = 'RUNNING';
+                if (headerLaunchBtn) {
+                    headerLaunchBtn.disabled = false;
+                    headerLaunchBtn.classList.remove('hide');
+                }
+            } else {
+                badge.className = 'status-badge offline';
+                badge.querySelector('.status-text').innerText = 'NOT RUNNING';
+                if (headerLaunchBtn) {
+                    headerLaunchBtn.disabled = true;
+                    // We can keep it visible but disabled to show it exists
+                }
+            }
+        });
+    } catch (e) {
+        console.error("Badge update error:", e);
+    }
 }
 
 // ===== Common Utilities =====
