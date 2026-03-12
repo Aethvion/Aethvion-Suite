@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Specter — Getting Started Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    /* ═══════════════════════════════════════════════════
+       Specter — Getting Started Guide Stylesheet
+    ═══════════════════════════════════════════════════ */
+    :root {
+      --bg:         #080a12;
+      --surface:    #0e1120;
+      --surface2:   #141828;
+      --surface3:   #1a2035;
+      --accent:     #7c6ff7;
+      --accent2:    #00d9ff;
+      --pink:       #ff4fa3;
+      --green:      #00e676;
+      --orange:     #ffab40;
+      --red:        #ff5252;
+      --yellow:     #ffe066;
+      --text:       #e0e2f0;
+      --text-dim:   #8891b0;
+      --text-muted: #4a5070;
+      --border:     #1e2440;
+      --border-b:   #2e3560;
+      --sidebar-w:  260px;
+      --topbar-h:   52px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-b); border-radius: 4px; }
+
+    /* ── Top bar ──────────────────────────────────────── */
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: var(--topbar-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 20px; gap: 14px;
+    }
+    .tb-logo {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--pink));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; color: white; flex-shrink: 0;
+    }
+    .tb-name {
+      font-size: 13px; font-weight: 700; letter-spacing: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .tb-tag {
+      font-size: 11px; color: var(--text-muted);
+      background: var(--surface3); border: 1px solid var(--border);
+      border-radius: 20px; padding: 2px 10px;
+    }
+    .tb-links { margin-left: auto; display: flex; gap: 8px; }
+    .tb-link {
+      padding: 5px 14px;
+      background: var(--surface3); border: 1px solid var(--border);
+      color: var(--text-dim); border-radius: 6px;
+      cursor: pointer; font-size: 12px; text-decoration: none;
+      display: flex; align-items: center; gap: 6px;
+      transition: all 0.15s;
+    }
+    .tb-link:hover { border-color: var(--border-b); color: var(--text); }
+    .tb-link.primary { border-color: var(--accent); color: var(--accent); }
+    .tb-link.primary:hover { background: rgba(124,111,247,0.15); }
+
+    /* ── Layout ───────────────────────────────────────── */
+    #layout {
+      position: fixed;
+      top: var(--topbar-h); left: 0; right: 0; bottom: 0;
+      display: flex;
+    }
+
+    /* ── Sidebar ──────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 12px 0 24px;
+    }
+    .sidebar-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--text-muted);
+      padding: 12px 18px 4px;
+    }
+    .nav-step {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 18px;
+      color: var(--text-dim); text-decoration: none;
+      font-size: 13px; cursor: pointer;
+      border-left: 2px solid transparent;
+      transition: all 0.12s;
+    }
+    .nav-step:hover { background: var(--surface2); color: var(--text); }
+    .nav-step.active { background: rgba(124,111,247,0.1); color: var(--accent); border-left-color: var(--accent); }
+    .nav-step-num {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--surface3); border: 1px solid var(--border-b);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .nav-step.active .nav-step-num { background: var(--accent); border-color: var(--accent); color: white; }
+    .nav-step.done .nav-step-num { background: var(--green); border-color: var(--green); color: var(--bg); }
+    .nav-divider { height: 1px; background: var(--border); margin: 10px 0; }
+    .nav-concept {
+      display: flex; align-items: center; gap: 9px;
+      padding: 6px 18px;
+      color: var(--text-muted); font-size: 12px; cursor: pointer;
+      text-decoration: none; transition: color 0.12s;
+      border-left: 2px solid transparent;
+    }
+    .nav-concept:hover { color: var(--text); }
+    .nav-concept.active { color: var(--accent2); border-left-color: var(--accent2); }
+    .nav-concept i { width: 14px; text-align: center; font-size: 11px; }
+
+    /* ── Content ──────────────────────────────────────── */
+    #content {
+      flex: 1; overflow-y: auto;
+      padding: 40px 52px;
+      max-width: 860px;
+    }
+
+    /* ── Hero ─────────────────────────────────────────── */
+    .hero {
+      text-align: center; margin-bottom: 48px; padding: 40px 20px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    .hero-icon {
+      width: 64px; height: 64px; border-radius: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--pink));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; color: white; margin: 0 auto 16px;
+    }
+    .hero h1 {
+      font-size: 26px; font-weight: 700;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    .hero p { font-size: 14px; color: var(--text-dim); max-width: 540px; margin: 0 auto; }
+
+    /* ── Section ──────────────────────────────────────── */
+    .doc-section { margin-bottom: 60px; scroll-margin-top: 20px; }
+    .doc-section:last-child { margin-bottom: 80px; }
+
+    /* ── Step header ──────────────────────────────────── */
+    .step-header {
+      display: flex; align-items: flex-start; gap: 16px;
+      margin-bottom: 20px; padding: 20px 22px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .step-badge {
+      width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; font-weight: 700; color: white;
+    }
+    .step-header-text h2 {
+      font-size: 18px; font-weight: 700; color: var(--text);
+      margin-bottom: 4px;
+    }
+    .step-header-text p { font-size: 13px; color: var(--text-dim); margin: 0; }
+    .step-mode-tag {
+      margin-left: auto; flex-shrink: 0; padding: 5px 12px;
+      background: var(--surface3); border: 1px solid var(--border);
+      border-radius: 6px; font-size: 11px; color: var(--text-muted); white-space: nowrap;
+    }
+    .step-mode-tag span { font-size: 10px; display: block; color: var(--text-muted); margin-bottom: 2px; }
+    .step-mode-tag strong { color: var(--accent); font-size: 12px; }
+
+    /* ── Concept header ───────────────────────────────── */
+    .concept-header {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+    }
+    .concept-header h2 {
+      font-size: 17px; font-weight: 700; color: var(--text); margin: 0;
+    }
+    .concept-icon {
+      width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 15px;
+    }
+
+    /* ── Typography ───────────────────────────────────── */
+    h3 { font-size: 14px; font-weight: 600; color: var(--text); margin: 20px 0 8px; }
+    p { color: var(--text-dim); margin-bottom: 12px; }
+    p:last-child { margin-bottom: 0; }
+    strong { color: var(--text); font-weight: 600; }
+    em { color: var(--accent2); font-style: normal; }
+
+    /* ── Callout boxes ────────────────────────────────── */
+    .box {
+      border-radius: 8px; padding: 14px 18px; margin: 16px 0;
+      border-left: 3px solid; font-size: 13px;
+    }
+    .box.tip    { background: rgba(0,217,255,0.07); border-color: var(--accent2); }
+    .box.good   { background: rgba(0,230,118,0.07); border-color: var(--green); }
+    .box.warn   { background: rgba(255,171,64,0.08); border-color: var(--orange); }
+    .box.explain { background: rgba(124,111,247,0.08); border-color: var(--accent); }
+    .box-icon { display: inline; margin-right: 6px; }
+    .box p { margin: 0; }
+
+    /* ── Analogy box ──────────────────────────────────── */
+    .analogy {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px 20px; margin: 16px 0;
+    }
+    .analogy-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--accent2); margin-bottom: 8px;
+    }
+    .analogy p { margin: 0; font-size: 13px; }
+
+    /* ── Steps list ───────────────────────────────────── */
+    .steps-list { list-style: none; padding: 0; margin: 14px 0; display: flex; flex-direction: column; gap: 10px; }
+    .steps-list li {
+      display: flex; gap: 12px; align-items: flex-start;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 16px;
+    }
+    .step-n {
+      width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+      background: var(--accent); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; margin-top: 1px;
+    }
+    .steps-list li p { margin: 0; font-size: 13px; }
+    .steps-list li strong { display: block; margin-bottom: 2px; font-size: 13px; }
+
+    /* ── What/Why table ───────────────────────────────── */
+    .why-table { width: 100%; border-collapse: collapse; margin: 14px 0; }
+    .why-table th {
+      text-align: left; padding: 8px 12px;
+      font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+      color: var(--text-muted); border-bottom: 1px solid var(--border);
+    }
+    .why-table td {
+      padding: 10px 12px; border-bottom: 1px solid var(--border);
+      vertical-align: top; font-size: 13px; color: var(--text-dim);
+    }
+    .why-table tr:last-child td { border-bottom: none; }
+    .why-table td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; width: 140px; }
+
+    /* ── Visual diagram ───────────────────────────────── */
+    .diagram {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px;
+      margin: 16px 0; font-size: 12px; text-align: center;
+    }
+    .diagram-flow {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0; flex-wrap: wrap; margin-bottom: 12px;
+    }
+    .diagram-step {
+      background: var(--surface3); border: 1px solid var(--border-b);
+      border-radius: 8px; padding: 8px 14px;
+      font-size: 12px; font-weight: 600; color: var(--text);
+      white-space: nowrap;
+    }
+    .diagram-step.highlight { background: rgba(124,111,247,0.2); border-color: var(--accent); color: var(--accent); }
+    .diagram-arrow {
+      color: var(--text-muted); font-size: 14px; padding: 0 6px;
+    }
+    .diagram p { margin: 0; color: var(--text-muted); font-size: 12px; }
+
+    /* ── Concept grid ─────────────────────────────────── */
+    .concept-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
+    .concept-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 16px;
+    }
+    .concept-card-title {
+      font-weight: 700; font-size: 13px; color: var(--text);
+      margin-bottom: 6px; display: flex; align-items: center; gap: 7px;
+    }
+    .concept-card-title i { color: var(--accent); font-size: 12px; }
+    .concept-card p { font-size: 12px; margin: 0; }
+
+    /* ── Mode badge ───────────────────────────────────── */
+    .mode-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--surface3); border: 1px solid var(--border-b);
+      border-radius: 5px; padding: 2px 9px;
+      font-size: 11px; font-weight: 600; color: var(--text-dim);
+      vertical-align: middle;
+    }
+    .mode-badge i { font-size: 10px; }
+
+    /* ── "You are here" indicator ─────────────────────── */
+    .you-are-here {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(0,230,118,0.1); border: 1px solid rgba(0,230,118,0.3);
+      border-radius: 20px; padding: 3px 12px;
+      font-size: 11px; color: var(--green); margin-bottom: 12px;
+    }
+
+    /* ── Settings summary ─────────────────────────────── */
+    .settings-list { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; }
+    .setting-item {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 16px;
+    }
+    .setting-item-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+    }
+    .setting-item-name { font-weight: 600; font-size: 13px; color: var(--text); }
+    .setting-item-type {
+      font-size: 10px; background: var(--surface3); border: 1px solid var(--border-b);
+      border-radius: 4px; padding: 1px 7px; color: var(--text-muted);
+    }
+    .setting-item p { font-size: 12px; margin: 0; }
+    .setting-item .example { color: var(--accent2); font-size: 11px; margin-top: 4px; }
+
+    /* ── Links ────────────────────────────────────────── */
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── kbd ──────────────────────────────────────────── */
+    kbd {
+      background: var(--surface3); border: 1px solid var(--border-b);
+      border-bottom-width: 2px; border-radius: 4px;
+      padding: 2px 7px; font-family: monospace; font-size: 11px; color: var(--accent2);
+    }
+
+    /* inline code */
+    code {
+      background: var(--surface3); border: 1px solid var(--border);
+      border-radius: 3px; padding: 1px 5px;
+      font-family: monospace; font-size: 12px; color: var(--accent2);
+    }
+
+    /* ── Progress bar ─────────────────────────────────── */
+    .progress-bar {
+      height: 4px; background: var(--surface3);
+      border-radius: 2px; margin: 6px 0 16px;
+    }
+    .progress-fill {
+      height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 2px; transition: width 0.4s ease;
+    }
+
+    /* ── Big CTA ──────────────────────────────────────── */
+    .cta-box {
+      background: linear-gradient(135deg, rgba(124,111,247,0.15), rgba(0,217,255,0.1));
+      border: 1px solid rgba(124,111,247,0.3);
+      border-radius: 12px; padding: 24px 28px; margin: 20px 0;
+      display: flex; align-items: center; gap: 20px;
+    }
+    .cta-box i { font-size: 28px; color: var(--accent); flex-shrink: 0; }
+    .cta-box h3 { margin: 0 0 4px; font-size: 15px; color: var(--text); }
+    .cta-box p { margin: 0; font-size: 12px; }
+    .cta-btn {
+      margin-left: auto; flex-shrink: 0;
+      padding: 10px 20px;
+      background: var(--accent); border: none; color: white;
+      border-radius: 8px; font-size: 13px; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+      display: flex; align-items: center; gap: 6px;
+      transition: filter 0.15s;
+    }
+    .cta-btn:hover { filter: brightness(1.15); text-decoration: none; }
+
+    ul, ol { padding-left: 22px; color: var(--text-dim); margin-bottom: 12px; }
+    li { margin-bottom: 5px; font-size: 13px; }
+    li strong { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Bar ──────────────────────────────────────────────────── -->
+<header id="topbar">
+  <div class="tb-logo"><i class="fa-solid fa-ghost"></i></div>
+  <span class="tb-name">SPECTER</span>
+  <span class="tb-tag">Getting Started</span>
+  <div class="tb-links">
+    <a href="/docs" target="_blank" class="tb-link"><i class="fa-solid fa-book"></i> Full Reference</a>
+    <a href="/" target="_blank" class="tb-link primary"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Editor</a>
+  </div>
+</header>
+
+<div id="layout">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+  <nav id="sidebar">
+    <div class="sidebar-label">The guide</div>
+    <a class="nav-step active" href="#start" onclick="goto('start')">
+      <div class="nav-step-num">★</div> Start here
+    </a>
+
+    <div class="nav-divider"></div>
+    <div class="sidebar-label">Step by step</div>
+
+    <a class="nav-step" href="#step1" onclick="goto('step1')">
+      <div class="nav-step-num">1</div> Generate your character
+    </a>
+    <a class="nav-step" href="#step2" onclick="goto('step2')">
+      <div class="nav-step-num">2</div> Organise the layers
+    </a>
+    <a class="nav-step" href="#step3" onclick="goto('step3')">
+      <div class="nav-step-num">3</div> Set up the mesh
+    </a>
+    <a class="nav-step" href="#step4" onclick="goto('step4')">
+      <div class="nav-step-num">4</div> Place the bones
+    </a>
+    <a class="nav-step" href="#step5" onclick="goto('step5')">
+      <div class="nav-step-num">5</div> Paint the weights
+    </a>
+    <a class="nav-step" href="#step6" onclick="goto('step6')">
+      <div class="nav-step-num">6</div> Add physics (optional)
+    </a>
+    <a class="nav-step" href="#step7" onclick="goto('step7')">
+      <div class="nav-step-num">7</div> Preview & save
+    </a>
+
+    <div class="nav-divider"></div>
+    <div class="sidebar-label">Understand the concepts</div>
+    <a class="nav-concept" href="#concept-layers" onclick="goto('concept-layers')"><i class="fa-solid fa-layer-group"></i> What are layers?</a>
+    <a class="nav-concept" href="#concept-mesh" onclick="goto('concept-mesh')"><i class="fa-solid fa-bezier-curve"></i> What is a mesh?</a>
+    <a class="nav-concept" href="#concept-bones" onclick="goto('concept-bones')"><i class="fa-solid fa-bone"></i> What are bones?</a>
+    <a class="nav-concept" href="#concept-weights" onclick="goto('concept-weights')"><i class="fa-solid fa-paint-brush"></i> What are weights?</a>
+    <a class="nav-concept" href="#concept-params" onclick="goto('concept-params')"><i class="fa-solid fa-sliders"></i> What are parameters?</a>
+    <a class="nav-concept" href="#concept-physics" onclick="goto('concept-physics')"><i class="fa-solid fa-wind"></i> What is physics?</a>
+  </nav>
+
+  <!-- ── Content ──────────────────────────────────────────────────── -->
+  <main id="content">
+
+    <!-- ── Hero ─────────────────────────────────────────────────── -->
+    <div class="hero" id="start">
+      <div class="hero-icon"><i class="fa-solid fa-ghost"></i></div>
+      <h1>Welcome to Specter</h1>
+      <p>
+        This guide is for you if you've never rigged a VTuber model before and have no idea
+        what meshes, bones, or weights are. Don't worry — by the end you'll understand all of it,
+        and you'll have a working animated VTuber model.
+      </p>
+    </div>
+
+    <!-- ── What is Specter? ────────────────────────────────────── -->
+    <section class="doc-section">
+      <p>
+        <strong>Specter is a VTuber engine.</strong> It lets you take a 2D character image and turn it
+        into an animated avatar that reacts to your face — your head moving, eyes blinking, mouth opening.
+        Think of it like a simpler version of Live2D, but built right into this interface, with AI to
+        help with the tedious parts.
+      </p>
+
+      <p>The overall process looks like this:</p>
+
+      <div class="diagram">
+        <div class="diagram-flow">
+          <div class="diagram-step">Character art</div>
+          <div class="diagram-arrow">→</div>
+          <div class="diagram-step">Split into layers</div>
+          <div class="diagram-arrow">→</div>
+          <div class="diagram-step">Add a mesh</div>
+          <div class="diagram-arrow">→</div>
+          <div class="diagram-step">Add bones</div>
+          <div class="diagram-arrow">→</div>
+          <div class="diagram-step">Paint weights</div>
+          <div class="diagram-arrow">→</div>
+          <div class="diagram-step highlight">Live avatar ✦</div>
+        </div>
+        <p>Each step builds on the last. AI can help with all of them, but you can also do everything manually.</p>
+      </div>
+
+      <div class="box explain">
+        <p><span class="box-icon">💡</span> <strong>Specter can do most of this automatically</strong> — click Generate, point it at a character image, and it will produce a rigged, animated model in one go. The manual steps are there when you want more control or want to clean up the AI's work.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         STEPS
+    ═══════════════════════════════════════════════════════════ -->
+
+    <!-- ── Step 1: Generate ──────────────────────────────────────── -->
+    <section class="doc-section" id="step1">
+      <div class="step-header">
+        <div class="step-badge" style="background:linear-gradient(135deg,#7c6ff7,#ff4fa3)">1</div>
+        <div class="step-header-text">
+          <h2>Generate your character</h2>
+          <p>Create or import your character artwork and let the AI split it into parts and rig it.</p>
+        </div>
+        <div class="step-mode-tag"><span>Mode</span><strong><i class="fa-solid fa-wand-magic-sparkles"></i> Generate</strong></div>
+      </div>
+
+      <p>When you first open Specter, you're in <strong>Generate mode</strong>. There are three ways to get a character into the engine:</p>
+
+      <div class="settings-list">
+        <div class="setting-item">
+          <div class="setting-item-header">
+            <span class="setting-item-name"><i class="fa-solid fa-robot" style="color:var(--accent);margin-right:4px"></i> AI Sheet <em style="color:var(--green);font-size:10px;margin-left:4px;">Recommended for beginners</em></span>
+          </div>
+          <p>Type a description of your character and the AI generates the artwork for you, then automatically splits it into parts and rigs it. You don't need to have any artwork ready.</p>
+          <p class="example">Example prompt: <code>Anime VTuber girl, long silver hair, blue eyes, white hoodie, simple face, front-facing, transparent background</code></p>
+        </div>
+        <div class="setting-item">
+          <div class="setting-item-header">
+            <span class="setting-item-name"><i class="fa-solid fa-cloud-arrow-up" style="color:var(--accent2);margin-right:4px"></i> Upload</span>
+          </div>
+          <p>You already have a character image. Drop it in and the AI uses vision to find the body parts (head, eyes, mouth, body, arms), separates them, and rigs them. Works best with transparent-background PNG files or clean character sheets.</p>
+        </div>
+        <div class="setting-item">
+          <div class="setting-item-header">
+            <span class="setting-item-name"><i class="fa-solid fa-server" style="color:var(--text-muted);margin-right:4px"></i> Local SD</span>
+          </div>
+          <p>Same as AI Sheet but uses a Stable Diffusion server running on your own computer instead of cloud AI. Useful if you want privacy or have a powerful GPU. Requires setting up A1111 separately.</p>
+        </div>
+      </div>
+
+      <h3>The two-step flow (AI Sheet / Local SD)</h3>
+      <ul class="steps-list">
+        <li><div class="step-n">1</div><div><strong>Write your prompt and click Generate</strong><p>A concept image appears in the preview area. Look it over — is this the character you had in mind? If not, click Generate again to try another.</p></div></li>
+        <li><div class="step-n">2</div><div><strong>Click "Rig It!"</strong><p>The AI slices the image, creates layers, meshes, bones, and weights all at once. This takes about 15–60 seconds depending on your AI provider. When it's done, the editor opens with your character fully loaded.</p></div></li>
+      </ul>
+
+      <h3>Settings to know about</h3>
+      <div class="settings-list">
+        <div class="setting-item">
+          <div class="setting-item-header">
+            <span class="setting-item-name">Mesh density</span>
+            <span class="setting-item-type">dropdown</span>
+          </div>
+          <p>Controls how detailed the deformable mesh is on each layer. <strong>Medium</strong> is a good default for everything. Use <strong>High</strong> for the face if you want very smooth mouth and eye animations. Use <strong>Low</strong> for rigid props like a hat or accessory.</p>
+        </div>
+        <div class="setting-item">
+          <div class="setting-item-header">
+            <span class="setting-item-name">Bone style</span>
+            <span class="setting-item-type">dropdown</span>
+          </div>
+          <p>How the AI places bones. <strong>Humanoid</strong> works for almost all anime VTubers — it creates a standard spine + head + arm + hair + face bone setup. <strong>Minimal</strong> is faster and simpler (just head and body). <strong>AI custom</strong> lets the AI design a skeleton specifically for your character's layers.</p>
+        </div>
+        <div class="setting-item">
+          <div class="setting-item-header">
+            <span class="setting-item-name">Custom instructions</span>
+            <span class="setting-item-type">text</span>
+          </div>
+          <p>Optional hints to the AI about how to rig. For example: <code>This character has a large hat, keep it as one rigid piece</code> or <code>Add extra hair physics bones on both sides</code>. Leave blank if you're not sure.</p>
+        </div>
+      </div>
+
+      <div class="box tip">
+        <p><span class="box-icon">💡</span> <strong>Don't overthink the prompt.</strong> Describe the character simply. The AI handles the rest. The most important things to mention are hair color, eye color, and what they're wearing. Avoid describing accessories or complex backgrounds.</p>
+      </div>
+    </section>
+
+    <!-- ── Step 2: Edit ────────────────────────────────────────────── -->
+    <section class="doc-section" id="step2">
+      <div class="step-header">
+        <div class="step-badge" style="background:linear-gradient(135deg,#00d9ff,#7c6ff7)">2</div>
+        <div class="step-header-text">
+          <h2>Organise the layers</h2>
+          <p>Check what parts were generated, fix their order, and remove any messy backgrounds.</p>
+        </div>
+        <div class="step-mode-tag"><span>Mode</span><strong><i class="fa-solid fa-layer-group"></i> Edit</strong></div>
+      </div>
+
+      <p>After generation, press <kbd>E</kbd> or click the <strong>Edit</strong> tab to check your layers. You should see a list of parts in the left panel — things like Head, Body, EyeL, EyeR, Mouth, Hair, and so on.</p>
+
+      <h3>What to look for</h3>
+      <ul>
+        <li><strong>Are all the parts there?</strong> If the AI missed something (e.g. a hat or accessory), you can add it manually — click the <code>+</code> button in the Layers panel and upload an image of that part.</li>
+        <li><strong>Is the order right?</strong> Parts at the top of the list appear in front on screen. Eyes should be in front of the face, and the face in front of the hair (usually). Drag layers up or down to reorder.</li>
+        <li><strong>Do any parts have a white or coloured background?</strong> Use the <strong>Remove BG</strong> button in the inspector to remove it. Click the layer, then look in the right panel.</li>
+      </ul>
+
+      <div class="box tip">
+        <p><span class="box-icon">👁</span> Use the eye icon on each layer to toggle visibility and see what each part looks like in isolation. This is the quickest way to spot if something looks wrong.</p>
+      </div>
+    </section>
+
+    <!-- ── Step 3: Mesh ────────────────────────────────────────────── -->
+    <section class="doc-section" id="step3">
+      <div class="step-header">
+        <div class="step-badge" style="background:linear-gradient(135deg,#ff4fa3,#7c6ff7)">3</div>
+        <div class="step-header-text">
+          <h2>Set up the mesh</h2>
+          <p>The mesh is an invisible grid of triangles that allows a layer to stretch and bend with bone movement.</p>
+        </div>
+        <div class="step-mode-tag"><span>Mode</span><strong><i class="fa-solid fa-bezier-curve"></i> Mesh</strong></div>
+      </div>
+
+      <p>If you used the AI generator, meshes were already created for you. This step is about <strong>checking them and adjusting if needed</strong>.</p>
+
+      <div class="analogy">
+        <div class="analogy-label">🧩 Think of it like this</div>
+        <p>Imagine printing a character on a rubber sheet, then drawing a grid of dots all over it. When you push or pull a dot, the rubber sheet stretches around it. That's exactly what a mesh does — the dots are vertices, and moving them (via bones) deforms the layer.</p>
+      </div>
+
+      <h3>When do you actually need to change the mesh?</h3>
+      <ul>
+        <li>If a layer looks stiff or doesn't deform smoothly when a bone moves → it needs more vertices (use a higher density mesh)</li>
+        <li>If a rigid prop like a hat is deforming weirdly → it only needs a simple quad mesh (Low density)</li>
+        <li>If the face looks blocky when you test the head angle → the face layer needs a denser mesh (High density)</li>
+      </ul>
+
+      <h3>Regenerating a mesh (easy way)</h3>
+      <p>Select the layer in the left panel → look in the right inspector panel → choose a mesh density from the dropdown → click <strong>Regenerate Mesh</strong>. You don't need to use the mesh editor tools unless you want fine control.</p>
+
+      <div class="box warn">
+        <p><span class="box-icon">⚠️</span> <strong>If you change a mesh after painting weights</strong>, you'll need to repaint the weights for that layer. Always set up the mesh before moving on to weights.</p>
+      </div>
+    </section>
+
+    <!-- ── Step 4: Bones ───────────────────────────────────────────── -->
+    <section class="doc-section" id="step4">
+      <div class="step-header">
+        <div class="step-badge" style="background:linear-gradient(135deg,#ffab40,#ff4fa3)">4</div>
+        <div class="step-header-text">
+          <h2>Place the bones</h2>
+          <p>Bones are the invisible skeleton that drives movement. They connect to sliders (parameters) so your model can turn its head, blink, and speak.</p>
+        </div>
+        <div class="step-mode-tag"><span>Mode</span><strong><i class="fa-solid fa-bone"></i> Bones</strong></div>
+      </div>
+
+      <p>If you used the AI generator, bones were already placed for you. Switch to <strong>Bones mode</strong> (<kbd>B</kbd>) and you'll see coloured diamond shapes overlaid on your character. Each diamond is a bone.</p>
+
+      <div class="analogy">
+        <div class="analogy-label">🦴 Think of it like this</div>
+        <p>It's like a puppet on strings. The strings are the bones. Pull the "Head" string and the head rotates. Bones don't move the character on their own — you need weights (Step 5) to tell each body part how much each bone influences it.</p>
+      </div>
+
+      <h3>The standard bone hierarchy</h3>
+      <p>A typical humanoid VTuber skeleton looks like this:</p>
+      <div class="concept-grid">
+        <div class="concept-card">
+          <div class="concept-card-title"><i class="fa-solid fa-circle-dot"></i> Root</div>
+          <p>The base of everything. If Root moves, the whole character moves. Usually placed at the bottom center of the character.</p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-card-title"><i class="fa-solid fa-circle-dot"></i> Body</div>
+          <p>Child of Root. Controls the torso. Breathing makes the Body bone gently scale up and down.</p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-card-title"><i class="fa-solid fa-circle-dot"></i> Neck → Head</div>
+          <p>The head bone is the most important. It rotates left-right, up-down, and tilts — driven by the AngleX, AngleY, AngleZ parameters.</p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-card-title"><i class="fa-solid fa-circle-dot"></i> EyeL, EyeR, Mouth, Brows</div>
+          <p>Face expression bones. They scale to open/close. EyeOpenL/R parameters drive blinking. MouthOpenY drives the mouth.</p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-card-title"><i class="fa-solid fa-circle-dot"></i> HairL, HairR</div>
+          <p>Hair bones are usually set up with physics so they swing naturally when the head moves.</p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-card-title"><i class="fa-solid fa-circle-dot"></i> ArmL, ArmR</div>
+          <p>Optional. Only needed if your character has visible animated arms.</p>
+        </div>
+      </div>
+
+      <h3>Parameters — what are they?</h3>
+      <p>Parameters are the named sliders in the bottom-left panel. Think of them as the "controls" of a puppet. Bones are wired to these parameters so that when a parameter changes, a bone moves. When you face-track, your webcam changes these parameter values in real time.</p>
+
+      <table class="why-table">
+        <thead><tr><th>Parameter</th><th>What it controls</th></tr></thead>
+        <tbody>
+          <tr><td>AngleX</td><td>Head rotating left or right</td></tr>
+          <tr><td>AngleY</td><td>Head tilting up or down</td></tr>
+          <tr><td>AngleZ</td><td>Head tilting to the side (roll)</td></tr>
+          <tr><td>Breath</td><td>Gentle breathing up/down on the body</td></tr>
+          <tr><td>EyeOpenL/R</td><td>Left and right eye open (1) or closed (0)</td></tr>
+          <tr><td>MouthOpenY</td><td>Mouth open amount (for lip sync)</td></tr>
+          <tr><td>MouthForm</td><td>Smile (+1), neutral (0), frown (-1)</td></tr>
+          <tr><td>BrowLY / BrowRY</td><td>Eyebrow height (for expressions)</td></tr>
+        </tbody>
+      </table>
+
+      <div class="box tip">
+        <p><span class="box-icon">💡</span> If you're happy with the auto-generated bones, you don't need to change anything here. Use the Bone mode to visually check the skeleton is in the right place — the Head bone should be roughly at the center of the head, not floating off somewhere else.</p>
+      </div>
+    </section>
+
+    <!-- ── Step 5: Weights ─────────────────────────────────────────── -->
+    <section class="doc-section" id="step5">
+      <div class="step-header">
+        <div class="step-badge" style="background:linear-gradient(135deg,#00e676,#00d9ff)">5</div>
+        <div class="step-header-text">
+          <h2>Paint the weights</h2>
+          <p>Tell each layer how much each bone affects it. This is what makes the face actually move when you turn your head.</p>
+        </div>
+        <div class="step-mode-tag"><span>Mode</span><strong><i class="fa-solid fa-paint-brush"></i> Weights</strong></div>
+      </div>
+
+      <p>Weights are numbers between 0 and 1 stored on every vertex (dot) of every layer's mesh. A weight of 1 means "this vertex fully follows this bone". A weight of 0 means "this vertex ignores this bone". Values in between create smooth blending.</p>
+
+      <div class="analogy">
+        <div class="analogy-label">🎨 Think of it like this</div>
+        <p>Imagine painting glue onto parts of your character. Painting heavy glue (weight = 1.0, shown in red) onto a vertex means that vertex is firmly stuck to the bone. Painting light glue (weight = 0.1, shown in green/blue) means the bone has only a faint pull on it. Every vertex needs some glue — if it has no weight at all, it won't move when bones do.</p>
+      </div>
+
+      <h3>The easy way: Auto Weights</h3>
+      <p>In the <strong>Bones mode inspector</strong>, click <strong>Auto Weights</strong>. The AI assigns reasonable weights to every layer based on the bone names and layer names. For most characters, this is good enough to start with.</p>
+
+      <h3>When to paint weights manually</h3>
+      <p>Auto Weights is a starting point. You'll often want to touch up:</p>
+      <ul>
+        <li><strong>The edges of the face</strong> — the face layer should be fully influenced by the Head bone, but not at all by the Body bone. If the chin drifts when you breathe, the weights between Head and Body need adjusting.</li>
+        <li><strong>Eye layers</strong> — the eye layer should only be influenced by the EyeL (or EyeR) bone and the Head bone. Other bones shouldn't affect it.</li>
+        <li><strong>Hair tips</strong> — if your character has long hair, the tips should be fully influenced by the hair bone (so they swing freely) while the roots should blend between the head bone and the hair bone.</li>
+      </ul>
+
+      <h3>How to paint</h3>
+      <ol class="steps-list">
+        <li><div class="step-n">1</div><div><strong>Select the layer you want to paint (left panel)</strong><p>You can only paint one layer at a time.</p></div></li>
+        <li><div class="step-n">2</div><div><strong>Select the bone you're painting for (right panel or bone tree)</strong><p>The inspector shows a list of all bones — click the one you want. Vertex colours update to show that bone's current influence on this layer.</p></div></li>
+        <li><div class="step-n">3</div><div><strong>Paint on the canvas</strong><p>Move your mouse over the character and hold the left button to paint. Red = high influence, blue = no influence.</p></div></li>
+        <li><div class="step-n">4</div><div><strong>Use Subtract to remove unwanted influence</strong><p>Change the brush mode to Subtract and paint over any areas you don't want this bone to affect.</p></div></li>
+        <li><div class="step-n">5</div><div><strong>Use Smooth to fix harsh edges</strong><p>If the deformation has a sharp crease or looks unnatural, switch to Smooth mode and brush over the problem area.</p></div></li>
+      </ol>
+
+      <h3>Brush settings</h3>
+      <div class="settings-list">
+        <div class="setting-item">
+          <div class="setting-item-header"><span class="setting-item-name">Radius</span><span class="setting-item-type">slider</span></div>
+          <p>How big the brush is. A large radius paints many vertices at once (fast but less precise). A small radius is for fine detail.</p>
+        </div>
+        <div class="setting-item">
+          <div class="setting-item-header"><span class="setting-item-name">Strength</span><span class="setting-item-type">slider</span></div>
+          <p>How quickly the weight builds up as you paint. Low strength (like 10–20%) builds up gradually — good for smooth blending. High strength (80–100%) paints strongly in one stroke.</p>
+        </div>
+        <div class="setting-item">
+          <div class="setting-item-header"><span class="setting-item-name">Mode: Add / Subtract / Smooth</span><span class="setting-item-type">dropdown</span></div>
+          <p><strong>Add</strong> increases the selected bone's influence. <strong>Subtract</strong> removes it. <strong>Smooth</strong> blends the weights with neighbours — use it to fix harsh transitions.</p>
+        </div>
+      </div>
+
+      <div class="box good">
+        <p><span class="box-icon">✅</span> <strong>How to test your weights:</strong> Switch to <strong>Preview mode</strong> (<kbd>P</kbd>), then drag the <code>AngleX</code> parameter slider back and forth. Watch how the character turns its head. If something moves that shouldn't (e.g. the body twisting with the head), go back to Weights mode and paint that layer to remove Head bone influence from it.</p>
+      </div>
+    </section>
+
+    <!-- ── Step 6: Physics ─────────────────────────────────────────── -->
+    <section class="doc-section" id="step6">
+      <div class="step-header">
+        <div class="step-badge" style="background:linear-gradient(135deg,#ff4fa3,#ffab40)">6</div>
+        <div class="step-header-text">
+          <h2>Add physics <em style="font-size:11px;background:var(--surface3);border:1px solid var(--border);border-radius:4px;padding:2px 7px;vertical-align:middle;color:var(--text-muted);">optional</em></h2>
+          <p>Make hair, tails, ribbons, and accessories move naturally on their own using spring simulation.</p>
+        </div>
+        <div class="step-mode-tag"><span>Mode</span><strong><i class="fa-solid fa-wind"></i> Physics</strong></div>
+      </div>
+
+      <p>Physics is entirely optional. If your character has long hair, a ponytail, ribbons, animal ears, or any soft accessory, physics will make them sway and bounce naturally when the head moves. Without physics, they just move rigidly with the head bone.</p>
+
+      <div class="analogy">
+        <div class="analogy-label">🌊 Think of it like this</div>
+        <p>Imagine holding a ruler by one end and shaking it. The tip lags behind and oscillates. That's physics. The hair bones are set up the same way — when the head moves, the hair bones don't snap to the new position instantly, they spring towards it and wobble.</p>
+      </div>
+
+      <h3>Setting up a physics group</h3>
+      <ol class="steps-list">
+        <li><div class="step-n">1</div><div><strong>Go to Physics mode</strong><p>Click Physics in the top mode bar.</p></div></li>
+        <li><div class="step-n">2</div><div><strong>Click "Add Group"</strong><p>A new physics group appears. Give it a name like "HairPhysics".</p></div></li>
+        <li><div class="step-n">3</div><div><strong>Set the Input parameter</strong><p>This is what drives the physics. Use <code>AngleX</code> for hair that swings when the head turns left and right.</p></div></li>
+        <li><div class="step-n">4</div><div><strong>Adjust the three sliders</strong><p>Start with Gravity 0.3, Momentum 0.8, Damping 0.15 and test in Preview mode. Adjust to taste.</p></div></li>
+      </ol>
+
+      <h3>Understanding the three physics sliders</h3>
+      <div class="settings-list">
+        <div class="setting-item">
+          <div class="setting-item-header"><span class="setting-item-name">Gravity (0–2)</span></div>
+          <p>How heavy the physics bone feels. A low value (0.1–0.3) feels like light hair or ribbons. A high value (1.5+) feels like something heavy like a pendant or thick braid. <strong>Start at 0.3.</strong></p>
+        </div>
+        <div class="setting-item">
+          <div class="setting-item-header"><span class="setting-item-name">Momentum (0–1)</span></div>
+          <p>How slow and floaty the hair is. Low momentum (0.1–0.3) makes hair snap back quickly — stiff. High momentum (0.8–0.95) makes it lag way behind — like flowing underwater. <strong>Start at 0.8.</strong></p>
+        </div>
+        <div class="setting-item">
+          <div class="setting-item-header"><span class="setting-item-name">Damping (0–1)</span></div>
+          <p>How quickly the oscillation settles down. Low damping (0.05) means the hair keeps swinging for a long time. High damping (0.4+) kills the swing quickly. <strong>Start at 0.15.</strong></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Step 7: Preview & Save ──────────────────────────────────── -->
+    <section class="doc-section" id="step7">
+      <div class="step-header">
+        <div class="step-badge" style="background:linear-gradient(135deg,#00e676,#00d9ff)">7</div>
+        <div class="step-header-text">
+          <h2>Preview and save</h2>
+          <p>Test your model, adjust anything that looks off, then save or export it.</p>
+        </div>
+        <div class="step-mode-tag"><span>Mode</span><strong><i class="fa-solid fa-play"></i> Preview</strong></div>
+      </div>
+
+      <p>Switch to <strong>Preview mode</strong> (<kbd>P</kbd>) and click the play button at the bottom. Your model will animate with the built-in idle animation — gentle breathing and occasional blinking.</p>
+
+      <h3>Things to check</h3>
+      <ul>
+        <li><strong>Drag AngleX back and forth.</strong> Does the head turn naturally? Do the eyes and mouth move with it correctly? Do the hair bones lag behind (physics)?</li>
+        <li><strong>Set EyeOpenL and EyeOpenR to 0.</strong> Do the eyes close correctly? If not, the eye layer weights need adjusting.</li>
+        <li><strong>Set MouthOpenY to 1.</strong> Does the mouth open? If the whole face stretches, the mouth layer weights need work.</li>
+        <li><strong>Set Breath to 1.</strong> Does the body expand slightly? If the head moves with breathing, the head bone weights need to be separated from the body bone.</li>
+      </ul>
+
+      <h3>Saving your model</h3>
+      <p>Press <kbd>Ctrl+S</kbd> or click the floppy disk icon in the top bar. The title bar shows a <code>*</code> when there are unsaved changes — make sure it's gone before closing the browser.</p>
+
+      <h3>Exporting</h3>
+      <p>Click the <strong>Export</strong> button to download a <code>.specter</code> file. This single file contains everything — all textures, the rig, the weights, the animations. You can share it or reimport it into Specter on any machine.</p>
+
+      <div class="cta-box">
+        <i class="fa-solid fa-rocket"></i>
+        <div>
+          <h3>You're ready!</h3>
+          <p>Open the editor in a second window, load your model, and try the Live mode when the tracking module is available. The parameter sliders in Preview mode will show your facial movements in real time.</p>
+        </div>
+        <a href="/" target="_blank" class="cta-btn"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Editor</a>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         CONCEPTS
+    ═══════════════════════════════════════════════════════════ -->
+
+    <div style="height:1px;background:var(--border);margin:0 0 48px;"></div>
+    <p style="color:var(--text-muted);font-size:12px;text-transform:uppercase;letter-spacing:2px;font-weight:700;margin-bottom:24px;">Concept explanations</p>
+
+    <!-- Layers -->
+    <section class="doc-section" id="concept-layers">
+      <div class="concept-header">
+        <div class="concept-icon" style="background:rgba(0,217,255,0.1);color:var(--accent2)"><i class="fa-solid fa-layer-group"></i></div>
+        <h2>What are layers?</h2>
+      </div>
+      <p>A layer is one part of your character — the head is a layer, the left eye is a layer, the body is a layer. Each layer is a separate image (texture) that can be moved, deformed, and made visible or invisible independently.</p>
+      <p>The order of layers determines what's in front. An eye layer needs to be in front of the face layer, which needs to be in front of the hair-behind layer, and so on. You set this order by dragging them in the Layers panel.</p>
+      <div class="box explain">
+        <p><span class="box-icon">📌</span> This is exactly like layers in Photoshop or any drawing software. The top of the list = in front. The bottom = behind everything else.</p>
+      </div>
+    </section>
+
+    <!-- Mesh -->
+    <section class="doc-section" id="concept-mesh">
+      <div class="concept-header">
+        <div class="concept-icon" style="background:rgba(255,79,163,0.1);color:var(--pink)"><i class="fa-solid fa-bezier-curve"></i></div>
+        <h2>What is a mesh?</h2>
+      </div>
+      <p>A mesh is an invisible grid of triangles placed on top of a layer. The corners of those triangles are called <strong>vertices</strong>. When a bone moves, it pulls the vertices near it, which stretches or compresses the triangles, which distorts the image — making the character appear to bend and move.</p>
+      <p>Without a mesh, a layer is just a flat rectangle that can only move as a whole (like a flat cardboard cutout). With a mesh, the layer can flex and deform like rubber.</p>
+      <div class="analogy">
+        <div class="analogy-label">🎪 Think of it like this</div>
+        <p>Imagine drawing a face on a balloon. Before you inflate it, mark a grid of dots all over it with a marker. As you squeeze or stretch the balloon, the dots move and the face distorts. Those dots are mesh vertices. The more dots, the smoother and more detailed the deformation.</p>
+      </div>
+      <p><strong>More vertices = smoother deformation, but more work to set up weights.</strong> Use fewer vertices on simple stiff parts, and more on the face and hair where you want detailed movement.</p>
+    </section>
+
+    <!-- Bones -->
+    <section class="doc-section" id="concept-bones">
+      <div class="concept-header">
+        <div class="concept-icon" style="background:rgba(255,171,64,0.1);color:var(--orange)"><i class="fa-solid fa-bone"></i></div>
+        <h2>What are bones?</h2>
+      </div>
+      <p>Bones are invisible objects in the scene that have a position, a rotation, and a length. They form a family tree — the Head bone is a child of the Neck bone, which is a child of the Body bone. When a parent bone moves, all its children move with it.</p>
+      <p>Bones themselves don't do anything visible. They only cause movement when <strong>weights</strong> (see below) connect them to the mesh vertices of a layer. A bone that has no weights assigned to any layer has zero visual effect.</p>
+      <div class="analogy">
+        <div class="analogy-label">🤖 Think of it like this</div>
+        <p>Think of a marionette puppet. The strings connect the controller (parameters) to the puppet's joints (bones). The joints pull on the fabric of the puppet (mesh vertices via weights) to create movement. No strings = no movement. Strings connected to the wrong places = weird movement.</p>
+      </div>
+    </section>
+
+    <!-- Weights -->
+    <section class="doc-section" id="concept-weights">
+      <div class="concept-header">
+        <div class="concept-icon" style="background:rgba(0,230,118,0.1);color:var(--green)"><i class="fa-solid fa-paint-brush"></i></div>
+        <h2>What are weights?</h2>
+      </div>
+      <p>Weights are numbers (0 to 1) stored on each vertex of each layer's mesh, for each bone. They answer the question: <em>"How much does this bone pull this vertex?"</em></p>
+      <p>A vertex can be influenced by multiple bones at once. All weights on a vertex must add up to 1.0 — so if the Head bone influences a vertex by 0.7, other bones can only share the remaining 0.3 between them. Specter normalises this automatically.</p>
+      <div class="concept-grid">
+        <div class="concept-card">
+          <div class="concept-card-title"><i class="fa-solid fa-circle" style="color:#ff5252"></i> Weight = 1.0 (red)</div>
+          <p>This vertex is fully controlled by the selected bone. It follows the bone perfectly. Use this for the core of a body part.</p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-card-title"><i class="fa-solid fa-circle" style="color:#ffab40"></i> Weight = 0.5 (orange)</div>
+          <p>This vertex is 50% controlled by this bone and 50% by other bones. Good for transition zones between two parts, like the neck between head and body.</p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-card-title"><i class="fa-solid fa-circle" style="color:#00e676"></i> Weight = 0.1 (green)</div>
+          <p>This vertex is barely affected by this bone. The bone can influence it slightly, but it mostly follows another bone.</p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-card-title"><i class="fa-solid fa-circle" style="color:#0064c8"></i> Weight = 0.0 (blue)</div>
+          <p>This vertex is not influenced by this bone at all. It ignores this bone completely.</p>
+        </div>
+      </div>
+      <div class="box explain">
+        <p><span class="box-icon">📌</span> The most common mistake for beginners is forgetting to assign weights to a layer. If a layer doesn't move at all when bones move, that layer has no weights — run Auto Weights or paint it manually.</p>
+      </div>
+    </section>
+
+    <!-- Parameters -->
+    <section class="doc-section" id="concept-params">
+      <div class="concept-header">
+        <div class="concept-icon" style="background:rgba(124,111,247,0.1);color:var(--accent)"><i class="fa-solid fa-sliders"></i></div>
+        <h2>What are parameters?</h2>
+      </div>
+      <p>Parameters are named sliders that represent the inputs to your model. When you're doing face tracking, your face movements are translated into parameter values, which then drive bone positions.</p>
+      <p>Think of parameters as the remote control for your model. <code>AngleX = 20</code> means "turn the head 20 degrees to the right". <code>EyeOpenL = 0</code> means "close the left eye". The bone-parameter bindings (set up automatically by the AI) translate these simple numbers into actual bone rotations and positions.</p>
+      <p>You can manually drag the parameter sliders in the bottom-left panel at any time to see how the model reacts. This is the best way to test and debug your rig.</p>
+    </section>
+
+    <!-- Physics -->
+    <section class="doc-section" id="concept-physics">
+      <div class="concept-header">
+        <div class="concept-icon" style="background:rgba(255,79,163,0.1);color:var(--pink)"><i class="fa-solid fa-wind"></i></div>
+        <h2>What is physics simulation?</h2>
+      </div>
+      <p>Physics simulation makes certain bones behave like real-world soft objects that have weight, momentum, and spring-like elasticity. Instead of following the head bone exactly, a hair bone will lag behind and then oscillate back, simulating the motion of real hair.</p>
+      <p>Specter uses a simple spring model: each physics bone is pulled toward where it "should" be (based on the head position), but it has inertia and gravity resisting that pull. The result looks like natural secondary motion without having to animate it manually.</p>
+      <p>Physics is great for: <strong>hair</strong>, <strong>ponytails</strong>, <strong>animal ears</strong>, <strong>ribbons</strong>, <strong>pendants</strong>, <strong>tails</strong>, and any soft accessory. It's not needed for rigid parts like glasses, headbands, or hats.</p>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  function goto(id) {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelectorAll('.nav-step, .nav-concept').forEach(a => a.classList.remove('active'));
+    const link = document.querySelector(`[href="#${id}"]`);
+    if (link) link.classList.add('active');
+    return false;
+  }
+
+  document.querySelectorAll('.nav-step, .nav-concept').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      goto(a.getAttribute('href').slice(1));
+    });
+  });
+
+  const content = document.getElementById('content');
+  const sections = document.querySelectorAll('.doc-section[id]');
+  content.addEventListener('scroll', () => {
+    let current = 'start';
+    sections.forEach(s => { if (s.offsetTop - 100 <= content.scrollTop) current = s.id; });
+    document.querySelectorAll('.nav-step, .nav-concept').forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === `#${current}`);
+    });
+  });
+</script>
+</body>
+</html>

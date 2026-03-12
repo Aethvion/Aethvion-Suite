@@ -732,6 +732,13 @@ async def docs_page():
     return docs_path.read_text(encoding="utf-8")
 
 
+@app.get("/tutorial", response_class=HTMLResponse)
+async def tutorial_page():
+    """Serve the Specter beginner tutorial (open alongside the editor)."""
+    tutorial_path = VIEWER_DIR / "tutorial.html"
+    return tutorial_path.read_text(encoding="utf-8")
+
+
 # ---------------------------------------------------------------------------
 # Launch
 # ---------------------------------------------------------------------------
