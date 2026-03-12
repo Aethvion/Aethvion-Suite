@@ -725,6 +725,13 @@ async def index():
     return idx.read_text(encoding="utf-8")
 
 
+@app.get("/docs", response_class=HTMLResponse)
+async def docs_page():
+    """Serve the Specter documentation page (open alongside the editor)."""
+    docs_path = VIEWER_DIR / "docs.html"
+    return docs_path.read_text(encoding="utf-8")
+
+
 # ---------------------------------------------------------------------------
 # Launch
 # ---------------------------------------------------------------------------

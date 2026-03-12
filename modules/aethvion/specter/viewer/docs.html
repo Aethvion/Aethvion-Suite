@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Specter Docs — VTuber Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    /* ═══════════════════════════════════════════════════
+       Specter Documentation — Stylesheet
+    ═══════════════════════════════════════════════════ */
+    :root {
+      --bg:          #080a12;
+      --surface:     #0e1120;
+      --surface2:    #141828;
+      --surface3:    #1a2035;
+      --accent:      #7c6ff7;
+      --accent2:     #00d9ff;
+      --pink:        #ff4fa3;
+      --green:       #00e676;
+      --orange:      #ffab40;
+      --red:         #ff5252;
+      --yellow:      #ffe066;
+      --text:        #e0e2f0;
+      --text-dim:    #8891b0;
+      --text-muted:  #4a5070;
+      --border:      #1e2440;
+      --border-b:    #2e3560;
+      --sidebar-w:   280px;
+      --topbar-h:    52px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-b); border-radius: 4px; }
+
+    /* ── Top bar ─────────────────────────────────────── */
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: var(--topbar-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 20px; gap: 16px;
+    }
+    .tb-logo {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--pink));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; color: white; flex-shrink: 0;
+    }
+    .tb-brand {
+      display: flex; align-items: baseline; gap: 8px;
+    }
+    .tb-title {
+      font-size: 13px; font-weight: 700; letter-spacing: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .tb-subtitle {
+      font-size: 12px; color: var(--text-muted);
+    }
+    .tb-version {
+      margin-left: auto;
+      font-size: 11px; color: var(--text-muted);
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 3px 10px;
+    }
+    .tb-back {
+      margin-left: 12px;
+      padding: 5px 14px;
+      background: var(--surface3); border: 1px solid var(--border);
+      color: var(--text-dim); border-radius: 6px;
+      cursor: pointer; font-size: 12px; text-decoration: none;
+      display: flex; align-items: center; gap: 6px;
+      transition: all 0.15s;
+    }
+    .tb-back:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Layout ──────────────────────────────────────── */
+    #layout {
+      position: fixed;
+      top: var(--topbar-h); left: 0; right: 0; bottom: 0;
+      display: flex;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 16px 0;
+    }
+    .nav-section-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--text-muted);
+      padding: 10px 18px 4px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 7px 18px;
+      color: var(--text-dim); text-decoration: none;
+      font-size: 13px; border-radius: 0;
+      transition: all 0.12s;
+      cursor: pointer;
+      border-left: 2px solid transparent;
+    }
+    .nav-item:hover { background: var(--surface2); color: var(--text); border-left-color: var(--border-b); }
+    .nav-item.active { background: rgba(124,111,247,0.1); color: var(--accent); border-left-color: var(--accent); }
+    .nav-item i { width: 16px; text-align: center; font-size: 12px; }
+    .nav-sub {
+      display: flex; align-items: center; gap: 9px;
+      padding: 5px 18px 5px 42px;
+      color: var(--text-muted); text-decoration: none;
+      font-size: 12px; cursor: pointer;
+      transition: color 0.12s;
+      border-left: 2px solid transparent;
+    }
+    .nav-sub:hover { color: var(--text); }
+    .nav-sub.active { color: var(--accent2); }
+    .nav-divider { height: 1px; background: var(--border); margin: 8px 0; }
+
+    /* ── Main Content ────────────────────────────────── */
+    #content {
+      flex: 1; overflow-y: auto;
+      padding: 40px 48px;
+      max-width: 900px;
+    }
+
+    /* ── Typography ──────────────────────────────────── */
+    .doc-section { margin-bottom: 56px; scroll-margin-top: 24px; }
+
+    h1 {
+      font-size: 28px; font-weight: 700;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    h2 {
+      font-size: 20px; font-weight: 700; color: var(--text);
+      margin-bottom: 16px; padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+    h2 i { color: var(--accent); font-size: 16px; }
+    h3 {
+      font-size: 15px; font-weight: 600; color: var(--text);
+      margin: 22px 0 10px;
+    }
+    h4 {
+      font-size: 13px; font-weight: 600; color: var(--accent2);
+      margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    p { color: var(--text-dim); margin-bottom: 12px; }
+    strong { color: var(--text); font-weight: 600; }
+
+    /* ── Lead text ───────────────────────────────────── */
+    .lead {
+      font-size: 15px; color: var(--text-dim);
+      line-height: 1.8; margin-bottom: 20px;
+    }
+
+    /* ── Info boxes ──────────────────────────────────── */
+    .box {
+      border-radius: 8px; padding: 14px 18px; margin: 16px 0;
+      border-left: 3px solid;
+      font-size: 13px;
+    }
+    .box.tip    { background: rgba(0,217,255,0.07); border-color: var(--accent2); }
+    .box.note   { background: rgba(124,111,247,0.08); border-color: var(--accent); }
+    .box.warn   { background: rgba(255,171,64,0.08); border-color: var(--orange); }
+    .box.new    { background: rgba(0,230,118,0.07); border-color: var(--green); }
+    .box-label  { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
+    .tip .box-label    { color: var(--accent2); }
+    .note .box-label   { color: var(--accent); }
+    .warn .box-label   { color: var(--orange); }
+    .new .box-label    { color: var(--green); }
+
+    /* ── Setting rows ────────────────────────────────── */
+    .setting-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    .setting-table th {
+      text-align: left; padding: 8px 12px;
+      font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .setting-table td {
+      padding: 10px 12px; vertical-align: top;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px; color: var(--text-dim);
+    }
+    .setting-table tr:last-child td { border-bottom: none; }
+    .setting-table td:first-child { color: var(--text); font-weight: 500; white-space: nowrap; }
+    .setting-table .tag {
+      display: inline-block; padding: 1px 7px; border-radius: 10px;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.5px;
+    }
+    .tag-select  { background: rgba(124,111,247,0.2); color: var(--accent); }
+    .tag-range   { background: rgba(0,217,255,0.15); color: var(--accent2); }
+    .tag-toggle  { background: rgba(0,230,118,0.15); color: var(--green); }
+    .tag-text    { background: rgba(255,171,64,0.15); color: var(--orange); }
+    .tag-btn     { background: rgba(255,79,163,0.15); color: var(--pink); }
+
+    /* ── Mode header ─────────────────────────────────── */
+    .mode-header {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px 22px; margin-bottom: 22px;
+      display: flex; align-items: flex-start; gap: 16px;
+    }
+    .mode-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .mode-header h2 { border: none; padding: 0; margin: 0 0 4px; font-size: 18px; }
+    .mode-desc { font-size: 13px; color: var(--text-dim); }
+    .mode-shortcut {
+      margin-left: auto; flex-shrink: 0;
+      background: var(--surface3); border: 1px solid var(--border);
+      border-radius: 6px; padding: 6px 12px;
+      font-size: 11px; color: var(--text-muted); text-align: center;
+    }
+    .mode-shortcut strong { display: block; font-size: 16px; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+
+    /* ── Keyboard shortcuts ──────────────────────────── */
+    .kb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+    .kb-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 12px;
+    }
+    kbd {
+      background: var(--surface3); border: 1px solid var(--border-b);
+      border-bottom-width: 2px;
+      border-radius: 4px; padding: 2px 7px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--accent2);
+      white-space: nowrap;
+    }
+    .kb-desc { font-size: 12px; color: var(--text-dim); }
+
+    /* ── Format spec ─────────────────────────────────── */
+    .file-tree {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px 20px; margin: 12px 0;
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      color: var(--text-dim); line-height: 1.9;
+    }
+    .ft-dir { color: var(--accent2); }
+    .ft-file { color: var(--text); }
+    .ft-comment { color: var(--text-muted); }
+
+    /* ── Code block ──────────────────────────────────── */
+    pre {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px 20px; margin: 12px 0;
+      overflow-x: auto;
+    }
+    code {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      color: var(--accent2);
+    }
+    p code, li code {
+      background: var(--surface3); border: 1px solid var(--border);
+      border-radius: 3px; padding: 1px 5px;
+      color: var(--accent2); font-size: 12px;
+    }
+
+    /* ── Lists ───────────────────────────────────────── */
+    ul, ol { padding-left: 20px; color: var(--text-dim); margin-bottom: 12px; }
+    li { margin-bottom: 4px; }
+    li strong { color: var(--text); }
+
+    /* ── Tool cards ──────────────────────────────────── */
+    .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+    .tool-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 16px;
+    }
+    .tool-card-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 8px;
+    }
+    .tool-card-icon {
+      width: 28px; height: 28px; border-radius: 6px;
+      background: var(--surface3); border: 1px solid var(--border-b);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: var(--accent);
+    }
+    .tool-card-name { font-weight: 600; font-size: 13px; color: var(--text); }
+    .tool-card-key {
+      margin-left: auto;
+      font-family: 'JetBrains Mono', monospace; font-size: 10px;
+      background: var(--surface3); border: 1px solid var(--border-b);
+      border-radius: 4px; padding: 1px 6px; color: var(--accent2);
+    }
+    .tool-card p { font-size: 12px; margin: 0; }
+
+    /* ── Pipeline cards ──────────────────────────────── */
+    .pipeline-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0; }
+    .pipeline-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px;
+    }
+    .pipeline-card-title {
+      font-weight: 700; font-size: 13px; color: var(--text);
+      margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+    }
+    .pipeline-card-title i { color: var(--accent); }
+    .pipeline-card p { font-size: 12px; margin: 0; }
+
+    /* ── Anchor links ────────────────────────────────── */
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Responsive ──────────────────────────────────── */
+    @media (max-width: 900px) {
+      .tool-grid, .pipeline-grid, .kb-grid { grid-template-columns: 1fr; }
+      #content { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Bar ──────────────────────────────────────────────────── -->
+<header id="topbar">
+  <div class="tb-logo"><i class="fa-solid fa-ghost"></i></div>
+  <div class="tb-brand">
+    <span class="tb-title">SPECTER</span>
+    <span class="tb-subtitle">— Documentation</span>
+  </div>
+  <span class="tb-version">v2.0.0</span>
+  <a href="/" target="_blank" class="tb-back">
+    <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Editor
+  </a>
+</header>
+
+<div id="layout">
+
+  <!-- ── Sidebar Nav ────────────────────────────────────────────── -->
+  <nav id="sidebar">
+    <div class="nav-section-title">Overview</div>
+    <a class="nav-item active" href="#overview" onclick="scrollTo('overview')"><i class="fa-solid fa-house"></i> Introduction</a>
+    <a class="nav-item" href="#specter-file" onclick="scrollTo('specter-file')"><i class="fa-solid fa-file-zipper"></i> .specter Format</a>
+    <a class="nav-item" href="#file-ops" onclick="scrollTo('file-ops')"><i class="fa-solid fa-folder-open"></i> File Operations</a>
+    <a class="nav-item" href="#shortcuts" onclick="scrollTo('shortcuts')"><i class="fa-solid fa-keyboard"></i> Keyboard Shortcuts</a>
+
+    <div class="nav-divider"></div>
+    <div class="nav-section-title">Editor Modes</div>
+    <a class="nav-item" href="#mode-generate" onclick="scrollTo('mode-generate')"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate</a>
+      <a class="nav-sub" href="#gen-pipelines" onclick="scrollTo('gen-pipelines')">Pipelines</a>
+      <a class="nav-sub" href="#gen-settings" onclick="scrollTo('gen-settings')">Settings</a>
+    <a class="nav-item" href="#mode-edit" onclick="scrollTo('mode-edit')"><i class="fa-solid fa-layer-group"></i> Edit</a>
+      <a class="nav-sub" href="#edit-layers" onclick="scrollTo('edit-layers')">Layer Panel</a>
+      <a class="nav-sub" href="#edit-inspector" onclick="scrollTo('edit-inspector')">Inspector</a>
+    <a class="nav-item" href="#mode-mesh" onclick="scrollTo('mode-mesh')"><i class="fa-solid fa-bezier-curve"></i> Mesh</a>
+      <a class="nav-sub" href="#mesh-tools" onclick="scrollTo('mesh-tools')">Tools</a>
+      <a class="nav-sub" href="#mesh-auto" onclick="scrollTo('mesh-auto')">Auto Mesh</a>
+    <a class="nav-item" href="#mode-bones" onclick="scrollTo('mode-bones')"><i class="fa-solid fa-bone"></i> Bones</a>
+      <a class="nav-sub" href="#bone-system" onclick="scrollTo('bone-system')">Bone System</a>
+      <a class="nav-sub" href="#bone-tools" onclick="scrollTo('bone-tools')">Tools</a>
+      <a class="nav-sub" href="#bone-params" onclick="scrollTo('bone-params')">Parameters</a>
+    <a class="nav-item" href="#mode-weights" onclick="scrollTo('mode-weights')"><i class="fa-solid fa-paint-brush"></i> Weights</a>
+      <a class="nav-sub" href="#weight-brush" onclick="scrollTo('weight-brush')">Brush Settings</a>
+      <a class="nav-sub" href="#weight-auto" onclick="scrollTo('weight-auto')">Auto Weights</a>
+    <a class="nav-item" href="#mode-physics" onclick="scrollTo('mode-physics')"><i class="fa-solid fa-wind"></i> Physics</a>
+    <a class="nav-item" href="#mode-preview" onclick="scrollTo('mode-preview')"><i class="fa-solid fa-play"></i> Preview</a>
+    <a class="nav-item" href="#mode-live" onclick="scrollTo('mode-live')"><i class="fa-solid fa-satellite-dish"></i> Live</a>
+
+    <div class="nav-divider"></div>
+    <div class="nav-section-title">Panels</div>
+    <a class="nav-item" href="#panel-layers" onclick="scrollTo('panel-layers')"><i class="fa-solid fa-layer-group"></i> Layers</a>
+    <a class="nav-item" href="#panel-bones" onclick="scrollTo('panel-bones')"><i class="fa-solid fa-bone"></i> Bone Tree</a>
+    <a class="nav-item" href="#panel-params" onclick="scrollTo('panel-params')"><i class="fa-solid fa-sliders"></i> Parameters</a>
+    <a class="nav-item" href="#panel-inspector" onclick="scrollTo('panel-inspector')"><i class="fa-solid fa-circle-info"></i> Inspector</a>
+
+    <div class="nav-divider"></div>
+    <div class="nav-section-title">Tracking</div>
+    <a class="nav-item" href="#tracking" onclick="scrollTo('tracking')"><i class="fa-solid fa-satellite-dish"></i> Tracking Bridge</a>
+  </nav>
+
+  <!-- ── Main Content ────────────────────────────────────────────── -->
+  <main id="content">
+
+    <!-- ── Overview ──────────────────────────────────────────────── -->
+    <section class="doc-section" id="overview">
+      <h1>Specter — VTuber Engine</h1>
+      <p class="lead">
+        Specter is a standalone, browser-based VTuber rigging engine. It lets you <strong>generate</strong>
+        character artwork with AI, <strong>rig</strong> it with a mesh and bone system, <strong>paint weights</strong>
+        to control how bones deform each part, and <strong>preview</strong> real-time animations — all in one interface.
+      </p>
+      <div class="box note">
+        <div class="box-label">About</div>
+        Specter is fully self-contained. It does not require any external VTuber software. Models are saved as
+        <code>.specter</code> files that package everything — textures, rig, weights, animations — into a single portable archive.
+      </div>
+
+      <h3>How it's organised</h3>
+      <p>The editor is split into <strong>8 modes</strong>, each shown as a tab in the top bar. You can switch between them at any time without losing work. Think of the workflow as a pipeline:</p>
+      <ol>
+        <li><strong>Generate</strong> — Create or import your character artwork</li>
+        <li><strong>Edit</strong> — Organise layers, set opacity, remove backgrounds</li>
+        <li><strong>Mesh</strong> — Define the triangulated mesh on each layer</li>
+        <li><strong>Bones</strong> — Build a bone hierarchy and link it to parameters</li>
+        <li><strong>Weights</strong> — Paint how much each bone influences each vertex</li>
+        <li><strong>Physics</strong> — Add spring physics for hair and accessories</li>
+        <li><strong>Preview</strong> — Play animations and tweak parameters live</li>
+        <li><strong>Live</strong> — Connect a face-tracking source for real-time VTubing</li>
+      </ol>
+
+      <h3>AI assistance</h3>
+      <p>Steps 1–5 all have AI-assisted options — you can let the AI do the heavy lifting and then fine-tune manually, or skip the AI entirely and do everything by hand. AI features require API keys in the shared <code>.env</code> file (Google AI or OpenAI).</p>
+    </section>
+
+    <!-- ── .specter Format ────────────────────────────────────────── -->
+    <section class="doc-section" id="specter-file">
+      <h2><i class="fa-solid fa-file-zipper"></i> The .specter File Format</h2>
+      <p>A <code>.specter</code> file is a <strong>ZIP archive</strong> that contains your entire model — artwork, mesh data, bones, weights, animations, and physics — in one portable file.</p>
+
+      <h3>Archive structure</h3>
+      <div class="file-tree">
+        <span class="ft-dir">yourmodel.specter</span>  <span class="ft-comment">← ZIP archive</span><br>
+        <span class="ft-comment">├── </span><span class="ft-file">manifest.json</span>   <span class="ft-comment">← name, version, timestamps</span><br>
+        <span class="ft-comment">├── </span><span class="ft-file">model.json</span>       <span class="ft-comment">← full model data (see below)</span><br>
+        <span class="ft-comment">└── textures/</span><br>
+        <span class="ft-comment">    ├── </span><span class="ft-file">abc123.png</span>       <span class="ft-comment">← embedded layer textures</span><br>
+        <span class="ft-comment">    ├── </span><span class="ft-file">abc123_raw.png</span>   <span class="ft-comment">← original backup (before BG removal)</span><br>
+        <span class="ft-comment">    └── </span><span class="ft-file">abc123_nobg.png</span>  <span class="ft-comment">← background-removed version</span>
+      </div>
+
+      <h3>model.json structure</h3>
+      <table class="setting-table">
+        <thead><tr><th>Key</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>version</code></td><td>string</td><td>Format version, currently <code>"2.0.0"</code></td></tr>
+          <tr><td><code>name</code></td><td>string</td><td>Model display name</td></tr>
+          <tr><td><code>canvas</code></td><td>object</td><td>Working canvas size in pixels. Default <code>2048×2048</code></td></tr>
+          <tr><td><code>layers</code></td><td>array</td><td>All layer objects (mesh parts). See Layer reference below.</td></tr>
+          <tr><td><code>bones</code></td><td>array</td><td>All bone objects forming the skeleton</td></tr>
+          <tr><td><code>weights</code></td><td>object</td><td><code>layerId → boneId → [weight per vertex]</code></td></tr>
+          <tr><td><code>parameters</code></td><td>object</td><td>Named sliders that drive bone transforms (e.g. <code>ParamAngleX</code>)</td></tr>
+          <tr><td><code>bone_params</code></td><td>array</td><td>Bindings that connect parameters to bone properties via keyframes</td></tr>
+          <tr><td><code>physics_groups</code></td><td>array</td><td>Spring physics chains</td></tr>
+          <tr><td><code>animations</code></td><td>object</td><td>Named animation clips with parameter tracks</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Backward compatibility</h3>
+      <p>Legacy <code>avatar.specter.json</code> models from Specter v1 are automatically detected and migrated to v2 format when you open them. The original files on disk are not modified.</p>
+
+      <div class="box tip">
+        <div class="box-label">Tip</div>
+        You can open a <code>.specter</code> file with any ZIP tool (7-Zip, WinRAR, etc.) to manually inspect or extract its contents. The <code>model.json</code> is plain readable JSON.
+      </div>
+    </section>
+
+    <!-- ── File Operations ────────────────────────────────────────── -->
+    <section class="doc-section" id="file-ops">
+      <h2><i class="fa-solid fa-folder-open"></i> File Operations</h2>
+      <p>The file operation buttons are in the top-right corner of the editor. All changes are kept in memory until you explicitly save.</p>
+
+      <table class="setting-table">
+        <thead><tr><th>Button</th><th>Shortcut</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><i class="fa-solid fa-file-circle-plus"></i> New Model</td><td>—</td><td>Creates a blank <code>.specter</code> model on the server and opens it. You'll be asked for a name.</td></tr>
+          <tr><td><i class="fa-solid fa-folder-open"></i> Open</td><td>—</td><td>Opens a file picker. Select a <code>.specter</code> file to import it into the engine. You can also drop image files here to add them as new layers.</td></tr>
+          <tr><td><i class="fa-solid fa-floppy-disk"></i> Save</td><td><kbd>Ctrl+S</kbd></td><td>Saves the current model back to its <code>.specter</code> archive on the server. The title bar shows an asterisk (*) when there are unsaved changes.</td></tr>
+          <tr><td><i class="fa-solid fa-download"></i> Export</td><td>—</td><td>Saves the model and then downloads the <code>.specter</code> file to your computer. Use this to share or back up your model.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="box warn">
+        <div class="box-label">Important</div>
+        Auto-save is not enabled. Remember to press <kbd>Ctrl+S</kbd> regularly, especially after major rigging steps.
+      </div>
+    </section>
+
+    <!-- ── Keyboard shortcuts ─────────────────────────────────────── -->
+    <section class="doc-section" id="shortcuts">
+      <h2><i class="fa-solid fa-keyboard"></i> Keyboard Shortcuts</h2>
+      <p>These shortcuts work anywhere in the editor unless an input field is focused.</p>
+
+      <h4>Mode switching</h4>
+      <div class="kb-grid">
+        <div class="kb-row"><kbd>G</kbd> <span class="kb-desc">Switch to Generate mode</span></div>
+        <div class="kb-row"><kbd>E</kbd> <span class="kb-desc">Switch to Edit mode</span></div>
+        <div class="kb-row"><kbd>M</kbd> <span class="kb-desc">Switch to Mesh editor</span></div>
+        <div class="kb-row"><kbd>B</kbd> <span class="kb-desc">Switch to Bones editor</span></div>
+        <div class="kb-row"><kbd>W</kbd> <span class="kb-desc">Switch to Weight painting</span></div>
+        <div class="kb-row"><kbd>P</kbd> <span class="kb-desc">Switch to Preview mode</span></div>
+      </div>
+
+      <h4>Viewport</h4>
+      <div class="kb-grid">
+        <div class="kb-row"><kbd>F</kbd> <span class="kb-desc">Fit model to screen</span></div>
+        <div class="kb-row"><kbd>Scroll</kbd> <span class="kb-desc">Zoom in / out</span></div>
+        <div class="kb-row"><kbd>Middle click + drag</kbd> <span class="kb-desc">Pan the viewport</span></div>
+        <div class="kb-row"><kbd>Alt + drag</kbd> <span class="kb-desc">Pan the viewport</span></div>
+      </div>
+
+      <h4>Editing</h4>
+      <div class="kb-grid">
+        <div class="kb-row"><kbd>Ctrl+S</kbd> <span class="kb-desc">Save model</span></div>
+        <div class="kb-row"><kbd>Delete</kbd> <span class="kb-desc">Delete selected bone (in Bones mode)</span></div>
+        <div class="kb-row"><kbd>Shift+click</kbd> <span class="kb-desc">Add vertex to selection (Mesh mode)</span></div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════
+         MODES
+    ════════════════════════════════════════════════ -->
+
+    <!-- ── GENERATE ───────────────────────────────────────────────── -->
+    <section class="doc-section" id="mode-generate">
+      <div class="mode-header">
+        <div class="mode-icon" style="background:rgba(124,111,247,0.15);color:var(--accent)">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </div>
+        <div>
+          <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Mode</h2>
+          <div class="mode-desc">Use AI to generate character artwork or upload your own, then auto-rig everything in one step.</div>
+        </div>
+        <div class="mode-shortcut"><strong>G</strong>shortcut</div>
+      </div>
+
+      <p>The Generate panel slides out from the left of the canvas. It is the starting point for creating a new character. You can either describe a character and let AI generate the artwork, or upload an existing image.</p>
+
+      <h3 id="gen-pipelines">Pipelines</h3>
+      <div class="pipeline-grid">
+        <div class="pipeline-card">
+          <div class="pipeline-card-title"><i class="fa-solid fa-robot"></i> AI Sheet</div>
+          <p>Generates a full sprite sheet of character parts using an image AI (Google Imagen or DALL-E). The AI then slices the sheet into individual layers and rigs them automatically. <strong>Best for brand new characters.</strong></p>
+        </div>
+        <div class="pipeline-card">
+          <div class="pipeline-card-title"><i class="fa-solid fa-cloud-arrow-up"></i> Upload</div>
+          <p>Upload an existing character image (PNG/JPG). The AI uses vision to detect body parts, slices them into layers, generates meshes, bones, and weights automatically. <strong>Best when you already have artwork.</strong></p>
+        </div>
+        <div class="pipeline-card">
+          <div class="pipeline-card-title"><i class="fa-solid fa-server"></i> Local SD</div>
+          <p>Connects to a locally-running Stable Diffusion server (A1111 compatible) to generate artwork. Requires the SD server to be running on your machine. <strong>Best for privacy or offline use.</strong></p>
+        </div>
+      </div>
+
+      <h3 id="gen-settings">Settings</h3>
+      <table class="setting-table">
+        <thead><tr><th>Setting</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Prompt</td>
+            <td><span class="tag tag-text">text</span></td>
+            <td>Describe the character you want to generate. Be specific about style, hair, outfit, and colors. Example: <em>"Anime VTuber girl, silver twin-tail hair, blue eyes, white school uniform, simple expression"</em>. Not used in Upload mode.</td>
+          </tr>
+          <tr>
+            <td>Custom instructions</td>
+            <td><span class="tag tag-text">text</span></td>
+            <td>Optional rigging hints passed to the AI. Example: <em>"Make the hair physics very bouncy"</em> or <em>"This character has a large hat, treat it as a separate rigid layer"</em>.</td>
+          </tr>
+          <tr>
+            <td>Mesh density</td>
+            <td><span class="tag tag-select">select</span></td>
+            <td>
+              Controls how many mesh vertices are generated per layer.<br>
+              <strong>Low</strong> — 4-vertex quad. Best for rigid or background parts.<br>
+              <strong>Medium</strong> — 4×4 grid (25 verts). Good default for most parts.<br>
+              <strong>High</strong> — 8×8 grid (81 verts). Best for detailed deformation.<br>
+              <strong>AI adaptive</strong> — AI places extra vertices near important areas (eyes, mouth).
+            </td>
+          </tr>
+          <tr>
+            <td>Bone style</td>
+            <td><span class="tag tag-select">select</span></td>
+            <td>
+              Controls which bone template the AI uses.<br>
+              <strong>Humanoid</strong> — Standard template (Root→Body→Neck→Head + arms, hair, eyes). Works for most VTubers.<br>
+              <strong>Minimal</strong> — Only Root, Body, Neck, Head. Fast, good for simple characters.<br>
+              <strong>AI custom</strong> — AI designs a bone hierarchy based on your specific layer names.
+            </td>
+          </tr>
+          <tr>
+            <td>Image model</td>
+            <td><span class="tag tag-select">select</span></td>
+            <td>Which AI image generation model to use. Auto selects the best available model from your configured providers. Only relevant for AI Sheet and Local SD pipelines.</td>
+          </tr>
+          <tr>
+            <td>Chat model</td>
+            <td><span class="tag tag-select">select</span></td>
+            <td>Which AI language model handles rig generation, bone placement, and weight logic. Auto selects your default Google AI or OpenAI model.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Two-step flow (AI Sheet / Local SD)</h3>
+      <ol>
+        <li>Click <strong>Generate</strong> — this generates and previews a concept image.</li>
+        <li>Review the concept image in the preview area below the settings.</li>
+        <li>Click <strong>Rig It!</strong> — this slices the image into layers, generates meshes, bones, weights, and opens the model in the editor.</li>
+      </ol>
+
+      <div class="box tip">
+        <div class="box-label">Tip</div>
+        If you don't like the concept, click Generate again before clicking Rig It. You can keep regenerating until you're happy with the image, then rig it.
+      </div>
+    </section>
+
+    <!-- ── EDIT ───────────────────────────────────────────────────── -->
+    <section class="doc-section" id="mode-edit">
+      <div class="mode-header">
+        <div class="mode-icon" style="background:rgba(0,217,255,0.1);color:var(--accent2)">
+          <i class="fa-solid fa-layer-group"></i>
+        </div>
+        <div>
+          <h2><i class="fa-solid fa-layer-group"></i> Edit Mode</h2>
+          <div class="mode-desc">Manage your layers — reorder, rename, set opacity, and remove backgrounds.</div>
+        </div>
+        <div class="mode-shortcut"><strong>E</strong>shortcut</div>
+      </div>
+
+      <h3 id="edit-layers">Layer Panel</h3>
+      <p>The layer panel on the left shows all layers in your model, sorted from front (top) to back (bottom). Each row shows the layer thumbnail, name, and vertex count.</p>
+      <ul>
+        <li><strong>Click</strong> a layer to select it. The inspector on the right updates accordingly.</li>
+        <li><strong>Drag</strong> a layer row to reorder it (changes its Z-order).</li>
+        <li><strong>Eye icon</strong> — toggle layer visibility. Hidden layers are not rendered.</li>
+        <li><strong>+ button</strong> (panel header) — opens a file picker to import an image as a new layer.</li>
+        <li><strong>Trash button</strong> (panel header) — deletes the selected layer. This cannot be undone.</li>
+      </ul>
+
+      <h3 id="edit-inspector">Inspector — Layer Settings</h3>
+      <table class="setting-table">
+        <thead><tr><th>Setting</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>Name</td><td><span class="tag tag-text">text</span></td><td>The display name of the layer. Used in the bone weight inspector and layer list.</td></tr>
+          <tr><td>Opacity</td><td><span class="tag tag-range">0–1</span></td><td>Controls how transparent the layer is in rendering. 1 = fully opaque, 0 = invisible.</td></tr>
+          <tr><td>Order Z</td><td><span class="tag tag-text">number</span></td><td>The Z-depth order. Higher numbers appear in front. You can also drag layers in the panel to reorder.</td></tr>
+          <tr><td>X / Y</td><td><span class="tag tag-text">number</span></td><td>Pixel offset of the layer from the canvas center (1024, 1024).</td></tr>
+          <tr><td>Rotation</td><td><span class="tag tag-text">degrees</span></td><td>Static rotation of the entire layer in degrees. This is separate from bone-driven rotation.</td></tr>
+          <tr><td>Remove BG</td><td><span class="tag tag-btn">button</span></td><td>Uses AI (rembg) to remove the background from the layer's texture. Non-destructive — the original is preserved as <code>_raw.png</code>.</td></tr>
+          <tr><td>Restore BG</td><td><span class="tag tag-btn">button</span></td><td>Reverts the texture back to the original with background. The nobg version is kept on disk.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── MESH ───────────────────────────────────────────────────── -->
+    <section class="doc-section" id="mode-mesh">
+      <div class="mode-header">
+        <div class="mode-icon" style="background:rgba(255,79,163,0.1);color:var(--pink)">
+          <i class="fa-solid fa-bezier-curve"></i>
+        </div>
+        <div>
+          <h2><i class="fa-solid fa-bezier-curve"></i> Mesh Mode</h2>
+          <div class="mode-desc">Define and edit the triangulated mesh for each layer. Meshes are what makes deformation possible.</div>
+        </div>
+        <div class="mode-shortcut"><strong>M</strong>shortcut</div>
+      </div>
+
+      <p>Every layer needs a mesh — a set of vertices connected by triangles — to be deformed by bones. Without a mesh, a layer is just a flat image that moves rigidly.</p>
+      <p>The mesh is shown as an SVG overlay on top of the canvas. <strong>Select a layer</strong> in the left panel first, then use the toolbar tools to edit its mesh.</p>
+
+      <h3 id="mesh-tools">Toolbar Tools</h3>
+      <div class="tool-grid">
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon"><i class="fa-solid fa-arrow-pointer"></i></div>
+            <div class="tool-card-name">Select</div>
+          </div>
+          <p>Click vertices to select them (shown in pink). Hold <kbd>Shift</kbd> to add to the selection. Selected vertices can be moved together by dragging.</p>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon"><i class="fa-solid fa-circle-plus"></i></div>
+            <div class="tool-card-name">Add Vertex</div>
+          </div>
+          <p>Click anywhere on the canvas to add a new vertex. New vertices are automatically connected to the nearest existing vertices to form triangles.</p>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon"><i class="fa-solid fa-circle-minus"></i></div>
+            <div class="tool-card-name">Delete Vertex</div>
+          </div>
+          <p>Click a vertex to delete it. All triangles that used that vertex are also removed. Remaining vertices are re-indexed automatically.</p>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon"><i class="fa-solid fa-up-down-left-right"></i></div>
+            <div class="tool-card-name">Move</div>
+          </div>
+          <p>Drag any selected vertex to reposition it in the canvas. If multiple vertices are selected, all move together relative to the drag distance.</p>
+        </div>
+      </div>
+
+      <h3 id="mesh-auto">Auto Mesh (Inspector)</h3>
+      <p>In the right inspector, you can regenerate the mesh for the selected layer using AI or predefined grids:</p>
+      <table class="setting-table">
+        <thead><tr><th>Density</th><th>Vertices</th><th>Best for</th></tr></thead>
+        <tbody>
+          <tr><td>Low (quad)</td><td>4</td><td>Rigid parts: hats, accessories, simple props</td></tr>
+          <tr><td>Medium (4×4)</td><td>25</td><td>Body, head, arms — general use</td></tr>
+          <tr><td>High (8×8)</td><td>81</td><td>Face, eyes, mouth — detailed deformation areas</td></tr>
+          <tr><td>AI adaptive</td><td>variable</td><td>Asks the AI to place extra vertices near important facial regions</td></tr>
+        </tbody>
+      </table>
+
+      <div class="box warn">
+        <div class="box-label">Important</div>
+        Regenerating the mesh on a layer <strong>resets its weights</strong>. Run Auto Weights again after changing a mesh, or manually repaint the affected weights.
+      </div>
+    </section>
+
+    <!-- ── BONES ──────────────────────────────────────────────────── -->
+    <section class="doc-section" id="mode-bones">
+      <div class="mode-header">
+        <div class="mode-icon" style="background:rgba(255,171,64,0.1);color:var(--orange)">
+          <i class="fa-solid fa-bone"></i>
+        </div>
+        <div>
+          <h2><i class="fa-solid fa-bone"></i> Bones Mode</h2>
+          <div class="mode-desc">Create a bone skeleton that drives deformation. Bones connect to parameters to enable expressions and movement.</div>
+        </div>
+        <div class="mode-shortcut"><strong>B</strong>shortcut</div>
+      </div>
+
+      <h3 id="bone-system">How bones work</h3>
+      <p>Bones are positioned in canvas space and form a <strong>parent-child hierarchy</strong>. When a parent bone moves, all child bones move with it. This lets you build a spine chain (Root → Body → Neck → Head) where moving the head automatically carries the eyes and mouth.</p>
+      <p>Bones themselves don't deform anything directly — they need <strong>weights</strong> (painted in Weights mode) to tell each vertex how much a bone influences it.</p>
+
+      <h3 id="bone-tools">Toolbar Tools</h3>
+      <div class="tool-grid">
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon"><i class="fa-solid fa-arrow-pointer"></i></div>
+            <div class="tool-card-name">Select</div>
+          </div>
+          <p>Click a bone (the diamond shape or its head dot) to select it. The selected bone is highlighted in cyan. Its properties appear in the inspector.</p>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon"><i class="fa-solid fa-circle-plus"></i></div>
+            <div class="tool-card-name">Add Bone</div>
+          </div>
+          <p>Click on the canvas to place a new bone. If a bone is already selected, the new bone becomes its child. Otherwise it becomes a root bone.</p>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon"><i class="fa-solid fa-circle-minus"></i></div>
+            <div class="tool-card-name">Delete Bone</div>
+          </div>
+          <p>Click a bone to delete it. Its children become unparented (root bones). You can also press <kbd>Delete</kbd> when a bone is selected.</p>
+        </div>
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-card-icon"><i class="fa-solid fa-up-down-left-right"></i></div>
+            <div class="tool-card-name">Move</div>
+          </div>
+          <p>Drag a bone's head dot to reposition it. The bone's world position updates in real time.</p>
+        </div>
+      </div>
+
+      <h3>Inspector — Bone Properties</h3>
+      <table class="setting-table">
+        <thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>Name</td><td><span class="tag tag-text">text</span></td><td>Display name. This is used in the bone tree, weight painter bone list, and auto-weight heuristics.</td></tr>
+          <tr><td>Length</td><td><span class="tag tag-text">number</span></td><td>Visual length of the bone in canvas pixels. Affects the end-point position (tail), and therefore where child bones attach.</td></tr>
+          <tr><td>Rotation</td><td><span class="tag tag-text">degrees</span></td><td>Resting angle of the bone in degrees. 0 = pointing right. −90 = pointing up (typical for spine bones).</td></tr>
+          <tr><td>Color</td><td><span class="tag tag-text">color</span></td><td>Visual color of the bone in the editor overlay. Does not affect rendering.</td></tr>
+          <tr><td>X / Y</td><td><span class="tag tag-text">number</span></td><td>Canvas-space position of the bone's head (origin point) in pixels.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Auto Bones</h3>
+      <p>The inspector offers one-click bone generation. Choose a style and click <strong>Generate Bones</strong>:</p>
+      <table class="setting-table">
+        <thead><tr><th>Style</th><th>Bones generated</th></tr></thead>
+        <tbody>
+          <tr><td>Humanoid</td><td>Root, Body, Neck, Head, HairL, HairR, EyeL, EyeR, BrowL, BrowR, Mouth, ArmL, ArmR</td></tr>
+          <tr><td>Minimal</td><td>Root, Body, Neck, Head only</td></tr>
+          <tr><td>AI custom</td><td>The AI designs a skeleton based on your layer names — good for non-standard characters</td></tr>
+        </tbody>
+      </table>
+
+      <h3 id="bone-params">Parameters and Bone Bindings</h3>
+      <p>The <strong>Parameters panel</strong> (bottom-left) shows sliders for all defined parameters. Parameters are the "inputs" that move bones:</p>
+      <ul>
+        <li><code>ParamAngleX</code> — Head left/right (−30 to +30 degrees)</li>
+        <li><code>ParamAngleY</code> — Head up/down</li>
+        <li><code>ParamAngleZ</code> — Head tilt/roll</li>
+        <li><code>ParamBreath</code> — Breathing cycle (0 to 1)</li>
+        <li><code>ParamEyeOpenL / R</code> — Eye open/close (0 = closed, 1 = open)</li>
+        <li><code>ParamMouthOpenY</code> — Mouth open amount</li>
+        <li><code>ParamMouthForm</code> — Mouth shape (−1 = frown, 0 = neutral, +1 = smile)</li>
+        <li><code>ParamBrowLY / RY</code> — Eyebrow height</li>
+      </ul>
+      <p>Bone-param bindings (stored as <code>bone_params</code>) map each parameter value to a bone property via keyframes. Auto Bones generates sensible default bindings automatically.</p>
+    </section>
+
+    <!-- ── WEIGHTS ────────────────────────────────────────────────── -->
+    <section class="doc-section" id="mode-weights">
+      <div class="mode-header">
+        <div class="mode-icon" style="background:rgba(0,230,118,0.1);color:var(--green)">
+          <i class="fa-solid fa-paint-brush"></i>
+        </div>
+        <div>
+          <h2><i class="fa-solid fa-paint-brush"></i> Weights Mode</h2>
+          <div class="mode-desc">Paint bone influence onto mesh vertices. Weights control how much each bone moves each part of a layer.</div>
+        </div>
+        <div class="mode-shortcut"><strong>W</strong>shortcut</div>
+      </div>
+
+      <p>Weights are stored per-vertex, per-bone as values between <code>0</code> (no influence) and <code>1</code> (full influence). At each vertex, all bone weights sum to <code>1.0</code> — the system automatically normalises them.</p>
+
+      <p>Vertex colors show influence level:</p>
+      <ul>
+        <li><strong style="color:#ff5252;">Red</strong> — High influence (close to 1.0)</li>
+        <li><strong style="color:#ffab40;">Orange/Yellow</strong> — Moderate influence</li>
+        <li><strong style="color:#00e676;">Green</strong> — Low influence</li>
+        <li><strong style="color:#0064c8;">Blue</strong> — No influence (0.0)</li>
+      </ul>
+
+      <h3>Workflow</h3>
+      <ol>
+        <li><strong>Select a layer</strong> in the left panel (the layer you want to paint)</li>
+        <li><strong>Select a bone</strong> in the inspector or bone panel (the bone you're painting for)</li>
+        <li>Use the brush to paint on the canvas. Vertices change color to show their new weight.</li>
+        <li>Repeat for other bone/layer combinations as needed.</li>
+      </ol>
+
+      <h3 id="weight-brush">Brush Settings</h3>
+      <table class="setting-table">
+        <thead><tr><th>Setting</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Radius</td>
+            <td><span class="tag tag-range">10–200</span></td>
+            <td>The size of the brush in screen pixels. Affects how many vertices are painted per stroke. The brush circle is shown as a dashed ring on the canvas.</td>
+          </tr>
+          <tr>
+            <td>Strength</td>
+            <td><span class="tag tag-range">1–100%</span></td>
+            <td>How quickly the weight is applied per paint stroke. Low strength = gradual, high strength = fast. Applies with a falloff from the brush center.</td>
+          </tr>
+          <tr>
+            <td>Mode: Add</td>
+            <td><span class="tag tag-select">mode</span></td>
+            <td>Increases the weight of the active bone at painted vertices. The most common mode — use it to build up bone influence where you want deformation.</td>
+          </tr>
+          <tr>
+            <td>Mode: Subtract</td>
+            <td><span class="tag tag-select">mode</span></td>
+            <td>Decreases the weight of the active bone at painted vertices. Use it to remove unwanted influence or clean up edges.</td>
+          </tr>
+          <tr>
+            <td>Mode: Smooth</td>
+            <td><span class="tag tag-select">mode</span></td>
+            <td>Averages each vertex's weight with its neighbors. Removes sharp transitions in the weight map. Use it to fix artifacts and blend boundaries.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 id="weight-auto">Auto Weights</h3>
+      <p>The <strong>Auto Weights</strong> button in the inspector (or in the Bones mode inspector) automatically assigns weights to all layers based on:</p>
+      <ul>
+        <li><strong>Layer name heuristics</strong> — e.g. a layer named "Hair" is bound to HairL/HairR bones</li>
+        <li><strong>Distance weighting</strong> — vertices closer to a bone get higher influence</li>
+        <li><strong>Smoothing</strong> — weights are smoothed across neighbors to remove sharp seams</li>
+      </ul>
+      <p>Auto Weights is a good starting point. You'll almost always want to touch up specific areas by hand afterward, especially around joints and boundaries.</p>
+
+      <div class="box tip">
+        <div class="box-label">Tip</div>
+        Select each layer one at a time in the left panel while painting. Only the selected layer's vertex weights are shown and editable.
+      </div>
+    </section>
+
+    <!-- ── PHYSICS ────────────────────────────────────────────────── -->
+    <section class="doc-section" id="mode-physics">
+      <div class="mode-header">
+        <div class="mode-icon" style="background:rgba(255,79,163,0.1);color:var(--pink)">
+          <i class="fa-solid fa-wind"></i>
+        </div>
+        <div>
+          <h2><i class="fa-solid fa-wind"></i> Physics Mode</h2>
+          <div class="mode-desc">Add spring physics to hair, tails, ribbons, and other soft accessories for natural secondary motion.</div>
+        </div>
+        <div class="mode-shortcut">—</div>
+      </div>
+
+      <p>Physics groups apply spring simulation to chains of bones. When the head rotates, physics bones will lag behind and oscillate naturally before settling.</p>
+
+      <h3>Physics Groups</h3>
+      <p>Click <strong>Add Group</strong> to create a new physics group. Each group has:</p>
+      <table class="setting-table">
+        <thead><tr><th>Setting</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Input parameter</td>
+            <td><span class="tag tag-select">select</span></td>
+            <td>Which parameter drives the physics chain. Typically <code>ParamAngleX</code> (head left/right) for hair that swings when the head turns.</td>
+          </tr>
+          <tr>
+            <td>Gravity</td>
+            <td><span class="tag tag-range">0–2</span></td>
+            <td>How strongly gravity pulls the physics bones downward. Higher values make the hair hang lower and fall faster.</td>
+          </tr>
+          <tr>
+            <td>Momentum</td>
+            <td><span class="tag tag-range">0–1</span></td>
+            <td>How much the bones resist following their target position. High momentum = sluggish, floaty. Low momentum = snappy, stiff. Typical value: 0.7–0.85.</td>
+          </tr>
+          <tr>
+            <td>Damping</td>
+            <td><span class="tag tag-range">0–1</span></td>
+            <td>How quickly oscillation dies down. High damping = oscillation stops fast. Low damping = bones keep swinging for a long time. Typical value: 0.1–0.2.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="box note">
+        <div class="box-label">Note</div>
+        Physics simulation runs in real time during Preview and Live modes. It is disabled in editing modes (Mesh, Bones, Weights) for stability.
+      </div>
+    </section>
+
+    <!-- ── PREVIEW ────────────────────────────────────────────────── -->
+    <section class="doc-section" id="mode-preview">
+      <div class="mode-header">
+        <div class="mode-icon" style="background:rgba(0,230,118,0.1);color:var(--green)">
+          <i class="fa-solid fa-play"></i>
+        </div>
+        <div>
+          <h2><i class="fa-solid fa-play"></i> Preview Mode</h2>
+          <div class="mode-desc">Play your model's animations and test how parameters affect deformation in real time.</div>
+        </div>
+        <div class="mode-shortcut"><strong>P</strong>shortcut</div>
+      </div>
+
+      <p>Preview mode enables the animation system and physics simulation. Use it to check that your rig looks correct before going live.</p>
+
+      <h3>Playback</h3>
+      <p>The <strong>▶ Play / ⏸ Pause</strong> button in the bottom bar controls animation playback. The current animation name is shown next to it.</p>
+
+      <h3>Inspector — Preview Settings</h3>
+      <table class="setting-table">
+        <thead><tr><th>Setting</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Animation Clip</td>
+            <td><span class="tag tag-select">select</span></td>
+            <td>Which animation to play. The built-in <code>idle</code> animation includes breathing (sine wave on ParamBreath) and occasional blinking.</td>
+          </tr>
+          <tr>
+            <td>Loop</td>
+            <td><span class="tag tag-toggle">toggle</span></td>
+            <td>Whether the animation loops. When off, it plays once and stops at the last frame.</td>
+          </tr>
+          <tr>
+            <td>Background Color</td>
+            <td><span class="tag tag-text">color</span></td>
+            <td>Sets the canvas background color for preview. Only visible in Preview/Live modes.</td>
+          </tr>
+          <tr>
+            <td>Greenscreen</td>
+            <td><span class="tag tag-toggle">toggle</span></td>
+            <td>Sets the background to pure green (#00ff00) for chroma-key compositing in streaming software like OBS. Keep the canvas window captured in OBS and key out the green.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Parameters panel (left)</h3>
+      <p>In Preview mode, the Parameters panel is fully interactive. Drag any slider to manually override a parameter. This lets you test head angles, eye closing, mouth movements, and any custom parameters without a tracker. Parameters return to their animation-driven values when you release and playback is running.</p>
+
+      <h3>Animation system</h3>
+      <p>Animations are defined as tracks in <code>model.json</code>. Each track drives one parameter over time:</p>
+      <table class="setting-table">
+        <thead><tr><th>Track type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>sine</code></td><td>Smooth sine-wave oscillation. Used for breathing, floating, idle sway. Settings: <code>speed</code>, <code>amplitude</code>, <code>offset</code>.</td></tr>
+          <tr><td><code>blink</code></td><td>Periodic blink. Eyes stay open, then briefly close every few seconds. Settings: <code>interval</code> (seconds between blinks).</td></tr>
+          <tr><td><code>fixed</code></td><td>Holds a constant value. Useful for toggling layers or locking a parameter during an animation.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── LIVE ────────────────────────────────────────────────────── -->
+    <section class="doc-section" id="mode-live">
+      <div class="mode-header">
+        <div class="mode-icon" style="background:rgba(255,82,82,0.1);color:var(--red)">
+          <i class="fa-solid fa-satellite-dish"></i>
+        </div>
+        <div>
+          <h2><i class="fa-solid fa-satellite-dish"></i> Live Mode</h2>
+          <div class="mode-desc">Connect a face-tracking source and drive your model in real time.</div>
+        </div>
+        <div class="mode-shortcut">—</div>
+      </div>
+
+      <div class="box warn">
+        <div class="box-label">Coming soon</div>
+        The face tracking module is a separate add-on that connects to Specter via WebSocket at <code>ws://localhost:8082/tracking</code>. The bridge interface is defined and ready — the full tracking module is planned for a future release.
+      </div>
+
+      <h3>How it will work</h3>
+      <p>The Specter Tracking Bridge maps face tracking data to model parameters:</p>
+      <table class="setting-table">
+        <thead><tr><th>Tracking input</th><th>Specter parameter</th></tr></thead>
+        <tbody>
+          <tr><td>Head yaw (left/right)</td><td>ParamAngleX</td></tr>
+          <tr><td>Head pitch (up/down)</td><td>ParamAngleY</td></tr>
+          <tr><td>Head roll (tilt)</td><td>ParamAngleZ</td></tr>
+          <tr><td>Eye open left</td><td>ParamEyeOpenL</td></tr>
+          <tr><td>Eye open right</td><td>ParamEyeOpenR</td></tr>
+          <tr><td>Mouth open</td><td>ParamMouthOpenY</td></tr>
+          <tr><td>Mouth smile</td><td>ParamMouthForm</td></tr>
+          <tr><td>Brow left height</td><td>ParamBrowLY</td></tr>
+          <tr><td>Brow right height</td><td>ParamBrowRY</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Planned tracking backends</h3>
+      <ul>
+        <li><strong>MediaPipe</strong> — Browser-native, no installation required, works from webcam</li>
+        <li><strong>OpenSeeFace</strong> — Desktop face tracking, high precision</li>
+        <li><strong>VTube Studio API</strong> — Bridge to VTS-compatible trackers and phones</li>
+      </ul>
+    </section>
+
+    <!-- ════════════════════════════════════════════════
+         PANELS
+    ════════════════════════════════════════════════ -->
+
+    <section class="doc-section" id="panel-layers">
+      <h2><i class="fa-solid fa-layer-group"></i> Layers Panel (Left)</h2>
+      <p>Always visible on the left side. Shows all layers in your model sorted by Z-order (front to back).</p>
+      <ul>
+        <li>Each row shows the layer <strong>thumbnail</strong>, <strong>name</strong>, type, and vertex count.</li>
+        <li><strong>Click</strong> to select the layer for editing.</li>
+        <li><strong>Drag rows</strong> to reorder.</li>
+        <li><strong>Eye icon</strong> — show/hide the layer.</li>
+        <li>The <strong>+</strong> button imports an image as a new layer.</li>
+        <li>The <strong>trash</strong> button deletes the selected layer.</li>
+      </ul>
+    </section>
+
+    <section class="doc-section" id="panel-bones">
+      <h2><i class="fa-solid fa-bone"></i> Bone Tree Panel (Left)</h2>
+      <p>Shows the bone hierarchy as an indented tree. Indent level = parent depth.</p>
+      <ul>
+        <li><strong>Click</strong> a bone to select it. It becomes highlighted in cyan on the canvas.</li>
+        <li>In Weights mode, clicking a bone in the tree also sets it as the <strong>active paint bone</strong>.</li>
+        <li>The <strong>+</strong> button adds a bone at the canvas center (becomes a child of the selected bone).</li>
+        <li>The <strong>trash</strong> button deletes the selected bone.</li>
+        <li>Each bone shows its color dot so you can identify it visually on the canvas.</li>
+      </ul>
+    </section>
+
+    <section class="doc-section" id="panel-params">
+      <h2><i class="fa-solid fa-sliders"></i> Parameters Panel (Left)</h2>
+      <p>Shows all defined parameters as labelled sliders. These are the animation/tracking inputs that drive bone transforms.</p>
+      <ul>
+        <li>In <strong>Preview mode</strong>, drag sliders to manually test poses.</li>
+        <li>In <strong>Live mode</strong>, sliders show real-time tracking values.</li>
+        <li>In other modes, sliders are for reference and can be used to test deformation.</li>
+        <li>The current value is shown to the right of each label.</li>
+      </ul>
+    </section>
+
+    <section class="doc-section" id="panel-inspector">
+      <h2><i class="fa-solid fa-circle-info"></i> Inspector Panel (Right)</h2>
+      <p>The inspector changes based on the current mode and selection. It shows properties for the selected layer, bone, or tool settings.</p>
+      <ul>
+        <li><strong>Edit / Mesh mode</strong> → layer properties, transform, mesh tools, BG removal</li>
+        <li><strong>Bones mode</strong> → bone properties, auto-rig buttons</li>
+        <li><strong>Weights mode</strong> → bone selector list, brush settings, auto-weights</li>
+        <li><strong>Physics mode</strong> → physics group editor</li>
+        <li><strong>Preview / Live mode</strong> → animation selector, background color, greenscreen</li>
+      </ul>
+    </section>
+
+    <!-- ── Tracking ───────────────────────────────────────────────── -->
+    <section class="doc-section" id="tracking">
+      <h2><i class="fa-solid fa-satellite-dish"></i> Tracking Bridge</h2>
+      <p>The Specter Tracking Bridge (<code>tracking/bridge.py</code>) is the interface between face/motion tracking systems and the Specter parameter system. It is designed as a separate module to keep Specter modular.</p>
+
+      <h3>Protocol</h3>
+      <p>The tracking module communicates with the editor via WebSocket at <code>ws://localhost:8082/tracking</code> and sends JSON messages:</p>
+      <pre><code>{
+  "type": "params",
+  "params": {
+    "ParamAngleX":    15.0,
+    "ParamAngleY":    -5.0,
+    "ParamEyeOpenL":  0.9,
+    "ParamEyeOpenR":  0.9,
+    "ParamMouthOpenY": 0.3
+  }
+}</code></pre>
+
+      <h3>Custom mapping</h3>
+      <p>The default mapping can be overridden by passing a <code>param_mapping</code> dict to the <code>TrackingBridge</code> class:</p>
+      <pre><code>bridge = TrackingBridge(
+    backend="mediapipe",
+    param_mapping={
+        "head_yaw":   "ParamAngleX",
+        "mouth_open": "ParamMouthOpenY",
+        # ... add custom entries
+    }
+)</code></pre>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // ── Smooth scroll + active nav ─────────────────────────────────────
+  function scrollTo(id) {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    document.querySelectorAll('.nav-item, .nav-sub').forEach(a => a.classList.remove('active'));
+    const link = document.querySelector(`[href="#${id}"]`);
+    if (link) link.classList.add('active');
+    return false;
+  }
+
+  // ── Highlight active section on scroll ────────────────────────────
+  const sections = document.querySelectorAll('.doc-section');
+  const content  = document.getElementById('content');
+
+  content.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(sec => {
+      if (sec.offsetTop - 80 <= content.scrollTop) current = sec.id;
+    });
+    document.querySelectorAll('.nav-item, .nav-sub').forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === `#${current}`);
+    });
+  });
+
+  // Wire all nav links
+  document.querySelectorAll('.nav-item, .nav-sub').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const id = a.getAttribute('href').slice(1);
+      scrollTo(id);
+    });
+  });
+</script>
+</body>
+</html>
