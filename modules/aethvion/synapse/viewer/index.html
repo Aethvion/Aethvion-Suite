@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synapse Tracking Dashboard</title>
+    <link rel="stylesheet" href="/viewer/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <h1>👁️ Synapse Tracking Dashboard</h1>
+            <p>Standalone Face & Body Pipeline Viewer</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Controls Panel -->
+            <div class="panel controls-panel">
+                <h2>Tracking Controls</h2>
+                <div class="control-group">
+                    <label for="tracker-select">Select Backend:</label>
+                    <select id="tracker-select" class="custom-select">
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+                <div class="button-group">
+                    <button id="btn-start" class="btn primary">Start Tracking</button>
+                    <button id="btn-stop" class="btn danger" disabled>Stop Tracking</button>
+                </div>
+                
+                <div class="status-indicator">
+                    Status: <span id="status-text" class="status-offline">Offline</span>
+                </div>
+            </div>
+
+            <!-- Data Viewer Panel -->
+            <div class="panel data-panel">
+                <h2>Live Parameter Stream (WebSocket)</h2>
+                <div class="data-console">
+                    <pre id="data-output">Waiting for data stream...</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="/viewer/app.js"></script>
+</body>
+</html>

@@ -7,14 +7,13 @@ if not defined MISAKA_LAUNCHED (
     cmd /k ""%~f0""
     exit
 )
-TITLE Specter Rigging Engine - Aethvion Systems
+TITLE Synapse Tracking Engine - Aethvion Systems
 
 :: Figure out the directory where this script actually lives
-SET SPECTER_MODULE_DIR=%~dp0
+SET SYNAPSE_MODULE_DIR=%~dp0
 
 :: Figure out the root MISAKA CIPHER directory relative to the new module location
-:: The script is in C:\Aethvion\Misaka-Cipher\modules\aethvion\specter\
-:: To get to the root, we go up exactly 3 levels: ..\..\.. -> aethvion -> modules -> Misaka-Cipher
+:: The script is in C:\Aethvion\Misaka-Cipher\modules\aethvion\synapse\
 for %%I in ("%~dp0..\..\..") do set "ROOT_DIR=%%~fI"
 
 :: Switch working directory to the project Root
@@ -23,7 +22,7 @@ SET PYTHONPATH=%ROOT_DIR%
 
 echo.
 echo ============================================================
-echo          AETHVION - SPECTER RIGGING ENGINE
+echo          AETHVION - SYNAPSE TRACKING ENGINE
 echo ============================================================
 echo.
 echo [INFO] Running under Misaka Cipher root: %ROOT_DIR%
@@ -70,30 +69,7 @@ if %errorlevel% neq 0 (
     echo [OK]  Core dependencies verified.
 )
 
-:: --- 4. Install Optional Specter Dependencies ------------------
-python -c "import rembg" >nul 2>&1
-if %errorlevel% neq 0 (
-    echo.
-    echo [INFO]  The 'rembg' package for automatic background removal is not installed.
-    echo         This is optional, but recommended for clean VTuber rig generation.
-    set /p INSTALL_REMBG="Do you want to install rembg now? (Y/N): "
-    if /I "!INSTALL_REMBG!"=="Y" (
-        echo [SETUP] Installing rembg and onnxruntime...
-        pip install rembg onnxruntime
-        if !errorlevel! neq 0 (
-            echo [WARN] Failed to install optional dependencies. Specter will run without background removal.
-        ) else (
-            echo [OK]   Optional dependencies installed successfully.
-        )
-    ) else (
-        echo [INFO] Skipping optional background removal setup.
-    )
-    echo.
-) else (
-    echo [OK]  Background removal dependencies verified.
-)
-
-:: --- 5. Environment file ---------------------------------------
+:: --- 4. Environment file ---------------------------------------
 if not exist ".env" (
     if exist ".env.example" (
         copy ".env.example" ".env" >nul
@@ -106,21 +82,21 @@ if not exist ".env" (
     echo [OK]  .env found.
 )
 
-:: --- 6. Launch -------------------------------------------------
+:: --- 5. Launch -------------------------------------------------
 echo.
-echo [START] Launching Specter Engine...
-echo         Viewer -^> http://localhost:8001
+echo [START] Launching Synapse Tracking Engine...
+echo         Viewer -^> http://localhost:8002
 echo         Press CTRL+C to stop.
 echo.
 
 :: We launch it using the Python environment targeting the module relative to our Root
-python modules\aethvion\specter\specter_server.py
+python modules\aethvion\synapse\synapse_server.py
 set MAIN_EXIT=%errorlevel%
 
-:: --- 7. Result ------------------------------------------------
+:: --- 6. Result ------------------------------------------------
 if %MAIN_EXIT% neq 0 (
     echo.
-    echo [ERROR] Specter Engine crashed (exit code %MAIN_EXIT%).
+    echo [ERROR] Synapse Server crashed (exit code %MAIN_EXIT%).
     echo         Scroll up to find the error, then fix it and re-run.
     goto :FAIL
 )
