@@ -5,10 +5,15 @@ let ws = null;
 
 // DOM Elements
 const selectTracker = document.getElementById("tracker-select");
+const selectSource = document.getElementById("source-select");
 const btnStart = document.getElementById("btn-start");
 const btnStop = document.getElementById("btn-stop");
+const btnPreview = document.getElementById("btn-preview");
 const statusText = document.getElementById("status-text");
 const dataOutput = document.getElementById("data-output");
+const videoFeed = document.getElementById("video-feed");
+
+let isPreviewing = false;
 
 async function fetchStatus() {
     try {
@@ -34,29 +39,67 @@ async function fetchStatus() {
 
 function updateUIState(isRunning) {
     if (isRunning) {
-        statusText.innerText = "Online";
+        statusText.innerText = "Tracking Online";
         statusText.className = "status-online";
         btnStart.disabled = true;
         btnStop.disabled = false;
         selectTracker.disabled = true;
+        selectSource.disabled = true;
         connectWebSocket();
+        videoFeed.src = "/video_feed?" + new Date().getTime();
     } else {
-        statusText.innerText = "Offline";
-        statusText.className = "status-offline";
+        statusText.innerText = isPreviewing ? "Preview Active" : "Offline";
+        statusText.className = isPreviewing ? "status-online" : "status-offline";
         btnStart.disabled = false;
         btnStop.disabled = true;
         selectTracker.disabled = false;
+        if (selectSource) selectSource.disabled = isPreviewing; 
         disconnectWebSocket();
         dataOutput.innerText = "Waiting for data stream...";
+        if (!isRunning && !isPreviewing) videoFeed.src = "";
+    }
+}
+
+async function togglePreview() {
+    isPreviewing = !isPreviewing;
+    const source = selectSource.value;
+    const endpoint = isPreviewing ? "/api/preview/start" : "/api/preview/stop";
+    
+    try {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source: source })
+        });
+        
+        if (res.ok) {
+            btnPreview.innerText = isPreviewing ? "Stop Preview" : "Show Preview";
+            btnPreview.className = isPreviewing ? "btn danger" : "btn secondary";
+            if (isPreviewing) {
+                videoFeed.src = "/video_feed?" + new Date().getTime();
+            }
+            updateUIState(false);
+        } else {
+            isPreviewing = !isPreviewing; // Revert
+            alert("Failed to toggle preview.");
+        }
+    } catch (e) {
+        isPreviewing = !isPreviewing;
+        console.error("Preview toggle failed:", e);
     }
 }
 
 async function startTracker() {
     const tracker = selectTracker.value;
+    const source = selectSource.value;
     if (!tracker) return;
     
     try {
-        const res = await fetch(`${API_BASE}/start/${tracker}`, { method: 'POST' });
+        const res = await fetch(`${API_BASE}/start/${tracker}`, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source: source })
+        });
         if (res.ok) {
             updateUIState(true);
         } else {
@@ -111,6 +154,7 @@ function disconnectWebSocket() {
 // Event Listeners
 btnStart.addEventListener("click", startTracker);
 btnStop.addEventListener("click", stopTracker);
+btnPreview.addEventListener("click", togglePreview);
 
 // Init
 fetchStatus();

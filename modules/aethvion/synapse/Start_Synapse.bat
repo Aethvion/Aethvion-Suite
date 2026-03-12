@@ -90,7 +90,7 @@ echo         Press CTRL+C to stop.
 echo.
 
 :: We launch it using the Python environment targeting the module relative to our Root
-python modules\aethvion\synapse\synapse_server.py
+"%ROOT_DIR%\.venv\Scripts\python.exe" modules\aethvion\synapse\synapse_server.py
 set MAIN_EXIT=%errorlevel%
 
 :: --- 6. Result ------------------------------------------------

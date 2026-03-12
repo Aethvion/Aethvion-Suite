@@ -16,12 +16,14 @@ for p in (MODULE_DIR, PROJECT_ROOT):
         sys.path.insert(0, p)
 
 from modules.aethvion.synapse.synapse_core import synapse_core
+from modules.aethvion.synapse.trackers.capture_manager import capture_manager
 
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
 
 app = FastAPI(title="Synapse Tracking Engine", version="1.0.0")
+app.state.preview_active = False
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],
@@ -46,19 +48,73 @@ async def list_trackers():
         "is_running": synapse_core.active_tracker.is_running if synapse_core.active_tracker else False
     })
 
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from pydantic import BaseModel
+
+class StartConfig(BaseModel):
+    source: str = "webcam:0"
+
 @app.post("/api/trackers/start/{tracker_name}")
-async def start_tracker(tracker_name: str):
-    """Start a specific tracking backend."""
-    success = synapse_core.start_tracker(tracker_name, config={"name": tracker_name})
+async def start_tracker(tracker_name: str, config: StartConfig):
+    """Start a specific tracking backend with source."""
+    success = synapse_core.start_tracker(tracker_name, config={"name": tracker_name, "source": config.source})
     if success:
-        return JSONResponse({"status": "success", "message": f"Started {tracker_name}"})
+        return JSONResponse({"status": "success", "message": f"Started {tracker_name} on {config.source}"})
     return JSONResponse({"status": "error", "message": f"Failed to start {tracker_name}"}, status_code=400)
 
 @app.post("/api/trackers/stop")
 async def stop_tracker():
     """Stop the current tracking backend."""
     synapse_core.stop_tracker()
+    # If preview is not active, we can release hardware
+    if not app.state.preview_active:
+        capture_manager.stop()
     return JSONResponse({"status": "success", "message": "Tracker stopped"})
+
+@app.post("/api/preview/start")
+async def start_preview(config: StartConfig):
+    """Start the raw video preview."""
+    capture_manager.start(config.source)
+    app.state.preview_active = True
+    return JSONResponse({"status": "success", "message": f"Preview started on {config.source}"})
+
+@app.post("/api/preview/stop")
+async def stop_preview():
+    """Stop the raw video preview."""
+    app.state.preview_active = False
+    # If tracker is not active, we can release hardware
+    if not (synapse_core.active_tracker and synapse_core.active_tracker.is_running):
+        capture_manager.stop()
+    return JSONResponse({"status": "success", "message": "Preview stopped"})
+
+@app.get("/video_feed")
+async def video_feed():
+    """MJPEG streaming endpoint for Synapse (Tracker processed OR Raw Preview)."""
+    import asyncio
+    import cv2
+    async def frame_generator():
+        while True:
+            frame = None
+            
+            # 1. Try tracker processed frame first (mesh overlay)
+            if synapse_core.active_tracker and hasattr(synapse_core.active_tracker, 'latest_frame'):
+                frame = synapse_core.active_tracker.latest_frame
+                
+            # 2. Fallback to raw frame from CaptureManager if preview is enabled
+            if frame is None and app.state.preview_active:
+                raw = capture_manager.get_frame()
+                if raw is not None:
+                    ret, buffer = cv2.imencode('.jpg', raw, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
+                    if ret:
+                        frame = buffer.tobytes()
+            
+            if frame:
+                yield (b'--frame\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            
+            await asyncio.sleep(1/30.0)
+            
+    return StreamingResponse(frame_generator(), media_type="multipart/x-mixed-replace; boundary=frame")
 
 # ---------------------------------------------------------------------------
 # WebSocket (Stream Tracking Data)

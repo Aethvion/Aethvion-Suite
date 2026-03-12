@@ -127,6 +127,13 @@ header p {
     background: var(--danger-hover);
 }
 
+.secondary {
+    background: #4b5563;
+}
+.secondary:hover:not(:disabled) {
+    background: #374151;
+}
+
 .status-indicator {
     padding-top: 20px;
     border-top: 1px solid var(--border);
@@ -158,4 +165,26 @@ header p {
     font-size: 0.9rem;
     color: #55efc4;
     white-space: pre-wrap;
+}
+
+.video-container {
+    text-align: center;
+    margin-bottom: 20px;
+    background: #000;
+    min-height: 240px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+}
+
+#video-feed {
+    width: 100%;
+    height: auto;
+    max-height: 480px;
+    object-fit: contain;
+    background: #000;
 }
