@@ -642,8 +642,30 @@ async def delete_local_model(data: Dict[str, Any]):
         if not str(model_path).startswith(str(local_dir)):
             raise HTTPException(status_code=400, detail="Invalid path")
             
+        # 1. Unregister if it exists in registry
+        try:
+            registry = _load_registry()
+            if "local" in registry.get("providers", {}):
+                models = registry["providers"]["local"].get("models", {})
+                if filename in models:
+                    del models[filename]
+                    
+                    # Also remove from auto_routing
+                    for category in ["chat", "agent"]:
+                        if category in registry.get("auto_routing", {}):
+                            cat_models = registry["auto_routing"][category].get("models", {})
+                            if filename in cat_models:
+                                del cat_models[filename]
+                    
+                    _save_registry(registry)
+                    logger.info(f"Unregistered model {filename} during deletion")
+        except Exception as reg_err:
+            logger.error(f"Failed to unregister model {filename} during deletion: {reg_err}")
+            # Continue with file deletion anyway
+            
+        # 2. Delete the file
         model_path.unlink()
-        return {"status": "success", "message": f"Model {filename} deleted"}
+        return {"status": "success", "message": f"Model {filename} deleted and unregistered"}
     except Exception as e:
         logger.error(f"Failed to delete model: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -662,7 +684,7 @@ async def register_local_model(data: Dict[str, Any], request: Request):
         with open(REGISTRY_PATH, "r", encoding="utf-8") as f:
             registry = json.load(f)
             
-        # 2. Ensure local provider exists
+        # 2. Ensure local provider exists and is active
         if "local" not in registry["providers"]:
             registry["providers"]["local"] = {
                 "name": "Local Models",
@@ -671,6 +693,13 @@ async def register_local_model(data: Dict[str, Any], request: Request):
                 "agent_config": {"active": True, "priority": 2},
                 "models": {}
             }
+        else:
+            # Ensure it's active even if it existed
+            registry["providers"]["local"]["active"] = True
+            if "chat_config" in registry["providers"]["local"]:
+                registry["providers"]["local"]["chat_config"]["active"] = True
+            if "agent_config" in registry["providers"]["local"]:
+                registry["providers"]["local"]["agent_config"]["active"] = True
             
         # 3. Add model if not exists
         local_models = registry["providers"]["local"]["models"]
