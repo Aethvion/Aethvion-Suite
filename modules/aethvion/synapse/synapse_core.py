@@ -15,13 +15,30 @@ class SynapseCore:
         self.tracker_registry: Dict[str, callable] = self._build_registry()
 
     def _build_registry(self) -> Dict[str, callable]:
-        """Discover and build a registry of available tracking plugins."""
-        # Hardcoding the default stub for now, but this could use importlib 
-        # to dynamically load plugins from the `trackers` directory.
-        from .trackers.mediapipe_tracker import MediaPipeTracker
-        return {
-            "mediapipe": MediaPipeTracker
-        }
+        """Discover and register all available tracking backends."""
+        trackers = {}
+
+        try:
+            from .trackers.mediapipe_tracker import MediaPipeTracker, MP_AVAILABLE
+            if MP_AVAILABLE:
+                trackers["mediapipe"] = MediaPipeTracker
+                print("[Synapse] Backend registered: mediapipe")
+            else:
+                print("[Synapse] MediaPipe unavailable — skipping mediapipe backend")
+        except Exception as e:
+            print(f"[Synapse] Failed to load mediapipe backend: {e}")
+
+        try:
+            from .trackers.openseeface_tracker import OpenSeeFaceTracker
+            trackers["openseeface"] = OpenSeeFaceTracker
+            print("[Synapse] Backend registered: openseeface")
+        except Exception as e:
+            print(f"[Synapse] Failed to load openseeface backend: {e}")
+
+        if not trackers:
+            print("[Synapse] WARNING: No tracking backends available.")
+
+        return trackers
 
     def start_tracker(self, tracker_name: str, config: Optional[Dict[str, Any]] = None) -> bool:
         """Initialize and start a specific tracking backend."""

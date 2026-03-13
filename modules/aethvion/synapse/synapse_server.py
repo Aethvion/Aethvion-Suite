@@ -48,26 +48,50 @@ async def list_trackers():
         "is_running": synapse_core.active_tracker.is_running if synapse_core.active_tracker else False
     })
 
+@app.get("/api/trackers/debug")
+async def tracker_debug():
+    """Return debug stats from the active tracker (especially useful for OpenSeeFace)."""
+    tracker = synapse_core.active_tracker
+    if not tracker:
+        return JSONResponse({"active": False})
+    name = tracker.config.get("name", "unknown")
+    stats = getattr(tracker, "stats", {})
+    return JSONResponse({
+        "active":      True,
+        "name":        name,
+        "is_running":  tracker.is_running,
+        "stats":       stats,
+    })
+
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 class StartConfig(BaseModel):
-    source: str = "webcam:0"
+    source: str   = "webcam:0"
+    osf_host: str = "127.0.0.1"
+    osf_port: int = 11573
 
 @app.post("/api/trackers/start/{tracker_name}")
 async def start_tracker(tracker_name: str, config: StartConfig):
-    """Start a specific tracking backend with source."""
-    success = synapse_core.start_tracker(tracker_name, config={"name": tracker_name, "source": config.source})
+    """Start a specific tracking backend with source and optional OSF config."""
+    success = synapse_core.start_tracker(tracker_name, config={
+        "name":     tracker_name,
+        "source":   config.source,
+        "osf_host": config.osf_host,
+        "osf_port": config.osf_port,
+    })
     if success:
-        return JSONResponse({"status": "success", "message": f"Started {tracker_name} on {config.source}"})
+        src = f"UDP {config.osf_host}:{config.osf_port}" if tracker_name == "openseeface" else config.source
+        return JSONResponse({"status": "success", "message": f"Started {tracker_name} on {src}"})
     return JSONResponse({"status": "error", "message": f"Failed to start {tracker_name}"}, status_code=400)
 
 @app.post("/api/trackers/stop")
 async def stop_tracker():
     """Stop the current tracking backend."""
+    # OpenSeeFace tracker owns no camera — don't touch CaptureManager for it
+    tracker_name = (synapse_core.active_tracker.config.get("name", "") if synapse_core.active_tracker else "")
     synapse_core.stop_tracker()
-    # If preview is not active, we can release hardware
-    if not app.state.preview_active:
+    if not app.state.preview_active and tracker_name != "openseeface":
         capture_manager.stop()
     return JSONResponse({"status": "success", "message": "Tracker stopped"})
 

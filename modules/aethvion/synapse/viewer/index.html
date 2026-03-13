@@ -7,55 +7,130 @@
     <link rel="stylesheet" href="/viewer/style.css">
 </head>
 <body>
-    <div class="dashboard-container">
-        <header>
-            <h1>👁️ Synapse Tracking Dashboard</h1>
-            <p>Standalone Face & Body Pipeline Viewer</p>
-        </header>
+    <div class="layout">
 
-        <div class="main-content">
-            <!-- Controls Panel -->
-            <div class="panel controls-panel">
-                <h2>Tracking Controls</h2>
-                <div class="control-group">
-                    <label for="tracker-select">Select Backend:</label>
-                    <select id="tracker-select" class="custom-select">
-                        <option value="">Loading...</option>
+        <!-- ── Left sidebar ─────────────────────────────────────────────── -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-icon">👁️</span>
+                <div>
+                    <div class="sidebar-title">Synapse</div>
+                    <div class="sidebar-sub">Tracking Dashboard</div>
+                </div>
+            </div>
+
+            <div class="sidebar-body">
+
+                <!-- Backend selector -->
+                <div class="ctrl-group">
+                    <label class="ctrl-label">Backend</label>
+                    <select id="tracker-select" class="ctrl-select">
+                        <option value="">Loading…</option>
                     </select>
                 </div>
-                <div class="control-group">
-                    <label for="source-select">Video Source:</label>
-                    <select id="source-select" class="custom-select">
+
+                <!-- Camera source (hidden for OSF) -->
+                <div class="ctrl-group" id="source-group">
+                    <label class="ctrl-label">Video Source</label>
+                    <select id="source-select" class="ctrl-select">
                         <option value="webcam:0">Webcam 0</option>
                         <option value="webcam:1">Webcam 1</option>
                         <option value="monitor:0">Primary Monitor</option>
                         <option value="monitor:1">Secondary Monitor</option>
                     </select>
                 </div>
-                <div class="button-group">
-                    <button id="btn-start" class="btn primary">Start Tracking</button>
-                    <button id="btn-stop" class="btn danger" disabled>Stop Tracking</button>
-                    <button id="btn-preview" class="btn secondary">Show Preview</button>
+
+                <!-- OpenSeeFace config (shown only when OSF selected) -->
+                <div id="osf-config" style="display:none;">
+                    <div class="ctrl-group">
+                        <label class="ctrl-label">OSF UDP Port</label>
+                        <input id="osf-port" type="number" value="11573"
+                               min="1024" max="65535" class="ctrl-input" />
+                    </div>
+
+                    <!-- Live debug stats -->
+                    <div class="osf-stats" id="osf-stats" style="display:none;">
+                        <div class="osf-stats-row">
+                            <span class="osf-stats-label">Packets in</span>
+                            <span class="osf-stats-val" id="stat-rx">0</span>
+                        </div>
+                        <div class="osf-stats-row">
+                            <span class="osf-stats-label">Parsed OK</span>
+                            <span class="osf-stats-val" id="stat-ok">0</span>
+                        </div>
+                        <div class="osf-stats-row">
+                            <span class="osf-stats-label">Last size</span>
+                            <span class="osf-stats-val" id="stat-sz">—</span>
+                        </div>
+                        <div class="osf-stats-row">
+                            <span class="osf-stats-label">Format</span>
+                            <span class="osf-stats-val" id="stat-fmt">—</span>
+                        </div>
+                        <div class="osf-error" id="stat-err" style="display:none;"></div>
+                    </div>
+
+                    <div class="osf-hint">
+                        <div class="osf-hint-title">
+                            <span class="osf-badge">OSF</span> How to connect
+                        </div>
+                        <p>Start OpenSeeFace with:</p>
+                        <code id="osf-cmd-display">facetracker.exe -c 0 -P 1</code>
+                        <p class="osf-note">
+                            Synapse listens on <strong>0.0.0.0:<span id="osf-port-display">11573</span></strong>.
+                            The preview shows a live wireframe once data arrives.
+                        </p>
+                        <a class="osf-link" href="https://github.com/emilianavt/OpenSeeFace"
+                           target="_blank" rel="noopener">OpenSeeFace on GitHub ↗</a>
+                    </div>
                 </div>
-                
-                <div class="status-indicator">
-                    Status: <span id="status-text" class="status-offline">Offline</span>
+
+                <!-- Action buttons -->
+                <div class="ctrl-btns">
+                    <button id="btn-start"   class="btn primary">Start Tracking</button>
+                    <button id="btn-stop"    class="btn danger"  disabled>Stop</button>
+                </div>
+                <div id="preview-group">
+                    <button id="btn-preview" class="btn secondary full-width">Show Preview</button>
+                </div>
+
+                <!-- Status -->
+                <div class="status-row">
+                    <span class="status-dot" id="status-dot"></span>
+                    <span id="status-text" class="status-offline">Offline</span>
+                </div>
+
+            </div><!-- /sidebar-body -->
+        </aside>
+
+        <!-- ── Main video area ───────────────────────────────────────────── -->
+        <main class="video-main" id="video-main">
+
+            <!-- Full-area video feed -->
+            <img id="video-feed" class="video-feed" alt="" />
+
+            <!-- Placeholder when no feed -->
+            <div class="video-placeholder" id="video-placeholder">
+                <div class="placeholder-icon">👁️</div>
+                <div class="placeholder-text">Start tracking to see the live feed</div>
+            </div>
+
+            <!-- ── Floating parameter panel ──── -->
+            <div class="float-panel" id="float-panel">
+                <div class="float-header" id="float-drag">
+                    <span class="float-title">⬡ Live Parameters</span>
+                    <div class="float-header-btns">
+                        <button class="float-btn" id="btn-collapse" title="Collapse">−</button>
+                        <button class="float-btn" id="btn-pin"      title="Pin / unpin">📌</button>
+                    </div>
+                </div>
+                <div class="float-body" id="float-body">
+                    <pre class="param-output" id="data-output">Waiting for data stream…</pre>
                 </div>
             </div>
 
-            <!-- Data Viewer Panel -->
-            <div class="panel data-panel">
-                <h2>Live Tracking Stream</h2>
-                <div class="video-container" style="text-align: center; margin-bottom: 15px; background: #000; min-height: 200px; border-radius: 4px; overflow: hidden;">
-                    <img id="video-feed" style="max-width: 100%; max-height: 480px; object-fit: contain;" alt="Video preview will appear here when tracking starts." />
-                </div>
-                <h2>Live Parameter Stream (WebSocket)</h2>
-                <div class="data-console">
-                    <pre id="data-output">Waiting for data stream...</pre>
-                </div>
-            </div>
-        </div>
-    </div>
+        </main><!-- /video-main -->
+    </div><!-- /layout -->
+
     <script src="/viewer/app.js"></script>
 </body>
 </html>
