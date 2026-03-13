@@ -687,16 +687,13 @@ async def register_local_model(data: Dict[str, Any], request: Request):
         if not filename:
             raise HTTPException(status_code=400, detail="filename is required")
             
-        # 1. Load registry
-        if not REGISTRY_PATH.exists():
-            raise HTTPException(status_code=404, detail="Registry file not found")
-            
-        with open(REGISTRY_PATH, "r", encoding="utf-8") as f:
-            registry = json.load(f)
+        # 1. Load registry with default structure safety
+        registry = _load_registry()
             
         # 2. Ensure local provider exists and is active
-        if "local" not in registry["providers"]:
-            registry["providers"]["local"] = {
+        providers = registry.get("providers", {})
+        if "local" not in providers:
+            providers["local"] = {
                 "name": "Local Models",
                 "active": True,
                 "chat_config": {"active": True, "priority": 2},
@@ -705,14 +702,14 @@ async def register_local_model(data: Dict[str, Any], request: Request):
             }
         else:
             # Ensure it's active even if it existed
-            registry["providers"]["local"]["active"] = True
-            if "chat_config" in registry["providers"]["local"]:
-                registry["providers"]["local"]["chat_config"]["active"] = True
-            if "agent_config" in registry["providers"]["local"]:
-                registry["providers"]["local"]["agent_config"]["active"] = True
-            
+            providers["local"]["active"] = True
+            if "chat_config" in providers["local"]:
+                providers["local"]["chat_config"]["active"] = True
+            if "agent_config" in providers["local"]:
+                providers["local"]["agent_config"]["active"] = True
+                
         # 3. Add model if not exists
-        local_models = registry["providers"]["local"]["models"]
+        local_models = providers["local"].setdefault("models", {})
         if filename not in local_models:
             local_models[filename] = {
                 "input_cost_per_1m_tokens": 0,
@@ -722,15 +719,8 @@ async def register_local_model(data: Dict[str, Any], request: Request):
                 "local_path": filename
             }
             
-        # 4. Add to auto_routing
-        auto_routing = registry.get("auto_routing", {})
-        for category in ["chat", "agent"]:
-            if category in auto_routing:
-                models = auto_routing[category].get("models", {})
-                if filename not in models:
-                    models[filename] = {"enabled": True}
-        
-        # Ensure it's active in registry too (top level active check for local is handled in step 2)
+        # 4. Sync with auto_routing using our seed helper
+        registry = _seed_auto_routing(registry)
                     
         # 5. Save registry
         _save_registry(registry)
