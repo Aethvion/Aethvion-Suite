@@ -22,6 +22,20 @@
 ---
 </div>
 
+## 📸 Screenshots
+
+<div align="center">
+
+**Chat Interface**
+<img src="assets/showcase/MisakaCipher_Chat.png" alt="Misaka Cipher Chat Interface" width="100%">
+
+**Usage & Cost Tracking**
+<img src="assets/showcase/MisakaCipher_UsagePage.png" alt="Misaka Cipher Usage Page" width="100%">
+
+</div>
+
+---
+
 ## 🎯 What Is Misaka Cipher?
 
 Misaka Cipher is a **self-hosted AI assistant platform** with a web dashboard. It connects to cloud AI providers (Google Gemini, OpenAI, xAI Grok, Anthropic Claude) and provides a structured environment for running chat threads, generating tools, and spawning agents — all from a local server you control.
@@ -210,6 +224,9 @@ Misaka-Cipher/
 │   └── generated/              # AI-forged tools (gitignored)
 │
 ├── tests/                      # Test suite
+├── assets/                     # Static assets
+│   ├── misakacipher/           # Character sprites and expressions
+│   └── showcase/               # UI screenshots for documentation
 └── documentation/              # Docs
     ├── human/                  # User-facing guides
     └── ai/                     # Machine-readable specs
