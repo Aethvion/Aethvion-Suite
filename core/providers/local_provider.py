@@ -4,6 +4,7 @@ Implementation for local LLMs using llama-cpp-python
 """
 
 import os
+import re
 from pathlib import Path
 from typing import Dict, Optional, Iterator, Any, List
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig, ProviderStatus
