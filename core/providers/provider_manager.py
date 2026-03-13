@@ -146,6 +146,14 @@ class ProviderManager:
         """Reload configuration from disk and update active providers."""
         logger.info("Reloading provider configuration...")
         
+        # 0. Reload base providers.yaml
+        project_root = Path(__file__).parent.parent.parent
+        config_path = project_root / "core" / "config" / "providers.yaml"
+        if config_path.exists():
+            self._load_config(config_path)
+            # Re-run initialization to pick up NEW providers
+            self._initialize_providers()
+            
         # 1. Reload registry overrides (Priorities, Model Maps)
         self._load_registry_overrides()
         

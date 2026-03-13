@@ -4,9 +4,13 @@
 
 const LocalModels = {
     init() {
-        console.log("LocalModels initialized");
+        console.log("[LocalModels] Initializing...");
         this.addEventListeners();
-        this.loadModels();
+        // If we are already on this tab, load immediately
+        if (typeof currentMainTab !== 'undefined' && currentMainTab === 'local-models') {
+            console.log("[LocalModels] Already on tab, loading models...");
+            this.loadModels();
+        }
     },
 
     addEventListeners() {
@@ -144,3 +148,6 @@ if (typeof showNotification === 'undefined') {
         }
     };
 }
+
+// Initialize on script load
+LocalModels.init();

@@ -634,3 +634,13 @@ async def delete_local_model(data: Dict[str, Any]):
     except Exception as e:
         logger.error(f"Failed to delete model: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+@router.post("/reload")
+async def reload_registry_config(request: Request):
+    """Force reload of model registry and providers config."""
+    try:
+        if hasattr(request.app.state, 'nexus'):
+            request.app.state.nexus.reload_config()
+        return {"status": "success", "message": "Configuration reloaded"}
+    except Exception as e:
+        logger.error(f"Failed to reload config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
