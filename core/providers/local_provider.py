@@ -88,17 +88,24 @@ class LocalProvider(BaseProvider):
             system_part = parts[0].strip()
             rest = parts[1].strip()
             
-            # Find the last "User:" and "Misaka:"
-            # We want everything before the last User: to be history
+            # Ensure rest starts with a newline for consistent rsplit or handle it
+            # We look for the last occurrence of "User: " that isn't the first character if possible,
+            # or just handle the first character case.
             if "\nUser: " in rest:
                 history_and_user_parts = rest.rsplit("\nUser: ", 1)
                 history_part = history_and_user_parts[0].strip()
-                user_part = history_and_user_parts[1].split("\nMisaka:")[0].strip()
+                user_content = history_and_user_parts[1]
             else:
-                user_part = rest.split("\nMisaka:")[0].strip()
+                user_content = rest
+            
+            # Clean up role labels from user_content
+            user_part = user_content.replace("User: ", "").split("\nMisaka:")[0].strip()
+        else:
+            # Fallback for simple prompts
+            user_part = prompt.replace("User: ", "").split("\nMisaka:")[0].strip()
 
         # Build the template
-        formatted = "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n"
+        formatted = "<|start_header_id|>system<|end_header_id|>\n\n"
         formatted += system_part if system_part else "You are Misaka Cipher, a helpful digital companion."
         formatted += "<|eot_id|>"
 
