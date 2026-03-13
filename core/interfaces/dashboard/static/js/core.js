@@ -1,4 +1,4 @@
-// Misaka Cipher - Core
+// Chat Cipher - Core
 // Handles WebSocket connections, global UI state, and initialization
 
 // Global variables
@@ -8,6 +8,37 @@ let agentsWs = null;
 // Global UI State
 let currentMainTab = 'chat';
 let dashboardMode = 'enterprise'; // or 'rd'
+let devModeActive = false;
+
+function initDevMode() {
+    const btn = document.getElementById('btn-toggle-dev-mode');
+    if (!btn || btn.dataset.initialized) return;
+    btn.dataset.initialized = 'true';
+
+    btn.addEventListener('click', () => {
+        devModeActive = !devModeActive;
+        const icon = btn.querySelector('i');
+        const envContainer = document.getElementById('env-status-container');
+
+        if (devModeActive) {
+            btn.classList.add('active');
+            icon.className = 'fas fa-lock-open';
+            if (typeof loadEnvStatus === 'function') loadEnvStatus();
+        } else {
+            btn.classList.remove('active');
+            icon.className = 'fas fa-lock';
+            if (envContainer) envContainer.innerHTML = '<div class="locked-placeholder"><i class="fas fa-lock"></i> Developer Mode Restricted</div>';
+        }
+    });
+
+    // Handle initial state
+    if (devModeActive) {
+        const icon = btn.querySelector('i');
+        btn.classList.add('active');
+        icon.className = 'fas fa-lock-open';
+        if (typeof loadEnvStatus === 'function') loadEnvStatus();
+    }
+}
 
 // Available Workspaces (from server config if any, mostly legacy but kept for reference)
 let availableWorkspaces = [];

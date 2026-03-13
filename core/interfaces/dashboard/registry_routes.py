@@ -135,16 +135,16 @@ async def update_env_key(data: Dict[str, Any]):
 # ===== Suggested Models =====
 
 @router.get("/suggested")
-async def get_suggested_models():
-    """Get suggested models for all providers."""
+async def get_all_suggested_models():
+    """Get all suggested models for all providers."""
     try:
         if not SUGGESTED_PATH.exists():
             return {}
-        with open(SUGGESTED_PATH, "r") as f:
+        with open(SUGGESTED_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
-        logger.error(f"Failed to load suggested models: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error loading suggested models: {e}")
+        return {}
 
 
 
@@ -597,16 +597,21 @@ async def get_local_models_status():
 
 @router.get("/local/suggested")
 async def get_suggested_local_models():
-    """Get list of recommended local models."""
+    """Get list of recommended local models (backward compatible)."""
     try:
         if not SUGGESTED_PATH.exists():
             return {"suggested": []}
             
         with open(SUGGESTED_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+            # If it's the new format, return only local part
+            if "local" in data:
+                return {"suggested": data["local"]}
+            # If it's the old format (from a dirty state), return as is
+            return data
     except Exception as e:
-        logger.error(f"Failed to load suggested models: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error loading local suggested models: {e}")
+        return {"suggested": []}
 
 
 @router.post("/local/models/download")

@@ -588,36 +588,7 @@ async function populateVoiceModelSelector(voiceSettings) {
 
 // ===== Developer Mode & .env Management =====
 
-let devModeActive = false;
 
-function initDevMode() {
-    const btn = document.getElementById('btn-toggle-dev-mode');
-    if (!btn || btn.dataset.initialized) return;
-    btn.dataset.initialized = 'true';
-
-    btn.addEventListener('click', () => {
-        devModeActive = !devModeActive;
-        const icon = btn.querySelector('i');
-        const envContainer = document.getElementById('env-status-container');
-
-        if (devModeActive) {
-            btn.classList.add('active');
-            icon.className = 'fas fa-lock-open';
-            loadEnvStatus();
-        } else {
-            btn.classList.remove('active');
-            icon.className = 'fas fa-lock';
-            if (envContainer) envContainer.innerHTML = '<div class="locked-placeholder"><i class="fas fa-lock"></i> Developer Mode Restricted</div>';
-        }
-
-        // Also show/hide dev-only fields in provider cards if they exist
-        document.querySelectorAll('.dev-only-field').forEach(f => f.style.display = devModeActive ? '' : 'none');
-    });
-
-    // Initial state
-    const envContainer = document.getElementById('env-status-container');
-    if (envContainer) envContainer.innerHTML = '<div class="locked-placeholder"><i class="fas fa-lock"></i> Developer Mode Restricted</div>';
-}
 
 async function loadEnvStatus() {
     const container = document.getElementById('env-status-container');
@@ -1715,8 +1686,35 @@ async function createNewProfile(type) {
 async function openAddModelModal(providerName) {
     if (!_suggestedModels || !_registryData) return;
 
-    const providerSuggested = _suggestedModels[providerName] || [];
+    let providerSuggested = _suggestedModels[providerName] || [];
     const providerExisting = _registryData.providers[providerName]?.models || {};
+
+    // Special logic for Local Provider: suggest installed but unregistered models
+    if (providerName === 'local') {
+        try {
+            const res = await fetch('/api/registry/local/models/status');
+            if (res.ok) {
+                const statusData = await res.json();
+                // Filter out models that are already registered
+                const installedUnregistered = (statusData.models || []).filter(m => {
+                    const modelId = m.filename || m.id;
+                    return m.exists && !providerExisting[modelId];
+                }).map(m => ({
+                    id: m.filename || m.id,
+                    tier: 'installed',
+                    input_cost: 0,
+                    output_cost: 0,
+                    capabilities: ['CHAT']
+                }));
+                
+                // Merge with existing suggestions if any (unique by ID)
+                const seenIds = new Set(installedUnregistered.map(m => m.id));
+                providerSuggested = [...installedUnregistered, ...providerSuggested.filter(m => !seenIds.has(m.id))];
+            }
+        } catch (e) {
+            console.warn("Failed to fetch local model status for suggestions:", e);
+        }
+    }
 
     const html = `
         <div class="modal-content add-model-modal">
@@ -1738,6 +1736,13 @@ async function openAddModelModal(providerName) {
                             `).join('')}
                         </select>
                     </div>
+                    ${providerName === 'local' ? `
+                        <div style="margin-top: 8px; text-align: right;">
+                            <a href="#" id="go-to-local-models" style="font-size: 0.8rem; color: var(--primary); text-decoration: none;">
+                                <i class="fas fa-external-link-alt"></i> Manage Local Models
+                            </a>
+                        </div>
+                    ` : ''}
                 </div>
                 <div class="divider"><span>OR CUSTOM</span></div>
                 <div class="setting-group">
@@ -1775,6 +1780,15 @@ async function openAddModelModal(providerName) {
     const costIn = document.getElementById('new-model-cost-in');
     const costOut = document.getElementById('new-model-cost-out');
     const capsContainer = document.getElementById('new-model-caps-container');
+    const manageLink = document.getElementById('go-to-local-models');
+
+    if (manageLink) {
+        manageLink.onclick = (e) => {
+            e.preventDefault();
+            closeModal();
+            switchMainTab('local_models');
+        };
+    }
 
     // Initialize the capability picker logic for the modal
     initCapsTd(capsContainer.querySelector('.caps-cell'));

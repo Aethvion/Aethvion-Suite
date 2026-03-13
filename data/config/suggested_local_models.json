@@ -1,5 +1,5 @@
 {
-  "suggested": [
+  "local": [
     {
       "id": "llama-3.2-1b-instruct",
       "name": "Llama 3.2 1B Instruct",
@@ -44,6 +44,98 @@
       "size": "7.5 GB",
       "description": "A powerful 12B model from Mistral and NVIDIA, great for complex logic.",
       "tags": ["Advanced", "Mistral", "NVIDIA"]
+    }
+  ],
+  "google_ai": [
+    {
+      "id": "gemini-2.0-flash",
+      "input_cost": 0.10,
+      "output_cost": 0.40,
+      "capabilities": ["CHAT", "IMAGE", "AUDIO"],
+      "tier": "flash"
+    },
+    {
+      "id": "gemini-1.5-flash",
+      "input_cost": 0.075,
+      "output_cost": 0.30,
+      "capabilities": ["CHAT", "IMAGE", "AUDIO"],
+      "tier": "flash"
+    },
+    {
+      "id": "gemini-1.5-pro",
+      "input_cost": 1.25,
+      "output_cost": 5.00,
+      "capabilities": ["CHAT", "IMAGE", "AUDIO"],
+      "tier": "pro"
+    },
+    {
+        "id": "gemini-3-flash-preview",
+        "input_cost": 0.10,
+        "output_cost": 0.40,
+        "capabilities": ["CHAT", "IMAGE", "AUDIO"],
+        "tier": "flash"
+    }
+  ],
+  "openai": [
+    {
+      "id": "gpt-4o",
+      "input_cost": 2.50,
+      "output_cost": 10.00,
+      "capabilities": ["CHAT", "IMAGE"],
+      "tier": "pro"
+    },
+    {
+      "id": "gpt-4o-mini",
+      "input_cost": 0.15,
+      "output_cost": 0.60,
+      "capabilities": ["CHAT", "IMAGE"],
+      "tier": "flash"
+    },
+    {
+      "id": "o1-preview",
+      "input_cost": 15.00,
+      "output_cost": 60.00,
+      "capabilities": ["CHAT"],
+      "tier": "reasoning"
+    }
+  ],
+  "anthropic": [
+    {
+      "id": "claude-3-5-sonnet-20241022",
+      "input_cost": 3.00,
+      "output_cost": 15.00,
+      "capabilities": ["CHAT"],
+      "tier": "pro"
+    },
+    {
+      "id": "claude-3-5-haiku-20241022",
+      "input_cost": 0.80,
+      "output_cost": 4.00,
+      "capabilities": ["CHAT"],
+      "tier": "flash"
+    },
+    {
+      "id": "claude-3-opus-20240229",
+      "input_cost": 15.00,
+      "output_cost": 75.00,
+      "capabilities": ["CHAT"],
+      "tier": "pro"
+    }
+  ],
+  "grok": [
+    {
+      "id": "grok-beta",
+      "input_cost": 5.00,
+      "output_cost": 15.00,
+      "capabilities": ["CHAT"],
+      "tier": "pro"
+    },
+    {
+      "id": "grok-vision-beta",
+      "input_cost": 5.00,
+      "output_cost": 15.00,
+      "capabilities": ["CHAT", "IMAGE"],
+      "tier": "pro"
     }
   ]
 }
