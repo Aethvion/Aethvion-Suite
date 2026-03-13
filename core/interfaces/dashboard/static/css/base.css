@@ -50,12 +50,22 @@
 
 /* R&D Mode Theme Overrides */
 body.theme-rd {
-    --primary: #f97316; /* Orange 500 */
-    --primary-hover: #fb923c; /* Orange 400 */
-    --accent: #eab308; /* Yellow 500 */
+    --primary: #b53eff; /* Neon Purple */
+    --primary-hover: #d280ff;
+    --accent: #f97316; /* Orange */
     
-    --glow: 0 0 25px rgba(249, 115, 22, 0.3);
-    --glow-accent: 0 0 20px rgba(234, 179, 8, 0.2);
+    --glow: 0 0 25px rgba(181, 62, 255, 0.3);
+    --glow-accent: 0 0 20px rgba(249, 115, 22, 0.2);
+}
+
+/* Suite Mode Theme Overrides */
+body.theme-suite {
+    --primary: #00d9ff; /* Cyan */
+    --primary-hover: #00f2ff;
+    --accent: #ff00ea; /* Magenta */
+    
+    --glow: 0 0 25px rgba(0, 217, 255, 0.3);
+    --glow-accent: 0 0 20px rgba(255, 0, 234, 0.2);
 }
 
 * {

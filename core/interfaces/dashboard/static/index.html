@@ -118,12 +118,21 @@
             box-shadow: 0 0 10px rgba(0, 217, 255, 0.4);
         }
 
-        /* Enterprise defaults to primary cyan, maybe R&D uses a different tint later */
-        .mode-btn[data-value="rd"].active {
-            background: #b53eff;
-            /* Neon purple for R&D */
-            box-shadow: 0 0 10px rgba(181, 62, 255, 0.4);
-        }
+        /* Suite Mode Theme Overrides */
+body.theme-suite {
+    --primary: #00d9ff; /* Cyan 400 */
+    --primary-hover: #00f2ff;
+    --accent: #ff00ea; /* Magenta */
+    
+    --glow: 0 0 25px rgba(0, 217, 255, 0.3);
+    --glow-accent: 0 0 20px rgba(255, 0, 234, 0.2);
+}
+
+.mode-btn[data-value="suite"].active {
+    background: #00d9ff;
+    color: #000;
+    box-shadow: 0 0 10px rgba(0, 217, 255, 0.4);
+}
     </style>
 </head>
 
@@ -156,7 +165,8 @@
                 </button>
                 <h1 class="logo" style="margin-left: 10px;">Aethvion Suite</h1>
                 <div class="dash-mode-toggle" id="dashboard-mode-toggle">
-                    <div class="mode-btn active" data-value="enterprise">ENTERPRISE</div>
+                    <div class="mode-btn active" data-value="suite">SUITE</div>
+                    <div class="mode-btn" data-value="enterprise">ENTERPRISE</div>
                     <div class="mode-btn" data-value="rd">R&D</div>
                 </div>
             </div>
@@ -283,8 +293,83 @@
 
         <!-- Main Content Area -->
         <main class="main-container">
+            <!-- Suite Hub Tab -->
+            <div class="main-tab-panel active" id="suite-panel">
+                <div class="suite-hub">
+                    <div class="hub-hero">
+                        <h1>Aethvion Suite</h1>
+                        <p>The Nervous System of your Digital Creativity</p>
+                    </div>
+                    
+                    <div class="hub-grid">
+                        <!-- Misaka Cipher Card -->
+                        <div class="hub-card premium-card" onclick="setDashboardMode('enterprise'); switchMainTab('chat');">
+                            <div class="card-glow"></div>
+                            <div class="card-icon"><i class="fas fa-brain"></i></div>
+                            <div class="card-content">
+                                <h3>Misaka Cipher</h3>
+                                <p>Autonomous AI Intelligence with standard tools and research capabilities.</p>
+                                <div class="card-footer">
+                                    <span class="badge">AI Agent</span>
+                                    <span class="badge">Enterprise / R&D</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Specter Card -->
+                        <div class="hub-card" onclick="switchMainTab('specter')">
+                            <div class="card-icon"><i class="fas fa-palette"></i></div>
+                            <div class="card-content">
+                                <h3>Specter</h3>
+                                <p>Neural image generation and professional layered asset management.</p>
+                                <div class="card-footer">
+                                    <span class="badge">Visuals</span>
+                                    <span class="badge">V4-Ready</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Synapse Card -->
+                        <div class="hub-card" onclick="switchMainTab('synapse')">
+                            <div class="card-icon"><i class="fas fa-project-diagram"></i></div>
+                            <div class="card-content">
+                                <h3>Synapse</h3>
+                                <p>Advanced project tracking, knowledge synthesis, and performance metrics.</p>
+                                <div class="card-footer">
+                                    <span class="badge">Data</span>
+                                    <span class="badge">Synthesis</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Future Audio Card -->
+                        <div class="hub-card disabled">
+                            <div class="card-icon"><i class="fas fa-wave-square"></i></div>
+                            <div class="card-content">
+                                <h3>Audio Studio</h3>
+                                <p>Audacity-inspired multi-track neural audio editing and generation.</p>
+                                <div class="card-footer">
+                                    <span class="badge highlight">Coming Soon</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Future Image Card -->
+                        <div class="hub-card disabled">
+                            <div class="card-icon"><i class="fas fa-layer-group"></i></div>
+                            <div class="card-content">
+                                <h3>Image Forge</h3>
+                                <p>Photoshop-inspired professional image manipulation with AI integration.</p>
+                                <div class="card-footer">
+                                    <span class="badge highlight">Coming Soon</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <!-- Chat Tab (4-column layout with threads) -->
-            <div class="main-tab-panel active" id="chat-panel">
+            <div class="main-tab-panel" id="chat-panel">
                 <div class="three-column-layout">
                     <!-- Far Left: Thread List -->
                     <div class="column threads-column">

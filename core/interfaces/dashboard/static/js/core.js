@@ -7,7 +7,7 @@ let logsWs = null;
 let agentsWs = null;
 // Global UI State
 let currentMainTab = 'chat';
-let dashboardMode = 'enterprise'; // or 'rd'
+let dashboardMode = 'suite'; // or 'enterprise', 'rd'
 let devModeActive = false;
 
 function initDevMode() {
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeUI();
 
     // Apply default mode immediately so nothing looks broken on load
-    setDashboardMode('enterprise', false);
+    setDashboardMode('suite', false);
 
     try {
         // Load preferences safely before heavy data initialization
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await prefs.load();
 
             // Restore dashboard mode
-            const mode = prefs.get('dashboard_mode', 'enterprise');
+            const mode = prefs.get('dashboard_mode', 'suite');
             setDashboardMode(mode, false);
 
             // Restore sidebar state
@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // The active tab is now restored automatically by setDashboardMode
         } else {
             // Fallback (redundant fetch but keeping for safety if view-settings isn't loaded)
-            let fallbackMode = 'enterprise';
+            let fallbackMode = 'suite';
             const modeRes = await fetch('/api/preferences/get?key=dashboard_mode');
             if (modeRes.ok) {
                 const modeData = await modeRes.json();
@@ -449,7 +449,7 @@ function initializeUI() {
 // Main Navigation Logic
 // ------------------------------------------------------------------
 function setDashboardMode(mode, save = true) {
-    if (mode !== 'enterprise' && mode !== 'rd') return;
+    if (mode !== 'enterprise' && mode !== 'rd' && mode !== 'suite') return;
     dashboardMode = mode;
 
     if (save && typeof savePreference === 'function') {
@@ -462,7 +462,7 @@ function setDashboardMode(mode, save = true) {
     });
 
     // Toggle body classes for theme overrides
-    document.body.classList.remove('theme-enterprise', 'theme-rd');
+    document.body.classList.remove('theme-enterprise', 'theme-rd', 'theme-suite');
     document.body.classList.add(`theme-${dashboardMode}`);
 
     // Hide/Show navigation elements based on mode
@@ -485,7 +485,9 @@ function setDashboardMode(mode, save = true) {
     });
 
     // Restore the last active tab for this mode specifically
-    let targetTab = dashboardMode === 'enterprise' ? 'chat' : 'advaiconv';
+    let targetTab = 'chat';
+    if (dashboardMode === 'rd') targetTab = 'advaiconv';
+    if (dashboardMode === 'suite') targetTab = 'suite';
     
     if (typeof prefs !== 'undefined' && typeof prefs.get === 'function') {
         const savedTab = prefs.get(`active_tab_${dashboardMode}`);

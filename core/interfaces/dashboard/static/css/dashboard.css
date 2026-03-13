@@ -291,3 +291,126 @@
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
+/* ===== Suite Hub Hub Styles ===== */
+.suite-hub {
+    padding: 3rem 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.hub-hero {
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.hub-hero h1 {
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #fff, var(--primary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+}
+
+.hub-hero p {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
+}
+
+.hub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2rem;
+}
+
+.hub-card {
+    background: rgba(24, 24, 27, 0.4);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.hub-card:hover:not(.disabled) {
+    transform: translateY(-8px);
+    border-color: var(--primary);
+    background: rgba(24, 24, 27, 0.6);
+    box-shadow: 0 10px 30px -10px rgba(0, 217, 255, 0.2);
+}
+
+.hub-card.disabled {
+    opacity: 0.6;
+    cursor: default;
+    filter: grayscale(0.5);
+}
+
+.hub-card .card-icon {
+    font-size: 2.5rem;
+    color: var(--primary);
+    text-shadow: var(--glow);
+}
+
+.hub-card .card-content h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.hub-card .card-content p {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.hub-card .card-footer {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: auto;
+}
+
+.hub-card .badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-tertiary);
+    border: 1px solid var(--border);
+}
+
+.hub-card .badge.highlight {
+    background: rgba(255, 0, 234, 0.1);
+    color: #ff00ea;
+    border-color: rgba(255, 0, 234, 0.2);
+}
+
+.premium-card {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 768px) {
+    .hub-hero h1 {
+        font-size: 2.5rem;
+    }
+    
+    .hub-grid {
+        grid-template-columns: 1fr;
+    }
+}
