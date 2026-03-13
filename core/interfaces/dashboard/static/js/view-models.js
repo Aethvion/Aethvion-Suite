@@ -27,6 +27,10 @@ const LocalModels = {
         if (!tbody) return;
 
         try {
+            const registryRes = await fetch('/api/registry/models');
+            const registryData = await registryRes.json();
+            const registeredModels = registryData.providers?.local?.models || {};
+
             const res = await fetch('/api/registry/local/models/status');
             const data = await res.json();
             const models = data.models || {};
@@ -36,22 +40,38 @@ const LocalModels = {
                 return;
             }
 
-            tbody.innerHTML = Object.entries(models).map(([filename, info]) => `
-                <tr>
-                    <td><strong>${filename}</strong></td>
-                    <td>${info.size_mb} MB</td>
-                    <td><code style="font-size:0.75rem;">${info.path}</code></td>
-                    <td>
-                        <button class="btn-icon xs-btn delete-model-btn" data-filename="${filename}" title="Delete Model" style="color:#ff7675;">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
+            tbody.innerHTML = Object.entries(models).map(([filename, info]) => {
+                const isRegistered = !!registeredModels[filename];
+                return `
+                    <tr>
+                        <td><strong>${filename}</strong></td>
+                        <td>${info.size_mb} MB</td>
+                        <td>
+                            ${isRegistered ? 
+                                '<span style="color:#00b894; font-size:0.75rem; font-weight:bold;"><i class="fas fa-check-circle"></i> Registered</span>' : 
+                                '<span style="color:#fab1a0; font-size:0.75rem; font-weight:bold;"><i class="fas fa-exclamation-circle"></i> Unregistered</span>'
+                            }
+                        </td>
+                        <td style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                            ${!isRegistered ? `
+                                <button class="action-btn xs-btn register-model-btn" data-filename="${filename}" title="Register Model">
+                                    <i class="fas fa-plus"></i> Register
+                                </button>
+                            ` : ''}
+                            <button class="btn-icon xs-btn delete-model-btn" data-filename="${filename}" title="Delete Model" style="color:#ff7675;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
 
-            // Add delete events
+            // Add events
             tbody.querySelectorAll('.delete-model-btn').forEach(btn => {
                 btn.onclick = () => this.deleteModel(btn.dataset.filename);
+            });
+            tbody.querySelectorAll('.register-model-btn').forEach(btn => {
+                btn.onclick = () => this.registerModel(btn.dataset.filename);
             });
 
             // Update suggested models badges
@@ -175,6 +195,29 @@ const LocalModels = {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-download"></i> Install';
             }
+        }
+    },
+
+    async registerModel(filename) {
+        try {
+            showNotification(`Registering ${filename}...`, 'info');
+            const res = await fetch('/api/registry/local/models/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename })
+            });
+
+            if (res.ok) {
+                showNotification(`Model ${filename} registered!`, 'success');
+                this.loadModels();
+                // We might also need to notify the provider manager to reload,
+                // but the backend endpoint already calls reload_config()
+            } else {
+                const err = await res.json();
+                showNotification(err.detail || 'Registration failed', 'error');
+            }
+        } catch (e) {
+            showNotification('Error connecting to server', 'error');
         }
     },
 

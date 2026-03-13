@@ -647,6 +647,64 @@ async def delete_local_model(data: Dict[str, Any]):
     except Exception as e:
         logger.error(f"Failed to delete model: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+@router.post("/local/models/register")
+async def register_local_model(data: Dict[str, Any], request: Request):
+    """Register a local GGUF model in the registry."""
+    try:
+        filename = data.get("filename")
+        if not filename:
+            raise HTTPException(status_code=400, detail="filename is required")
+            
+        # 1. Load registry
+        if not REGISTRY_PATH.exists():
+            raise HTTPException(status_code=404, detail="Registry file not found")
+            
+        with open(REGISTRY_PATH, "r", encoding="utf-8") as f:
+            registry = json.load(f)
+            
+        # 2. Ensure local provider exists
+        if "local" not in registry["providers"]:
+            registry["providers"]["local"] = {
+                "name": "Local Models",
+                "active": True,
+                "chat_config": {"active": True, "priority": 2},
+                "agent_config": {"active": True, "priority": 2},
+                "models": {}
+            }
+            
+        # 3. Add model if not exists
+        local_models = registry["providers"]["local"]["models"]
+        if filename not in local_models:
+            local_models[filename] = {
+                "input_cost_per_1m_tokens": 0,
+                "output_cost_per_1m_tokens": 0,
+                "capabilities": ["CHAT"],
+                "description": f"Local model: {filename}",
+                "local_path": filename
+            }
+            
+        # 4. Add to auto_routing
+        for category in ["chat", "agent"]:
+            if category in registry["auto_routing"]:
+                models = registry["auto_routing"][category]["models"]
+                if filename not in models:
+                    models[filename] = {"enabled": True}
+                    
+        # 5. Save registry
+        with open(REGISTRY_PATH, "w", encoding="utf-8") as f:
+            json.dump(registry, f, indent=4)
+            
+        # 6. Reload config
+        if hasattr(request.app.state, 'nexus'):
+            request.app.state.nexus.reload_config()
+            
+        return {"status": "success", "message": f"Model {filename} registered successfully"}
+        
+    except Exception as e:
+        logger.error(f"Failed to register local model: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/reload")
 async def reload_registry_config(request: Request):
     """Force reload of model registry and providers config."""
