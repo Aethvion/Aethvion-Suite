@@ -1,11 +1,12 @@
 const WS_URL   = `ws://${window.location.host}/ws/tracking`;
 const API_BASE = `http://${window.location.host}/api/trackers`;
 
-let ws            = null;
-let isPreviewing  = false;
-let debugInterval = null;
-let isPinned      = false;
-let isCollapsed   = false;
+let ws                  = null;
+let isPreviewing        = false;
+let debugInterval       = null;
+let osfLivenessInterval = null;
+let isPinned            = false;
+let isCollapsed         = false;
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const selectTracker    = document.getElementById("tracker-select");
@@ -47,7 +48,7 @@ function onTrackerChange() {
     sourceGroup.style.display  = osf ? "none" : "";
     previewGroup.style.display = osf ? "none" : "";
     osfConfig.style.display    = osf ? ""     : "none";
-    if (osf) syncOsfPort();
+    if (osf) { syncOsfPort(); fetchOsfStatus(); }
 }
 
 function syncOsfPort() {
@@ -84,6 +85,9 @@ async function fetchStatus() {
     }
 }
 
+// Forward declarations so updateUIState can call them before they are defined below
+function stopOsfLiveness() { if (osfLivenessInterval) { clearInterval(osfLivenessInterval); osfLivenessInterval = null; } }
+
 // ── UI state ──────────────────────────────────────────────────────────────────
 
 function setStatusDot(state) {
@@ -114,6 +118,7 @@ function updateUIState(isRunning) {
         controls.forEach(el => { el.disabled = isPreviewing && el !== osfPortInput; });
         disconnectWebSocket();
         stopDebugPolling();
+        stopOsfLiveness();
         dataOutput.innerText = "Waiting for data stream…";
         if (!isPreviewing) {
             videoFeed.src = "";
@@ -204,6 +209,239 @@ async function togglePreview() {
         console.error("Preview toggle failed:", e);
     }
 }
+
+// ── OSF Process manager ───────────────────────────────────────────────────────
+
+const osfMgrDot       = document.getElementById("osf-mgr-dot");
+const osfMgrLabel     = document.getElementById("osf-mgr-label");
+const osfInstallSec   = document.getElementById("osf-install-section");
+const osfLaunchSec    = document.getElementById("osf-launch-section");
+const osfInstallProg  = document.getElementById("osf-install-progress");
+const osfProgFill     = document.getElementById("osf-prog-fill");
+const osfProgMsg      = document.getElementById("osf-prog-msg");
+const btnOsfInstall   = document.getElementById("btn-osf-install");
+const btnOsfLaunch    = document.getElementById("btn-osf-launch");
+const btnOsfKill      = document.getElementById("btn-osf-kill");
+const osfCameraInput  = document.getElementById("osf-camera");
+
+function setOsfMgrState(state) {
+    // state: "checking" | "not-installed" | "installed" | "running" | "installing"
+    const map = {
+        "checking":      ["",        "Checking…"],
+        "not-installed": ["",        "Not Installed"],
+        "installed":     ["ready",   "Installed — not running"],
+        "running":       ["online",  "Process Running"],
+        "installing":    ["busy",    "Installing…"],
+    };
+    const [cls, text] = map[state] || ["", state];
+    if (osfMgrDot)   osfMgrDot.className    = "osf-mgr-dot" + (cls ? " " + cls : "");
+    if (osfMgrLabel) osfMgrLabel.textContent = text;
+
+    const notInstalled = state === "not-installed" || state === "installing";
+    const installed    = state === "installed" || state === "running";
+    const running      = state === "running";
+
+    if (osfInstallSec) osfInstallSec.style.display = notInstalled ? "" : "none";
+    if (osfLaunchSec)  osfLaunchSec.style.display  = installed    ? "" : "none";
+    if (btnOsfLaunch)  btnOsfLaunch.disabled        = running;
+    if (btnOsfKill)    btnOsfKill.disabled           = !running;
+}
+
+async function fetchOsfStatus() {
+    try {
+        const res  = await fetch("/api/osf/status");
+        const data = await res.json();
+        if (data.running)        setOsfMgrState("running");
+        else if (data.installed) setOsfMgrState("installed");
+        else                     setOsfMgrState("not-installed");
+    } catch (_) {
+        setOsfMgrState("not-installed");
+    }
+}
+
+async function installOsf() {
+    if (btnOsfInstall) btnOsfInstall.disabled = true;
+    setOsfMgrState("installing");
+    if (osfInstallProg) osfInstallProg.style.display = "";
+    if (osfProgMsg)     osfProgMsg.textContent = "Connecting…";
+    if (osfProgFill)  { osfProgFill.style.width = "0%"; osfProgFill.style.background = ""; }
+
+    try {
+        const res    = await fetch("/api/osf/install", { method: "POST" });
+        const reader = res.body.getReader();
+        const dec    = new TextDecoder();
+        let   buf    = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += dec.decode(value, { stream: true });
+
+            const lines = buf.split("\n");
+            buf = lines.pop();
+
+            for (const line of lines) {
+                if (!line.startsWith("data: ")) continue;
+                try {
+                    const evt = JSON.parse(line.slice(6));
+                    if (osfProgMsg)  osfProgMsg.textContent = evt.msg || "…";
+                    if (osfProgFill && evt.pct != null) osfProgFill.style.width = evt.pct + "%";
+
+                    if (evt.step === "done") {
+                        if (osfProgFill) osfProgFill.style.width = "100%";
+                        await fetchOsfStatus();
+                        setTimeout(() => { if (osfInstallProg) osfInstallProg.style.display = "none"; }, 2500);
+                    } else if (evt.step === "error") {
+                        if (osfProgFill) osfProgFill.style.background = "var(--danger)";
+                        if (btnOsfInstall) btnOsfInstall.disabled = false;
+                        setOsfMgrState("not-installed");
+                    }
+                } catch (_) {}
+            }
+        }
+    } catch (e) {
+        console.error("OSF install failed:", e);
+        if (osfProgMsg) osfProgMsg.textContent = "Network error — try again.";
+        if (btnOsfInstall) btnOsfInstall.disabled = false;
+        setOsfMgrState("not-installed");
+    }
+}
+
+async function launchOsf() {
+    const port   = osfPortInput   ? parseInt(osfPortInput.value)   || 11573 : 11573;
+    const camera = osfCameraInput ? parseInt(osfCameraInput.value) || 0     : 0;
+    try {
+        if (btnOsfLaunch) btnOsfLaunch.disabled = true;
+        if (osfMgrLabel)  osfMgrLabel.textContent = "Starting…";
+
+        const res  = await fetch("/api/osf/launch", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ camera_index: camera, port, host: "127.0.0.1" }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            setOsfMgrState("running");
+            syncOsfPort();
+            startOsfLiveness();
+
+            // Give facetracker ~1.5 s to initialize, then auto-start the Synapse tracker
+            // Also verify it's still alive — if it crashed we skip startTracker and show the error
+            setTimeout(async () => {
+                const checkRes  = await fetch("/api/osf/status");
+                const checkData = await checkRes.json();
+                if (checkData.running) {
+                    if (isOSF()) startTracker();
+                } else {
+                    stopOsfLiveness();
+                    setOsfMgrState("installed");
+                    showOsfCrashDiag(await diagnoseOsfCrash());
+                }
+            }, 1500);
+        } else {
+            if (btnOsfLaunch) btnOsfLaunch.disabled = false;
+            alert("Could not launch OSF: " + (data.error || "unknown error"));
+        }
+    } catch (e) {
+        if (btnOsfLaunch) btnOsfLaunch.disabled = false;
+        console.error("OSF launch failed:", e);
+    }
+}
+
+async function stopOsfProcess() {
+    try {
+        stopOsfLiveness();
+        await fetch("/api/osf/stop-process", { method: "POST" });
+        setOsfMgrState("installed");
+    } catch (e) {
+        console.error("OSF stop failed:", e);
+    }
+}
+
+/** Analyse the crash log and return a user-friendly diagnosis object. */
+async function diagnoseOsfCrash() {
+    try {
+        const lr    = await fetch("/api/osf/log");
+        const ldata = await lr.json();
+        const log   = ldata.log || "";
+
+        if (/python\d+\.dll.*could not be found|LoadLibrary.*python/i.test(log)) {
+            return {
+                type:    "vcredist",
+                summary: "Missing Visual C++ Redistributable",
+                detail:  "facetracker.exe needs the Microsoft Visual C++ Runtime " +
+                         "(2015–2022 x64) which is not installed on this machine.",
+                action:  { label: "Download VC++ Redistributable",
+                           url: "https://aka.ms/vs/17/release/vc_redist.x64.exe" },
+                log,
+            };
+        }
+        if (/no cameras found|cannot open camera|capture failed/i.test(log)) {
+            return {
+                type:    "camera",
+                summary: "Camera not found",
+                detail:  "OpenSeeFace could not open camera index " +
+                         (osfCameraInput ? osfCameraInput.value : "0") +
+                         ". Try a different camera index.",
+                log,
+            };
+        }
+        return { type: "unknown", summary: "Process exited", detail: "", log };
+    } catch (_) {
+        return { type: "unknown", summary: "Process exited", detail: "", log: "" };
+    }
+}
+
+/** Poll /api/osf/status every 3 s to detect if facetracker crashes. */
+function startOsfLiveness() {
+    if (osfLivenessInterval) return;
+    osfLivenessInterval = setInterval(async () => {
+        try {
+            const res  = await fetch("/api/osf/status");
+            const data = await res.json();
+            if (!data.running && data.installed) {
+                stopOsfLiveness();
+                setOsfMgrState("installed");
+
+                const diag = await diagnoseOsfCrash();
+                showOsfCrashDiag(diag);
+            }
+        } catch (_) {}
+    }, 3000);
+}
+
+function showOsfCrashDiag(diag) {
+    if (osfMgrLabel) osfMgrLabel.textContent = diag.summary;
+
+    // Show progress area with red bar as error indicator
+    if (osfInstallProg) osfInstallProg.style.display = "";
+    if (osfProgFill)  { osfProgFill.style.width = "100%"; osfProgFill.style.background = "var(--danger)"; }
+    if (osfProgMsg)     osfProgMsg.textContent = diag.detail || "See output below.";
+
+    // If there's a fix action, inject a one-time link below the progress message
+    const existingLink = document.getElementById("osf-fix-link");
+    if (existingLink) existingLink.remove();
+    if (diag.action) {
+        const a = document.createElement("a");
+        a.id        = "osf-fix-link";
+        a.href      = diag.action.url;
+        a.target    = "_blank";
+        a.rel       = "noopener";
+        a.className = "osf-link";
+        a.style.display     = "block";
+        a.style.marginTop   = "6px";
+        a.textContent = diag.action.label + " ↗";
+        osfProgMsg.insertAdjacentElement("afterend", a);
+    }
+
+    // Dump raw log to parameter panel
+    if (diag.log) dataOutput.innerText = diag.log;
+}
+
+
+if (btnOsfInstall) btnOsfInstall.addEventListener("click", installOsf);
+if (btnOsfLaunch)  btnOsfLaunch.addEventListener("click",  launchOsf);
+if (btnOsfKill)    btnOsfKill.addEventListener("click",    stopOsfProcess);
 
 // ── OSF debug stats polling ────────────────────────────────────────────────────
 

@@ -17,6 +17,7 @@ for p in (MODULE_DIR, PROJECT_ROOT):
 
 from modules.aethvion.synapse.synapse_core import synapse_core
 from modules.aethvion.synapse.trackers.capture_manager import capture_manager
+from modules.aethvion.synapse.osf_manager import osf_manager
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -94,6 +95,66 @@ async def stop_tracker():
     if not app.state.preview_active and tracker_name != "openseeface":
         capture_manager.stop()
     return JSONResponse({"status": "success", "message": "Tracker stopped"})
+
+# ---------------------------------------------------------------------------
+# OSF Process Management
+# ---------------------------------------------------------------------------
+
+@app.get("/api/osf/status")
+async def osf_status():
+    """Return install + process status for the bundled OpenSeeFace binary."""
+    return JSONResponse(osf_manager.get_status())
+
+
+@app.post("/api/osf/install")
+async def osf_install():
+    """Download and extract OpenSeeFace; streams SSE progress to the client."""
+    async def _stream():
+        async for chunk in osf_manager.install():
+            yield chunk
+    return StreamingResponse(_stream(), media_type="text/event-stream")
+
+
+class OsfLaunchConfig(BaseModel):
+    camera_index: int = 0
+    port: int         = 11573
+    host: str         = "127.0.0.1"
+
+
+@app.post("/api/osf/launch")
+async def osf_launch(config: OsfLaunchConfig):
+    """Start the OpenSeeFace facetracker process."""
+    result = osf_manager.launch(config.camera_index, config.port, config.host)
+    return JSONResponse(result, status_code=200 if result["success"] else 400)
+
+
+@app.post("/api/osf/stop-process")
+async def osf_stop_process():
+    """Terminate the OpenSeeFace facetracker process."""
+    return JSONResponse(osf_manager.stop_process())
+
+
+@app.post("/api/osf/uninstall")
+async def osf_uninstall():
+    """Remove the bundled OpenSeeFace installation."""
+    return JSONResponse(osf_manager.uninstall())
+
+
+@app.get("/api/osf/log")
+async def osf_log():
+    """Return the last 40 lines of the facetracker process output."""
+    return JSONResponse({"log": osf_manager.get_log_tail(40)})
+
+
+@app.get("/api/osf/files")
+async def osf_files():
+    """List all files in the OpenSeeFace install directory (for diagnostics)."""
+    from modules.aethvion.synapse.osf_manager import OSF_DIR
+    if not OSF_DIR.exists():
+        return JSONResponse({"error": "Not installed", "files": []})
+    files = [str(p.relative_to(OSF_DIR)) for p in sorted(OSF_DIR.rglob("*")) if p.is_file()]
+    return JSONResponse({"dir": str(OSF_DIR), "count": len(files), "files": files})
+
 
 @app.post("/api/preview/start")
 async def start_preview(config: StartConfig):

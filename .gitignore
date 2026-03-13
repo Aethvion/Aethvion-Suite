@@ -14,6 +14,9 @@ data/config/*
 data/workspace/media/*
 data/workspace/uploads/*
 data/system/ports.json
+data/files.json
+
+# Allow Example + Suggestion files
 !data/config/*.example
 !data/config/suggested_local_models.json
 
@@ -59,9 +62,10 @@ Thumbs.db
 # Modules
 modules/aethvion/specter/models/*
 modules/misakacipher/*
-data/files.json
-.claude/worktrees/focused-williamson/
-.claude/worktrees/infallible-wilbur/
+modules/aethvion/synapse/openseeface/*
 
 # Local Models
 LocalModels/*
+
+# Claude Worktrees
+.claude/worktrees/*

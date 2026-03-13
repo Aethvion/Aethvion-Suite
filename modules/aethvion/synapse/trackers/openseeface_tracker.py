@@ -5,7 +5,7 @@ Receives face tracking data from a running OpenSeeFace instance via UDP
 and maps it to the standard Synapse VTube parameter schema.
 
 OpenSeeFace must be started separately and pointed at this port:
-  facetracker.exe -c 0 -P 1
+  facetracker.exe -c 0 -P 11573 -i 127.0.0.1
 
 Project: https://github.com/emilianavt/OpenSeeFace
 """
@@ -70,6 +70,9 @@ _CANVAS_W = 640
 _CANVAS_H = 480
 _BG_COLOR = (10, 10, 18)
 
+# EMA smoothing factor for fallback bounding-box (lower = smoother, more lag)
+_BBOX_ALPHA = 0.08
+
 # 68-point landmark connectivity for wireframe drawing
 _SEGMENTS = [
     list(range(0, 17)),              # jaw line
@@ -100,11 +103,22 @@ class OpenSeeFaceTracker(BaseTracker):
         # Bind to 0.0.0.0 to accept packets regardless of which interface OSF uses
         self._listen_host: str = "0.0.0.0"
         self._port: int = int(cfg.get("osf_port", 11573))
+        self._camera_index: int = int(cfg.get("camera_index", 0))
         self._sock: Optional[socket.socket] = None
         self._thread: Optional[threading.Thread] = None
         self._last_packet_time: float = 0.0
         self._detected_fmt: Optional[Tuple[int, int]] = None   # (hdr_size, face_size)
         self.latest_frame: Optional[bytes] = None
+
+        # Camera capture (shared with OSF — may fail if cam is exclusive)
+        self._cap = None
+        self._cam_w: int = _CANVAS_W
+        self._cam_h: int = _CANVAS_H
+        self._cam_ok: bool = False
+
+        # EMA-smoothed bounding box for fallback dark-canvas rendering
+        # Tuple[min_x, min_y, max_x, max_y] in OSF pixel space
+        self._bbox_ema: Optional[Tuple[float, float, float, float]] = None
 
         # Exposed debug stats (read via /api/trackers/debug)
         self.stats: Dict[str, Any] = {
@@ -135,6 +149,25 @@ class OpenSeeFaceTracker(BaseTracker):
             self._sock = None
             return
 
+        # Try to open camera for background feed.
+        # On Windows a camera may be locked by facetracker.exe — fail silently.
+        if CV2_AVAILABLE:
+            try:
+                cap = cv2.VideoCapture(self._camera_index, cv2.CAP_DSHOW)
+                if cap.isOpened():
+                    self._cam_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                    self._cam_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                    self._cap = cap
+                    self._cam_ok = True
+                    logger.info(f"[OSF] Camera {self._camera_index} opened "
+                                f"({self._cam_w}×{self._cam_h})")
+                else:
+                    cap.release()
+                    logger.info(f"[OSF] Camera {self._camera_index} unavailable "
+                                "(likely locked by facetracker.exe); using dark canvas")
+            except Exception as exc:
+                logger.info(f"[OSF] Camera open failed: {exc}; using dark canvas")
+
         self._running = True
         self._thread = threading.Thread(target=self._receive_loop, daemon=True, name="OSF-Recv")
         self._thread.start()
@@ -143,6 +176,13 @@ class OpenSeeFaceTracker(BaseTracker):
 
     def stop(self) -> None:
         self._running = False
+        if self._cap is not None:
+            try:
+                self._cap.release()
+            except Exception:
+                pass
+            self._cap = None
+            self._cam_ok = False
         if self._sock:
             try:
                 self._sock.close()
@@ -152,6 +192,7 @@ class OpenSeeFaceTracker(BaseTracker):
         if self._thread:
             self._thread.join(timeout=2.0)
             self._thread = None
+        self._bbox_ema = None
         self.latest_frame = None
         logger.info("[OSF] Tracker stopped.")
 
@@ -330,24 +371,99 @@ class OpenSeeFaceTracker(BaseTracker):
         if not CV2_AVAILABLE:
             return
 
+        # ── Try to grab a live camera frame ──────────────────────────────────
+        cam_frame = None
+        if self._cam_ok and self._cap is not None:
+            try:
+                ret, f = self._cap.read()
+                if ret and f is not None:
+                    cam_frame = f
+                else:
+                    # Camera lost — stop trying
+                    self._cam_ok = False
+                    logger.info("[OSF] Camera read failed; switching to dark canvas")
+            except Exception:
+                self._cam_ok = False
+
+        if cam_frame is not None:
+            self._render_on_camera(cam_frame, lm_2d, params)
+        else:
+            self._render_on_canvas(lm_2d, params)
+
+    def _render_on_camera(self, cam_frame, lm_2d, params: dict) -> None:
+        """Draw wireframe directly on the live camera image."""
+        h, w = cam_frame.shape[:2]
+
+        # OSF landmark coords are in the camera's pixel space.
+        # Scale them to match our output frame dimensions.
+        sx = w / self._cam_w
+        sy = h / self._cam_h
+
+        def to_px(x, y):
+            return (
+                int(max(0, min(w - 1, x * sx))),
+                int(max(0, min(h - 1, y * sy))),
+            )
+
+        pts = [to_px(x, y) for x, y in lm_2d]
+
+        for si, seg in enumerate(_SEGMENTS):
+            color = _SEG_COLORS.get(si, (0, 210, 230))
+            for i in range(len(seg) - 1):
+                cv2.line(cam_frame, pts[seg[i]], pts[seg[i + 1]], color, 2, cv2.LINE_AA)
+        for pt in pts:
+            cv2.circle(cam_frame, pt, 2, (200, 200, 200), -1, cv2.LINE_AA)
+
+        detected   = params.get("is_detected", 0) > 0
+        status_col = (0, 200, 100) if detected else (80, 80, 200)
+        cv2.putText(cam_frame, f"OpenSeeFace  |  {'DETECTED' if detected else 'NO FACE'}", (10, 22),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.52, status_col, 1, cv2.LINE_AA)
+
+        ax = params.get("ParamAngleX", 0.0)
+        ay = params.get("ParamAngleY", 0.0)
+        az = params.get("ParamAngleZ", 0.0)
+        cv2.putText(cam_frame, f"Yaw {ax:+.1f}  Pitch {ay:+.1f}  Roll {az:+.1f}", (10, 42),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.42, (180, 180, 180), 1, cv2.LINE_AA)
+
+        self._encode_frame(cam_frame)
+
+    def _render_on_canvas(self, lm_2d, params: dict) -> None:
+        """
+        Draw wireframe on a dark canvas using an EMA-smoothed bounding box.
+        EMA prevents the per-frame rescaling flicker of the old approach.
+        """
         frame = np.full((_CANVAS_H, _CANVAS_W, 3), _BG_COLOR, dtype=np.uint8)
 
-        xs = [p[0] for p in lm_2d if p[0] > 0]
-        ys = [p[1] for p in lm_2d if p[1] > 0]
-        if not xs or not ys:
+        # Filter valid (non-zero) landmark coords
+        valid = [(x, y) for x, y in lm_2d if x > 0.5 or y > 0.5]
+        if not valid:
             self._encode_frame(frame)
             return
 
-        min_x, max_x = min(xs), max(xs)
-        min_y, max_y = min(ys), max(ys)
-        w = max_x - min_x or 1.0
-        h = max_y - min_y or 1.0
-        pad = 0.15
+        xs = [p[0] for p in valid]
+        ys = [p[1] for p in valid]
+        cur = (min(xs), min(ys), max(xs), max(ys))
+
+        # Update EMA bounding box
+        if self._bbox_ema is None:
+            self._bbox_ema = cur
+        else:
+            a = _BBOX_ALPHA
+            self._bbox_ema = tuple(
+                a * c + (1.0 - a) * e for c, e in zip(cur, self._bbox_ema)
+            )
+
+        min_x, min_y, max_x, max_y = self._bbox_ema
+        bw = max_x - min_x or 1.0
+        bh = max_y - min_y or 1.0
+        pad = 0.12
 
         def to_canvas(x, y):
+            cx = int((x - min_x) / bw * _CANVAS_W * (1 - 2 * pad) + _CANVAS_W * pad)
+            cy = int((y - min_y) / bh * _CANVAS_H * (1 - 2 * pad) + _CANVAS_H * pad)
             return (
-                int((x - min_x) / w * _CANVAS_W * (1 - 2 * pad) + _CANVAS_W * pad),
-                int((y - min_y) / h * _CANVAS_H * (1 - 2 * pad) + _CANVAS_H * pad),
+                max(0, min(_CANVAS_W - 1, cx)),
+                max(0, min(_CANVAS_H - 1, cy)),
             )
 
         pts = [to_canvas(x, y) for x, y in lm_2d]

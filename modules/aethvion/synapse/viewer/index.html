@@ -42,8 +42,48 @@
 
                 <!-- OpenSeeFace config (shown only when OSF selected) -->
                 <div id="osf-config" style="display:none;">
+
+                    <!-- ── OSF Install / Launch manager ── -->
+                    <div class="osf-manager" id="osf-manager">
+
+                        <!-- Status badge row -->
+                        <div class="osf-mgr-status" id="osf-mgr-status">
+                            <span class="osf-mgr-dot" id="osf-mgr-dot"></span>
+                            <span id="osf-mgr-label">Checking…</span>
+                        </div>
+
+                        <!-- NOT installed: install button + progress -->
+                        <div id="osf-install-section" style="display:none;">
+                            <button class="btn primary full-width" id="btn-osf-install">
+                                ⬇ Install OpenSeeFace
+                            </button>
+                            <div class="osf-install-progress" id="osf-install-progress" style="display:none;">
+                                <div class="osf-prog-bar">
+                                    <div class="osf-prog-fill" id="osf-prog-fill"></div>
+                                </div>
+                                <div class="osf-prog-msg" id="osf-prog-msg">Installing…</div>
+                            </div>
+                        </div>
+
+                        <!-- INSTALLED: camera + launch controls -->
+                        <div id="osf-launch-section" style="display:none;">
+                            <div class="ctrl-group">
+                                <label class="ctrl-label">Camera Index</label>
+                                <input id="osf-camera" type="number" value="0"
+                                       min="0" max="9" class="ctrl-input" />
+                            </div>
+                            <div class="ctrl-btns">
+                                <button class="btn primary" id="btn-osf-launch">▶ Launch</button>
+                                <button class="btn danger"  id="btn-osf-kill" disabled>■ Stop</button>
+                            </div>
+                        </div>
+
+                    </div><!-- /osf-manager -->
+
+                    <div class="osf-divider"></div>
+
                     <div class="ctrl-group">
-                        <label class="ctrl-label">OSF UDP Port</label>
+                        <label class="ctrl-label">UDP Port</label>
                         <input id="osf-port" type="number" value="11573"
                                min="1024" max="65535" class="ctrl-input" />
                     </div>
@@ -71,9 +111,9 @@
 
                     <div class="osf-hint">
                         <div class="osf-hint-title">
-                            <span class="osf-badge">OSF</span> How to connect
+                            <span class="osf-badge">OSF</span> Connection info
                         </div>
-                        <p>Start OpenSeeFace with:</p>
+                        <p>Launched command:</p>
                         <code id="osf-cmd-display">facetracker.exe -c 0 -P 1</code>
                         <p class="osf-note">
                             Synapse listens on <strong>0.0.0.0:<span id="osf-port-display">11573</span></strong>.

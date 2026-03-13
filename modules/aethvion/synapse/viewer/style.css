@@ -278,6 +278,77 @@ body {
     line-height: 1.55;
 }
 
+/* ── OSF manager (install / launch) ── */
+
+.osf-manager {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+}
+
+.osf-mgr-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.osf-mgr-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--text-secondary);
+    transition: background 0.3s, box-shadow 0.3s;
+}
+
+.osf-mgr-dot.ready  { background: #60a5fa; box-shadow: 0 0 5px #60a5fa; }
+.osf-mgr-dot.online { background: var(--success); box-shadow: 0 0 5px var(--success); }
+.osf-mgr-dot.busy   {
+    background: #f59e0b;
+    box-shadow: 0 0 5px #f59e0b;
+    animation: osf-pulse 1s ease-in-out infinite;
+}
+
+@keyframes osf-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+}
+
+.osf-install-progress { margin-top: 8px; }
+
+.osf-prog-bar {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.osf-prog-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--primary);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+}
+
+.osf-prog-msg {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    word-break: break-word;
+}
+
+.osf-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 10px 0 12px;
+}
+
 /* ── OSF debug stats ── */
 
 .osf-stats {
