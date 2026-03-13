@@ -154,14 +154,14 @@
 
 
 /* AI Conversations Typing Indicator */
-.typing-indicator {
+.disabled-typing-indicator {
     display: flex;
     align-items: center;
     gap: 4px;
     padding: 2px 4px;
 }
 
-.typing-indicator span {
+.disabled-typing-indicator span {
     display: inline-block;
     width: 6px;
     height: 6px;
@@ -170,15 +170,15 @@
     animation: typingBounce 1.4s infinite ease-in-out both;
 }
 
-.typing-indicator span:nth-child(1) {
+.disabled-typing-indicator span:nth-child(1) {
     animation-delay: -0.32s;
 }
 
-.typing-indicator span:nth-child(2) {
+.disabled-typing-indicator span:nth-child(2) {
     animation-delay: -0.16s;
 }
 
-@keyframes typingBounce {
+@keyframes disabledTypingBounce {
 
     0%,
     80%,

@@ -356,9 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
         div.id = 'misaka-typing-indicator';
         div.className = 'misaka-typing';
         div.innerHTML = `
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
+            <span class="typing-text">Working...</span>
         `;
         messagesArea.appendChild(div);
         scrollToBottom();

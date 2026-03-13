@@ -3,7 +3,22 @@
 window.currentThreadId = 'default';
 window.threads = {};
 let threadMessages = {};
-let isSettingsPanelOpen = false; // Store messages per thread
+let activeTasksByThread = {}; // taskId -> threadId
+let isTypingIndicatorVisible = false; // Track typing state globally
+let typingInterval = null;
+let typingDotsCount = 1;
+
+const typingMessages = [
+    "working",
+    "searching",
+    "Coding",
+    "Calculating",
+    "Counting Sheep",
+    "Decrypting reality",
+    "Counting to infinity",
+    "Asking rubber duck for advice",
+    "Herding digital cats"
+];
 
 // Initialize thread management
 // Initialize thread management
@@ -189,6 +204,9 @@ function switchThread(threadId) {
     // Enable input when thread is selected
     toggleChatInput(true);
 
+    // Hide typing indicator when switching, it will be re-shown by loadThreadMessages if needed
+    hideTypingIndicator();
+
     // Update active thread in UI INSTANTLY
     document.querySelectorAll('.thread-item').forEach(item => {
         const isActive = item.dataset.threadId === threadId;
@@ -201,11 +219,10 @@ function switchThread(threadId) {
         document.getElementById('active-thread-title').textContent = thread.title;
     }
 
-    // Render messages for this thread (initially empty)
-    renderThreadMessages();
-
-    // Fetch messages from server
-    loadThreadMessages(threadId);
+    // Load and render messages
+    loadThreadMessages(threadId).then(() => {
+        renderThreadMessages();
+    });
 
     // Update terminal visibility
     if (typeof updateTerminalVisibility === 'function') {
@@ -249,6 +266,11 @@ function renderThreadMessages() {
         messageDiv.innerHTML = msg.html;
         chatMessages.appendChild(messageDiv);
     });
+
+    // Re-append typing indicator if visible and we are on the right thread
+    if (isTypingIndicatorVisible) {
+        showTypingIndicator(true); // Internal call to just append/show
+    }
 
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -435,12 +457,20 @@ async function loadThreadMessages(threadId) {
                     addMessageToThread(threadId, 'assistant', task.result.response, task.id, task);
                 } else if (task.status === 'failed') {
                     addMessageToThread(threadId, 'error', `Task failed: ${task.error}`, task.id);
-                } else if (task.status === 'running') {
-                    addMessageToThread(threadId, 'system', `Task is running... (Worker: ${task.worker_id})`, task.id);
-                } else if (task.status === 'queued') {
-                    addMessageToThread(threadId, 'system', `Task is queued...`, task.id);
                 }
             });
+        }
+
+        // Check if any tasks are still running/queued for this thread
+        const hasActiveTasks = data.tasks.some(task => task.status === 'running' || task.status === 'queued');
+        if (hasActiveTasks && threadId === currentThreadId) {
+            showTypingIndicator();
+            // Re-poll for any active tasks
+            data.tasks.filter(task => task.status === 'running' || task.status === 'queued').forEach(task => {
+                pollTaskStatus(task.id, threadId);
+            });
+        } else {
+            hideTypingIndicator();
         }
 
     } catch (error) {
@@ -617,9 +647,6 @@ async function refreshThreadStatus() {
     }
 }
 
-// Track active tasks by thread
-let activeTasksByThread = {};
-
 // Modified sendMessage to use task queue
 async function sendMessage() {
     const input = document.getElementById('chat-input');
@@ -729,8 +756,8 @@ async function sendMessage() {
         // Track which thread this task belongs to
         activeTasksByThread[data.task_id] = messageThreadId;
 
-        // Add system message showing task was queued
-        addMessageToThread(messageThreadId, 'system', `Task ${data.task_id} queued. Status: ${data.status}`);
+        // Show typing indicator instead of system message
+        showTypingIndicator();
 
         // Start polling for task completion
         pollTaskStatus(data.task_id, messageThreadId);
@@ -748,21 +775,20 @@ async function pollTaskStatus(taskId, threadId, maxAttempts = 60) {
     const poll = async () => {
         try {
             const response = await fetch(`/api/tasks/status/${taskId}`);
-            const task = await response.json();
+            const data = await response.json(); // Renamed 'task' to 'data' for consistency with original diff
 
-            if (task.status === 'completed') {
-                // Task completed, add response to the correct thread
-                addMessageToThread(threadId, 'assistant', task.result.response, taskId, task);
+            if (data.status === 'completed') {
+                // Task completed successfully
+                addMessageToThread(threadId, 'assistant', data.result.response, taskId, data);
+                hideTypingIndicator();
                 delete activeTasksByThread[taskId];
                 return;
-            } else if (task.status === 'failed') {
+            } else if (data.status === 'failed') {
                 // Task failed
-                addMessageToThread(threadId, 'error', `Task failed: ${task.error}`, taskId);
+                addMessageToThread(threadId, 'error', `Task failed: ${data.error}`, taskId);
+                hideTypingIndicator();
                 delete activeTasksByThread[taskId];
                 return;
-            } else if (task.status === 'running' && attempts % 5 === 0) {
-                // Update status every 5 attempts
-                updateMessageInThread(threadId, taskId, `Task is running... (Worker: ${task.worker_id})`);
             }
 
             attempts++;
@@ -770,18 +796,23 @@ async function pollTaskStatus(taskId, threadId, maxAttempts = 60) {
                 setTimeout(poll, 1000); // Poll every second
             } else {
                 addMessageToThread(threadId, 'error', `Task ${taskId} timed out`);
+                hideTypingIndicator();
                 delete activeTasksByThread[taskId];
             }
 
         } catch (error) {
-            console.error('Failed to poll task status:', error);
+            console.error('Polling error:', error);
+            hideTypingIndicator();
+            delete activeTasksByThread[taskId]; // Ensure task is removed from active list even on polling error
+            return;
         }
     };
 
     poll();
 }
 
-// Update existing message in a specific thread
+
+// Update existing message in a specific thread (for non-streaming status updates if still used)
 function updateMessageInThread(threadId, taskId, content) {
     const messages = threadMessages[threadId] || [];
     const messageIndex = messages.findIndex(msg => msg.taskId === taskId);
@@ -795,6 +826,61 @@ function updateMessageInThread(threadId, taskId, content) {
             renderThreadMessages();
         }
     }
+}
+
+// Typing Indicator Management
+function showTypingIndicator(internal = false) {
+    if (!internal) isTypingIndicatorVisible = true;
+    
+    let indicator = document.getElementById('chat-typing-indicator');
+    const messages = document.getElementById('chat-messages');
+
+    if (!messages) return;
+
+    // If indicator was removed by innerHTML = '', recreate it or re-append it
+    if (!indicator || indicator.parentElement !== messages) {
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'chat-typing-indicator';
+            indicator.className = 'message ai-message typing-indicator';
+            indicator.innerHTML = `
+                <div class="message-content">
+                    <span class="typing-text">Working...</span>
+                </div>
+            `;
+        }
+        messages.appendChild(indicator);
+    }
+
+    indicator.style.display = 'flex';
+    
+    // Start dynamic updates if not already running
+    if (!typingInterval) {
+        const textEl = indicator.querySelector('.typing-text');
+        const randomMsg = typingMessages[Math.floor(Math.random() * typingMessages.length)];
+        
+        typingInterval = setInterval(() => {
+            typingDotsCount = (typingDotsCount % 5) + 1;
+            const dots = '.'.repeat(typingDotsCount);
+            if (textEl) textEl.textContent = `${randomMsg}${dots}`;
+        }, 400);
+    }
+
+    // Scroll to bottom
+    setTimeout(() => {
+        messages.scrollTop = messages.scrollHeight;
+    }, 10);
+}
+
+function hideTypingIndicator() {
+    isTypingIndicatorVisible = false;
+    if (typingInterval) {
+        clearInterval(typingInterval);
+        typingInterval = null;
+        typingDotsCount = 1;
+    }
+    const indicator = document.getElementById('chat-typing-indicator');
+    if (indicator) indicator.style.display = 'none';
 }
 
 // Save thread settings (auto-save)
