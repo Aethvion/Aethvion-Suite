@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aethvion Audio Editor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/viewer/style.css">
+</head>
+<body>
+<div id="app">
+
+    <!-- HEADER -->
+    <header class="ae-header">
+        <div class="ae-logo">
+            <i class="fas fa-wave-square"></i>
+            Aethvion Audio
+        </div>
+        <div class="ae-header-sep"></div>
+        <div class="ae-file-info" id="file-info-bar" style="display:none">
+            <i class="fas fa-file-audio" style="color:var(--primary)"></i>
+            <span class="ae-file-name" id="hdr-filename">—</span>
+            <span class="ae-badge" id="hdr-duration">0:00</span>
+            <span class="ae-badge" id="hdr-samplerate">44100 Hz</span>
+            <span class="ae-badge" id="hdr-channels">Stereo</span>
+            <span class="ae-badge" id="hdr-bitdepth">16-bit</span>
+        </div>
+        <div class="ae-file-info" id="file-info-empty">
+            <span style="opacity:0.4">No file loaded</span>
+        </div>
+    </header>
+
+    <!-- TOOLBAR -->
+    <div class="ae-toolbar">
+        <!-- File -->
+        <button class="ae-btn primary" id="btn-open" title="Open audio file">
+            <i class="fas fa-folder-open"></i> OPEN
+        </button>
+        <input type="file" id="file-input" accept="audio/*">
+
+        <div class="ae-toolbar-sep"></div>
+
+        <!-- Playback -->
+        <button class="ae-btn play-btn" id="btn-play" disabled>
+            <i class="fas fa-play" id="play-icon"></i> PLAY
+        </button>
+        <button class="ae-btn" id="btn-stop" disabled title="Stop">
+            <i class="fas fa-stop"></i>
+        </button>
+        <button class="ae-btn" id="btn-skip-back" disabled title="Rewind 5s">
+            <i class="fas fa-backward-step"></i>
+        </button>
+        <button class="ae-btn" id="btn-skip-fwd" disabled title="Forward 5s">
+            <i class="fas fa-forward-step"></i>
+        </button>
+
+        <div class="ae-toolbar-sep"></div>
+
+        <!-- Zoom -->
+        <button class="ae-btn" id="btn-zoom-in" disabled title="Zoom In">
+            <i class="fas fa-search-plus"></i>
+        </button>
+        <button class="ae-btn" id="btn-zoom-out" disabled title="Zoom Out">
+            <i class="fas fa-search-minus"></i>
+        </button>
+        <button class="ae-btn" id="btn-zoom-fit" disabled title="Fit to view">
+            <i class="fas fa-compress-alt"></i>
+        </button>
+
+        <div class="ae-toolbar-sep"></div>
+
+        <!-- Edit -->
+        <button class="ae-btn" id="btn-undo" disabled title="Undo">
+            <i class="fas fa-undo"></i> UNDO
+        </button>
+        <button class="ae-btn danger" id="btn-reset" disabled title="Reset to original">
+            <i class="fas fa-rotate-left"></i> RESET
+        </button>
+
+        <div class="ae-toolbar-sep"></div>
+
+        <!-- Export -->
+        <button class="ae-btn success" id="btn-export-wav" disabled title="Export as WAV">
+            <i class="fas fa-download"></i> WAV
+        </button>
+        <button class="ae-btn success" id="btn-export-mp3" disabled title="Export as MP3 (requires FFmpeg)">
+            <i class="fas fa-download"></i> MP3
+        </button>
+    </div>
+
+    <!-- MAIN BODY -->
+    <div class="ae-body">
+
+        <!-- WAVEFORM PANEL -->
+        <div class="ae-waveform-panel">
+            <div class="ae-waveform-wrap">
+
+                <!-- Drop zone -->
+                <div class="ae-dropzone" id="dropzone">
+                    <i class="fas fa-wave-square"></i>
+                    <h3>Drop Audio Here</h3>
+                    <p>or click OPEN to browse</p>
+                    <p style="font-size:0.75rem; margin-top:6px">WAV · MP3 · OGG · FLAC</p>
+                </div>
+
+                <!-- WaveSurfer waveform -->
+                <div id="waveform-container">
+                    <div id="waveform"></div>
+                </div>
+
+                <!-- Timeline -->
+                <div id="timeline-container">
+                    <div id="wave-timeline"></div>
+                </div>
+            </div>
+
+            <!-- Playback info bar -->
+            <div class="ae-playbar" id="playbar">
+                <span class="ae-time" id="time-current">0:00.00</span>
+                <span style="color:var(--text-secondary); font-size:0.75rem;">/</span>
+                <span class="ae-time" id="time-total">0:00.00</span>
+                <div class="ae-region-info" id="region-info">
+                    <i class="fas fa-crop-alt"></i>
+                    Selection: <span id="region-start">0.000</span>s – <span id="region-end">0.000</span>s
+                </div>
+                <div class="ae-playbar-sep"></div>
+                <span style="font-size:0.75rem; color:var(--text-secondary)">
+                    <i class="fas fa-volume-up" style="color:var(--primary)"></i>
+                    <input type="range" id="master-vol" min="0" max="1" step="0.01" value="1"
+                        style="width:80px; vertical-align:middle; margin-left:6px;">
+                </span>
+            </div>
+        </div>
+
+        <!-- EFFECTS SIDEBAR -->
+        <aside class="ae-sidebar">
+
+            <!-- Trim -->
+            <div class="ae-sidebar-section">
+                <h4><i class="fas fa-crop-alt" style="color:var(--primary);margin-right:5px"></i>Trim / Cut</h4>
+
+                <div class="ae-effect-card">
+                    <div class="ae-effect-header">
+                        <div class="ae-effect-title"><i class="fas fa-cut"></i> Trim to Selection</div>
+                        <button class="ae-btn primary" id="btn-trim" disabled>APPLY</button>
+                    </div>
+                    <div style="font-size:0.74rem; color:var(--text-secondary)">
+                        Select a region on the waveform, then trim to it.
+                    </div>
+                </div>
+
+                <div class="ae-effect-card">
+                    <div class="ae-effect-header">
+                        <div class="ae-effect-title"><i class="fas fa-volume-mute"></i> Silence Region</div>
+                        <button class="ae-btn danger" id="btn-silence" disabled>APPLY</button>
+                    </div>
+                    <div style="font-size:0.74rem; color:var(--text-secondary)">
+                        Replace the selected region with silence.
+                    </div>
+                </div>
+
+                <div class="ae-effect-card">
+                    <div class="ae-effect-header">
+                        <div class="ae-effect-title"><i class="fas fa-scissors"></i> Crop Silence</div>
+                        <button class="ae-btn" id="btn-crop-silence" disabled>APPLY</button>
+                    </div>
+                    <div class="ae-control" style="margin-top:6px">
+                        <label>Threshold</label>
+                        <input type="range" id="crop-thresh" min="-70" max="-20" value="-50" step="1">
+                        <span class="ae-val" id="crop-thresh-val">-50 dB</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Envelope -->
+            <div class="ae-sidebar-section">
+                <h4><i class="fas fa-sliders-h" style="color:var(--primary);margin-right:5px"></i>Envelope</h4>
+
+                <div class="ae-effect-card">
+                    <div class="ae-effect-header">
+                        <div class="ae-effect-title"><i class="fas fa-chart-line"></i> Fade In</div>
+                        <button class="ae-btn" id="btn-fade-in" disabled>APPLY</button>
+                    </div>
+                    <div class="ae-control" style="margin-top:6px">
+                        <label>Duration</label>
+                        <input type="range" id="fade-in-dur" min="100" max="10000" value="1000" step="100">
+                        <span class="ae-val" id="fade-in-val">1.0s</span>
+                    </div>
+                </div>
+
+                <div class="ae-effect-card">
+                    <div class="ae-effect-header">
+                        <div class="ae-effect-title"><i class="fas fa-chart-line" style="transform:scaleX(-1)"></i> Fade Out</div>
+                        <button class="ae-btn" id="btn-fade-out" disabled>APPLY</button>
+                    </div>
+                    <div class="ae-control" style="margin-top:6px">
+                        <label>Duration</label>
+                        <input type="range" id="fade-out-dur" min="100" max="10000" value="1000" step="100">
+                        <span class="ae-val" id="fade-out-val">1.0s</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Volume & Dynamics -->
+            <div class="ae-sidebar-section">
+                <h4><i class="fas fa-volume-up" style="color:var(--primary);margin-right:5px"></i>Volume & Dynamics</h4>
+
+                <div class="ae-effect-card">
+                    <div class="ae-effect-header">
+                        <div class="ae-effect-title"><i class="fas fa-expand-arrows-alt"></i> Normalize</div>
+                        <button class="ae-btn" id="btn-normalize" disabled>APPLY</button>
+                    </div>
+                    <div style="font-size:0.74rem; color:var(--text-secondary)">
+                        Maximize volume without clipping.
+                    </div>
+                </div>
+
+                <div class="ae-effect-card">
+                    <div class="ae-effect-header">
+                        <div class="ae-effect-title"><i class="fas fa-volume-up"></i> Gain</div>
+                        <button class="ae-btn" id="btn-volume" disabled>APPLY</button>
+                    </div>
+                    <div class="ae-control" style="margin-top:6px">
+                        <label>Volume</label>
+                        <input type="range" id="vol-db" min="-20" max="20" value="0" step="0.5">
+                        <span class="ae-val" id="vol-db-val">0 dB</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time & Pitch -->
+            <div class="ae-sidebar-section">
+                <h4><i class="fas fa-tachometer-alt" style="color:var(--primary);margin-right:5px"></i>Time & Pitch</h4>
+
+                <div class="ae-effect-card">
+                    <div class="ae-effect-header">
+                        <div class="ae-effect-title"><i class="fas fa-fast-forward"></i> Speed</div>
+                        <button class="ae-btn" id="btn-speed" disabled>APPLY</button>
+                    </div>
+                    <div class="ae-control" style="margin-top:6px">
+                        <label>Rate</label>
+                        <input type="range" id="speed-rate" min="0.25" max="4.0" value="1.0" step="0.05">
+                        <span class="ae-val" id="speed-rate-val">1.00×</span>
+                    </div>
+                </div>
+
+                <div class="ae-effect-card">
+                    <div class="ae-effect-header">
+                        <div class="ae-effect-title"><i class="fas fa-retweet"></i> Reverse</div>
+                        <button class="ae-btn" id="btn-reverse" disabled>APPLY</button>
+                    </div>
+                    <div style="font-size:0.74rem; color:var(--text-secondary)">
+                        Reverse the entire audio clip.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Format -->
+            <div class="ae-sidebar-section">
+                <h4><i class="fas fa-cogs" style="color:var(--primary);margin-right:5px"></i>Format</h4>
+
+                <div class="ae-effect-card">
+                    <div class="ae-effect-header">
+                        <div class="ae-effect-title"><i class="fas fa-compress"></i> Stereo → Mono</div>
+                        <button class="ae-btn" id="btn-to-mono" disabled>APPLY</button>
+                    </div>
+                </div>
+
+                <div class="ae-effect-card">
+                    <div class="ae-effect-header">
+                        <div class="ae-effect-title"><i class="fas fa-expand"></i> Mono → Stereo</div>
+                        <button class="ae-btn" id="btn-to-stereo" disabled>APPLY</button>
+                    </div>
+                </div>
+
+                <div class="ae-effect-card">
+                    <div class="ae-effect-header">
+                        <div class="ae-effect-title"><i class="fas fa-exchange-alt"></i> Resample</div>
+                        <button class="ae-btn" id="btn-resample" disabled>APPLY</button>
+                    </div>
+                    <div class="ae-control" style="margin-top:6px">
+                        <label>Rate</label>
+                        <select id="resample-rate">
+                            <option value="8000">8000 Hz</option>
+                            <option value="16000">16000 Hz</option>
+                            <option value="22050">22050 Hz</option>
+                            <option value="44100" selected>44100 Hz</option>
+                            <option value="48000">48000 Hz</option>
+                            <option value="96000">96000 Hz</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+    </div>
+</div>
+
+<!-- Loading overlay -->
+<div id="ae-loading">
+    <div class="ae-spinner"></div>
+    <span>PROCESSING...</span>
+</div>
+
+<!-- Notifications -->
+<div id="ae-notifications"></div>
+
+<!-- WaveSurfer.js 6 -->
+<script src="https://unpkg.com/wavesurfer.js@6.6.4/dist/wavesurfer.min.js"></script>
+<script src="https://unpkg.com/wavesurfer.js@6.6.4/dist/plugin/wavesurfer.timeline.min.js"></script>
+<script src="https://unpkg.com/wavesurfer.js@6.6.4/dist/plugin/wavesurfer.regions.min.js"></script>
+<script src="/viewer/app.js"></script>
+</body>
+</html>
