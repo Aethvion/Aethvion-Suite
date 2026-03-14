@@ -2,10 +2,58 @@
     "system": {
         "name": "Aethvion Suite",
         "company": "Aethvion",
-        "version": "4",
-        "last_sync": "2026-03-12",
+        "version": "5",
+        "last_sync": "2026-03-14",
         "contact": "contact@aethvion.com",
         "changelog": [
+            {
+                "version": "5",
+                "date": "2026-03-14",
+                "added": [
+                    "Aethvion Audio: Standalone audio editor module with full FastAPI backend (port 8083)",
+                    "Aethvion Audio: Real-time waveform visualization powered by WaveSurfer.js",
+                    "Aethvion Audio: Region-based selection for precise trim and silence operations",
+                    "Aethvion Audio: Effects pipeline — Fade In/Out, Normalize, Gain (±20 dB), Reverse, Speed control (0.25×–4×)",
+                    "Aethvion Audio: Format tools — Stereo↔Mono conversion and multi-rate resampling (8k–96kHz)",
+                    "Aethvion Audio: Unlimited undo history and one-click reset to original",
+                    "Aethvion Audio: Multi-format export — WAV (native), MP3 and OGG (via FFmpeg)",
+                    "Aethvion Audio: Drag-and-drop file loading (WAV, MP3, OGG, FLAC)",
+                    "Aethvion Audio: Start_Audio.bat startup script with automatic dependency installation",
+                    "Aethvion Photo (Image Forge): Universal workspace for text-to-image synthesis and manipulation",
+                    "Aethvion Photo: Layer-based canvas engine with transparency and non-destructive filtering",
+                    "Aethvion Photo: AI Background Removal tool integrated directly into the workspace",
+                    "Aethvion Photo: Real-time per-layer CSS filters (Brightness, Contrast, Saturation, etc.)",
+                    "Dashboard: Dedicated Suite Mode for cross-repo application management",
+                    "Dashboard: Mode-specific navigation layouts for Enterprise and R&D workspaces",
+                    "Dashboard: Aethvion Audio registered in module map, sidebar, and hub card",
+                    "Dashboard: Audio module status badge integrated into live port polling",
+                    "Misaka Cipher: Added settings button to navigate between chat and Misaka Cipher settings",
+                    "Local Models: One-click install and remove functionality for supported models",
+                    "Chat: Detailed token use information for Auto-routed responses",
+                    "Version Page: Added scrollbar for improved changelog navigation",
+                    "UI: Persistent system-wide status telemetry (Tokens, Cost, Agents, Tools) across all modes",
+                    "UI: Dynamic versioning in the Hub hero section powered by system-status.json"
+                ],
+                "improved": [
+                    "System: Rebranded all core and interface elements to Aethvion Suite",
+                    "System: Fixed Smart Tab startup check to correctly handle rebranded window titles",
+                    "UI: Refined sidebar organization with mode-filtered categories and items",
+                    "UI: Automated hero section cleanup — removed redundant status badges",
+                    "Chat: Reduced information bloat for a cleaner conversational experience",
+                    "Settings: Expanded suggested models library for easier configuration",
+                    "Persona: Updated default typing speed to 75 for Assistant and Misaka Cipher",
+                    "Aethvion VTuber: Improved layout for better workflow focus"
+                ],
+                "changed": [
+                    "Navigation: Reorganized dashboard hierarchy to prioritize Misaka Cipher and Creative workflows",
+                    "Aethvion Modules: Strategic relocation of standalone apps to the Suite management hub",
+                    "Hub Card: Aethvion Audio activated — removed 'Coming Soon' state",
+                    "Repo Architecture: Renamed from Misaka-Cipher to Aethvion-Suite",
+                    "Repo Architecture: Replaced Specter/Synapse modules with standalone VTuber and Tracking apps",
+                    "Repo Architecture: Relocated Nexus Models to the core source directory",
+                    "Misaka Cipher: Implemented 'Hide Character' display option"
+                ]
+            },
             {
                 "version": "4",
                 "date": "2026-03-12",
@@ -104,6 +152,14 @@
                 {
                     "name": "AI Conversations",
                     "desc": "Assign personas to multiple models and watch them interact autonomously about the starting prompt."
+                },
+                {
+                    "name": "Aethvion Photo",
+                    "desc": "Integrated workspace for text-to-image synthesis and manipulation."
+                },
+                {
+                    "name": "Aethvion Audio",
+                    "desc": "Standalone audio editor with waveform visualization, effects pipeline, and multi-format export."
                 }
             ],
             "providers": [
@@ -186,14 +242,6 @@
                 {
                     "name": "Autonomous Agents",
                     "desc": "Goal-oriented agents capable of multi-step planning and file manipulation."
-                },
-                {
-                    "name": "Aethvion Photo",
-                    "desc": "Integrated workspace for text-to-image synthesis and manipulation."
-                },
-                {
-                    "name": "Aethvion Audio",
-                    "desc": "Integrated workspace for text-to-audio synthesis and multi-track editing."
                 }
             ],
             "providers": [
@@ -361,6 +409,84 @@
                 {
                     "name": "Gesture Recognition",
                     "desc": "Hand gesture control for applications."
+                }
+            ]
+        },
+        {
+            "id": "audio",
+            "name": "Aethvion Audio",
+            "desc": "Professional standalone audio editor with waveform visualization, effects, and multi-format export.",
+            "features": [
+                {
+                    "name": "Waveform Visualization",
+                    "desc": "Real-time interactive waveform display powered by WaveSurfer.js with region selection."
+                },
+                {
+                    "name": "Region-Based Editing",
+                    "desc": "Click-drag to select regions for trimming, silencing, or targeted effect application."
+                },
+                {
+                    "name": "Effects Pipeline",
+                    "desc": "Fade In/Out, Normalize, Gain (±20 dB), Reverse, Speed control (0.25×–4×), and Crop Silence."
+                },
+                {
+                    "name": "Format Tools",
+                    "desc": "Stereo-to-Mono and Mono-to-Stereo conversion with full resampling support (8kHz–96kHz)."
+                },
+                {
+                    "name": "Undo & Reset",
+                    "desc": "Unlimited undo history with one-click reset to the original loaded file."
+                },
+                {
+                    "name": "Multi-Format Export",
+                    "desc": "Export edited audio as WAV (native), MP3, or OGG (FFmpeg required for compressed formats)."
+                }
+            ],
+            "wip": [
+                {
+                    "name": "Multi-Track Mixing",
+                    "desc": "Layer multiple audio tracks with individual volume and pan controls."
+                }
+            ],
+            "planned": [
+                {
+                    "name": "Spectral View",
+                    "desc": "Frequency-domain visualization for surgical noise removal and EQ editing."
+                },
+                {
+                    "name": "AI Noise Reduction",
+                    "desc": "Machine-learning powered background noise suppression."
+                }
+            ]
+        },
+        {
+            "id": "photo",
+            "name": "Aethvion Photo",
+            "desc": "Universal workspace for text-to-image synthesis and manipulation.",
+            "features": [
+                {
+                    "name": "Layer-Based Canvas Engine",
+                    "desc": "Professional grade canvas supporting multiple layers, transparency, and non-destructive filtering."
+                },
+                {
+                    "name": "AI Background Removal",
+                    "desc": "Integrated 'Remove Background' tool powered by high-precision AI models."
+                },
+                {
+                    "name": "Live Filtering",
+                    "desc": "Real-time CSS-based filters (Brightness, Contrast, Saturation, etc.) applied per-layer."
+                }
+            ],
+            "wip": [
+                {
+                    "name": "Advanced AI Generation",
+                    "desc": "Deeper integration with local and cloud-based image gen models."
+                }
+            ],
+            "planned": [
+                {
+                    "name": "Batch Processing",
+                    "desc": "Automation for repetitive image editing tasks."
                 }
             ]
         }
