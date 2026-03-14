@@ -131,7 +131,7 @@ Parts array:
 {json.dumps([{{'id': p['id'], 'z': p['z']}} for p in parts], indent=2)}
 
 Please output a JSON object containing EXACTLY three root keys: "params", "animations", and "mappings".
-1. "params": Define one or more logic parameters per part. Name them after the part, e.g. Param{part_id.title()}X, Param{part_id.title()}Y, ParamBreath, etc.
+1. "params": Define one or more logic parameters per part. Name them after the part, e.g. Param{{part_id.title()}}X, Param{{part_id.title()}}Y, ParamBreath, etc.
 2. "animations": Give me an "idle" animation that oscillates ParamBreath using type "sine". You can add more animations.
 3. "mappings": Wire params to parts using the part IDs from the list above.
 

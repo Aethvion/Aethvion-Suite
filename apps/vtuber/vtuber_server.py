@@ -119,7 +119,7 @@ async def list_models():
     results = []
 
     # .specter archives
-    for sf in SPECTER_DIR.glob("*.specter"):
+    for sf in VTUBER_DIR.glob("*.specter"):
         try:
             manifest_data = {}
             with zipfile.ZipFile(sf, "r") as zf:
@@ -159,7 +159,7 @@ async def list_models():
 async def get_model(model_id: str):
     """Return model JSON. Works for .specter archives and legacy dirs."""
     # Check .specter archive first
-    sf = SPECTER_DIR / f"{model_id}.specter"
+    sf = VTUBER_DIR / f"{model_id}.specter"
     if sf.exists():
         model = VTuberFormat.load_model_only(str(sf))
         return JSONResponse(model)
@@ -179,7 +179,7 @@ async def create_model(name: str = Form("Untitled")):
     """Create a new empty .specter model."""
     model_id = f"{name.lower().replace(' ', '_')}_{uuid.uuid4().hex[:6]}"
     model = new_model(name)
-    sf_path = SPECTER_DIR / f"{model_id}.specter"
+    sf_path = VTUBER_DIR / f"{model_id}.specter"
     VTuberFormat.save(str(sf_path), model, {})
     return JSONResponse({"status": "success", "model_id": model_id, "model": model})
 
@@ -190,7 +190,7 @@ class SaveModelRequest(BaseModel):
 @app.post("/api/model/{model_id}/save")
 async def save_model(model_id: str, request: SaveModelRequest):
     """Save model data back to .specter file."""
-    sf_path = SPECTER_DIR / f"{model_id}.specter"
+    sf_path = VTUBER_DIR / f"{model_id}.specter"
     model = request.model
     if not model:
         raise HTTPException(400, "No model data provided.")
@@ -207,7 +207,7 @@ async def save_model(model_id: str, request: SaveModelRequest):
 
 @app.delete("/api/model/{model_id}")
 async def delete_model(model_id: str):
-    sf_path = SPECTER_DIR / f"{model_id}.specter"
+    sf_path = VTUBER_DIR / f"{model_id}.specter"
     if sf_path.exists():
         sf_path.unlink()
         return JSONResponse({"status": "success"})
@@ -228,7 +228,7 @@ async def delete_model(model_id: str):
 @app.get("/api/model/{model_id}/texture/{tex_path:path}")
 async def get_texture(model_id: str, tex_path: str):
     """Serve a texture from a .specter archive or legacy directory."""
-    sf_path = SPECTER_DIR / f"{model_id}.specter"
+    sf_path = VTUBER_DIR / f"{model_id}.specter"
     if sf_path.exists():
         with zipfile.ZipFile(sf_path, "r") as zf:
             rel = f"textures/{tex_path}"
@@ -257,7 +257,7 @@ async def add_layer(model_id: str, file: UploadFile = File(...),
     w, h = img.size
     layer_n = layer_name or Path(file.filename).stem
 
-    sf_path = SPECTER_DIR / f"{model_id}.specter"
+    sf_path = VTUBER_DIR / f"{model_id}.specter"
     if not sf_path.exists():
         raise HTTPException(404, "Model not found.")
 
@@ -270,14 +270,14 @@ async def add_layer(model_id: str, file: UploadFile = File(...),
                       model["canvas"]["width"], model["canvas"]["height"])
     model["layers"].append(layer)
 
-    SpecterFormat.save(str(sf_path), model, textures)
+    VTuberFormat.save(str(sf_path), model, textures)
     return JSONResponse({"status": "success", "layer": layer})
 
 
 @app.post("/api/model/{model_id}/layer/{layer_id}/remove-bg")
 async def remove_layer_bg(model_id: str, layer_id: str):
     """Remove background from a layer texture."""
-    sf_path = SPECTER_DIR / f"{model_id}.specter"
+    sf_path = VTUBER_DIR / f"{model_id}.specter"
     if not sf_path.exists():
         raise HTTPException(404, "Model not found.")
 
@@ -317,13 +317,13 @@ async def remove_layer_bg(model_id: str, layer_id: str):
         Path(tmp_in_path).unlink(missing_ok=True)
         Path(tmp_out_path).unlink(missing_ok=True)
 
-    SpecterFormat.save(str(sf_path), model, textures)
+    VTuberFormat.save(str(sf_path), model, textures)
     return JSONResponse({"status": "success", "texture": nobg_rel})
 
 
 @app.post("/api/model/{model_id}/layer/{layer_id}/restore-bg")
 async def restore_layer_bg(model_id: str, layer_id: str):
-    sf_path = SPECTER_DIR / f"{model_id}.specter"
+    sf_path = VTUBER_DIR / f"{model_id}.specter"
     if not sf_path.exists():
         raise HTTPException(404, "Model not found.")
 
@@ -336,7 +336,7 @@ async def restore_layer_bg(model_id: str, layer_id: str):
     if orig:
         layer["texture"] = orig
 
-    SpecterFormat.save(str(sf_path), model, textures)
+    VTuberFormat.save(str(sf_path), model, textures)
     return JSONResponse({"status": "success", "texture": layer["texture"]})
 
 
@@ -347,7 +347,7 @@ async def restore_layer_bg(model_id: str, layer_id: str):
 @app.get("/api/model/{model_id}/export")
 async def export_model(model_id: str):
     """Download the .specter file."""
-    sf_path = SPECTER_DIR / f"{model_id}.specter"
+    sf_path = VTUBER_DIR / f"{model_id}.specter"
     if sf_path.exists():
         return FileResponse(str(sf_path), media_type="application/octet-stream",
                             filename=f"{model_id}.specter")
@@ -355,8 +355,8 @@ async def export_model(model_id: str):
     # Try to export from legacy directory
     model_dir = MODELS_DIR / model_id
     if model_dir.exists():
-        out_path = SPECTER_DIR / f"{model_id}.specter"
-        SpecterFormat.export_from_dir(str(model_dir), str(out_path))
+        out_path = VTUBER_DIR / f"{model_id}.specter"
+        VTuberFormat.export_from_dir(str(model_dir), str(out_path))
         return FileResponse(str(out_path), media_type="application/octet-stream",
                             filename=f"{model_id}.specter")
 
@@ -369,9 +369,9 @@ async def import_model(file: UploadFile = File(...)):
     data = await file.read()
     name = Path(file.filename).stem
     model_id = f"{name}_{uuid.uuid4().hex[:6]}"
-    sf_path = SPECTER_DIR / f"{model_id}.specter"
+    sf_path = VTUBER_DIR / f"{model_id}.specter"
     sf_path.write_bytes(data)
-    model = SpecterFormat.load_model_only(str(sf_path))
+    model = VTuberFormat.load_model_only(str(sf_path))
     return JSONResponse({"status": "success", "model_id": model_id, "model": model})
 
 
@@ -491,8 +491,8 @@ async def generate_rig(req: RigConceptRequest):
                 textures[f"textures/{png.name}"] = png.read_bytes()
 
         new_id = req.concept_id
-        sf_path = SPECTER_DIR / f"{new_id}.specter"
-        SpecterFormat.save(str(sf_path), model, textures)
+        sf_path = VTUBER_DIR / f"{new_id}.specter"
+        VTuberFormat.save(str(sf_path), model, textures)
 
         return JSONResponse({"status": "success", "model_id": new_id, "model": model})
 
@@ -544,8 +544,8 @@ async def generate_from_upload(
             for png in tex_dir.glob("*.png"):
                 textures[f"textures/{png.name}"] = png.read_bytes()
 
-        sf_path = SPECTER_DIR / f"{model_id}.specter"
-        SpecterFormat.save(str(sf_path), model, textures)
+        sf_path = VTUBER_DIR / f"{model_id}.specter"
+        VTuberFormat.save(str(sf_path), model, textures)
 
         return JSONResponse({"status": "success", "model_id": model_id, "model": model})
     except HTTPException:
@@ -567,7 +567,7 @@ class AutoMeshRequest(BaseModel):
 
 @app.post("/api/rig/auto-mesh")
 async def auto_mesh(req: AutoMeshRequest):
-    sf_path = SPECTER_DIR / f"{req.model_id}.specter"
+    sf_path = VTUBER_DIR / f"{req.model_id}.specter"
     if not sf_path.exists():
         raise HTTPException(404, "Model not found.")
 
@@ -581,7 +581,7 @@ async def auto_mesh(req: AutoMeshRequest):
         provider, mid = _get_chat_provider(req.chat_model)
 
     layer["mesh"] = generate_mesh_for_layer(layer, provider, mid or "", req.density)
-    SpecterFormat.save(str(sf_path), model, textures)
+    VTuberFormat.save(str(sf_path), model, textures)
     return JSONResponse({"status": "success", "mesh": layer["mesh"]})
 
 
@@ -593,7 +593,7 @@ class AutoBonesRequest(BaseModel):
 
 @app.post("/api/rig/auto-bones")
 async def auto_bones_endpoint(req: AutoBonesRequest):
-    sf_path = SPECTER_DIR / f"{req.model_id}.specter"
+    sf_path = VTUBER_DIR / f"{req.model_id}.specter"
     if not sf_path.exists():
         raise HTTPException(404, "Model not found.")
 
@@ -607,7 +607,7 @@ async def auto_bones_endpoint(req: AutoBonesRequest):
     bone_params = suggest_bone_params(bones, model["parameters"], provider, mid)
     model["bones"] = bones
     model["bone_params"] = bone_params
-    SpecterFormat.save(str(sf_path), model, textures)
+    VTuberFormat.save(str(sf_path), model, textures)
     return JSONResponse({"status": "success", "bones": bones, "bone_params": bone_params})
 
 
@@ -618,11 +618,11 @@ class AutoWeightsRequest(BaseModel):
 
 @app.post("/api/rig/auto-weights")
 async def auto_weights_endpoint(req: AutoWeightsRequest):
-    sf_path = SPECTER_DIR / f"{req.model_id}.specter"
+    sf_path = VTUBER_DIR / f"{req.model_id}.specter"
     if not sf_path.exists():
         raise HTTPException(404, "Model not found.")
 
-    model, textures = SpecterFormat.load(str(sf_path))
+    model, textures = VTuberFormat.load(str(sf_path))
     if not model.get("bones"):
         raise HTTPException(400, "No bones defined. Add bones before auto-weighting.")
 
@@ -633,7 +633,7 @@ async def auto_weights_endpoint(req: AutoWeightsRequest):
         weights = normalize_weights(raw)
 
     model["weights"] = weights
-    SpecterFormat.save(str(sf_path), model, textures)
+    VTuberFormat.save(str(sf_path), model, textures)
     return JSONResponse({"status": "success", "weights": weights})
 
 
@@ -647,11 +647,11 @@ class AutoRigAllRequest(BaseModel):
 @app.post("/api/rig/auto-all")
 async def auto_rig_all(req: AutoRigAllRequest):
     """One-click: generate meshes, bones, bone_params, and weights."""
-    sf_path = SPECTER_DIR / f"{req.model_id}.specter"
+    sf_path = VTUBER_DIR / f"{req.model_id}.specter"
     if not sf_path.exists():
         raise HTTPException(404, "Model not found.")
 
-    model, textures = SpecterFormat.load(str(sf_path))
+    model, textures = VTuberFormat.load(str(sf_path))
 
     provider, mid = (None, "")
     if req.mesh_density == "ai" or req.bone_style == "custom":
@@ -666,7 +666,7 @@ async def auto_rig_all(req: AutoRigAllRequest):
     raw = assign_weights(model["layers"], model["bones"])
     model["weights"] = smooth_weights(raw, {l["id"]: l for l in model["layers"]})
 
-    SpecterFormat.save(str(sf_path), model, textures)
+    VTuberFormat.save(str(sf_path), model, textures)
     return JSONResponse({
         "status": "success",
         "layers": model["layers"],

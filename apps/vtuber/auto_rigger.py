@@ -58,6 +58,7 @@ class AutoRigger:
         vision_provider = self.provider
         vision_model = self.model_id
         
+        target_model = chat_model or self.model_id
         if target_model:
             provider_name = self.pm.model_to_provider_map.get(target_model)
             if provider_name == "google_ai":
