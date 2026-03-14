@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Specter Docs — VTuber Engine</title>
+  <title>Aethvion VTuber Docs — Suite</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <style>
     /* ═══════════════════════════════════════════════════
-       Specter Documentation — Stylesheet
+       Aethvion VTuber Documentation — Stylesheet
     ═══════════════════════════════════════════════════ */
     :root {
       --bg:          #080a12;
@@ -344,7 +344,7 @@
 <header id="topbar">
   <div class="tb-logo"><i class="fa-solid fa-ghost"></i></div>
   <div class="tb-brand">
-    <span class="tb-title">SPECTER</span>
+    <span class="tb-title">AETHVION VTUBER</span>
     <span class="tb-subtitle">— Documentation</span>
   </div>
   <span class="tb-version">v2.0.0</span>
@@ -362,7 +362,7 @@
   <nav id="sidebar">
     <div class="nav-section-title">Overview</div>
     <a class="nav-item active" href="#overview" onclick="scrollTo('overview')"><i class="fa-solid fa-house"></i> Introduction</a>
-    <a class="nav-item" href="#specter-file" onclick="scrollTo('specter-file')"><i class="fa-solid fa-file-zipper"></i> .specter Format</a>
+    <a class="nav-item" href="#specter-file" onclick="scrollTo('specter-file')"><i class="fa-solid fa-file-zipper"></i> .vtuber Format</a>
     <a class="nav-item" href="#file-ops" onclick="scrollTo('file-ops')"><i class="fa-solid fa-folder-open"></i> File Operations</a>
     <a class="nav-item" href="#shortcuts" onclick="scrollTo('shortcuts')"><i class="fa-solid fa-keyboard"></i> Keyboard Shortcuts</a>
 
@@ -405,16 +405,16 @@
 
     <!-- ── Overview ──────────────────────────────────────────────── -->
     <section class="doc-section" id="overview">
-      <h1>Specter — VTuber Engine</h1>
+      <h1>Aethvion VTuber — Suite</h1>
       <p class="lead">
-        Specter is a standalone, browser-based VTuber rigging engine. It lets you <strong>generate</strong>
+        Aethvion VTuber is a standalone, browser-based VTuber rigging engine. It lets you <strong>generate</strong>
         character artwork with AI, <strong>rig</strong> it with a mesh and bone system, <strong>paint weights</strong>
         to control how bones deform each part, and <strong>preview</strong> real-time animations — all in one interface.
       </p>
       <div class="box note">
         <div class="box-label">About</div>
-        Specter is fully self-contained. It does not require any external VTuber software. Models are saved as
-        <code>.specter</code> files that package everything — textures, rig, weights, animations — into a single portable archive.
+        Aethvion VTuber is fully self-contained. It does not require any external VTuber software. Models are saved as
+        <code>.vtuber</code> files that package everything — textures, rig, weights, animations — into a single portable archive.
       </div>
 
       <h3>How it's organised</h3>
@@ -434,14 +434,14 @@
       <p>Steps 1–5 all have AI-assisted options — you can let the AI do the heavy lifting and then fine-tune manually, or skip the AI entirely and do everything by hand. AI features require API keys in the shared <code>.env</code> file (Google AI or OpenAI).</p>
     </section>
 
-    <!-- ── .specter Format ────────────────────────────────────────── -->
+    <!-- ── .vtuber Format ────────────────────────────────────────── -->
     <section class="doc-section" id="specter-file">
-      <h2><i class="fa-solid fa-file-zipper"></i> The .specter File Format</h2>
-      <p>A <code>.specter</code> file is a <strong>ZIP archive</strong> that contains your entire model — artwork, mesh data, bones, weights, animations, and physics — in one portable file.</p>
+      <h2><i class="fa-solid fa-file-zipper"></i> The .vtuber File Format</h2>
+      <p>A <code>.vtuber</code> file is a <strong>ZIP archive</strong> that contains your entire model — artwork, mesh data, bones, weights, animations, and physics — in one portable file.</p>
 
       <h3>Archive structure</h3>
       <div class="file-tree">
-        <span class="ft-dir">yourmodel.specter</span>  <span class="ft-comment">← ZIP archive</span><br>
+        <span class="ft-dir">yourmodel.vtuber</span>  <span class="ft-comment">← ZIP archive</span><br>
         <span class="ft-comment">├── </span><span class="ft-file">manifest.json</span>   <span class="ft-comment">← name, version, timestamps</span><br>
         <span class="ft-comment">├── </span><span class="ft-file">model.json</span>       <span class="ft-comment">← full model data (see below)</span><br>
         <span class="ft-comment">└── textures/</span><br>
@@ -468,11 +468,11 @@
       </table>
 
       <h3>Backward compatibility</h3>
-      <p>Legacy <code>avatar.specter.json</code> models from Specter v1 are automatically detected and migrated to v2 format when you open them. The original files on disk are not modified.</p>
+      <p>Legacy <code>avatar.vtuber.json</code> models from Aethvion VTuber v1 are automatically detected and migrated to v2 format when you open them. The original files on disk are not modified.</p>
 
       <div class="box tip">
         <div class="box-label">Tip</div>
-        You can open a <code>.specter</code> file with any ZIP tool (7-Zip, WinRAR, etc.) to manually inspect or extract its contents. The <code>model.json</code> is plain readable JSON.
+        You can open a <code>.vtuber</code> file with any ZIP tool (7-Zip, WinRAR, etc.) to manually inspect or extract its contents. The <code>model.json</code> is plain readable JSON.
       </div>
     </section>
 
@@ -484,10 +484,10 @@
       <table class="setting-table">
         <thead><tr><th>Button</th><th>Shortcut</th><th>What it does</th></tr></thead>
         <tbody>
-          <tr><td><i class="fa-solid fa-file-circle-plus"></i> New Model</td><td>—</td><td>Creates a blank <code>.specter</code> model on the server and opens it. You'll be asked for a name.</td></tr>
-          <tr><td><i class="fa-solid fa-folder-open"></i> Open</td><td>—</td><td>Opens a file picker. Select a <code>.specter</code> file to import it into the engine. You can also drop image files here to add them as new layers.</td></tr>
-          <tr><td><i class="fa-solid fa-floppy-disk"></i> Save</td><td><kbd>Ctrl+S</kbd></td><td>Saves the current model back to its <code>.specter</code> archive on the server. The title bar shows an asterisk (*) when there are unsaved changes.</td></tr>
-          <tr><td><i class="fa-solid fa-download"></i> Export</td><td>—</td><td>Saves the model and then downloads the <code>.specter</code> file to your computer. Use this to share or back up your model.</td></tr>
+          <tr><td><i class="fa-solid fa-file-circle-plus"></i> New Model</td><td>—</td><td>Creates a blank <code>.vtuber</code> model on the server and opens it. You'll be asked for a name.</td></tr>
+          <tr><td><i class="fa-solid fa-folder-open"></i> Open</td><td>—</td><td>Opens a file picker. Select a <code>.vtuber</code> file to import it into the engine. You can also drop image files here to add them as new layers.</td></tr>
+          <tr><td><i class="fa-solid fa-floppy-disk"></i> Save</td><td><kbd>Ctrl+S</kbd></td><td>Saves the current model back to its <code>.vtuber</code> archive on the server. The title bar shows an asterisk (*) when there are unsaved changes.</td></tr>
+          <tr><td><i class="fa-solid fa-download"></i> Export</td><td>—</td><td>Saves the model and then downloads the <code>.vtuber</code> file to your computer. Use this to share or back up your model.</td></tr>
         </tbody>
       </table>
 
@@ -1017,13 +1017,13 @@
 
       <div class="box warn">
         <div class="box-label">Coming soon</div>
-        The face tracking module is a separate add-on that connects to Specter via WebSocket at <code>ws://localhost:8082/tracking</code>. The bridge interface is defined and ready — the full tracking module is planned for a future release.
+        The face tracking module is a separate add-on that connects to Aethvion VTuber via WebSocket at <code>ws://localhost:8082/tracking</code>. The bridge interface is defined and ready — the full tracking module is planned for a future release.
       </div>
 
       <h3>How it will work</h3>
-      <p>The Specter Tracking Bridge maps face tracking data to model parameters:</p>
+      <p>The Aethvion VTuber Tracking Bridge maps face tracking data to model parameters:</p>
       <table class="setting-table">
-        <thead><tr><th>Tracking input</th><th>Specter parameter</th></tr></thead>
+        <thead><tr><th>Tracking input</th><th>Aethvion VTuber parameter</th></tr></thead>
         <tbody>
           <tr><td>Head yaw (left/right)</td><td>ParamAngleX</td></tr>
           <tr><td>Head pitch (up/down)</td><td>ParamAngleY</td></tr>
@@ -1100,7 +1100,7 @@
     <!-- ── Tracking ───────────────────────────────────────────────── -->
     <section class="doc-section" id="tracking">
       <h2><i class="fa-solid fa-satellite-dish"></i> Tracking Bridge</h2>
-      <p>The Specter Tracking Bridge (<code>tracking/bridge.py</code>) is the interface between face/motion tracking systems and the Specter parameter system. It is designed as a separate module to keep Specter modular.</p>
+      <p>The Aethvion VTuber Tracking Bridge (<code>tracking/bridge.py</code>) is the interface between face/motion tracking systems and the Aethvion VTuber parameter system. It is designed as a separate module to keep Aethvion VTuber modular.</p>
 
       <h3>Protocol</h3>
       <p>The tracking module communicates with the editor via WebSocket at <code>ws://localhost:8082/tracking</code> and sends JSON messages:</p>

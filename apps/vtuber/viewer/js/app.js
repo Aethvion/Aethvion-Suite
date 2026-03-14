@@ -1,5 +1,5 @@
 /**
- * app.js — Specter VTuber Engine main application entry point
+ * app.js — Aethvion VTuber main application entry point
  */
 import { state, setMode, selectLayer, selectBone, resetParams, markDirty, markClean } from './state.js';
 import * as api from './api.js';
@@ -208,7 +208,7 @@ document.getElementById('btnNewModel').addEventListener('click', async () => {
 });
 
 document.getElementById('btnOpenModel').addEventListener('click', () => {
-  document.getElementById('fileInput').accept = '.specter';
+  document.getElementById('fileInput').accept = '.vtuber';
   document.getElementById('fileInput').click();
 });
 
@@ -222,7 +222,7 @@ document.getElementById('btnExport').addEventListener('click', async () => {
     const blob = await api.exportModel(state.modelId);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `${state.modelId}.specter`; a.click();
+    a.href = url; a.download = `${state.modelId}.vtuber`; a.click();
     URL.revokeObjectURL(url);
     toast('Exported!', 'success');
   } catch (e) { toast(e.message, 'error'); }
@@ -234,7 +234,7 @@ document.getElementById('fileInput').addEventListener('change', async e => {
   if (!file) return;
   e.target.value = '';
 
-  if (file.name.endsWith('.specter')) {
+  if (file.name.endsWith('.vtuber')) {
     showLoading('Importing...');
     try {
       const res = await api.importModel(file);
@@ -446,7 +446,7 @@ async function openModel(modelId, model) {
   renderParamPanel();
   renderInspector();
 
-  document.title = `Specter — ${model.name || 'Untitled'}`;
+  document.title = `Aethvion VTuber — ${model.name || 'Untitled'}`;
   setStatus(`Model "${model.name}" loaded (${model.layers?.length ?? 0} layers, ${model.bones?.length ?? 0} bones)`);
 
   // Switch to edit mode

@@ -1,6 +1,6 @@
 """
-Specter Server — FastAPI backend for the Specter VTuber Engine (v2)
-Standalone module, does not depend on Misaka Cipher chat/discord systems.
+VTuber Server — FastAPI backend for the Aethvion VTuber Engine (v2)
+Standalone module.
 """
 import io
 import json
@@ -38,9 +38,9 @@ except Exception:
     pm = None
     HAS_PROVIDERS = False
 
-# Specter-local modules
-from formats.specter_format import (
-    SpecterFormat, SPECTER_VERSION, new_model, new_layer, new_bone,
+# VTuber-local modules
+from formats.vtuber_format import (
+    VTuberFormat, VTUBER_VERSION, new_model, new_layer, new_bone,
     new_bone_param, new_physics_group, _migrate_v1_to_v2,
 )
 from rigging.auto_mesh import generate_mesh_for_layer
@@ -52,7 +52,7 @@ from pipelines.utils import remove_background
 # App setup
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="Specter VTuber Engine", version="2.0.0")
+app = FastAPI(title="Aethvion VTuber Engine", version="2.0.0")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],
@@ -61,9 +61,9 @@ app.add_middleware(
 BASE_DIR = Path(__file__).parent
 VIEWER_DIR = BASE_DIR / "viewer"
 MODELS_DIR = BASE_DIR / "models"
-SPECTER_DIR = BASE_DIR / "specter_files"   # .specter archives
+VTUBER_DIR = BASE_DIR / "vtuber_files"   # .specter archives
 MODELS_DIR.mkdir(exist_ok=True)
-SPECTER_DIR.mkdir(exist_ok=True)
+VTUBER_DIR.mkdir(exist_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +161,7 @@ async def get_model(model_id: str):
     # Check .specter archive first
     sf = SPECTER_DIR / f"{model_id}.specter"
     if sf.exists():
-        model = SpecterFormat.load_model_only(str(sf))
+        model = VTuberFormat.load_model_only(str(sf))
         return JSONResponse(model)
 
     # Legacy directory
@@ -180,7 +180,7 @@ async def create_model(name: str = Form("Untitled")):
     model_id = f"{name.lower().replace(' ', '_')}_{uuid.uuid4().hex[:6]}"
     model = new_model(name)
     sf_path = SPECTER_DIR / f"{model_id}.specter"
-    SpecterFormat.save(str(sf_path), model, {})
+    VTuberFormat.save(str(sf_path), model, {})
     return JSONResponse({"status": "success", "model_id": model_id, "model": model})
 
 
@@ -197,10 +197,10 @@ async def save_model(model_id: str, request: SaveModelRequest):
 
     if sf_path.exists():
         # Load existing textures and merge
-        _, existing_textures = SpecterFormat.load(str(sf_path))
-        SpecterFormat.save(str(sf_path), model, existing_textures)
+        _, existing_textures = VTuberFormat.load(str(sf_path))
+        VTuberFormat.save(str(sf_path), model, existing_textures)
     else:
-        SpecterFormat.save(str(sf_path), model, {})
+        VTuberFormat.save(str(sf_path), model, {})
 
     return JSONResponse({"status": "success"})
 
@@ -261,7 +261,7 @@ async def add_layer(model_id: str, file: UploadFile = File(...),
     if not sf_path.exists():
         raise HTTPException(404, "Model not found.")
 
-    model, textures = SpecterFormat.load(str(sf_path))
+    model, textures = VTuberFormat.load(str(sf_path))
 
     tex_rel = f"textures/{uuid.uuid4().hex[:8]}.png"
     textures[tex_rel] = data
@@ -281,7 +281,7 @@ async def remove_layer_bg(model_id: str, layer_id: str):
     if not sf_path.exists():
         raise HTTPException(404, "Model not found.")
 
-    model, textures = SpecterFormat.load(str(sf_path))
+    model, textures = VTuberFormat.load(str(sf_path))
     layer = next((l for l in model["layers"] if l["id"] == layer_id), None)
     if not layer:
         raise HTTPException(404, "Layer not found.")
@@ -327,7 +327,7 @@ async def restore_layer_bg(model_id: str, layer_id: str):
     if not sf_path.exists():
         raise HTTPException(404, "Model not found.")
 
-    model, textures = SpecterFormat.load(str(sf_path))
+    model, textures = VTuberFormat.load(str(sf_path))
     layer = next((l for l in model["layers"] if l["id"] == layer_id), None)
     if not layer:
         raise HTTPException(404, "Layer not found.")
@@ -571,7 +571,7 @@ async def auto_mesh(req: AutoMeshRequest):
     if not sf_path.exists():
         raise HTTPException(404, "Model not found.")
 
-    model, textures = SpecterFormat.load(str(sf_path))
+    model, textures = VTuberFormat.load(str(sf_path))
     layer = next((l for l in model["layers"] if l["id"] == req.layer_id), None)
     if not layer:
         raise HTTPException(404, "Layer not found.")
@@ -597,7 +597,7 @@ async def auto_bones_endpoint(req: AutoBonesRequest):
     if not sf_path.exists():
         raise HTTPException(404, "Model not found.")
 
-    model, textures = SpecterFormat.load(str(sf_path))
+    model, textures = VTuberFormat.load(str(sf_path))
 
     provider, mid = (None, "")
     if req.style == "custom":
@@ -711,7 +711,7 @@ async def legacy_list():
 
 app.mount("/viewer", StaticFiles(directory=str(VIEWER_DIR)), name="viewer")
 app.mount("/models", StaticFiles(directory=str(MODELS_DIR)), name="models")
-app.mount("/specter-files", StaticFiles(directory=str(SPECTER_DIR)), name="specter-files")
+app.mount("/vtuber-files", StaticFiles(directory=str(VTUBER_DIR)), name="vtuber-files")
 
 
 @app.get("/favicon.ico")
@@ -746,9 +746,9 @@ async def tutorial_page():
 def launch():
     from core.utils.port_manager import PortManager
     base_port = int(os.getenv("SPECTER_PORT", "8081"))
-    port = PortManager.bind_port("Specter Engine", base_port)
+    port = PortManager.bind_port("VTuber Engine", base_port)
     
-    print(f"🎭 Specter VTuber Engine v{SPECTER_VERSION} → http://localhost:{port}")
+    print(f"🎭 Aethvion VTuber Engine v{VTUBER_VERSION} → http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 
 

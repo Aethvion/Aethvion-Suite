@@ -7,25 +7,22 @@ if not defined MISAKA_LAUNCHED (
     cmd /k ""%~f0""
     exit
 )
-TITLE Synapse Tracking Engine - Aethvion Systems
+TITLE Aethvion VTuber - Character Rigging Engine
 
 :: Figure out the directory where this script actually lives
-SET SYNAPSE_MODULE_DIR=%~dp0
+SET VTUBER_MODULE_DIR=%~dp0
 
-:: Figure out the root MISAKA CIPHER directory relative to the new module location
-:: The script is in C:\Aethvion\Misaka-Cipher\modules\aethvion\synapse\
-for %%I in ("%~dp0..\..\..") do set "ROOT_DIR=%%~fI"
+:: To get to the root, we go up exactly 2 levels: ..\.. -> apps -> Aethvion-Suite
+for %%I in ("%~dp0..\..") do set "ROOT_DIR=%%~fI"
 
 :: Switch working directory to the project Root
 cd /d "%ROOT_DIR%"
 SET PYTHONPATH=%ROOT_DIR%
 
 echo.
-echo ============================================================
-echo          AETHVION - SYNAPSE TRACKING ENGINE
-echo ============================================================
+echo          AETHVION VTUBER - CHARACTER RIGGING
 echo.
-echo [INFO] Running under Misaka Cipher root: %ROOT_DIR%
+echo [INFO] Running under Aethvion Suite root: %ROOT_DIR%
 echo.
 
 :: --- 1. Python Check ------------------------------------------
@@ -69,7 +66,30 @@ if %errorlevel% neq 0 (
     echo [OK]  Core dependencies verified.
 )
 
-:: --- 4. Environment file ---------------------------------------
+:: --- 4. Install Optional Specter Dependencies ------------------
+python -c "import rembg" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo.
+    echo [INFO]  The 'rembg' package for automatic background removal is not installed.
+    echo         This is optional, but recommended for clean VTuber rig generation.
+    set /p INSTALL_REMBG="Do you want to install rembg now? (Y/N): "
+    if /I "!INSTALL_REMBG!"=="Y" (
+        echo [SETUP] Installing rembg and onnxruntime...
+        pip install rembg onnxruntime
+        if !errorlevel! neq 0 (
+            echo [WARN] Failed to install optional dependencies. Specter will run without background removal.
+        ) else (
+            echo [OK]   Optional dependencies installed successfully.
+        )
+    ) else (
+        echo [INFO] Skipping optional background removal setup.
+    )
+    echo.
+) else (
+    echo [OK]  Background removal dependencies verified.
+)
+
+:: --- 5. Environment file ---------------------------------------
 if not exist ".env" (
     if exist ".env.example" (
         copy ".env.example" ".env" >nul
@@ -84,19 +104,19 @@ if not exist ".env" (
 
 :: --- 5. Launch -------------------------------------------------
 echo.
-echo [START] Launching Synapse Tracking Engine...
-echo         Viewer -^> http://localhost:8082
+echo [START] Launching Aethvion VTuber...
+echo         Viewer -> http://localhost:8081
 echo         Press CTRL+C to stop.
 echo.
 
 :: We launch it using the Python environment targeting the module relative to our Root
-"%ROOT_DIR%\.venv\Scripts\python.exe" modules\aethvion\synapse\synapse_server.py
+python apps\vtuber\vtuber_server.py
 set MAIN_EXIT=%errorlevel%
 
-:: --- 6. Result ------------------------------------------------
+:: --- 7. Result ------------------------------------------------
 if %MAIN_EXIT% neq 0 (
     echo.
-    echo [ERROR] Synapse Server crashed (exit code %MAIN_EXIT%).
+    echo [ERROR] Specter Engine crashed (exit code %MAIN_EXIT%).
     echo         Scroll up to find the error, then fix it and re-run.
     goto :FAIL
 )

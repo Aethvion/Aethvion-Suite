@@ -81,7 +81,7 @@ async function fetchStatus() {
         updateUIState(data.is_running);
     } catch (e) {
         console.error("Failed to fetch tracker status:", e);
-        dataOutput.innerText = "Error connecting to Synapse backend.";
+        dataOutput.innerText = "Error connecting to Tracking backend.";
     }
 }
 
@@ -325,7 +325,7 @@ async function launchOsf() {
             syncOsfPort();
             startOsfLiveness();
 
-            // Give facetracker ~1.5 s to initialize, then auto-start the Synapse tracker
+            // Give facetracker ~1.5 s to initialize, then auto-start the Tracking tracker
             // Also verify it's still alive — if it crashed we skip startTracker and show the error
             setTimeout(async () => {
                 const checkRes  = await fetch("/api/osf/status");
@@ -485,9 +485,9 @@ function stopDebugPolling() {
 function connectWebSocket() {
     if (ws) return;
     ws = new WebSocket(WS_URL);
-    ws.onopen  = () => console.log("[Synapse WS] Connected");
-    ws.onclose = () => { console.log("[Synapse WS] Disconnected"); ws = null; };
-    ws.onerror = (e) => console.error("[Synapse WS] Error:", e);
+    ws.onopen  = () => console.log("[Tracking WS] Connected");
+    ws.onclose = () => { console.log("[Tracking WS] Disconnected"); ws = null; };
+    ws.onerror = (e) => console.error("[Tracking WS] Error:", e);
     ws.onmessage = (event) => {
         try {
             const msg = JSON.parse(event.data);

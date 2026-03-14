@@ -1,9 +1,9 @@
 """
 OsfManager — download, install, launch and stop the OpenSeeFace binary.
 
-Installation path: <synapse_module>/openseeface/
-Executable:        <synapse_module>/openseeface/facetracker.exe  (Windows)
-                   <synapse_module>/openseeface/facetracker      (Linux/macOS)
+Installation path: <tracking_module>/openseeface/
+Executable:        <tracking_module>/openseeface/facetracker.exe  (Windows)
+                   <tracking_module>/openseeface/facetracker      (Linux/macOS)
 """
 
 import asyncio
@@ -105,7 +105,7 @@ class OsfManager:
 
             req = urllib.request.Request(
                 GITHUB_API_URL,
-                headers={"User-Agent": "Misaka-Cipher/1.0"},
+                headers={"User-Agent": "Aethvion-Suite/1.0"},
             )
             with urllib.request.urlopen(req, timeout=15) as r:
                 release = json.loads(r.read())

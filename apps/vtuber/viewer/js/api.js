@@ -1,5 +1,5 @@
 /**
- * api.js — HTTP API client for Specter backend
+ * api.js — HTTP API client for Aethvion VTuber backend
  */
 
 const BASE = '';  // Same origin

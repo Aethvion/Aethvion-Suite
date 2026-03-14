@@ -1,4 +1,4 @@
-class SpecterEngine {
+class VTuberEngine {
     constructor(containerId) {
         this.containerId = containerId;
         this.app = null;
@@ -111,7 +111,7 @@ class SpecterEngine {
     }
 
     async loadModel(configPath) {
-        console.log(`[Specter] Loading model: ${configPath}`);
+        console.log(`[VTuber] Loading model: ${configPath}`);
         try {
             const response = await fetch(configPath);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -171,7 +171,7 @@ class SpecterEngine {
                 displayObject.y = part.y || 0;
                 displayObject.zIndex = part.z || 0;
                 // Save original reference config for re-exporting later
-                displayObject.specterConfig = part;
+                displayObject.vtuberConfig = part;
 
                 this.app.stage.addChild(displayObject);
                 this.layers[part.id] = displayObject;
@@ -207,7 +207,7 @@ class SpecterEngine {
             }
 
         } catch (e) {
-            console.error("[Specter] Model load failed:", e);
+            console.error("[VTuber] Model load failed:", e);
         }
     }
 
@@ -219,7 +219,7 @@ class SpecterEngine {
                 this.app.ticker.add(this._updateRef);
                 this.isTickerRunning = true;
             }
-            console.log(`[Specter] Playing animation: ${name}`);
+            console.log(`[VTuber] Playing animation: ${name}`);
         }
     }
 
@@ -227,7 +227,7 @@ class SpecterEngine {
         if (this.isTickerRunning) {
             this.app.ticker.remove(this._updateRef);
             this.isTickerRunning = false;
-            console.log(`[Specter] Animation paused`);
+            console.log(`[VTuber] Animation paused`);
         }
     }
 
@@ -253,7 +253,7 @@ class SpecterEngine {
         layer.zIndex += direction;
 
         // Update the config so it persists if we save
-        if (layer.specterConfig) {
+        if (layer.vtuberConfig) {
             layer.specterConfig.z = layer.zIndex;
         }
 

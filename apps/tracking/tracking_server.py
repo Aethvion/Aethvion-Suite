@@ -15,15 +15,15 @@ for p in (MODULE_DIR, PROJECT_ROOT):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from apps.synapse.synapse_core import synapse_core
-from apps.synapse.trackers.capture_manager import capture_manager
-from apps.synapse.osf_manager import osf_manager
+from apps.tracking.tracking_core import tracking_core
+from apps.tracking.trackers.capture_manager import capture_manager
+from apps.tracking.osf_manager import osf_manager
 
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="Synapse Tracking Engine", version="1.0.0")
+app = FastAPI(title="Aethvion Tracking Engine", version="1.0.0")
 app.state.preview_active = False
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
@@ -42,17 +42,17 @@ app.mount("/viewer", StaticFiles(directory=str(VIEWER_DIR)), name="viewer")
 @app.get("/api/trackers")
 async def list_trackers():
     """List available trackers and current status."""
-    active = synapse_core.active_tracker.config.get("name", "mediapipe") if synapse_core.active_tracker else None
+    active = tracking_core.active_tracker.config.get("name", "mediapipe") if tracking_core.active_tracker else None
     return JSONResponse({
-        "available": synapse_core.get_supported_trackers(),
+        "available": tracking_core.get_supported_trackers(),
         "active": active,
-        "is_running": synapse_core.active_tracker.is_running if synapse_core.active_tracker else False
+        "is_running": tracking_core.active_tracker.is_running if tracking_core.active_tracker else False
     })
 
 @app.get("/api/trackers/debug")
 async def tracker_debug():
     """Return debug stats from the active tracker (especially useful for OpenSeeFace)."""
-    tracker = synapse_core.active_tracker
+    tracker = tracking_core.active_tracker
     if not tracker:
         return JSONResponse({"active": False})
     name = tracker.config.get("name", "unknown")
@@ -75,7 +75,7 @@ class StartConfig(BaseModel):
 @app.post("/api/trackers/start/{tracker_name}")
 async def start_tracker(tracker_name: str, config: StartConfig):
     """Start a specific tracking backend with source and optional OSF config."""
-    success = synapse_core.start_tracker(tracker_name, config={
+    success = tracking_core.start_tracker(tracker_name, config={
         "name":     tracker_name,
         "source":   config.source,
         "osf_host": config.osf_host,
@@ -90,8 +90,8 @@ async def start_tracker(tracker_name: str, config: StartConfig):
 async def stop_tracker():
     """Stop the current tracking backend."""
     # OpenSeeFace tracker owns no camera — don't touch CaptureManager for it
-    tracker_name = (synapse_core.active_tracker.config.get("name", "") if synapse_core.active_tracker else "")
-    synapse_core.stop_tracker()
+    tracker_name = (tracking_core.active_tracker.config.get("name", "") if tracking_core.active_tracker else "")
+    tracking_core.stop_tracker()
     if not app.state.preview_active and tracker_name != "openseeface":
         capture_manager.stop()
     return JSONResponse({"status": "success", "message": "Tracker stopped"})
@@ -149,7 +149,7 @@ async def osf_log():
 @app.get("/api/osf/files")
 async def osf_files():
     """List all files in the OpenSeeFace install directory (for diagnostics)."""
-    from apps.synapse.osf_manager import OSF_DIR
+    from apps.tracking.osf_manager import OSF_DIR
     if not OSF_DIR.exists():
         return JSONResponse({"error": "Not installed", "files": []})
     files = [str(p.relative_to(OSF_DIR)) for p in sorted(OSF_DIR.rglob("*")) if p.is_file()]
@@ -168,7 +168,7 @@ async def stop_preview():
     """Stop the raw video preview."""
     app.state.preview_active = False
     # If tracker is not active, we can release hardware
-    if not (synapse_core.active_tracker and synapse_core.active_tracker.is_running):
+    if not (tracking_core.active_tracker and tracking_core.active_tracker.is_running):
         capture_manager.stop()
     return JSONResponse({"status": "success", "message": "Preview stopped"})
 
@@ -182,8 +182,8 @@ async def video_feed():
             frame = None
             
             # 1. Try tracker processed frame first (mesh overlay)
-            if synapse_core.active_tracker and hasattr(synapse_core.active_tracker, 'latest_frame'):
-                frame = synapse_core.active_tracker.latest_frame
+            if tracking_core.active_tracker and hasattr(tracking_core.active_tracker, 'latest_frame'):
+                frame = tracking_core.active_tracker.latest_frame
                 
             # 2. Fallback to raw frame from CaptureManager if preview is enabled
             if frame is None and app.state.preview_active:
@@ -220,14 +220,14 @@ async def websocket_tracking_endpoint(websocket: WebSocket):
         # For simplicity in this bridge, we'll poll inside the async loop.
         pass
 
-    synapse_core.bridge.subscribe(on_new_data)
+    tracking_core.bridge.subscribe(on_new_data)
     
     try:
         import asyncio
         while True:
             # Instead of a complex thread-safe queue for this example, we poll the bridge 
             # at ~30 FPS limit to ensure stable streaming to the dashboard.
-            data = synapse_core.bridge.get_last_frame()
+            data = tracking_core.bridge.get_last_frame()
             if data:
                 payload = {
                     "type": "params",
@@ -240,7 +240,7 @@ async def websocket_tracking_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"[Synapse WebSocket] Error: {e}")
     finally:
-        synapse_core.bridge.unsubscribe(on_new_data)
+        tracking_core.bridge.unsubscribe(on_new_data)
 
 
 # ---------------------------------------------------------------------------
@@ -260,9 +260,9 @@ async def index():
 def launch():
     from core.utils.port_manager import PortManager
     base_port = int(os.getenv("SYNAPSE_PORT", "8082"))
-    port = PortManager.bind_port("Synapse Tracking", base_port)
+    port = PortManager.bind_port("Aethvion Tracking", base_port)
     
-    print(f"👁️ Synapse Tracking Engine → http://localhost:{port}")
+    print(f"👁️ Aethvion Tracking Engine → http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 
 if __name__ == "__main__":

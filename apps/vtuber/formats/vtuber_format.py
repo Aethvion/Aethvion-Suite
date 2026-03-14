@@ -1,5 +1,5 @@
 """
-.specter file format — ZIP-based package containing model.json + textures/
+.vtuber file format — ZIP-based package containing model.json + textures/
 """
 import io
 import json
@@ -9,7 +9,7 @@ import zipfile
 from pathlib import Path
 from typing import Optional
 
-SPECTER_VERSION = "2.0.0"
+VTUBER_VERSION = "2.0.0"
 
 
 # ---------------------------------------------------------------------------
@@ -18,7 +18,7 @@ SPECTER_VERSION = "2.0.0"
 
 def new_model(name: str = "Untitled") -> dict:
     return {
-        "version": SPECTER_VERSION,
+        "version": VTUBER_VERSION,
         "name": name,
         "author": "",
         "created": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -138,8 +138,8 @@ def new_physics_group(name: str, input_param: str, bone_ids: list) -> dict:
 # File I/O
 # ---------------------------------------------------------------------------
 
-class SpecterFormat:
-    """Read and write .specter files (ZIP archives)."""
+class VTuberFormat:
+    """Read and write .vtuber files (ZIP archives)."""
 
     MANIFEST_FILE = "manifest.json"
     MODEL_FILE = "model.json"
@@ -150,16 +150,16 @@ class SpecterFormat:
     @staticmethod
     def load(path: str) -> tuple[dict, dict[str, bytes]]:
         """
-        Load a .specter file.
+        Load a .vtuber file.
         Returns (model_dict, textures_dict) where textures_dict maps
         relative paths (e.g. 'textures/head.png') to raw bytes.
         """
         textures: dict[str, bytes] = {}
         with zipfile.ZipFile(path, "r") as zf:
-            with zf.open(SpecterFormat.MODEL_FILE) as f:
+            with zf.open(VTuberFormat.MODEL_FILE) as f:
                 model = json.load(f)
             for name in zf.namelist():
-                if name.startswith(SpecterFormat.TEXTURES_DIR) and name != SpecterFormat.TEXTURES_DIR:
+                if name.startswith(VTuberFormat.TEXTURES_DIR) and name != VTuberFormat.TEXTURES_DIR:
                     textures[name] = zf.read(name)
         return model, textures
 
@@ -167,7 +167,7 @@ class SpecterFormat:
     def load_model_only(path: str) -> dict:
         """Load only the model JSON without reading textures into memory."""
         with zipfile.ZipFile(path, "r") as zf:
-            with zf.open(SpecterFormat.MODEL_FILE) as f:
+            with zf.open(VTuberFormat.MODEL_FILE) as f:
                 return json.load(f)
 
     # ----------------------------------------------------------------- write
@@ -175,35 +175,35 @@ class SpecterFormat:
     @staticmethod
     def save(path: str, model: dict, textures: dict[str, bytes]) -> None:
         """
-        Save a .specter file.
+        Save a .vtuber file.
         textures: dict mapping relative path → raw PNG bytes
         """
         model["modified"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         manifest = {
-            "version": model.get("version", SPECTER_VERSION),
+            "version": model.get("version", VTUBER_VERSION),
             "name": model.get("name", "Untitled"),
             "author": model.get("author", ""),
             "created": model.get("created", ""),
             "modified": model["modified"],
         }
         with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr(SpecterFormat.MANIFEST_FILE, json.dumps(manifest, indent=2))
-            zf.writestr(SpecterFormat.MODEL_FILE, json.dumps(model, indent=2))
+            zf.writestr(VTuberFormat.MANIFEST_FILE, json.dumps(manifest, indent=2))
+            zf.writestr(VTuberFormat.MODEL_FILE, json.dumps(model, indent=2))
             for rel_path, data in textures.items():
                 zf.writestr(rel_path, data)
 
-    # -------------------------------------------------------- directory ↔ .specter
+    # -------------------------------------------------------- directory ↔ .vtuber
 
     @staticmethod
     def export_from_dir(model_dir: str, output_path: str) -> None:
         """
-        Pack a legacy model directory (avatar.specter.json + textures/) into a
-        .specter archive. Also migrates old v1 format to v2 automatically.
+        Pack a legacy model directory (avatar.vtuber.json + textures/) into a
+        .vtuber archive. Also migrates old v1 format to v2 automatically.
         """
         model_dir = Path(model_dir)
-        old_json = model_dir / "avatar.specter.json"
+        old_json = model_dir / "avatar.vtuber.json"
         if not old_json.exists():
-            raise FileNotFoundError(f"No avatar.specter.json found in {model_dir}")
+            raise FileNotFoundError(f"No avatar.vtuber.json found in {model_dir}")
 
         with open(old_json, "r", encoding="utf-8") as f:
             old = json.load(f)
@@ -217,18 +217,18 @@ class SpecterFormat:
                 rel = f"textures/{png.name}"
                 textures[rel] = png.read_bytes()
 
-        SpecterFormat.save(output_path, model, textures)
+        VTuberFormat.save(output_path, model, textures)
 
     @staticmethod
     def extract_to_dir(specter_path: str, output_dir: str) -> str:
-        """Extract a .specter archive to a directory. Returns the model dir path."""
+        """Extract a .vtuber archive to a directory. Returns the model dir path."""
         specter_path = Path(specter_path)
         output_dir = Path(output_dir)
         name = specter_path.stem
         model_dir = output_dir / name
         model_dir.mkdir(parents=True, exist_ok=True)
 
-        model, textures = SpecterFormat.load(str(specter_path))
+        model, textures = VTuberFormat.load(str(specter_path))
 
         with open(model_dir / "model.json", "w", encoding="utf-8") as f:
             json.dump(model, f, indent=2)
@@ -244,14 +244,14 @@ class SpecterFormat:
 
     @staticmethod
     def list_textures(path: str) -> list[str]:
-        """Return relative texture paths inside a .specter file."""
+        """Return relative texture paths inside a .vtuber file."""
         with zipfile.ZipFile(path, "r") as zf:
             return [n for n in zf.namelist()
-                    if n.startswith(SpecterFormat.TEXTURES_DIR) and not n.endswith("/")]
+                    if n.startswith(VTuberFormat.TEXTURES_DIR) and not n.endswith("/")]
 
     @staticmethod
     def add_texture(specter_path: str, rel_path: str, data: bytes) -> None:
-        """Add or replace a texture inside an existing .specter file."""
+        """Add or replace a texture inside an existing .vtuber file."""
         with zipfile.ZipFile(specter_path, "a", zipfile.ZIP_DEFLATED) as zf:
             if rel_path in zf.namelist():
                 # zipfile doesn't support in-place replacement easily — rebuild
@@ -260,13 +260,13 @@ class SpecterFormat:
 
 
 # ---------------------------------------------------------------------------
-# Migration: v1 (avatar.specter.json) → v2 model dict
+# Migration: v1 (avatar.vtuber.json) → v2 model dict
 # ---------------------------------------------------------------------------
 
 def _migrate_v1_to_v2(old: dict, model_name: str) -> dict:
-    """Convert a v1 avatar.specter.json to a v2 model dict."""
+    """Convert a v1 avatar.vtuber.json to a v2 model dict."""
     model = new_model(model_name)
-    model["version"] = SPECTER_VERSION
+    model["version"] = VTUBER_VERSION
 
     # Migrate parts → layers
     for part in old.get("parts", []):

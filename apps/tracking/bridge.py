@@ -2,11 +2,11 @@ import threading
 from typing import Callable, Dict, List, Optional
 import time
 
-class SynapseBridge:
+class TrackingBridge:
     """
-    Bridge layer for the Synapse Module.
+    Bridge layer for the Tracking Module.
     It receives standardized parameters from the active tracker and broadcasts them
-    to registered listeners (e.g., Specter's VTuber engine).
+    to registered listeners (e.g., Aethvion VTuber engine).
     """
 
     def __init__(self):
@@ -34,7 +34,7 @@ class SynapseBridge:
                 try:
                     listener(self._last_data)
                 except Exception as e:
-                    print(f"[Synapse Bridge] Listener callback error: {e}")
+                    print(f"[Tracking Bridge] Listener callback error: {e}")
 
     def get_last_frame(self) -> Dict[str, float]:
         """Fetch the most recent tracking frame explicitly."""
