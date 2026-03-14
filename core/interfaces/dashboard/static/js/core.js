@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (refreshMemory) refreshMemory.addEventListener('click', loadMemoryData);
 
     initializeUI();
+    updateSystemInfo();
 
     // Apply default mode immediately so nothing looks broken on load
     setDashboardMode('suite', false);
@@ -443,6 +444,26 @@ function initializeUI() {
 
     if (typeof initializeArena === 'function') initializeArena();
     if (typeof initializeImageStudio === 'function') initializeImageStudio();
+}
+
+/**
+ * Updates system-wide information like version number from system-status.json
+ */
+async function updateSystemInfo() {
+    const heroVersion = document.getElementById('suite-hero-version');
+    if (!heroVersion) return;
+
+    try {
+        const response = await fetch('/static/assets/system-status.json');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.system && data.system.version) {
+                heroVersion.textContent = `Version ${data.system.version}`;
+            }
+        }
+    } catch (e) {
+        console.warn("Failed to update system info:", e);
+    }
 }
 
 // ------------------------------------------------------------------
