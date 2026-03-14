@@ -789,7 +789,7 @@ async function updateModuleStatusBadges() {
         
         const registeredModules = Object.values(ports).map(m => m.toLowerCase());
         
-        ['vtuber', 'tracking'].forEach(mod => {
+        ['vtuber', 'tracking', 'photo'].forEach(mod => {
             const badge = document.getElementById(`${mod}-status-badge`);
             const headerLaunchBtn = document.querySelector(`.module-launch-btn[data-launch="${mod}"]`);
             if (!badge) return;

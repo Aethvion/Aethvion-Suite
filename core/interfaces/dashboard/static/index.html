@@ -271,6 +271,14 @@
                     <span class="tab-icon">📊</span>
                     <span class="tab-label">Aethvion Tracking</span>
                 </button>
+                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="audio-editor">
+                    <span class="tab-icon">🔊</span>
+                    <span class="tab-label">Aethvion Audio</span>
+                </button>
+                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="image">
+                    <span class="tab-icon">🎨</span>
+                    <span class="tab-label">Aethvion Photo</span>
+                </button>
 
                 <div class="sidebar-category" data-mode="both">Diagnostics</div>
                 <button class="main-tab sidebar-subitem" data-maintab="logs" data-mode="both"><span
@@ -350,19 +358,33 @@
                                 <p>Advanced motion tracking, knowledge synthesis, and performance metrics.</p>
                                 <div class="card-footer">
                                     <span class="badge">Data</span>
-                                    <span class="badge">Synthesis</span>
+                                    <span class="badge">V4-Ready</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Photo Card -->
+                        <div class="hub-card" onclick="switchMainTab('image')">
+                            <div class="card-icon"><i class="fas fa-camera-retro"></i></div>
+                            <div class="card-content">
+                                <h3>Aethvion Photo</h3>
+                                <p>Professional image editing, filtering, and AI background removal.</p>
+                                <div class="card-footer">
+                                    <span class="badge">Creative</span>
+                                    <span class="badge">V4-Ready</span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Audio Card -->
-                        <div class="hub-card disabled">
+                        <div class="hub-card" onclick="switchMainTab('audio-editor')">
                             <div class="card-icon"><i class="fas fa-wave-square"></i></div>
                             <div class="card-content">
                                 <h3>Aethvion Audio</h3>
-                                <p>Professional multi-track neural audio editing and generation.</p>
+                                <p>Professional audio editor with waveform visualization, effects, and export.</p>
                                 <div class="card-footer">
-                                    <span class="badge highlight">Coming Soon</span>
+                                    <span class="badge">Editor</span>
+                                    <span class="badge">Effects</span>
                                 </div>
                             </div>
                         </div>
@@ -2298,6 +2320,122 @@
                                 <h4>Workspace</h4>
                                 <p>Open the tracking module directory in Explorer.</p>
                                 <button class="term-btn open-folder-btn" data-path="apps/tracking">OPEN
+                                    FOLDER</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Photo Module Panel -->
+            <div class="main-tab-panel" id="photo-panel">
+                <div class="module-page-container">
+                    <div class="module-header">
+                        <div class="module-title">
+                            <span class="module-icon">🎨</span>
+                            <div>
+                                <h2>Aethvion Photo</h2>
+                                <p class="module-subtitle">Professional Image Forge & AI Manipulation</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="action-btn header-launch-btn primary module-launch-btn" data-launch="photo"
+                                disabled>
+                                <i class="fas fa-external-link-alt"></i> LAUNCH UI
+                            </button>
+                            <div id="photo-status-badge" class="status-badge offline">
+                                <span class="status-dot"></span>
+                                <span class="status-text">NOT RUNNING</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-content">
+                        <div class="module-description-card card">
+                            <h3>About Aethvion Photo</h3>
+                            <p>Aethvion Photo (Image Forge) is a powerful, layer-based image editing suite. 
+                               It combines traditional creative tools with cutting-edge AI features like 
+                               background removal, neural filters, and asset generation.</p>
+                            <div class="feature-tags">
+                                <span class="tag">Layer Stack</span>
+                                <span class="tag">AI Background Removal</span>
+                                <span class="tag">Neural Filters</span>
+                                <span class="tag">Alpha Channel Support</span>
+                            </div>
+                        </div>
+
+                        <div class="module-actions-grid">
+                            <div class="action-card run" id="photo-run-card">
+                                <i class="fas fa-play"></i>
+                                <h4>System Control</h4>
+                                <p>Start or stop the Image Forge backend.</p>
+                                <button class="term-btn run-module-btn" data-module="image" data-action="run">START
+                                    SERVICE</button>
+                            </div>
+                            <div class="action-card folder" id="photo-folder-card">
+                                <i class="fas fa-folder-open"></i>
+                                <h4>Workspace</h4>
+                                <p>Open the image module directory in Explorer.</p>
+                                <button class="term-btn open-folder-btn" data-path="apps/image">OPEN
+                                    FOLDER</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audio Editor Module Panel -->
+            <div class="main-tab-panel" id="audio-editor-panel">
+                <div class="module-page-container">
+                    <div class="module-header">
+                        <div class="module-title">
+                            <span class="module-icon">🔊</span>
+                            <div>
+                                <h2>Aethvion Audio</h2>
+                                <p class="module-subtitle">Professional Audio Editor with Waveform Visualization & Effects</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="action-btn header-launch-btn primary module-launch-btn" data-launch="audio"
+                                disabled>
+                                <i class="fas fa-external-link-alt"></i> LAUNCH UI
+                            </button>
+                            <div id="audio-status-badge" class="status-badge offline">
+                                <span class="status-dot"></span>
+                                <span class="status-text">NOT RUNNING</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-content">
+                        <div class="module-description-card card">
+                            <h3>About Aethvion Audio</h3>
+                            <p>Aethvion Audio is a standalone audio editor with real-time waveform visualization powered
+                                by WaveSurfer.js. Load WAV, MP3, OGG, or FLAC files, apply professional-grade effects,
+                                and export your edits in multiple formats.</p>
+                            <div class="feature-tags">
+                                <span class="tag">Waveform Editor</span>
+                                <span class="tag">Region Selection</span>
+                                <span class="tag">Fade In/Out</span>
+                                <span class="tag">Normalize</span>
+                                <span class="tag">Speed Control</span>
+                                <span class="tag">Multi-format Export</span>
+                            </div>
+                        </div>
+
+                        <div class="module-actions-grid">
+                            <div class="action-card run" id="audio-run-card">
+                                <i class="fas fa-play"></i>
+                                <h4>System Control</h4>
+                                <p>Start or stop the audio editor backend service.</p>
+                                <button class="term-btn run-module-btn" data-module="audio" data-action="run">START
+                                    SERVICE</button>
+                            </div>
+                            <div class="action-card folder" id="audio-folder-card">
+                                <i class="fas fa-folder-open"></i>
+                                <h4>Workspace</h4>
+                                <p>Open the audio module directory in Explorer.</p>
+                                <button class="term-btn open-folder-btn" data-path="apps/audio">OPEN
                                     FOLDER</button>
                             </div>
                         </div>
