@@ -50,12 +50,15 @@ class AethvionPhoto {
         this.activeWorkspaceIndex = index;
         const ws = this.getActiveWorkspace();
         
-        // Ensure the engine is rendered
-        ws.engine.render();
         this.updateTabStrip();
         this.updateLayerStack();
         this.syncFilters();
         this.syncCanvasSettings();
+        this.syncZoomDisplay();
+        this.syncZoomCSS();
+        
+        // Update shared canvas resolution
+        ws.engine.setupCanvas();
         
         document.getElementById('coord-display').textContent = `0 : 0 px`;
     }
@@ -67,8 +70,33 @@ class AethvionPhoto {
         document.getElementById('canvas-height').value = ws.engine.height;
     }
 
+    syncZoomCSS() {
+        const ws = this.getActiveWorkspace();
+        if (!ws) return;
+        const canvas = document.getElementById('main-canvas');
+        const container = canvas.parentElement;
+        
+        canvas.style.transform = `scale(${ws.engine.zoom})`;
+        
+        // Adjust container size so it scrolls correctly
+        container.style.width = (ws.engine.width * ws.engine.zoom) + 'px';
+        container.style.height = (ws.engine.height * ws.engine.zoom) + 'px';
+    }
+
+    syncZoomDisplay() {
+        const ws = this.getActiveWorkspace();
+        if (!ws) return;
+        const zoomPct = Math.round(ws.engine.zoom * 100);
+        document.getElementById('zoom-display').textContent = `Zoom: ${zoomPct}%`;
+    }
+
     getActiveWorkspace() {
         return this.workspaces[this.activeWorkspaceIndex];
+    }
+
+    get engine() {
+        const ws = this.getActiveWorkspace();
+        return ws ? ws.engine : null;
     }
 
     bindEvents() {
@@ -208,20 +236,23 @@ class AethvionPhoto {
                         newH = Math.max(10, startHeight + dy);
                     }
 
-                    // Proportional scaling (Shift)
+                    // Proportional scaling logic
                     if (e.shiftKey) {
-                        if (transformMode === 'e' || transformMode === 'w' || transformMode.length === 2) {
-                            // Scale height based on width
-                            const side = (transformMode.includes('n') && transformMode.length === 2) ? -1 : 1;
+                        // Ratio is width / height
+                        if (transformMode.length === 2) { // Corner nw, ne, sw, se
+                            // Use width as base
                             newH = newW / ratio;
+                            // Re-calculate top corner if needed
                             if (transformMode.includes('n')) {
                                 newY = startLayerY + (startHeight - newH);
                             }
-                        } else if (transformMode === 'n' || transformMode === 's') {
-                            // Scale width based on height
-                            newW = newH * ratio;
-                            if (transformMode.includes('w')) {
-                                newX = startLayerX + (startWidth - newW);
+                        } else { // Edge n, s, e, w
+                            if (transformMode === 'n' || transformMode === 's') {
+                                newW = newH * ratio;
+                                newX = startLayerX + (startWidth - newW) / 2; // Center horizontally
+                            } else {
+                                newH = newW / ratio;
+                                newY = startLayerY + (startHeight - newH) / 2; // Center vertically
                             }
                         }
                     }
@@ -234,6 +265,27 @@ class AethvionPhoto {
                 ws.engine.render();
             }
             this.updateCoords(e);
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            if (e.shiftKey) {
+                e.preventDefault();
+                const ws = this.getActiveWorkspace();
+                if (!ws) return;
+                
+                const zoomFactor = 1.1;
+                if (e.deltaY < 0) {
+                    ws.engine.zoom *= zoomFactor;
+                } else {
+                    ws.engine.zoom /= zoomFactor;
+                }
+                
+                // Clamp zoom
+                ws.engine.zoom = Math.max(0.01, Math.min(100, ws.engine.zoom));
+                ws.engine.render();
+                this.syncZoomDisplay();
+                this.syncZoomCSS();
+            }
         });
 
         window.addEventListener('mouseup', () => {
@@ -313,9 +365,6 @@ class AethvionPhoto {
                 break;
             case 'load':
                 this.triggerFileOpen('project');
-                break;
-            case 'recent':
-                console.log("Open Recent: Feature coming in future update!");
                 break;
             case 'save':
                 this.handleSaveProject();
@@ -399,7 +448,8 @@ class AethvionPhoto {
                         await ws.engine.loadImage(event.target.result, "Background", true);
                         this.updateLayerStack();
                         this.syncCanvasSettings();
-                        ws.engine.render(); // Explicitly render
+                        this.syncZoomCSS();
+                        ws.engine.render();
                     }
                 }
             };
@@ -480,7 +530,9 @@ class AethvionPhoto {
     }
 
     syncFilters() {
-        const layer = this.engine.getActiveLayer();
+        const ws = this.getActiveWorkspace();
+        if (!ws) return;
+        const layer = ws.engine.getActiveLayer();
         if (!layer) return;
 
         document.querySelectorAll('#filter-controls input[type="range"]').forEach(input => {

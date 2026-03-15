@@ -102,7 +102,7 @@ export class CanvasEngine {
 
     render() {
         // Clear main canvas
-        this.mainCtx.clearRect(0, 0, this.width, this.height);
+        this.mainCtx.clearRect(0, 0, this.mainCanvas.width, this.mainCanvas.height);
         
         // Render layers from bottom to top
         for (const layer of this.layers) {
@@ -133,7 +133,7 @@ export class CanvasEngine {
             const layer = this.getActiveLayer();
             if (layer) {
                 this.mainCtx.strokeStyle = '#7c6ff7';
-                this.mainCtx.lineWidth = 2;
+                this.mainCtx.lineWidth = 2 / this.zoom;
                 this.mainCtx.strokeRect(layer.x, layer.y, layer.displayWidth, layer.displayHeight);
 
                 // Draw 8 handles: corners and midpoints

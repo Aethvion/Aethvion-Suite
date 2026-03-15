@@ -259,30 +259,29 @@ body {
 }
 
 /* Workspace */
-#workspace {
+#editor-viewport {
     flex: 1;
-    background: #1e1e1e;
+    background: #111;
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
     overflow: auto;
-    background-image: 
-        linear-gradient(45deg, #252525 25%, transparent 25%), 
-        linear-gradient(-45deg, #252525 25%, transparent 25%), 
-        linear-gradient(45deg, transparent 75%, #252525 75%), 
-        linear-gradient(-45deg, transparent 75%, #252525 75%);
-    background-size: 20px 20px;
-    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    position: relative;
+    padding: 100px;
 }
 
-#canvas-container {
-    box-shadow: 0 0 40px rgba(0,0,0,0.5);
-    background: white;
+.canvas-container {
+    position: relative;
+    background: #222;
+    box-shadow: 0 0 50px rgba(0,0,0,0.8);
+    display: inline-block;
 }
 
 #main-canvas {
     display: block;
+    background-color: white;
+    image-rendering: pixelated;
+    transform-origin: 0 0;
 }
 
 /* Properties Panel */

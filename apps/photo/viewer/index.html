@@ -26,8 +26,6 @@
                         <button data-action="file-import">Import Image... (to Layer)</button>
                         <button data-action="file-load">Load Project (.aethphoto)</button>
                         <hr>
-                        <button data-action="file-recent">Open Recent</button>
-                        <hr>
                         <button data-action="file-save">Save Project</button>
                         <button data-action="file-export">Export as PNG</button>
                     </div>
@@ -99,8 +97,8 @@
             </aside>
 
             <!-- Main Workspace -->
-            <main id="workspace">
-                <div id="canvas-container">
+            <main id="editor-viewport">
+                <div class="canvas-container">
                     <canvas id="main-canvas"></canvas>
                 </div>
             </main>
@@ -181,9 +179,9 @@
 
         <!-- Footer / Status Bar -->
         <footer id="status-bar">
-            <span id="coord-display">0 : 0 px</span>
-            <span id="zoom-display">100%</span>
-            <span id="status-msg">Ready</span>
+            <div id="zoom-display">Zoom: 100%</div>
+            <div id="coord-display">0 : 0 px</div>
+            <div id="system-status">System Ready</div>
         </footer>
     </div>
 
