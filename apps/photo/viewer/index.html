@@ -10,191 +10,332 @@
     <link rel="stylesheet" href="css/editor.css">
 </head>
 <body class="dark-theme">
-    <div id="app">
-        <!-- Top Toolbar -->
-        <header id="top-bar">
-            <div class="logo">
-                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                <span>AETHVION PHOTO</span>
-            </div>
-            <div class="menu-bar">
-                <div class="dropdown">
-                    <button class="menu-item">File</button>
-                    <div class="dropdown-content">
-                        <button data-action="file-new">New Workspace</button>
-                        <button data-action="file-open">Open Image...</button>
-                        <button data-action="file-import">Import Image... (to Layer)</button>
-                        <button data-action="file-load">Open Project (Local)</button>
-                        <button data-action="file-load-server">Open Project (Server)</button>
-                        <hr>
-                        <button data-action="file-save">Save Project (Server)</button>
-                        <button data-action="file-export">Export as PNG</button>
-                    </div>
-                </div>
-                <div class="dropdown">
-                    <button class="menu-item">Edit</button>
-                    <div class="dropdown-content">
-                        <button data-action="edit-undo">Undo</button>
-                        <button data-action="edit-redo">Redo</button>
-                        <hr>
-                        <button data-action="edit-clear">Clear Layer</button>
-                    </div>
-                </div>
-                <div class="dropdown">
-                    <button class="menu-item">Image</button>
-                    <div class="dropdown-content">
-                        <button data-action="image-flip-h">Flip Horizontal</button>
-                        <button data-action="image-flip-v">Flip Vertical</button>
-                        <hr>
-                        <button data-action="image-rotate-90">Rotate 90° CW</button>
-                    </div>
-                </div>
-                <div class="dropdown">
-                    <button class="menu-item">Layer</button>
-                    <div class="dropdown-content">
-                        <button data-action="layer-new">New Layer</button>
-                        <button data-action="layer-duplicate">Duplicate Layer</button>
-                        <button data-action="layer-delete">Delete Layer</button>
-                        <hr>
-                        <button data-action="layer-merge">Merge Down</button>
-                    </div>
-                </div>
-                <div class="dropdown">
-                    <button class="menu-item">Filter</button>
-                    <div class="dropdown-content">
-                        <button data-action="filter-invert">Invert Colors</button>
-                        <button data-action="filter-grayscale">Grayscale</button>
-                    </div>
-                </div>
-                <button class="menu-item">View</button>
-                <button class="menu-item">Window</button>
-            </div>
-            <div class="actions">
-                <button id="btn-export" class="btn-primary">Export</button>
-                <button id="btn-share" class="btn-icon"><i class="fa-solid fa-share-nodes"></i></button>
-            </div>
-        </header>
+<div id="app">
 
-        <!-- Workspace Tabs -->
-        <nav id="tab-bar">
-            <!-- Tabs added dynamically -->
-            <button id="add-workspace-btn" title="New Workspace"><i class="fa-solid fa-plus"></i></button>
-        </nav>
-
-        <div class="main-container">
-            <!-- Left Tool Palette -->
-            <aside id="tool-palette">
-                <button class="tool-btn active" data-tool="select" title="Move Tool (V)"><i class="fa-solid fa-arrow-pointer"></i></button>
-                <button class="tool-btn" data-tool="rect-select" title="Marquee Tool (M)"><i class="fa-solid fa-square"></i></button>
-                <button class="tool-btn" data-tool="brush" title="Brush Tool (B)"><i class="fa-solid fa-paintbrush"></i></button>
-                <button class="tool-btn" data-tool="eraser" title="Eraser (E)"><i class="fa-solid fa-eraser"></i></button>
-                <button class="tool-btn" data-tool="transform" title="Transform (V)"><i class="fa-solid fa-up-down-left-right"></i></button>
-                <div class="tool-sep"></div>
-                <button class="tool-btn" data-tool="crop" title="Crop Tool (C)"><i class="fa-solid fa-crop-simple"></i></button>
-                <button class="tool-btn" data-tool="text" title="Type Tool (T)"><i class="fa-solid fa-t"></i></button>
-                <div class="tool-sep"></div>
-                <button class="tool-btn" data-tool="eyedropper" title="Eyedropper (I)"><i class="fa-solid fa-eye-dropper"></i></button>
-                <button class="tool-btn" data-tool="zoom" title="Zoom Tool (Z)"><i class="fa-solid fa-magnifying-glass"></i></button>
-                
-                <div class="color-picker-container">
-                    <div class="color-preview" id="color-preview" title="Primary Color"></div>
-                    <input type="color" id="active-color" value="#000000">
-                </div>
-            </aside>
-
-            <!-- Main Workspace -->
-            <main id="editor-viewport">
-                <div class="canvas-container">
-                    <canvas id="main-canvas"></canvas>
-                </div>
-            </main>
-
-            <!-- Right Sidebar (Layers & Properties) -->
-            <aside id="properties-panel">
-                <div class="panel-section">
-                    <div class="section-header">
-                        Canvas Settings
-                    </div>
-                    <div class="section-body">
-                        <div class="control-group">
-                            <label>Width</label>
-                            <input type="number" id="canvas-width" value="1920">
-                        </div>
-                        <div class="control-group">
-                            <label>Height</label>
-                            <input type="number" id="canvas-height" value="1080">
-                        </div>
-                        <button class="btn-secondary" id="apply-canvas-size">Apply Resolution</button>
-                    </div>
-                </div>
-
-                <div class="panel-section" id="navigator">
-                    <div class="section-header">Navigator</div>
-                    <div class="section-body">
-                        <div id="nav-preview"></div>
-                    </div>
-                </div>
-
-                <div class="panel-section" id="properties">
-                    <div class="section-header">Filters</div>
-                    <div class="section-body" id="filter-controls">
-                        <div class="control-group">
-                            <label>Brightness</label>
-                            <input type="range" data-filter="brightness" min="0" max="200" value="100">
-                        </div>
-                        <div class="control-group">
-                            <label>Contrast</label>
-                            <input type="range" data-filter="contrast" min="0" max="200" value="100">
-                        </div>
-                        <div class="control-group">
-                            <label>Saturation</label>
-                            <input type="range" data-filter="saturate" min="0" max="200" value="100">
-                        </div>
-                        <div class="control-group">
-                            <label>Blur</label>
-                            <input type="range" data-filter="blur" min="0" max="20" value="0">
-                        </div>
-                        <div class="control-group">
-                            <label>Grayscale</label>
-                            <input type="range" data-filter="grayscale" min="0" max="100" value="0">
-                        </div>
-                        <div class="control-group">
-                            <label>Sepia</label>
-                            <input type="range" data-filter="sepia" min="0" max="100" value="0">
-                        </div>
-                        <button id="reset-filters" class="btn-secondary">Reset Filters</button>
-                    </div>
-                </div>
-
-                <div class="panel-section" id="layers" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-                    <div class="section-header">
-                        <span>Layers</span>
-                        <div class="header-actions">
-                            <button id="add-layer-btn"><i class="fa-solid fa-plus"></i></button>
-                            <button id="del-layer-btn"><i class="fa-solid fa-trash"></i></button>
-                        </div>
-                    </div>
-                    <div class="section-body" style="flex: 1; overflow-y: auto;">
-                        <ul id="layer-stack">
-                            <!-- Layer items added dynamically -->
-                        </ul>
-                    </div>
-                </div>
-            </aside>
+    <!-- ── Top Menu Bar ─────────────────────────────────────────── -->
+    <header id="top-bar">
+        <div class="logo">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>AETHVION PHOTO</span>
         </div>
+        <div class="menu-bar">
 
-        <!-- Footer / Status Bar -->
-        <footer id="status-bar">
-            <div id="zoom-display">Zoom: 100%</div>
-            <div id="coord-display">0 : 0 px</div>
-            <div id="system-status">System Ready</div>
-        </footer>
+            <div class="dropdown">
+                <button class="menu-item">File</button>
+                <div class="dropdown-content">
+                    <button data-action="file-new">New Workspace <kbd>Ctrl+N</kbd></button>
+                    <button data-action="file-open">Open Image…</button>
+                    <button data-action="file-import">Import Image to Layer…</button>
+                    <button data-action="file-load">Open Project (Local)</button>
+                    <button data-action="file-load-server">Open Project (Server)</button>
+                    <hr>
+                    <button data-action="file-save">Save Project <kbd>Ctrl+S</kbd></button>
+                    <button data-action="file-export">Export as PNG</button>
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <button class="menu-item">Edit</button>
+                <div class="dropdown-content">
+                    <button data-action="edit-undo">Undo <kbd>Ctrl+Z</kbd></button>
+                    <button data-action="edit-redo">Redo <kbd>Ctrl+Y</kbd></button>
+                    <hr>
+                    <button data-action="edit-copy">Copy <kbd>Ctrl+C</kbd></button>
+                    <button data-action="edit-paste">Paste <kbd>Ctrl+V</kbd></button>
+                    <hr>
+                    <button data-action="edit-select-all">Select All</button>
+                    <button data-action="edit-deselect">Deselect <kbd>Ctrl+D</kbd></button>
+                    <hr>
+                    <button data-action="edit-fill-fg">Fill with Foreground</button>
+                    <button data-action="edit-fill-bg">Fill with Background</button>
+                    <hr>
+                    <button data-action="edit-clear">Clear Layer</button>
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <button class="menu-item">Image</button>
+                <div class="dropdown-content">
+                    <button data-action="image-flip-h">Flip Horizontal</button>
+                    <button data-action="image-flip-v">Flip Vertical</button>
+                    <hr>
+                    <button data-action="image-rotate-90">Rotate 90° CW</button>
+                    <button data-action="image-desaturate">Desaturate</button>
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <button class="menu-item">Layer</button>
+                <div class="dropdown-content">
+                    <button data-action="layer-new">New Layer</button>
+                    <button data-action="layer-duplicate">Duplicate Layer <kbd>Ctrl+J</kbd></button>
+                    <button data-action="layer-delete">Delete Layer</button>
+                    <hr>
+                    <button data-action="layer-merge">Merge Down</button>
+                    <button data-action="layer-flatten">Flatten Image</button>
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <button class="menu-item">Filter</button>
+                <div class="dropdown-content">
+                    <button data-action="filter-invert">Invert Colors</button>
+                    <button data-action="filter-desaturate">Desaturate / Grayscale</button>
+                </div>
+            </div>
+
+        </div>
+        <div class="actions">
+            <button id="btn-export" class="btn-primary"><i class="fa-solid fa-download"></i> Export</button>
+        </div>
+    </header>
+
+    <!-- ── Tool Options Bar ──────────────────────────────────────── -->
+    <div id="tool-options-bar">
+        <!-- Brush options -->
+        <div class="tool-opt-group" id="tool-opts-brush">
+            <label>Size</label>
+            <input type="range" id="brush-size-slider" min="1" max="300" value="20">
+            <input type="number" id="brush-size-num"  min="1" max="500" value="20">
+            <span class="tool-opt-hint">[ / ] to adjust</span>
+        </div>
+        <!-- Eraser options -->
+        <div class="tool-opt-group" id="tool-opts-eraser" style="display:none">
+            <label>Size</label>
+            <input type="range" id="brush-size-slider" min="1" max="300" value="20" disabled>
+            <input type="number" id="brush-size-num"  min="1" max="500" value="20" disabled>
+            <span class="tool-opt-hint">[ / ] to adjust</span>
+        </div>
+        <!-- Text options -->
+        <div class="tool-opt-group" id="tool-opts-text" style="display:none">
+            <label>Font</label>
+            <select id="text-font">
+                <option value="Inter">Inter</option>
+                <option value="Arial">Arial</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Verdana">Verdana</option>
+            </select>
+            <label>Size</label>
+            <input type="number" id="text-size-opt" value="24" min="6" max="500">
+            <button class="tool-opt-toggle" id="text-bold" title="Bold"><strong>B</strong></button>
+            <button class="tool-opt-toggle" id="text-italic" title="Italic"><em>I</em></button>
+            <span class="tool-opt-hint">Click canvas to place — Ctrl+Enter to confirm, Esc to cancel</span>
+        </div>
+        <!-- Zoom tool hint -->
+        <div class="tool-opt-group" id="tool-opts-zoom" style="display:none">
+            <span class="tool-opt-hint">Click to zoom in &nbsp;·&nbsp; Alt+click to zoom out &nbsp;·&nbsp; Scroll wheel to zoom</span>
+        </div>
+        <!-- Rect select hint -->
+        <div class="tool-opt-group" id="tool-opts-select" style="display:none">
+            <span class="tool-opt-hint">Drag to select &nbsp;·&nbsp; Del = delete selection &nbsp;·&nbsp; Ctrl+D = deselect</span>
+        </div>
+        <!-- Crop hint -->
+        <div class="tool-opt-group" id="tool-opts-crop" style="display:none">
+            <span class="tool-opt-hint">Drag crop area &nbsp;·&nbsp; Enter or click Crop to confirm &nbsp;·&nbsp; Esc to cancel</span>
+        </div>
     </div>
 
-    <!-- Modals / Overlays -->
-    <div id="overlay-container"></div>
+    <!-- ── Workspace Tabs ─────────────────────────────────────────── -->
+    <nav id="tab-bar">
+        <button id="add-workspace-btn" title="New Workspace"><i class="fa-solid fa-plus"></i></button>
+    </nav>
 
-    <script src="js/canvas_engine.js" type="module"></script>
-    <script src="js/app.js" type="module"></script>
+    <div class="main-container">
+
+        <!-- ── Left Tool Palette ───────────────────────────────────── -->
+        <aside id="tool-palette">
+            <button class="tool-btn active" data-tool="select"      title="Move Tool (V)"><i class="fa-solid fa-arrow-pointer"></i></button>
+            <button class="tool-btn"        data-tool="rect-select" title="Marquee Select (M)"><i class="fa-solid fa-vector-square"></i></button>
+            <button class="tool-btn"        data-tool="brush"       title="Brush (B)"><i class="fa-solid fa-paintbrush"></i></button>
+            <button class="tool-btn"        data-tool="eraser"      title="Eraser (E)"><i class="fa-solid fa-eraser"></i></button>
+            <button class="tool-btn"        data-tool="transform"   title="Transform (V)"><i class="fa-solid fa-up-down-left-right"></i></button>
+            <div class="tool-sep"></div>
+            <button class="tool-btn"        data-tool="crop"        title="Crop (C)"><i class="fa-solid fa-crop-simple"></i></button>
+            <button class="tool-btn"        data-tool="text"        title="Text (T)"><i class="fa-solid fa-t"></i></button>
+            <div class="tool-sep"></div>
+            <button class="tool-btn"        data-tool="eyedropper"  title="Eyedropper (I)"><i class="fa-solid fa-eye-dropper"></i></button>
+            <button class="tool-btn"        data-tool="zoom"        title="Zoom (Z)"><i class="fa-solid fa-magnifying-glass"></i></button>
+
+            <!-- Foreground / Background color swatches -->
+            <div class="color-picker-container">
+                <div class="color-stack-wrapper">
+                    <div class="color-bg-swatch" id="bg-color-preview"  title="Background Color (click to change)"></div>
+                    <div class="color-fg-swatch" id="color-preview"     title="Foreground Color (click to change)"></div>
+                    <button class="color-swap-btn" id="color-swap" title="Swap Colors (X)">
+                        <i class="fa-solid fa-right-left"></i>
+                    </button>
+                </div>
+                <input type="color" id="active-color"   value="#000000">
+                <input type="color" id="bg-color-input" value="#ffffff">
+            </div>
+        </aside>
+
+        <!-- ── Main Canvas Viewport ─────────────────────────────────── -->
+        <main id="editor-viewport">
+            <div class="canvas-container">
+                <canvas id="main-canvas"></canvas>
+            </div>
+        </main>
+
+        <!-- ── Right Properties Panel ───────────────────────────────── -->
+        <aside id="properties-panel">
+
+            <!-- Canvas settings -->
+            <div class="panel-section">
+                <div class="section-header">Canvas</div>
+                <div class="section-body">
+                    <div class="control-row">
+                        <div class="control-group half">
+                            <label>W</label>
+                            <input type="number" id="canvas-width"  value="1920">
+                        </div>
+                        <div class="control-group half">
+                            <label>H</label>
+                            <input type="number" id="canvas-height" value="1080">
+                        </div>
+                    </div>
+                    <button class="btn-secondary" id="apply-canvas-size">Apply Resolution</button>
+                </div>
+            </div>
+
+            <!-- Navigator minimap -->
+            <div class="panel-section" id="navigator">
+                <div class="section-header">Navigator</div>
+                <div class="section-body nav-body">
+                    <canvas id="nav-canvas" width="240" height="135"></canvas>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="panel-section" id="properties">
+                <div class="section-header">Filters</div>
+                <div class="section-body" id="filter-controls">
+                    <div class="control-group">
+                        <div class="filter-label-row"><label>Brightness</label><span class="filter-val">100</span></div>
+                        <input type="range" data-filter="brightness" min="0" max="200" value="100">
+                    </div>
+                    <div class="control-group">
+                        <div class="filter-label-row"><label>Contrast</label><span class="filter-val">100</span></div>
+                        <input type="range" data-filter="contrast" min="0" max="200" value="100">
+                    </div>
+                    <div class="control-group">
+                        <div class="filter-label-row"><label>Saturation</label><span class="filter-val">100</span></div>
+                        <input type="range" data-filter="saturate" min="0" max="200" value="100">
+                    </div>
+                    <div class="control-group">
+                        <div class="filter-label-row"><label>Blur</label><span class="filter-val">0</span></div>
+                        <input type="range" data-filter="blur" min="0" max="20" value="0">
+                    </div>
+                    <div class="control-group">
+                        <div class="filter-label-row"><label>Grayscale</label><span class="filter-val">0</span></div>
+                        <input type="range" data-filter="grayscale" min="0" max="100" value="0">
+                    </div>
+                    <div class="control-group">
+                        <div class="filter-label-row"><label>Sepia</label><span class="filter-val">0</span></div>
+                        <input type="range" data-filter="sepia" min="0" max="100" value="0">
+                    </div>
+                    <button id="reset-filters" class="btn-secondary">Reset Filters</button>
+                </div>
+            </div>
+
+            <!-- Layers -->
+            <div class="panel-section" id="layers" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+                <div class="section-header">
+                    <span>Layers</span>
+                    <div class="header-actions">
+                        <button id="add-layer-btn" title="Add Layer"><i class="fa-solid fa-plus"></i></button>
+                        <button id="del-layer-btn" title="Delete Layer"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+
+                <!-- Blend mode + opacity controls -->
+                <div class="layer-blend-row">
+                    <select id="layer-blend-mode" title="Blend Mode">
+                        <option value="normal">Normal</option>
+                        <option value="multiply">Multiply</option>
+                        <option value="screen">Screen</option>
+                        <option value="overlay">Overlay</option>
+                        <option value="darken">Darken</option>
+                        <option value="lighten">Lighten</option>
+                        <option value="color-dodge">Color Dodge</option>
+                        <option value="color-burn">Color Burn</option>
+                        <option value="hard-light">Hard Light</option>
+                        <option value="soft-light">Soft Light</option>
+                        <option value="difference">Difference</option>
+                        <option value="exclusion">Exclusion</option>
+                    </select>
+                    <input type="number" id="layer-opacity-input" value="100" min="0" max="100" title="Opacity %">
+                    <span class="opacity-pct">%</span>
+                </div>
+
+                <!-- Layer list -->
+                <div class="section-body layer-list-body">
+                    <ul id="layer-stack"></ul>
+                </div>
+
+                <!-- Layer action buttons -->
+                <div class="layer-actions-footer">
+                    <button id="duplicate-layer-btn" title="Duplicate Layer"><i class="fa-regular fa-copy"></i></button>
+                    <button id="merge-down-btn"       title="Merge Down"><i class="fa-solid fa-layer-group"></i></button>
+                    <button id="flatten-btn"          title="Flatten Image"><i class="fa-solid fa-compress"></i></button>
+                </div>
+            </div>
+
+        </aside>
+    </div>
+
+    <!-- ── Status Bar ────────────────────────────────────────────── -->
+    <footer id="status-bar">
+        <div id="zoom-controls">
+            <button id="zoom-out-btn" title="Zoom Out (-)">−</button>
+            <span id="zoom-display">100%</span>
+            <button id="zoom-in-btn"  title="Zoom In (+)">+</button>
+            <button id="zoom-fit-btn" title="Fit to Window">Fit</button>
+            <button id="zoom-100-btn" title="100%">100%</button>
+        </div>
+        <div id="coord-display">0 : 0 px</div>
+        <div id="canvas-size-display">1920 × 1080</div>
+        <div id="system-status">Ready · Ctrl+Z undo · [ ] brush size · X swap colors</div>
+    </footer>
+
+</div><!-- /#app -->
+
+<!-- ── Toast Container ───────────────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<!-- ── Brush Cursor Ring ─────────────────────────────────────────── -->
+<div id="brush-cursor"></div>
+
+<!-- ── Text Input Overlay ────────────────────────────────────────── -->
+<div id="text-overlay">
+    <textarea id="text-input" rows="1" spellcheck="false"
+        placeholder="Type…  Ctrl+Enter = place  |  Esc = cancel"></textarea>
+</div>
+
+<!-- ── Project Picker Modal ──────────────────────────────────────── -->
+<div id="project-modal" class="ae-modal-overlay">
+    <div class="ae-modal">
+        <div class="ae-modal-header">
+            <span><i class="fa-regular fa-folder-open"></i> Open Project from Server</span>
+            <button class="ae-modal-close" id="project-modal-close">✕</button>
+        </div>
+        <div class="ae-modal-body" id="project-list-container"></div>
+    </div>
+</div>
+
+<script>
+    // Close modal on background click or X button
+    document.getElementById('project-modal').addEventListener('click', function(e) {
+        if (e.target === this) this.style.display = 'none';
+    });
+    document.getElementById('project-modal-close').addEventListener('click', () => {
+        document.getElementById('project-modal').style.display = 'none';
+    });
+</script>
+
+<script src="js/canvas_engine.js" type="module"></script>
+<script src="js/app.js" type="module"></script>
 </body>
 </html>
