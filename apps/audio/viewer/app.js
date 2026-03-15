@@ -17,6 +17,7 @@ let state = {
     selectedId:   null,     // currently selected track_id
     playing:      false,
     playheadMs:   0,        // current playhead position in ms (seek target for new tracks)
+    workMs:       30000,    // cached workspace length for ruler redraws
 };
 
 /* ── DOM refs ──────────────────────────────────────────────── */
@@ -139,7 +140,7 @@ function render() {
     /* timeline width */
     timelineInner.style.width = totalPx + "px";
 
-    renderRuler(workMs, totalPx);
+    renderRuler(workMs);
     renderHeaders(session.tracks);
     renderRows(session.tracks, totalPx);
     renderFxPanel();
@@ -147,26 +148,45 @@ function render() {
 }
 
 /* ── Ruler ─────────────────────────────────────────────────── */
-function renderRuler(workMs, totalPx) {
-    ruler.width  = totalPx;
+/* The ruler canvas is always viewport-wide and redraws on scroll so
+   we never allocate a massive canvas buffer at high zoom levels.    */
+function renderRuler(workMs) {
+    state.workMs = workMs;
+    _drawRuler();
+}
+
+function _drawRuler() {
+    const visWidth = timelineScroll.clientWidth || 800;
+    const scrollX  = timelineScroll.scrollLeft;
+    const workMs   = state.workMs;
+
+    /* resize canvas to viewport width only */
+    ruler.width  = visWidth;
     ruler.height = RULER_H;
+    ruler.style.width = visWidth + "px";
+
     const ctx = ruler.getContext("2d");
-    ctx.clearRect(0, 0, totalPx, RULER_H);
-
     ctx.fillStyle = "#0d0d10";
-    ctx.fillRect(0, 0, totalPx, RULER_H);
+    ctx.fillRect(0, 0, visWidth, RULER_H);
 
-    const targetTicks = totalPx / 80;
-    const msPerTick   = niceInterval(workMs / targetTicks);
+    /* choose tick interval based on visible width */
+    const targetTicks = visWidth / 80;
+    const startMs     = scrollX / state.pxPerMs;
+    const endMs       = (scrollX + visWidth) / state.pxPerMs;
+    const msPerTick   = niceInterval((endMs - startMs) / targetTicks);
 
-    ctx.strokeStyle  = "#444";
-    ctx.fillStyle    = "#aaa";
     ctx.font         = "10px monospace";
     ctx.textBaseline = "top";
 
-    for (let t = 0; t <= workMs + msPerTick; t += msPerTick) {
-        const x = t * state.pxPerMs;
-        if (x > totalPx + 2) break;
+    /* align first major tick to a multiple of msPerTick */
+    const firstTick = Math.floor(startMs / msPerTick) * msPerTick;
+
+    /* major ticks */
+    ctx.strokeStyle = "#444";
+    ctx.fillStyle   = "#aaa";
+    for (let t = firstTick; t <= endMs + msPerTick; t += msPerTick) {
+        if (t < 0 || t > workMs + msPerTick) continue;
+        const x = t * state.pxPerMs - scrollX; // viewport-relative px
         ctx.beginPath();
         ctx.moveTo(x, RULER_H * 0.5);
         ctx.lineTo(x, RULER_H);
@@ -177,15 +197,15 @@ function renderRuler(workMs, totalPx) {
     /* minor ticks */
     ctx.strokeStyle = "#2a2a2e";
     const minorMs   = msPerTick / 5;
-    for (let t = 0; t <= workMs; t += minorMs) {
-        const x = t * state.pxPerMs;
-        if (x > totalPx + 2) break;
-        if (Math.abs(t % msPerTick) > 1) {
-            ctx.beginPath();
-            ctx.moveTo(x, RULER_H * 0.75);
-            ctx.lineTo(x, RULER_H);
-            ctx.stroke();
-        }
+    const firstMinor = Math.floor(startMs / minorMs) * minorMs;
+    for (let t = firstMinor; t <= endMs + minorMs; t += minorMs) {
+        if (t < 0 || t > workMs + minorMs) continue;
+        if (Math.abs(t % msPerTick) < 1) continue; // skip where major ticks are
+        const x = t * state.pxPerMs - scrollX;
+        ctx.beginPath();
+        ctx.moveTo(x, RULER_H * 0.75);
+        ctx.lineTo(x, RULER_H);
+        ctx.stroke();
     }
 }
 
@@ -196,11 +216,10 @@ function niceInterval(ms) {
 
 /* Click on the ruler to seek to that position. */
 ruler.addEventListener("click", e => {
-    const rect = ruler.getBoundingClientRect();
-    /* ruler scrolls with the timeline, so scrollLeft is already baked into rect.left */
-    const x  = e.clientX - rect.left;
-    const ms = x / state.pxPerMs;
-    seekToMs(ms);
+    const scrollX = timelineScroll.scrollLeft;
+    const rect    = ruler.getBoundingClientRect();
+    const x       = e.clientX - rect.left + scrollX; // absolute timeline px
+    seekToMs(x / state.pxPerMs);
 });
 
 /* ── Track headers (left column) ───────────────────────────── */
@@ -283,7 +302,9 @@ function renderRows(tracks, totalPx) {
         rowsBody.appendChild(row);
 
         const canvas = clip.querySelector(".ae-clip-canvas");
-        canvas.width = Math.max(2, Math.ceil(clipWidth));
+        /* cap canvas buffer width — browser canvas max is ~32k px wide;
+           CSS width:100% on the canvas handles the visual stretch */
+        canvas.width = Math.min(Math.max(2, Math.ceil(clipWidth)), 8192);
         drawWaveform(canvas, t.waveform || [], t.color, t.muted);
 
         makeDraggable(clip, t.track_id, t.start_ms);
@@ -296,24 +317,59 @@ function renderRows(tracks, totalPx) {
 
 function drawWaveform(canvas, waveform, color, muted) {
     if (!waveform || !waveform.length) return;
-    const ctx = canvas.getContext("2d");
-    const w   = canvas.width;
-    const h   = canvas.height;
-    const mid = h / 2;
+    const ctx  = canvas.getContext("2d");
+    const w    = canvas.width;
+    const h    = canvas.height;
+    const mid  = h / 2;
     ctx.clearRect(0, 0, w, h);
 
-    const alpha      = muted ? 0.3 : 0.75;
-    const alphaHex   = Math.round(alpha * 255).toString(16).padStart(2, "0");
-    ctx.strokeStyle  = color + alphaHex;
-    ctx.lineWidth    = 1;
-    ctx.beginPath();
+    const baseAlpha = muted ? 0.25 : 0.55;
+    const lineAlpha = muted ? 0.35 : 0.85;
+
+    /* filled gradient area */
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0,   color + Math.round(baseAlpha * 255).toString(16).padStart(2, "0"));
+    grad.addColorStop(0.5, color + Math.round(baseAlpha * 0.4 * 255).toString(16).padStart(2, "0"));
+    grad.addColorStop(1,   color + Math.round(baseAlpha * 255).toString(16).padStart(2, "0"));
 
     const step = waveform.length / w;
+
+    /* build the top path, then mirror it for the bottom */
+    ctx.beginPath();
+    ctx.moveTo(0, mid);
     for (let px = 0; px < w; px++) {
         const idx = Math.min(waveform.length - 1, Math.floor(px * step));
         const amp = (waveform[idx] || 0) * mid * 0.9;
-        ctx.moveTo(px + 0.5, mid - amp);
-        ctx.lineTo(px + 0.5, mid + amp);
+        ctx.lineTo(px, mid - amp);
+    }
+    for (let px = w - 1; px >= 0; px--) {
+        const idx = Math.min(waveform.length - 1, Math.floor(px * step));
+        const amp = (waveform[idx] || 0) * mid * 0.9;
+        ctx.lineTo(px, mid + amp);
+    }
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    /* crisp top-edge outline */
+    ctx.beginPath();
+    ctx.moveTo(0, mid);
+    for (let px = 0; px < w; px++) {
+        const idx = Math.min(waveform.length - 1, Math.floor(px * step));
+        const amp = (waveform[idx] || 0) * mid * 0.9;
+        ctx.lineTo(px, mid - amp);
+    }
+    ctx.strokeStyle = color + Math.round(lineAlpha * 255).toString(16).padStart(2, "0");
+    ctx.lineWidth   = 1;
+    ctx.stroke();
+
+    /* bottom-edge outline */
+    ctx.beginPath();
+    ctx.moveTo(0, mid);
+    for (let px = 0; px < w; px++) {
+        const idx = Math.min(waveform.length - 1, Math.floor(px * step));
+        const amp = (waveform[idx] || 0) * mid * 0.9;
+        ctx.lineTo(px, mid + amp);
     }
     ctx.stroke();
 }
@@ -760,10 +816,13 @@ mixVol.addEventListener("input", () => { mixAudio.volume = parseFloat(mixVol.val
 fxOpSelect.addEventListener("change", renderFxParams);
 btnApplyFx.addEventListener("click", addEffect);
 
-/* keep headers and timeline vertically in sync */
+/* keep headers and timeline vertically in sync; redraw ruler on horizontal scroll */
 timelineScroll.addEventListener("scroll", () => {
     headersBody.parentElement.scrollTop = timelineScroll.scrollTop;
+    _drawRuler();
 });
+
+window.addEventListener("resize", () => { _drawRuler(); });
 
 /* ── Init ─────────────────────────────────────────────────────── */
 loadSession();

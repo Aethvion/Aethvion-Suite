@@ -179,7 +179,7 @@ class Track:
         """Return audio with all enabled effects applied (non-destructive)."""
         return _apply_chain(self.original, self.effects)
 
-    def get_waveform(self, num_points: int = 600) -> list:
+    def get_waveform(self, num_points: int = 2000) -> list:
         if self._waveform is None:
             self._waveform = _get_waveform(self.original, num_points)
         return self._waveform
@@ -202,7 +202,7 @@ class Track:
             "effects": self.effects,
         }
         if include_waveform:
-            d["waveform"] = self.get_waveform()
+            d["waveform"] = self.get_waveform(2000)
         return d
 
 

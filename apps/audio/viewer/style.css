@@ -337,6 +337,7 @@ input[type=file] { display: none; }
     width: 100%;
     position: sticky;
     top: 0;
+    left: 0;
     z-index: 20;
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
