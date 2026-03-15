@@ -16,6 +16,7 @@ let state = {
     pxPerMs:      0.10,     // zoom level (pixels per millisecond)
     selectedId:   null,     // currently selected track_id
     playing:      false,
+    playheadMs:   0,        // current playhead position in ms (seek target for new tracks)
 };
 
 /* ── DOM refs ──────────────────────────────────────────────── */
@@ -192,6 +193,15 @@ function niceInterval(ms) {
     const candidates = [100, 250, 500, 1000, 2000, 5000, 10000, 15000, 30000, 60000, 120000, 300000];
     return candidates.find(c => c >= ms) || 600000;
 }
+
+/* Click on the ruler to seek to that position. */
+ruler.addEventListener("click", e => {
+    const rect = ruler.getBoundingClientRect();
+    /* ruler scrolls with the timeline, so scrollLeft is already baked into rect.left */
+    const x  = e.clientX - rect.left;
+    const ms = x / state.pxPerMs;
+    seekToMs(ms);
+});
 
 /* ── Track headers (left column) ───────────────────────────── */
 function renderHeaders(tracks) {
@@ -464,6 +474,10 @@ async function patchTrack(id, body) {
         });
         state.session = resp.session;
         render();
+        /* live reload when mute toggled or position changed while playing */
+        if ("muted" in body || "start_ms" in body) {
+            reloadMixLive();
+        }
     } catch (e) {
         notify("Update failed: " + e.message, "error");
     }
@@ -526,10 +540,13 @@ async function removeEffect(trackId, effectId) {
 async function uploadFiles(files) {
     if (!files || files.length === 0) return;
     showLoading(`UPLOADING ${files.length > 1 ? files.length + " FILES" : "FILE"}...`);
+    /* place tracks starting at the current playhead, stacking sequentially */
+    let nextStartMs = state.playheadMs;
     try {
         for (const file of files) {
             const fd = new FormData();
             fd.append("file", file);
+            fd.append("start_ms", String(nextStartMs));
             const resp = await fetch("/api/tracks/upload", { method: "POST", body: fd });
             if (!resp.ok) {
                 const j = await resp.json().catch(() => ({}));
@@ -537,6 +554,9 @@ async function uploadFiles(files) {
             }
             const data = await resp.json();
             state.session = data.session;
+            /* advance cursor to end of just-added track so multiple files stack */
+            const added = data.track;
+            if (added) nextStartMs = added.start_ms + added.duration_ms;
         }
         render();
         notify(`${files.length} track${files.length !== 1 ? "s" : ""} added`, "success");
@@ -548,9 +568,32 @@ async function uploadFiles(files) {
     }
 }
 
+/* ── Live mix reload (re-render and resume at current position) ── */
+async function reloadMixLive() {
+    if (!state.playing && !mixAudio.src) return;
+    const savedSec  = mixAudio.currentTime;
+    const wasPlaying = state.playing;
+    try {
+        const resp = await fetch("/api/preview");
+        if (!resp.ok) return;
+        const blob = await resp.blob();
+        const url  = URL.createObjectURL(blob);
+        mixAudio.pause();
+        mixAudio.src = url;
+        await new Promise(res => mixAudio.addEventListener("loadedmetadata", res, { once: true }));
+        mixAudio.currentTime = savedSec;
+        if (wasPlaying) await mixAudio.play();
+    } catch { /* silent — playback will just continue with stale mix */ }
+}
+
 /* ── Mix playback ────────────────────────────────────────────── */
 async function playMix() {
-    stopMix();
+    const startMs = state.playheadMs; // remember seek position before stopMix resets it
+    const hadSrc  = !!mixAudio.src;
+    mixAudio.pause();
+    state.playing = false;
+    updatePlayBtn(false);
+
     showLoading("RENDERING MIX...");
     try {
         const resp = await fetch("/api/preview");
@@ -559,6 +602,8 @@ async function playMix() {
         const url  = URL.createObjectURL(blob);
         mixAudio.src    = url;
         mixAudio.volume = parseFloat(mixVol.value);
+        await new Promise(res => mixAudio.addEventListener("loadedmetadata", res, { once: true }));
+        mixAudio.currentTime = startMs / 1000;
         await mixAudio.play();
         state.playing = true;
         updatePlayBtn(true);
@@ -572,7 +617,8 @@ async function playMix() {
 function stopMix() {
     mixAudio.pause();
     mixAudio.currentTime = 0;
-    state.playing = false;
+    state.playing    = false;
+    state.playheadMs = 0;
     updatePlayBtn(false);
     setPlayhead(0);
 }
@@ -584,6 +630,17 @@ function updatePlayBtn(isPlaying) {
 
 function setPlayhead(px) {
     playhead.style.left = px + "px";
+    state.playheadMs = px / state.pxPerMs;
+}
+
+/* Seek both the audio element and the visual playhead to a given ms position. */
+function seekToMs(ms) {
+    state.playheadMs = Math.max(0, ms);
+    setPlayhead(state.playheadMs * state.pxPerMs);
+    if (mixAudio.readyState >= 1) {
+        mixAudio.currentTime = state.playheadMs / 1000;
+    }
+    mixCur.textContent = fmtMs(state.playheadMs);
 }
 
 function syncPlayheadHeight() {
@@ -614,7 +671,8 @@ mixProgressWrap.addEventListener("click", e => {
     if (!mixAudio.duration) return;
     const rect  = mixProgressWrap.getBoundingClientRect();
     const ratio = (e.clientX - rect.left) / rect.width;
-    mixAudio.currentTime = ratio * mixAudio.duration;
+    const ms    = ratio * mixAudio.duration * 1000;
+    seekToMs(ms);
 });
 
 /* ── Export ──────────────────────────────────────────────────── */
@@ -687,10 +745,7 @@ btnPlayMix.addEventListener("click", () => {
 
 btnStopMix.addEventListener("click", stopMix);
 
-btnRewind.addEventListener("click", () => {
-    mixAudio.currentTime = 0;
-    setPlayhead(0);
-});
+btnRewind.addEventListener("click", () => seekToMs(0));
 
 btnZoomIn.addEventListener("click",  () => zoom(1.5));
 btnZoomOut.addEventListener("click", () => zoom(1 / 1.5));
