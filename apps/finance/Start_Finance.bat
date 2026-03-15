@@ -100,7 +100,7 @@ if not exist "data\finance\projects" (
 
 :: --- 7. Launch -----------------------------------------------
 echo [START] Launching Aethvion Finance...
-echo         Viewer -^> http://localhost:8085
+echo         Viewer -> http://localhost:8081
 echo         Data   -^> data\finance\
 echo         Press CTRL+C to stop.
 echo.

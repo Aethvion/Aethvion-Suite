@@ -577,7 +577,7 @@ async def delete_project(filename: str):
 # Entrypoint
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    base_port = int(os.getenv("FINANCE_PORT", 8085))
+    base_port = int(os.getenv("FINANCE_PORT", 8081))
     port = PortManager.bind_port("Aethvion Finance", base_port)
     logger.info(f"Aethvion Finance -> http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)

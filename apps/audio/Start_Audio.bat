@@ -106,7 +106,7 @@ if not exist ".env" (
 
 :: --- 7. Launch -------------------------------------------------
 echo [START] Launching Aethvion Audio Editor...
-echo         Viewer -^> http://localhost:8083
+echo         Viewer -> http://localhost:8081
 echo         Press CTRL+C to stop.
 echo.
 

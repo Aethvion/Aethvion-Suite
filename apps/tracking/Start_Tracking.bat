@@ -82,7 +82,7 @@ if not exist ".env" (
 :: --- 5. Launch -------------------------------------------------
 echo.
 echo [START] Launching Aethvion Tracking...
-echo         Viewer -> http://localhost:8082
+echo         Viewer -> http://localhost:8081
 echo         Press CTRL+C to stop.
 echo.
 

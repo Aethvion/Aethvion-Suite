@@ -259,7 +259,7 @@ async def index():
 
 def launch():
     from core.utils.port_manager import PortManager
-    base_port = int(os.getenv("SYNAPSE_PORT", "8082"))
+    base_port = int(os.getenv("SYNAPSE_PORT", "8081"))
     port = PortManager.bind_port("Aethvion Tracking", base_port)
     
     print(f"👁️ Aethvion Tracking Engine → http://localhost:{port}")

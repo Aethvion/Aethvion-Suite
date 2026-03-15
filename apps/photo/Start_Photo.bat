@@ -7,7 +7,7 @@ echo Starting %TITLE%...
 cd /d "%~dp0"
 
 :: Check for environment variables or use defaults
-if "%PHOTO_PORT%"=="" set PHOTO_PORT=8083
+if "%PHOTO_PORT%"=="" set PHOTO_PORT=8081
 
 :: Run the server
 python photo_server.py
