@@ -485,8 +485,49 @@ class AethvionPhoto {
             e.preventDefault();
             const ws = this.getActiveWorkspace();
             if (!ws) return;
-            const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-            this.setZoom(ws.engine.zoom * factor);
+
+            const viewport    = document.getElementById('editor-viewport');
+            const container   = canvas.parentElement;
+            const oldZoom     = ws.engine.zoom;
+            const factor      = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+            const newZoom     = Math.max(0.01, Math.min(100, oldZoom * factor));
+            if (newZoom === oldZoom) return;
+
+            // Cursor position in viewport (client space relative to viewport top-left)
+            const vpRect      = viewport.getBoundingClientRect();
+            const cursorVX    = e.clientX - vpRect.left;   // viewport-relative X
+            const cursorVY    = e.clientY - vpRect.top;    // viewport-relative Y
+
+            // Cursor position in content-space (inside the scrollable area)
+            const cursorCX    = cursorVX + viewport.scrollLeft;
+            const cursorCY    = cursorVY + viewport.scrollTop;
+
+            // Where is the container inside the scrollable content?
+            // container.offsetLeft/Top is relative to the scroll container (#editor-viewport)
+            const contLeft    = container.offsetLeft;
+            const contTop     = container.offsetTop;
+
+            // Cursor position relative to container origin
+            const relX        = cursorCX - contLeft;   // in old scaled px
+            const relY        = cursorCY - contTop;
+
+            // Apply the new zoom
+            ws.engine.zoom = newZoom;
+            this.syncZoomDisplay();
+            this.syncZoomCSS();
+
+            // After zoom, container dimensions have changed; offsetLeft/Top may shift
+            // (browser re-centers margin:auto container) — read new offset
+            const newContLeft = container.offsetLeft;
+            const newContTop  = container.offsetTop;
+
+            // Scale the relative point by the zoom ratio
+            const newRelX     = relX * (newZoom / oldZoom);
+            const newRelY     = relY * (newZoom / oldZoom);
+
+            // Set scroll so that the same canvas point stays under cursor
+            viewport.scrollLeft = newContLeft + newRelX - cursorVX;
+            viewport.scrollTop  = newContTop  + newRelY - cursorVY;
         }, { passive: false });
     }
 
@@ -1222,6 +1263,33 @@ class AethvionPhoto {
         const ctx = navCanvas.getContext('2d');
         ctx.clearRect(0, 0, navCanvas.width, navCanvas.height);
         ctx.drawImage(ws.engine.mainCanvas, 0, 0, navCanvas.width, navCanvas.height);
+
+        // Wire click-to-pan once
+        if (!navCanvas._panBound) {
+            navCanvas._panBound = true;
+            navCanvas.style.cursor = 'crosshair';
+            navCanvas.addEventListener('click', (e) => {
+                const ws2 = this.getActiveWorkspace();
+                if (!ws2) return;
+                const viewport  = document.getElementById('editor-viewport');
+                const canvas    = document.getElementById('main-canvas');
+                const container = canvas.parentElement;
+                const nr        = navCanvas.getBoundingClientRect();
+                const fracX     = (e.clientX - nr.left) / nr.width;
+                const fracY     = (e.clientY - nr.top)  / nr.height;
+                // Target point in content-space (px inside the scaled container)
+                const targetX   = fracX * ws2.engine.width  * ws2.engine.zoom;
+                const targetY   = fracY * ws2.engine.height * ws2.engine.zoom;
+                // Center that point in the viewport
+                const vw        = viewport.clientWidth;
+                const vh        = viewport.clientHeight;
+                // container offset relative to viewport scroll origin
+                const contLeft  = (container.offsetLeft || 0);
+                const contTop   = (container.offsetTop  || 0);
+                viewport.scrollLeft = contLeft + targetX - vw / 2;
+                viewport.scrollTop  = contTop  + targetY - vh / 2;
+            });
+        }
     }
 
     // ─── Sync helpers ─────────────────────────────────────────────
