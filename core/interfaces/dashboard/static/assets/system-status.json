@@ -2,10 +2,58 @@
     "system": {
         "name": "Aethvion Suite",
         "company": "Aethvion",
-        "version": "5",
-        "last_sync": "2026-03-14",
+        "version": "6",
+        "last_sync": "2026-03-15",
         "contact": "contact@aethvion.com",
         "changelog": [
+            {
+                "version": "6",
+                "date": "2026-03-15",
+                "added": [
+                    "Aethvion Audio: Full multi-track timeline editor with per-track volume, mute, solo, and pan controls",
+                    "Aethvion Audio: Track insertion at the playhead position for precise arrangement",
+                    "Aethvion Audio: Viewport-based ruler that stays accurate and responsive at any zoom level",
+                    "Aethvion Drive Info: Interactive disk space analyzer",
+                    "Aethvion Drive Info: Scan results saved as .eathscan archives with companion .meta sidecars for instant scan listing",
+                    "Aethvion Drive Info: Display-optimized scan variant with intelligent tree pruning (up to 291× size reduction)",
+                    "Aethvion Drive Info: Start_DriveInfo.bat with automatic dependency installation",
+                    "Aethvion Finance: Integrated financial hub for tracking net worth, accounts, and budgets",
+                    "Aethvion Finance: Portfolio tab for tracking investment holdings (Stocks, ETFs, Crypto, Bonds) with allocation charts",
+                    "Aethvion Finance: Live price refresh for all portfolio holdings via Yahoo Finance (yfinance)",
+                    "Aethvion Finance: Full CRUD management for Transactions, Accounts, Budget categories, Goals, and Holdings",
+                    "Aethvion Finance: Dynamic performance visualization with interactive Chart.js graphs",
+                    "Aethvion Finance: Fire-and-forget autosave with atomic writes after every state mutation",
+                    "Aethvion Finance: Persistent project storage using the custom .aethfinance format",
+                    "Aethvion Finance: Automated project discovery and cloud-sync ready architecture",
+                    "Aethvion Photo: Proportional scaling logic (Shift + Drag) for all layer transformations",
+                    "Aethvion Photo: 8-handle transform system with integrated canvas-wide zoom support",
+                    "Aethvion Photo: Precision Eyedropper and Color Picker tools for advanced asset creation",
+                    "Aethvion Photo: Image transformation tools — Rotate 90° CW, Flip Horizontal/Vertical",
+                    "Aethvion Photo: Server-side project management with advanced metadata persistence",
+                    "Aethvion Photo: Global custom premium scrollbar aesthetics for the workspace",
+                    "Dashboard: Aethvion Drive Info registered in module map, sidebar, and hub card",
+                    "Dashboard: Fully integrated Aethvion Finance module with live status telemetry",
+                    "Dashboard: Automated Finance server lifecycle management on Suite startup",
+                    "Core: Fixed critical position persistence bugs in .aethphoto projects",
+                    "Core: Improved layer resolution matching for seamless workspace loading"
+                ],
+                "improved": [
+                    "Aethvion Audio: Waveform accuracy increased to 2000 data points with filled gradient rendering",
+                    "Aethvion Audio: Real-time mute and solo applied immediately during active playback",
+                    "Aethvion Drive Info: Large scan files streamed via FileResponse to prevent browser OOM crashes",
+                    "Aethvion Drive Info: Scan listing made instant using .meta sidecar files instead of parsing full archives",
+                    "Aethvion Photo: Optimized canvas rendering engine for high-resolution layers",
+                    "Aethvion Photo: Refined layer management UI with integrated scroll support",
+                    "Dashboard: Enhanced sidebar organization with persistent state tracking",
+                    "System: Rebranded all standalone apps to the Aethvion Unified Ecosystem"
+                ],
+                "changed": [
+                    "Aethvion Audio: Migrated from single-track editor to full multi-track architecture",
+                    "Aethvion Finance: Activated 'Finance' tab in the dashboard sidebar",
+                    "Aethvion Finance: Enabled 'Financial Hub' panel in the Main Dashboard",
+                    "Infrastructure: Migrated all finance projects to dedicated data/finance/projects/ directory"
+                ]
+            },
             {
                 "version": "5",
                 "date": "2026-03-14",
@@ -415,11 +463,15 @@
         {
             "id": "audio",
             "name": "Aethvion Audio",
-            "desc": "Professional standalone audio editor with waveform visualization, effects, and multi-format export.",
+            "desc": "Professional multi-track audio editor with waveform visualization, effects pipeline, and multi-format export.",
             "features": [
                 {
-                    "name": "Waveform Visualization",
-                    "desc": "Real-time interactive waveform display powered by WaveSurfer.js with region selection."
+                    "name": "Multi-Track Timeline",
+                    "desc": "Full multi-track editor with per-track volume, mute, solo, and pan — insert tracks at the playhead position."
+                },
+                {
+                    "name": "High-Precision Waveform Visualization",
+                    "desc": "2000-point filled gradient waveform rendering with viewport-based ruler accurate at any zoom level."
                 },
                 {
                     "name": "Region-Based Editing",
@@ -444,8 +496,8 @@
             ],
             "wip": [
                 {
-                    "name": "Multi-Track Mixing",
-                    "desc": "Layer multiple audio tracks with individual volume and pan controls."
+                    "name": "Virtual Waveform Rendering",
+                    "desc": "Viewport-only canvas rendering for long clips to eliminate blurriness at extreme zoom levels."
                 }
             ],
             "planned": [
@@ -456,6 +508,104 @@
                 {
                     "name": "AI Noise Reduction",
                     "desc": "Machine-learning powered background noise suppression."
+                }
+            ]
+        },
+        {
+            "id": "driveinfo",
+            "name": "Aethvion Drive Info",
+            "desc": "WinDirStat-style interactive disk space analyzer — scan drives and visualize storage usage.",
+            "features": [
+                {
+                    "name": "Interactive Disk Scanner",
+                    "desc": "Recursively scans any path and presents a sortable, drillable tree of files and folders by size."
+                },
+                {
+                    "name": ".eathscan Archive Format",
+                    "desc": "Scan results saved as structured JSON archives with companion .meta sidecars for instant listing without re-parsing."
+                },
+                {
+                    "name": "Display-Optimized Variants",
+                    "desc": "Intelligent tree pruning aggregates small items into placeholders — reduces file size up to 291× for safe browser loading."
+                },
+                {
+                    "name": "Crash-Safe Large File Streaming",
+                    "desc": "FileResponse streaming prevents browser OOM crashes when loading large scans."
+                }
+            ],
+            "wip": [
+                {
+                    "name": "Treemap Visualization",
+                    "desc": "WinDirStat-style colored block treemap for instant visual identification of large files."
+                }
+            ],
+            "planned": [
+                {
+                    "name": "Duplicate File Detection",
+                    "desc": "Hash-based scanning to identify and surface duplicate files across scanned paths."
+                },
+                {
+                    "name": "Scheduled Scans",
+                    "desc": "Automate recurring scans and diff results to track disk growth over time."
+                }
+            ]
+        },
+        {
+            "id": "finance",
+            "name": "Aethvion Finance",
+            "desc": "Professional multi-view financial dashboard for tracking net worth, budgets, investments, and goals.",
+            "features": [
+                {
+                    "name": "Dashboard Overview",
+                    "desc": "KPI cards (net worth, income, expenses, savings rate) with net worth trend and spending donut charts."
+                },
+                {
+                    "name": "Transaction Management",
+                    "desc": "Full CRUD transaction log with category tagging, date filtering, and search."
+                },
+                {
+                    "name": "Account Tracking",
+                    "desc": "Manage multiple accounts (checking, savings, investment, credit) with live balance totals."
+                },
+                {
+                    "name": "Budget Planner",
+                    "desc": "Monthly budget targets per category with spend-vs-budget bar charts."
+                },
+                {
+                    "name": "Goals Tracker",
+                    "desc": "Define savings goals with target amounts and deadlines — track progress visually."
+                },
+                {
+                    "name": "Portfolio Tab",
+                    "desc": "Track investment holdings (Stocks, ETFs, Crypto, Bonds) with allocation donut chart and gain/loss calculations."
+                },
+                {
+                    "name": "Live Price Refresh",
+                    "desc": "One-click market price update for all holdings via Yahoo Finance (yfinance) — no API key required."
+                },
+                {
+                    "name": "Analytics View",
+                    "desc": "Income vs. expenses bar chart, category breakdown, cash flow line chart, and accounts distribution."
+                },
+                {
+                    "name": "Project Storage",
+                    "desc": "Save and load named financial snapshots in the custom .aethfinance format with atomic autosave."
+                }
+            ],
+            "wip": [
+                {
+                    "name": "Recurring Transactions",
+                    "desc": "Define recurring income and expense rules that auto-populate the transaction log."
+                }
+            ],
+            "planned": [
+                {
+                    "name": "CSV Import / Export",
+                    "desc": "Import bank statement CSVs and export transaction history for external tools."
+                },
+                {
+                    "name": "Tax Report Generator",
+                    "desc": "Summarize capital gains, income, and deductible expenses for tax preparation."
                 }
             ]
         },
