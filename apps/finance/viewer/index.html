@@ -1381,9 +1381,14 @@
           <div class="page-title">Portfolio</div>
           <div class="page-subtitle">Track your investments &amp; holdings</div>
         </div>
-        <button class="btn-primary" id="add-holding-btn">
-          <i class="fa-solid fa-plus"></i> Add Holding
-        </button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn-secondary" id="refresh-prices-btn" title="Pull latest prices from Yahoo Finance">
+            <i class="fa-solid fa-rotate"></i> <span id="refresh-prices-label">Refresh Prices</span>
+          </button>
+          <button class="btn-primary" id="add-holding-btn">
+            <i class="fa-solid fa-plus"></i> Add Holding
+          </button>
+        </div>
       </div>
 
       <!-- KPI bar -->

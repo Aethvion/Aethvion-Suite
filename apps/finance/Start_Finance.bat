@@ -76,7 +76,21 @@ if %errorlevel% neq 0 (
     echo [OK]  uvicorn verified.
 )
 
-:: --- 5. Create data directory ---------------------------------
+:: --- 5. yfinance (live market prices) ---------------------------
+python -c "import yfinance" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [SETUP] Installing yfinance...
+    pip install yfinance
+    if %errorlevel% neq 0 (
+        echo [WARN]  yfinance install reported an issue. Live price refresh may not work.
+    ) else (
+        echo [OK]  yfinance installed.
+    )
+) else (
+    echo [OK]  yfinance verified.
+)
+
+:: --- 6. Create data directory ---------------------------------
 if not exist "data\finance\projects" (
     mkdir "data\finance\projects"
     echo [SETUP] Created data\finance\projects directory.
@@ -84,7 +98,7 @@ if not exist "data\finance\projects" (
     echo [OK]  data\finance directory found.
 )
 
-:: --- 6. Launch -----------------------------------------------
+:: --- 7. Launch -----------------------------------------------
 echo [START] Launching Aethvion Finance...
 echo         Viewer -^> http://localhost:8085
 echo         Data   -^> data\finance\
@@ -94,7 +108,7 @@ echo.
 "%ROOT_DIR%\.venv\Scripts\python.exe" apps\finance\finance_server.py
 set MAIN_EXIT=%errorlevel%
 
-:: --- 7. Result -----------------------------------------------
+:: --- 8. Result -----------------------------------------------
 if %MAIN_EXIT% neq 0 (
     echo.
     echo [ERROR] Finance server crashed (exit code %MAIN_EXIT%).

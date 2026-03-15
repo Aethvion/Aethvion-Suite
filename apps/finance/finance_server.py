@@ -434,6 +434,94 @@ async def delete_holding(holding_id: str):
     return {"deleted": holding_id}
 
 # ---------------------------------------------------------------------------
+# Holdings price refresh (yfinance / Yahoo Finance)
+# ---------------------------------------------------------------------------
+@app.post("/api/holdings/refresh-prices")
+def refresh_holding_prices():
+    """
+    Fetch latest market prices for all holdings via Yahoo Finance.
+    Runs synchronously in FastAPI's thread pool so blocking I/O is safe.
+    Crypto tickers like BTC are auto-converted to BTC-USD for Yahoo Finance.
+    """
+    try:
+        import yfinance as yf          # noqa: PLC0415 – lazy import, optional dep
+    except ImportError:
+        raise HTTPException(
+            status_code=500,
+            detail="yfinance is not installed. Re-run Start_Finance.bat to install it.",
+        )
+
+    holdings = state.get("holdings", [])
+    if not holdings:
+        return {"updated": 0, "skipped": 0, "errors": [], "holdings": []}
+
+    # Build ticker map: holding_id → yf_symbol
+    ticker_map: dict = {}
+    for h in holdings:
+        raw = (h.get("ticker") or "").strip().upper()
+        if not raw:
+            continue
+        asset_type = (h.get("asset_type") or "").lower()
+        # Yahoo Finance needs BTC-USD format for crypto
+        if asset_type == "crypto" and "-" not in raw and "/" not in raw:
+            yf_sym = raw + "-USD"
+        else:
+            yf_sym = raw.replace("/", "-")   # e.g. "BTC/USD" → "BTC-USD"
+        ticker_map[h["id"]] = yf_sym
+
+    if not ticker_map:
+        return {"updated": 0, "skipped": len(holdings), "errors": [], "holdings": holdings}
+
+    # Deduplicate symbols for batch download
+    unique_syms = list(set(ticker_map.values()))
+
+    # --- Fetch prices ---
+    prices: dict = {}
+    errors: list = []
+
+    try:
+        # yf.Tickers handles multiple symbols efficiently
+        batch = yf.Tickers(" ".join(unique_syms))
+        for sym in unique_syms:
+            try:
+                t = batch.tickers[sym]
+                price = t.fast_info.last_price
+                # fast_info can return None for illiquid / delisted tickers
+                if price is None or price <= 0:
+                    hist = t.history(period="5d", auto_adjust=True, progress=False)
+                    if not hist.empty:
+                        price = float(hist["Close"].iloc[-1])
+                if price and price > 0:
+                    prices[sym] = round(float(price), 8)
+                else:
+                    errors.append(f"{sym}: no price data returned")
+            except Exception as exc:
+                errors.append(f"{sym}: {str(exc)[:100]}")
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Yahoo Finance error: {exc}")
+
+    # --- Apply prices to state ---
+    updated = 0
+    skipped = 0
+    for h in holdings:
+        sym = ticker_map.get(h["id"])
+        if sym and sym in prices:
+            h["current_price"] = prices[sym]
+            updated += 1
+        else:
+            skipped += 1
+
+    if updated > 0:
+        _autosave()
+
+    return {
+        "updated": updated,
+        "skipped": skipped,
+        "errors": errors,
+        "holdings": holdings,
+    }
+
+# ---------------------------------------------------------------------------
 # Project save/load
 # ---------------------------------------------------------------------------
 @app.post("/api/save")

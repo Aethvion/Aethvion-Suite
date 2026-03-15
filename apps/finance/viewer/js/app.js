@@ -1546,10 +1546,63 @@
     // Portfolio
     document.getElementById('add-holding-btn').addEventListener('click', openAddHolding);
     document.getElementById('portfolio-search').addEventListener('input', renderPortfolio);
+    document.getElementById('refresh-prices-btn').addEventListener('click', refreshPrices);
   }
 
   // ======================================================================
-  // Portfolio
+  // Portfolio — live price refresh
+  // ======================================================================
+  async function refreshPrices() {
+    const btn   = document.getElementById('refresh-prices-btn');
+    const label = document.getElementById('refresh-prices-label');
+    if (!btn) return;
+
+    const holdings = state.holdings || [];
+    if (!holdings.length) {
+      notify('Add some holdings first before refreshing prices.', 'info');
+      return;
+    }
+
+    // Loading state
+    btn.disabled = true;
+    const icon = btn.querySelector('i');
+    if (icon) icon.className = 'fa-solid fa-rotate fa-spin';
+    if (label) label.textContent = 'Refreshing…';
+
+    try {
+      const result = await api('POST', '/api/holdings/refresh-prices');
+
+      // Merge updated holdings back into state so UI refreshes instantly
+      // without a full round-trip loadState() for every holding
+      if (result.holdings && result.holdings.length) {
+        state.holdings = result.holdings;
+      }
+
+      renderPortfolio();
+
+      // Summary toast
+      const parts = [];
+      if (result.updated > 0) parts.push(`${result.updated} price${result.updated !== 1 ? 's' : ''} updated`);
+      if (result.skipped  > 0) parts.push(`${result.skipped} skipped`);
+      if (result.errors && result.errors.length) {
+        parts.push(`${result.errors.length} error${result.errors.length !== 1 ? 's' : ''}`);
+        // Log individual errors to console for diagnostics
+        result.errors.forEach(e => console.warn('[PriceRefresh]', e));
+      }
+      const type = result.errors && result.errors.length ? 'error' : 'success';
+      notify(parts.join(' · ') || 'Prices refreshed', type);
+
+    } catch (e) {
+      notify('Price refresh failed: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      if (icon) icon.className = 'fa-solid fa-rotate';
+      if (label) label.textContent = 'Refresh Prices';
+    }
+  }
+
+  // ======================================================================
+  // Portfolio — rendering & charts
   // ======================================================================
   const ASSET_TYPES = ['Stock', 'ETF', 'Crypto', 'Bond', 'REIT', 'Fund', 'Cash', 'Other'];
 
