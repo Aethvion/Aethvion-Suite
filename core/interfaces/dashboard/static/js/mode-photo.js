@@ -76,10 +76,10 @@ function initializeImageStudio() {
 
             // Validate
             if (mode === 'generate' && !prompt) {
-                alert('Please enter a prompt first.'); return;
+                showToast('Please enter a prompt first.', 'warn'); return;
             }
             if ((mode === 'edit' || mode === 'upscale' || mode === 'expand') && !currentRefImageBase64) {
-                alert('Please upload a reference image for this mode.'); return;
+                showToast('Please upload a reference image for this mode.', 'warn'); return;
             }
 
             const checkedModels = Array.from(document.querySelectorAll('.image-model-checkbox:checked')).map(cb => {
@@ -87,7 +87,7 @@ function initializeImageStudio() {
             });
 
             if (checkedModels.length === 0) {
-                alert('Please select at least one model.'); return;
+                showToast('Please select at least one model.', 'warn'); return;
             }
 
             // Show loading
@@ -177,7 +177,7 @@ function initializeImageStudio() {
                 generateBtn.disabled = false;
                 generateBtn.textContent = 'GENERATE';
                 console.error(err);
-                alert('Error generating images: ' + err.message);
+                showToast('Error generating images: ' + err.message, 'error');
             }
         });
     }

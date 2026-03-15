@@ -9,6 +9,10 @@ async function loadPackages() {
 }
 
 async function loadAllPackages() {
+    const tbody = document.getElementById('packages-table-body');
+    if (tbody && !allPackages.length) {
+        if (typeof showSkeleton !== 'undefined') showSkeleton(tbody, 5);
+    }
     try {
         const response = await fetch('/api/packages/all');
         const data = await response.json();
@@ -304,10 +308,10 @@ async function syncPackages() {
         const data = await response.json();
 
         if (data.success) {
-            console.log(data.message);
+            showToast('Package sync complete', 'success');
             loadAllPackages();
         } else {
-            alert('Sync failed: ' + data.message);
+            showToast('Sync failed: ' + data.message, 'error');
         }
     } catch (e) {
         console.error('Sync error:', e);
@@ -318,75 +322,77 @@ async function syncPackages() {
 }
 
 async function uninstallPackage(packageName) {
-    if (!confirm(`Are you sure you want to uninstall "${packageName}"? This calls 'pip uninstall'.`)) return;
-
-    try {
-        const response = await fetch(`/api/packages/uninstall/${packageName}`, { method: 'POST' });
-        const data = await response.json();
-
-        if (data.success) {
-            loadAllPackages();
-        } else {
-            alert('Uninstall failed: ' + data.message);
-        }
-    } catch (e) {
-        console.error('Uninstall error:', e);
-    }
+    showConfirm(
+        'Uninstall Package',
+        `Uninstall "${packageName}"? This calls pip uninstall.`,
+        async () => {
+            try {
+                const response = await fetch(`/api/packages/uninstall/${packageName}`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) { showToast(`${packageName} uninstalled`, 'success'); loadAllPackages(); }
+                else showToast('Uninstall failed: ' + data.message, 'error');
+            } catch (e) { console.error('Uninstall error:', e); }
+        },
+        { confirmLabel: 'Uninstall', icon: 'fa-trash' }
+    );
 }
 
 async function retryPackage(packageName) {
-    if (!confirm(`Retry installation of "${packageName}"?`)) return;
-
-    try {
-        const response = await fetch(`/api/packages/retry/${packageName}`, { method: 'POST' });
-        const data = await response.json();
-
-        if (data.success) {
-            loadAllPackages();
-        } else {
-            alert('Retry failed: ' + data.message);
-        }
-    } catch (e) {
-        console.error('Retry error:', e);
-    }
+    showConfirm(
+        'Retry Installation',
+        `Retry installation of "${packageName}"?`,
+        async () => {
+            try {
+                const response = await fetch(`/api/packages/retry/${packageName}`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) { showToast(`Retrying ${packageName}…`, 'info'); loadAllPackages(); }
+                else showToast('Retry failed: ' + data.message, 'error');
+            } catch (e) { console.error('Retry error:', e); }
+        },
+        { confirmLabel: 'Retry', icon: 'fa-rotate-right' }
+    );
 }
 
 async function approvePackage(packageName) {
-    if (!confirm(`Install package "${packageName}"?`)) return;
-
-    try {
-        const response = await fetch(`/api/packages/approve/${packageName}`, { method: 'POST' });
-        const data = await response.json();
-        if (data.success) {
-            const pkg = allPackages.find(p => p.package_name === packageName);
-            if (pkg) pkg.status = 'approved';
-            renderPackagesTable();
-            loadAllPackages();
-        } else {
-            alert(`Failed: ${data.message}`);
-        }
-    } catch (error) {
-        console.error('Error approving:', error);
-    }
+    showConfirm(
+        'Install Package',
+        `Install package "${packageName}"?`,
+        async () => {
+            try {
+                const response = await fetch(`/api/packages/approve/${packageName}`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showToast(`${packageName} approved for install`, 'success');
+                    const pkg = allPackages.find(p => p.package_name === packageName);
+                    if (pkg) pkg.status = 'approved';
+                    renderPackagesTable();
+                    loadAllPackages();
+                } else { showToast('Failed: ' + data.message, 'error'); }
+            } catch (error) { console.error('Error approving:', error); }
+        },
+        { confirmLabel: 'Install', icon: 'fa-download' }
+    );
 }
 
 async function denyPackage(packageName) {
-    if (!confirm(`Deny package "${packageName}"?`)) return;
-
-    try {
-        const response = await fetch(`/api/packages/deny/${packageName}`, { method: 'POST' });
-        const data = await response.json();
-        if (data.success) {
-            const pkg = allPackages.find(p => p.package_name === packageName);
-            if (pkg) pkg.status = 'denied';
-            renderPackagesTable();
-            loadAllPackages();
-        } else {
-            alert(`Failed: ${data.message}`);
-        }
-    } catch (error) {
-        console.error('Error denying:', error);
-    }
+    showConfirm(
+        'Deny Package',
+        `Deny package "${packageName}"? It will be blocked from installation.`,
+        async () => {
+            try {
+                const response = await fetch(`/api/packages/deny/${packageName}`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showToast(`${packageName} denied`, 'warn');
+                    const pkg = allPackages.find(p => p.package_name === packageName);
+                    if (pkg) pkg.status = 'denied';
+                    renderPackagesTable();
+                    loadAllPackages();
+                } else { showToast('Failed: ' + data.message, 'error'); }
+            } catch (error) { console.error('Error denying:', error); }
+        },
+        { confirmLabel: 'Deny', icon: 'fa-ban' }
+    );
 }
 
 function formatNumber(num) {

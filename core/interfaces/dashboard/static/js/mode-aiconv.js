@@ -58,7 +58,7 @@ function removeAIConvModel(index) {
 
 async function startAIConv() {
     if (aiconvSelectedModels.length < 2) {
-        alert("Please select at least 2 models.");
+        showToast('Please select at least 2 models.', 'warn');
         return;
     }
 
@@ -68,7 +68,7 @@ async function startAIConv() {
     const maxMsgs = msgCountInput ? parseInt(msgCountInput.value) || 5 : 5;
 
     if (!topic) {
-        alert("Please enter a topic or initial prompt.");
+        showToast('Please enter a topic or initial prompt.', 'warn');
         return;
     }
 

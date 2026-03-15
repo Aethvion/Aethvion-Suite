@@ -309,7 +309,7 @@ async function saveNexusSettings(moduleId) {
         const val = input.value.trim();
         await savePreference(`nexus.${moduleId}.${key}`, val);
     }
-    alert(`${moduleId} settings saved!`);
+    showToast(`${moduleId} settings saved!`, 'success');
 }
 
 async function authorizeNexusModule(moduleId) {
@@ -321,7 +321,7 @@ async function authorizeNexusModule(moduleId) {
         };
 
         if (!settings.client_id || !settings.client_secret) {
-            alert('Please enter and save your Spotify Client ID and Secret first.');
+            showToast('Please enter and save your Spotify Client ID and Secret first.', 'warn');
             return;
         }
 
@@ -335,7 +335,7 @@ async function authorizeNexusModule(moduleId) {
             const data = await res.json();
             window.open(data.url, '_blank', 'width=600,height=800');
         } catch (e) {
-            alert('Error: ' + e.message);
+            showToast('Spotify auth error: ' + e.message, 'error');
         }
     }
 }
@@ -401,7 +401,7 @@ async function addMisakaWorkspace() {
         });
         if (!res.ok) {
             const err = await res.json();
-            alert('Error: ' + (err.detail || 'Unknown error'));
+            showToast('Error: ' + (err.detail || 'Unknown error'), 'error');
             return;
         }
         document.getElementById('ws-add-path').value = '';
@@ -658,7 +658,7 @@ function initTooltips() {
     document.querySelectorAll('.tooltip-trigger').forEach(trigger => {
         trigger.addEventListener('click', (e) => {
             const title = trigger.getAttribute('title');
-            alert(title); // Simple for now, can be improved to floating tooltips
+            if (title) showToast(title, 'info', 4000);
         });
     });
 }

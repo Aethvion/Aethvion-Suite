@@ -131,7 +131,7 @@ async function sendArenaPrompt() {
 
     if (!prompt) return;
     if (arenaSelectedModels.length < 2) {
-        alert('Please add at least 2 models to the arena.');
+        showToast('Please add at least 2 models to the arena.', 'warn');
         return;
     }
 

@@ -1,31 +1,34 @@
 /* ===== Modern Dashboard Layout ===== */
 
 /* 4-Column Layout (Chat Tab with Threads) */
+/* Columns: threads | handle | chat | handle | agents */
 .three-column-layout {
     display: grid;
-    grid-template-columns: 260px 1fr 320px;
+    grid-template-columns: var(--col-threads, 260px) 4px 1fr 4px var(--col-agents, 320px);
     height: 100%;
     gap: 0;
     padding: 0;
 }
 
 .three-column-layout.threads-collapsed {
-    grid-template-columns: 1fr 320px;
+    grid-template-columns: 0 0 1fr 4px var(--col-agents, 320px);
 }
 
 .three-column-layout.agents-collapsed {
-    grid-template-columns: 260px 1fr;
+    grid-template-columns: var(--col-threads, 260px) 4px 1fr 0 0;
 }
 
 .three-column-layout.threads-collapsed.agents-collapsed {
-    grid-template-columns: 1fr;
+    grid-template-columns: 0 0 1fr 0 0;
 }
 
-.three-column-layout.threads-collapsed .threads-column {
+.three-column-layout.threads-collapsed .threads-column,
+.three-column-layout.threads-collapsed #resize-threads-chat {
     display: none;
 }
 
-.three-column-layout.agents-collapsed .agents-column {
+.three-column-layout.agents-collapsed .agents-column,
+.three-column-layout.agents-collapsed #resize-chat-agents {
     display: none;
 }
 

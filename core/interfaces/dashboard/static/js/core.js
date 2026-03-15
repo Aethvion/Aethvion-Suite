@@ -1,6 +1,151 @@
 // Aethvion Suite - Core
 // Handles WebSocket connections, global UI state, and initialization
 
+// ─── Toast System ─────────────────────────────────────────────────
+/**
+ * Show a toast notification.
+ * @param {string} message
+ * @param {'success'|'error'|'warn'|'info'} type
+ * @param {number} duration ms (default 3500)
+ */
+function showToast(message, type = 'info', duration = 3500) {
+    const container = document.getElementById('toast-container');
+    if (!container) { console.warn('[toast]', message); return; }
+
+    const icons = {
+        success: 'fa-circle-check',
+        error:   'fa-circle-xmark',
+        warn:    'fa-triangle-exclamation',
+        info:    'fa-circle-info',
+    };
+    const toast = document.createElement('div');
+    toast.className = `ae-toast ae-toast-${type}`;
+    toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${message}</span>`;
+    container.appendChild(toast);
+
+    const remove = () => {
+        toast.classList.add('removing');
+        toast.addEventListener('animationend', () => toast.remove(), { once: true });
+    };
+    const timer = setTimeout(remove, duration);
+    toast.addEventListener('click', () => { clearTimeout(timer); remove(); });
+}
+window.showToast = showToast;
+
+// ─── Confirm Modal ────────────────────────────────────────────────
+/**
+ * Non-blocking confirmation dialog (replaces window.confirm).
+ * @param {string} title
+ * @param {string} body
+ * @param {Function} onConfirm callback when user clicks OK
+ * @param {object} opts  { confirmLabel, icon }
+ */
+function showConfirm(title, body, onConfirm, opts = {}) {
+    const overlay  = document.getElementById('confirm-modal');
+    if (!overlay) { if (confirm(body)) onConfirm(); return; }
+
+    document.getElementById('confirm-modal-title').textContent = title;
+    document.getElementById('confirm-modal-body').textContent  = body;
+
+    const okBtn  = document.getElementById('confirm-modal-ok');
+    const canBtn = document.getElementById('confirm-modal-cancel');
+    okBtn.textContent = opts.confirmLabel || 'Confirm';
+
+    const iconEl = document.getElementById('confirm-modal-icon-i');
+    if (iconEl) iconEl.className = `fas ${opts.icon || 'fa-exclamation-triangle'}`;
+
+    overlay.style.display = 'flex';
+
+    const close = () => {
+        overlay.classList.add('hiding');
+        overlay.addEventListener('animationend', () => {
+            overlay.style.display = 'none';
+            overlay.classList.remove('hiding');
+        }, { once: true });
+    };
+
+    const handleOk = () => { close(); onConfirm(); cleanup(); };
+    const handleCan = () => { close(); cleanup(); };
+    const handleKey = (e) => { if (e.key === 'Escape') { handleCan(); } if (e.key === 'Enter') { handleOk(); } };
+
+    const cleanup = () => {
+        okBtn.removeEventListener('click', handleOk);
+        canBtn.removeEventListener('click', handleCan);
+        document.removeEventListener('keydown', handleKey);
+    };
+
+    okBtn.addEventListener('click', handleOk);
+    canBtn.addEventListener('click', handleCan);
+    document.addEventListener('keydown', handleKey);
+}
+window.showConfirm = showConfirm;
+
+// ─── Keyboard Shortcuts Overlay ───────────────────────────────────
+function initKeyboardShortcuts() {
+    const overlay = document.getElementById('kbd-overlay');
+    if (!overlay) return;
+
+    const open  = () => { overlay.style.display = 'flex'; }
+    const close = () => {
+        overlay.classList.add('hiding');
+        overlay.addEventListener('animationend', () => {
+            overlay.style.display = 'none';
+            overlay.classList.remove('hiding');
+        }, { once: true });
+    };
+
+    document.addEventListener('keydown', (e) => {
+        const tag = document.activeElement.tagName;
+        const editable = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable;
+
+        // ? opens overlay (only when not in an input)
+        if (e.key === '?' && !editable) { e.preventDefault(); open(); return; }
+        // Esc closes overlay
+        if (e.key === 'Escape' && overlay.style.display !== 'none') { e.preventDefault(); close(); return; }
+
+        // Global shortcuts (work even in inputs for Ctrl/Alt combos)
+        if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+            if (e.key === 'b' || e.key === 'B') {
+                e.preventDefault();
+                const nav = document.getElementById('sidebar-nav');
+                if (nav) {
+                    const collapsed = nav.classList.toggle('collapsed');
+                    if (typeof prefs !== 'undefined') prefs.set('sidebar_collapsed', collapsed);
+                }
+                return;
+            }
+            if (e.key === 'h' || e.key === 'H') {
+                e.preventDefault();
+                const btn = document.getElementById('toggle-threads-btn');
+                if (btn) btn.click();
+                return;
+            }
+            if (e.key === 't' || e.key === 'T') {
+                e.preventDefault();
+                const newBtn = document.getElementById('new-thread-button') || document.getElementById('header-new-thread-btn');
+                if (newBtn) newBtn.click();
+                return;
+            }
+            if (e.key === 'l' || e.key === 'L') {
+                e.preventDefault();
+                const input = document.getElementById('chat-input');
+                if (input) input.focus();
+                return;
+            }
+            if (e.key === '1') { e.preventDefault(); switchMainTab('suite-home'); return; }
+            if (e.key === '2') { e.preventDefault(); switchMainTab('chat'); return; }
+        }
+        if (e.altKey && !e.ctrlKey) {
+            if (e.key === '1') { e.preventDefault(); setDashboardMode('suite'); return; }
+            if (e.key === '2') { e.preventDefault(); setDashboardMode('enterprise'); return; }
+            if (e.key === '3') { e.preventDefault(); setDashboardMode('rd'); return; }
+        }
+    });
+
+    // Close on backdrop click
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+}
+
 // Global variables
 let chatWs = null;
 let logsWs = null;
@@ -121,6 +266,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Now proceed with potentially failing heavier data loads
     try {
         initDevMode();
+        initKeyboardShortcuts();
+        initColumnResizeHandles();
         await loadInitialData();
         if (window.runStartupUpdateCheck) window.runStartupUpdateCheck();
     } catch (e) {
@@ -331,7 +478,7 @@ function initializeUI() {
     const forgeBtn = document.getElementById('forge-tool-button');
     if (forgeBtn) {
         forgeBtn.addEventListener('click', () => {
-            alert('Tool forging via UI coming soon! For now, use the chat: "Create a tool to..."');
+            showToast('Tool forging via UI coming soon! Use chat: "Create a tool to…"', 'info', 5000);
         });
     }
 
@@ -716,12 +863,12 @@ async function launchModule(name) {
                 console.warn(`Module ${name} not found in dynamic ports, trying default :${defaultPort}`);
                 window.open(`http://localhost:${defaultPort}`, '_blank');
             } else {
-                alert(`Error: Module "${name}" is not currently running or its port is unknown. Try starting the service first.`);
+                showToast(`Module "${name}" is not running. Start the service first.`, 'warn');
             }
         }
     } catch (error) {
         console.error("Module launch error:", error);
-        alert("Failed to launch module. See console for details.");
+        showToast('Failed to launch module. Check the console for details.', 'error');
     }
 }
 
@@ -751,7 +898,8 @@ async function runModuleService(moduleName) {
 
         const result = await response.json();
         console.log(result.message);
-        
+        showToast(`Starting ${moduleName}…`, 'info');
+
         // Wait a bit and then check for ports
         setTimeout(() => {
             if (window.updateRegisteredPorts) window.updateRegisteredPorts();
@@ -760,7 +908,7 @@ async function runModuleService(moduleName) {
 
     } catch (error) {
         console.error("Run module error:", error);
-        alert(`Failed to start module: ${error.message}`);
+        showToast(`Failed to start module: ${error.message}`, 'error');
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -783,7 +931,7 @@ async function openModuleFolder(path) {
         if (!response.ok) throw new Error("Failed to open folder");
     } catch (error) {
         console.error("Open folder error:", error);
-        alert("Failed to open folder.");
+        showToast('Failed to open folder.', 'error');
     }
 }
 
@@ -797,27 +945,25 @@ async function updateModuleStatusBadges() {
         const ports = await response.json();
         
         const registeredModules = Object.values(ports).map(m => m.toLowerCase());
-        
+
         ['vtuber', 'tracking', 'photo', 'audio', 'driveinfo', 'finance'].forEach(mod => {
             const badge = document.getElementById(`${mod}-status-badge`);
             const headerLaunchBtn = document.querySelector(`.module-launch-btn[data-launch="${mod}"]`);
-            if (!badge) return;
-            
             const isOnline = registeredModules.some(m => m.includes(mod));
-            if (isOnline) {
-                badge.className = 'status-badge online';
-                badge.querySelector('.status-text').innerText = 'RUNNING';
-                if (headerLaunchBtn) {
-                    headerLaunchBtn.disabled = false;
-                    headerLaunchBtn.classList.remove('hide');
-                }
-            } else {
-                badge.className = 'status-badge offline';
-                badge.querySelector('.status-text').innerText = 'NOT RUNNING';
-                if (headerLaunchBtn) {
-                    headerLaunchBtn.disabled = true;
-                    // We can keep it visible but disabled to show it exists
-                }
+
+            // Update existing status badge if present
+            if (badge) {
+                badge.className = isOnline ? 'status-badge online' : 'status-badge offline';
+                const txt = badge.querySelector('.status-text');
+                if (txt) txt.innerText = isOnline ? 'RUNNING' : 'NOT RUNNING';
+                if (headerLaunchBtn) headerLaunchBtn.disabled = !isOnline;
+            }
+
+            // Update hub card status dot
+            const dot = document.querySelector(`.entry-status-dot[data-module="${mod}"]`);
+            if (dot) {
+                dot.className = `entry-status-dot ${isOnline ? 'running' : 'stopped'}`;
+                dot.title = isOnline ? `${mod} — Running` : `${mod} — Not running`;
             }
         });
     } catch (e) {
@@ -1168,3 +1314,74 @@ function _startMediaRecorderInput(voiceButton, model, provider) {
 
 window.startVoiceInput = startVoiceInput;
 window.stopVoiceInput = stopVoiceInput;
+
+// ─── Skeleton Loader Utility ──────────────────────────────────────
+/**
+ * Show a skeleton placeholder inside a container element.
+ * @param {string|HTMLElement} target  CSS selector or element
+ * @param {number} rows  number of skeleton lines to show
+ */
+function showSkeleton(target, rows = 4) {
+    const el = typeof target === 'string' ? document.querySelector(target) : target;
+    if (!el) return;
+    el.dataset.skeletonPrev = el.innerHTML;
+    el.innerHTML = Array.from({ length: rows }, (_, i) => `
+        <div class="skeleton-card">
+            <div class="skeleton skeleton-line ${i % 3 === 0 ? 'short' : i % 2 === 0 ? 'medium' : 'full'}"></div>
+            <div class="skeleton skeleton-line full" style="height:10px;margin-top:6px;opacity:.6;"></div>
+        </div>`).join('');
+}
+
+/**
+ * Remove skeleton and restore previous content if available.
+ * @param {string|HTMLElement} target
+ */
+function hideSkeleton(target) {
+    const el = typeof target === 'string' ? document.querySelector(target) : target;
+    if (!el || !el.dataset.skeletonPrev) return;
+    el.innerHTML = el.dataset.skeletonPrev;
+    delete el.dataset.skeletonPrev;
+}
+window.showSkeleton = showSkeleton;
+window.hideSkeleton = hideSkeleton;
+
+// ─── Column Resize Handles ────────────────────────────────────────
+function initColumnResizeHandles() {
+    const layout = document.querySelector('.three-column-layout');
+    if (!layout) return;
+
+    const setupHandle = (handleId, colVar, minPx, maxPx, side) => {
+        const handle = document.getElementById(handleId);
+        if (!handle) return;
+
+        let startX = 0, startVal = 0;
+
+        handle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            startX = e.clientX;
+            const current = parseInt(getComputedStyle(layout).getPropertyValue(colVar)) || minPx;
+            startVal = current;
+            handle.classList.add('dragging');
+
+            const onMove = (ev) => {
+                const delta = side === 'left'
+                    ? ev.clientX - startX
+                    : startX - ev.clientX;
+                const newVal = Math.min(maxPx, Math.max(minPx, startVal + delta));
+                layout.style.setProperty(colVar, newVal + 'px');
+            };
+            const onUp = () => {
+                handle.classList.remove('dragging');
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+    };
+
+    // Threads column (left of chat): dragging right expands threads
+    setupHandle('resize-threads-chat', '--col-threads', 160, 400, 'left');
+    // Agents column (right of chat): dragging left expands agents
+    setupHandle('resize-chat-agents',  '--col-agents',  200, 500, 'right');
+}

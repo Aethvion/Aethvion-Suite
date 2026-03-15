@@ -37,6 +37,10 @@ async function getHideToolsPref() {
 }
 
 async function loadAllTools() {
+    const tbody = document.getElementById('tools-table-body');
+    if (tbody && !allTools.length) {
+        if (typeof showSkeleton !== 'undefined') showSkeleton(tbody, 4);
+    }
     try {
         const response = await fetch('/api/tools/list');
         const data = await response.json();
@@ -250,24 +254,24 @@ function toggleToolDetails(id) {
 }
 
 async function deleteTool(toolName) {
-    if (!confirm(`Are you sure you want to delete tool "${toolName}"? This cannot be undone.`)) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/tools/${toolName}`, {
-            method: 'DELETE'
-        });
-        const result = await response.json();
-
-        if (result.success) {
-            console.log(result.message);
-            loadAllTools();
-        } else {
-            alert('Failed to delete tool: ' + result.message);
-        }
-    } catch (error) {
-        console.error('Error deleting tool:', error);
-        alert('Error deleting tool: ' + error.message);
-    }
+    showConfirm(
+        'Delete Tool',
+        `Delete tool "${toolName}"? This cannot be undone.`,
+        async () => {
+            try {
+                const response = await fetch(`/api/tools/${toolName}`, { method: 'DELETE' });
+                const result = await response.json();
+                if (result.success) {
+                    showToast(`Tool "${toolName}" deleted`, 'success');
+                    loadAllTools();
+                } else {
+                    showToast('Failed to delete tool: ' + result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting tool:', error);
+                showToast('Error deleting tool: ' + error.message, 'error');
+            }
+        },
+        { confirmLabel: 'Delete', icon: 'fa-trash' }
+    );
 }

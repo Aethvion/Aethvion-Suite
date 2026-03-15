@@ -304,10 +304,11 @@ document.addEventListener('tabChanged', (e) => {
 // Polyfill showNotification if not exists
 if (typeof showNotification === 'undefined') {
     window.showNotification = (msg, type) => {
+        const t = type === 'danger' ? 'error' : (type || 'info');
         if (typeof showToast !== 'undefined') {
-            showToast(msg, type === 'error' ? 'danger' : type);
+            showToast(msg, t);
         } else {
-            alert(`${type.toUpperCase()}: ${msg}`);
+            console.warn(`[notification] ${type}: ${msg}`);
         }
     };
 }

@@ -42,12 +42,24 @@ function initThreadManagement() {
         activeThreadTitle.addEventListener('dblclick', () => {
             if (!currentThreadId || currentThreadId === 'default') return;
             const thread = threads[currentThreadId];
-            if (thread) {
-                const newTitle = prompt('Enter new thread title:', thread.title);
-                if (newTitle && newTitle.trim() !== '' && newTitle !== thread.title) {
-                    editThreadTitle(thread.id, newTitle.trim());
-                }
-            }
+            if (!thread) return;
+            activeThreadTitle.contentEditable = 'true';
+            activeThreadTitle.focus();
+            const r = document.createRange();
+            r.selectNodeContents(activeThreadTitle);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(r);
+            const commit = () => {
+                activeThreadTitle.contentEditable = 'false';
+                const t = activeThreadTitle.textContent.trim();
+                if (t && t !== thread.title) editThreadTitle(thread.id, t);
+                else activeThreadTitle.textContent = thread.title;
+            };
+            activeThreadTitle.addEventListener('blur', commit, { once: true });
+            activeThreadTitle.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Enter')  { ev.preventDefault(); activeThreadTitle.blur(); }
+                if (ev.key === 'Escape') { activeThreadTitle.textContent = thread.title; activeThreadTitle.blur(); }
+            });
         });
         activeThreadTitle.style.cursor = 'text';
         activeThreadTitle.title = 'Double-click to edit title';
@@ -102,6 +114,9 @@ function initThreadManagement() {
 
     // Periodically refresh thread status
     setInterval(refreshThreadStatus, 3000);
+
+    // Wire thread search
+    initThreadSearch();
 }
 
 // Load threads from API
@@ -478,6 +493,35 @@ async function loadThreadMessages(threadId) {
     }
 }
 
+// ─── Relative time helper ─────────────────────────────────────────
+function relativeTime(dateStr) {
+    if (!dateStr) return '';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1)  return 'just now';
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    if (d < 7)  return `${d}d ago`;
+    return new Date(dateStr).toLocaleDateString();
+}
+
+// ─── Thread search wiring (called once after DOM ready) ───────────
+function initThreadSearch() {
+    const input = document.getElementById('threads-search');
+    if (!input || input.dataset.bound) return;
+    input.dataset.bound = 'true';
+    input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        document.querySelectorAll('.thread-item').forEach(item => {
+            const title = (item.querySelector('.thread-title')?.textContent || '').toLowerCase();
+            const preview = (item.querySelector('.thread-preview')?.textContent || '').toLowerCase();
+            item.style.display = (title.includes(q) || preview.includes(q)) ? '' : 'none';
+        });
+    });
+}
+
 // Render thread list
 function renderThreadList() {
     const threadsList = document.getElementById('threads-list');
@@ -501,28 +545,61 @@ function renderThreadList() {
         // Populate Data
         clone.querySelector('.thread-title').textContent = thread.title;
 
-        // Date
-        const date = new Date(thread.updated_at || thread.created_at).toLocaleDateString();
+        // Preview — last user message from in-memory store
+        const msgs = threadMessages[thread.id] || [];
+        const lastMsg = [...msgs].reverse().find(m => m.role === 'user' || m.role === 'assistant');
+        const previewEl = clone.querySelector('.thread-preview');
+        if (previewEl) {
+            previewEl.textContent = lastMsg
+                ? lastMsg.content.replace(/<[^>]+>/g, '').slice(0, 60)
+                : 'No messages yet';
+        }
+
+        // Relative date
+        const date = relativeTime(thread.updated_at || thread.created_at);
         clone.querySelector('.thread-date').textContent = date;
 
-        // Edit Action
+        // Edit Action — inline title rename
         const editBtn = clone.querySelector('.edit-btn');
         if (editBtn) {
             editBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const newTitle = prompt('Enter new thread title:', thread.title);
-                if (newTitle && newTitle.trim() !== '' && newTitle !== thread.title) {
-                    editThreadTitle(thread.id, newTitle.trim());
-                }
+                const titleEl = threadItem.querySelector('.thread-title');
+                if (!titleEl) return;
+                titleEl.contentEditable = 'true';
+                titleEl.focus();
+                const range = document.createRange();
+                range.selectNodeContents(titleEl);
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(range);
+
+                const commit = () => {
+                    titleEl.contentEditable = 'false';
+                    const newTitle = titleEl.textContent.trim();
+                    if (newTitle && newTitle !== thread.title) {
+                        editThreadTitle(thread.id, newTitle);
+                        showToast('Thread renamed', 'success');
+                    } else {
+                        titleEl.textContent = thread.title; // revert
+                    }
+                };
+                titleEl.addEventListener('blur',    commit, { once: true });
+                titleEl.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter')  { ev.preventDefault(); titleEl.blur(); }
+                    if (ev.key === 'Escape') { titleEl.textContent = thread.title; titleEl.blur(); }
+                });
             });
         }
 
-        // Delete Action
+        // Delete Action — custom confirm modal
         clone.querySelector('.delete-btn').addEventListener('click', (e) => {
             e.stopPropagation();
-            if (confirm(`Delete thread "${thread.title}"?`)) {
-                deleteThread(thread.id);
-            }
+            showConfirm(
+                'Delete Thread',
+                `Delete "${thread.title}" and all its messages? This cannot be undone.`,
+                () => deleteThread(thread.id),
+                { confirmLabel: 'Delete', icon: 'fa-trash' }
+            );
         });
 
         threadsList.appendChild(clone);
@@ -575,7 +652,7 @@ async function deleteThread(threadId) {
         await fetch(`/api/tasks/thread/${threadId}`, { method: 'DELETE' });
     } catch (error) {
         console.error('Failed to delete thread:', error);
-        alert('Failed to delete thread on server');
+        showToast('Failed to delete thread on server', 'error');
         loadThreads(); // Revert on failure
     }
 }

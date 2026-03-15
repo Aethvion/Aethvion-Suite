@@ -188,11 +188,11 @@ window.deleteAdvaiconvThread = deleteAdvaiconvThread;
 
 async function renameAdvaiconvThread() {
     if (!activeAdvaiconvThreadId) {
-        alert("Please select or start a thread to rename it.");
+        showToast('Please select or start a thread to rename it.', 'warn');
         return;
     }
     const currentName = titleAdvaiconvThread.innerText;
-    const newName = prompt("Enter new thread name:", currentName);
+    const newName = window.prompt("Enter new thread name:", currentName);
     if (!newName || newName === currentName) return;
 
     try {
@@ -518,7 +518,7 @@ async function notifySystemEvent(msg) {
 
 async function startSimulation() {
     if (activePersonas.length < 1) {
-        alert("Add at least one persona.");
+        showToast('Add at least one persona before starting.', 'warn');
         return;
     }
 
@@ -794,7 +794,7 @@ window.saveNewPersona = async function () {
     };
 
     if (!payload.name || !payload.background) {
-        alert("Name and Background are required.");
+        showToast('Name and Background are required.', 'warn');
         return;
     }
 
@@ -816,7 +816,7 @@ window.saveNewPersona = async function () {
         await fetchPersonas();
         closeModal();
     } catch (e) {
-        alert("Failed: " + e.message);
+        showToast('Failed: ' + e.message, 'error');
     }
 }
 

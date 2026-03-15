@@ -154,6 +154,33 @@
     color: transparent;
 }
 
+/* Collapsed sidebar: tooltip on hover */
+.sidebar-nav.collapsed .main-tab {
+    position: relative;
+}
+.sidebar-nav.collapsed .main-tab::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(14, 14, 22, 0.97);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 7px;
+    padding: 5px 10px;
+    font-size: 0.78rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 1000;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+.sidebar-nav.collapsed .main-tab:hover::after {
+    opacity: 1;
+}
+
 /* Sidebar Toggle Button */
 .sidebar-toggle-btn {
     background: transparent;
