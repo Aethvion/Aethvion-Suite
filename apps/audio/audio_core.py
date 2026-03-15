@@ -91,25 +91,38 @@ def _apply_chain(audio: "AudioSegment", effects: list) -> "AudioSegment":
     return result
 
 
-def _get_waveform(audio: "AudioSegment", num_points: int = 600) -> list:
-    """Downsample original audio to a peak-amplitude array for waveform display."""
+def _get_waveform(audio: "AudioSegment", num_points: int = 2000) -> dict:
+    """Return peak + RMS amplitude arrays for professional dual-layer waveform display.
+
+    Returns a dict ``{"peaks": [...], "rms": [...]}`` where each list has
+    *num_points* floats in [0, 1].  Peak shows transients (outer envelope),
+    RMS shows perceived loudness (inner body) — exactly what Ableton, Reaper,
+    etc. render.  Falls back to empty lists when numpy is unavailable.
+    """
     if not NUMPY_AVAILABLE or not audio:
-        return []
+        return {"peaks": [], "rms": []}
+
     samples = np.array(audio.get_array_of_samples(), dtype=np.float32)
     if audio.channels == 2:
         samples = samples.reshape(-1, 2).mean(axis=1)
     max_val = float(2 ** (audio.sample_width * 8 - 1)) or 1.0
     samples = samples / max_val
+
     total = len(samples)
     chunk = max(1, total // num_points)
-    waveform = []
-    for i in range(0, total, chunk):
-        seg = samples[i: i + chunk]
+    peaks: list = []
+    rms_vals: list = []
+
+    for i in range(num_points):
+        seg = samples[i * chunk: (i + 1) * chunk]
         if len(seg):
-            waveform.append(float(np.max(np.abs(seg))))
-        if len(waveform) >= num_points:
-            break
-    return waveform
+            peaks.append(float(np.max(np.abs(seg))))
+            rms_vals.append(float(np.sqrt(np.mean(seg ** 2))))
+        else:
+            peaks.append(0.0)
+            rms_vals.append(0.0)
+
+    return {"peaks": peaks, "rms": rms_vals}
 
 
 def _load_audio(data: bytes, filename: str) -> "AudioSegment":
@@ -179,7 +192,7 @@ class Track:
         """Return audio with all enabled effects applied (non-destructive)."""
         return _apply_chain(self.original, self.effects)
 
-    def get_waveform(self, num_points: int = 2000) -> list:
+    def get_waveform(self, num_points: int = 2000) -> dict:
         if self._waveform is None:
             self._waveform = _get_waveform(self.original, num_points)
         return self._waveform
