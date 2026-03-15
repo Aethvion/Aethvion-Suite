@@ -2142,15 +2142,56 @@ async function renderVersionTabContent(localData = null, remoteData = null, isUp
         const dataToUse = (remoteData && remoteData.system.changelog) ? remoteData.system.changelog : localData.system.changelog;
         
         if (dataToUse && Array.isArray(dataToUse)) {
-            // Sort versions descending (assuming semver or incremental strings/numbers)
+            // Sort versions descending
             const sorted = [...dataToUse].sort((a, b) => b.version.localeCompare(a.version, undefined, {numeric: true, sensitivity: 'base'}));
             
-            changelogList.innerHTML = sorted.map(entry => {
+            changelogList.innerHTML = '';
+            sorted.forEach(entry => {
                 const isCurrent = entry.version === localData.system.version;
                 const highlightStyle = isCurrent ? 'border-left: 3px solid var(--primary); background: rgba(0, 217, 255, 0.03);' : '';
                 const currentBadge = isCurrent ? '<span style="background: var(--primary); color: #000; font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; font-weight: bold; margin-left: 10px;">INSTALLED</span>' : '';
+                
+                // Calculate summaries
+                const counts = {
+                    added: (entry.added || []).length,
+                    improved: (entry.improved || []).length,
+                    changed: (entry.changed || []).length,
+                    fixed: (entry.fixed || []).length,
+                    upgraded: (entry.upgraded || []).length,
+                    removed: (entry.removed || []).length
+                };
+                
+                let summaryParts = [];
+                if (counts.added) summaryParts.push(`${counts.added} added`);
+                if (counts.improved) summaryParts.push(`${counts.improved} improved`);
+                if (counts.changed) summaryParts.push(`${counts.changed} changed`);
+                if (counts.fixed) summaryParts.push(`${counts.fixed} fixed`);
+                
+                const summaryText = summaryParts.length > 0 ? ` — ${summaryParts.join(', ')}` : '';
 
-                // Define categories in expected order
+                const versionItem = document.createElement('div');
+                versionItem.className = 'changelog-version-entry';
+                versionItem.style.cssText = `margin-bottom: 12px; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; transition: all 0.2s ease; ${highlightStyle}`;
+                
+                const header = document.createElement('div');
+                header.className = 'version-entry-header';
+                header.style.cssText = `padding: 12px 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); transition: background 0.2s;`;
+                header.onmouseover = () => header.style.background = 'rgba(255,255,255,0.05)';
+                header.onmouseout = () => header.style.background = 'rgba(255,255,255,0.02)';
+                
+                header.innerHTML = `
+                    <div style="font-weight: bold; color: var(--text-primary); font-size: 0.95rem; display: flex; align-items: center;">
+                        <i class="fas fa-chevron-right toggle-icon" style="font-size: 0.7rem; margin-right: 10px; transition: transform 0.2s; transform: ${isCurrent ? 'rotate(90deg)' : 'none'};"></i>
+                        Version ${entry.version} <span class="version-summary" style="font-weight: normal; font-size: 0.8rem; color: var(--text-secondary); margin-left: 8px; ${isCurrent ? 'display:none;' : ''}">${summaryText}</span> ${currentBadge}
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary);">${entry.date || ''}</div>
+                `;
+
+                const body = document.createElement('div');
+                body.className = 'version-entry-body';
+                body.style.cssText = `padding: 0 15px 15px 15px; display: ${isCurrent ? 'block' : 'none'}; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;`;
+                
+                // Define categories
                 const categories = [
                     { key: 'added', label: 'Added', color: '#55efc4' },
                     { key: 'improved', label: 'Improved', color: '#74b9ff' },
@@ -2159,44 +2200,42 @@ async function renderVersionTabContent(localData = null, remoteData = null, isUp
                     { key: 'upgraded', label: 'Upgraded', color: '#00cec9' },
                     { key: 'removed', label: 'Removed', color: '#ff7675' }
                 ];
-                
+
                 let detailsHtml = '';
-                
-                // Backwards compatibility for flat "changes" array
                 if (entry.changes && Array.isArray(entry.changes) && entry.changes.length > 0) {
                      detailsHtml += `<ul style="margin: 0 0 10px 0; padding-left: 20px; color: var(--text-secondary);">
                         ${entry.changes.map(c => `<li style="margin-bottom: 5px;">${c}</li>`).join('')}
                      </ul>`;
                 }
 
-                // Render categorized lists
                 categories.forEach(cat => {
                     if (entry[cat.key] && Array.isArray(entry[cat.key]) && entry[cat.key].length > 0) {
                         detailsHtml += `
-                            <div style="margin-bottom: 10px;">
-                                <span style="display: inline-block; font-size: 0.65rem; font-weight: bold; text-transform: uppercase; color: ${cat.color}; border: 1px solid ${cat.color}40; background: ${cat.color}15; padding: 2px 6px; border-radius: 4px; margin-bottom: 6px; letter-spacing: 0.5px;">${cat.label}</span>
-                                <ul style="margin: 0 0 6px 0; padding-left: 20px; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
-                                    ${entry[cat.key].map(item => `<li style="margin-bottom: 4px;">${item}</li>`).join('')}
+                            <div style="margin-bottom: 12px;">
+                                <span style="display: inline-block; font-size: 0.6rem; font-weight: bold; text-transform: uppercase; color: ${cat.color}; border: 1px solid ${cat.color}40; background: ${cat.color}15; padding: 1px 5px; border-radius: 4px; margin-bottom: 6px; letter-spacing: 0.5px;">${cat.label}</span>
+                                <ul style="margin: 0; padding-left: 18px; color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5;">
+                                    ${entry[cat.key].map(item => `<li style="margin-bottom: 3px;">${item}</li>`).join('')}
                                 </ul>
                             </div>
                         `;
                     }
                 });
+                
+                body.innerHTML = detailsHtml;
+                
+                header.onclick = () => {
+                    const isVisible = body.style.display === 'block';
+                    body.style.display = isVisible ? 'none' : 'block';
+                    header.querySelector('.toggle-icon').style.transform = isVisible ? 'none' : 'rotate(90deg)';
+                    header.querySelector('.version-summary').style.display = isVisible ? 'inline' : 'none';
+                };
 
-                return `
-                    <div style="margin-bottom: 25px; padding: 15px; border-radius: 8px; border: 1px solid var(--border); ${highlightStyle}">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
-                            <div style="font-weight: bold; color: var(--text-primary); font-size: 1.1rem; display: flex; align-items: center;">
-                                Version ${entry.version} ${currentBadge}
-                            </div>
-                            <div style="font-size: 0.8rem; color: var(--text-secondary);">${entry.date || ''}</div>
-                        </div>
-                        ${detailsHtml}
-                    </div>
-                `;
-            }).join('');
+                versionItem.appendChild(header);
+                versionItem.appendChild(body);
+                changelogList.appendChild(versionItem);
+            });
         } else {
-            changelogList.innerHTML = '<li style="color:var(--text-secondary);">No changelog data available.</li>';
+            changelogList.innerHTML = '<div style="color:var(--text-secondary); padding: 20px; text-align: center;">No changelog data available.</div>';
         }
     }
 }

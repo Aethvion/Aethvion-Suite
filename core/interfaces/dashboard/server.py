@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 app = FastAPI(
     title="Aethvion Suite - Nexus Portal",
     description="Autonomous AI Orchestration System",
-    version="5"
+    version="6"
 )
 
 # CORS middleware
