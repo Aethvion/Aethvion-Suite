@@ -14,7 +14,6 @@ class AethvionPhoto {
     init() {
         this.bindEvents();
         this.bindFilters();
-        this.engine.init();
         console.log("Aethvion Photo Initialized");
         
         // Create initial layer
@@ -31,6 +30,21 @@ class AethvionPhoto {
                 this.currentTool = btn.dataset.tool;
             });
         });
+        this.currentTool = 'select'; // Default
+
+        // Menu items
+        document.querySelectorAll('.menu-item').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = e.target.innerText.trim().toLowerCase();
+                this.handleMenuAction(action);
+            });
+        });
+
+        // Export button
+        const exportBtn = document.getElementById('btn-export');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.handleExport());
+        }
 
         // Layer actions
         document.getElementById('add-layer-btn').addEventListener('click', () => {
@@ -50,7 +64,7 @@ class AethvionPhoto {
         let isDrawing = false;
 
         canvas.addEventListener('mousedown', (e) => {
-            if (this.currentTool === 'brush') {
+            if (this.currentTool === 'brush' || this.currentTool === 'eraser') {
                 isDrawing = true;
                 this.handleDraw(e);
             }
@@ -68,12 +82,62 @@ class AethvionPhoto {
         });
     }
 
+    handleMenuAction(action) {
+        console.log("Menu action:", action);
+        switch (action) {
+            case 'file':
+                // Show file dropdown (simplified for now)
+                break;
+            case 'layer':
+                this.engine.addLayer(`Layer ${this.engine.layers.length + 1}`);
+                this.updateLayerStack();
+                break;
+            case 'view':
+                // Toggle grid etc.
+                break;
+        }
+    }
+
+    handleExport() {
+        const dataUrl = this.engine.exportToPNG();
+        const link = document.createElement('a');
+        link.download = `aethvion-photo-${Date.now()}.png`;
+        link.href = dataUrl;
+        link.click();
+    }
+
+    bindFilters() {
+        document.querySelectorAll('#filter-controls input[type="range"]').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const filter = e.target.dataset.filter;
+                const value = parseInt(e.target.value);
+                this.filters.setFilter(filter, value);
+            });
+        });
+    }
+
+    syncFilters() {
+        const layer = this.engine.getActiveLayer();
+        if (!layer) return;
+
+        document.querySelectorAll('#filter-controls input[type="range"]').forEach(input => {
+            const filter = input.dataset.filter;
+            if (layer.filters.hasOwnProperty(filter)) {
+                input.value = layer.filters[filter];
+            }
+        });
+    }
+
     handleDraw(e) {
         const rect = e.target.getBoundingClientRect();
         const x = (e.clientX - rect.left) * (this.engine.width / rect.width);
         const y = (e.clientY - rect.top) * (this.engine.height / rect.height);
         
-        this.engine.drawBrush(x, y, '#7c6ff7', 10);
+        if (this.currentTool === 'brush') {
+            this.engine.drawBrush(x, y, '#7c6ff7', 10);
+        } else if (this.currentTool === 'eraser') {
+            this.engine.drawEraser(x, y, 15);
+        }
     }
 
     updateCoords(e) {
@@ -102,6 +166,15 @@ class AethvionPhoto {
                 this.updateLayerStack();
                 this.syncFilters();
             };
+
+            const eye = li.querySelector('.fa-eye, .fa-eye-slash');
+            eye.onclick = (e) => {
+                e.stopPropagation();
+                const isVisible = !layer.visible;
+                this.engine.setLayerVisibility(idx, isVisible);
+                this.updateLayerStack();
+            };
+
             stack.appendChild(li);
         });
     }

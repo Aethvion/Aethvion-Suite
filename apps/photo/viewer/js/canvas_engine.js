@@ -127,11 +127,10 @@ export class CanvasEngine {
     async loadImage(url, name = 'Image Layer') {
         return new Promise((resolve, reject) => {
             const img = new Image();
+            img.crossOrigin = "anonymous";
             img.onload = () => {
                 const layer = this.addLayer(name);
                 // Center image if smaller than canvas
-                const x = (this.width - img.width) / 2;
-                const y = (this.height - img.height) / 2;
                 layer.ctx.drawImage(img, 0, 0);
                 this.render();
                 resolve(layer);
@@ -139,6 +138,17 @@ export class CanvasEngine {
             img.onerror = reject;
             img.src = url;
         });
+    }
+
+    exportToPNG() {
+        return this.mainCanvas.toDataURL("image/png");
+    }
+
+    setLayerVisibility(index, visible) {
+        if (this.layers[index]) {
+            this.layers[index].visible = visible;
+            this.render();
+        }
     }
 
     // Tools
@@ -149,6 +159,19 @@ export class CanvasEngine {
         const ctx = layer.ctx;
         ctx.globalAlpha = opacity;
         ctx.fillStyle = color;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+        this.render();
+    }
+
+    drawEraser(x, y, size = 10) {
+        const layer = this.getActiveLayer();
+        if (!layer) return;
+
+        const ctx = layer.ctx;
+        ctx.globalCompositeOperation = 'destination-out';
         ctx.beginPath();
         ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.fill();
