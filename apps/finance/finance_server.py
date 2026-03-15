@@ -1,19 +1,23 @@
 import os
 import sys
+import json
+import uuid
 import logging
+import threading
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from typing import Any, Dict, Optional
+from datetime import datetime
+
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import uvicorn
-import shutil
-import json
-from datetime import datetime
 
-# Add workspace root to path
+# ---------------------------------------------------------------------------
+# Bootstrap workspace root & imports
+# ---------------------------------------------------------------------------
 WORKSPACE_ROOT = Path(__file__).parent.parent.parent
 sys.path.append(str(WORKSPACE_ROOT))
 from core.utils.port_manager import PortManager
@@ -21,10 +25,13 @@ from core.utils import get_logger
 
 logger = get_logger("AethvionFinance")
 
+# ---------------------------------------------------------------------------
+# App
+# ---------------------------------------------------------------------------
 app = FastAPI(
     title="Aethvion Finance — Financial Hub",
     description="Professional Financial Tracking & Analysis",
-    version="1.0.0"
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -35,16 +42,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ---------------------------------------------------------------------------
 # Directories
+# ---------------------------------------------------------------------------
 APP_DIR = Path(__file__).parent
 DATA_DIR = WORKSPACE_ROOT / "data" / "finance"
 PROJECTS_DIR = DATA_DIR / "projects"
+AUTOSAVE_PATH = DATA_DIR / "autosave.aethfinance"
 
-for d in [PROJECTS_DIR]:
+for d in [DATA_DIR, PROJECTS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
-# Mount Viewer
+# ---------------------------------------------------------------------------
+# Static files & HTML serving
+# ---------------------------------------------------------------------------
 VIEWER_DIR = APP_DIR / "viewer"
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     index_path = VIEWER_DIR / "index.html"
@@ -53,84 +66,361 @@ async def serve_index():
     return HTMLResponse(content="<h1>Aethvion Finance</h1><p>Viewer not found.</p>", status_code=404)
 
 if VIEWER_DIR.exists():
-    (VIEWER_DIR / "css").mkdir(parents=True, exist_ok=True)
-    (VIEWER_DIR / "js").mkdir(parents=True, exist_ok=True)
-    app.mount("/css", StaticFiles(directory=str(VIEWER_DIR / "css")), name="css")
+    for sub in ["css", "js"]:
+        (VIEWER_DIR / sub).mkdir(parents=True, exist_ok=True)
     app.mount("/js", StaticFiles(directory=str(VIEWER_DIR / "js")), name="js")
+    app.mount("/css", StaticFiles(directory=str(VIEWER_DIR / "css")), name="css")
 
-class StatusResponse(BaseModel):
-    status: str
-    version: str
-    uptime: str
-    directories: Dict[str, bool]
+# ---------------------------------------------------------------------------
+# In-memory state
+# ---------------------------------------------------------------------------
+def _now_iso() -> str:
+    return datetime.utcnow().isoformat()
 
-@app.get("/api/status", response_model=StatusResponse)
-async def get_status():
+def _make_default_state() -> dict:
     return {
-        "status": "online",
-        "version": "1.0.0",
-        "uptime": datetime.now().isoformat(),
-        "directories": {
-            "projects": PROJECTS_DIR.exists()
-        }
+        "meta": {
+            "name": "My Finances",
+            "currency": "€",
+            "created": _now_iso(),
+            "modified": _now_iso(),
+        },
+        "accounts": [],
+        "transactions": [],
+        "budgets": [],
+        "goals": [],
     }
 
-class ProjectSave(BaseModel):
-    name: str
-    data: str # JSON string
+state: dict = _make_default_state()
 
-@app.post("/api/save-project")
-async def save_project(project: ProjectSave):
-    """Save an .aethfinance project to the server."""
+# ---------------------------------------------------------------------------
+# Persistence helpers
+# ---------------------------------------------------------------------------
+def _persist(path: Path, data: dict) -> None:
+    """Write state dict to a .aethfinance file (JSON). Called in background thread."""
     try:
-        filename = project.name.replace(" ", "_").replace("/", "_").replace("\\", "_")
-        if not filename.endswith(".aethfinance"):
-            filename += ".aethfinance"
-        
-        save_path = PROJECTS_DIR / filename
-        save_path.write_text(project.data, encoding="utf-8")
-        
-        return {
-            "success": True,
-            "filename": filename,
-            "path": str(save_path)
-        }
-    except Exception as e:
-        logger.error(f"Save project failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(path)
+    except Exception as exc:
+        logger.error(f"Persist to {path} failed: {exc}")
+
+def _autosave() -> None:
+    """Fire-and-forget autosave in a daemon thread."""
+    state["meta"]["modified"] = _now_iso()
+    t = threading.Thread(target=_persist, args=(AUTOSAVE_PATH, state), daemon=True)
+    t.start()
+
+def _load_from_path(path: Path) -> dict:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    # Ensure all top-level keys are present (forward-compat)
+    for key in ("meta", "accounts", "transactions", "budgets", "goals"):
+        if key not in data:
+            data[key] = _make_default_state()[key]
+    return data
+
+# ---------------------------------------------------------------------------
+# Startup: load autosave if it exists
+# ---------------------------------------------------------------------------
+@app.on_event("startup")
+async def startup_event():
+    global state
+    if AUTOSAVE_PATH.exists():
+        try:
+            state = _load_from_path(AUTOSAVE_PATH)
+            logger.info("Loaded autosave state from disk.")
+        except Exception as exc:
+            logger.warning(f"Could not load autosave ({exc}); starting fresh.")
+            state = _make_default_state()
+    else:
+        state = _make_default_state()
+        logger.info("No autosave found; starting with empty state.")
+
+# ---------------------------------------------------------------------------
+# Pydantic request models
+# ---------------------------------------------------------------------------
+class TransactionIn(BaseModel):
+    name: str
+    amount: float
+    date: str
+    category: str
+    type: str          # "income" | "expense"
+    account_id: str = ""
+    note: str = ""
+
+class TransactionUpdate(BaseModel):
+    name: Optional[str] = None
+    amount: Optional[float] = None
+    date: Optional[str] = None
+    category: Optional[str] = None
+    type: Optional[str] = None
+    account_id: Optional[str] = None
+    note: Optional[str] = None
+
+class AccountIn(BaseModel):
+    name: str
+    type: str          # checking / savings / investment / cash
+    balance: float = 0.0
+    color: str = "#00d2ff"
+    note: str = ""
+
+class AccountUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    balance: Optional[float] = None
+    color: Optional[str] = None
+    note: Optional[str] = None
+
+class BudgetIn(BaseModel):
+    category: str
+    limit: float
+    period: str = "monthly"
+
+class GoalIn(BaseModel):
+    name: str
+    target: float
+    current: float = 0.0
+    deadline: str = ""
+    color: str = "#00d2ff"
+    note: str = ""
+
+class GoalUpdate(BaseModel):
+    name: Optional[str] = None
+    target: Optional[float] = None
+    current: Optional[float] = None
+    deadline: Optional[str] = None
+    color: Optional[str] = None
+    note: Optional[str] = None
+
+class SaveRequest(BaseModel):
+    name: str
+
+class FullState(BaseModel):
+    meta: dict
+    accounts: list
+    transactions: list
+    budgets: list
+    goals: list
+
+# ---------------------------------------------------------------------------
+# Health
+# ---------------------------------------------------------------------------
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}
+
+# ---------------------------------------------------------------------------
+# State
+# ---------------------------------------------------------------------------
+@app.get("/api/state")
+async def get_state():
+    return state
+
+@app.post("/api/state")
+async def replace_state(new_state: FullState):
+    global state
+    state = new_state.dict()
+    _autosave()
+    return state
+
+# ---------------------------------------------------------------------------
+# Transactions
+# ---------------------------------------------------------------------------
+@app.post("/api/transaction")
+async def add_transaction(tx: TransactionIn):
+    new_tx = {
+        "id": str(uuid.uuid4()),
+        "name": tx.name,
+        "amount": tx.amount,
+        "date": tx.date,
+        "category": tx.category,
+        "type": tx.type,
+        "account_id": tx.account_id,
+        "note": tx.note,
+    }
+    state["transactions"].append(new_tx)
+    _autosave()
+    return new_tx
+
+@app.put("/api/transaction/{tx_id}")
+async def update_transaction(tx_id: str, update: TransactionUpdate):
+    for tx in state["transactions"]:
+        if tx["id"] == tx_id:
+            for field, value in update.dict(exclude_none=True).items():
+                tx[field] = value
+            _autosave()
+            return tx
+    raise HTTPException(status_code=404, detail="Transaction not found")
+
+@app.delete("/api/transaction/{tx_id}")
+async def delete_transaction(tx_id: str):
+    before = len(state["transactions"])
+    state["transactions"] = [t for t in state["transactions"] if t["id"] != tx_id]
+    if len(state["transactions"]) == before:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    _autosave()
+    return {"deleted": tx_id}
+
+# ---------------------------------------------------------------------------
+# Accounts
+# ---------------------------------------------------------------------------
+@app.post("/api/account")
+async def add_account(acc: AccountIn):
+    new_acc = {
+        "id": str(uuid.uuid4()),
+        "name": acc.name,
+        "type": acc.type,
+        "balance": acc.balance,
+        "color": acc.color,
+        "note": acc.note,
+    }
+    state["accounts"].append(new_acc)
+    _autosave()
+    return new_acc
+
+@app.put("/api/account/{acc_id}")
+async def update_account(acc_id: str, update: AccountUpdate):
+    for acc in state["accounts"]:
+        if acc["id"] == acc_id:
+            for field, value in update.dict(exclude_none=True).items():
+                acc[field] = value
+            _autosave()
+            return acc
+    raise HTTPException(status_code=404, detail="Account not found")
+
+@app.delete("/api/account/{acc_id}")
+async def delete_account(acc_id: str):
+    before = len(state["accounts"])
+    state["accounts"] = [a for a in state["accounts"] if a["id"] != acc_id]
+    if len(state["accounts"]) == before:
+        raise HTTPException(status_code=404, detail="Account not found")
+    _autosave()
+    return {"deleted": acc_id}
+
+# ---------------------------------------------------------------------------
+# Budgets
+# ---------------------------------------------------------------------------
+@app.post("/api/budget")
+async def upsert_budget(budget: BudgetIn):
+    for b in state["budgets"]:
+        if b["category"] == budget.category:
+            b["limit"] = budget.limit
+            b["period"] = budget.period
+            _autosave()
+            return b
+    new_budget = {
+        "id": str(uuid.uuid4()),
+        "category": budget.category,
+        "limit": budget.limit,
+        "period": budget.period,
+    }
+    state["budgets"].append(new_budget)
+    _autosave()
+    return new_budget
+
+@app.delete("/api/budget/{category}")
+async def delete_budget(category: str):
+    before = len(state["budgets"])
+    state["budgets"] = [b for b in state["budgets"] if b["category"] != category]
+    if len(state["budgets"]) == before:
+        raise HTTPException(status_code=404, detail="Budget not found")
+    _autosave()
+    return {"deleted": category}
+
+# ---------------------------------------------------------------------------
+# Goals
+# ---------------------------------------------------------------------------
+@app.post("/api/goal")
+async def add_goal(goal: GoalIn):
+    new_goal = {
+        "id": str(uuid.uuid4()),
+        "name": goal.name,
+        "target": goal.target,
+        "current": goal.current,
+        "deadline": goal.deadline,
+        "color": goal.color,
+        "note": goal.note,
+    }
+    state["goals"].append(new_goal)
+    _autosave()
+    return new_goal
+
+@app.put("/api/goal/{goal_id}")
+async def update_goal(goal_id: str, update: GoalUpdate):
+    for g in state["goals"]:
+        if g["id"] == goal_id:
+            for field, value in update.dict(exclude_none=True).items():
+                g[field] = value
+            _autosave()
+            return g
+    raise HTTPException(status_code=404, detail="Goal not found")
+
+@app.delete("/api/goal/{goal_id}")
+async def delete_goal(goal_id: str):
+    before = len(state["goals"])
+    state["goals"] = [g for g in state["goals"] if g["id"] != goal_id]
+    if len(state["goals"]) == before:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    _autosave()
+    return {"deleted": goal_id}
+
+# ---------------------------------------------------------------------------
+# Project save/load
+# ---------------------------------------------------------------------------
+@app.post("/api/save")
+async def save_project(req: SaveRequest):
+    filename = req.name.strip().replace(" ", "_").replace("/", "_").replace("\\", "_")
+    if not filename.endswith(".aethfinance"):
+        filename += ".aethfinance"
+    path = PROJECTS_DIR / filename
+    _persist(path, state)
+    return {"filename": filename}
 
 @app.get("/api/projects")
 async def list_projects():
-    """List all saved projects on the server."""
-    try:
-        projects = []
-        for p in PROJECTS_DIR.glob("*.aethfinance"):
-            stats = p.stat()
-            projects.append({
-                "name": p.stem,
-                "filename": p.name,
-                "size": stats.st_size,
-                "modified": datetime.fromtimestamp(stats.st_mtime).isoformat()
-            })
-        return {"projects": sorted(projects, key=lambda x: x['modified'], reverse=True)}
-    except Exception as e:
-        logger.error(f"List projects failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    projects = []
+    for p in sorted(PROJECTS_DIR.glob("*.aethfinance"), key=lambda x: x.stat().st_mtime, reverse=True):
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            meta = data.get("meta", {})
+        except Exception:
+            meta = {}
+        stats = p.stat()
+        projects.append({
+            "filename": p.name,
+            "name": meta.get("name", p.stem),
+            "currency": meta.get("currency", "€"),
+            "modified": meta.get("modified", datetime.fromtimestamp(stats.st_mtime).isoformat()),
+            "size": stats.st_size,
+        })
+    return {"projects": projects}
 
-@app.get("/api/load-project/{filename}")
+@app.post("/api/load/{filename}")
 async def load_project(filename: str):
-    """Load a specific project from the server."""
+    global state
+    path = PROJECTS_DIR / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Project file not found")
     try:
-        path = PROJECTS_DIR / filename
-        if not path.exists():
-            raise HTTPException(status_code=404, detail="Project not found")
-        return {"data": path.read_text(encoding="utf-8")}
-    except Exception as e:
-        logger.error(f"Load project failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        state = _load_from_path(path)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Could not parse project file: {exc}")
+    _autosave()
+    return state
 
+@app.delete("/api/projects/{filename}")
+async def delete_project(filename: str):
+    path = PROJECTS_DIR / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Project file not found")
+    path.unlink()
+    return {"deleted": filename}
+
+# ---------------------------------------------------------------------------
+# Entrypoint
+# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     base_port = int(os.getenv("FINANCE_PORT", 8085))
     port = PortManager.bind_port("Aethvion Finance", base_port)
-    logger.info(f"💰 Aethvion Finance Service → http://localhost:{port}")
+    logger.info(f"Aethvion Finance -> http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
