@@ -160,12 +160,15 @@ function _drawRuler() {
     const scrollX  = timelineScroll.scrollLeft;
     const workMs   = state.workMs;
 
-    /* resize canvas to viewport width only */
-    ruler.width  = visWidth;
-    ruler.height = RULER_H;
-    ruler.style.width = visWidth + "px";
+    /* resize canvas buffer to physical pixels for crisp ruler text & ticks */
+    const dpr = window.devicePixelRatio || 1;
+    ruler.width  = Math.ceil(visWidth * dpr);
+    ruler.height = Math.ceil(RULER_H  * dpr);
+    ruler.style.width  = visWidth + "px";
+    ruler.style.height = RULER_H  + "px";
 
     const ctx = ruler.getContext("2d");
+    ctx.scale(dpr, dpr);   // draw in CSS px — DPR handled by buffer size
     ctx.fillStyle = "#0d0d10";
     ctx.fillRect(0, 0, visWidth, RULER_H);
 
@@ -293,19 +296,21 @@ function renderRows(tracks, totalPx) {
         clip.style.left        = clipLeft + "px";
         clip.style.width       = clipWidth + "px";
         clip.style.borderColor = t.color;
+        /* store waveform + track metadata on the element so the virtual
+           waveform renderer can reach it without re-querying the session */
+        clip.dataset.trackId     = t.track_id;
+        clip.dataset.startMs     = t.start_ms;
+        clip.dataset.durationMs  = t.duration_ms;
+        clip.dataset.color       = t.color;
+        clip.dataset.muted       = t.muted ? "1" : "0";
+        clip._waveform           = t.waveform || null;   // store object ref
 
         clip.innerHTML = `
             <div class="ae-clip-label">${escHtml(t.name)}</div>
-            <canvas class="ae-clip-canvas" height="${TRACK_H - 22}"></canvas>`;
+            <canvas class="ae-clip-canvas"></canvas>`;
 
         row.appendChild(clip);
         rowsBody.appendChild(row);
-
-        const canvas = clip.querySelector(".ae-clip-canvas");
-        /* cap canvas buffer width — browser canvas max is ~32k px wide;
-           CSS width:100% on the canvas handles the visual stretch */
-        canvas.width = Math.min(Math.max(2, Math.ceil(clipWidth)), 8192);
-        drawWaveform(canvas, t.waveform || [], t.color, t.muted);
 
         makeDraggable(clip, t.track_id, t.start_ms);
 
@@ -313,64 +318,166 @@ function renderRows(tracks, totalPx) {
             if (e.target.closest(".ae-clip")) selectTrack(t.track_id);
         });
     });
+
+    /* draw waveforms for the initially-visible viewport */
+    renderVisibleWaveforms();
 }
 
+/* ── Virtual waveform renderer ───────────────────────────────────────────
+   Only the portion of each waveform that is currently visible in the
+   horizontal scroll viewport is drawn onto the canvas.  The canvas is
+   repositioned (CSS left) to sit over that visible strip, and its buffer
+   is sized to the strip width × DPR — never exceeding 8192 px.
+
+   Called once after renderRows and again on every horizontal scroll event.
+   ─────────────────────────────────────────────────────────────────────── */
+function renderVisibleWaveforms() {
+    const scrollX  = timelineScroll.scrollLeft;
+    const visWidth = timelineScroll.clientWidth || 800;
+    const dpr      = window.devicePixelRatio || 1;
+    const cssH     = TRACK_H - 16;
+
+    document.querySelectorAll(".ae-clip").forEach(clip => {
+        const canvas      = clip.querySelector(".ae-clip-canvas");
+        if (!canvas) return;
+
+        const startMs    = parseFloat(clip.dataset.startMs   || 0);
+        const durationMs = parseFloat(clip.dataset.durationMs || 0);
+        const color      = clip.dataset.color   || "#00d9ff";
+        const muted      = clip.dataset.muted   === "1";
+        const waveform   = clip._waveform;
+
+        const clipLeftPx  = startMs * state.pxPerMs;
+        const clipWidthPx = Math.max(2, durationMs * state.pxPerMs);
+        const clipRightPx = clipLeftPx + clipWidthPx;
+
+        /* visible intersection of this clip with the scroll viewport */
+        const visLeft  = Math.max(clipLeftPx, scrollX);
+        const visRight = Math.min(clipRightPx, scrollX + visWidth);
+
+        if (visLeft >= visRight) {
+            /* clip is entirely off-screen — hide canvas to save memory */
+            canvas.style.display = "none";
+            return;
+        }
+
+        canvas.style.display = "";
+
+        /* canvas covers only the visible strip of the clip */
+        const stripCssW = visRight - visLeft;
+        const stripBufW = Math.min(Math.ceil(stripCssW * dpr), 8192);
+        const stripBufH = Math.ceil(cssH * dpr);
+
+        /* position the canvas over the visible strip (relative to clip left) */
+        canvas.style.position = "absolute";
+        canvas.style.top      = "16px";       // below the label
+        canvas.style.left     = (visLeft - clipLeftPx) + "px";
+        canvas.style.width    = stripCssW + "px";
+        canvas.style.height   = cssH      + "px";
+
+        if (canvas.width !== stripBufW || canvas.height !== stripBufH) {
+            canvas.width  = stripBufW;
+            canvas.height = stripBufH;
+        }
+
+        /* slice waveform data to match the visible fraction of the clip */
+        const peaks = Array.isArray(waveform) ? waveform
+                    : (waveform && waveform.peaks) ? waveform.peaks : [];
+        const rms   = (waveform && waveform.rms) ? waveform.rms : peaks;
+
+        if (!peaks.length) return;
+
+        const startFrac = (visLeft - clipLeftPx) / clipWidthPx;
+        const endFrac   = (visRight - clipLeftPx) / clipWidthPx;
+        const s = Math.floor(startFrac * peaks.length);
+        const e = Math.ceil(endFrac   * peaks.length);
+
+        drawWaveform(canvas,
+            { peaks: peaks.slice(s, e), rms: rms.slice(s, e) },
+            color, muted);
+    });
+}
+
+/* ── Waveform renderer — professional dual-layer (peak + RMS) ────────────
+   Matches what Ableton / Reaper / FL Studio display:
+     Layer 1 — Peak envelope  (faint outer fill)  shows raw transients
+     Layer 2 — RMS body       (bright inner fill)  shows perceived loudness
+     Layer 3 — Peak outline   (crisp 1px strokes)  defines the edges cleanly
+     Layer 4 — Centre line    (subtle 0.5px)        visual reference
+   ─────────────────────────────────────────────────────────────────────── */
 function drawWaveform(canvas, waveform, color, muted) {
-    if (!waveform || !waveform.length) return;
-    const ctx  = canvas.getContext("2d");
-    const w    = canvas.width;
-    const h    = canvas.height;
-    const mid  = h / 2;
+    /* accept both new {peaks, rms} format and old plain array (fallback) */
+    const peaks = Array.isArray(waveform) ? waveform
+                : (waveform && waveform.peaks) ? waveform.peaks : [];
+    const rms   = (waveform && waveform.rms)   ? waveform.rms   : peaks;
+
+    const ctx = canvas.getContext("2d");
+    const w   = canvas.width;
+    const h   = canvas.height;
+    const mid = h / 2;
     ctx.clearRect(0, 0, w, h);
 
-    const baseAlpha = muted ? 0.25 : 0.55;
-    const lineAlpha = muted ? 0.35 : 0.85;
+    if (!peaks.length) return;
 
-    /* filled gradient area */
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0,   color + Math.round(baseAlpha * 255).toString(16).padStart(2, "0"));
-    grad.addColorStop(0.5, color + Math.round(baseAlpha * 0.4 * 255).toString(16).padStart(2, "0"));
-    grad.addColorStop(1,   color + Math.round(baseAlpha * 255).toString(16).padStart(2, "0"));
+    const a    = muted ? 0.30 : 1.0;   // master alpha multiplier
+    const step = peaks.length / w;
 
-    const step = waveform.length / w;
-
-    /* build the top path, then mirror it for the bottom */
-    ctx.beginPath();
-    ctx.moveTo(0, mid);
-    for (let px = 0; px < w; px++) {
-        const idx = Math.min(waveform.length - 1, Math.floor(px * step));
-        const amp = (waveform[idx] || 0) * mid * 0.9;
-        ctx.lineTo(px, mid - amp);
+    function amp(arr, px) {
+        const i = Math.min(arr.length - 1, Math.floor(px * step));
+        return (arr[i] || 0) * mid * 0.92;
     }
-    for (let px = w - 1; px >= 0; px--) {
-        const idx = Math.min(waveform.length - 1, Math.floor(px * step));
-        const amp = (waveform[idx] || 0) * mid * 0.9;
-        ctx.lineTo(px, mid + amp);
+
+    function hex(opacity) {
+        return Math.round(Math.max(0, Math.min(255, opacity * 255 * a))
+                         ).toString(16).padStart(2, "0");
     }
-    ctx.closePath();
-    ctx.fillStyle = grad;
+
+    function filledPath(arr) {
+        ctx.beginPath();
+        ctx.moveTo(0, mid);
+        for (let px = 0; px < w; px++) ctx.lineTo(px, mid - amp(arr, px));
+        for (let px = w - 1; px >= 0; px--) ctx.lineTo(px, mid + amp(arr, px));
+        ctx.closePath();
+    }
+
+    /* Layer 1 — peak envelope (faint, shows transient spikes) */
+    const peakGrad = ctx.createLinearGradient(0, 0, 0, h);
+    peakGrad.addColorStop(0,   color + hex(0.22));
+    peakGrad.addColorStop(0.5, color + hex(0.08));
+    peakGrad.addColorStop(1,   color + hex(0.22));
+    filledPath(peaks);
+    ctx.fillStyle = peakGrad;
     ctx.fill();
 
-    /* crisp top-edge outline */
-    ctx.beginPath();
-    ctx.moveTo(0, mid);
-    for (let px = 0; px < w; px++) {
-        const idx = Math.min(waveform.length - 1, Math.floor(px * step));
-        const amp = (waveform[idx] || 0) * mid * 0.9;
-        ctx.lineTo(px, mid - amp);
-    }
-    ctx.strokeStyle = color + Math.round(lineAlpha * 255).toString(16).padStart(2, "0");
+    /* Layer 2 — RMS body (brighter, shows perceived loudness) */
+    const rmsGrad = ctx.createLinearGradient(0, 0, 0, h);
+    rmsGrad.addColorStop(0,   color + hex(0.82));
+    rmsGrad.addColorStop(0.4, color + hex(0.62));
+    rmsGrad.addColorStop(0.5, color + hex(0.36));
+    rmsGrad.addColorStop(0.6, color + hex(0.62));
+    rmsGrad.addColorStop(1,   color + hex(0.82));
+    filledPath(rms);
+    ctx.fillStyle = rmsGrad;
+    ctx.fill();
+
+    /* Layer 3 — peak outline (crisp 1 px, both edges) */
+    ctx.strokeStyle = color + hex(0.90);
     ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, mid - amp(peaks, 0));
+    for (let px = 1; px < w; px++) ctx.lineTo(px, mid - amp(peaks, px));
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, mid + amp(peaks, 0));
+    for (let px = 1; px < w; px++) ctx.lineTo(px, mid + amp(peaks, px));
     ctx.stroke();
 
-    /* bottom-edge outline */
+    /* Layer 4 — centre reference line */
+    ctx.strokeStyle = color + hex(0.18);
+    ctx.lineWidth   = 0.5;
     ctx.beginPath();
     ctx.moveTo(0, mid);
-    for (let px = 0; px < w; px++) {
-        const idx = Math.min(waveform.length - 1, Math.floor(px * step));
-        const amp = (waveform[idx] || 0) * mid * 0.9;
-        ctx.lineTo(px, mid + amp);
-    }
+    ctx.lineTo(w, mid);
     ctx.stroke();
 }
 
@@ -816,13 +923,14 @@ mixVol.addEventListener("input", () => { mixAudio.volume = parseFloat(mixVol.val
 fxOpSelect.addEventListener("change", renderFxParams);
 btnApplyFx.addEventListener("click", addEffect);
 
-/* keep headers and timeline vertically in sync; redraw ruler on horizontal scroll */
+/* keep headers and timeline vertically in sync; redraw ruler + waveforms on scroll */
 timelineScroll.addEventListener("scroll", () => {
     headersBody.parentElement.scrollTop = timelineScroll.scrollTop;
     _drawRuler();
+    renderVisibleWaveforms();
 });
 
-window.addEventListener("resize", () => { _drawRuler(); });
+window.addEventListener("resize", () => { _drawRuler(); renderVisibleWaveforms(); });
 
 /* ── Init ─────────────────────────────────────────────────────── */
 loadSession();

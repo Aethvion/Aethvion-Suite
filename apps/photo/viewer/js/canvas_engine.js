@@ -210,6 +210,8 @@ export class CanvasEngine {
                 blendMode: layer.blendMode,
                 x: layer.x,
                 y: layer.y,
+                displayWidth: layer.displayWidth,
+                displayHeight: layer.displayHeight,
                 filters: { ...layer.filters },
                 data: layer.canvas.toDataURL("image/png")
             }))
@@ -229,13 +231,22 @@ export class CanvasEngine {
             layer.visible = lData.visible;
             layer.opacity = lData.opacity;
             layer.blendMode = lData.blendMode;
-            layer.x = lData.x;
-            layer.y = lData.y;
+            layer.displayWidth = lData.displayWidth || this.width;
+            layer.displayHeight = lData.displayHeight || this.height;
+            layer.x = lData.x || 0;
+            layer.y = lData.y || 0;
             layer.filters = { ...lData.filters };
             
             await new Promise((resolve) => {
                 const img = new Image();
                 img.onload = () => {
+                    // Update layer canvas size to match stored width/height if it differs
+                    // (Though usually for project files, it's the full canvas)
+                    layer.canvas.width = img.width;
+                    layer.canvas.height = img.height;
+                    layer.width = img.width;
+                    layer.height = img.height;
+                    layer.ctx = layer.canvas.getContext('2d');
                     layer.ctx.drawImage(img, 0, 0);
                     resolve();
                 };
