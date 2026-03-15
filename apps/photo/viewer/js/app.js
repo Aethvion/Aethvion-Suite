@@ -33,10 +33,24 @@ class AethvionPhoto {
         this.currentTool = 'select'; // Default
 
         // Menu items
+        const menuMapping = {
+            'file': () => this.handleFileAction('open'), // Default to open for now
+            'edit': () => this.handleEditAction('clear_layer'),
+            'image': () => this.handleImageAction('flip_h'),
+            'layer': () => this.handleLayerAction('new'),
+            'filter': () => this.handleFilterAction('invert'),
+            'view': () => console.log("View options coming soon")
+        };
+
         document.querySelectorAll('.menu-item').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const action = e.target.innerText.trim().toLowerCase();
-                this.handleMenuAction(action);
+                if (menuMapping[action]) menuMapping[action]();
+                
+                // Allow specific project loading if Shift+Clicking File
+                if (action === 'file' && e.shiftKey) {
+                    this.triggerFileOpen('project');
+                }
             });
         });
 
@@ -83,19 +97,116 @@ class AethvionPhoto {
     }
 
     handleMenuAction(action) {
-        console.log("Menu action:", action);
-        switch (action) {
-            case 'file':
-                // Show file dropdown (simplified for now)
+        // We can use a map or more complex routing, but for now simple switch
+        const menuItems = {
+            'file': ['New', 'Open', 'Save Project', 'Export'],
+            'edit': ['Undo', 'Clear Layer'],
+            'image': ['Flip Horizontal', 'Flip Vertical'],
+            'layer': ['New Layer', 'Delete Layer', 'Merge Down'],
+            'filter': ['Invert Colors'],
+            'view': ['Zoom In', 'Zoom Out', 'Reset View']
+        };
+        // This button click just identifies the top level. 
+        // We actually need to handle the dropdown content if it existed.
+        // For now, we will interpret the NEXT click or just use simplified logic.
+        console.log("Menu bar interaction:", action);
+    }
+
+    // Simplified handlers for the actions we want to implement
+    async handleFileAction(subAction) {
+        switch(subAction) {
+            case 'new':
+                if (confirm("Create new project? Current work will be lost.")) {
+                    this.engine.layers = [];
+                    this.engine.addLayer('Background');
+                    this.updateLayerStack();
+                }
                 break;
-            case 'layer':
+            case 'open':
+                this.triggerFileOpen('image');
+                break;
+            case 'save_project':
+                this.handleSaveProject();
+                break;
+            case 'export':
+                this.handleExport();
+                break;
+        }
+    }
+
+    handleEditAction(subAction) {
+        switch(subAction) {
+            case 'clear_layer':
+                const layer = this.engine.getActiveLayer();
+                if (layer) {
+                    layer.clear();
+                    this.engine.render();
+                }
+                break;
+        }
+    }
+
+    handleImageAction(subAction) {
+        switch(subAction) {
+            case 'flip_h': this.engine.flipHorizontal(); break;
+            case 'flip_v': this.engine.flipVertical(); break;
+        }
+    }
+
+    handleLayerAction(subAction) {
+        switch(subAction) {
+            case 'new':
                 this.engine.addLayer(`Layer ${this.engine.layers.length + 1}`);
                 this.updateLayerStack();
                 break;
-            case 'view':
-                // Toggle grid etc.
+            case 'delete':
+                if (this.engine.layers.length > 1) {
+                    this.engine.removeLayer(this.engine.activeLayerIndex);
+                    this.updateLayerStack();
+                }
                 break;
         }
+    }
+
+    handleFilterAction(subAction) {
+        switch(subAction) {
+            case 'invert': this.engine.invertColors(); break;
+        }
+    }
+
+    triggerFileOpen(type) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = type === 'project' ? '.aethphoto' : 'image/*';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                if (type === 'project') {
+                    await this.engine.fromJSON(event.target.result);
+                    this.updateLayerStack();
+                    this.syncFilters();
+                } else {
+                    await this.engine.loadImage(event.target.result, file.name);
+                    this.updateLayerStack();
+                }
+            };
+            if (type === 'project') reader.readAsText(file);
+            else reader.readAsDataURL(file);
+        };
+        input.click();
+    }
+
+    handleSaveProject() {
+        const json = this.engine.toJSON();
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `project-${Date.now()}.aethphoto`;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
     }
 
     handleExport() {

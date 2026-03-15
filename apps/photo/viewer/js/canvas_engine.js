@@ -144,6 +144,55 @@ export class CanvasEngine {
         return this.mainCanvas.toDataURL("image/png");
     }
 
+    toJSON() {
+        const project = {
+            width: this.width,
+            height: this.height,
+            version: '1.0.0',
+            layers: this.layers.map(layer => ({
+                name: layer.name,
+                visible: layer.visible,
+                opacity: layer.opacity,
+                blendMode: layer.blendMode,
+                x: layer.x,
+                y: layer.y,
+                filters: { ...layer.filters },
+                data: layer.canvas.toDataURL("image/png")
+            }))
+        };
+        return JSON.stringify(project);
+    }
+
+    async fromJSON(jsonStr) {
+        const project = JSON.parse(jsonStr);
+        this.width = project.width || 1920;
+        this.height = project.height || 1080;
+        this.setupCanvas();
+        this.layers = [];
+        
+        for (const lData of project.layers) {
+            const layer = new Layer(lData.name, this.width, this.height);
+            layer.visible = lData.visible;
+            layer.opacity = lData.opacity;
+            layer.blendMode = lData.blendMode;
+            layer.x = lData.x;
+            layer.y = lData.y;
+            layer.filters = { ...lData.filters };
+            
+            await new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    layer.ctx.drawImage(img, 0, 0);
+                    resolve();
+                };
+                img.src = lData.data;
+            });
+            this.layers.push(layer);
+        }
+        this.activeLayerIndex = this.layers.length - 1;
+        this.render();
+    }
+
     setLayerVisibility(index, visible) {
         if (this.layers[index]) {
             this.layers[index].visible = visible;
@@ -175,6 +224,48 @@ export class CanvasEngine {
         ctx.beginPath();
         ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.fill();
+        this.render();
+    }
+
+    flipHorizontal() {
+        const layer = this.getActiveLayer();
+        if (!layer) return;
+        const temp = document.createElement('canvas');
+        temp.width = this.width;
+        temp.height = this.height;
+        const tctx = temp.getContext('2d');
+        tctx.scale(-1, 1);
+        tctx.drawImage(layer.canvas, -this.width, 0);
+        layer.clear();
+        layer.ctx.drawImage(temp, 0, 0);
+        this.render();
+    }
+
+    flipVertical() {
+        const layer = this.getActiveLayer();
+        if (!layer) return;
+        const temp = document.createElement('canvas');
+        temp.width = this.width;
+        temp.height = this.height;
+        const tctx = temp.getContext('2d');
+        tctx.scale(1, -1);
+        tctx.drawImage(layer.canvas, 0, -this.height);
+        layer.clear();
+        layer.ctx.drawImage(temp, 0, 0);
+        this.render();
+    }
+
+    invertColors() {
+        const layer = this.getActiveLayer();
+        if (!layer) return;
+        const imageData = layer.ctx.getImageData(0, 0, this.width, this.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = 255 - data[i];       // R
+            data[i+1] = 255 - data[i+1];   // G
+            data[i+2] = 255 - data[i+2];   // B
+        }
+        layer.ctx.putImageData(imageData, 0, 0);
         this.render();
     }
 }
