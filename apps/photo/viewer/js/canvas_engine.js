@@ -11,6 +11,8 @@ export class Layer {
         this.blendMode = 'normal';
         this.x = 0;
         this.y = 0;
+        this.displayWidth = width;
+        this.displayHeight = height;
         this.filters = {
             brightness: 100,
             contrast: 100,
@@ -54,6 +56,7 @@ export class CanvasEngine {
         this.layers = [];
         this.activeLayerIndex = -1;
         this.zoom = 1.0;
+        this.showTransformHandles = false;
         
         this.setupCanvas();
     }
@@ -61,7 +64,14 @@ export class CanvasEngine {
     setupCanvas() {
         this.mainCanvas.width = this.width;
         this.mainCanvas.height = this.height;
+        // Update CSS size for zoom/responsive if needed
         this.render();
+    }
+
+    setDimensions(w, h) {
+        this.width = w;
+        this.height = h;
+        this.setupCanvas();
     }
 
     addLayer(name = 'New Layer') {
@@ -102,7 +112,14 @@ export class CanvasEngine {
             this.mainCtx.globalCompositeOperation = this.getCompositeOperation(layer.blendMode);
             // Apply CSS filter from the layer data
             this.mainCtx.filter = layer.getFilterString();
-            this.mainCtx.drawImage(layer.canvas, layer.x, layer.y);
+            
+            // Draw with scaling
+            this.mainCtx.drawImage(
+                layer.canvas, 
+                0, 0, layer.canvas.width, layer.canvas.height,
+                layer.x, layer.y, layer.displayWidth, layer.displayHeight
+            );
+
             // Reset filter after drawing the layer
             this.mainCtx.filter = 'none';
         }
@@ -110,6 +127,21 @@ export class CanvasEngine {
         // Reset composite for UI overlays if any
         this.mainCtx.globalCompositeOperation = 'source-over';
         this.mainCtx.globalAlpha = 1.0;
+
+        // Draw selection/handle if requested
+        if (this.showTransformHandles) {
+            const layer = this.getActiveLayer();
+            if (layer) {
+                this.mainCtx.strokeStyle = '#7c6ff7';
+                this.mainCtx.lineWidth = 2;
+                this.mainCtx.strokeRect(layer.x, layer.y, layer.displayWidth, layer.displayHeight);
+
+                // Resize handle (bottom right)
+                this.mainCtx.fillStyle = 'white';
+                this.mainCtx.fillRect(layer.x + layer.displayWidth - 6, layer.y + layer.displayHeight - 6, 12, 12);
+                this.mainCtx.strokeRect(layer.x + layer.displayWidth - 6, layer.y + layer.displayHeight - 6, 12, 12);
+            }
+        }
     }
 
     getCompositeOperation(mode) {
@@ -124,13 +156,20 @@ export class CanvasEngine {
         return modes[mode] || 'source-over';
     }
 
-    async loadImage(url, name = 'Image Layer') {
+    async loadImage(url, name = 'Image Layer', autoSize = false) {
         return new Promise((resolve, reject) => {
             const img = new Image();
             img.crossOrigin = "anonymous";
             img.onload = () => {
+                if (autoSize) {
+                    this.setDimensions(img.width, img.height);
+                }
                 const layer = this.addLayer(name);
-                // Center image if smaller than canvas
+                // Set default display size to image size
+                layer.canvas.width = img.width;
+                layer.canvas.height = img.height;
+                layer.displayWidth = img.width;
+                layer.displayHeight = img.height;
                 layer.ctx.drawImage(img, 0, 0);
                 this.render();
                 resolve(layer);

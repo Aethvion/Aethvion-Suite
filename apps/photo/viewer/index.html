@@ -88,7 +88,9 @@
                 <button class="tool-btn active" data-tool="select" title="Move Tool (V)"><i class="fa-solid fa-arrow-pointer"></i></button>
                 <button class="tool-btn" data-tool="rect-select" title="Marquee Tool (M)"><i class="fa-solid fa-square"></i></button>
                 <button class="tool-btn" data-tool="brush" title="Brush Tool (B)"><i class="fa-solid fa-paintbrush"></i></button>
-                <button class="tool-btn" data-tool="eraser" title="Eraser Tool (E)"><i class="fa-solid fa-eraser"></i></button>
+                <button class="tool-btn" data-tool="eraser" title="Eraser (E)"><i class="fa-solid fa-eraser"></i></button>
+                <button class="tool-btn" data-tool="transform" title="Transform (V)"><i class="fa-solid fa-up-down-left-right"></i></button>
+                <div class="tool-sep"></div>
                 <button class="tool-btn" data-tool="crop" title="Crop Tool (C)"><i class="fa-solid fa-crop-simple"></i></button>
                 <button class="tool-btn" data-tool="text" title="Type Tool (T)"><i class="fa-solid fa-t"></i></button>
                 <div class="tool-sep"></div>
@@ -105,6 +107,23 @@
 
             <!-- Right Sidebar (Layers & Properties) -->
             <aside id="properties-panel">
+                <div class="panel-section">
+                    <div class="section-header">
+                        Canvas Settings
+                    </div>
+                    <div class="section-body">
+                        <div class="control-group">
+                            <label>Width</label>
+                            <input type="number" id="canvas-width" value="1920">
+                        </div>
+                        <div class="control-group">
+                            <label>Height</label>
+                            <input type="number" id="canvas-height" value="1080">
+                        </div>
+                        <button class="btn-secondary" id="apply-canvas-size">Apply Resolution</button>
+                    </div>
+                </div>
+
                 <div class="panel-section" id="navigator">
                     <div class="section-header">Navigator</div>
                     <div class="section-body">

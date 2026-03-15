@@ -60,8 +60,16 @@ class AethvionPhoto {
         this.updateTabStrip();
         this.updateLayerStack();
         this.syncFilters();
+        this.syncCanvasSettings();
         
         document.getElementById('coord-display').textContent = `0 : 0 px`;
+    }
+
+    syncCanvasSettings() {
+        const ws = this.getActiveWorkspace();
+        if (!ws) return;
+        document.getElementById('canvas-width').value = ws.engine.width;
+        document.getElementById('canvas-height').value = ws.engine.height;
     }
 
     getActiveWorkspace() {
@@ -75,6 +83,13 @@ class AethvionPhoto {
                 document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.currentTool = btn.dataset.tool;
+
+                // Toggle transform handles in the engine
+                const ws = this.getActiveWorkspace();
+                if (ws) {
+                    ws.engine.showTransformHandles = (this.currentTool === 'transform');
+                    ws.engine.render();
+                }
             });
         });
 
@@ -93,23 +108,77 @@ class AethvionPhoto {
         // Canvas mouse events
         const canvas = document.getElementById('main-canvas');
         let isDrawing = false;
+        let isTransforming = false;
+        let transformMode = null; // 'move' or 'resize-br' etc.
+        let startX, startY;
+        let startLayerX, startLayerY;
+        let startWidth, startHeight;
 
         canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const ws = this.getActiveWorkspace();
+            const x = (e.clientX - rect.left) * (ws.engine.width / rect.width);
+            const y = (e.clientY - rect.top) * (ws.engine.height / rect.height);
+
             if (this.currentTool === 'brush' || this.currentTool === 'eraser') {
                 isDrawing = true;
                 this.handleDraw(e);
+            } else if (this.currentTool === 'transform') {
+                const layer = ws.engine.getActiveLayer();
+                if (!layer) return;
+
+                // Simple hit test for resize handle (bottom-right corner)
+                const handleSize = 20;
+                const hx = layer.x + layer.displayWidth;
+                const hy = layer.y + layer.displayHeight;
+
+                if (x >= hx - handleSize && x <= hx + handleSize &&
+                    y >= hy - handleSize && y <= hy + handleSize) {
+                    isTransforming = true;
+                    transformMode = 'resize';
+                } else if (x >= layer.x && x <= layer.x + layer.displayWidth &&
+                           y >= layer.y && y <= layer.y + layer.displayHeight) {
+                    isTransforming = true;
+                    transformMode = 'move';
+                }
+
+                if (isTransforming) {
+                    startX = x;
+                    startY = y;
+                    startLayerX = layer.x;
+                    startLayerY = layer.y;
+                    startWidth = layer.displayWidth;
+                    startHeight = layer.displayHeight;
+                }
             }
         });
 
         canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const ws = this.getActiveWorkspace();
+            const x = (e.clientX - rect.left) * (ws.engine.width / rect.width);
+            const y = (e.clientY - rect.top) * (ws.engine.height / rect.height);
+
             if (isDrawing) {
                 this.handleDraw(e);
+            } else if (isTransforming) {
+                const layer = ws.engine.getActiveLayer();
+                if (transformMode === 'move') {
+                    layer.x = startLayerX + (x - startX);
+                    layer.y = startLayerY + (y - startY);
+                } else if (transformMode === 'resize') {
+                    layer.displayWidth = Math.max(10, startWidth + (x - startX));
+                    layer.displayHeight = Math.max(10, startHeight + (y - startY));
+                }
+                ws.engine.render();
             }
             this.updateCoords(e);
         });
 
         window.addEventListener('mouseup', () => {
             isDrawing = false;
+            isTransforming = false;
+            transformMode = null;
         });
 
         const resetBtn = document.getElementById('reset-filters');
@@ -121,6 +190,16 @@ class AethvionPhoto {
                 this.syncFilters();
             });
         }
+
+        // Canvas Settings
+        document.getElementById('apply-canvas-size').addEventListener('click', () => {
+            const ws = this.getActiveWorkspace();
+            const w = parseInt(document.getElementById('canvas-width').value);
+            const h = parseInt(document.getElementById('canvas-height').value);
+            if (w > 0 && h > 0) {
+                ws.engine.setDimensions(w, h);
+            }
+        });
     }
 
     bindDropdowns() {
@@ -252,16 +331,12 @@ class AethvionPhoto {
                         await ws.engine.loadImage(event.target.result, file.name);
                         this.updateLayerStack();
                     } else {
+                        // Open as new project with auto-resolution
                         this.addWorkspace(file.name.split('.')[0]);
                         const ws = this.getActiveWorkspace();
-                        await ws.engine.loadImage(event.target.result, "Background");
-                        // Remove the default background layer if we just loaded an image as one
-                        if (ws.engine.layers.length > 1 && ws.engine.layers[0].name === "Background") {
-                            ws.engine.layers.shift();
-                            ws.engine.activeLayerIndex = 0;
-                            ws.engine.render();
-                        }
+                        await ws.engine.loadImage(event.target.result, "Background", true);
                         this.updateLayerStack();
+                        this.syncCanvasSettings();
                     }
                 }
             };
