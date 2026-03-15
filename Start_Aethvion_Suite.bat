@@ -111,6 +111,8 @@ if not exist "data\ai\tools\generated"         mkdir data\ai\tools\generated
 :: App Data
 if not exist "data\vtuber"                     mkdir data\vtuber
 if not exist "data\tracking"                   mkdir data\tracking
+if not exist "data\photo"                      mkdir data\photo
+if not exist "data\audio"                      mkdir data\audio
 
 :: --- 5.1 Configuration Setup ----------------------------------
 if not exist "core\config\security.yaml" (

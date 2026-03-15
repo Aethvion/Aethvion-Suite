@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import uvicorn
 import shutil
@@ -14,6 +15,7 @@ from datetime import datetime
 # Add workspace root to path
 WORKSPACE_ROOT = Path(__file__).parent.parent.parent
 sys.path.append(str(WORKSPACE_ROOT))
+from core.utils.port_manager import PortManager
 
 from core.utils import get_logger
 
@@ -42,10 +44,22 @@ UPLOADS_DIR = DATA_DIR / "uploads"
 for d in [PROJECTS_DIR, UPLOADS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
-# Mount Viewer (will be implemented next)
+# Mount Viewer
 VIEWER_DIR = APP_DIR / "viewer"
+@app.get("/", response_class=HTMLResponse)
+async def serve_index():
+    index_path = VIEWER_DIR / "index.html"
+    if index_path.exists():
+        return HTMLResponse(content=index_path.read_text(encoding="utf-8"))
+    return HTMLResponse(content="<h1>Aethvion Photo</h1><p>Viewer not found.</p>", status_code=404)
+
 if VIEWER_DIR.exists():
-    app.mount("/viewer", StaticFiles(directory=str(VIEWER_DIR)), name="viewer")
+    app.mount("/css", StaticFiles(directory=str(VIEWER_DIR / "css")), name="css")
+    app.mount("/js", StaticFiles(directory=str(VIEWER_DIR / "js")), name="js")
+    app.mount("/assets", StaticFiles(directory=str(VIEWER_DIR / "assets")), name="assets")
+
+# Mount Data for served files
+app.mount("/api/files/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 class StatusResponse(BaseModel):
     status: str
@@ -127,5 +141,7 @@ async def remove_background(filename: str = Form(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    port = int(os.getenv("PHOTO_PORT", 8083))
+    base_port = int(os.getenv("PHOTO_PORT", 8083))
+    port = PortManager.bind_port("Aethvion Photo", base_port)
+    logger.info(f"🎨 Aethvion Photo Service → http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port)

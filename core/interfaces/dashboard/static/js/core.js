@@ -710,7 +710,7 @@ async function launchModule(name) {
             window.open(`http://localhost:${port}`, '_blank');
         } else {
             // Fallback to default ports if not registered yet
-            const defaults = { 'vtuber': 8081, 'tracking': 8082 };
+            const defaults = { 'vtuber': 8081, 'tracking': 8082, 'photo': 8083 };
             const defaultPort = defaults[name.toLowerCase()];
             if (defaultPort) {
                 console.warn(`Module ${name} not found in dynamic ports, trying default :${defaultPort}`);
