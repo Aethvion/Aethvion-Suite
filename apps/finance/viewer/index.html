@@ -746,6 +746,53 @@
     }
 
     /* ================================================================
+       Portfolio
+    ================================================================ */
+    .portfolio-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    #holdings-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    #holdings-table th {
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    #holdings-table td {
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    #holdings-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+    #holdings-table tbody tr:last-child td { border-bottom: none; }
+    .holding-ticker {
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: .04em;
+      color: var(--accent);
+    }
+    .asset-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      background: var(--bg-card-2);
+      color: var(--text-muted);
+    }
+    .pnl-positive { color: var(--success); }
+    .pnl-negative { color: var(--danger); }
+
+    /* ================================================================
        Modal
     ================================================================ */
     #modal-overlay {
@@ -987,7 +1034,7 @@
       .kpi-grid { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 900px) {
-      .chart-grid-2, .dash-bottom, .analytics-grid { grid-template-columns: 1fr; }
+      .chart-grid-2, .dash-bottom, .analytics-grid, .portfolio-layout { grid-template-columns: 1fr; }
       .budget-row { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 700px) {
@@ -1071,6 +1118,12 @@
     <div class="nav-item" data-view="analytics" id="nav-analytics">
       <i class="fa-solid fa-chart-column"></i>
       <span>Analytics</span>
+    </div>
+
+    <div class="nav-section-label">Investments</div>
+    <div class="nav-item" data-view="portfolio" id="nav-portfolio">
+      <i class="fa-solid fa-briefcase"></i>
+      <span>Portfolio</span>
     </div>
   </nav>
 
@@ -1318,6 +1371,73 @@
         </div>
       </div>
     </div>
+
+    <!-- ============================================================
+         PORTFOLIO VIEW
+    ============================================================ -->
+    <div class="view" id="view-portfolio">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Portfolio</div>
+          <div class="page-subtitle">Track your investments &amp; holdings</div>
+        </div>
+        <button class="btn-primary" id="add-holding-btn">
+          <i class="fa-solid fa-plus"></i> Add Holding
+        </button>
+      </div>
+
+      <!-- KPI bar -->
+      <div class="kpi-grid" id="portfolio-kpis"></div>
+
+      <!-- Charts + table layout -->
+      <div class="portfolio-layout">
+
+        <!-- Allocation donut -->
+        <div class="chart-card" id="portfolio-alloc-card">
+          <div class="chart-card-title">Allocation by Type</div>
+          <div class="chart-wrap" style="height:260px;">
+            <canvas id="chart-portfolio-alloc"></canvas>
+          </div>
+        </div>
+
+        <!-- P&L bar chart -->
+        <div class="chart-card" id="portfolio-perf-card">
+          <div class="chart-card-title">Gain / Loss per Holding</div>
+          <div class="chart-wrap" style="height:260px;">
+            <canvas id="chart-portfolio-perf"></canvas>
+          </div>
+        </div>
+
+      </div><!-- /.portfolio-layout -->
+
+      <!-- Holdings table -->
+      <div class="card" style="margin-top:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div style="font-weight:600;font-size:15px;">Holdings</div>
+          <input id="portfolio-search" class="form-input" placeholder="Search ticker / name…" style="width:200px;" />
+        </div>
+        <div id="holdings-table-wrap" style="overflow-x:auto;">
+          <table class="tx-table" id="holdings-table">
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th style="text-align:right">Shares</th>
+                <th style="text-align:right">Buy Price</th>
+                <th style="text-align:right">Current</th>
+                <th style="text-align:right">Value</th>
+                <th style="text-align:right">P&amp;L</th>
+                <th style="text-align:right">Return</th>
+                <th style="text-align:center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="holdings-tbody"></tbody>
+          </table>
+        </div>
+      </div><!-- /.card -->
+
+    </div><!-- /#view-portfolio -->
 
   </main>
 </div><!-- /#app -->

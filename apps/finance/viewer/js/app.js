@@ -33,7 +33,7 @@
   // ======================================================================
   // Core state
   // ======================================================================
-  let state = { meta: {}, accounts: [], transactions: [], budgets: [], goals: [] };
+  let state = { meta: {}, accounts: [], transactions: [], budgets: [], goals: [], holdings: [] };
   let activeView = 'dashboard';
   let charts = {};
 
@@ -87,6 +87,11 @@
     const sym = (state.meta && state.meta.currency) ? state.meta.currency : '€';
     const abs = Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return (n < 0 ? '-' : '') + sym + abs;
+  }
+
+  /** Format a plain number with 2 decimals and thousand separators */
+  function fmt(n) {
+    return Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
   /** Get transactions for a "YYYY-MM" month */
@@ -218,6 +223,7 @@
       case 'budget':       renderBudget();       break;
       case 'goals':        renderGoals();        break;
       case 'analytics':    renderAnalytics();    break;
+      case 'portfolio':    renderPortfolio();    break;
     }
   }
 
@@ -1536,6 +1542,328 @@
 
     // Goals
     document.getElementById('add-goal-btn').addEventListener('click', openAddGoal);
+
+    // Portfolio
+    document.getElementById('add-holding-btn').addEventListener('click', openAddHolding);
+    document.getElementById('portfolio-search').addEventListener('input', renderPortfolio);
+  }
+
+  // ======================================================================
+  // Portfolio
+  // ======================================================================
+  const ASSET_TYPES = ['Stock', 'ETF', 'Crypto', 'Bond', 'REIT', 'Fund', 'Cash', 'Other'];
+
+  const ASSET_COLORS = {
+    Stock:  '#00d2ff',
+    ETF:    '#00f2ad',
+    Crypto: '#f97316',
+    Bond:   '#a855f7',
+    REIT:   '#ffb938',
+    Fund:   '#06b6d4',
+    Cash:   '#84cc16',
+    Other:  '#7a7f99',
+  };
+
+  function holdingPnl(h) {
+    const cost  = h.shares * h.buy_price;
+    const value = h.shares * h.current_price;
+    const pnl   = value - cost;
+    const pct   = cost > 0 ? (pnl / cost) * 100 : 0;
+    return { cost, value, pnl, pct };
+  }
+
+  function renderPortfolio() {
+    const holdings = state.holdings || [];
+    const search   = (document.getElementById('portfolio-search')?.value || '').toLowerCase();
+    const filtered = search
+      ? holdings.filter(h => h.ticker.toLowerCase().includes(search) || h.name.toLowerCase().includes(search))
+      : holdings;
+
+    // ---- KPI totals ----
+    let totalValue = 0, totalCost = 0;
+    holdings.forEach(h => {
+      const { cost, value } = holdingPnl(h);
+      totalValue += value;
+      totalCost  += cost;
+    });
+    const totalPnl = totalValue - totalCost;
+    const totalPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+    const cur = state.meta?.currency || '€';
+
+    const kpiEl = document.getElementById('portfolio-kpis');
+    if (kpiEl) {
+      const pnlClass = totalPnl >= 0 ? 'success' : 'danger';
+      kpiEl.innerHTML = `
+        <div class="kpi-card" style="--kpi-color:var(--accent)">
+          <div class="kpi-label">Portfolio Value</div>
+          <div class="kpi-value">${cur}${fmt(totalValue)}</div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:var(--text-muted)">
+          <div class="kpi-label">Total Invested</div>
+          <div class="kpi-value">${cur}${fmt(totalCost)}</div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:var(--${pnlClass})">
+          <div class="kpi-label">Total P&amp;L</div>
+          <div class="kpi-value ${totalPnl >= 0 ? 'pnl-positive' : 'pnl-negative'}">
+            ${totalPnl >= 0 ? '+' : ''}${cur}${fmt(Math.abs(totalPnl))}
+          </div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:var(--${pnlClass})">
+          <div class="kpi-label">Return</div>
+          <div class="kpi-value ${totalPct >= 0 ? 'pnl-positive' : 'pnl-negative'}">
+            ${totalPct >= 0 ? '+' : ''}${totalPct.toFixed(2)}%
+          </div>
+        </div>
+      `;
+    }
+
+    // ---- Holdings table ----
+    const tbody = document.getElementById('holdings-tbody');
+    if (tbody) {
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted);">
+          ${search ? 'No holdings match your search.' : 'No holdings yet. Click <strong>Add Holding</strong> to get started.'}
+        </td></tr>`;
+      } else {
+        tbody.innerHTML = filtered.map(h => {
+          const { cost, value, pnl, pct } = holdingPnl(h);
+          const sign = pnl >= 0 ? '+' : '';
+          const cls  = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+          const type = (h.asset_type || 'other').charAt(0).toUpperCase() + (h.asset_type || 'other').slice(1);
+          const color = ASSET_COLORS[type] || ASSET_COLORS.Other;
+          return `<tr>
+            <td><span class="holding-ticker">${esc(h.ticker)}</span></td>
+            <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.name)}</td>
+            <td><span class="asset-badge" style="color:${color};border:1px solid ${color}40">${type}</span></td>
+            <td style="text-align:right">${h.shares.toLocaleString(undefined, {maximumFractionDigits:6})}</td>
+            <td style="text-align:right">${cur}${fmt(h.buy_price)}</td>
+            <td style="text-align:right">${cur}${fmt(h.current_price)}</td>
+            <td style="text-align:right;font-weight:600">${cur}${fmt(value)}</td>
+            <td style="text-align:right" class="${cls}">${sign}${cur}${fmt(Math.abs(pnl))}</td>
+            <td style="text-align:right" class="${cls}">${sign}${pct.toFixed(2)}%</td>
+            <td style="text-align:center">
+              <button class="btn-icon" title="Edit" onclick="openEditHolding('${h.id}')"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn-icon danger" title="Delete" onclick="confirmDeleteHolding('${h.id}')"><i class="fa-solid fa-trash"></i></button>
+            </td>
+          </tr>`;
+        }).join('');
+      }
+    }
+
+    // ---- Charts ----
+    buildPortfolioAllocChart(holdings);
+    buildPortfolioPerfChart(filtered);
+  }
+
+  function buildPortfolioAllocChart(holdings) {
+    destroyChart('portfolio-alloc');
+    const canvas = document.getElementById('chart-portfolio-alloc');
+    if (!canvas) return;
+
+    // Group by asset type
+    const groups = {};
+    holdings.forEach(h => {
+      const { value } = holdingPnl(h);
+      const type = (h.asset_type || 'other').charAt(0).toUpperCase() + (h.asset_type || 'other').slice(1);
+      groups[type] = (groups[type] || 0) + value;
+    });
+    const labels = Object.keys(groups);
+    const data   = Object.values(groups);
+    const colors = labels.map(l => ASSET_COLORS[l] || ASSET_COLORS.Other);
+
+    if (!labels.length) return;
+
+    charts['portfolio-alloc'] = new Chart(canvas, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: colors.map(c => c + 'cc'),
+          borderColor:     colors,
+          borderWidth: 1.5,
+          hoverOffset: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '62%',
+        plugins: {
+          legend: { position: 'right', labels: { boxWidth: 12, padding: 14, font: { size: 12 } } },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const cur = state.meta?.currency || '€';
+                const pct = ((ctx.parsed / data.reduce((a,b) => a+b, 0)) * 100).toFixed(1);
+                return ` ${cur}${fmt(ctx.parsed)}  (${pct}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function buildPortfolioPerfChart(holdings) {
+    destroyChart('portfolio-perf');
+    const canvas = document.getElementById('chart-portfolio-perf');
+    if (!canvas || !holdings.length) return;
+
+    const sorted = [...holdings].sort((a, b) => {
+      const pa = holdingPnl(a).pnl, pb = holdingPnl(b).pnl;
+      return pb - pa;
+    }).slice(0, 12); // cap at 12 for readability
+
+    const labels = sorted.map(h => h.ticker);
+    const values = sorted.map(h => holdingPnl(h).pnl);
+    const colors = values.map(v => v >= 0 ? 'rgba(0,242,173,0.8)' : 'rgba(255,75,92,0.8)');
+    const borders = values.map(v => v >= 0 ? '#00f2ad' : '#ff4b5c');
+
+    charts['portfolio-perf'] = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'P&L',
+          data: values,
+          backgroundColor: colors,
+          borderColor:     borders,
+          borderWidth: 1.5,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const cur = state.meta?.currency || '€';
+                const v = ctx.parsed.y;
+                return ` ${v >= 0 ? '+' : ''}${cur}${fmt(Math.abs(v))}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: {
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            ticks: {
+              font: { size: 11 },
+              callback: v => {
+                const cur = state.meta?.currency || '€';
+                return (v >= 0 ? '+' : '') + cur + fmt(Math.abs(v));
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ---- Holding modals ----
+  function openAddHolding() {
+    openModal('Add Holding', holdingForm({}), defaultFooter(false), async () => {
+      const data = collectHoldingForm();
+      if (!data) return;
+      try {
+        await api('POST', '/api/holding', data);
+        closeModal();
+        await loadState();
+        notify('Holding added', 'success');
+      } catch (e) {
+        notify('Error: ' + e.message, 'error');
+      }
+    });
+  }
+
+  function openEditHolding(id) {
+    const h = (state.holdings || []).find(x => x.id === id);
+    if (!h) return;
+    openModal('Edit Holding', holdingForm(h), defaultFooter(true), async () => {
+      const data = collectHoldingForm();
+      if (!data) return;
+      try {
+        await api('PUT', `/api/holding/${id}`, data);
+        closeModal();
+        await loadState();
+        notify('Holding updated', 'success');
+      } catch (e) {
+        notify('Error: ' + e.message, 'error');
+      }
+    });
+    wireDeleteBtn(() => confirmDeleteHolding(id));
+  }
+
+  function confirmDeleteHolding(id) {
+    const h = (state.holdings || []).find(x => x.id === id);
+    if (!h) return;
+    if (!confirm(`Remove "${h.ticker} — ${h.name}" from your portfolio? This cannot be undone.`)) return;
+    api('DELETE', `/api/holding/${id}`)
+      .then(() => { closeModal(); loadState(); notify('Holding removed', 'success'); })
+      .catch(e => notify('Error: ' + e.message, 'error'));
+  }
+
+  function holdingForm(h = {}) {
+    const typeOptions = ASSET_TYPES.map(t =>
+      `<option value="${t.toLowerCase()}" ${(h.asset_type || 'stock') === t.toLowerCase() ? 'selected' : ''}>${t}</option>`
+    ).join('');
+    return `
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Ticker / Symbol *</label>
+          <input id="hf-ticker" class="form-input" placeholder="e.g. AAPL" value="${esc(h.ticker || '')}" style="text-transform:uppercase" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Name *</label>
+          <input id="hf-name" class="form-input" placeholder="e.g. Apple Inc." value="${esc(h.name || '')}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Asset Type</label>
+          <select id="hf-type" class="form-input">${typeOptions}</select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Shares / Units *</label>
+          <input id="hf-shares" type="number" step="any" min="0" class="form-input" placeholder="0" value="${h.shares ?? ''}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Buy Price (avg) *</label>
+          <input id="hf-buy-price" type="number" step="any" min="0" class="form-input" placeholder="0.00" value="${h.buy_price ?? ''}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Current Price *</label>
+          <input id="hf-current-price" type="number" step="any" min="0" class="form-input" placeholder="0.00" value="${h.current_price ?? ''}" />
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Note</label>
+          <input id="hf-note" class="form-input" placeholder="Optional note" value="${esc(h.note || '')}" />
+        </div>
+      </div>
+    `;
+  }
+
+  function collectHoldingForm() {
+    const ticker       = document.getElementById('hf-ticker')?.value.trim().toUpperCase();
+    const name         = document.getElementById('hf-name')?.value.trim();
+    const asset_type   = document.getElementById('hf-type')?.value;
+    const shares       = parseFloat(document.getElementById('hf-shares')?.value);
+    const buy_price    = parseFloat(document.getElementById('hf-buy-price')?.value);
+    const current_price = parseFloat(document.getElementById('hf-current-price')?.value);
+    const note         = document.getElementById('hf-note')?.value.trim();
+
+    if (!ticker || !name || isNaN(shares) || isNaN(buy_price) || isNaN(current_price)) {
+      notify('Please fill in all required fields.', 'error');
+      return null;
+    }
+    if (shares < 0 || buy_price < 0 || current_price < 0) {
+      notify('Values cannot be negative.', 'error');
+      return null;
+    }
+    return { ticker, name, asset_type, shares, buy_price, current_price, note };
   }
 
   // Expose functions that are called from inline HTML onclick attributes
@@ -1545,6 +1873,8 @@
   window.confirmDeleteGoal   = confirmDeleteGoal;
   window.openSetBudget       = openSetBudget;
   window.confirmDeleteBudget = confirmDeleteBudget;
+  window.openEditHolding     = openEditHolding;
+  window.confirmDeleteHolding = confirmDeleteHolding;
 
   // ======================================================================
   // Boot

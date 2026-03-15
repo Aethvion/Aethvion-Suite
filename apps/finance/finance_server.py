@@ -89,6 +89,7 @@ def _make_default_state() -> dict:
         "transactions": [],
         "budgets": [],
         "goals": [],
+        "holdings": [],
     }
 
 state: dict = _make_default_state()
@@ -114,7 +115,7 @@ def _autosave() -> None:
 def _load_from_path(path: Path) -> dict:
     data = json.loads(path.read_text(encoding="utf-8"))
     # Ensure all top-level keys are present (forward-compat)
-    for key in ("meta", "accounts", "transactions", "budgets", "goals"):
+    for key in ("meta", "accounts", "transactions", "budgets", "goals", "holdings"):
         if key not in data:
             data[key] = _make_default_state()[key]
     return data
@@ -192,6 +193,26 @@ class GoalUpdate(BaseModel):
     color: Optional[str] = None
     note: Optional[str] = None
 
+class HoldingIn(BaseModel):
+    ticker: str
+    name: str
+    asset_type: str   # stock / etf / crypto / bond / reit / fund / cash / other
+    shares: float
+    buy_price: float
+    current_price: float
+    currency: str = "€"
+    note: str = ""
+
+class HoldingUpdate(BaseModel):
+    ticker: Optional[str] = None
+    name: Optional[str] = None
+    asset_type: Optional[str] = None
+    shares: Optional[float] = None
+    buy_price: Optional[float] = None
+    current_price: Optional[float] = None
+    currency: Optional[str] = None
+    note: Optional[str] = None
+
 class SaveRequest(BaseModel):
     name: str
 
@@ -201,6 +222,7 @@ class FullState(BaseModel):
     transactions: list
     budgets: list
     goals: list
+    holdings: list = []
 
 # ---------------------------------------------------------------------------
 # Health
@@ -363,6 +385,53 @@ async def delete_goal(goal_id: str):
         raise HTTPException(status_code=404, detail="Goal not found")
     _autosave()
     return {"deleted": goal_id}
+
+# ---------------------------------------------------------------------------
+# Holdings (Portfolio)
+# ---------------------------------------------------------------------------
+@app.post("/api/holding")
+async def add_holding(holding: HoldingIn):
+    new_holding = {
+        "id": str(uuid.uuid4()),
+        "ticker": holding.ticker.upper(),
+        "name": holding.name,
+        "asset_type": holding.asset_type,
+        "shares": holding.shares,
+        "buy_price": holding.buy_price,
+        "current_price": holding.current_price,
+        "currency": holding.currency,
+        "note": holding.note,
+    }
+    if "holdings" not in state:
+        state["holdings"] = []
+    state["holdings"].append(new_holding)
+    _autosave()
+    return new_holding
+
+@app.put("/api/holding/{holding_id}")
+async def update_holding(holding_id: str, update: HoldingUpdate):
+    if "holdings" not in state:
+        raise HTTPException(status_code=404, detail="Holding not found")
+    for h in state["holdings"]:
+        if h["id"] == holding_id:
+            for field, value in update.dict(exclude_none=True).items():
+                if field == "ticker" and value:
+                    value = value.upper()
+                h[field] = value
+            _autosave()
+            return h
+    raise HTTPException(status_code=404, detail="Holding not found")
+
+@app.delete("/api/holding/{holding_id}")
+async def delete_holding(holding_id: str):
+    if "holdings" not in state:
+        raise HTTPException(status_code=404, detail="Holding not found")
+    before = len(state["holdings"])
+    state["holdings"] = [h for h in state["holdings"] if h["id"] != holding_id]
+    if len(state["holdings"]) == before:
+        raise HTTPException(status_code=404, detail="Holding not found")
+    _autosave()
+    return {"deleted": holding_id}
 
 # ---------------------------------------------------------------------------
 # Project save/load
