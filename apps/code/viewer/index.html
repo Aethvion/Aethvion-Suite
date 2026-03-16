@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aethvion Code</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="/viewer/css/ide.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Top bar ──────────────────────────────────────────────────── -->
+  <header id="topbar">
+    <div class="tb-left">
+      <div class="tb-logo">
+        <span class="tb-logo-icon">&lt;/&gt;</span>
+        <span class="tb-logo-text">Aethvion Code</span>
+      </div>
+      <div class="tb-workspace" id="workspacePill" title="Click to change workspace root">
+        <i class="fa-solid fa-folder-open" aria-hidden="true"></i>
+        <span id="workspaceLabel">Loading…</span>
+        <i class="fa-solid fa-chevron-down tb-ws-chevron" aria-hidden="true"></i>
+      </div>
+    </div>
+
+    <div class="tb-center">
+      <button id="btnRun" class="run-btn" title="Run (Ctrl+Enter)" disabled>
+        <i class="fa-solid fa-play" aria-hidden="true"></i> Run
+      </button>
+      <button id="btnStop" class="stop-btn" title="Stop" style="display:none">
+        <i class="fa-solid fa-stop" aria-hidden="true"></i> Stop
+      </button>
+    </div>
+
+    <div class="tb-right">
+      <select id="modelSel" class="model-sel" title="AI Model" aria-label="AI model selector">
+        <option value="">No providers</option>
+      </select>
+      <button id="btnToggleTree" class="tb-icon-btn" title="Toggle File Tree (Ctrl+B)" aria-label="Toggle file tree">
+        <i class="fa-solid fa-sidebar" aria-hidden="true"></i>
+      </button>
+      <button id="btnToggleAI" class="tb-icon-btn active" title="Toggle AI Panel (Ctrl+/)" aria-label="Toggle AI panel">
+        <i class="fa-solid fa-robot" aria-hidden="true"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Tab bar ──────────────────────────────────────────────────── -->
+  <div id="tabBar">
+    <div id="tabsScroll">
+      <div id="tabsContainer"></div>
+    </div>
+    <button id="btnNewTab" class="new-tab-btn" title="New file" aria-label="New file">
+      <i class="fa-solid fa-plus" aria-hidden="true"></i>
+    </button>
+  </div>
+
+  <!-- ── Main area ────────────────────────────────────────────────── -->
+  <div id="mainArea">
+
+    <!-- File tree sidebar -->
+    <aside id="fileTree" aria-label="File explorer">
+      <div class="sidebar-header">
+        <span class="sidebar-title">EXPLORER</span>
+        <div class="sidebar-actions">
+          <button id="btnNewFile"     title="New File"     aria-label="New file"><i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i></button>
+          <button id="btnNewFolder"   title="New Folder"   aria-label="New folder"><i class="fa-solid fa-folder-plus" aria-hidden="true"></i></button>
+          <button id="btnRefreshTree" title="Refresh Tree" aria-label="Refresh tree"><i class="fa-solid fa-rotate" aria-hidden="true"></i></button>
+        </div>
+      </div>
+      <div id="treeRoot" role="tree" aria-label="File tree"></div>
+    </aside>
+
+    <div class="resize-handle" id="resizeLeft" aria-hidden="true"></div>
+
+    <!-- Editor + welcome screen -->
+    <div id="editorArea">
+      <!-- Welcome / empty state -->
+      <div id="welcomeScreen">
+        <div class="welcome-content">
+          <div class="welcome-logo">&lt;/&gt;</div>
+          <div class="welcome-title">Aethvion Code</div>
+          <div class="welcome-sub">AI-powered IDE · Monaco Editor</div>
+          <div class="welcome-actions">
+            <button class="welcome-btn" id="btnOpenFolder">
+              <i class="fa-solid fa-folder-open" aria-hidden="true"></i> Open Folder
+            </button>
+            <button class="welcome-btn" id="btnNewFileWelcome">
+              <i class="fa-solid fa-file-plus" aria-hidden="true"></i> New File
+            </button>
+          </div>
+          <div class="welcome-keys">
+            <span><kbd>Ctrl+S</kbd> Save</span>
+            <span><kbd>Ctrl+Enter</kbd> Run</span>
+            <span><kbd>Ctrl+/</kbd> AI Panel</span>
+            <span><kbd>Ctrl+B</kbd> File Tree</span>
+            <span><kbd>Ctrl+K</kbd> Focus AI</span>
+          </div>
+        </div>
+      </div>
+      <!-- Monaco container (hidden until a file is opened) -->
+      <div id="monacoContainer" style="display:none"></div>
+    </div>
+
+    <div class="resize-handle" id="resizeRight" aria-hidden="true"></div>
+
+    <!-- AI chat sidebar -->
+    <aside id="aiPanel" aria-label="AI Assistant">
+      <div class="sidebar-header">
+        <span class="sidebar-title">AI ASSISTANT</span>
+        <div class="sidebar-actions">
+          <button id="btnClearChat" title="Clear chat" aria-label="Clear chat"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
+          <button id="btnCloseAI"   title="Close panel" aria-label="Close AI panel"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </div>
+      </div>
+
+      <!-- Quick action strip -->
+      <div id="aiQuickActions">
+        <button class="qa-btn" id="btnExplain" title="Explain selected code (Ctrl+Shift+E)">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>Explain</span>
+        </button>
+        <button class="qa-btn" id="btnFix" title="Fix with last error (Ctrl+Shift+F)">
+          <i class="fa-solid fa-wrench" aria-hidden="true"></i><span>Fix</span>
+        </button>
+        <button class="qa-btn" id="btnComplete" title="Complete at cursor (Ctrl+Space)">
+          <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span>Complete</span>
+        </button>
+        <button class="qa-btn" id="btnRefactor" title="Refactor selection">
+          <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i><span>Refactor</span>
+        </button>
+      </div>
+
+      <!-- Chat messages -->
+      <div id="chatMessages" aria-live="polite" aria-label="AI chat messages"></div>
+
+      <!-- Chat input -->
+      <div id="chatInputWrap">
+        <textarea id="chatInput"
+          placeholder="Ask about code… (Enter to send, Shift+Enter for newline)"
+          aria-label="AI chat input"
+          rows="3"></textarea>
+        <button id="btnSendChat" title="Send (Enter)" aria-label="Send message">
+          <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+        </button>
+      </div>
+    </aside>
+
+  </div><!-- /mainArea -->
+
+  <!-- ── Bottom panel ─────────────────────────────────────────────── -->
+  <div id="bottomPanel">
+    <div class="bottom-tabs">
+      <button class="btab active" data-btab="output">Output</button>
+      <button class="btab" data-btab="problems">Problems</button>
+      <div class="btab-spacer"></div>
+      <button id="btnClearOutput" title="Clear output" aria-label="Clear output">
+        <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+      </button>
+      <button id="btnToggleBottom" title="Toggle panel" aria-label="Toggle bottom panel">
+        <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div id="outputContent"  class="btab-content active" role="log" aria-label="Output">
+      <pre id="outputPre">Ready.</pre>
+    </div>
+    <div id="problemsContent" class="btab-content" role="log" aria-label="Problems">
+      <div id="problemsList"><span class="no-problems">No problems detected.</span></div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- ── Workspace root picker ────────────────────────────────────── -->
+<div id="wsModal" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="wsModalTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <span id="wsModalTitle" class="modal-title">Open Folder</span>
+      <button class="modal-close" id="wsModalClose" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="ws-roots" id="wsRoots"></div>
+      <div class="ws-custom">
+        <input id="wsCustomPath" class="modal-input" placeholder="Or type a custom path…" aria-label="Custom path" />
+        <button id="wsCustomOpen" class="btn-primary">Open</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Refactor instructions modal ──────────────────────────────── -->
+<div id="refactorModal" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="refactorModalTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <span id="refactorModalTitle" class="modal-title">Refactor Code</span>
+      <button class="modal-close" id="refactorModalClose" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </div>
+    <div class="modal-body">
+      <label class="modal-label">Instructions</label>
+      <input id="refactorInstructions" class="modal-input" placeholder="e.g. 'Extract into a function', 'Add type hints', 'Make async'…" aria-label="Refactor instructions" />
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button id="refactorConfirm" class="btn-primary" style="flex:1">Refactor</button>
+        <button id="refactorCancel"  class="btn-secondary" style="flex:1">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Context menu ─────────────────────────────────────────────── -->
+<div id="contextMenu" role="menu" style="display:none">
+  <div class="ctx-item" id="ctx-open"       role="menuitem"><i class="fa-solid fa-file-arrow-up" aria-hidden="true"></i> Open</div>
+  <div class="ctx-item" id="ctx-rename"     role="menuitem"><i class="fa-solid fa-pen"           aria-hidden="true"></i> Rename</div>
+  <div class="ctx-item ctx-danger" id="ctx-delete" role="menuitem"><i class="fa-solid fa-trash" aria-hidden="true"></i> Delete</div>
+  <div class="ctx-sep" role="separator"></div>
+  <div class="ctx-item" id="ctx-new-file"   role="menuitem"><i class="fa-solid fa-file-plus"    aria-hidden="true"></i> New File Here</div>
+  <div class="ctx-item" id="ctx-new-folder" role="menuitem"><i class="fa-solid fa-folder-plus"  aria-hidden="true"></i> New Folder Here</div>
+  <div class="ctx-sep" role="separator"></div>
+  <div class="ctx-item" id="ctx-copy-path"  role="menuitem"><i class="fa-solid fa-copy"          aria-hidden="true"></i> Copy Path</div>
+</div>
+
+<!-- ── Toast container ──────────────────────────────────────────── -->
+<div id="toastContainer" aria-live="assertive" aria-atomic="true"></div>
+
+<!-- Monaco Editor from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+<script type="module" src="/viewer/js/app.js"></script>
+</body>
+</html>
