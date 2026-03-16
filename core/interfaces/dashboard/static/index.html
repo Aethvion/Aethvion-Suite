@@ -56,6 +56,7 @@
     <link rel="stylesheet" href="/static/games/word_search/word_search.css">
     <link rel="stylesheet" href="/static/games/checkers/checkers.css">
     <link rel="stylesheet" href="/static/css/app-tabs.css">
+    <link rel="stylesheet" href="/static/css/suite.css">
     <style>
         /* Audio Studio Specific Feedback */
         #audio-panel .radio-toggle input:checked+span {
@@ -354,6 +355,10 @@
                 <div class="suite-hub">
                     <div class="hub-hero">
                         <h1>Aethvion Suite</h1>
+                        <div class="hub-server-status">
+                            <span class="hub-status-dot" id="hub-servers-dot"></span>
+                            <span id="hub-servers-label">checking servers…</span>
+                        </div>
                     </div>
 
                     <!-- Dual Mode Selection -->
@@ -376,76 +381,118 @@
 
                     <!-- App Suite Section -->
                     <div class="app-suite-section">
-                        <div class="section-title">
-                            <h3><i class="fas fa-th-large"></i> App Suite</h3>
-                            <div class="title-line"></div>
+                        <div class="suite-section-header">
+                            <div class="section-title">
+                                <h3><i class="fas fa-th-large"></i> App Suite</h3>
+                                <div class="title-line"></div>
+                            </div>
+                            <span class="suite-port-note" id="suite-running-count">click to open in tab</span>
                         </div>
-                        
-                        <div class="app-suite-list">
-                            <!-- Photo -->
-                            <div class="app-entry photo-entry" onclick="switchMainTab('photo-module')">
-                                <div class="entry-icon"><i class="fas fa-camera-retro"></i></div>
-                                <div class="entry-info">
-                                    <h4>Aethvion Photo</h4>
-                                    <p>Professional image editing and AI background removal.</p>
+
+                        <div class="suite-app-grid">
+                            <!-- Code IDE -->
+                            <!-- Code IDE -->
+                            <div class="suite-app-card" onclick="ATB.openApp('code')" title="Open Code IDE">
+                                <div class="sac-glow sac-code"></div>
+                                <div class="sac-icon">💻</div>
+                                <div class="sac-name">Code IDE</div>
+                                <div class="sac-desc">AI-assisted code editor with syntax highlighting, file tree, and multi-language support.</div>
+                                <div class="sac-footer">
+                                    <span class="sac-tag">Dev</span>
+                                    <span class="sac-status sac-status--offline" id="sac-status-code"></span>
+                                    <i class="fas fa-arrow-right sac-arrow"></i>
                                 </div>
-                                <div class="entry-tag creative">Creative</div>
-                                <div class="entry-status-dot stopped" data-module="photo" title="Service status"></div>
                             </div>
 
-                            <!-- Finance -->
-                            <div class="app-entry finance-entry" onclick="switchMainTab('finance')">
-                                <div class="entry-icon"><i class="fas fa-chart-pie"></i></div>
-                                <div class="entry-info">
-                                    <h4>Aethvion Finance</h4>
-                                    <p>Comprehensive financial hub for asset tracking and analysis.</p>
+                            <!-- Hardware Info -->
+                            <div class="suite-app-card" onclick="ATB.openApp('hardwareinfo')" title="Open Hardware Info">
+                                <div class="sac-glow sac-hw"></div>
+                                <div class="sac-icon">🖥️</div>
+                                <div class="sac-name">Hardware Info</div>
+                                <div class="sac-desc">Live system monitor — CPU, GPU, memory, disk I/O, network, temps, and top processes.</div>
+                                <div class="sac-footer">
+                                    <span class="sac-tag">System</span>
+                                    <span class="sac-status sac-status--offline" id="sac-status-hardwareinfo"></span>
+                                    <i class="fas fa-arrow-right sac-arrow"></i>
                                 </div>
-                                <div class="entry-tag finance">Finance</div>
-                                <div class="entry-status-dot stopped" data-module="finance" title="Service status"></div>
-                            </div>
-
-                            <!-- Audio -->
-                            <div class="app-entry audio-entry" onclick="switchMainTab('audio-editor')">
-                                <div class="entry-icon"><i class="fas fa-wave-square"></i></div>
-                                <div class="entry-info">
-                                    <h4>Aethvion Audio</h4>
-                                    <p>Advanced waveform processing and effect pipelines.</p>
-                                </div>
-                                <div class="entry-tag audio">Audio</div>
-                                <div class="entry-status-dot stopped" data-module="audio" title="Service status"></div>
-                            </div>
-
-                            <!-- Drive Info -->
-                            <div class="app-entry driveinfo-entry" onclick="switchMainTab('driveinfo')">
-                                <div class="entry-icon"><i class="fas fa-hard-drive"></i></div>
-                                <div class="entry-info">
-                                    <h4>Aethvion Drive Info</h4>
-                                    <p>WinDirStat-style disk usage analyser with treemap visualisation.</p>
-                                </div>
-                                <div class="entry-tag data">Disk</div>
-                                <div class="entry-status-dot stopped" data-module="driveinfo" title="Service status"></div>
-                            </div>
-
-                            <!-- Tracking -->
-                            <div class="app-entry tracking-entry" onclick="switchMainTab('tracking')">
-                                <div class="entry-icon"><i class="fas fa-project-diagram"></i></div>
-                                <div class="entry-info">
-                                    <h4>Aethvion Tracking</h4>
-                                    <p>Real-time motion analysis and performance metrics.</p>
-                                </div>
-                                <div class="entry-tag data">Data</div>
-                                <div class="entry-status-dot stopped" data-module="tracking" title="Service status"></div>
                             </div>
 
                             <!-- VTuber -->
-                            <div class="app-entry vtuber-entry" onclick="switchMainTab('vtuber')">
-                                <div class="entry-icon"><i class="fas fa-user-circle"></i></div>
-                                <div class="entry-info">
-                                    <h4>Aethvion VTuber</h4>
-                                    <p>Neural character rigging and layered asset orchestration.</p>
+                            <div class="suite-app-card" onclick="ATB.openApp('vtuber')" title="Open VTuber">
+                                <div class="sac-glow sac-vtuber"></div>
+                                <div class="sac-icon">🎭</div>
+                                <div class="sac-name">VTuber</div>
+                                <div class="sac-desc">Neural character rigging, live facial tracking, and layered asset orchestration.</div>
+                                <div class="sac-footer">
+                                    <span class="sac-tag">Visuals</span>
+                                    <span class="sac-status sac-status--offline" id="sac-status-vtuber"></span>
+                                    <i class="fas fa-arrow-right sac-arrow"></i>
                                 </div>
-                                <div class="entry-tag visuals">Visuals</div>
-                                <div class="entry-status-dot stopped" data-module="vtuber" title="Service status"></div>
+                            </div>
+
+                            <!-- Audio Studio -->
+                            <div class="suite-app-card" onclick="ATB.openApp('audio')" title="Open Audio Studio">
+                                <div class="sac-glow sac-audio"></div>
+                                <div class="sac-icon">🎙️</div>
+                                <div class="sac-name">Audio Studio</div>
+                                <div class="sac-desc">Advanced waveform editor with multi-track processing and effect pipelines.</div>
+                                <div class="sac-footer">
+                                    <span class="sac-tag">Audio</span>
+                                    <span class="sac-status sac-status--offline" id="sac-status-audio"></span>
+                                    <i class="fas fa-arrow-right sac-arrow"></i>
+                                </div>
+                            </div>
+
+                            <!-- Photo Studio -->
+                            <div class="suite-app-card" onclick="ATB.openApp('photo')" title="Open Photo Studio">
+                                <div class="sac-glow sac-photo"></div>
+                                <div class="sac-icon">🎨</div>
+                                <div class="sac-name">Photo Studio</div>
+                                <div class="sac-desc">Professional image editing with AI-powered background removal and project saving.</div>
+                                <div class="sac-footer">
+                                    <span class="sac-tag">Creative</span>
+                                    <span class="sac-status sac-status--offline" id="sac-status-photo"></span>
+                                    <i class="fas fa-arrow-right sac-arrow"></i>
+                                </div>
+                            </div>
+
+                            <!-- Finance -->
+                            <div class="suite-app-card" onclick="ATB.openApp('finance')" title="Open Finance">
+                                <div class="sac-glow sac-finance"></div>
+                                <div class="sac-icon">💰</div>
+                                <div class="sac-name">Finance</div>
+                                <div class="sac-desc">Comprehensive financial hub for budgets, portfolios, transactions, and analysis.</div>
+                                <div class="sac-footer">
+                                    <span class="sac-tag">Finance</span>
+                                    <span class="sac-status sac-status--offline" id="sac-status-finance"></span>
+                                    <i class="fas fa-arrow-right sac-arrow"></i>
+                                </div>
+                            </div>
+
+                            <!-- Tracking -->
+                            <div class="suite-app-card" onclick="ATB.openApp('tracking')" title="Open Tracking">
+                                <div class="sac-glow sac-tracking"></div>
+                                <div class="sac-icon">📡</div>
+                                <div class="sac-name">Tracking</div>
+                                <div class="sac-desc">Real-time motion capture and performance metrics with live data streaming.</div>
+                                <div class="sac-footer">
+                                    <span class="sac-tag">Data</span>
+                                    <span class="sac-status sac-status--offline" id="sac-status-tracking"></span>
+                                    <i class="fas fa-arrow-right sac-arrow"></i>
+                                </div>
+                            </div>
+
+                            <!-- Drive Info -->
+                            <div class="suite-app-card" onclick="ATB.openApp('driveinfo')" title="Open Drive Info">
+                                <div class="sac-glow sac-drive"></div>
+                                <div class="sac-icon">💿</div>
+                                <div class="sac-name">Drive Info</div>
+                                <div class="sac-desc">WinDirStat-style disk usage analyser with treemap visualisation and scan history.</div>
+                                <div class="sac-footer">
+                                    <span class="sac-tag">Disk</span>
+                                    <span class="sac-status sac-status--offline" id="sac-status-driveinfo"></span>
+                                    <i class="fas fa-arrow-right sac-arrow"></i>
+                                </div>
                             </div>
                         </div>
                     </div>

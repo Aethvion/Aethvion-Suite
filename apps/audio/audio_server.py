@@ -248,7 +248,7 @@ async def index():
 
 def launch():
     from core.utils.port_manager import PortManager
-    base_port = int(os.getenv("AUDIO_PORT", "8081"))
+    base_port = int(os.getenv("AUDIO_PORT", "8085"))
     port = PortManager.bind_port("Aethvion Audio", base_port)
     print(f"🔊 Aethvion Audio Editor → http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

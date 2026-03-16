@@ -5,14 +5,10 @@ Aethvion Drive Info — FastAPI Server
 import sys
 from pathlib import Path
 
-# Ensure project root is on the path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-try:
-    from core.utils.port_manager import PortManager
-    PORT = PortManager().get_port("Aethvion Drive Info", default=8084)
-except Exception:
-    PORT = 8084
+# Ensure both the project root and this app's directory are importable
+_HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE))                          # for driveinfo_core
+sys.path.insert(0, str(_HERE.parent.parent))            # project root for core.*
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -150,7 +146,20 @@ async def api_health():
 # Entry point
 # ---------------------------------------------------------------------------
 
-if __name__ == "__main__":
+def launch():
     import uvicorn
-    print(f"  Aethvion Drive Info  →  http://localhost:{PORT}")
-    uvicorn.run("driveinfo_server:app", host="0.0.0.0", port=PORT, reload=False)
+    import os
+    from core.utils.port_manager import PortManager
+    base_port = int(os.getenv("DRIVEINFO_PORT", "8088"))
+    port = PortManager.bind_port("Aethvion Drive Info", base_port)
+    print(f"  Aethvion Drive Info  →  http://localhost:{port}")
+    try:
+        from core.utils.browser import open_app_window
+        open_app_window(f"http://localhost:{port}", delay=1.5)
+    except Exception:
+        pass
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+
+
+if __name__ == "__main__":
+    launch()

@@ -195,8 +195,17 @@ async def load_project(filename: str):
         logger.error(f"Load project failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == "__main__":
-    base_port = int(os.getenv("PHOTO_PORT", 8081))
+def launch():
+    base_port = int(os.getenv("PHOTO_PORT", "8086"))
     port = PortManager.bind_port("Aethvion Photo", base_port)
     logger.info(f"🎨 Aethvion Photo Service → http://localhost:{port}")
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    try:
+        from core.utils.browser import open_app_window
+        open_app_window(f"http://localhost:{port}", delay=1.5)
+    except Exception:
+        pass
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+
+
+if __name__ == "__main__":
+    launch()
