@@ -1,40 +1,46 @@
 @echo off
 SETLOCAL EnableDelayedExpansion
 
-:: Window always-open guarantee — re-launch inside cmd /k so the window stays
-:: open even if the script crashes, letting you read the error.
+:: Window always-open guarantee
 if not defined AETHVION_LAUNCHED (
     set AETHVION_LAUNCHED=1
     cmd /k ""%~f0""
     exit
 )
 
-TITLE Aethvion Suite — Dev Launcher
 SET PROJECT_DIR=%~dp0
 cd /d "%PROJECT_DIR%"
+TITLE Aethvion Suite — Developer Portal
 
+echo.
+echo   [95m   _____         __  .__              .__                 [0m
+echo   [95m  /  _  \  _____/  |_^|  ^|__ ___  __ ^|__| ____   ____     [0m
+echo   [95m /  /_\  \/ __ \   __\  ^|  \\  \/ / ^|  ^|/  _ \ /    \    [0m
+echo   [95m/    ^|    \  ___/^|  ^| ^|   Y  \   /  ^|  (  <_^> )   ^|  \   [0m
+echo   [95m\____^|__  /\___  ^>__^| ^|___^|  /\_/   ^|__^|\____/^|___^|  /   [0m
+echo   [95m        \/     \/          \/                    \/    [0m
 echo.
 echo ============================================================
 echo   AETHVION SUITE  ^|  DEVELOPER MODE
-echo   Each app server gets its own visible console window.
-echo   Dashboard opens in a standard browser tab.
-echo   Press Ctrl+C here to stop the entire suite.
+echo   Visible logs, standard browser, manual control.
 echo ============================================================
 echo.
 
 :: ── 1. Python check ─────────────────────────────────────────
+echo [1/5] VERIFYING PYTHON...
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Python is not installed or not in PATH.
-    echo         Install Python 3.10+ from https://python.org
+    echo [ERROR] Python not found.
     goto :FAIL
 )
 for /f "tokens=2 delims= " %%v in ('python --version 2^>^&1') do set PY_VER=%%v
-echo [OK]   Python %PY_VER% detected.
+echo [OK]   Python %PY_VER% verified.
 
 :: ── 2. Virtual environment ───────────────────────────────────
+echo.
+echo [2/5] SYNCING VIRTUAL ENVIRONMENT...
 if not exist ".venv\Scripts\activate.bat" (
-    echo [SETUP] Creating virtual environment…
+    echo [SETUP] Creating virtual environment...
     python -m venv .venv
     if %errorlevel% neq 0 (
         echo [ERROR] Failed to create virtual environment.
@@ -47,35 +53,31 @@ if not exist ".venv\Scripts\activate.bat" (
 call ".venv\Scripts\activate.bat"
 
 :: ── 3. Dependencies ──────────────────────────────────────────
+echo.
+echo [3/5] VERIFYING DEPENDENCIES...
 python -c "import fastapi" >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [SETUP] Installing dependencies from pyproject.toml…
+    echo [SETUP] Installing dependencies from pyproject.toml...
     python -m pip install --upgrade pip
     pip install -e ".[memory]"
     if %errorlevel% neq 0 (
-        python -c "import fastapi; import pydantic" >clog.tmp 2>&1
-        if !errorlevel! neq 0 (
-            echo [ERROR] Core dependency check failed:
-            type clog.tmp
-            del clog.tmp
-            goto :FAIL
-        )
-        del clog.tmp
-        echo [OK]   Core dependencies verified despite pip warnings.
-    ) else (
-        echo [OK]   Dependencies installed.
+        echo [ERROR] Dependency installation failed.
+        goto :FAIL
     )
+    echo [OK]   Dependencies installed.
 ) else (
     echo [OK]   Dependencies verified.
 )
 
-:: ── 4. .env file ─────────────────────────────────────────────
+:: ── 4. Configuration ─────────────────────────────────────────
+echo.
+echo [4/5] FINALIZING CONFIGURATION...
 if not exist ".env" (
     if exist ".env.example" (
         copy ".env.example" ".env" >nul
-        echo [SETUP] Created .env from .env.example
+        echo [SETUP] Created .env from template.
     ) else (
-        echo [WARN]  No .env file found. Add your API keys in the dashboard.
+        echo [WARN]  No .env file found.
     )
 ) else (
     echo [OK]   .env found.
@@ -86,9 +88,9 @@ call core\setup_directories.bat
 
 :: ── 6. Launch (dev mode — visible consoles, web browser tab) ─
 echo.
-echo [START] Launching Aethvion Suite in Dev Mode…
-echo         Dashboard  -^> http://localhost:8080
-echo         Ctrl+C here stops everything.
+echo [5/5] LAUNCHING CORE ENGINE...
+echo [INFO] Dashboard  -^> http://localhost:8080
+echo [INFO] Press Ctrl+C here to stop the entire suite.
 echo.
 
 python core\launcher.py --dev --browser web %*
