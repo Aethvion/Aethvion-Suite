@@ -4,7 +4,7 @@
 
 system:
   name: "Misaka Cipher"
-  version: "1.0.0-sprint1"
+  version: "1.0.0-sprint2"
   codename: "M.I.S.A.K.A."
 
   environment: "development"  # development, staging, production

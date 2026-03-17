@@ -2,10 +2,34 @@
     "system": {
         "name": "Aethvion Suite",
         "company": "Aethvion",
-        "version": "7",
-        "last_sync": "2026-03-16",
+        "version": "8",
+        "last_sync": "2026-03-17",
         "contact": "contact@aethvion.com",
         "changelog": [
+            {
+                "version": "8",
+                "date": "2026-03-17",
+                "added": [
+                    "Self-Update: Native dashboard update button in Settings > Version Control",
+                    "Self-Update: Integrated core/updater.py for Git-lifecycle management (fetch, stash, pull, install)",
+                    "Self-Update: Transparent progress overlay with glassmorphic design and real-time status",
+                    "Self-Update: Automatic suite restart and reconnection after update completion",
+                    "Infrastructure: Self-healing setup scripts auto-initialize .env and security.yaml from templates if missing",
+                    "Infrastructure: Standardized data directory structure (data/apps/) for better portability"
+                ],
+                "improved": [
+                    "Batch Launchers: Complete refactor of Start_Aethvion.bat, Start_AethvionWeb.bat, and Start_AethvionDev.bat",
+                    "Batch Launchers: Added 5-step progress tracking (Python, Venv, Deps, Config, Launch) for initialization transparency",
+                    "Batch Launchers: Removed silent output suppression from dependency installation — users can now see pip progress",
+                    "Batch Launchers: Implementation of guaranteed 'always-open' window logic for easier debugging",
+                    "Security: Intelligence Firewall made resilient to missing configuration files; defaults to safe mode instead of crashing",
+                    "Branding: Professional ASCII-free stable headers across all startup scripts"
+                ],
+                "fixed": [
+                    "VTuber: Corrected PROJECT_ROOT calculation; data is now correctly stored in data/apps/vtuber/ instead of the system user directory",
+                    "Launchers: Resolved syntax errors in batch files caused by special character parsing"
+                ]
+            },
             {
                 "version": "7",
                 "date": "2026-03-16",
