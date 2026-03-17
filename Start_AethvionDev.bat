@@ -82,18 +82,7 @@ if not exist ".env" (
 )
 
 :: ── 5. Required directories ──────────────────────────────────
-if not exist "data\core"            mkdir data\core
-if not exist "data\core\logs"       mkdir data\core\logs
-if not exist "data\core\config"     mkdir data\core\config
-if not exist "data\core\system"     mkdir data\core\system
-if not exist "data\ai"              mkdir data\ai
-if not exist "data\ai\history"      mkdir data\ai\history
-if not exist "data\ai\memory"       mkdir data\ai\memory
-if not exist "data\ai\outputfiles"  mkdir data\ai\outputfiles
-if not exist "data\code"            mkdir data\code
-if not exist "data\code\projects"   mkdir data\code\projects
-if not exist "data\vtuber"          mkdir data\vtuber
-if not exist "data\tracking"        mkdir data\tracking
+call core\setup_directories.bat
 
 :: ── 6. Launch (dev mode — visible consoles, web browser tab) ─
 echo.

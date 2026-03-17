@@ -43,12 +43,7 @@ if not exist ".env" (
 )
 
 :: ── 5. Required directories ──────────────────────────────────
-if not exist "data\core"            mkdir data\core
-if not exist "data\core\logs"       mkdir data\core\logs
-if not exist "data\ai"              mkdir data\ai
-if not exist "data\ai\history"      mkdir data\ai\history
-if not exist "data\code"            mkdir data\code
-if not exist "data\code\projects"   mkdir data\code\projects
+call core\setup_directories.bat
 
 :: ── 6. Launch via pythonw + standard browser tab ─────────────
 ::  Uses --browser web so the dashboard opens in a normal tab
