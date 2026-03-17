@@ -18,7 +18,7 @@ from typing import Optional
 # Constants
 # ---------------------------------------------------------------------------
 
-DATA_DIR = Path("data/driveinfo")
+DATA_DIR = Path("data/apps/driveinfo")
 EATHSCAN_VERSION = "1.0"
 
 # ---------------------------------------------------------------------------

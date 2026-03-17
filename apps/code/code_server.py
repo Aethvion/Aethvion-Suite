@@ -63,7 +63,7 @@ ROOT       = Path(PROJECT_ROOT)
 WORKSPACE = ROOT
 
 # ── Persistence helpers ────────────────────────────────────────────────────────
-DATA_DIR      = ROOT / "data" / "code"
+DATA_DIR      = ROOT / "data" / "apps" / "code"
 PROJECTS_DIR  = DATA_DIR / "projects"
 SETTINGS_FILE = DATA_DIR / "settings.json"
 

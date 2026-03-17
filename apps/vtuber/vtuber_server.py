@@ -60,10 +60,10 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).parent
 VIEWER_DIR = BASE_DIR / "viewer"
-MODELS_DIR = BASE_DIR / "models"
-VTUBER_DIR = BASE_DIR / "vtuber_files"   # .specter archives
-MODELS_DIR.mkdir(exist_ok=True)
-VTUBER_DIR.mkdir(exist_ok=True)
+MODELS_DIR = Path(PROJECT_ROOT) / "data" / "apps" / "vtuber" / "models"
+VTUBER_DIR = Path(PROJECT_ROOT) / "data" / "apps" / "vtuber" / "files"
+MODELS_DIR.mkdir(parents=True, exist_ok=True)
+VTUBER_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ---------------------------------------------------------------------------

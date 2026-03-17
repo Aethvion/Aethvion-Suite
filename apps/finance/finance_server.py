@@ -46,8 +46,9 @@ app.add_middleware(
 # Directories
 # ---------------------------------------------------------------------------
 APP_DIR = Path(__file__).parent
-DATA_DIR = WORKSPACE_ROOT / "data" / "finance"
+DATA_DIR = WORKSPACE_ROOT / "data" / "apps" / "finance"
 PROJECTS_DIR = DATA_DIR / "projects"
+UPLOADS_DIR = DATA_DIR / "uploads"
 AUTOSAVE_PATH = DATA_DIR / "autosave.aethfinance"
 
 for d in [DATA_DIR, PROJECTS_DIR]:
