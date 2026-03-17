@@ -57,6 +57,7 @@ ROOT      = Path(__file__).parent.parent
 VENV_DIR  = ROOT / ".venv" / "Scripts"
 VENV_PY   = VENV_DIR / "python.exe"
 VENV_PYW  = VENV_DIR / "pythonw.exe"
+RESTART_EXIT_CODE = 42
 
 # ── App registry ──────────────────────────────────────────────────────────────
 # Each entry describes one server process.
@@ -247,7 +248,31 @@ def _cleanup() -> None:
             pass
 
     print("[Launcher] All child processes stopped.")
-
+    
+def _restart_suite() -> None:
+    """Safely shut down all processes and re-launch the launcher."""
+    print("\n" + "!" * 60)
+    print("  SYSTEM RESTART INITIATED (EXIT CODE 42)  ")
+    print("!" * 60 + "\n")
+    
+    _cleanup()
+    print("[Launcher] Waiting 2 seconds before system reload...")
+    time.sleep(2.0)
+    
+    # Replace the current process with a new instance of the launcher
+    # This ensures a fresh start with updated code
+    print("[Launcher] Executing system reload...")
+    try:
+        if os.name == "nt":
+            # On Windows, os.execv doesn't always behave perfectly with consoles
+            # subprocess.Popen + sys.exit is often more reliable for "replacing"
+            subprocess.Popen([sys.executable] + sys.argv)
+            os._exit(0)
+        else:
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+    except Exception as e:
+        print(f"[Launcher] Restart failed: {e}")
+        sys.exit(1)
 
 atexit.register(_cleanup)
 
@@ -319,8 +344,13 @@ def _launch_process(name: str, cfg: dict, consumer: bool) -> subprocess.Popen | 
 def _monitor_dashboard(proc: subprocess.Popen, consumer: bool) -> None:
     """Restart the dashboard if it crashes (daemon thread)."""
     while True:
-        time.sleep(5)
-        if proc.poll() is not None:
+        time.sleep(2)
+        code = proc.poll()
+        if code is not None:
+            if code == RESTART_EXIT_CODE:
+                _restart_suite()
+                return
+            
             print("[Launcher] Dashboard crashed — restarting…")
             new = _launch_process("dashboard", APP_REGISTRY["dashboard"], consumer)
             if new:
@@ -462,13 +492,17 @@ def main() -> None:
         print("[Launcher] All processes running. Press Ctrl+C to stop all.\n")
         try:
             while True:
-                time.sleep(30)
+                time.sleep(2)  # Check more frequently for restart signals
                 alive = []
                 with _child_lock:
-                    for proc in _child_procs:
-                        if proc.poll() is None:
+                    for proc in list(_child_procs):
+                        code = proc.poll()
+                        if code == RESTART_EXIT_CODE:
+                            _restart_suite()
+                            return
+                        if code is None:
                             alive.append(proc.pid)
-                print(f"[Launcher] Alive PIDs: {alive}")
+                # print(f"[Launcher] Alive PIDs: {alive}") # Keep it quiet
         except (KeyboardInterrupt, SystemExit):
             pass
 

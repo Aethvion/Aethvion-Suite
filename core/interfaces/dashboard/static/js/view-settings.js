@@ -2122,9 +2122,20 @@ async function renderVersionTabContent(localData = null, remoteData = null, isUp
                             Version <strong>${remoteData.system.version}</strong> is now live on GitHub.
                         </div>
                     </div>
-                    <a href="https://github.com/Aethvion/Aethvion-Suite" target="_blank" class="action-btn small primary" style="text-decoration: none;">View Repo</a>
+                    <div style="display: flex; gap: 8px;">
+                        <button id="trigger-self-update-btn" class="action-btn small primary">Update Aethvion</button>
+                        <a href="https://github.com/Aethvion/Aethvion-Suite" target="_blank" class="action-btn small secondary" style="text-decoration: none;">View Repo</a>
+                    </div>
                 </div>
             `;
+            
+            // Re-attach button listener if it exists
+            setTimeout(() => {
+                const updateBtn = document.getElementById('trigger-self-update-btn');
+                if (updateBtn) {
+                    updateBtn.onclick = () => triggerSelfUpdate();
+                }
+            }, 100);
         } else if (remoteData) {
             versionBanner.innerHTML = `
                 <div style="margin-top: 15px; padding: 12px; border-radius: 4px; border: 1px solid var(--border); background: rgba(255,255,255,0.02); display: flex; align-items: center; gap: 10px;">
@@ -2239,6 +2250,78 @@ async function renderVersionTabContent(localData = null, remoteData = null, isUp
         }
     }
 }
+
+async function triggerSelfUpdate() {
+    if (!confirm("Are you sure you want to update Aethvion? This will restart the entire suite and current sessions will be disconnected.")) {
+        return;
+    }
+
+    const overlay = document.getElementById('self-update-overlay');
+    const statusText = document.getElementById('update-status-text');
+    const progressBar = document.getElementById('update-progress-bar');
+
+    if (overlay) overlay.classList.add('active');
+    
+    const setStatus = (text, progress) => {
+        if (statusText) statusText.textContent = text;
+        if (progressBar) progressBar.style.width = `${progress}%`;
+    };
+
+    try {
+        setStatus("Running Git lifecycle (fetch/stash/pull)...", 20);
+        
+        const res = await fetch('/api/system/update', { method: 'POST' });
+        const data = await res.json();
+
+        if (res.ok) {
+            setStatus("Update applied! Restarting system...", 90);
+            
+            // The server will close in ~1s. We poll for health until it's back.
+            setTimeout(() => {
+                setStatus("System is restarting. Reconnecting...", 95);
+                checkSystemBack();
+            }, 3000);
+        } else {
+            if (overlay) overlay.classList.remove('active');
+            showNotification(data.detail || "Update failed", "error");
+        }
+    } catch (e) {
+        if (overlay) overlay.classList.remove('active');
+        showNotification("Connection lost during update. System might be restarting.", "warning");
+        // Try to reconnect anyway
+        checkSystemBack();
+    }
+}
+
+function checkSystemBack() {
+    const statusText = document.getElementById('update-status-text');
+    const progressBar = document.getElementById('update-progress-bar');
+
+    let attempts = 0;
+    const interval = setInterval(async () => {
+        attempts++;
+        if (statusText) statusText.textContent = `Reconnecting (Attempt ${attempts})...`;
+        
+        try {
+            const res = await fetch('/health');
+            if (res.ok) {
+                clearInterval(interval);
+                if (statusText) statusText.textContent = "Online! Reloading...";
+                if (progressBar) progressBar.style.width = "100%";
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        } catch (e) {
+            // Keep trying
+        }
+
+        if (attempts > 60) {
+            clearInterval(interval);
+            alert("System took too long to restart. Please check the logs or start manually.");
+        }
+    }, 2000);
+}
+
+window.triggerSelfUpdate = triggerSelfUpdate;
 
 function runStartupUpdateCheck() {
     // 1. Always check once on startup/page load

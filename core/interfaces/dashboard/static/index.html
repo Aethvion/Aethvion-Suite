@@ -137,6 +137,89 @@
             color: #000;
             box-shadow: 0 0 10px rgba(0, 217, 255, 0.4);
         }
+
+        /* --- Self-Update Progress Overlay --- */
+        .update-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .update-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .update-content {
+            max-width: 500px;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .update-spinner {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 25px;
+            filter: drop-shadow(0 0 15px var(--primary));
+        }
+
+        .update-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, white, var(--primary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .update-status {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            min-height: 1.2rem;
+        }
+
+        .update-progress-container {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .update-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        .update-hint {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.3);
+            font-style: italic;
+        }
     </style>
 </head>
 
@@ -3058,6 +3141,21 @@
 
 <!-- ── App Tab System ────────────────────────────────────────────────────── -->
 <script src="/static/js/app-tabs.js"></script>
+
+<!-- Update Progress Overlay -->
+<div id="self-update-overlay" class="update-overlay">
+    <div class="update-content">
+        <div class="update-spinner">
+            <i class="fas fa-sync fa-spin"></i>
+        </div>
+        <div class="update-title">APPLYING UPDATES</div>
+        <div id="update-status-text" class="update-status">Initializing Git lifecycle...</div>
+        <div class="update-progress-container">
+            <div id="update-progress-bar" class="update-progress-bar"></div>
+        </div>
+        <div class="update-hint">The suite will restart automatically once finished.</div>
+    </div>
+</div>
 
 </body>
 

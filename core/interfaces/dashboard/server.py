@@ -617,6 +617,59 @@ async def get_system_status():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/system/update")
+async def trigger_self_update():
+    """Trigger the self-update process and shutdown with restart code."""
+    logger.info("Self-Update triggered via API")
+    
+    try:
+        # Get project root (4 levels up from core/interfaces/dashboard/server.py)
+        root_dir = Path(__file__).resolve().parent.parent.parent.parent
+        updater_script = root_dir / "core" / "updater.py"
+        
+        if not updater_script.exists():
+            raise HTTPException(status_code=404, detail="Updater utility not found")
+            
+        logger.info(f"Running updater: {updater_script}")
+        
+        # Run updater utility
+        process = await asyncio.create_subprocess_exec(
+            sys.executable, str(updater_script),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=str(root_dir)
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode != 0:
+            err_msg = stderr.decode()
+            logger.error(f"Update failed: {err_msg}")
+            raise HTTPException(status_code=500, detail=f"Update failed: {err_msg}")
+            
+        logger.info("Update utility finished successfully. Shutting down for restart...")
+        
+        # Shutdown the server with exit code 42
+        # Use a small delay to allow the response to reach the client
+        async def delayed_shutdown():
+            await asyncio.sleep(1.0)
+            logger.info("Process exiting with code 42 for suite restart.")
+            os._exit(42) # Bypass standard exit to ensure code 42 is sent to launcher
+            
+        asyncio.create_task(delayed_shutdown())
+        
+        return {
+            "status": "success", 
+            "message": "Update completed. Restarting system...",
+            "output": stdout.decode()
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        logger.error(f"Error during update: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/system/telemetry/sync")
 async def sync_system_telemetry():
     """Sync system telemetry."""
