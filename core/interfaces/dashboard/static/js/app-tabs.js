@@ -107,11 +107,12 @@ const ATB = (() => {
 
         const panelId = `panel-app-${app.id}`;
 
-        // Already open → just focus it
-        if (document.getElementById(panelId)) {
-            switchTo(panelId);
-            return;
-        }
+        // 1. Tell backend to start the service (async, don't block UI)
+        fetch('/api/system/modules/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ module: app.id, action: 'run' })
+        }).catch(err => console.error(`[ATB] Failed to start service for ${app.id}:`, err));
 
         const panel = _buildPanel(app, panelId);
         document.body.appendChild(panel);
@@ -262,10 +263,17 @@ const ATB = (() => {
 
     // ── Close tab ─────────────────────────────────────────────────────────────
     function _closeTab(panelId, tabEl) {
-        // Call switchTo FIRST while _active === panelId so the guard passes,
-        // then remove the elements.  (Removing before switching caused a black
-        // screen because switchTo would find the target gone and fall back to
-        // nexus, but the old panel was still displayed.)
+        // Extract app ID from panel ID (panel-app-ID)
+        const appId = panelId.replace('panel-app-', '');
+
+        // 1. Tell backend to stop the service
+        fetch('/api/system/modules/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ module: appId, action: 'stop' })
+        }).catch(err => console.error(`[ATB] Failed to stop service for ${appId}:`, err));
+
+        // Call switchTo FIRST while _active === panelId so the guard passes
         if (_active === panelId) {
             switchTo(NEXUS_PANEL);
         }

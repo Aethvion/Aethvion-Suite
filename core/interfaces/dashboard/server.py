@@ -20,8 +20,12 @@ from datetime import datetime
 
 from core.utils import get_logger
 from core.config.settings_manager import get_settings_manager
+import psutil
 
 logger = get_logger(__name__)
+
+# Track dynamically started apps: { module_name: pid }
+RUNNING_APPS: Dict[str, int] = {}
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -503,17 +507,13 @@ async def get_system_ports():
 
 @app.post("/api/system/modules/run")
 async def run_module_script(request: dict):
-    """Execute a module startup script (.bat)."""
+    """Execute or stop a module startup script (.bat)."""
     module_name = request.get("module")
     action = request.get("action")
     
     if not module_name:
         raise HTTPException(status_code=400, detail="Module name required")
 
-    import subprocess
-    import os
-    from pathlib import Path
-    
     # Map module names to their startup scripts (relative to project root)
     module_map = {
         "vtuber":    "apps/vtuber/Start_VTuber.bat",
@@ -522,35 +522,78 @@ async def run_module_script(request: dict):
         "audio":     "apps/audio/Start_Audio.bat",
         "driveinfo": "apps/driveinfo/Start_DriveInfo.bat",
         "finance":   "apps/finance/Start_Finance.bat",
+        "code":      "apps/code/Start_Code.bat",
+        "hardwareinfo": "apps/hardwareinfo/Start_HardwareInfo.bat",
     }
     
     if module_name not in module_map:
         raise HTTPException(status_code=404, detail=f"Module {module_name} not found in registry")
         
-    # Get project root (3 levels up from core/interfaces/dashboard/server.py)
     root_dir = Path(__file__).resolve().parent.parent.parent.parent
     script_path = root_dir / module_map[module_name]
     
     if not script_path.exists():
-        # Try relative to cwd as fallback
         script_path = Path(os.getcwd()) / module_map[module_name]
         if not script_path.exists():
             raise HTTPException(status_code=404, detail=f"Startup script not found at {script_path}")
         
     try:
         if action == "run":
-            # For Windows, use 'cmd /c start' to open in a new visible console window
-            # This allows the user to see what's happening and interact if needed (e.g. installs)
-            cmd = f'start "{module_name.upper()} SERVICE" /D "{script_path.parent}" "{script_path}"'
-            subprocess.Popen(
-                cmd,
-                shell=True,
-                cwd=str(script_path.parent)
+            # Check if already running
+            existing_pid = RUNNING_APPS.get(module_name)
+            if existing_pid and psutil.pid_exists(existing_pid):
+                return {"status": "success", "message": f"{module_name} is already running"}
+
+            # For Windows, we use 'cmd /c' to run the batch file.
+            # We DON'T use 'start' here because we want to keep a handle on the process 
+            # to kill it later. 'start' would detach it completely.
+            # However, we use CREATE_NEW_CONSOLE to keep it in a separate window if it needs interaction.
+            import subprocess
+            CREATE_NEW_CONSOLE = 0x00000010
+            
+            proc = subprocess.Popen(
+                [str(script_path)],
+                cwd=str(script_path.parent),
+                creationflags=CREATE_NEW_CONSOLE,
+                shell=True
             )
-            return {"status": "success", "message": f"Started {module_name} service in new window"}
+            RUNNING_APPS[module_name] = proc.pid
+            return {"status": "success", "message": f"Started {module_name} service", "pid": proc.pid}
+            
+        elif action == "stop":
+            pid = RUNNING_APPS.get(module_name)
+            if not pid or not psutil.pid_exists(pid):
+                # If not in our PID map, try to find it by name as fallback
+                found = False
+                for p in psutil.process_iter(['pid', 'cmdline']):
+                    try:
+                        cmd = " ".join(p.info.get('cmdline') or [])
+                        if module_name in cmd.lower() and ("python" in cmd.lower() or "bat" in cmd.lower()):
+                            pid = p.info['pid']
+                            found = True
+                            break
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+                if not found:
+                    return {"status": "success", "message": f"{module_name} is not running"}
+
+            # Kill tree
+            try:
+                parent = psutil.Process(pid)
+                for child in parent.children(recursive=True):
+                    child.kill()
+                parent.kill()
+                if module_name in RUNNING_APPS:
+                    del RUNNING_APPS[module_name]
+                return {"status": "success", "message": f"Stopped {module_name} service"}
+            except psutil.NoSuchProcess:
+                if module_name in RUNNING_APPS:
+                    del RUNNING_APPS[module_name]
+                return {"status": "success", "message": f"{module_name} was already terminated"}
         else:
             raise HTTPException(status_code=400, detail="Unsupported action")
     except Exception as e:
+        logger.error(f"Module action {action} failed for {module_name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

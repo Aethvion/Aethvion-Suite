@@ -513,7 +513,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--apps",
-        default="all",
+        default="none",
         metavar="all|none|NAME[,NAME]",
         help=(
             "Which optional apps to start alongside the dashboard.\n"
