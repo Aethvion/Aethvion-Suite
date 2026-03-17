@@ -328,7 +328,7 @@ async function pollStartupStatus() {
     // Fetch version independently for the splash screen
     const splashVersion = document.getElementById('splash-version');
     if (splashVersion) {
-        fetch('/static/assets/system-status.json')
+        fetch('/static/assets/system-status.json?v=' + Date.now())
             .then(r => r.json())
             .then(data => {
                 if (data.system) {
@@ -641,7 +641,7 @@ async function updateSystemInfo() {
     if (!heroVersion) return;
 
     try {
-        const response = await fetch('/static/assets/system-status.json');
+        const response = await fetch('/static/assets/system-status.json?v=' + Date.now());
         if (response.ok) {
             const data = await response.json();
             if (data.system && data.system.version) {

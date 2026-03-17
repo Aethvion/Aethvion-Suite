@@ -2036,7 +2036,7 @@ const REMOTE_VERSION_URL = "https://raw.githubusercontent.com/Aethvion/Misaka-Ci
 async function checkForUpdates(manual = false) {
     try {
         // Fetch local version
-        const localResp = await fetch('/static/assets/system-status.json');
+        const localResp = await fetch('/static/assets/system-status.json?v=' + Date.now());
         const localData = await localResp.json();
         const localVersion = parseFloat(localData.system.version) || 0;
         
@@ -2084,7 +2084,7 @@ async function checkForUpdates(manual = false) {
 async function renderVersionTabContent(localData = null, remoteData = null, isUpdateAvailable = false) {
     if (!localData) {
         try {
-            const resp = await fetch('/static/assets/system-status.json');
+            const resp = await fetch('/static/assets/system-status.json?v=' + Date.now());
             localData = await resp.json();
         } catch (e) {
             console.error("Failed to load local version data");
