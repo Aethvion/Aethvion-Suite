@@ -13,16 +13,8 @@ cd /d "%PROJECT_DIR%"
 TITLE Aethvion Suite — Developer Portal
 
 echo.
-echo   [95m   _____         __  .__              .__                 [0m
-echo   [95m  /  _  \  _____/  |_^|  ^|__ ___  __ ^|__| ____   ____     [0m
-echo   [95m /  /_\  \/ __ \   __\  ^|  \\  \/ / ^|  ^|/  _ \ /    \    [0m
-echo   [95m/    ^|    \  ___/^|  ^| ^|   Y  \   /  ^|  (  <_^> )   ^|  \   [0m
-echo   [95m\____^|__  /\___  ^>__^| ^|___^|  /\_/   ^|__^|\____/^|___^|  /   [0m
-echo   [95m        \/     \/          \/                    \/    [0m
-echo.
 echo ============================================================
 echo   AETHVION SUITE  ^|  DEVELOPER MODE
-echo   Visible logs, standard browser, manual control.
 echo ============================================================
 echo.
 

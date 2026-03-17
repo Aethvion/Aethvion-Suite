@@ -9,15 +9,8 @@ cd /d "%PROJECT_DIR%"
 TITLE Aethvion Suite — Initializing Web Mode...
 
 echo.
-echo   [94m   _____         __  .__              .__                 [0m
-echo   [94m  /  _  \  _____/  |_^|  ^|__ ___  __ ^|__| ____   ____     [0m
-echo   [94m /  /_\  \/ __ \   __\  ^|  \\  \/ / ^|  ^|/  _ \ /    \    [0m
-echo   [94m/    ^|    \  ___/^|  ^| ^|   Y  \   /  ^|  (  <_^> )   ^|  \   [0m
-echo   [94m\____^|__  /\___  ^>__^| ^|___^|  /\_/   ^|__^|\____/^|___^|  /   [0m
-echo   [94m        \/     \/          \/                    \/    [0m
-echo.
 echo ============================================================
-echo   INITIALIZING AETHVION SUITE (WEB MODE)
+echo   AETHVION SUITE  ^|  WEB MODE
 echo ============================================================
 echo.
 
