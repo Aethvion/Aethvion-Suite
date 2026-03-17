@@ -807,28 +807,30 @@ const treeSearchInput = $("tree-search");
 const btnClearSearch  = $("btn-clear-search");
 const searchResults   = $("search-results");
 
-treeSearchInput.addEventListener("input", () => {
-    const q = treeSearchInput.value.trim().toLowerCase();
-    btnClearSearch.classList.toggle("di-hidden", !q);
-    
-    clearTimeout(searchTimer);
-    if (!q) {
+if (treeSearchInput && btnClearSearch && searchResults) {
+    treeSearchInput.addEventListener("input", () => {
+        const q = treeSearchInput.value.trim().toLowerCase();
+        btnClearSearch.classList.toggle("di-hidden", !q);
+        
+        clearTimeout(searchTimer);
+        if (!q) {
+            searchResults.classList.add("di-hidden");
+            return;
+        }
+
+        searchTimer = setTimeout(() => {
+            const matches = [];
+            _searchRecursive(currentScan.tree, q, matches, 50);
+            renderSearchResults(matches);
+        }, 300);
+    });
+
+    btnClearSearch.addEventListener("click", () => {
+        treeSearchInput.value = "";
+        btnClearSearch.classList.add("di-hidden");
         searchResults.classList.add("di-hidden");
-        return;
-    }
-
-    searchTimer = setTimeout(() => {
-        const matches = [];
-        _searchRecursive(currentScan.tree, q, matches, 50);
-        renderSearchResults(matches);
-    }, 300);
-});
-
-btnClearSearch.addEventListener("click", () => {
-    treeSearchInput.value = "";
-    btnClearSearch.classList.add("di-hidden");
-    searchResults.classList.add("di-hidden");
-});
+    });
+}
 
 function _searchRecursive(node, q, matches, limit) {
     if (matches.length >= limit) return;
