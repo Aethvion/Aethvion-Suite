@@ -207,12 +207,28 @@ class UsageTracker:
         filtered.sort(key=lambda x: x.get("timestamp", ""))
         return filtered
 
-    def get_summary(self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, days: int = 30) -> Dict[str, Any]:
+    def get_summary(
+        self, 
+        start_date: Optional[datetime] = None, 
+        end_date: Optional[datetime] = None, 
+        days: int = 30,
+        show_local: bool = True,
+        show_api: bool = True
+    ) -> Dict[str, Any]:
         """Get aggregated usage summary for a date range or last X days."""
         if not start_date:
             start_date = datetime.utcnow() - timedelta(days=days)
         
         entries = self._get_entries_for_range(start_date, end_date)
+        
+        # Apply provider filtering
+        if not show_local or not show_api:
+            entries = [
+                e for e in entries 
+                if (show_local and e.get("provider") == "local") or 
+                   (show_api and e.get("provider") != "local")
+            ]
+
         if not entries:
             return {
                 "total_calls": 0,
@@ -358,10 +374,17 @@ class UsageTracker:
             "total_cost": round(total_input_cost + total_output_cost, 6)
         }
 
-    def get_history(self, limit: int = 100, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> List[Dict[str, Any]]:
+    def get_history(self, limit: int = 100, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, show_local: bool = True, show_api: bool = True) -> List[Dict[str, Any]]:
         """Get recent usage entries (newest first)."""
         if start_date:
             entries = self._get_entries_for_range(start_date, end_date)
+            # Filter providers
+            if not show_local or not show_api:
+                entries = [
+                    e for e in entries 
+                    if (show_local and e.get("provider") == "local") or 
+                       (show_api and e.get("provider") != "local")
+                ]
             entries = list(reversed(entries))[:limit]
         else:
             all_recent = []
@@ -370,9 +393,17 @@ class UsageTracker:
                 dt = now - timedelta(days=i)
                 day_logs = self._load_day_logs(dt)
                 if day_logs:
-                    all_recent.extend(reversed(day_logs))
-                    if len(all_recent) >= limit:
-                        break
+                    # Filter providers
+                    if not show_local or not show_api:
+                        day_logs = [
+                            e for e in day_logs 
+                            if (show_local and e.get("provider") == "local") or 
+                               (show_api and e.get("provider") != "local")
+                        ]
+                    if day_logs:
+                        all_recent.extend(reversed(day_logs))
+                        if len(all_recent) >= limit:
+                            break
             entries = all_recent[:limit]
         
         for entry in entries:
@@ -443,9 +474,9 @@ class UsageTracker:
         if routing_reason: result["routing_reason"] = routing_reason
         return result
 
-    def get_cost_by_model(self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, days: int = 30) -> Dict[str, Any]:
+    def get_cost_by_model(self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, days: int = 30, show_local: bool = True, show_api: bool = True) -> Dict[str, Any]:
         """Get cost breakdown by model for chart data."""
-        summary = self.get_summary(start_date, end_date, days)
+        summary = self.get_summary(start_date, end_date, days, show_local=show_local, show_api=show_api)
         models = []
         for model_name, data in summary.get("by_model", {}).items():
             models.append({
@@ -457,9 +488,9 @@ class UsageTracker:
         models.sort(key=lambda x: x["total_cost"], reverse=True)
         return {"models": models}
 
-    def get_tokens_by_model(self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, days: int = 30) -> Dict[str, Any]:
+    def get_tokens_by_model(self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, days: int = 30, show_local: bool = True, show_api: bool = True) -> Dict[str, Any]:
         """Get token breakdown by model for chart data."""
-        summary = self.get_summary(start_date, end_date, days)
+        summary = self.get_summary(start_date, end_date, days, show_local=show_local, show_api=show_api)
         models = []
         for model_name, data in summary.get("by_model", {}).items():
             models.append({
@@ -471,10 +502,17 @@ class UsageTracker:
         models.sort(key=lambda x: x["total_tokens"], reverse=True)
         return {"models": models}
 
-    def get_hourly_breakdown(self, hours: Optional[int] = 24, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> List[Dict[str, Any]]:
+    def get_hourly_breakdown(self, hours: Optional[int] = 24, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, show_local: bool = True, show_api: bool = True) -> List[Dict[str, Any]]:
         """Get token usage broken down by hour for chart data."""
         if start_date:
             entries = self._get_entries_for_range(start_date, end_date)
+            # Filter providers
+            if not show_local or not show_api:
+                entries = [
+                    e for e in entries 
+                    if (show_local and e.get("provider") == "local") or 
+                       (show_api and e.get("provider") != "local")
+                ]
             cutoff_dt = start_date
         else:
             days_to_load = (hours // 24) + 1

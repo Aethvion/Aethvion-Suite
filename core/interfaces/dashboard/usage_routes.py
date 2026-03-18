@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Usage Routes
 API endpoints for the Usage Dashboard
 """
@@ -39,65 +39,92 @@ def parse_dates(start: Optional[str], end: Optional[str]):
 
 
 @router.get("/summary")
-async def get_usage_summary(start: Optional[str] = None, end: Optional[str] = None):
+async def get_usage_summary(
+    start: Optional[str] = None, 
+    end: Optional[str] = None,
+    local: bool = True,
+    api: bool = True
+):
     """Get aggregated usage statistics."""
     try:
         from core.workspace.usage_tracker import get_usage_tracker
         tracker = get_usage_tracker()
         s, e = parse_dates(start, end)
-        return tracker.get_summary(start_date=s, end_date=e)
+        return tracker.get_summary(start_date=s, end_date=e, show_local=local, show_api=api)
     except Exception as e:
         logger.error(f"Failed to get usage summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/history")
-async def get_usage_history(limit: int = 100, start: Optional[str] = None, end: Optional[str] = None):
+async def get_usage_history(
+    limit: int = 100, 
+    start: Optional[str] = None, 
+    end: Optional[str] = None,
+    local: bool = True,
+    api: bool = True
+):
     """Get recent usage entries."""
     try:
         from core.workspace.usage_tracker import get_usage_tracker
         tracker = get_usage_tracker()
         s, e = parse_dates(start, end)
-        return {"entries": tracker.get_history(limit=limit, start_date=s, end_date=e)}
+        return {"entries": tracker.get_history(limit=limit, start_date=s, end_date=e, show_local=local, show_api=api)}
     except Exception as e:
         logger.error(f"Failed to get usage history: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/hourly")
-async def get_hourly_breakdown(hours: int = 24, start: Optional[str] = None, end: Optional[str] = None):
+async def get_hourly_breakdown(
+    hours: int = 24, 
+    start: Optional[str] = None, 
+    end: Optional[str] = None,
+    local: bool = True,
+    api: bool = True
+):
     """Get hourly token/call breakdown for charts."""
     try:
         from core.workspace.usage_tracker import get_usage_tracker
         tracker = get_usage_tracker()
         s, e = parse_dates(start, end)
-        return {"hours": tracker.get_hourly_breakdown(hours=hours, start_date=s, end_date=e)}
+        return {"hours": tracker.get_hourly_breakdown(hours=hours, start_date=s, end_date=e, show_local=local, show_api=api)}
     except Exception as e:
         logger.error(f"Failed to get hourly breakdown: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/cost-by-model")
-async def get_cost_by_model(start: Optional[str] = None, end: Optional[str] = None):
+async def get_cost_by_model(
+    start: Optional[str] = None, 
+    end: Optional[str] = None,
+    local: bool = True,
+    api: bool = True
+):
     """Get cost breakdown by model for chart data."""
     try:
         from core.workspace.usage_tracker import get_usage_tracker
         tracker = get_usage_tracker()
         s, e = parse_dates(start, end)
-        return tracker.get_cost_by_model(start_date=s, end_date=e)
+        return tracker.get_cost_by_model(start_date=s, end_date=e, show_local=local, show_api=api)
     except Exception as e:
         logger.error(f"Failed to get cost by model: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/tokens-by-model")
-async def get_tokens_by_model(start: Optional[str] = None, end: Optional[str] = None):
+async def get_tokens_by_model(
+    start: Optional[str] = None, 
+    end: Optional[str] = None,
+    local: bool = True,
+    api: bool = True
+):
     """Get token breakdown by model for chart data."""
     try:
         from core.workspace.usage_tracker import get_usage_tracker
         tracker = get_usage_tracker()
         s, e = parse_dates(start, end)
-        return tracker.get_tokens_by_model(start_date=s, end_date=e)
+        return tracker.get_tokens_by_model(start_date=s, end_date=e, show_local=local, show_api=api)
     except Exception as e:
         logger.error(f"Failed to get tokens by model: {e}")
         raise HTTPException(status_code=500, detail=str(e))

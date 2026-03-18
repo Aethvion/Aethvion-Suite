@@ -9,6 +9,8 @@ let _tokensByModelChart = null;
 async function loadUsageDashboard(startDate = null, endDate = null) {
     try {
         const timeRange = typeof prefs !== 'undefined' ? prefs.get('usage.time_range', '1w') : '1w';
+        const showLocal = document.getElementById('usage-toggle-local') ? document.getElementById('usage-toggle-local').checked : true;
+        const showApi   = document.getElementById('usage-toggle-api') ? document.getElementById('usage-toggle-api').checked : true;
 
         let start = startDate;
         let end = endDate;
@@ -27,8 +29,11 @@ async function loadUsageDashboard(startDate = null, endDate = null) {
             }
         }
 
-        const queryBase = (start || end) ? `?${start ? `start=${start}` : ''}${end ? `${start ? '&' : ''}end=${end}` : ''}` : '';
-        const timelineQuery = (start || end) ? queryBase : `?hours=${timeRange === '1d' ? 24 : 168}`;
+        const filterQuery = `&local=${showLocal}&api=${showApi}`;
+        const queryBase = (start || end) 
+            ? `?${start ? `start=${start}` : ''}${end ? `${start ? '&' : ''}end=${end}` : ''}${filterQuery}` 
+            : `?${filterQuery.slice(1)}`;
+        const timelineQuery = (start || end) ? queryBase : `?hours=${timeRange === '1d' ? 24 : 168}${filterQuery}`;
 
         document.querySelectorAll('.date-preset-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.preset === timeRange && !startDate);
@@ -89,6 +94,15 @@ function setupUsageListeners() {
                 loadUsageDashboard(start, end);
             }
         });
+    }
+
+    const localToggle = document.getElementById('usage-toggle-local');
+    if (localToggle) {
+        localToggle.addEventListener('change', () => loadUsageDashboard());
+    }
+    const apiToggle = document.getElementById('usage-toggle-api');
+    if (apiToggle) {
+        apiToggle.addEventListener('change', () => loadUsageDashboard());
     }
 }
 
