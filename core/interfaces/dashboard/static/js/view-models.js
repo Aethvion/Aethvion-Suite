@@ -82,7 +82,7 @@ const LocalModels = {
             console.error("Failed to load local models:", e);
             tbody.innerHTML = `<tr><td colspan="4" class="placeholder-text" style="color:#ff7675;">
                 Error loading models
-                <button class="action-btn small primary" style="margin-left:1rem;" onclick="localModelsView.loadLocalModels()">
+                <button class="action-btn small primary" style="margin-left:1rem;" onclick="LocalModels.loadModels()">
                     <i class="fas fa-rotate-right"></i> Retry
                 </button>
             </td></tr>`;
@@ -103,8 +103,22 @@ const LocalModels = {
                 return;
             }
 
-            grid.innerHTML = suggestions.map(model => `
-                <div class="model-card suggestion-card" id="suggested-${model.id}" style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 1.25rem; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; transition: transform 0.2s, background 0.2s;">
+            grid.innerHTML = suggestions.map(model => {
+                const isUnsupported = !!model.unsupported;
+                const cardBorder = isUnsupported
+                    ? 'border: 1px solid rgba(255,118,117,0.35); opacity: 0.75;'
+                    : 'border: 1px solid rgba(255,255,255,0.1);';
+                const actionHtml = isUnsupported
+                    ? `<span title="${model.unsupported_reason || 'Not supported'}" style="font-size:0.75rem; color:#ff7675; display:flex; align-items:center; gap:0.3rem; cursor:help;">
+                           <i class="fas fa-triangle-exclamation"></i> Not yet compatible
+                       </span>`
+                    : `<button class="action-btn sm-btn install-btn"
+                               onclick="LocalModels.installSuggestedModel('${model.id}', '${model.repo}', '${model.filename}')"
+                               style="font-size: 0.8rem; padding: 0.4rem 1rem;">
+                           <i class="fas fa-download"></i> Install
+                       </button>`;
+                return `
+                <div class="model-card suggestion-card" id="suggested-${model.id}" style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 1.25rem; ${cardBorder} display: flex; flex-direction: column; transition: transform 0.2s, background 0.2s;">
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
                         <h4 style="margin: 0; font-size: 1.1rem; color: #fff;">${model.name}</h4>
                         <span class="installed-badge" style="display: none; background: #00b894; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold;">INSTALLED</span>
@@ -115,14 +129,10 @@ const LocalModels = {
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 0.8rem; font-weight: bold; color: #fab1a0;">${model.size}</span>
-                        <button class="action-btn sm-btn install-btn" 
-                                onclick="LocalModels.installSuggestedModel('${model.id}', '${model.repo}', '${model.filename}')"
-                                style="font-size: 0.8rem; padding: 0.4rem 1rem;">
-                            <i class="fas fa-download"></i> Install
-                        </button>
+                        ${actionHtml}
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
 
             // After loading suggestions, check which ones are already installed
             const localRes = await fetch('/api/registry/local/models/status');
@@ -142,23 +152,21 @@ const LocalModels = {
         grid.querySelectorAll('.suggestion-card').forEach(card => {
             const installBtn = card.querySelector('.install-btn');
             const badge = card.querySelector('.installed-badge');
-            
-            // This is a bit naive, ideally we check repo too, but filename match is usually enough for local
-            const modelId = card.id.replace('suggested-', '');
-            // We need to find the filename for this modelId in suggestions
-            // For now, let's just look at the button attributes or re-fetch (slow)
-            // Let's assume the button still has the filename if we haven't overwritten it
+
+            // Skip unsupported cards — they have no install button
+            if (!installBtn) return;
+
             const installAction = installBtn.getAttribute('onclick');
-            const filenameMatch = installAction.match(/'([^']+)'\s*\)$/);
+            const filenameMatch = installAction ? installAction.match(/'([^']+)'\s*\)$/) : null;
             const filename = filenameMatch ? filenameMatch[1] : '';
 
             if (installedFiles.includes(filename)) {
-                badge.style.display = 'block';
+                if (badge) badge.style.display = 'block';
                 installBtn.disabled = true;
                 installBtn.innerHTML = '<i class="fas fa-check"></i> Installed';
                 installBtn.classList.add('secondary');
             } else {
-                badge.style.display = 'none';
+                if (badge) badge.style.display = 'none';
                 installBtn.disabled = false;
                 installBtn.innerHTML = '<i class="fas fa-download"></i> Install';
                 installBtn.classList.remove('secondary');

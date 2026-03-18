@@ -44,6 +44,53 @@
       "size": "7.5 GB",
       "description": "A powerful 12B model from Mistral and NVIDIA, great for complex logic.",
       "tags": ["Advanced", "Mistral", "NVIDIA"]
+    },
+    {
+      "id": "nemotron-3-nano-4b",
+      "name": "Nemotron 3 Nano 4B",
+      "repo": "nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF",
+      "filename": "NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf",
+      "size": "2.6 GB",
+      "description": "NVIDIA's Nemotron 3 Nano — uses the new 'nemotron_h' Mamba-hybrid architecture. Currently incompatible with llama-cpp-python (awaiting llama.cpp upstream support).",
+      "tags": ["NVIDIA", "Nemotron", "Unsupported"],
+      "unsupported": true,
+      "unsupported_reason": "Requires llama.cpp nemotron_h architecture support (not yet available)"
+    },
+    {
+      "id": "gemma-3-4b-it",
+      "name": "Gemma 3 4B Instruct",
+      "repo": "unsloth/gemma-3-4b-it-GGUF",
+      "filename": "gemma-3-4b-it-Q4_K_M.gguf",
+      "size": "2.3 GB",
+      "description": "Google's Gemma 3 4B — strong instruction-tuned model with excellent multilingual support and long context (128K).",
+      "tags": ["Balanced", "Google", "Gemma 3", "Multilingual"]
+    },
+    {
+      "id": "deepseek-r1-distill-7b",
+      "name": "DeepSeek R1 Distill 7B",
+      "repo": "bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF",
+      "filename": "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
+      "size": "4.4 GB",
+      "description": "DeepSeek R1 reasoning distilled into 7B — delivers chain-of-thought reasoning far above its weight class. Best local reasoning model.",
+      "tags": ["Reasoning", "DeepSeek", "Chain-of-Thought"]
+    },
+    {
+      "id": "llama-3.1-8b-instruct",
+      "name": "Llama 3.1 8B Instruct",
+      "repo": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
+      "filename": "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+      "size": "4.6 GB",
+      "description": "Meta's Llama 3.1 8B — strong all-round model with 128K context window. Excellent for general tasks and creative writing.",
+      "tags": ["Advanced", "Meta", "Llama 3.1", "Long Context"]
+    },
+    {
+      "id": "qwen2.5-coder-7b",
+      "name": "Qwen 2.5 Coder 7B",
+      "repo": "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF",
+      "filename": "qwen2.5-coder-7b-instruct-q4_k_m.gguf",
+      "size": "4.4 GB",
+      "description": "Alibaba's dedicated coding model — state-of-the-art for code generation, debugging and explanation at the 7B scale. Pairs perfectly with the Code IDE.",
+      "tags": ["Coding", "Alibaba", "Qwen 2.5", "IDE"]
     }
   ],
   "google_ai": [
