@@ -6,6 +6,7 @@ API endpoints for the Arena Mode (model comparison battles)
 import json
 import uuid
 import asyncio
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Request
@@ -21,6 +22,7 @@ router = APIRouter(prefix="/api/arena", tags=["arena"])
 
 DATA_DIR = Path(__file__).parent.parent.parent.parent / "data"
 LEADERBOARD_FILE = DATA_DIR / "arena_leaderboard.json"
+AICONV_DIR = DATA_DIR / "ai" / "conversations"
 
 
 class ArenaBattleRequest(BaseModel):
@@ -285,6 +287,20 @@ class AIConvTurnRequest(BaseModel):
     messages: List[Dict[str, str]] # History of the conversation including current prompt
 
 
+class AIConvSaveRequest(BaseModel):
+    """Request to save a conversation snapshot."""
+    id: Optional[str] = None
+    name: str
+    topic: str
+    participants: List[Dict[str, Any]]
+    messageHistory: List[Dict[str, Any]]
+    stats: Optional[Dict[str, Any]] = None
+
+
+class AIConvRenameRequest(BaseModel):
+    name: str
+
+
 @router.post("/aiconv/generate")
 async def aiconv_generate(request: AIConvTurnRequest, req: Request):
     """Generate a single turn for AI Conversations."""
@@ -331,3 +347,91 @@ async def aiconv_generate(request: AIConvTurnRequest, req: Request):
     except Exception as e:
         logger.error(f"AI Conv generate error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── AI Conversation History ────────────────────────────────────────────────────
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+@router.get("/aiconv/conversations")
+async def list_aiconv_conversations():
+    """List all saved AI conversations, newest first."""
+    AICONV_DIR.mkdir(parents=True, exist_ok=True)
+    convs = []
+    for f in sorted(AICONV_DIR.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True):
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+            convs.append({
+                "id":                data["id"],
+                "name":              data.get("name", "Untitled"),
+                "topic":             data.get("topic", ""),
+                "created":           data.get("created", ""),
+                "updated":           data.get("updated", ""),
+                "message_count":     len([m for m in data.get("messageHistory", []) if m.get("role") != "system"]),
+                "participant_count": len(data.get("participants", []))
+            })
+        except Exception:
+            pass
+    return {"conversations": convs}
+
+
+@router.post("/aiconv/conversations")
+async def save_aiconv_conversation(req: AIConvSaveRequest):
+    """Create or update a saved AI conversation."""
+    AICONV_DIR.mkdir(parents=True, exist_ok=True)
+    conv_id = req.id or uuid.uuid4().hex[:8]
+    now = _now_iso()
+    path = AICONV_DIR / f"{conv_id}.json"
+
+    created = now
+    if path.exists():
+        try:
+            created = json.loads(path.read_text(encoding="utf-8")).get("created", now)
+        except Exception:
+            pass
+
+    data = {
+        "id":             conv_id,
+        "name":           req.name,
+        "topic":          req.topic,
+        "created":        created,
+        "updated":        now,
+        "participants":   req.participants,
+        "messageHistory": req.messageHistory,
+        "stats":          req.stats or {}
+    }
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    return {"id": conv_id, "updated": now}
+
+
+@router.get("/aiconv/conversations/{conv_id}")
+async def get_aiconv_conversation(conv_id: str):
+    """Load a saved AI conversation by ID."""
+    path = AICONV_DIR / f"{conv_id}.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@router.delete("/aiconv/conversations/{conv_id}")
+async def delete_aiconv_conversation(conv_id: str):
+    """Delete a saved AI conversation."""
+    path = AICONV_DIR / f"{conv_id}.json"
+    if path.exists():
+        path.unlink()
+    return {"status": "ok"}
+
+
+@router.put("/aiconv/conversations/{conv_id}/name")
+async def rename_aiconv_conversation(conv_id: str, req: AIConvRenameRequest):
+    """Rename a saved AI conversation."""
+    path = AICONV_DIR / f"{conv_id}.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["name"] = req.name
+    data["updated"] = _now_iso()
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    return {"status": "ok"}

@@ -836,6 +836,20 @@
                 <div class="arena-layout aiconv-layout">
                     <!-- AI Conv Controls -->
                     <div class="arena-controls aiconv-controls">
+
+                        <!-- History -->
+                        <div class="arena-section">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                                <h3 style="margin:0;">💬 History</h3>
+                                <button id="aiconv-new-conv-btn" class="action-btn secondary" style="padding:0.2rem 0.6rem; font-size:0.78rem;" title="Clear and start fresh">
+                                    <i class="fas fa-plus"></i> New
+                                </button>
+                            </div>
+                            <div id="aiconv-conv-list" style="max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:0.2rem;">
+                                <div id="aiconv-conv-empty" style="font-size:0.8rem; color:var(--text-secondary); text-align:center; padding:0.5rem 0;">No saved conversations yet.</div>
+                            </div>
+                        </div>
+
                         <div class="arena-section">
                             <h3>🎭 Conversation Models</h3>
                             <p class="arena-hint">Select models to converse with each other turn by turn.</p>

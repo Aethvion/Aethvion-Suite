@@ -192,6 +192,7 @@ function stopAIConv(completed = false) {
     aiconvState.isRunning = false;
     aiconvState.isPaused = false;
     hidePauseInjectBar();
+    saveCurrentAIConv(); // save on stop/complete
 
     document.getElementById('aiconv-start-btn').disabled = false;
     document.getElementById('aiconv-pause-btn').disabled = true;
@@ -471,6 +472,7 @@ async function runAIConvLoop() {
             aiconvState.totalTurnsCompleted++;
             aiconvState.currentTurnIndex = (aiconvState.currentTurnIndex + 1) % aiconvSelectedModels.length;
             updateAIConvUI();
+            saveCurrentAIConv(); // auto-save after each AI turn
 
             if (aiconvState.totalTurnsCompleted < totalTarget()) {
                 await new Promise(r => setTimeout(r, 1000));
@@ -488,6 +490,280 @@ async function runAIConvLoop() {
     if (aiconvState.totalTurnsCompleted >= totalTarget() && aiconvState.isRunning) {
         stopAIConv(true);
     }
+}
+
+// ─── Conversation History ────────────────────────────────────────────────────
+
+let aiconvCurrentId = null; // ID of the currently active (saved) conversation
+
+async function loadAIConvHistory() {
+    const list = document.getElementById('aiconv-conv-list');
+    const empty = document.getElementById('aiconv-conv-empty');
+    if (!list) return;
+
+    try {
+        const res = await fetch('/api/arena/aiconv/conversations');
+        const data = await res.json();
+        const convs = data.conversations || [];
+
+        if (!convs.length) {
+            list.innerHTML = '<div id="aiconv-conv-empty" style="font-size:0.8rem; color:var(--text-secondary); text-align:center; padding:0.5rem 0;">No saved conversations yet.</div>';
+            return;
+        }
+
+        list.innerHTML = convs.map(c => `
+            <div class="aiconv-hist-item ${c.id === aiconvCurrentId ? 'active' : ''}" data-id="${c.id}" title="${escapeHtml(c.topic || c.name)}">
+                <div class="aiconv-hist-name" ondblclick="startAIConvRename('${c.id}', this)">${escapeHtml(c.name)}</div>
+                <div class="aiconv-hist-meta">${c.message_count} msgs · ${c.participant_count} participants</div>
+                <button class="aiconv-hist-delete" onclick="deleteAIConvConversation('${c.id}', event)" title="Delete">×</button>
+            </div>
+        `).join('');
+
+        // Click to load
+        list.querySelectorAll('.aiconv-hist-item').forEach(el => {
+            el.addEventListener('click', (e) => {
+                if (e.target.classList.contains('aiconv-hist-delete')) return;
+                if (e.target.classList.contains('aiconv-hist-name') && e.detail === 2) return; // dblclick handled separately
+                loadAIConvConversation(el.dataset.id);
+            });
+        });
+    } catch (e) {
+        console.error('Failed to load AI Conv history:', e);
+    }
+}
+
+async function saveCurrentAIConv() {
+    if (!aiconvState.messageHistory.length) return;
+
+    const topicMatch = (aiconvState.messageHistory[0]?.content || '').match(/topic of this conversation is:\s*"?(.+?)(?:"|\.|\n)/i);
+    const topic = topicMatch ? topicMatch[1].trim() : 'AI Conversation';
+    const name = topic.length > 55 ? topic.slice(0, 52) + '…' : topic;
+
+    const payload = {
+        id:             aiconvCurrentId || undefined,
+        name,
+        topic,
+        participants:   aiconvSelectedModels.map(m => ({
+            name:    m.name, color: m.color, isHuman: m.isHuman || false,
+            model:   m.isHuman ? null : m.id, personality: m.personality || null
+        })),
+        messageHistory: aiconvState.messageHistory,
+        stats: {
+            inTokens: aiconvState.estInTokens,
+            outTokens: aiconvState.estOutTokens,
+            cost: aiconvState.estCost
+        }
+    };
+
+    try {
+        const res  = await fetch('/api/arena/aiconv/conversations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!aiconvCurrentId) {
+            aiconvCurrentId = data.id;
+        }
+        loadAIConvHistory(); // refresh list
+    } catch (e) {
+        console.error('Failed to save conversation:', e);
+    }
+}
+
+async function loadAIConvConversation(id) {
+    if (aiconvState.isRunning) {
+        showToast('Stop the current conversation before loading another.', 'warn');
+        return;
+    }
+
+    try {
+        const res  = await fetch(`/api/arena/aiconv/conversations/${id}`);
+        if (!res.ok) { showToast('Conversation not found.', 'error'); return; }
+        const data = await res.json();
+
+        // Restore state
+        aiconvCurrentId             = data.id;
+        aiconvState.messageHistory  = data.messageHistory || [];
+        aiconvState.estInTokens     = data.stats?.inTokens  || 0;
+        aiconvState.estOutTokens    = data.stats?.outTokens || 0;
+        aiconvState.estCost         = data.stats?.cost      || 0;
+        aiconvState.totalTurnsCompleted = aiconvState.messageHistory.filter(m => m.role !== 'system').length;
+        aiconvState.maxTurnsPerModel    = parseInt(document.getElementById('aiconv-msg-count')?.value) || 5;
+        aiconvState.currentTurnIndex    = aiconvState.totalTurnsCompleted % Math.max(1, (data.participants || []).length);
+
+        // Restore participants
+        aiconvSelectedModels = (data.participants || []).map(p => ({
+            id:          p.model || 'human',
+            name:        p.name,
+            color:       p.color,
+            personality: p.personality || '',
+            isHuman:     p.isHuman || false
+        }));
+        renderAIConvChips();
+
+        // Set topic input
+        const topicEl = document.getElementById('aiconv-topic');
+        if (topicEl) topicEl.value = data.topic || '';
+
+        // Render messages
+        _renderLoadedMessages(data.messageHistory, data.participants || []);
+
+        // Show Continue button
+        document.getElementById('aiconv-start-btn').disabled = false;
+        document.getElementById('aiconv-pause-btn').disabled = true;
+        document.getElementById('aiconv-stop-btn').disabled = true;
+
+        const messagesContainer = document.getElementById('aiconv-messages');
+        messagesContainer.insertAdjacentHTML('beforeend', `
+            <div class="message system-message">
+                <div class="message-content">
+                    <strong>System:</strong> Conversation loaded — ${aiconvState.totalTurnsCompleted} messages restored.
+                    <button id="aiconv-continue-btn" class="action-btn secondary" style="margin-left:1rem; padding:0.25rem 0.75rem; font-size:0.8rem;">
+                        <i class="fas fa-play"></i> Continue
+                    </button>
+                </div>
+            </div>
+        `);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        updateAIConvUI();
+        loadAIConvHistory(); // highlight active
+        showToast(`Loaded: ${data.name}`, 'success', 1800);
+
+    } catch (e) {
+        console.error('Failed to load conversation:', e);
+        showToast('Failed to load conversation.', 'error');
+    }
+}
+
+async function deleteAIConvConversation(id, event) {
+    event.stopPropagation();
+    if (!confirm('Delete this conversation?')) return;
+    try {
+        await fetch(`/api/arena/aiconv/conversations/${id}`, { method: 'DELETE' });
+        if (aiconvCurrentId === id) aiconvCurrentId = null;
+        loadAIConvHistory();
+        showToast('Conversation deleted.', 'success', 1500);
+    } catch (e) {
+        showToast('Failed to delete.', 'error');
+    }
+}
+
+function startAIConvRename(id, nameEl) {
+    const currentName = nameEl.textContent;
+    const input = document.createElement('input');
+    input.type  = 'text';
+    input.value = currentName;
+    input.className = 'term-input';
+    input.style.cssText = 'width:100%; font-size:0.82rem; padding:0.15rem 0.4rem;';
+
+    nameEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    const commit = async () => {
+        const newName = input.value.trim() || currentName;
+        try {
+            await fetch(`/api/arena/aiconv/conversations/${id}/name`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName })
+            });
+        } catch (e) { /* silent */ }
+        loadAIConvHistory();
+    };
+
+    input.addEventListener('blur',    commit);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } if (e.key === 'Escape') { input.value = currentName; input.blur(); } });
+}
+
+function _renderLoadedMessages(history, participants) {
+    const container = document.getElementById('aiconv-messages');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const partByName = {};
+    for (const p of participants) partByName[p.name] = p;
+
+    for (let i = 0; i < history.length; i++) {
+        const msg = history[i];
+
+        if (msg.role === 'system' && i === 0) {
+            const topicMatch = msg.content.match(/topic of this conversation is:\s*"?(.+?)(?:"|\.|\n)/i);
+            if (topicMatch) {
+                container.insertAdjacentHTML('beforeend', `
+                    <div class="message system-message">
+                        <div class="message-content"><strong>System:</strong> Starting conversation on topic: "${escapeHtml(topicMatch[1].trim())}"</div>
+                    </div>`);
+            }
+            continue;
+        }
+        if (msg.role === 'system') continue;
+
+        if (msg.role === 'assistant') {
+            const name    = msg._displayName || 'AI';
+            const color   = msg._color || 'hsl(260,70%,65%)';
+            const modelId = msg.name || '';
+            const html    = (typeof marked !== 'undefined' && marked.parse) ? marked.parse(msg.content) : escapeHtml(msg.content);
+            container.insertAdjacentHTML('beforeend', `
+                <div class="message ai-message" style="border-left:4px solid ${color}; background:var(--bg-tertiary);">
+                    <div class="message-header">
+                        <span style="color:${color}; font-weight:bold; font-size:1.05rem;">🎭 ${escapeHtml(name)}</span>
+                        ${modelId ? `<span style="font-size:0.75rem; color:var(--text-secondary); margin-left:0.5rem;">(${escapeHtml(modelId)})</span>` : ''}
+                    </div>
+                    <div class="message-content markdown-body" style="padding-top:0.5rem;">${html}</div>
+                </div>`);
+        } else if (msg.role === 'user') {
+            const human = participants.find(p => p.isHuman && msg.content.startsWith(p.name + ':'));
+            if (human) {
+                const content = msg.content.slice(human.name.length + 1).trim();
+                container.insertAdjacentHTML('beforeend', `
+                    <div class="message" style="border-left:4px solid ${human.color}; background:rgba(0,180,255,0.06); padding:0.6rem 1rem; margin:0.3rem 0;">
+                        <div class="message-header" style="margin-bottom:0.3rem;">
+                            <span style="color:${human.color}; font-weight:bold;">👤 ${escapeHtml(human.name)}</span>
+                        </div>
+                        <div class="message-content">${escapeHtml(content)}</div>
+                    </div>`);
+            } else {
+                const narratorMatch = msg.content.match(/^\[Narrator\/Observer\]:\s*(.*)/s);
+                const content = narratorMatch ? narratorMatch[1] : msg.content;
+                container.insertAdjacentHTML('beforeend', `
+                    <div class="message" style="border-left:4px solid var(--primary); background:rgba(99,102,241,0.06); padding:0.6rem 1rem; margin:0.3rem 0;">
+                        <div class="message-header" style="margin-bottom:0.3rem;">
+                            <span style="color:var(--primary); font-weight:bold; font-size:0.9rem;">💬 You (injected)</span>
+                        </div>
+                        <div class="message-content">${escapeHtml(content)}</div>
+                    </div>`);
+            }
+        }
+    }
+    container.scrollTop = container.scrollHeight;
+}
+
+function newAIConvConversation() {
+    if (aiconvState.isRunning) { showToast('Stop the current conversation first.', 'warn'); return; }
+    aiconvCurrentId = null;
+    aiconvState.messageHistory  = [];
+    aiconvState.totalTurnsCompleted = 0;
+    aiconvState.estInTokens  = 0;
+    aiconvState.estOutTokens = 0;
+    aiconvState.estCost      = 0;
+
+    const container = document.getElementById('aiconv-messages');
+    if (container) container.innerHTML = `
+        <div class="arena-placeholder" id="aiconv-placeholder">
+            <span class="tab-icon" style="font-size:3rem;">🎭</span>
+            <p>Select models, configure the topic, and start the conversation!</p>
+        </div>`;
+
+    const continueBtn = document.getElementById('aiconv-continue-btn');
+    if (continueBtn) continueBtn.closest('.message')?.remove();
+
+    document.getElementById('aiconv-topic').disabled = false;
+    document.getElementById('aiconv-start-btn').disabled = false;
+    updateAIConvUI();
+    loadAIConvHistory();
 }
 
 // ─── Share / Export ──────────────────────────────────────────────────────────
@@ -720,5 +996,19 @@ document.addEventListener('click', (e) => {
     // Continue button is inserted dynamically — match by id
     if (e.target && e.target.id === 'aiconv-continue-btn') { if (typeof continueAIConv === 'function') continueAIConv(); }
 
-    if (e.target && e.target.id === 'aiconv-share-btn') { if (typeof shareAIConv === 'function') shareAIConv(); }
+    if (e.target && e.target.id === 'aiconv-share-btn')    { if (typeof shareAIConv           === 'function') shareAIConv(); }
+    if (e.target && e.target.id === 'aiconv-new-conv-btn') { if (typeof newAIConvConversation  === 'function') newAIConvConversation(); }
 });
+
+// Load history when the AI Conversations tab is first activated
+document.addEventListener('DOMContentLoaded', () => {
+    // Delay slightly so the tab system has initialised
+    setTimeout(loadAIConvHistory, 300);
+});
+
+// Also reload when the tab is switched to (for fresh lists)
+document.addEventListener('click', (e) => {
+    if (e.target && e.target.dataset && e.target.dataset.tab === 'aiconv') {
+        loadAIConvHistory();
+    }
+}, true);
