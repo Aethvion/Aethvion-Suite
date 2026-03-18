@@ -288,12 +288,32 @@
 <div id="contextMenu" role="menu" style="display:none">
   <div class="ctx-item" id="ctx-open"       role="menuitem"><i class="fa-solid fa-file-arrow-up" aria-hidden="true"></i> Open</div>
   <div class="ctx-item" id="ctx-rename"     role="menuitem"><i class="fa-solid fa-pen"           aria-hidden="true"></i> Rename</div>
+  <div class="ctx-item" id="ctx-move"       role="menuitem"><i class="fa-solid fa-folder-arrow-down" aria-hidden="true"></i> Move to…</div>
+  <div class="ctx-item" id="ctx-duplicate"  role="menuitem"><i class="fa-solid fa-copy"          aria-hidden="true"></i> Duplicate</div>
   <div class="ctx-item ctx-danger" id="ctx-delete" role="menuitem"><i class="fa-solid fa-trash" aria-hidden="true"></i> Delete</div>
   <div class="ctx-sep" role="separator"></div>
   <div class="ctx-item" id="ctx-new-file"   role="menuitem"><i class="fa-solid fa-file-plus"    aria-hidden="true"></i> New File Here</div>
   <div class="ctx-item" id="ctx-new-folder" role="menuitem"><i class="fa-solid fa-folder-plus"  aria-hidden="true"></i> New Folder Here</div>
   <div class="ctx-sep" role="separator"></div>
   <div class="ctx-item" id="ctx-copy-path"  role="menuitem"><i class="fa-solid fa-copy"          aria-hidden="true"></i> Copy Path</div>
+</div>
+
+<!-- ── Move-to folder picker modal ──────────────────────────────── -->
+<div id="moveModal" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="moveModalTitle">
+  <div class="modal-wide" style="background:var(--bg-secondary);border-radius:10px;border:1px solid var(--border-color);max-height:80vh;display:flex;flex-direction:column;">
+    <div class="modal-header">
+      <span id="moveModalTitle" class="modal-title"><i class="fa-solid fa-folder-arrow-down" style="margin-right:8px"></i>Move to Folder</span>
+      <button class="modal-close" id="moveModalClose" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </div>
+    <div class="modal-body" style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:8px;">
+      <div class="modal-label">Select destination folder:</div>
+      <div id="moveFolderTree" style="flex:1;overflow-y:auto;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:6px;padding:6px;min-height:200px;max-height:340px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
+        <button class="btn-secondary" id="moveModalCancel">Cancel</button>
+        <button class="btn-primary"   id="moveModalConfirm" disabled>Move Here</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ── Toast container ──────────────────────────────────────────── -->

@@ -22,7 +22,20 @@ const state = {
   abortCtrl:        null,     // for cancelling run
   bottomCollapsed:  false,
   editor:           null,
+  moveTargetDir:    null,     // selected folder in move picker
 };
+
+// ── Settings persistence (localStorage) ─────────────────────────────────────
+function saveSettings() {
+  try { localStorage.setItem('ide_settings', JSON.stringify({ selectedModel: state.selectedModel })); } catch {}
+}
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem('ide_settings') || '{}');
+    if (s.selectedModel) state.selectedModel = s.selectedModel;
+  } catch {}
+}
+loadSettings();
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -594,7 +607,8 @@ function showContextMenu(e, path, isDir, el) {
   e.stopPropagation();
   state.contextTarget = { path, isDir, el };
   const cm = dom.contextMenu;
-  $('ctx-open').style.display = isDir ? 'none' : '';
+  $('ctx-open').style.display      = isDir ? 'none' : '';
+  $('ctx-duplicate').style.display = isDir ? 'none' : '';
   cm.style.display = '';
   const x = Math.min(e.clientX, window.innerWidth  - cm.offsetWidth  - 4);
   const y = Math.min(e.clientY, window.innerHeight - cm.offsetHeight - 4);
@@ -664,6 +678,85 @@ $('ctx-new-folder').addEventListener('click', async () => {
 $('ctx-copy-path').addEventListener('click', () => {
   if (!state.contextTarget) return;
   navigator.clipboard.writeText(state.contextTarget.path).then(() => toast('Path copied', 'info'));
+});
+
+$('ctx-duplicate').addEventListener('click', async () => {
+  if (!state.contextTarget) return;
+  const { path, isDir } = state.contextTarget;
+  if (isDir) { toast('Duplicate is only for files', 'warn'); return; }
+  try {
+    const res = await api('/api/fs/duplicate', { method: 'POST', body: JSON.stringify({ path }) });
+    await refreshTree();
+    toast(`Duplicated → ${res.new_path.split('/').pop()}`, 'success');
+  } catch (e) { toast(`Duplicate failed: ${e.message}`, 'error'); }
+});
+
+$('ctx-move').addEventListener('click', () => {
+  if (!state.contextTarget) return;
+  openMoveModal();
+});
+
+// ── Move-to folder picker ──────────────────────────────────────────────────
+function openMoveModal() {
+  state.moveTargetDir = null;
+  $('moveModalConfirm').disabled = true;
+  $('moveModal').style.display = 'flex';
+  _renderMoveFolderTree();
+}
+function closeMoveModal() { $('moveModal').style.display = 'none'; }
+
+function _renderMoveFolderTree() {
+  const container = $('moveFolderTree');
+  container.innerHTML = '';
+  if (!state.treeData) return;
+  function renderNode(node, depth) {
+    if (!node.is_dir) return;
+    const row = document.createElement('div');
+    row.className = 'move-folder-row';
+    row.style.paddingLeft = (8 + depth * 14) + 'px';
+    row.innerHTML = `<i class="fa-solid fa-folder" style="color:var(--accent-primary);margin-right:6px;font-size:11px"></i>${node.name}`;
+    row.dataset.path = node.path;
+    row.addEventListener('click', e => {
+      e.stopPropagation();
+      container.querySelectorAll('.move-folder-row').forEach(r => r.classList.remove('move-folder-selected'));
+      row.classList.add('move-folder-selected');
+      state.moveTargetDir = node.path;
+      $('moveModalConfirm').disabled = false;
+    });
+    container.appendChild(row);
+    if (node.children) node.children.forEach(c => renderNode(c, depth + 1));
+  }
+  // Add workspace root itself
+  const root = { name: state.workspace.split(/[\\/]/).pop(), path: state.workspace, is_dir: true, children: state.treeData };
+  renderNode(root, 0);
+}
+
+$('moveModalClose').addEventListener('click', closeMoveModal);
+$('moveModalCancel').addEventListener('click', closeMoveModal);
+$('moveModal').addEventListener('click', e => { if (e.target === $('moveModal')) closeMoveModal(); });
+
+$('moveModalConfirm').addEventListener('click', async () => {
+  if (!state.contextTarget || !state.moveTargetDir) return;
+  const { path, isDir } = state.contextTarget;
+  const name = path.split(/[\\/]/).pop();
+  try {
+    const res = await api('/api/fs/move', { method: 'POST', body: JSON.stringify({ src: path, dst_dir: state.moveTargetDir }) });
+    if (!isDir) {
+      // Update open tab path
+      const tab = state.tabs.find(t => t.path === path);
+      if (tab) {
+        const newPath = res.new_path;
+        const model = state.monacoModels.get(tab.path);
+        if (model) { state.monacoModels.set(newPath, model); state.monacoModels.delete(tab.path); }
+        tab.path = newPath;
+        if (state.activeTab === path) state.activeTab = newPath;
+        renderTabs();
+      }
+    }
+    closeMoveModal();
+    await refreshTree();
+    toast(`Moved "${name}" → ${state.moveTargetDir.split(/[\\/]/).pop()}`, 'success');
+  } catch (e) { toast(`Move failed: ${e.message}`, 'error'); }
 });
 
 // Inline rename
@@ -992,6 +1085,15 @@ async function autoWriteFiles(text) {
     try {
       await api('/api/fs/write', { method: 'POST', body: JSON.stringify({ path, content }) });
       written++;
+      // Live-refresh any open tab for this file
+      const openTab = state.tabs.find(t => t.path.replace(/\\/g, '/') === path);
+      if (openTab) {
+        const model = state.monacoModels.get(openTab.path);
+        if (model) {
+          model.setValue(content);
+          markClean(openTab.path);
+        }
+      }
       // Update the matching FWC card in the chat UI
       const shortName = path.split('/').pop();
       let card = null;
@@ -1665,8 +1767,8 @@ dom.chatInput.addEventListener('keydown', e => {
 // Bottom tabs
 document.querySelectorAll('.btab').forEach(b => b.addEventListener('click', () => switchBtab(b.dataset.btab)));
 
-// Model selector
-dom.modelSel.addEventListener('change', () => { state.selectedModel = dom.modelSel.value; });
+// Model selector — save selection to localStorage
+dom.modelSel.addEventListener('change', () => { state.selectedModel = dom.modelSel.value; saveSettings(); });
 
 // Refactor modal close
 $('refactorModalClose').addEventListener('click', () => { $('refactorModal').style.display = 'none'; });

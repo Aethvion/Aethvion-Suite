@@ -688,6 +688,47 @@ async def fs_rename(req: RenameReq):
     return JSONResponse({"status": "success", "new_path": str(dst).replace("\\", "/")})
 
 
+class MoveReq(BaseModel):
+    src: str
+    dst_dir: str
+
+@app.post("/api/fs/move")
+async def fs_move(req: MoveReq):
+    src = Path(req.src)
+    dst_dir = Path(req.dst_dir)
+    if not src.exists():
+        raise HTTPException(404, "Source not found.")
+    if not dst_dir.is_dir():
+        raise HTTPException(400, "Destination is not a directory.")
+    try:
+        result = shutil.move(str(src), str(dst_dir))
+    except Exception as exc:
+        raise HTTPException(500, str(exc))
+    return JSONResponse({"status": "success", "new_path": str(result).replace("\\", "/")})
+
+
+class DuplicateReq(BaseModel):
+    path: str
+
+@app.post("/api/fs/duplicate")
+async def fs_duplicate(req: DuplicateReq):
+    src = Path(req.path)
+    if not src.exists():
+        raise HTTPException(404, "Source not found.")
+    try:
+        stem, suffix, parent = src.stem, src.suffix, src.parent
+        counter = 1
+        while True:
+            dst = parent / f"{stem}_copy{counter}{suffix}"
+            if not dst.exists():
+                break
+            counter += 1
+        shutil.copy2(str(src), str(dst))
+    except Exception as exc:
+        raise HTTPException(500, str(exc))
+    return JSONResponse({"status": "success", "new_path": str(dst).replace("\\", "/")})
+
+
 class DeleteReq(BaseModel):
     path: str
 

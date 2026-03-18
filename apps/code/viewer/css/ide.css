@@ -781,6 +781,24 @@ input:focus, textarea:focus { border-color: var(--accent); }
 .ctx-item.ctx-danger i { color: var(--error); }
 .ctx-sep { height: 1px; background: var(--border); margin: 3px 0; }
 
+/* ── Move folder picker ───────────────────────────────────────── */
+.move-folder-row {
+  padding: 5px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+.move-folder-row:hover { background: var(--bg-hover); }
+.move-folder-row.move-folder-selected {
+  background: rgba(99,102,241,0.18);
+  color: var(--accent-primary);
+}
+
 /* ── Toast ────────────────────────────────────────────────────── */
 #toastContainer {
   position: fixed;
