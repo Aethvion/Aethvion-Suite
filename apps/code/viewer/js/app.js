@@ -905,7 +905,12 @@ function renderMarkdown(text) {
     .replace(/^#{1,3} (.+)$/gm, '<strong>$1</strong>')
     .replace(/\n/g, '<br>');
 
-  // Step 3: restore file block placeholders
+  // Step 3: strip <br> tags adjacent to placeholders (they come from surrounding newlines
+  // in the raw AI text and would leave blank lines above/below each card)
+  processed = processed.replace(/(?:<br>\s*)+(\x00FILE_BLOCK_\d+\x00)/g, '$1');
+  processed = processed.replace(/(\x00FILE_BLOCK_\d+\x00)(?:\s*<br>)+/g, '$1');
+
+  // Step 4: restore file block placeholders
   filePlaceholders.forEach((html, idx) => {
     processed = processed.replace(`\x00FILE_BLOCK_${idx}\x00`, html);
   });
@@ -1755,3 +1760,10 @@ function initMonaco() {
 
 // Save on page unload (tab close / navigation)
 window.addEventListener('beforeunload', () => { saveProjectState(); });
+
+// ── Expose inline-onclick handlers to global scope (required for type="module") ──
+// Functions used in innerHTML-injected onclick attributes must be on window.
+Object.assign(window, {
+  toggleFwc, copyFwc, applyFwc,
+  copyCodeBlock, applyCodeBlock,
+});
