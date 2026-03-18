@@ -188,7 +188,9 @@ input:focus, textarea:focus { border-color: var(--accent); }
 .tb-icon-btn:hover  { background: var(--bg-hover); color: var(--text-primary); }
 .tb-icon-btn.active { color: var(--accent-hover); }
 
-.model-sel { max-width: 200px; }
+.model-sel { max-width: 220px; }
+.model-sel optgroup { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; }
+.model-sel option   { font-size: 0.82rem; color: var(--text-primary); }
 
 /* ── Tab bar ──────────────────────────────────────────────────── */
 #tabBar {

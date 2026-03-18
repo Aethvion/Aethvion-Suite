@@ -67,6 +67,8 @@ WORKSPACE = ROOT
 DATA_DIR      = ROOT / "data" / "apps" / "code"
 PROJECTS_DIR  = DATA_DIR / "projects"
 SETTINGS_FILE = DATA_DIR / "settings.json"
+USAGE_LOG_DIR    = ROOT / "data" / "ai" / "logs" / "usage"
+MODEL_REGISTRY   = ROOT / "data" / "config" / "model_registry.json"
 
 def _ensure_data_dirs():
     PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -286,15 +288,92 @@ def _messages_to_prompt(messages: list, system: str = "") -> str:
     return "\n\n".join(parts)
 
 
+def _get_model_pricing(model_id: str) -> tuple[float, float]:
+    """Return (input_cost_per_1m, output_cost_per_1m) from model registry, or (0, 0)."""
+    try:
+        registry = json.loads(MODEL_REGISTRY.read_text("utf-8"))
+        for config in registry.get("providers", {}).values():
+            model_info = config.get("models", {}).get(model_id)
+            if isinstance(model_info, dict):
+                return (
+                    model_info.get("input_cost_per_1m_tokens", 0),
+                    model_info.get("output_cost_per_1m_tokens", 0),
+                )
+    except Exception:
+        pass
+    return (0.0, 0.0)
+
+
+def _log_ai_usage(model: str, provider_name: str, endpoint: str,
+                  input_chars: int, output_chars: int) -> None:
+    """Append one usage entry to data/ai/logs/usage/YYYY-MM/usage_YYYY-MM-DD.json."""
+    import random, string
+    try:
+        now = datetime.utcnow()
+        month_dir = USAGE_LOG_DIR / now.strftime("%Y-%m")
+        month_dir.mkdir(parents=True, exist_ok=True)
+        day_file = month_dir / now.strftime("usage_%Y-%m-%d.json")
+
+        prompt_tokens     = round(input_chars / 4)
+        completion_tokens = round(output_chars / 4)
+        rand_suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        trace_id    = f"ASTR-{now.strftime('%Y%m%d%H%M%S')}-{rand_suffix}"
+
+        in_cost_per_1m, out_cost_per_1m = _get_model_pricing(model)
+        input_cost  = round(prompt_tokens     / 1_000_000 * in_cost_per_1m,  8)
+        output_cost = round(completion_tokens / 1_000_000 * out_cost_per_1m, 8)
+
+        op_map = {
+            "/api/ai/chat":     "chat",
+            "/api/ai/explain":  "explain",
+            "/api/ai/fix":      "fix",
+            "/api/ai/refactor": "refactor",
+        }
+        operation = op_map.get(endpoint, "chat")
+
+        entry = {
+            "timestamp":         now.strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z",
+            "provider":          provider_name,
+            "model":             model,
+            "prompt_tokens":     prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens":      prompt_tokens + completion_tokens,
+            "input_cost":        input_cost,
+            "output_cost":       output_cost,
+            "estimated_cost":    round(input_cost + output_cost, 8),
+            "operation":         operation,
+            "trace_id":          trace_id,
+            "success":           True,
+            "tokens_estimated":  True,
+            "source":            "code_ide",
+        }
+
+        records: list = []
+        if day_file.exists():
+            try:
+                records = json.loads(day_file.read_text("utf-8"))
+            except Exception:
+                records = []
+        records.append(entry)
+        day_file.write_text(json.dumps(records, indent=2), encoding="utf-8")
+    except Exception as exc:
+        logging.warning("Usage log write failed: %s", exc)
+
+
 async def _sse(provider, messages: list, model_id: str, system: str,
-               max_tokens: int = 8192) -> AsyncGenerator[str, None]:
+               max_tokens: int = 8192,
+               endpoint: str = "/api/ai/chat") -> AsyncGenerator[str, None]:
     """
     Run provider.stream() in a background thread and yield SSE chunks.
     Needed because provider.stream() is a synchronous generator.
     """
     prompt = _messages_to_prompt(messages, system)
+    provider_name = (pm.model_to_provider_map.get(model_id) if pm else None) \
+                    or getattr(getattr(provider, "config", None), "provider", None) \
+                    or type(provider).__name__
     loop = asyncio.get_event_loop()
     q: asyncio.Queue = asyncio.Queue()
+    output_chunks: list[str] = []
 
     def _worker():
         try:
@@ -310,8 +389,12 @@ async def _sse(provider, messages: list, model_id: str, system: str,
     while True:
         item = await q.get()
         if item is None:
+            _log_ai_usage(model_id, provider_name, endpoint,
+                          len(prompt), sum(len(c) for c in output_chunks))
             yield f"data: {json.dumps({'done': True})}\n\n"
             break
+        if "text" in item:
+            output_chunks.append(item["text"])
         yield f"data: {json.dumps(item)}\n\n"
 
 def _get_provider(model_id: Optional[str] = None):
@@ -343,6 +426,38 @@ async def get_providers():
                 "description": info.get("description", ""),
             })
     return JSONResponse({"models": models, "available": bool(models)})
+
+# ── /api/registry/models ──────────────────────────────────────────────────────
+@app.get("/api/registry/models")
+async def get_registry_models():
+    """Return chat models from the shared model registry (same format as dashboard)."""
+    try:
+        registry = json.loads(MODEL_REGISTRY.read_text("utf-8"))
+        chat_models = []
+        for provider_name, config in registry.get("providers", {}).items():
+            for model_id, model_info in config.get("models", {}).items():
+                if not isinstance(model_info, dict):
+                    continue
+                caps = [c.lower() for c in model_info.get("capabilities", [])]
+                if "chat" not in caps:
+                    continue
+                chat_models.append({
+                    "id":                       model_id,
+                    "provider":                 provider_name,
+                    "capabilities":             model_info.get("capabilities", []),
+                    "input_cost_per_1m_tokens": model_info.get("input_cost_per_1m_tokens", 0),
+                    "output_cost_per_1m_tokens":model_info.get("output_cost_per_1m_tokens", 0),
+                    "description":              model_info.get("description", model_info.get("notes", "")),
+                })
+        chat_models.sort(key=lambda m: m["id"])
+        profiles = registry.get("profiles", {})
+        return JSONResponse({
+            "models":        chat_models,
+            "chat_profiles": profiles.get("chat_profiles", {}),
+            "agent_profiles":profiles.get("agent_profiles", {}),
+        })
+    except Exception as exc:
+        raise HTTPException(500, str(exc))
 
 # ── /api/settings ─────────────────────────────────────────────────────────────
 @app.get("/api/settings")
@@ -886,7 +1001,8 @@ async def ai_chat(req: ChatReq):
     prov, mid = _get_provider(req.model)
     msgs   = [{"role": m.role, "content": m.content} for m in req.messages]
     system = req.system or _build_chat_system(req.workspace)
-    return StreamingResponse(_sse(prov, msgs, mid, system, max_tokens=req.max_tokens),
+    return StreamingResponse(_sse(prov, msgs, mid, system, max_tokens=req.max_tokens,
+                                   endpoint="/api/ai/chat"),
                              media_type="text/event-stream", headers=SSE_HEADERS)
 
 
@@ -903,7 +1019,7 @@ async def ai_explain(req: ExplainReq):
         f"Use bullet points for key points.\n\n"
         f"```{req.language}\n{req.code}\n```"}]
     system = "You are a code explainer. Be clear, structured, and concise."
-    return StreamingResponse(_sse(prov, msgs, mid, system),
+    return StreamingResponse(_sse(prov, msgs, mid, system, endpoint="/api/ai/explain"),
                              media_type="text/event-stream", headers=SSE_HEADERS)
 
 
@@ -923,7 +1039,7 @@ async def ai_fix(req: FixReq):
         f"Return the complete fixed code in a ```{req.language}...``` block, "
         f"then briefly explain what was wrong."}]
     system = "You are a debugging expert. Fix the code and explain the bug clearly."
-    return StreamingResponse(_sse(prov, msgs, mid, system),
+    return StreamingResponse(_sse(prov, msgs, mid, system, endpoint="/api/ai/fix"),
                              media_type="text/event-stream", headers=SSE_HEADERS)
 
 
@@ -978,7 +1094,7 @@ async def ai_refactor(req: RefactorReq):
         f"Return the complete refactored code in a ```{req.language}...``` block, "
         f"then list the changes you made."}]
     system = "You are a refactoring expert. Improve the code exactly as instructed."
-    return StreamingResponse(_sse(prov, msgs, mid, system),
+    return StreamingResponse(_sse(prov, msgs, mid, system, endpoint="/api/ai/refactor"),
                              media_type="text/event-stream", headers=SSE_HEADERS)
 
 # ── Static files + root ───────────────────────────────────────────────────────

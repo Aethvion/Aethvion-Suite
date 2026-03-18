@@ -130,21 +130,55 @@ async function streamSSE(path, body, onChunk) {
 }
 
 // ── Provider/model loading ────────────────────────────────────────────────────
+function _buildModelOptions(data, selectedId = null) {
+  if (!data || !data.models) return '';
+  const providerLabels = { google_ai: 'Google AI', openai: 'OpenAI', anthropic: 'Anthropic', grok: 'Grok', local: 'Local' };
+  const providerOrder  = ['google_ai', 'openai', 'anthropic', 'grok', 'local'];
+
+  // Profiles group
+  const profiles = data.chat_profiles || {};
+  let html = '<optgroup label="Chat Profiles">';
+  if (data.models.length > 1) {
+    html += `<option value="auto"${(!selectedId || selectedId === 'auto') ? ' selected' : ''}>Auto (Complexity Routing)</option>`;
+  }
+  for (const [name] of Object.entries(profiles)) {
+    const val = `profile:chat:${name}`;
+    html += `<option value="${val}"${val === selectedId ? ' selected' : ''}>Profile: ${name}</option>`;
+  }
+  html += '</optgroup>';
+
+  // Models grouped by provider
+  const byProvider = {};
+  for (const m of data.models) {
+    (byProvider[m.provider] = byProvider[m.provider] || []).push(m);
+  }
+  for (const p of providerOrder) {
+    if (!byProvider[p]?.length) continue;
+    const label = providerLabels[p] || (p.charAt(0).toUpperCase() + p.slice(1));
+    html += `<optgroup label="${label}">`;
+    for (const m of byProvider[p]) {
+      const cost = (m.input_cost_per_1m_tokens || m.output_cost_per_1m_tokens)
+        ? ` ($${m.input_cost_per_1m_tokens}/$${m.output_cost_per_1m_tokens})` : '';
+      html += `<option value="${m.id}"${m.id === selectedId ? ' selected' : ''} title="${m.description || ''}">${m.id}${cost}</option>`;
+    }
+    html += '</optgroup>';
+  }
+  return html;
+}
+
 async function loadProviders() {
   try {
-    const data = await api('/api/providers');
-    dom.modelSel.innerHTML = '';
-    if (!data.available || !data.models.length) {
+    const data = await api('/api/registry/models');
+    if (!data.models?.length) {
       dom.modelSel.innerHTML = '<option value="">No AI providers</option>';
       return;
     }
-    for (const m of data.models) {
-      const opt = document.createElement('option');
-      opt.value = m.id;
-      opt.textContent = `${m.id} (${m.provider})`;
-      dom.modelSel.appendChild(opt);
+    dom.modelSel.innerHTML = _buildModelOptions(data, state.selectedModel || null);
+    // Default to first non-auto model if nothing selected
+    if (!state.selectedModel) {
+      state.selectedModel = data.models[0].id;
+      dom.modelSel.value   = state.selectedModel;
     }
-    state.selectedModel = data.models[0].id;
   } catch { dom.modelSel.innerHTML = '<option value="">No providers</option>'; }
 }
 
