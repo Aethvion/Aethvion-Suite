@@ -335,9 +335,9 @@ function waitForHumanInput(participant) {
         `);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-        const inputEl  = document.getElementById(`${promptId}-input`);
-        const sendBtn  = document.getElementById(`${promptId}-send`);
-        const skipBtn  = document.getElementById(`${promptId}-skip`);
+        const inputEl = document.getElementById(`${promptId}-input`);
+        const sendBtn = document.getElementById(`${promptId}-send`);
+        const skipBtn = document.getElementById(`${promptId}-skip`);
 
         if (inputEl) setTimeout(() => inputEl.focus(), 50);
 
@@ -434,21 +434,23 @@ async function runAIConvLoop() {
             aiconvState.messageHistory.push({
                 role: 'assistant',
                 name: currentModel.id.replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 64),
+                _displayName: currentModel.name,
+                _color: currentModel.color,
                 content: responseText
             });
 
             // Token / cost tracking
             if (data.usage) {
-                const inTokens  = data.usage.prompt_tokens || data.usage.prompt_token_count || 0;
+                const inTokens = data.usage.prompt_tokens || data.usage.prompt_token_count || 0;
                 const outTokens = data.usage.completion_tokens || data.usage.candidates_token_count || 0;
-                aiconvState.estInTokens  += inTokens;
+                aiconvState.estInTokens += inTokens;
                 aiconvState.estOutTokens += outTokens;
 
                 if (typeof arenaAvailableModels !== 'undefined') {
                     const modelInfo = arenaAvailableModels.find(m => m.id === currentModel.id);
                     if (modelInfo) {
                         aiconvState.estCost += (inTokens / 1e6) * (modelInfo.input_cost_per_1m_tokens || 0)
-                                             + (outTokens / 1e6) * (modelInfo.output_cost_per_1m_tokens || 0);
+                            + (outTokens / 1e6) * (modelInfo.output_cost_per_1m_tokens || 0);
                     }
                 }
             }
@@ -491,11 +493,11 @@ async function runAIConvLoop() {
 // ─── Share / Export ──────────────────────────────────────────────────────────
 
 async function _compressToBase64url(obj) {
-    const json  = JSON.stringify(obj);
+    const json = JSON.stringify(obj);
     const bytes = new TextEncoder().encode(json);
     const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
-    const buf   = await new Response(stream).arrayBuffer();
-    const u8    = new Uint8Array(buf);
+    const buf = await new Response(stream).arrayBuffer();
+    const u8 = new Uint8Array(buf);
     let bin = '';
     for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
     return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
@@ -511,8 +513,13 @@ async function shareAIConv() {
 
     // Rebuild rendered message list from history
     // We re-derive speaker info from aiconvSelectedModels
+    // Index by both raw id AND the sanitized version used when storing msg.name
     const modelMap = {};
-    for (const m of aiconvSelectedModels) modelMap[m.id] = m;
+    for (const m of aiconvSelectedModels) {
+        modelMap[m.id] = m;
+        const sanitized = m.id.replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 64);
+        modelMap[sanitized] = m;
+    }
 
     for (let i = 1; i < aiconvState.messageHistory.length; i++) {
         const msg = aiconvState.messageHistory[i];
@@ -539,21 +546,28 @@ async function shareAIConv() {
                 }
             }
         } else {
-            // AI assistant — find by name field
-            const modelId = msg.name ? msg.name : null;
-            sender = modelId ? modelMap[modelId] : null;
-            if (!sender) {
-                // Fall back: pick the model at the turn index we can infer
-                sender = { name: 'AI', color: 'hsl(260,70%,65%)', id: '' };
+            // AI assistant — prefer the display name stored directly on the entry
+            if (msg._displayName) {
+                sender = {
+                    name: msg._displayName,
+                    color: msg._color || 'hsl(260,70%,65%)',
+                    id: msg.name || '',
+                    isHuman: false
+                };
+            } else {
+                // Legacy fallback: look up by sanitized model id
+                const modelId = msg.name ? msg.name : null;
+                sender = modelId ? modelMap[modelId] : null;
+                if (!sender) sender = { name: 'AI', color: 'hsl(260,70%,65%)', id: '' };
             }
         }
 
         messages.push({
-            name:    sender.name,
-            color:   sender.color,
+            name: sender.name,
+            color: sender.color,
             content: content,
             isHuman: sender.isHuman || false,
-            model:   sender.isHuman ? null : (sender.id || null)
+            model: sender.isHuman ? null : (sender.id || null)
         });
     }
 
@@ -565,22 +579,22 @@ async function shareAIConv() {
         topic: topic,
         created: new Date().toISOString(),
         participants: aiconvSelectedModels.map(m => ({
-            name:    m.name,
-            color:   m.color,
+            name: m.name,
+            color: m.color,
             isHuman: m.isHuman || false,
-            model:   m.isHuman ? null : m.id
+            model: m.isHuman ? null : m.id
         })),
         stats: {
-            inTokens:  aiconvState.estInTokens,
+            inTokens: aiconvState.estInTokens,
             outTokens: aiconvState.estOutTokens,
-            cost:      aiconvState.estCost
+            cost: aiconvState.estCost
         },
         messages
     };
 
     try {
         const encoded = await _compressToBase64url(payload);
-        const url     = `https://aethvion.com/c#${encoded}`;
+        const url = `https://aethvion.com/c#${encoded}`;
 
         await navigator.clipboard.writeText(url);
         showToast('Share link copied to clipboard!', 'success');
@@ -622,10 +636,6 @@ function _showShareModal(url) {
                         <i class="fas fa-copy"></i> Copy
                     </button>
                 </div>
-                <div style="margin-top:0.75rem; font-size:0.78rem; color:var(--text-secondary);">
-                    <i class="fas fa-circle-info"></i>
-                    To view: host <code style="background:var(--bg-tertiary); padding:1px 4px; border-radius:3px;">conversation.html</code> at <code style="background:var(--bg-tertiary); padding:1px 4px; border-radius:3px;">aethvion.com/c</code>
-                </div>
             </div>
         </div>
     `);
@@ -648,11 +658,11 @@ function updateAIConvUI() {
     const totalTarget = aiconvState.maxTurnsPerModel * aiconvSelectedModels.length;
 
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    set('aiconv-in-tokens',   formatNumber(aiconvState.estInTokens  || 0));
-    set('aiconv-out-tokens',  formatNumber(aiconvState.estOutTokens || 0));
+    set('aiconv-in-tokens', formatNumber(aiconvState.estInTokens || 0));
+    set('aiconv-out-tokens', formatNumber(aiconvState.estOutTokens || 0));
     set('aiconv-live-tokens', formatNumber((aiconvState.estInTokens || 0) + (aiconvState.estOutTokens || 0)));
-    set('aiconv-live-cost',   formatCost(aiconvState.estCost || 0));
-    set('aiconv-progress',    `${aiconvState.totalTurnsCompleted}/${totalTarget}`);
+    set('aiconv-live-cost', formatCost(aiconvState.estCost || 0));
+    set('aiconv-progress', `${aiconvState.totalTurnsCompleted}/${totalTarget}`);
 
     // Show share button once there are messages
     const shareBtn = document.getElementById('aiconv-share-btn');
@@ -680,7 +690,7 @@ document.addEventListener('change', (e) => {
                 aiconvAvailableNames = [...aiconvUsedNames];
                 aiconvUsedNames = [];
             }
-            const randIdx  = Math.floor(Math.random() * aiconvAvailableNames.length);
+            const randIdx = Math.floor(Math.random() * aiconvAvailableNames.length);
             const pickedName = aiconvAvailableNames.splice(randIdx, 1)[0];
             aiconvUsedNames.push(pickedName);
 
@@ -698,22 +708,16 @@ document.addEventListener('change', (e) => {
 });
 
 document.addEventListener('click', (e) => {
-    if (e.target && e.target.id === 'aiconv-start-btn')
-        { if (typeof startAIConv === 'function') startAIConv(); }
+    if (e.target && e.target.id === 'aiconv-start-btn') { if (typeof startAIConv === 'function') startAIConv(); }
 
-    if (e.target && e.target.id === 'aiconv-pause-btn')
-        { if (typeof togglePauseAIConv === 'function') togglePauseAIConv(); }
+    if (e.target && e.target.id === 'aiconv-pause-btn') { if (typeof togglePauseAIConv === 'function') togglePauseAIConv(); }
 
-    if (e.target && e.target.id === 'aiconv-stop-btn')
-        { if (typeof stopAIConv === 'function') stopAIConv(); }
+    if (e.target && e.target.id === 'aiconv-stop-btn') { if (typeof stopAIConv === 'function') stopAIConv(); }
 
-    if (e.target && e.target.id === 'aiconv-add-self-btn')
-        { if (typeof addHumanParticipant === 'function') addHumanParticipant(); }
+    if (e.target && e.target.id === 'aiconv-add-self-btn') { if (typeof addHumanParticipant === 'function') addHumanParticipant(); }
 
     // Continue button is inserted dynamically — match by id
-    if (e.target && e.target.id === 'aiconv-continue-btn')
-        { if (typeof continueAIConv === 'function') continueAIConv(); }
+    if (e.target && e.target.id === 'aiconv-continue-btn') { if (typeof continueAIConv === 'function') continueAIConv(); }
 
-    if (e.target && e.target.id === 'aiconv-share-btn')
-        { if (typeof shareAIConv === 'function') shareAIConv(); }
+    if (e.target && e.target.id === 'aiconv-share-btn') { if (typeof shareAIConv === 'function') shareAIConv(); }
 });
