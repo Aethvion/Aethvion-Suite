@@ -707,6 +707,65 @@ async def fs_move(req: MoveReq):
     return JSONResponse({"status": "success", "new_path": str(result).replace("\\", "/")})
 
 
+class ExecReq(BaseModel):
+    code: str
+    workspace: str = ""
+
+@app.post("/api/fs/exec")
+async def fs_exec(req: ExecReq):
+    """Execute a Python snippet in the workspace directory and return stdout/stderr."""
+    workspace = req.workspace or str(WORKSPACE)
+    import tempfile
+    # Write a temp script that chdirs into workspace first
+    with tempfile.NamedTemporaryFile(suffix=".py", mode="w", encoding="utf-8", delete=False) as f:
+        f.write(f"import os as _os\n_os.chdir({repr(workspace)})\n")
+        f.write(req.code)
+        tmp_path = Path(f.name)
+    try:
+        result = subprocess.run(
+            [sys.executable, str(tmp_path)],
+            capture_output=True, text=True, timeout=30,
+            cwd=workspace,
+            creationflags=0x08000000 if os.name == "nt" else 0,
+        )
+        return JSONResponse({
+            "stdout":     result.stdout,
+            "stderr":     result.stderr,
+            "returncode": result.returncode,
+        })
+    except subprocess.TimeoutExpired:
+        return JSONResponse({"stdout": "", "stderr": "Timeout (30 s)", "returncode": -1})
+    except Exception as exc:
+        return JSONResponse({"stdout": "", "stderr": str(exc), "returncode": -1})
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+class RevealReq(BaseModel):
+    path: str
+
+@app.post("/api/fs/reveal")
+async def fs_reveal(req: RevealReq):
+    """Open the file/folder in the OS file explorer."""
+    target = Path(req.path)
+    if not target.exists():
+        raise HTTPException(404, "Path not found.")
+    try:
+        if os.name == "nt":
+            # Windows: open Explorer and select the item
+            if target.is_file():
+                subprocess.Popen(["explorer", "/select,", str(target)], creationflags=0x08000000)
+            else:
+                subprocess.Popen(["explorer", str(target)], creationflags=0x08000000)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", "-R" if target.is_file() else "", str(target)])
+        else:
+            subprocess.Popen(["xdg-open", str(target.parent if target.is_file() else target)])
+    except Exception as exc:
+        raise HTTPException(500, str(exc))
+    return JSONResponse({"status": "ok"})
+
+
 class DuplicateReq(BaseModel):
     path: str
 
@@ -1008,7 +1067,23 @@ def _build_chat_system(workspace: Optional[str] = None) -> str:
         "on its own line. The IDE agent loop will send a 'continue' message and you MUST resume "
         "outputting the remaining files immediately — no re-introduction, no summary, just the next FILE block.\n\n"
 
-        "Example of correct output:\n"
+        "━━━ FILE OPERATIONS PROTOCOL ━━━\n"
+        "For ANY file operation that is NOT creating/editing content "
+        "(move, delete, rename, copy, mkdir, etc.), output a python-exec block.\n"
+        "The IDE will execute it automatically in the workspace and show the result.\n\n"
+        "```python-exec\n"
+        "import shutil, os\n"
+        "# Move a file\n"
+        "shutil.move('test.txt', 'TestingFolder/')\n"
+        "```\n\n"
+        "```python-exec\n"
+        "import os\n"
+        "os.remove('old_file.txt')\n"
+        "```\n\n"
+        "NEVER use FILE: blocks for move/delete/rename/mkdir — only for creating or editing file content.\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+        "Example FILE output:\n"
         "### FILE: index.html\n"
         "```html\n"
         "<!DOCTYPE html>\n"

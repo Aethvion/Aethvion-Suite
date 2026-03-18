@@ -1045,6 +1045,53 @@ input:focus, textarea:focus { border-color: var(--accent); }
 }
 .fwc-body pre code { background: none; padding: 0; }
 
+/* ── Python-exec cards ────────────────────────────────────────────────────── */
+.exec-card {
+  background: #0d1117;
+  border: 1px solid rgba(124,134,255,0.3);
+  border-radius: 8px;
+  margin: 8px 0;
+  overflow: hidden;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+}
+.exec-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  background: rgba(124,134,255,0.12);
+  border-bottom: 1px solid rgba(124,134,255,0.2);
+  font-size: 0.78rem;
+}
+.exec-header i.exec-icon { color: #7c86ff; }
+.exec-lang { color: #a5b4fc; font-weight: 600; letter-spacing: .02em; }
+.exec-status { margin-left: auto; font-size: 0.75rem; display: flex; align-items: center; gap: 4px; }
+.exec-pending { color: #64748b; }
+.exec-running { color: #f59e0b; }
+.exec-done    { color: #22c55e; }
+.exec-error   { color: #ef4444; }
+.exec-code {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  background: transparent;
+  color: #e2e8f0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.exec-code code { background: none; padding: 0; color: inherit; }
+.exec-output {
+  padding: 8px 12px;
+  background: #000;
+  font-size: 0.8rem;
+  color: #a3e635;
+  white-space: pre-wrap;
+  border-top: 1px solid rgba(124,134,255,0.2);
+  max-height: 200px;
+  overflow-y: auto;
+}
+.exec-output.exec-output-err { color: #f87171; }
+
 /* Agent continuation divider — shown between multi-pass responses */
 .agent-continue-divider {
   display: flex;

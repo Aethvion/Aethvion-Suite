@@ -680,6 +680,13 @@ $('ctx-copy-path').addEventListener('click', () => {
   navigator.clipboard.writeText(state.contextTarget.path).then(() => toast('Path copied', 'info'));
 });
 
+$('ctx-reveal').addEventListener('click', async () => {
+  if (!state.contextTarget) return;
+  try {
+    await api('/api/fs/reveal', { method: 'POST', body: JSON.stringify({ path: state.contextTarget.path }) });
+  } catch (e) { toast(`Could not open explorer: ${e.message}`, 'error'); }
+});
+
 $('ctx-duplicate').addEventListener('click', async () => {
   if (!state.contextTarget) return;
   const { path, isDir } = state.contextTarget;
@@ -967,13 +974,36 @@ function applyFwc(btn) {
 
 /** Markdown renderer with copy/apply buttons on code blocks. */
 function renderMarkdown(text) {
-  // First, escape HTML in the raw text — but we need to handle FILE: blocks specially
-  // so we do a two-pass approach: replace FILE+codeblock combos first, then escape the rest.
+  // Two-pass approach: extract special blocks first (before HTML-encoding),
+  // then encode the remainder and apply markdown transforms.
+
+  // Step 0: extract python-exec blocks → exec-card placeholders
+  const execPlaceholders = [];
+  let processed = text.replace(
+    /```python-exec\n([\s\S]*?)```/gi,
+    (_, code) => {
+      const idx = execPlaceholders.length;
+      const encoded = code.trimEnd()
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      execPlaceholders.push(
+        `<div class="exec-card" data-exec-idx="${idx}">` +
+        `<div class="exec-header">` +
+        `<i class="fa-solid fa-terminal exec-icon" aria-hidden="true"></i>` +
+        `<span class="exec-lang">python</span>` +
+        `<span class="exec-status exec-pending"><i class="fa-solid fa-clock" aria-hidden="true"></i> Queued</span>` +
+        `</div>` +
+        `<pre class="exec-code"><code>${encoded}</code></pre>` +
+        `<div class="exec-output" style="display:none"></div>` +
+        `</div>`
+      );
+      return `\x00EXEC_BLOCK_${idx}\x00`;
+    }
+  );
 
   // Step 1: extract ### FILE: blocks before HTML-encoding so we can render them as
   // collapsed File Write Cards (FWC) — compact by default, expand on click.
   const filePlaceholders = [];
-  let processed = text.replace(
+  processed = processed.replace(
     /(?:#{1,4}\s*)?FILE:\s*`?([^\n`*]+)`?\s*\n```([^\n]*)\n([\s\S]*?)```/gi,
     (_, fname, lang, code) => {
       const idx = filePlaceholders.length;
@@ -1040,6 +1070,13 @@ function renderMarkdown(text) {
   // Step 4: restore file block placeholders
   filePlaceholders.forEach((html, idx) => {
     processed = processed.replace(`\x00FILE_BLOCK_${idx}\x00`, html);
+  });
+
+  // Step 4b: restore exec block placeholders (strip adjacent <br> first)
+  processed = processed.replace(/(?:<br>\s*)+(\x00EXEC_BLOCK_\d+\x00)/g, '$1');
+  processed = processed.replace(/(\x00EXEC_BLOCK_\d+\x00)(?:\s*<br>)+/g, '$1');
+  execPlaceholders.forEach((html, idx) => {
+    processed = processed.replace(`\x00EXEC_BLOCK_${idx}\x00`, html);
   });
 
   // Step 5: render agent continuation dividers (injected between passes)
@@ -1120,6 +1157,100 @@ async function autoWriteFiles(text) {
     toast(`Wrote ${written} file${written !== 1 ? 's' : ''}: ${names}${extra}`, 'success', 4000);
     if (files[0]) openFile(files[0].path);
   }
+
+  // ── MOVE directives: ### MOVE: src → dst_dir/ (### prefix optional, → or -> accepted)
+  const movePattern = /(?:#{1,4}\s*)?MOVE:\s*([^\n→\-]+?)\s*(?:→|->)\s*([^\n]+)/gi;
+  let moveMatch;
+  while ((moveMatch = movePattern.exec(text)) !== null) {
+    let src = moveMatch[1].trim();
+    let dstDir = moveMatch[2].trim();
+    // Resolve relative paths against workspace
+    if (!src.includes(':') && !src.startsWith('/')) src = state.workspace + '/' + src;
+    if (!dstDir.includes(':') && !dstDir.startsWith('/')) dstDir = state.workspace + '/' + dstDir;
+    src = src.replace(/\\/g, '/');
+    dstDir = dstDir.replace(/\\/g, '/').replace(/\/$/, ''); // strip trailing slash
+    try {
+      const r = await api('/api/fs/move', { method: 'POST', body: JSON.stringify({ src, dst_dir: dstDir }) });
+      // If the source was open in a tab, close old path and open new
+      const oldTab = state.tabs.find(t => t.path.replace(/\\/g, '/') === src);
+      if (oldTab) { closeTab(oldTab.path); openFile(r.new_path); }
+      await refreshTree();
+      const name = src.split('/').pop();
+      toast(`Moved "${name}" → ${dstDir.split('/').pop()}`, 'success', 3000);
+    } catch (e) {
+      toast(`Move failed (${moveMatch[1].trim()}): ${e.message}`, 'error');
+    }
+  }
+
+  // ── DELETE directives: ### DELETE: path (### prefix optional)
+  const deletePattern = /(?:#{1,4}\s*)?DELETE:\s*([^\n]+)/gi;
+  let deleteMatch;
+  while ((deleteMatch = deletePattern.exec(text)) !== null) {
+    let delPath = deleteMatch[1].trim();
+    if (!delPath.includes(':') && !delPath.startsWith('/')) delPath = state.workspace + '/' + delPath;
+    delPath = delPath.replace(/\\/g, '/');
+    try {
+      await api('/api/fs/delete', { method: 'DELETE', body: JSON.stringify({ path: delPath }) });
+      closeTab(delPath);
+      await refreshTree();
+      toast(`Deleted "${delPath.split('/').pop()}"`, 'warn', 3000);
+    } catch (e) {
+      toast(`Delete failed (${deleteMatch[1].trim()}): ${e.message}`, 'error');
+    }
+  }
+}
+
+/**
+ * Execute all python-exec blocks found in `text`.
+ * Updates the matching exec-card inside `bubble` with live status + output.
+ */
+async function autoExecBlocks(text, bubble) {
+  const pattern = /```python-exec\n([\s\S]*?)```/gi;
+  let match;
+  let idx = 0;
+  while ((match = pattern.exec(text)) !== null) {
+    const code = match[1];
+    const card     = bubble?.querySelector(`.exec-card[data-exec-idx="${idx}"]`);
+    const statusEl = card?.querySelector('.exec-status');
+    const outputEl = card?.querySelector('.exec-output');
+
+    if (statusEl) {
+      statusEl.className = 'exec-status exec-running';
+      statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Running…';
+    }
+
+    try {
+      const res = await api('/api/fs/exec', {
+        method: 'POST',
+        body: JSON.stringify({ code, workspace: state.workspace }),
+      });
+
+      const out = (res.stdout || '').trimEnd();
+      const err = (res.stderr || '').trimEnd();
+
+      if (statusEl) {
+        if (res.returncode === 0) {
+          statusEl.className = 'exec-status exec-done';
+          statusEl.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> Done';
+        } else {
+          statusEl.className = 'exec-status exec-error';
+          statusEl.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i> Error';
+        }
+      }
+      if (outputEl && (out || err)) {
+        outputEl.style.display = '';
+        outputEl.className = 'exec-output' + (err && !out ? ' exec-output-err' : '');
+        outputEl.textContent = out || err;
+      }
+      await refreshTree();
+    } catch (e) {
+      if (statusEl) {
+        statusEl.className = 'exec-status exec-error';
+        statusEl.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${e.message}`;
+      }
+    }
+    idx++;
+  }
 }
 
 /**
@@ -1190,6 +1321,7 @@ async function sendChat(text) {
     bubble.innerHTML = renderMarkdown(full);
     saveCurrentThread();
     await autoWriteFiles(full);
+    await autoExecBlocks(full, bubble);
   } catch (e) {
     bubble.classList.remove('streaming-cursor');
     bubble.innerHTML = `<span style="color:var(--error)">${escHtml(e.message)}</span>`;
