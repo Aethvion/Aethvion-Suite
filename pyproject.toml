@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aethvion-suite"
-version = "0.3.0"
+version = "0.9.0"
 description = "Aethvion Suite: An integrated agentic AI platform and application hub"
 readme = "README.md"
 license = { file = "LICENSE" }

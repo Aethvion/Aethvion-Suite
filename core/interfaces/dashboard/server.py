@@ -31,7 +31,7 @@ RUNNING_APPS: Dict[str, int] = {}
 app = FastAPI(
     title="Aethvion Suite - Nexus Portal",
     description="Autonomous AI Orchestration System",
-    version="8.0.0"
+    version="9.0.0"
 )
 fastapi_utils.add_dev_cache_control(app)
 

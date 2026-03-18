@@ -1,5 +1,5 @@
 'use strict';
-console.log('[ATB] app-tabs.js loaded (v8-final-v2)');
+console.log('[ATB] app-tabs.js loaded (v9.0.0)');
 
 /**
  * Aethvion App Tab System  (app-tabs.js)
