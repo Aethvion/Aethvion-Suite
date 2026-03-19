@@ -14,6 +14,7 @@ from .grok_provider import GrokProvider
 from .anthropic_provider import AnthropicProvider
 from .local_provider import LocalProvider
 from core.utils.logger import get_logger
+from core.utils.paths import MODEL_REGISTRY
 from core.workspace.usage_tracker import get_usage_tracker
 
 logger = get_logger(__name__)
@@ -71,10 +72,7 @@ class ProviderManager:
 
     def _load_registry_overrides(self):
         """Load overrides from model_registry.json if present."""
-        # Find registry file: data/config/model_registry.json
-        # __file__ = core/providers/provider_manager.py → parent.parent.parent = project root
-        project_root = Path(__file__).parent.parent.parent
-        registry_path = project_root / "data" / "config" / "model_registry.json"
+        registry_path = MODEL_REGISTRY
         
         if not registry_path.exists():
             return
@@ -156,10 +154,9 @@ class ProviderManager:
             
         # 1. Reload registry overrides (Priorities, Model Maps)
         self._load_registry_overrides()
-        
+
         # 2. Update active provider instances with new config
-        project_root = Path(__file__).parent.parent.parent
-        registry_path = project_root / "data" / "config" / "model_registry.json"
+        registry_path = MODEL_REGISTRY
         
         if not registry_path.exists():
             return
@@ -187,8 +184,7 @@ class ProviderManager:
     def _initialize_providers(self):
         """Initialize only providers that are defined in the model registry."""
         # Get providers mentioned in registry
-        project_root = Path(__file__).parent.parent.parent
-        registry_path = project_root / "data" / "config" / "model_registry.json"
+        registry_path = MODEL_REGISTRY
         
         registered_provider_names = []
         if registry_path.exists():

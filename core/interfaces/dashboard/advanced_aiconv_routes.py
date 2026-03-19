@@ -13,16 +13,15 @@ import asyncio
 from datetime import datetime
 
 from core.utils import get_logger
+from core.utils.paths import HISTORY_ADVANCED
 
 logger = get_logger("web.advanced_aiconv_routes")
 
 router = APIRouter(prefix="/api/research", tags=["research"])
 
-# Project root = core/interfaces/dashboard/ → up 4 levels
-_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-STORAGE_DIR = _PROJECT_ROOT / "data" / "memory" / "storage" / "advancedaiconversation"
-PEOPLE_DIR = STORAGE_DIR / "people"
-THREADS_DIR = STORAGE_DIR / "threads"
+STORAGE_DIR = HISTORY_ADVANCED
+PEOPLE_DIR = HISTORY_ADVANCED / "people"
+THREADS_DIR = HISTORY_ADVANCED / "threads"
 
 # Ensure dirs exist
 PEOPLE_DIR.mkdir(parents=True, exist_ok=True)

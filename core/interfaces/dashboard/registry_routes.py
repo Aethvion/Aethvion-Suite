@@ -12,14 +12,15 @@ from fastapi import APIRouter, HTTPException, Request
 
 from core.utils import get_logger
 from core.utils.model_downloader import ModelDownloader
+from core.utils.paths import MODEL_REGISTRY, SUGGESTED_LOCAL_MODELS
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/registry", tags=["registry"])
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-REGISTRY_PATH = PROJECT_ROOT / "data" / "config" / "model_registry.json"
-SUGGESTED_PATH = PROJECT_ROOT / "data" / "config" / "suggested_local_models.json"
+REGISTRY_PATH = MODEL_REGISTRY
+SUGGESTED_PATH = SUGGESTED_LOCAL_MODELS
 ENV_PATH = PROJECT_ROOT / ".env"
 ENV_EXAMPLE_PATH = PROJECT_ROOT / ".env.example"
 

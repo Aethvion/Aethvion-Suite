@@ -16,12 +16,12 @@ from core.memory.identity_manager import IdentityManager
 from core.memory.history_manager import HistoryManager
 from core.workspace.preferences_manager import get_preferences_manager
 from core.workspace.workspace_utils import load_workspaces, validate_path
+from core.utils.paths import PERSONA_MISAKA
 
 logger = logging.getLogger(__name__)
 
 # Base path relative to this file
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-MEMORY_DIR = PROJECT_ROOT / "data" / "ai" / "history" / "misakacipher"
+MEMORY_DIR = PERSONA_MISAKA
 HISTORY_DIR = MEMORY_DIR / "threads"
 
 class PersonaManager:

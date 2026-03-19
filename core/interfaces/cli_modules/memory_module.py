@@ -10,17 +10,14 @@ from core.interfaces.cli_modules.utils import (
     print_warning, confirm, print_error
 )
 from core.memory import get_episodic_memory, get_knowledge_graph
+from core.utils.paths import WS_PROJECTS, HISTORY_ADVANCED
 from rich.panel import Panel
 from rich.tree import Tree
 from rich.table import Table
 import json
 
-# Resolve project root relative to this file's location
-# core/interfaces/cli_modules/ -> interfaces/ -> core/ -> project root
-_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-
-_WORKSPACES_DIR   = _PROJECT_ROOT / "data" / "memory" / "storage" / "workspaces"
-_AICONV_DIR       = _PROJECT_ROOT / "data" / "memory" / "storage" / "advancedaiconversation" / "threads"
+_WORKSPACES_DIR = WS_PROJECTS
+_AICONV_DIR     = HISTORY_ADVANCED / "threads"
 
 
 def memory_module():

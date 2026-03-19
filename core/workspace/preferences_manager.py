@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any, Optional
 from core.utils import get_logger
+from core.utils.paths import WS_PREFERENCES, WORKSPACES
 
 logger = get_logger("workspace.preferences")
 
@@ -24,10 +25,9 @@ class PreferencesManager:
             workspace_root: Root directory for workspace files
         """
         self.workspace_root = workspace_root
-        # Data files live in data/ai/workspace/, not alongside the source code
-        # __file__ = core/workspace/preferences_manager.py → up 3 = project root
-        self.config_root = Path(__file__).parent.parent.parent / "data" / "ai" / "workspace"
-        self.prefs_file = self.config_root / "user_preferences.json"
+        # Data files live in data/workspaces/
+        self.config_root = WORKSPACES
+        self.prefs_file = WS_PREFERENCES
         self.preferences: Dict[str, Any] = {}
         self._load_prefs()
         

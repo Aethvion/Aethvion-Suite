@@ -15,12 +15,11 @@ from pydantic import BaseModel
 import time
 
 from core.utils import get_logger
+from core.utils.paths import APP_ARENA, HISTORY_AI_CONV
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/arena", tags=["arena"])
-
-DATA_DIR = Path(__file__).parent.parent.parent.parent / "data"
 
 ARENA_SYSTEM_PROMPT = (
     "You are an AI model participating in a blind benchmark evaluation. "
@@ -29,8 +28,8 @@ ARENA_SYSTEM_PROMPT = (
     "Answer the user's prompt directly and to the best of your ability. "
     "Do not introduce yourself, do not adopt any persona, and do not mention this evaluation context."
 )
-LEADERBOARD_FILE = DATA_DIR / "arena_leaderboard.json"
-AICONV_DIR = DATA_DIR / "ai" / "conversations"
+LEADERBOARD_FILE = APP_ARENA / "leaderboard.json"
+AICONV_DIR = HISTORY_AI_CONV
 
 
 class ArenaBattleRequest(BaseModel):

@@ -17,10 +17,10 @@ import uuid
 from datetime import datetime
 import json
 from pathlib import Path
+from core.utils.paths import HISTORY_ADVANCED
 
-DATA_DIR = Path("c:/Aethvion/Misaka-Cipher/data/advancedaiconversation")
-PEOPLE_DIR = DATA_DIR / "people"
-THREADS_DIR = DATA_DIR / "threads"
+PEOPLE_DIR = HISTORY_ADVANCED / "people"
+THREADS_DIR = HISTORY_ADVANCED / "threads"
 
 def init_dirs():
     PEOPLE_DIR.mkdir(parents=True, exist_ok=True)

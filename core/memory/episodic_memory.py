@@ -13,6 +13,7 @@ import time
 
 from .memory_spec import EpisodicMemory, generate_memory_id
 from core.utils import get_logger
+from core.utils.paths import VAULT_EPISODIC
 
 logger = get_logger(__name__)
 
@@ -55,8 +56,7 @@ class EpisodicMemoryStore:
         from chromadb.config import Settings
         
         # Storage paths
-        project_root = Path(__file__).parent.parent.parent
-        storage_path = project_root / self.config.get('storage_path', 'data/memory/storage')
+        storage_path = VAULT_EPISODIC
         storage_path.mkdir(parents=True, exist_ok=True)
         
         # Initialize ChromaDB client with retry logic

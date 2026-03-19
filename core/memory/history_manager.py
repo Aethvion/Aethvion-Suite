@@ -10,12 +10,12 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 from core.utils.logger import get_logger
+from core.utils.paths import HISTORY_CHAT
 
 logger = get_logger(__name__)
 
 # Constants
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-HISTORY_DIR = PROJECT_ROOT / "data" / "memory" / "storage" / "misakacipher" / "chathistory"
+HISTORY_DIR = HISTORY_CHAT
 
 _lock = threading.Lock()
 

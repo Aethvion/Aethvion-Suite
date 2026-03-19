@@ -9,26 +9,26 @@ import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from core.utils import get_logger
+from core.utils.paths import VAULT_SEARCH
 
 logger = get_logger(__name__)
 
 class FileVectorStore:
     """
     File Vector Store - Semantic search for workspace files.
-    
+
     Uses FastEmbed for efficient local embeddings and ChromaDB for storage.
     """
-    
+
     def __init__(self, storage_path: Optional[Path] = None):
         """
         Initialize the File Vector Store.
-        
+
         Args:
             storage_path: Path to ChromaDB storage.
         """
-        project_root = Path(__file__).parent.parent.parent
         if storage_path is None:
-            storage_path = project_root / "data" / "memory" / "file_search"
+            storage_path = VAULT_SEARCH
         
         self.storage_path = Path(storage_path)
         self.storage_path.mkdir(parents=True, exist_ok=True)

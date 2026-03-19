@@ -8,11 +8,12 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 from core.utils import get_logger
+from core.utils.paths import WS_OUTPUTS
 
 logger = get_logger(__name__)
 
-# Use environment variable or default to relative path
-WORK_FOLDER = Path(os.environ.get("MISAKA_WORKSPACE", Path(__file__).parent.parent.parent / "data/outputfiles"))
+# Use environment variable or default to WS_OUTPUTS
+WORK_FOLDER = Path(os.environ.get("MISAKA_WORKSPACE", str(WS_OUTPUTS)))
 
 
 @dataclass

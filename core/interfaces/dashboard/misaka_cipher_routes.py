@@ -20,16 +20,17 @@ import asyncio
 from core.providers.provider_manager import ProviderManager
 from core.workspace.preferences_manager import get_preferences_manager
 from core.utils.logger import get_logger
+from core.utils.paths import PERSONA_MISAKA, WORKSPACES
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/misakacipher", tags=["misakacipher"])
 
 # Path configuration
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-MEMORY_DIR = PROJECT_ROOT / "data" / "ai" / "history" / "misakacipher"
-HISTORY_DIR = MEMORY_DIR / "threads"
+MEMORY_DIR = PERSONA_MISAKA
+HISTORY_DIR = PERSONA_MISAKA / "threads"
 EXPRESSIONS_DIR = PROJECT_ROOT / "core" / "interfaces" / "dashboard" / "static" / "misakacipher" / "expressions"
-WORKSPACES_FILE = PROJECT_ROOT / "data" / "ai" / "workspace" / "workspaces.json"
+WORKSPACES_FILE = WORKSPACES / "workspaces.json"
 
 # Ensure directories exist
 MEMORY_DIR.mkdir(parents=True, exist_ok=True)

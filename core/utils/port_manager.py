@@ -2,12 +2,10 @@ import os
 import json
 import socket
 from pathlib import Path
+from core.utils.paths import PORTS_JSON, PORTS_LOCK, SYSTEM
 
-# Assuming this file is at core/utils/port_manager.py
-# Path to the shared port registry: data/system/ports.json
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent
-DATA_DIR = ROOT_DIR / "data" / "core" / "system"
-REGISTRY_FILE = DATA_DIR / "ports.json"
+DATA_DIR = SYSTEM
+REGISTRY_FILE = PORTS_JSON
 
 class PortManager:
     @staticmethod
@@ -76,7 +74,7 @@ class PortManager:
         """
         cls._ensure_registry_exists()
         
-        lock_file = REGISTRY_FILE.with_suffix(".lock")
+        lock_file = PORTS_LOCK
         import time as pytime
         
         # Simple retry-based file locking

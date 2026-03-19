@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 from core.utils import get_logger, generate_trace_id
 from core.tools.standard.file_ops import WORKSPACE_ROOT
+from core.utils.paths import WS_PROJECTS
 from .task_models import Task, TaskStatus, ChatThread
 
 logger = get_logger(__name__)
@@ -282,10 +283,8 @@ class TaskQueueManager:
         self.workers: List[TaskWorker] = []
         self.running = False
         
-        # Persistence: data/memory/storage/workspaces (project_root / data / memory / storage / workspaces)
-        # __file__ is core/orchestrator/task_queue.py → go up 4 levels to project root
-        project_root = Path(__file__).parent.parent.parent
-        self.workspaces_dir = project_root / "data" / "memory" / "storage" / "workspaces"
+        # Persistence: data/workspaces/projects
+        self.workspaces_dir = WS_PROJECTS
         self.workspaces_dir.mkdir(parents=True, exist_ok=True)
         
         self._load_threads()

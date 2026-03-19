@@ -14,6 +14,7 @@ from .code_generator import CodeGenerator
 from .tool_validator import ToolValidator, ValidationResult
 from core.nexus_core import NexusCore, Request
 from core.utils import get_logger, get_trace_manager
+from core.utils.paths import MODEL_REGISTRY, WS_TOOLS
 
 logger = get_logger(__name__)
 
@@ -46,9 +47,7 @@ class ToolForge:
         
         # Tools directory at project root
         if tools_dir is None:
-            # Move to data/ai/tools/generated
-            project_root = Path(__file__).parent.parent.parent
-            tools_dir = project_root / "data" / "ai" / "tools" / "generated"
+            tools_dir = WS_TOOLS / "generated"
         
         self.tools_dir = Path(tools_dir)
         self.tools_dir.mkdir(parents=True, exist_ok=True)
@@ -61,7 +60,7 @@ class ToolForge:
     def _load_model_registry(self) -> Dict[str, Any]:
         """Load the model registry from config/model_registry.json."""
         try:
-            registry_path = Path(__file__).parent.parent.parent / "data" / "config" / "model_registry.json"
+            registry_path = MODEL_REGISTRY
             if registry_path.exists():
                 with open(registry_path, 'r') as f:
                     registry = json.load(f)

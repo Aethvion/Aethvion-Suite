@@ -9,11 +9,9 @@ from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_header, print_menu, get_user_choice,
     print_success, print_error, print_warning, print_key_value, confirm, pause
 )
+from core.utils.paths import MODEL_REGISTRY
 
-# Path resolution: settings_module.py → cli_modules/ → interfaces/ → core/ → project root
-_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-
-SETTINGS_FILE = _PROJECT_ROOT / "data" / "config" / "model_registry.json"
+SETTINGS_FILE = MODEL_REGISTRY
 
 
 # ─────────────────────────────────────────────────

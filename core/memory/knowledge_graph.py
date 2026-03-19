@@ -11,6 +11,7 @@ from typing import List, Dict, Any, Optional, Set
 from datetime import datetime
 
 from core.utils import get_logger
+from core.utils.paths import KNOWLEDGE_GRAPH
 
 logger = get_logger(__name__)
 
@@ -35,9 +36,7 @@ class KnowledgeGraph:
             storage_path: Path to knowledge_graph.json
         """
         if storage_path is None:
-            # __file__ = core/memory/knowledge_graph.py → parent.parent.parent = project root
-            project_root = Path(__file__).parent.parent.parent
-            storage_path = project_root / "data" / "memory" / "storage" / "knowledge_graph.json"
+            storage_path = KNOWLEDGE_GRAPH
         
         self.storage_path = Path(storage_path)
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)

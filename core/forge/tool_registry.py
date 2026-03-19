@@ -10,6 +10,7 @@ from threading import Lock
 from datetime import datetime
 
 from core.utils import get_logger
+from core.utils.paths import WS_TOOLS
 
 logger = get_logger(__name__)
 
@@ -30,9 +31,7 @@ class ToolRegistry:
             registry_path: Path to registry.json file
         """
         if registry_path is None:
-            # __file__ = core/forge/tool_registry.py → parent.parent.parent = project root
-            workspace = Path(__file__).parent.parent.parent
-            registry_path = workspace / "data" / "ai" / "tools" / "registry.json"
+            registry_path = WS_TOOLS / "registry.json"
         
         self.registry_path = Path(registry_path)
         self.registry_path.parent.mkdir(parents=True, exist_ok=True)

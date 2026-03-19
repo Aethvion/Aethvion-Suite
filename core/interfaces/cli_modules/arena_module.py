@@ -16,11 +16,9 @@ from pathlib import Path
 import asyncio
 import time
 import uuid
+from core.utils.paths import APP_ARENA
 
-# Resolve project root relative to this file
-# core/interfaces/cli_modules/ -> interfaces/ -> core/ -> project root
-_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-_LEADERBOARD_FILE = _PROJECT_ROOT / "data" / "arena_leaderboard.json"
+_LEADERBOARD_FILE = APP_ARENA / "leaderboard.json"
 
 def _get_active_models():
     """Extract list of available model strings from enabled providers."""

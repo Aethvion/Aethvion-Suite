@@ -11,6 +11,7 @@ import shutil
 import json
 
 from core.utils import get_logger
+from core.utils.paths import DATA, WS_FILES_INDEX, WS_OUTPUTS
 
 logger = get_logger(__name__)
 
@@ -59,10 +60,10 @@ class WorkspaceManager:
         """
         Initialize Workspace Manager.
         """
-        self.project_root = Path(__file__).parent.parent.parent
-        
+        self.project_root = DATA.parent
+
         if workspace_root is None:
-            workspace_root = self.project_root / "data" / "ai" / "outputfiles"
+            workspace_root = WS_OUTPUTS
         
         self.workspace_root = Path(workspace_root)
         
@@ -200,15 +201,12 @@ class WorkspaceManager:
         }
         
         # Save cache
-        # Always try to save in data/ folder
-        cache_dir = self.project_root / "data" / "ai"
-        if not cache_dir.exists():
-            cache_dir.mkdir(parents=True, exist_ok=True)
-            
-        cache_path = cache_dir / "files.json"
-        
+        # Always try to save in workspaces folder
+        cache_path = WS_FILES_INDEX
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+
         # Cleanup old root-level files.json if it exists
-        old_root_cache = self.project_root / "files.json"
+        old_root_cache = DATA.parent / "files.json"
         if old_root_cache.exists():
             try:
                 old_root_cache.unlink()

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 from core.utils import get_logger
+from core.utils.paths import APP_GAMES
 
 # Helper to load modules from static folder
 def load_game_module(name: str, path: str):
@@ -74,8 +75,7 @@ class AIGameSession:
         try:
             from datetime import datetime
             
-            root = Path(__file__).parent.parent.parent.parent
-            storage_dir = root / "data" / "memory" / "storage" / "games" / self.game_type
+            storage_dir = APP_GAMES / self.game_type
             storage_dir.mkdir(parents=True, exist_ok=True)
             
             history_file = storage_dir / "history.json"

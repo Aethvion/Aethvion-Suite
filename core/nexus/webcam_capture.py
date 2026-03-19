@@ -2,12 +2,12 @@ import cv2
 import datetime
 from pathlib import Path
 from core.utils.logger import get_logger
+from core.utils.paths import WS_MEDIA
 
 logger = get_logger(__name__)
 
 # Base directory for media storage
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-WEBCAM_DIR = PROJECT_ROOT / "data" / "workspace" / "media" / "webcam"
+WEBCAM_DIR = WS_MEDIA / "webcam"
 
 def capture_image(args=None):
     """

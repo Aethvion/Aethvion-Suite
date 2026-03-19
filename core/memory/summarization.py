@@ -13,6 +13,7 @@ from .episodic_memory import EpisodicMemoryStore, get_episodic_memory
 from .knowledge_graph import KnowledgeGraph, get_knowledge_graph
 from core.nexus_core import NexusCore, Request
 from core.utils import get_logger
+from core.utils.paths import KNOWLEDGE_INSIGHTS
 
 logger = get_logger(__name__)
 
@@ -65,8 +66,7 @@ class Heartbeat:
         self.long_interval = intervals.get('long', 86400)      # 24 hours
         
         # Storage for insights
-        project_root = Path(__file__).parent.parent.parent
-        self.insights_path = project_root / "data" / "memory" / "storage" / "core_insights.json"
+        self.insights_path = KNOWLEDGE_INSIGHTS
         self.insights_path.parent.mkdir(parents=True, exist_ok=True)
         
         logger.info(

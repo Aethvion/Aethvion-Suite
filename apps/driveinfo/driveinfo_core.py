@@ -14,11 +14,19 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+# Ensure project root is on path so core.* is importable
+_HERE = Path(__file__).resolve().parent
+_PROJECT_ROOT = _HERE.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+from core.utils.paths import APP_DRIVEINFO
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-DATA_DIR = Path("data/apps/driveinfo")
+DATA_DIR = APP_DRIVEINFO
 EATHSCAN_VERSION = "1.0"
 
 # ---------------------------------------------------------------------------

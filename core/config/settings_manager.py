@@ -7,11 +7,11 @@ import json
 from pathlib import Path
 from typing import Dict, Any, Optional
 from core.utils import get_logger
+from core.utils.paths import SETTINGS
 
 logger = get_logger(__name__)
 
-# __file__ = core/config/settings_manager.py → up 3 levels = project root → data/core/config/settings.json
-SETTINGS_FILE = Path(__file__).parent.parent.parent / "data" / "core" / "config" / "settings.json"
+SETTINGS_FILE = SETTINGS
 
 
 

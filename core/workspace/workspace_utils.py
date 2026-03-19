@@ -7,12 +7,11 @@ import json
 import logging
 from pathlib import Path
 from typing import List, Tuple, Optional
+from core.utils.paths import PERSONA_MISAKA
 
 logger = logging.getLogger(__name__)
 
-# Base path relative to this file
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-MEMORY_DIR = PROJECT_ROOT / "data" / "memory" / "storage" / "misakacipher"
+MEMORY_DIR = PERSONA_MISAKA
 WORKSPACES_FILE = MEMORY_DIR / "workspaces.json"
 
 def load_workspaces() -> List[dict]:

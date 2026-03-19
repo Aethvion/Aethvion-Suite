@@ -4,12 +4,13 @@ import logging
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from pathlib import Path
+from core.utils.paths import APP_NEXUS
 
 # Setup logging
 logger = logging.getLogger(__name__)
 
 # Constants for auth
-TOKEN_CACHE_DIR = Path("data/memory/storage/nexus/spotify")
+TOKEN_CACHE_DIR = APP_NEXUS / "spotify"
 TOKEN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_PATH = TOKEN_CACHE_DIR / ".cache"
 

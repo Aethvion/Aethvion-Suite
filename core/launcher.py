@@ -55,7 +55,9 @@ import psutil
 
 # Diagnostic logging for silent failures (pythonw)
 ROOT      = Path(__file__).parent.parent
-_diag_log = ROOT / "data" / "launcher.log"
+from core.utils.paths import ensure_all, LAUNCHER_LOG, PORTS_JSON, LOCK_FILE
+ensure_all()  # Ensure all data directories exist
+_diag_log = LAUNCHER_LOG
 _diag_log.parent.mkdir(parents=True, exist_ok=True)
 
 def _log(msg):
@@ -262,7 +264,7 @@ def _cleanup_stale_processes() -> None:
 def _try_reopen_dashboard() -> None:
     """Attempt to find the port of the running instance and open the browser."""
     try:
-        registry_path = ROOT / "data" / "core" / "system" / "ports.json"
+        registry_path = PORTS_JSON
         _log(f"Attempting re-open. Registry: {registry_path}")
         
         target_port = None
@@ -312,7 +314,7 @@ def _try_reopen_dashboard() -> None:
 
 def _ensure_singleton() -> None:
     """Ensure only one instance of the launcher is running."""
-    lock_file = ROOT / "data" / "aethvion.lock"
+    lock_file = LOCK_FILE
     lock_file.parent.mkdir(parents=True, exist_ok=True)
     
     try:

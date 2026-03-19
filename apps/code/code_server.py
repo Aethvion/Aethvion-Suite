@@ -30,6 +30,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from core.utils import fastapi_utils
+from core.utils.paths import LOGS_USAGE, MODEL_REGISTRY as PATHS_MODEL_REGISTRY
 from pydantic import BaseModel
 
 # ── Path setup ──────────────────────────────────────────────────────────────
@@ -70,8 +71,8 @@ WORKSPACE = ROOT
 DATA_DIR      = ROOT / "data" / "apps" / "code"
 PROJECTS_DIR  = DATA_DIR / "projects"
 SETTINGS_FILE = DATA_DIR / "settings.json"
-USAGE_LOG_DIR    = ROOT / "data" / "ai" / "logs" / "usage"
-MODEL_REGISTRY   = ROOT / "data" / "config" / "model_registry.json"
+USAGE_LOG_DIR  = LOGS_USAGE
+MODEL_REGISTRY = PATHS_MODEL_REGISTRY
 
 def _ensure_data_dirs():
     PROJECTS_DIR.mkdir(parents=True, exist_ok=True)

@@ -20,6 +20,7 @@ from datetime import datetime
 
 from core.utils import get_logger, fastapi_utils
 from core.config.settings_manager import get_settings_manager
+from core.utils.paths import WS_OUTPUTS, WS_MEDIA, WS_UPLOADS
 import psutil
 
 logger = get_logger(__name__)
@@ -926,14 +927,14 @@ async def list_workspace_files(category: str = 'output', refresh: bool = False):
 def _get_subdir_for_category(category: str) -> str:
     """Helper to map categories to subdirectories."""
     if category in ['files', 'output']:
-        return "data/outputfiles"
+        return str(WS_OUTPUTS)
     elif category == 'screenshots':
-        return "data/workspace/media/screenshots"
+        return str(WS_MEDIA / "screenshots")
     elif category == 'camera':
-        return "data/workspace/media/webcam"
+        return str(WS_MEDIA / "webcam")
     elif category == 'uploads':
-        return "data/workspace/uploads"
-    return "data/outputfiles"
+        return str(WS_UPLOADS)
+    return str(WS_OUTPUTS)
 
 @app.post("/api/workspace/files/search")
 async def search_workspace_files(req: SemanticSearchRequest):

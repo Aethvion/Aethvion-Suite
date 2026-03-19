@@ -9,12 +9,12 @@ import datetime
 import re
 from pathlib import Path
 from typing import Dict, Any, List, Optional
+from core.utils.paths import PERSONA_MISAKA
 
 logger = logging.getLogger(__name__)
 
 # Constants
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-MEMORY_DIR = PROJECT_ROOT / "data" / "memory" / "storage" / "misakacipher"
+MEMORY_DIR = PERSONA_MISAKA
 BASE_INFO_PATH = MEMORY_DIR / "base_info.json"
 MEMORY_PATH = MEMORY_DIR / "memory.json"
 

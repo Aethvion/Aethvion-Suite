@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from core.utils import get_logger
+from core.utils.paths import KNOWLEDGE_SOCIAL
 
 logger = get_logger(__name__)
 
@@ -26,9 +27,7 @@ class SocialRegistry:
             storage_path: Path to registry storage (JSON)
         """
         if storage_path is None:
-            # core/memory/social_registry.py -> parent.parent.parent = project root
-            project_root = Path(__file__).parent.parent.parent
-            self.storage_path = project_root / "data" / "memory" / "storage" / "social_registry.json"
+            self.storage_path = KNOWLEDGE_SOCIAL
         else:
             self.storage_path = storage_path
             

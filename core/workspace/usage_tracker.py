@@ -11,6 +11,7 @@ from typing import Dict, Any, List, Optional
 from collections import defaultdict
 
 from core.utils import get_logger
+from core.utils.paths import LOGS_USAGE, MODEL_REGISTRY
 
 logger = get_logger(__name__)
 
@@ -18,10 +19,7 @@ _instance = None
 _lock = threading.Lock()
 
 MAX_LOG_ENTRIES = 10000
-# __file__ = core/workspace/usage_tracker.py → parent.parent.parent = project root
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
-# New structure: data/ai/logs/usage/YYYY-MM/usage_YYYY-MM-DD.json
-LOGS_DIR = DATA_DIR / "ai" / "logs" / "usage"
+LOGS_DIR = LOGS_USAGE
 
 
 def get_usage_tracker():
@@ -68,7 +66,7 @@ class UsageTracker:
         """Load per-model input/output cost data from model_registry.json."""
         costs = {}
         try:
-            registry_path = DATA_DIR / "config" / "model_registry.json"
+            registry_path = MODEL_REGISTRY
             if registry_path.exists():
                 with open(registry_path, "r", encoding="utf-8") as f:
                     registry = json.load(f)

@@ -7,10 +7,10 @@ import json
 from pathlib import Path
 from typing import Optional, Union, Any, Dict
 from datetime import datetime
+from core.utils.paths import WS_OUTPUTS
 
-# Define workspace root - use environment variable or default to relative path
-# __file__ = tools/standard/file_ops.py → parent.parent.parent = project root
-WORKSPACE_ROOT = Path(os.environ.get("MISAKA_WORKSPACE", Path(__file__).parent.parent.parent / "data" / "outputfiles"))
+# Define workspace root - use environment variable or default to WS_OUTPUTS
+WORKSPACE_ROOT = Path(os.environ.get("MISAKA_WORKSPACE", str(WS_OUTPUTS)))
 
 def data_save_file(content: Any, filename: str, domain: str = "General") -> Dict[str, Any]:
     """

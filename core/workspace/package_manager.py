@@ -14,6 +14,7 @@ from enum import Enum
 
 from core.workspace.package_intelligence import get_package_intelligence, PackageInfo
 from core.utils import get_logger
+from core.utils.paths import WS_PACKAGES, WORKSPACES
 
 logger = get_logger("workspace.package_manager")
 
@@ -60,10 +61,9 @@ class PackageManager:
             workspace_root: Root directory for workspace files
         """
         self.workspace_root = workspace_root
-        # Data files live in data/ai/workspace/, not alongside the source code
-        # __file__ = core/workspace/package_manager.py → up 3 = project root
-        self.config_root = Path(__file__).parent.parent.parent / "data" / "ai" / "workspace"
-        self.packages_file = self.config_root / "packages.json"
+        # Data files live in data/workspaces/
+        self.config_root = WORKSPACES
+        self.packages_file = WS_PACKAGES
         self.intelligence = get_package_intelligence()
         
         # Load existing state

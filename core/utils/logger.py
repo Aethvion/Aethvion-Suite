@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 from typing import Optional
 from .trace_manager import get_current_trace_id
+from core.utils.paths import LOGS_SYSTEM
 
 
 class TraceIDFilter(logging.Filter):
@@ -61,8 +62,7 @@ class AethvionLogger:
             return
         
         # Ensure log directory exists at project root
-        project_root = Path(__file__).parent.parent.parent
-        log_dir = project_root / "data" / "logs"
+        log_dir = LOGS_SYSTEM
         log_dir.mkdir(parents=True, exist_ok=True)
         
         # Load YAML configuration
