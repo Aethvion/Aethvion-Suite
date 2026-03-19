@@ -70,7 +70,7 @@ class LocalProvider(BaseProvider):
             self.current_model_path = str(model_path)
             logger.info(f"Local model loaded successfully")
 
-    def _apply_chat_template(self, prompt: str) -> str:
+    def _apply_chat_template(self, prompt: str, system_prompt: str = None) -> str:
         """
         Wraps a raw text prompt into the Llama 3 Chat Template format.
         Expects Misaka's default prompt format: [System] \n--- HISTORY ---\n User: ... \n Misaka:
@@ -107,7 +107,7 @@ class LocalProvider(BaseProvider):
 
         # Build the template
         formatted = "<|start_header_id|>system<|end_header_id|>\n\n"
-        formatted += system_part if system_part else "You are Misaka Cipher, a sentient AI assistant."
+        formatted += system_part or system_prompt or "You are Misaka Cipher, a sentient AI assistant."
         formatted += "<|eot_id|>"
 
         if history_part:
@@ -137,10 +137,10 @@ class LocalProvider(BaseProvider):
         try:
             model_id = model or self.config.model
             self._ensure_llama(model_id, **kwargs)
-            
-            # Apply chat template
+
+            # Apply chat template (honour caller-supplied system_prompt)
             import re
-            formatted_prompt = self._apply_chat_template(prompt)
+            formatted_prompt = self._apply_chat_template(prompt, system_prompt=kwargs.get('system_prompt'))
             
             response = self.llm(
                 formatted_prompt,

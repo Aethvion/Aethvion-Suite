@@ -21,6 +21,14 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/arena", tags=["arena"])
 
 DATA_DIR = Path(__file__).parent.parent.parent.parent / "data"
+
+ARENA_SYSTEM_PROMPT = (
+    "You are an AI model participating in a blind benchmark evaluation. "
+    "Multiple AI models are answering the same prompt simultaneously and will be judged on "
+    "accuracy, clarity, helpfulness, and completeness. "
+    "Answer the user's prompt directly and to the best of your ability. "
+    "Do not introduce yourself, do not adopt any persona, and do not mention this evaluation context."
+)
 LEADERBOARD_FILE = DATA_DIR / "arena_leaderboard.json"
 AICONV_DIR = DATA_DIR / "ai" / "conversations"
 
@@ -59,7 +67,8 @@ async def _call_model(provider_manager, prompt: str, model_id: str, trace_id: st
             prompt=prompt,
             trace_id=trace_id,
             model=model_id,
-            source="arena"
+            source="arena",
+            system_prompt=ARENA_SYSTEM_PROMPT
         )
         end_time = time.time()
         return {
