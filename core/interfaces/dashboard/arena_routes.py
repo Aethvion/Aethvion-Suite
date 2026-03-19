@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Arena Routes
 API endpoints for the Arena Mode (model comparison battles)
 """
@@ -52,7 +52,7 @@ def _load_leaderboard() -> Dict[str, Any]:
 
 def _save_leaderboard(data: Dict[str, Any]) -> None:
     """Save leaderboard to disk."""
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    APP_ARENA.mkdir(parents=True, exist_ok=True)
     with open(LEADERBOARD_FILE, 'w') as f:
         json.dump(data, f, indent=2)
 
