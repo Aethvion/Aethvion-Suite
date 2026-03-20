@@ -66,6 +66,10 @@ class DeleteVoiceRequest(BaseModel):
     model_id: str
     voice_id: str
 
+class SetDefaultRequest(BaseModel):
+    model_id: str
+    voice_id: Optional[str] = None
+
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
@@ -192,6 +196,34 @@ async def delete_voice(req: DeleteVoiceRequest):
     wav.unlink(missing_ok=True)
     meta.unlink(missing_ok=True)
     return {"success": True}
+
+
+@router.post("/models/set-default")
+async def set_default_model(req: SetDefaultRequest):
+    """Save the preferred TTS model and voice to preferences."""
+    try:
+        from core.workspace.preferences_manager import get_preferences_manager
+        pm = get_preferences_manager()
+        pm.set("audio.default_tts_model", req.model_id)
+        if req.voice_id is not None:
+            pm.set("audio.default_tts_voice", req.voice_id)
+        return {"success": True, "model_id": req.model_id}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@router.get("/models/defaults")
+async def get_defaults():
+    """Return saved default TTS model and voice."""
+    try:
+        from core.workspace.preferences_manager import get_preferences_manager
+        pm = get_preferences_manager()
+        return {
+            "model_id": pm.get("audio.default_tts_model"),
+            "voice_id": pm.get("audio.default_tts_voice"),
+        }
+    except Exception:
+        return {"model_id": None, "voice_id": None}
 
 
 @router.post("/install")

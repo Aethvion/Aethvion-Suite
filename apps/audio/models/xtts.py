@@ -38,8 +38,24 @@ class XTTSv2Model(LocalAudioModel):
             return False
 
     def load(self, device: str = "cuda") -> None:
-        from TTS.api import TTS
-        self._tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
+        try:
+            from TTS.api import TTS
+        except ImportError as e:
+            if "numpy" in str(e) or "dtype size" in str(e):
+                raise RuntimeError(
+                    "numpy version conflict: TTS requires numpy<2. "
+                    'Fix with:  pip install "numpy<2"'
+                ) from e
+            raise
+        try:
+            self._tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
+        except Exception as e:
+            if "numpy.dtype size changed" in str(e) or "binary incompatibility" in str(e):
+                raise RuntimeError(
+                    "numpy version conflict: TTS requires numpy<2. "
+                    'Fix with:  pip install "numpy<2"'
+                ) from e
+            raise
         self._device = device
         self._loaded = True
         logger.info(f"XTTS-v2 loaded on {device}")

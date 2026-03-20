@@ -1152,9 +1152,25 @@
                     <div class="companion-chat-column">
                         <div class="chat-header">
                             <h2>Misaka Cipher</h2>
-                            <button id="misaka-settings-btn" class="misaka-settings-btn" title="Misaka Cipher Settings">
-                                <i class="fas fa-cog"></i>
-                            </button>
+                            <div class="misaka-header-controls">
+                                <!-- Voice Output Toggle -->
+                                <div class="misaka-voice-bar" id="misaka-voice-bar">
+                                    <button id="misaka-voice-toggle" class="icon-btn misaka-voice-btn" title="Toggle voice output" onclick="toggleMisakaVoice()">
+                                        <i class="fas fa-volume-mute"></i>
+                                    </button>
+                                    <div id="misaka-voice-options" class="misaka-voice-options" style="display:none">
+                                        <select id="misaka-voice-model" class="setting-select setting-select-sm" onchange="loadMisakaVoiceOptions()">
+                                            <option value="">Select TTS model…</option>
+                                        </select>
+                                        <select id="misaka-voice-id" class="setting-select setting-select-sm">
+                                            <option value="">Default voice</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button id="misaka-settings-btn" class="misaka-settings-btn" title="Misaka Cipher Settings">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="chat-messages" id="misaka-chat-messages">
                             <!-- Messages will scroll here -->

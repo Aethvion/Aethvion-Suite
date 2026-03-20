@@ -84,6 +84,17 @@ async function initializeMisakaCipher() {
 
     await loadHistory(0, 3, true);
 
+    // Restore voice output pref
+    const voiceWasEnabled = window.prefs ? prefs.get('misakacipher.voice_enabled', false) : false;
+    if (voiceWasEnabled) {
+        _misakaVoiceEnabled = true;
+        const btn = document.getElementById('misaka-voice-toggle');
+        const opts = document.getElementById('misaka-voice-options');
+        if (btn) { btn.querySelector('i').className = 'fas fa-volume-up'; btn.classList.add('voice-active'); }
+        if (opts) opts.style.display = 'flex';
+        loadMisakaTTSModels();
+    }
+
     hasInitializedMisaka = true;
 
     // 6. Listen for changes from settings page
@@ -599,10 +610,13 @@ async function sendMisakaMessage() {
                             currentStreamingBubble.parentElement.appendChild(tsDiv);
                         }
 
+                        const _fullReply = currentContentForHistory + untypedText;
                         misakaChatHistory.push({
                             role: 'assistant',
-                            content: currentContentForHistory + untypedText
+                            content: _fullReply
                         });
+
+                        speakMisakaResponse(_fullReply);
 
                         if (data.mood) updateMisakaMood(data.mood);
                         if (data.expression) updateMisakaExpression(data.expression);
@@ -1156,6 +1170,136 @@ function clearMisakaAttachment() {
 }
 
 window.clearMisakaAttachment = clearMisakaAttachment;
+
+// ── Voice Output ──────────────────────────────────────────────────────────────
+
+let _misakaVoiceEnabled = false;
+let _misakaAudio = null;
+
+function toggleMisakaVoice() {
+    _misakaVoiceEnabled = !_misakaVoiceEnabled;
+    const btn = document.getElementById('misaka-voice-toggle');
+    const opts = document.getElementById('misaka-voice-options');
+    if (btn) {
+        btn.querySelector('i').className = _misakaVoiceEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
+        btn.classList.toggle('voice-active', _misakaVoiceEnabled);
+    }
+    if (opts) opts.style.display = _misakaVoiceEnabled ? 'flex' : 'none';
+    if (_misakaVoiceEnabled) loadMisakaTTSModels();
+    if (window.prefs) prefs.set('misakacipher.voice_enabled', _misakaVoiceEnabled);
+}
+
+async function loadMisakaTTSModels() {
+    const sel = document.getElementById('misaka-voice-model');
+    if (!sel) return;
+    try {
+        const res = await fetch('/api/audio/local/models');
+        const data = await res.json();
+        const ttsModels = (data.models || []).filter(m => m.capabilities && m.capabilities.includes('tts') && m.status === 'loaded');
+        // Preserve current selection
+        const current = sel.value;
+        // Clear and rebuild (keep placeholder)
+        while (sel.options.length > 1) sel.remove(1);
+        ttsModels.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.name || m.id;
+            sel.appendChild(opt);
+        });
+        // Restore saved default
+        const savedModel = window.prefs ? prefs.get('misakacipher.voice_model', '') : '';
+        if (savedModel && [...sel.options].some(o => o.value === savedModel)) {
+            sel.value = savedModel;
+        } else if (current && [...sel.options].some(o => o.value === current)) {
+            sel.value = current;
+        }
+        if (sel.value) loadMisakaVoiceOptions();
+    } catch (e) {
+        console.warn('[Misaka Voice] Failed to load TTS models:', e);
+    }
+}
+
+async function loadMisakaVoiceOptions() {
+    const modelSel = document.getElementById('misaka-voice-model');
+    const voiceSel = document.getElementById('misaka-voice-id');
+    if (!modelSel || !voiceSel) return;
+    const modelId = modelSel.value;
+    if (!modelId) return;
+    if (window.prefs) prefs.set('misakacipher.voice_model', modelId);
+    try {
+        const res = await fetch(`/api/audio/local/voices/${modelId}`);
+        const data = await res.json();
+        const voices = data.voices || [];
+        while (voiceSel.options.length > 1) voiceSel.remove(1);
+        voices.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = v.name || v.id;
+            voiceSel.appendChild(opt);
+        });
+        const savedVoice = window.prefs ? prefs.get('misakacipher.voice_id', '') : '';
+        if (savedVoice && [...voiceSel.options].some(o => o.value === savedVoice)) {
+            voiceSel.value = savedVoice;
+        }
+    } catch (e) {
+        console.warn('[Misaka Voice] Failed to load voices:', e);
+    }
+}
+
+function _cleanForSpeech(text) {
+    return text
+        .replace(/\[Emotion:.*?\]/gi, '')
+        .replace(/\[Mood:.*?\]/gi, '')
+        .replace(/\[msg_break\]/gi, '')
+        .replace(/```[\s\S]*?```/g, ' code block ')
+        .replace(/`[^`]+`/g, '')
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/#{1,6}\s*/g, '')
+        .replace(/\n+/g, ' ')
+        .trim();
+}
+
+async function speakMisakaResponse(rawText) {
+    if (!_misakaVoiceEnabled) return;
+    const modelSel = document.getElementById('misaka-voice-model');
+    const voiceSel = document.getElementById('misaka-voice-id');
+    if (!modelSel || !modelSel.value) return;
+
+    const text = _cleanForSpeech(rawText);
+    if (!text) return;
+
+    // Stop any currently playing audio
+    if (_misakaAudio) { _misakaAudio.pause(); _misakaAudio = null; }
+
+    // Save voice choice to prefs
+    if (window.prefs && voiceSel && voiceSel.value) prefs.set('misakacipher.voice_id', voiceSel.value);
+
+    try {
+        const res = await fetch('/api/audio/local/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text,
+                model_id: modelSel.value,
+                voice_id: voiceSel ? voiceSel.value || null : null,
+                language: 'en',
+                device: 'cuda',
+            }),
+        });
+        const data = await res.json();
+        if (!data.success || !data.audio) return;
+        _misakaAudio = new Audio(data.audio);
+        _misakaAudio.play();
+    } catch (e) {
+        console.warn('[Misaka Voice] TTS generation failed:', e);
+    }
+}
+
+window.toggleMisakaVoice = toggleMisakaVoice;
+window.loadMisakaTTSModels = loadMisakaTTSModels;
+window.loadMisakaVoiceOptions = loadMisakaVoiceOptions;
+window.speakMisakaResponse = speakMisakaResponse;
 
 window.initializeMisakaCipher = initializeMisakaCipher;
 window.refreshMisakaMemory = refreshMisakaMemory;

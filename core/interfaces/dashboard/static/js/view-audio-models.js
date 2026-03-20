@@ -9,6 +9,8 @@ const AudioModels = (() => {
     let _currentTab = 'tts';
     let _cloneModelId = null;
     let _cloneAudioB64 = null;
+    let _defaultModel = null;
+    let _defaultVoice = null;
 
     // ── Init ──────────────────────────────────────────────────────────────────
     async function init() {
@@ -24,11 +26,20 @@ const AudioModels = (() => {
 
     async function _loadStatuses() {
         try {
-            const r = await fetch('/api/audio/local/models');
-            if (!r.ok) return;
-            const d = await r.json();
-            _statuses = {};
-            (d.models || []).forEach(m => { _statuses[m.id] = m; });
+            const [modR, defR] = await Promise.all([
+                fetch('/api/audio/local/models'),
+                fetch('/api/audio/local/models/defaults'),
+            ]);
+            if (modR.ok) {
+                const d = await modR.json();
+                _statuses = {};
+                (d.models || []).forEach(m => { _statuses[m.id] = m; });
+            }
+            if (defR.ok) {
+                const d = await defR.json();
+                _defaultModel = d.model_id;
+                _defaultVoice = d.voice_id;
+            }
         } catch (e) { console.warn('Audio model status fetch failed:', e); }
     }
 
@@ -73,12 +84,18 @@ const AudioModels = (() => {
         if (installed && loaded)   statusPill = `<span class="am-status am-status-loaded">Loaded · ${device}</span>`;
         else if (installed)        statusPill = `<span class="am-status am-status-installed">Installed</span>`;
 
+        const isDefault = _defaultModel === m.id;
+
         // Action buttons
         let actions = '';
         if (!installed) {
-            actions = `<button class="action-btn primary am-install-btn" onclick="AudioModels.install('${m.id}', '${m.install_packages}', this)">
+            const pkgDisplay = (m.install_packages || '').replace(/"/g, '&quot;');
+            actions = `<button class="action-btn primary am-install-btn" onclick="AudioModels.install('${m.id}', \`${m.install_packages}\`, this)">
                 <i class="fas fa-download"></i> Install
             </button>`;
+            if (m.id === 'xtts-v2') {
+                actions += `<span class="am-fix-hint">Requires numpy&lt;2 — bundled in install</span>`;
+            }
         } else if (!loaded) {
             let sizeSelect = '';
             if (m.model_sizes) {
@@ -90,9 +107,14 @@ const AudioModels = (() => {
                 <i class="fas fa-play"></i> Load Model
             </button>`;
         } else {
-            actions = `<button class="action-btn secondary" onclick="AudioModels.unload('${m.id}', this)">
-                <i class="fas fa-stop"></i> Unload
-            </button>`;
+            actions = `
+                <button class="action-btn secondary" onclick="AudioModels.unload('${m.id}', this)">
+                    <i class="fas fa-stop"></i> Unload
+                </button>
+                <button class="action-btn ${isDefault ? 'success' : 'secondary'}" onclick="AudioModels.setDefault('${m.id}', this)" title="Use as default TTS in Misaka Cipher">
+                    <i class="fas fa-${isDefault ? 'star' : 'star'}" style="${isDefault ? 'color:#f59e0b' : 'opacity:0.5'}"></i>
+                    ${isDefault ? 'Default' : 'Set Default'}
+                </button>`;
         }
 
         // Test section (only when loaded)
@@ -255,7 +277,12 @@ const AudioModels = (() => {
                 showNotification(`${modelId} loaded`, 'success');
                 await refresh();
             } else {
-                showNotification(`Load failed: ${d.detail || 'Unknown error'}`, 'error');
+                let msg = d.detail || 'Unknown error';
+                // Surface numpy fix hint prominently
+                if (msg.includes('numpy') || msg.includes('binary incompatibility')) {
+                    msg = 'numpy version conflict — run: pip install "numpy<2"';
+                }
+                showNotification(`Load failed: ${msg}`, 'error');
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-play"></i> Load Model';
             }
@@ -263,6 +290,23 @@ const AudioModels = (() => {
             showNotification('Load request failed', 'error');
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-play"></i> Load Model';
+        }
+    }
+
+    async function setDefault(modelId, btn) {
+        try {
+            await fetch('/api/audio/local/models/set-default', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({model_id: modelId}),
+            });
+            _defaultModel = modelId;
+            showNotification(`${modelId} set as default TTS`, 'success');
+            _render();
+            // Notify Misaka Cipher to refresh its model list
+            if (typeof loadMisakaTTSModels === 'function') loadMisakaTTSModels();
+        } catch (e) {
+            showNotification('Could not save default', 'error');
         }
     }
 

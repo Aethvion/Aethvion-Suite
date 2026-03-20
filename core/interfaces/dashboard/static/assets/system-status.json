@@ -38,6 +38,7 @@
                     "Infrastructure: System-wide 'AETHVION_DEV' mode implemented to force cache-busting on refresh",
                     "Infrastructure: Aggressive Cache-Control middleware added to all 9 internal app servers + dashboard",
                     "Infrastructure: Launcher and main entry point now automatically configure developer environment flags",
+                    "Sidebar: Dynamic tab counts for all sidebar categories (e.g. Workflow (3)) for better navigation",
                     "AI Conversation: Participant display names stored directly in message history — prevents name collisions when two participants share the same model",
                     "AI Conversation: Personality field included in share payload and rendered on the share page",
                     "Code IDE: Historical python-exec blocks render as 'Ran' instead of 'Queued' when a thread is reloaded",
@@ -52,6 +53,7 @@
                 "fixed": [
                     "Drive Info: Root redirect now preserves query parameters, ensuring cache-buster tokens (_cb) persist",
                     "Code IDE: Fixed missing logging import in code_server.py (flake8 F821)",
+                    "Arena: Fixed undefined DATA_DIR in arena_routes.py (flake8 F821)",
                     "Code IDE: Fixed _threads_dir using non-existent _ws_key() — corrected to _project_key()",
                     "Dashboard: General aesthetic refinements to the AI Conv and Images tabs",
                     "Local Models: Fixed null reference crash in updateSuggestedBadges when a card has no install button",
