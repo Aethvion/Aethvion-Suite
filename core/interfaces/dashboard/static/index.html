@@ -45,6 +45,7 @@
     <link rel="stylesheet" href="/static/css/misaka_cipher.css">
     <link rel="stylesheet" href="/static/css/misaka_timestamps.css">
     <link rel="stylesheet" href="/static/css/adv_aiconv.css">
+    <link rel="stylesheet" href="/static/css/audio-models.css?v=9.0.0">
     <link rel="stylesheet" href="/static/css/assistant.css">
     <link rel="stylesheet" href="/static/css/audio_studio.css">
     <link rel="stylesheet" href="/static/games/common/games-shared.css">
@@ -411,6 +412,8 @@
                 <div class="cat-body mode-ai" data-cat-body="models">
                     <button class="main-tab mode-ai sidebar-subitem" data-maintab="local-models" data-tooltip="Local Models">
                         <span class="tab-icon">🤖</span><span class="tab-label">Local Models</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="audio-models" data-tooltip="Audio Models">
+                        <span class="tab-icon">🔊</span><span class="tab-label">Audio Models</span></button>
                 </div>
 
                 <!-- ToolKit -->
@@ -3123,6 +3126,89 @@
                 </div>
             </div>
 
+            <!-- Audio Models Panel -->
+            <div class="main-tab-panel" id="audio-models-panel">
+                <div class="panel-header">
+                    <h2>Audio Models <span class="panel-ts-badge" data-panel-ts="audio-models"></span></h2>
+                    <div class="header-actions">
+                        <button class="action-btn secondary" onclick="AudioModels.refresh()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <!-- Section tabs -->
+                    <div class="am-tab-bar">
+                        <button class="am-tab-btn active" data-amtab="tts" onclick="AudioModels.switchTab('tts', this)">
+                            <i class="fas fa-volume-up"></i> TTS Models
+                        </button>
+                        <button class="am-tab-btn" data-amtab="stt" onclick="AudioModels.switchTab('stt', this)">
+                            <i class="fas fa-microphone"></i> STT Models
+                        </button>
+                        <button class="am-tab-btn" data-amtab="voices" onclick="AudioModels.switchTab('voices', this)">
+                            <i class="fas fa-user-circle"></i> Voices
+                        </button>
+                    </div>
+
+                    <!-- TTS Section -->
+                    <div id="am-section-tts" class="am-section">
+                        <p class="section-desc">Local text-to-speech models — generate audio without cloud APIs.</p>
+                        <div id="am-tts-cards" class="am-model-grid"></div>
+                    </div>
+
+                    <!-- STT Section -->
+                    <div id="am-section-stt" class="am-section" style="display:none">
+                        <p class="section-desc">Local speech-to-text models — transcribe audio without cloud APIs.</p>
+                        <div id="am-stt-cards" class="am-model-grid"></div>
+                    </div>
+
+                    <!-- Voices Section -->
+                    <div id="am-section-voices" class="am-section" style="display:none">
+                        <p class="section-desc">Manage cloned voice profiles for models that support voice cloning.</p>
+                        <div id="am-voices-model-select" class="am-voices-selector"></div>
+                        <div id="am-voices-list" class="am-voices-grid"></div>
+                        <!-- Clone form -->
+                        <div class="setting-card" id="am-clone-form" style="margin-top:1.5rem;">
+                            <div class="card-header"><h3>Clone a New Voice</h3></div>
+                            <div class="card-body">
+                                <p class="section-desc">Upload 6–30 seconds of clean reference audio.</p>
+                                <div class="am-clone-fields">
+                                    <div class="am-field">
+                                        <label>Reference Audio</label>
+                                        <div id="am-clone-dropzone" class="am-dropzone">
+                                            <i class="fas fa-cloud-upload-alt"></i>
+                                            <span>Drop WAV / MP3 here or click to browse</span>
+                                            <input type="file" id="am-clone-file" accept=".wav,.mp3,.ogg,.flac" style="display:none">
+                                        </div>
+                                        <p id="am-clone-filename" style="font-size:0.8rem;color:var(--text-secondary);margin-top:0.4rem;"></p>
+                                    </div>
+                                    <div class="am-field">
+                                        <label>Voice Name</label>
+                                        <input type="text" id="am-clone-name" class="setting-input" placeholder="e.g. Misaka, Narrator…">
+                                    </div>
+                                    <div class="am-field">
+                                        <label>Language</label>
+                                        <select id="am-clone-lang" class="setting-select">
+                                            <option value="en">English</option>
+                                            <option value="zh-cn">Chinese</option>
+                                            <option value="ja">Japanese</option>
+                                            <option value="ko">Korean</option>
+                                            <option value="fr">French</option>
+                                            <option value="de">German</option>
+                                            <option value="es">Spanish</option>
+                                            <option value="ru">Russian</option>
+                                        </select>
+                                    </div>
+                                    <button class="action-btn primary" onclick="AudioModels.cloneVoice()">
+                                        <i class="fas fa-magic"></i> Clone Voice
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Scripts -->
             <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
             <script src="/static/lib/marked.min.js"></script>
@@ -3141,6 +3227,7 @@
             <script src="/static/js/view-settings.js?v=5"></script>
             <script src="/static/js/view-documentation.js?v=5"></script>
             <script src="/static/js/view-models.js?v=5"></script>
+            <script src="/static/js/view-audio-models.js?v=9.0.0"></script>
             <script src="/static/js/view-ports.js?v=5"></script>
 
             <!-- Modes (Active Interactive Panels) -->
@@ -3212,9 +3299,8 @@
 
         <div class="kbd-section-title">Dashboard Modes</div>
         <div class="kbd-grid">
-            <div class="kbd-row"><span class="kbd-desc">Suite mode</span>            <span class="kbd-keys"><kbd>Alt</kbd><kbd>1</kbd></span></div>
-            <div class="kbd-row"><span class="kbd-desc">Enterprise mode</span>       <span class="kbd-keys"><kbd>Alt</kbd><kbd>2</kbd></span></div>
-            <div class="kbd-row"><span class="kbd-desc">R&amp;D mode</span>          <span class="kbd-keys"><kbd>Alt</kbd><kbd>3</kbd></span></div>
+            <div class="kbd-row"><span class="kbd-desc">Home mode</span>             <span class="kbd-keys"><kbd>Alt</kbd><kbd>1</kbd></span></div>
+            <div class="kbd-row"><span class="kbd-desc">AI mode</span>               <span class="kbd-keys"><kbd>Alt</kbd><kbd>2</kbd></span></div>
         </div>
     </div>
 </div>
