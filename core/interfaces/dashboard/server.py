@@ -258,6 +258,7 @@ async def initialize_system_background():
         from .games_routes import router as games_router
         from .discord_routes import router as discord_router
         from .audio_models_routes import router as audio_models_router
+        from .agent_workspace_routes import router as agent_workspace_router
 
         # Immediate Router Inclusion (Sync but fast)
         app.include_router(package_router)
@@ -276,6 +277,7 @@ async def initialize_system_background():
         app.include_router(games_router)
         app.include_router(discord_router)
         app.include_router(audio_models_router)
+        app.include_router(agent_workspace_router)
 
         # Step 2: Offload Heavy Component Initialization to a Thread
         # This keeps the FastAPI event loop free to serve requests.

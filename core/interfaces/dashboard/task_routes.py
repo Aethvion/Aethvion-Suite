@@ -24,6 +24,8 @@ class TaskSubmitRequest(BaseModel):
     attached_files: Optional[List[Dict[str, Any]]] = None
     mode: Optional[str] = "auto"
     settings: Optional[Dict[str, Any]] = None
+    workspace_id: Optional[str] = None       # Agent workspace ID (Agents tab)
+    agent_thread_id: Optional[str] = None    # Agent thread ID (Agents tab)
 
 
 class ThreadSettingsRequest(BaseModel):
@@ -62,7 +64,9 @@ async def submit_task(request: TaskSubmitRequest):
             model_id=request.model_id,
             attached_files=request.attached_files,
             mode=request.mode,
-            settings=request.settings
+            settings=request.settings,
+            workspace_id=request.workspace_id,
+            agent_thread_id=request.agent_thread_id,
         )
         
         return TaskResponse(

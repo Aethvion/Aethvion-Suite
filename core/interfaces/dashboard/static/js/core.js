@@ -897,6 +897,9 @@ function switchMainTab(tabName, save = true) {
         const gameType = actualTabName.replace('game-', '');
         handleGameTabSwitch(gameType);
     }
+    else if (actualTabName === 'agents' && typeof onAgentsPanelActivated === 'function') {
+        onAgentsPanelActivated();
+    }
 
     // Update layout based on mode
     updateChatLayout();

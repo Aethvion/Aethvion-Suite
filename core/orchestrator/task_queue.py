@@ -141,6 +141,28 @@ class TaskWorker:
                                 context_prompt = f"Chat History:\n{history_str}\n\nCurrent Message:\n{task.prompt}"
                                 logger.info(f"[{task.id}] Injected context ({len(history_tasks)//2} turns)")
 
+                    # ── Agent workspace context injection ─────────────────────────
+                    ws_id = task.metadata.get('workspace_id')
+                    ag_tid = task.metadata.get('agent_thread_id')
+                    if ws_id:
+                        try:
+                            from core.interfaces.dashboard.agent_workspace_routes import workspace_manager as _agent_ws_mgr
+                            ws = _agent_ws_mgr.get_workspace(ws_id)
+                            workspace_ctx = f"[Working Directory: {ws['path']}]\n" if ws else ""
+                            history_text = ""
+                            if ag_tid:
+                                agent_history = _agent_ws_mgr.get_thread_history(ws_id, ag_tid, limit=15)
+                                if agent_history:
+                                    lines = []
+                                    for m in agent_history:
+                                        role = "User" if m.get("role") == "user" else "Assistant"
+                                        lines.append(f"{role}: {m.get('content', '')[:500]}")
+                                    history_text = "Previous conversation:\n" + "\n".join(lines) + "\n\n"
+                            context_prompt = workspace_ctx + history_text + context_prompt
+                        except Exception as _ws_err:
+                            logger.debug(f"[{task.id}] Agent workspace context injection failed (non-critical): {_ws_err}")
+                    # ── End agent workspace context injection ──────────────────────
+
                     model_id = task.metadata.get('selected_model')
                     # Normalize 'auto' → None so provider manager uses its default routing
                     if model_id == 'auto':
@@ -217,6 +239,33 @@ class TaskWorker:
                     if result.model_id:
                         task.metadata['actual_model'] = result.model_id
                     task.completed_at = datetime.now()
+
+                    # ── Save messages to agent thread ──────────────────────────────
+                    _ws_id2 = task.metadata.get('workspace_id')
+                    _ag_tid2 = task.metadata.get('agent_thread_id')
+                    if _ws_id2 and _ag_tid2:
+                        try:
+                            from core.interfaces.dashboard.agent_workspace_routes import workspace_manager as _agent_ws_mgr2
+                            _now_iso = datetime.now().isoformat()
+                            _messages_to_save = [
+                                {
+                                    "role": "user",
+                                    "content": task.prompt,
+                                    "timestamp": _now_iso,
+                                    "task_id": task.id,
+                                },
+                                {
+                                    "role": "assistant",
+                                    "content": result.response or "",
+                                    "timestamp": _now_iso,
+                                    "actions": result.actions_taken or [],
+                                    "model": result.model_id or task.metadata.get('actual_model', ''),
+                                },
+                            ]
+                            _agent_ws_mgr2.append_messages(_ws_id2, _ag_tid2, _messages_to_save)
+                        except Exception as _ag_save_err:
+                            logger.debug(f"[{task.id}] Agent thread save failed (non-critical): {_ag_save_err}")
+                    # ── End save messages to agent thread ──────────────────────────
 
                     # Log conversation to HistoryManager so persona gets context in future turns
                     try:
@@ -393,10 +442,11 @@ class TaskQueueManager:
         logger.info(f"Updated settings for thread {thread_id}: {settings}")
         return True
 
-    async def submit_task(self, prompt: str, thread_id: str = "default", thread_title: str = None, 
+    async def submit_task(self, prompt: str, thread_id: str = "default", thread_title: str = None,
                     model_id: Optional[str] = None, attached_files: Optional[List[Dict[str, Any]]] = None,
                     mode: Optional[str] = None, settings: Optional[Dict[str, Any]] = None,
-                    task_type: Optional[str] = None, channel_id: Optional[str] = None) -> str:
+                    task_type: Optional[str] = None, channel_id: Optional[str] = None,
+                    workspace_id: Optional[str] = None, agent_thread_id: Optional[str] = None) -> str:
         """
         Submit a task to the queue.
         
@@ -466,7 +516,11 @@ class TaskQueueManager:
             task.metadata['task_type'] = task_type
         if channel_id:
             task.metadata['channel_id'] = channel_id
-            
+        if workspace_id:
+            task.metadata['workspace_id'] = workspace_id
+        if agent_thread_id:
+            task.metadata['agent_thread_id'] = agent_thread_id
+
         # Save thread state
         self._save_thread(thread_id)
         

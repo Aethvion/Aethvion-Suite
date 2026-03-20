@@ -51,6 +51,7 @@ SETTINGS       = CONFIG / "settings.json"
 HISTORY_CHAT     = HISTORY / "chat"             # Standard Misaka chat sessions
 HISTORY_AI_CONV  = HISTORY / "ai_conversations" # AI Conversations feature saves
 HISTORY_ADVANCED = HISTORY / "advanced"         # Advanced AI Conversations
+HISTORY_AGENTS   = HISTORY / "agents"           # Agent Workspace threads
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 LOGS_USAGE  = LOGS / "usage"   # AI API usage — YYYY-MM/usage_YYYY-MM-DD.json
@@ -103,7 +104,7 @@ def ensure_all() -> None:
         APPS, APP_ARENA, APP_AUDIO, APP_CODE, APP_DRIVEINFO, APP_FINANCE,
         APP_GAMES, APP_HARDWARE, APP_NEXUS, APP_PHOTO, APP_TRACKING, APP_VTUBER,
         CONFIG,
-        HISTORY, HISTORY_CHAT, HISTORY_AI_CONV, HISTORY_ADVANCED,
+        HISTORY, HISTORY_CHAT, HISTORY_AI_CONV, HISTORY_ADVANCED, HISTORY_AGENTS,
         LOGS, LOGS_USAGE, LOGS_SYSTEM,
         SYSTEM,
         VAULT, VAULT_PERSONAS, VAULT_KNOWLEDGE, VAULT_SEARCH, VAULT_EPISODIC,

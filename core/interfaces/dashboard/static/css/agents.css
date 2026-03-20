@@ -1,0 +1,545 @@
+/* ============================================================
+   Agent Workspaces Panel — agents.css
+   ============================================================ */
+
+/* ── Layout ─────────────────────────────────────────────────── */
+.agents-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-primary);
+}
+
+/* ── Top bar ─────────────────────────────────────────────────── */
+.agents-topbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+.agents-topbar-left {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.agents-topbar-right {
+    display: flex;
+    align-items: center;
+    max-width: 420px;
+    overflow: hidden;
+}
+
+.agents-selector-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 200px;
+}
+
+.agents-selector-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.agents-selector-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.agents-select {
+    flex: 1;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 6px;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.85rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    min-width: 160px;
+}
+
+.agents-select:focus {
+    border-color: var(--primary);
+}
+
+.agents-select:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.agents-icon-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    padding: 0.35rem 0.5rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    line-height: 1;
+}
+
+.agents-icon-btn:hover:not(:disabled) {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: rgba(0, 217, 255, 0.07);
+}
+
+.agents-icon-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.agents-icon-btn--danger:hover:not(:disabled) {
+    color: var(--error, #ff4757);
+    border-color: var(--error, #ff4757);
+    background: rgba(255, 71, 87, 0.07);
+}
+
+.agents-workspace-path {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-family: 'Fira Code', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Messages area ───────────────────────────────────────────── */
+.agents-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    scroll-behavior: smooth;
+}
+
+/* Empty state */
+.agents-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 0.6rem;
+    padding: 3rem;
+    text-align: center;
+    color: var(--text-secondary);
+    user-select: none;
+}
+
+.agents-empty-icon {
+    font-size: 3rem;
+    opacity: 0.5;
+}
+
+.agents-empty-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    opacity: 0.6;
+}
+
+.agents-empty-sub {
+    font-size: 0.85rem;
+    opacity: 0.5;
+    max-width: 340px;
+}
+
+/* ── Message bubbles ─────────────────────────────────────────── */
+.agents-message {
+    display: flex;
+    flex-direction: column;
+    max-width: 78%;
+    animation: agentsMsgIn 0.2s ease-out;
+}
+
+@keyframes agentsMsgIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.agents-message--user {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.agents-message--assistant {
+    align-self: flex-start;
+    align-items: flex-start;
+}
+
+.agents-message--error {
+    align-self: flex-start;
+    align-items: flex-start;
+}
+
+.agents-bubble {
+    padding: 0.7rem 1rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    word-break: break-word;
+}
+
+.agents-message--user .agents-bubble {
+    background: var(--primary, #00d9ff);
+    color: #000;
+    border-bottom-right-radius: 4px;
+}
+
+.agents-message--assistant .agents-bubble {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-bottom-left-radius: 4px;
+}
+
+.agents-message--error .agents-bubble {
+    background: rgba(255, 71, 87, 0.12);
+    border: 1px solid rgba(255, 71, 87, 0.35);
+    color: var(--error, #ff4757);
+    border-bottom-left-radius: 4px;
+}
+
+.agents-bubble-meta {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+    padding: 0 0.25rem;
+    opacity: 0.6;
+}
+
+/* Markdown within assistant bubbles */
+.agents-bubble h1, .agents-bubble h2, .agents-bubble h3 {
+    margin: 0.5rem 0 0.25rem;
+    font-size: 1em;
+    color: var(--primary);
+}
+.agents-bubble p { margin: 0.25rem 0; }
+.agents-bubble pre {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.6rem 0.8rem;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    margin: 0.5rem 0;
+}
+.agents-bubble code {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.82em;
+    background: rgba(0,0,0,0.2);
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+}
+.agents-bubble pre code {
+    background: none;
+    padding: 0;
+}
+.agents-bubble ul, .agents-bubble ol {
+    padding-left: 1.4rem;
+    margin: 0.25rem 0;
+}
+.agents-bubble table {
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin: 0.4rem 0;
+    width: 100%;
+}
+.agents-bubble th, .agents-bubble td {
+    border: 1px solid var(--border);
+    padding: 0.3rem 0.6rem;
+}
+.agents-bubble th { background: var(--bg-tertiary); }
+
+/* Action pills */
+.agents-actions-taken {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+}
+
+.agents-action-pill {
+    background: rgba(0, 217, 255, 0.08);
+    border: 1px solid rgba(0, 217, 255, 0.2);
+    color: var(--primary);
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 20px;
+    font-family: 'Fira Code', monospace;
+}
+
+/* Model badge */
+.agents-model-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+    margin-top: 0.3rem;
+}
+
+/* Typing indicator */
+.agents-typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.agents-typing-dots {
+    display: flex;
+    gap: 4px;
+}
+
+.agents-typing-dots span {
+    width: 7px;
+    height: 7px;
+    background: var(--primary);
+    border-radius: 50%;
+    animation: agentsTypingPulse 1.2s infinite ease-in-out;
+}
+
+.agents-typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.agents-typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes agentsTypingPulse {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+}
+
+.agents-typing-elapsed {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    margin-left: 0.25rem;
+}
+
+/* ── Input area ──────────────────────────────────────────────── */
+.agents-input-area {
+    flex-shrink: 0;
+    padding: 0.75rem 1rem 1rem;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.agents-input-context {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-family: 'Fira Code', monospace;
+    padding: 0 0.25rem;
+}
+
+.agents-input-context i {
+    color: var(--primary);
+    font-size: 0.7rem;
+}
+
+.agents-input-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+
+.agents-textarea {
+    flex: 1;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.9rem;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    transition: border-color 0.15s;
+    line-height: 1.45;
+    min-height: 60px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.agents-textarea:focus {
+    border-color: var(--primary);
+}
+
+.agents-textarea:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.agents-textarea::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.5;
+}
+
+.agents-input-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: stretch;
+}
+
+.agents-model-select {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 6px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.78rem;
+    outline: none;
+    cursor: pointer;
+}
+
+.agents-submit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    background: var(--primary, #00d9ff);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, box-shadow 0.15s;
+    white-space: nowrap;
+}
+
+.agents-submit-btn:hover:not(:disabled) {
+    opacity: 0.88;
+    box-shadow: 0 0 14px rgba(0, 217, 255, 0.4);
+}
+
+.agents-submit-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+/* ── Modal overlay ───────────────────────────────────────────── */
+.agents-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(3px);
+}
+
+.agents-modal {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 420px;
+    max-width: 95vw;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    animation: agentsModalIn 0.18s ease-out;
+}
+
+@keyframes agentsModalIn {
+    from { opacity: 0; transform: scale(0.93) translateY(-12px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.agents-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.agents-modal-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--primary);
+}
+
+.agents-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.2rem;
+    line-height: 1;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    transition: color 0.15s;
+}
+
+.agents-modal-close:hover {
+    color: var(--text-primary);
+}
+
+.agents-modal-body {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.agents-modal-body label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.agents-modal-input {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.88rem;
+    font-family: 'Fira Code', monospace;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.agents-modal-input:focus {
+    border-color: var(--primary);
+}
+
+.agents-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    padding: 0.9rem 1.25rem;
+    border-top: 1px solid var(--border);
+}
