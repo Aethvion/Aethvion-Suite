@@ -187,8 +187,8 @@ async def clone_voice(req: CloneVoiceRequest):
 @router.delete("/voices")
 async def delete_voice(req: DeleteVoiceRequest):
     """Delete a cloned voice by removing its files."""
-    from core.utils.paths import APP_AUDIO
-    vdir = APP_AUDIO / "voices" / req.model_id
+    from core.utils.paths import LOCAL_MODELS_AUDIO_VOICES
+    vdir = LOCAL_MODELS_AUDIO_VOICES / req.model_id
     wav = vdir / f"{req.voice_id}.wav"
     meta = vdir / f"{req.voice_id}.json"
     if not wav.exists():

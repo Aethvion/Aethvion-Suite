@@ -37,7 +37,7 @@ const LocalModels = {
             if (typeof markPanelUpdated !== 'undefined') markPanelUpdated('models');
 
             if (Object.keys(models).length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="placeholder-text">No models found in /LocalModels</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="placeholder-text">No models found in localmodels/gguf/</td></tr>';
                 return;
             }
 

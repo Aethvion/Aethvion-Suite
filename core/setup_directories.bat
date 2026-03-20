@@ -68,5 +68,15 @@ if not exist "data\workspaces\media"       mkdir "data\workspaces\media"
 if not exist "data\workspaces\uploads"     mkdir "data\workspaces\uploads"
 if not exist "data\workspaces\projects"    mkdir "data\workspaces\projects"
 
+:: ── Local Models ─────────────────────────────────────────────
+echo [SETUP] Configuring local model storage...
+if not exist "localmodels"                       mkdir "localmodels"
+if not exist "localmodels\gguf"                  mkdir "localmodels\gguf"
+if not exist "localmodels\audio"                 mkdir "localmodels\audio"
+if not exist "localmodels\audio\kokoro"          mkdir "localmodels\audio\kokoro"
+if not exist "localmodels\audio\xtts-v2"         mkdir "localmodels\audio\xtts-v2"
+if not exist "localmodels\audio\whisper"         mkdir "localmodels\audio\whisper"
+if not exist "localmodels\audio\voices"          mkdir "localmodels\audio\voices"
+
 echo [OK]    Directory structure ready.
 echo.

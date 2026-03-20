@@ -62,11 +62,22 @@ class KokoroModel(LocalAudioModel):
             return False
 
     def load(self, device: str = "cuda") -> None:
+        import os
         from kokoro import KPipeline
-        self._pipeline = KPipeline(lang_code="a")  # American English default
+        # Redirect HF model cache to our localmodels/audio/kokoro/ directory
+        kokoro_dir = str(self.models_dir / "kokoro")
+        _prev = os.environ.get("HF_HUB_CACHE")
+        os.environ["HF_HUB_CACHE"] = kokoro_dir
+        try:
+            self._pipeline = KPipeline(lang_code="a")  # American English default
+        finally:
+            if _prev is None:
+                os.environ.pop("HF_HUB_CACHE", None)
+            else:
+                os.environ["HF_HUB_CACHE"] = _prev
         self._device = device
         self._loaded = True
-        logger.info("Kokoro TTS loaded")
+        logger.info(f"Kokoro TTS loaded (cache: {kokoro_dir})")
 
     def unload(self) -> None:
         self._pipeline = None

@@ -678,15 +678,22 @@ function renderMarkdown(text) {
 }
 
 function cleanStreamingDisplay(rawText) {
-    // Aggressively remove tags, even if partially typed, to prevent UI flicker
-    // This matches: 
-    // - Full tags: [Emotion: smile], [Mood: calm], [msg_break]
-    // - Partial tags at end of string: [, [E, [Emotion, [Emotion:, [Emotion: sm
+    // Remove expression/mood/break tags (complete + partial at string end)
     let clean = rawText
         .replace(/\[Emotion:.*?\]/gi, '')
         .replace(/\[Mood:.*?\]/gi, '')
         .replace(/\[msg_break\]/gi, '')
         .replace(/\[(E(m(o(t(i(o(n(:.*)?)?)?)?)?)?)?|M(o(o(d(:.*)?)?)?)?|m(s(g(_(b(r(e(a(k)?)?)?)?)?)?)?)?)?$/i, '');
+
+    // Strip complete bare JSON memory blobs (model forgot <memory_update> wrapper)
+    const memKeys = /"(?:user_info|recent_observations|base_info|synthesis_notes)"/;
+    clean = clean.replace(/\n?\{[^{]*"(?:user_info|recent_observations|base_info|synthesis_notes)"[\s\S]*?\}/g, '');
+
+    // Strip trailing partial JSON blob still being typed
+    const trailingJson = clean.match(/\n(\{[^{]*)$/);
+    if (trailingJson && memKeys.test(trailingJson[1])) {
+        clean = clean.slice(0, clean.length - trailingJson[0].length);
+    }
 
     return clean.trim();
 }
@@ -1262,11 +1269,13 @@ async function loadMisakaVoiceOptions() {
 }
 
 function _cleanForSpeech(text) {
+    // Strip memory JSON blobs
+    text = text.replace(/\n?\{[^{]*"(?:user_info|recent_observations|base_info|synthesis_notes)"[\s\S]*?\}/g, '');
     return text
         .replace(/\[Emotion:.*?\]/gi, '')
         .replace(/\[Mood:.*?\]/gi, '')
         .replace(/\[msg_break\]/gi, '')
-        .replace(/```[\s\S]*?```/g, ' code block ')
+        .replace(/```[\s\S]*?```/g, ' ')
         .replace(/`[^`]+`/g, '')
         .replace(/\*\*(.*?)\*\*/g, '$1')
         .replace(/\*(.*?)\*/g, '$1')
@@ -1281,33 +1290,44 @@ async function speakMisakaResponse(rawText) {
     const voiceSel = document.getElementById('misaka-voice-id');
     if (!modelSel || !modelSel.value) return;
 
-    const text = _cleanForSpeech(rawText);
-    if (!text) return;
-
     // Stop any currently playing audio
     if (_misakaAudio) { _misakaAudio.pause(); _misakaAudio = null; }
 
     // Save voice choice to prefs
     if (window.prefs && voiceSel && voiceSel.value) prefs.set('misakacipher.voice_id', voiceSel.value);
 
-    try {
-        const res = await fetch('/api/audio/local/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                text,
-                model_id: modelSel.value,
-                voice_id: voiceSel ? voiceSel.value || null : null,
-                language: 'en',
-                device: 'cuda',
-            }),
-        });
-        const data = await res.json();
-        if (!data.success || !data.audio) return;
-        _misakaAudio = new Audio(data.audio);
-        _misakaAudio.play();
-    } catch (e) {
-        console.warn('[Misaka Voice] TTS generation failed:', e);
+    // Split by [msg_break] and speak each segment in order
+    const segments = rawText
+        .split(/\[msg_break\]/gi)
+        .map(s => _cleanForSpeech(s))
+        .filter(s => s.length > 2);  // skip near-empty segments
+
+    for (const text of segments) {
+        if (!_misakaVoiceEnabled) break;
+        try {
+            const res = await fetch('/api/audio/local/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text,
+                    model_id: modelSel.value,
+                    voice_id: voiceSel ? voiceSel.value || null : null,
+                    language: 'en',
+                    device: 'cuda',
+                }),
+            });
+            const data = await res.json();
+            if (!data.success || !data.audio) continue;
+            await new Promise(resolve => {
+                _misakaAudio = new Audio(data.audio);
+                _misakaAudio.onended = resolve;
+                _misakaAudio.onerror = resolve;
+                _misakaAudio.play();
+            });
+            _misakaAudio = null;
+        } catch (e) {
+            console.warn('[Misaka Voice] TTS generation failed:', e);
+        }
     }
 }
 

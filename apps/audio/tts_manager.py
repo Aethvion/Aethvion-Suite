@@ -8,14 +8,14 @@ from pathlib import Path
 from typing import Optional, Dict, List
 
 from core.utils.logger import get_logger
-from core.utils.paths import APP_AUDIO
+from core.utils.paths import LOCAL_MODELS_AUDIO, LOCAL_MODELS_AUDIO_VOICES
 from .models.base import LocalAudioModel, TTSResult, STTResult, VoiceInfo
 from .models.registry import get_all_model_classes, get_model_class
 
 logger = get_logger(__name__)
 
-MODELS_DIR = APP_AUDIO / "models"
-VOICES_DIR = APP_AUDIO / "voices"
+MODELS_DIR = LOCAL_MODELS_AUDIO   # localmodels/audio/ — model weights per subdir
+VOICES_DIR = LOCAL_MODELS_AUDIO_VOICES  # localmodels/audio/voices/ — cloned WAVs
 
 
 class TTSManager:

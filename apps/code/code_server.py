@@ -145,7 +145,7 @@ def _scan_structure(workspace: str, max_files: int = 300) -> list[str]:
     """Return a flat list of relative paths for AI context (dirs end with /)."""
     SKIP = {".git", "__pycache__", "node_modules", ".venv", "venv",
             "dist", "build", ".tox", ".mypy_cache", ".pytest_cache",
-            "LocalModels", ".claude"}
+            "localmodels", "LocalModels", ".claude"}
     root = Path(workspace)
     result: list[str] = []
 

@@ -1071,10 +1071,15 @@ CRITICAL: Never output raw JSON or technical jargon unless specifically requeste
             inside_tool = False
             
             def clean_text(t):
-                # Only strip strictly internal tags that we don't want the frontend to see at all.
-                # [Emotion:] and [Mood:] and [msg_break] should be passed because the frontend handles them.
+                # Strip <memory_update> XML blocks (expected format)
                 t = re.sub(r'<memory_update>.*?</memory_update>', '', t, flags=re.IGNORECASE | re.DOTALL)
                 t = re.sub(r'<memory_update>.*$', '', t, flags=re.IGNORECASE)
+                # Strip bare JSON memory blobs the model outputs without the XML wrapper
+                # e.g. { "recent_observations": [...] } or { "user_info": {...}, ... }
+                _mem_keys = r'"(?:user_info|recent_observations|base_info|synthesis_notes)"'
+                t = re.sub(r'\n?\{[^{]*' + _mem_keys + r'[\s\S]*?\}', '', t)
+                # Strip trailing partial JSON blob that hasn't closed yet
+                t = re.sub(r'\n\{[^{]*' + _mem_keys + r'.*$', '', t, flags=re.DOTALL)
                 return t
 
             # For Vision Context Rotation

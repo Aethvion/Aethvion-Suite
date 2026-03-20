@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from core.utils import get_logger
 from core.utils.model_downloader import ModelDownloader
-from core.utils.paths import MODEL_REGISTRY, SUGGESTED_LOCAL_MODELS
+from core.utils.paths import MODEL_REGISTRY, SUGGESTED_LOCAL_MODELS, LOCAL_MODELS_GGUF
 
 logger = get_logger(__name__)
 
@@ -21,6 +21,7 @@ router = APIRouter(prefix="/api/registry", tags=["registry"])
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 REGISTRY_PATH = MODEL_REGISTRY
 SUGGESTED_PATH = SUGGESTED_LOCAL_MODELS
+GGUF_DIR = LOCAL_MODELS_GGUF
 ENV_PATH = PROJECT_ROOT / ".env"
 ENV_EXAMPLE_PATH = PROJECT_ROOT / ".env.example"
 
@@ -579,7 +580,7 @@ async def save_auto_routing(data: Dict[str, Any], request: Request):
 async def get_local_models_status():
     """Check which local models are downloaded."""
     try:
-        local_dir = PROJECT_ROOT / "LocalModels"
+        local_dir = GGUF_DIR
         if not local_dir.exists():
             return {"models": {}}
         
@@ -648,7 +649,7 @@ async def delete_local_model(data: Dict[str, Any]):
         if not filename:
             raise HTTPException(status_code=400, detail="filename is required")
             
-        local_dir = PROJECT_ROOT / "LocalModels"
+        local_dir = GGUF_DIR
         model_path = local_dir / filename
         
         if not model_path.exists():

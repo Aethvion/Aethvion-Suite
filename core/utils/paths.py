@@ -6,7 +6,14 @@ Import constants from here instead of constructing paths manually.
 from pathlib import Path
 
 # ── Root ──────────────────────────────────────────────────────────────────────
-DATA = Path(__file__).parent.parent.parent / "data"
+_PROJECT = Path(__file__).parent.parent.parent
+DATA = _PROJECT / "data"
+
+# ── Local model storage (user-downloaded weights, separate from app data) ─────
+LOCAL_MODELS       = _PROJECT / "localmodels"
+LOCAL_MODELS_GGUF  = LOCAL_MODELS / "gguf"    # GGUF chat models (llama.cpp)
+LOCAL_MODELS_AUDIO = LOCAL_MODELS / "audio"   # TTS / STT / voice models
+LOCAL_MODELS_AUDIO_VOICES = LOCAL_MODELS_AUDIO / "voices"  # cloned voice WAVs
 
 # ── Top-level directories ─────────────────────────────────────────────────────
 APPS        = DATA / "apps"
@@ -81,6 +88,13 @@ WS_FILES_INDEX = WORKSPACES / "files.json"
 def ensure_all() -> None:
     """Create all required data directories. Safe to call at startup."""
     dirs = [
+        # Local model weights
+        LOCAL_MODELS, LOCAL_MODELS_GGUF, LOCAL_MODELS_AUDIO,
+        LOCAL_MODELS_AUDIO / "kokoro",
+        LOCAL_MODELS_AUDIO / "xtts-v2",
+        LOCAL_MODELS_AUDIO / "whisper",
+        LOCAL_MODELS_AUDIO_VOICES,
+        # App data
         APPS, APP_ARENA, APP_AUDIO, APP_CODE, APP_DRIVEINFO, APP_FINANCE,
         APP_GAMES, APP_HARDWARE, APP_NEXUS, APP_PHOTO, APP_TRACKING, APP_VTUBER,
         CONFIG,

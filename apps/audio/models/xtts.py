@@ -38,6 +38,7 @@ class XTTSv2Model(LocalAudioModel):
             return False
 
     def load(self, device: str = "cuda") -> None:
+        import os
         try:
             from TTS.api import TTS
         except ImportError as e:
@@ -47,6 +48,10 @@ class XTTSv2Model(LocalAudioModel):
                     'Fix with:  pip install "numpy<2"'
                 ) from e
             raise
+        # Redirect Coqui TTS model storage to localmodels/audio/xtts-v2/
+        xtts_dir = str(self.models_dir / "xtts-v2")
+        _prev = os.environ.get("TTS_HOME")
+        os.environ["TTS_HOME"] = xtts_dir
         try:
             self._tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
         except Exception as e:
@@ -56,9 +61,14 @@ class XTTSv2Model(LocalAudioModel):
                     'Fix with:  pip install "numpy<2"'
                 ) from e
             raise
+        finally:
+            if _prev is None:
+                os.environ.pop("TTS_HOME", None)
+            else:
+                os.environ["TTS_HOME"] = _prev
         self._device = device
         self._loaded = True
-        logger.info(f"XTTS-v2 loaded on {device}")
+        logger.info(f"XTTS-v2 loaded on {device} (home: {xtts_dir})")
 
     def unload(self) -> None:
         self._tts = None

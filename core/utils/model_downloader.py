@@ -18,8 +18,8 @@ class ModelDownloader:
     
     def __init__(self, base_dir: Optional[Path] = None):
         if base_dir is None:
-            # Default to LocalModels at the project root
-            self.base_dir = Path(__file__).parent.parent.parent / "LocalModels"
+            from core.utils.paths import LOCAL_MODELS_GGUF
+            self.base_dir = LOCAL_MODELS_GGUF
         else:
             self.base_dir = Path(base_dir)
             

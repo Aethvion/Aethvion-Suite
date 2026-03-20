@@ -25,11 +25,10 @@ class LocalProvider(BaseProvider):
         self.llm = None
         self.current_model_path = None
         
-        # Determine base directory for models
-        # project_root / LocalModels
-        self.base_dir = Path(__file__).parent.parent.parent / "LocalModels"
-        if not self.base_dir.exists():
-            self.base_dir.mkdir(parents=True, exist_ok=True)
+        # Determine base directory for GGUF models
+        from core.utils.paths import LOCAL_MODELS_GGUF
+        self.base_dir = LOCAL_MODELS_GGUF
+        self.base_dir.mkdir(parents=True, exist_ok=True)
 
     def _ensure_llama(self, model_id: str, **kwargs):
         """Ensure the llama-cpp-python model is loaded."""
