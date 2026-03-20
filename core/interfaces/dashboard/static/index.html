@@ -1920,7 +1920,7 @@
                             <i class="fas fa-key"></i> Environment
                         </button>
                         <button class="settings-nav-item" data-settingsubtab="providers">
-                            <i class="fas fa-server"></i> AI Providers
+                            <i class="fas fa-database"></i> Model Registry
                         </button>
                         <button class="settings-nav-item" data-settingsubtab="profiles">
                             <i class="fas fa-users"></i> Routing Profiles
@@ -2275,8 +2275,8 @@
                             <div class="setting-card" id="card-providers">
                                 <div class="card-header">
                                     <div class="header-title">
-                                        <i class="fas fa-server"></i>
-                                        <span>AI Provider Access</span>
+                                        <i class="fas fa-database"></i>
+                                        <span>Model Registry</span>
                                     </div>
                                     <div class="header-actions">
                                         <button id="add-provider-btn" class="action-btn xs-btn"
@@ -2284,7 +2284,7 @@
                                             <i class="fas fa-plus"></i>
                                         </button>
                                         <button id="save-provider-settings" class="action-btn xs-btn primary"
-                                            title="Save Provider Config">
+                                            title="Save Registry">
                                             <i class="fas fa-save"></i>
                                         </button>
                                     </div>
@@ -2292,13 +2292,13 @@
                                 <div id="provider-unsaved-banner" class="unsaved-banner" style="display:none;">
                                     ⚠ Unsaved changes
                                 </div>
-                                <div class="card-content scrollable">
+                                <div class="card-content">
                                     <div id="inline-add-provider" class="inline-form-container"
                                         style="display:none; margin-bottom: 1rem; padding: 0.8rem; border: 1px dashed var(--border); border-radius: 6px;">
                                         <!-- Inline form injected by JS -->
                                     </div>
-                                    <div id="provider-cards-container" class="provider-list-compact">
-                                        <div class="loading-placeholder">Loading providers...</div>
+                                    <div id="provider-cards-container">
+                                        <div class="loading-placeholder">Loading registry...</div>
                                     </div>
                                 </div>
                             </div>

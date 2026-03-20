@@ -679,6 +679,61 @@
     opacity: 1;
 }
 
+/* ===== Model Registry Tab Bar ===== */
+.registry-tabs-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding-bottom: 0.6rem;
+    margin-bottom: 0.8rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.registry-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.75rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: capitalize;
+    white-space: nowrap;
+}
+
+.registry-tab:hover {
+    border-color: var(--primary);
+    color: var(--text-primary);
+}
+
+.registry-tab.active {
+    background: rgba(0, 217, 255, 0.08);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.registry-tab-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #444;
+    flex-shrink: 0;
+}
+
+.registry-tab-dot.active {
+    background: var(--success);
+    box-shadow: 0 0 5px var(--success);
+}
+
+#registry-tab-content {
+    min-height: 200px;
+}
+
 /* Provider Compact List */
 .provider-list-compact {
     display: flex;

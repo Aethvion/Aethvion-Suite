@@ -609,6 +609,7 @@ let _registryData = null;
 let _localModelsStatus = {}; // { filename: { exists: bool, size_mb: num } }
 let _suggestedModels = {};
 let _settingsDirty = false;
+let _activeRegistryTab = null;
 
 function markSettingsDirty() {
     if (_settingsDirty) return;
@@ -1078,107 +1079,135 @@ function renderProviderCards(registry) {
     if (!container) return;
 
     const providers = registry.providers || {};
-    let html = '';
-
-    for (const [name, config] of Object.entries(providers)) {
-        const isActive = (config.chat_config?.active || config.agent_config?.active);
-
-        html += `
-            <div class="compact-provider-item ${isActive ? 'active' : ''}" data-provider="${name}">
-                <div class="provider-info-row">
-                    <div class="provider-main">
-                        <span class="status-dot ${isActive ? 'active' : ''}"></span>
-                        <span class="provider-name">${name}</span>
-                    </div>
-                </div>
-                <div class="provider-config-grid">
-                    <div class="config-row">
-                        <span class="label">Chat</span>
-                        <label class="switch small">
-                            <input type="checkbox" class="chat-active-toggle" data-provider="${name}" ${config.chat_config?.active ? 'checked' : ''}>
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div class="config-row">
-                        <span class="label">Agent</span>
-                        <label class="switch small">
-                            <input type="checkbox" class="agent-active-toggle" data-provider="${name}" ${config.agent_config?.active ? 'checked' : ''}>
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                </div>
-                <div class="provider-models-foldout" style="display:block;">
-                    <table class="compact-models-table">
-                        <thead>
-                            <tr>
-                                <th>Model ID</th>
-                                <th>Cost (In/Out)</th>
-                                <th>Capabilities</th>
-                                <th>Description</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                             ${Object.entries(config.models || {}).map(([key, m]) => {
-            const modelId = typeof m === 'string' ? m : (m.id || key);
-            const caps = Array.isArray(m.capabilities) ? m.capabilities : [];
-            const desc = (typeof m === 'object' && m.description) ? m.description : '';
-            
-            // Local model status
-            let localStatusHtml = '';
-            if (name === 'local') {
-                const status = _localModelsStatus[key] || { exists: false };
-                if (status.exists) {
-                    localStatusHtml = `<span style="color:#00ff88; font-size:0.7rem;"><i class="fas fa-check-circle"></i> ${status.size_mb} MB</span>`;
-                } else {
-                    localStatusHtml = `<button class="action-btn xs-btn download-local-btn" data-model="${key}" title="Download from HuggingFace"><i class="fas fa-download"></i> Download</button>`;
-                }
-            }
-
-            return `
-                                    <tr class="model-main-row" data-model="${key}">
-                                        <td>
-                                            <div style="display:flex; flex-direction:column; gap:4px;">
-                                                <input type="text" class="model-id-input-small" value="${key}" data-key="${key}">
-                                                ${localStatusHtml}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="cost-inputs">
-                                                <input type="number" step="0.01" class="model-cost-in" value="${m.input_cost_per_1m_tokens || 0}">
-                                                <input type="number" step="0.01" class="model-cost-out" value="${m.output_cost_per_1m_tokens || 0}">
-                                            </div>
-                                        </td>
-                                        <td>${renderCapsTd(caps, key)}</td>
-                                        <td><input type="text" class="model-desc-input" value="${desc.replace(/"/g, '&quot;')}" placeholder="Best for..."></td>
-                                        <td>
-                                            <button class="btn-icon xs-btn del-model" data-key="${key}"><i class="fas fa-trash"></i></button>
-                                        </td>
-                                    </tr>
-                                    ${renderImageConfigRow(key, m)}
-                                    ${renderAudioConfigRow(key, m)}
-                                 `;
-        }).join('')}
-                        </tbody>
-                    </table>
-                    <div class="add-model-line">
-                        <button class="action-btn xs-btn secondary add-model-btn" data-provider="${name}">+ Add Model</button>
-                        <button class="action-btn xs-btn secondary suggested-model-btn" data-provider="${name}"><i class="fas fa-magic"></i> Suggested</button>
-                    </div>
-                </div>
-            </div>
-        `;
+    const names = Object.keys(providers);
+    if (!names.length) {
+        container.innerHTML = '<div class="placeholder-text">No providers found.</div>';
+        return;
     }
 
-    container.innerHTML = html || '<div class="placeholder-text">No providers found.</div>';
+    // Pick initial tab (preserve selection if still valid)
+    if (!_activeRegistryTab || !providers[_activeRegistryTab]) {
+        _activeRegistryTab = names[0];
+    }
 
-    // Event Listeners
+    // Build tab bar
+    let tabsHtml = '<div class="registry-tabs-bar">';
+    for (const name of names) {
+        const cfg = providers[name];
+        const isActive = (cfg.chat_config?.active || cfg.agent_config?.active);
+        const isSelected = name === _activeRegistryTab;
+        tabsHtml += `
+            <button class="registry-tab${isSelected ? ' active' : ''}" data-tab="${name}" onclick="selectRegistryTab('${name}')">
+                <span class="registry-tab-dot${isActive ? ' active' : ''}"></span>
+                ${name}
+            </button>`;
+    }
+    tabsHtml += '</div>';
+    tabsHtml += '<div id="registry-tab-content"></div>';
+
+    container.innerHTML = tabsHtml;
+
+    const saveBtn = document.getElementById('save-provider-settings');
+    if (saveBtn) saveBtn.onclick = saveProviderSettings;
+
+    _renderActiveTabContent();
+}
+
+function _renderActiveTabContent() {
+    const content = document.getElementById('registry-tab-content');
+    if (!content || !_registryData || !_activeRegistryTab) return;
+
+    const config = (_registryData.providers || {})[_activeRegistryTab];
+    if (!config) { content.innerHTML = '<div class="placeholder-text">Provider not found.</div>'; return; }
+
+    content.innerHTML = _buildProviderHtml(_activeRegistryTab, config);
+    _bindProviderTabEvents(content, _activeRegistryTab);
+}
+
+function _buildProviderHtml(name, config) {
+    const isActive = (config.chat_config?.active || config.agent_config?.active);
+    const modelsHtml = Object.entries(config.models || {}).map(([key, m]) => {
+        const caps = Array.isArray(m.capabilities) ? m.capabilities : [];
+        const desc = (typeof m === 'object' && m.description) ? m.description : '';
+
+        let localStatusHtml = '';
+        if (name === 'local') {
+            const status = _localModelsStatus[key] || { exists: false };
+            if (status.exists) {
+                localStatusHtml = `<span style="color:#00ff88; font-size:0.7rem;"><i class="fas fa-check-circle"></i> ${status.size_mb} MB</span>`;
+            } else {
+                localStatusHtml = `<button class="action-btn xs-btn download-local-btn" data-model="${key}" title="Download from HuggingFace"><i class="fas fa-download"></i> Download</button>`;
+            }
+        }
+
+        return `
+            <tr class="model-main-row" data-model="${key}">
+                <td>
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        <input type="text" class="model-id-input-small" value="${key}" data-key="${key}">
+                        ${localStatusHtml}
+                    </div>
+                </td>
+                <td>
+                    <div class="cost-inputs">
+                        <input type="number" step="0.01" class="model-cost-in" value="${m.input_cost_per_1m_tokens || 0}">
+                        <input type="number" step="0.01" class="model-cost-out" value="${m.output_cost_per_1m_tokens || 0}">
+                    </div>
+                </td>
+                <td>${renderCapsTd(caps, key)}</td>
+                <td><input type="text" class="model-desc-input" value="${desc.replace(/"/g, '&quot;')}" placeholder="Best for..."></td>
+                <td>
+                    <button class="btn-icon xs-btn del-model" data-key="${key}"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+            ${renderImageConfigRow(key, m)}
+            ${renderAudioConfigRow(key, m)}`;
+    }).join('');
+
+    return `
+        <div class="compact-provider-item${isActive ? ' active' : ''}" data-provider="${name}">
+            <div class="provider-config-grid" style="margin-bottom:0.6rem;">
+                <div class="config-row">
+                    <span class="label">Chat</span>
+                    <label class="switch small">
+                        <input type="checkbox" class="chat-active-toggle" data-provider="${name}" ${config.chat_config?.active ? 'checked' : ''}>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="config-row">
+                    <span class="label">Agent</span>
+                    <label class="switch small">
+                        <input type="checkbox" class="agent-active-toggle" data-provider="${name}" ${config.agent_config?.active ? 'checked' : ''}>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="provider-models-foldout" style="display:block;">
+                <table class="compact-models-table">
+                    <thead>
+                        <tr>
+                            <th>Model ID</th>
+                            <th>Cost (In/Out)</th>
+                            <th>Capabilities</th>
+                            <th>Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>${modelsHtml}</tbody>
+                </table>
+                <div class="add-model-line">
+                    <button class="action-btn xs-btn secondary add-model-btn" data-provider="${name}">+ Add Model</button>
+                    <button class="action-btn xs-btn secondary suggested-model-btn" data-provider="${name}"><i class="fas fa-magic"></i> Suggested</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function _bindProviderTabEvents(container, name) {
     container.querySelectorAll('.toggle-image-settings').forEach(btn => {
         btn.onclick = (e) => {
             const modelKey = btn.dataset.model;
-            // Find the image config row for THIS model in THIS provider card
-            const providerItem = btn.closest('.compact-provider-item');
-            const row = providerItem.querySelector(`.image-config-row[data-model="${modelKey}"]`);
+            const row = container.querySelector(`.image-config-row[data-model="${modelKey}"]`);
             if (row) {
                 const isVisible = row.style.display !== 'none';
                 row.style.display = isVisible ? 'none' : 'table-row';
@@ -1191,9 +1220,7 @@ function renderProviderCards(registry) {
     container.querySelectorAll('.toggle-audio-settings').forEach(btn => {
         btn.onclick = (e) => {
             const modelKey = btn.dataset.model;
-            // Find the audio config row for THIS model in THIS provider card
-            const providerItem = btn.closest('.compact-provider-item');
-            const row = providerItem.querySelector(`.audio-config-row[data-model="${modelKey}"]`);
+            const row = container.querySelector(`.audio-config-row[data-model="${modelKey}"]`);
             if (row) {
                 const isVisible = row.style.display !== 'none';
                 row.style.display = isVisible ? 'none' : 'table-row';
@@ -1208,14 +1235,17 @@ function renderProviderCards(registry) {
             markSettingsDirty();
         }
     });
+
     container.querySelectorAll('.caps-cell').forEach(cell => initCapsTd(cell));
+
     container.querySelectorAll('.chat-active-toggle, .agent-active-toggle').forEach(t => {
-        t.onchange = (e) => {
-            const item = e.target.closest('.compact-provider-item');
-            const dot = item.querySelector('.status-dot');
+        t.onchange = () => {
+            const item = t.closest('.compact-provider-item');
             const isActive = item.querySelector('.chat-active-toggle').checked || item.querySelector('.agent-active-toggle').checked;
             item.classList.toggle('active', isActive);
-            dot.classList.toggle('active', isActive);
+            // Sync tab dot
+            const dot = document.querySelector(`.registry-tab[data-tab="${name}"] .registry-tab-dot`);
+            if (dot) dot.classList.toggle('active', isActive);
             markSettingsDirty();
         };
     });
@@ -1238,7 +1268,6 @@ function renderProviderCards(registry) {
     container.querySelectorAll('.download-local-btn').forEach(btn => {
         btn.onclick = async () => {
             const modelKey = btn.dataset.model;
-            // For now, hardcode the repo_id for the suggested Llama 3.2 1B
             let repoId = "unsloth/Llama-3.2-1B-Instruct-GGUF";
             let filename = modelKey;
 
@@ -1254,7 +1283,7 @@ function renderProviderCards(registry) {
                     const result = await res.json();
                     if (res.ok) {
                         showNotification(result.message, 'success');
-                        await loadProviderSettings(); // Refresh UI
+                        await loadProviderSettings();
                     } else {
                         showNotification(result.detail || 'Download failed', 'error');
                         btn.disabled = false;
@@ -1268,13 +1297,89 @@ function renderProviderCards(registry) {
             }
         };
     });
+}
 
-    const saveBtn = document.getElementById('save-provider-settings');
-    if (saveBtn) saveBtn.onclick = saveProviderSettings;
+function selectRegistryTab(name) {
+    if (!_registryData?.providers[name]) return;
+    // Sync current tab data before switching
+    if (_activeRegistryTab && _activeRegistryTab !== name) {
+        _syncActiveTabToRegistry();
+    }
+    _activeRegistryTab = name;
+    document.querySelectorAll('.registry-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === name);
+    });
+    _renderActiveTabContent();
+}
+
+function _syncActiveTabToRegistry() {
+    if (!_activeRegistryTab || !_registryData) return;
+    const content = document.getElementById('registry-tab-content');
+    if (!content) return;
+    const item = content.querySelector('.compact-provider-item');
+    if (!item) return;
+
+    const prov = _registryData.providers[_activeRegistryTab];
+    if (!prov) return;
+
+    prov.chat_config = { active: item.querySelector('.chat-active-toggle')?.checked || false, priority: 1 };
+    prov.agent_config = { active: item.querySelector('.agent-active-toggle')?.checked || false, priority: 1 };
+
+    prov.models = {};
+    item.querySelectorAll('tbody tr.model-main-row').forEach(row => {
+        const modelName = row.querySelector('.model-id-input-small')?.value.trim();
+        if (!modelName) return;
+
+        const costIn = parseFloat(row.querySelector('.model-cost-in')?.value || 0);
+        const costOut = parseFloat(row.querySelector('.model-cost-out')?.value || 0);
+        const capsCell = row.querySelector('.caps-cell');
+        const capabilities = capsCell ? Array.from(capsCell.querySelectorAll('.cap-tag')).map(t => t.dataset.cap) : [];
+        const description = row.querySelector('.model-desc-input')?.value.trim() || '';
+
+        const imgRow = item.querySelector(`.image-config-row[data-model="${modelName}"]`);
+        let image_config = null;
+        if (imgRow && capabilities.includes('IMAGE')) {
+            const ar = [];
+            if (imgRow.querySelector('.img-ar-1-1').checked) ar.push('1:1');
+            if (imgRow.querySelector('.img-ar-16-9').checked) ar.push('16:9');
+            if (imgRow.querySelector('.img-ar-9-16').checked) ar.push('9:16');
+            if (imgRow.querySelector('.img-ar-custom').checked) ar.push('custom');
+            const qual = imgRow.querySelector('.img-quality-options').value.split(',').map(s => s.trim()).filter(Boolean);
+            image_config = {
+                aspect_ratios: ar,
+                quality_options: qual,
+                supports_negative_prompt: imgRow.querySelector('.img-neg-prompt').checked,
+                supports_seed: imgRow.querySelector('.img-supports-seed').checked
+            };
+        }
+
+        const audioRow = item.querySelector(`.audio-config-row[data-model="${modelName}"]`);
+        let audio_config = null;
+        if (audioRow && capabilities.includes('AUDIO')) {
+            audio_config = {
+                voice: audioRow.querySelector('.audio-voice').value.trim(),
+                format: audioRow.querySelector('.audio-format').value.trim(),
+                supports_stt: audioRow.querySelector('.audio-stt').checked,
+                supports_tts: audioRow.querySelector('.audio-tts').checked
+            };
+        }
+
+        prov.models[modelName] = {
+            input_cost_per_1m_tokens: costIn,
+            output_cost_per_1m_tokens: costOut,
+            capabilities,
+            ...(description ? { description } : {}),
+            ...(image_config ? { image_config } : {}),
+            ...(audio_config ? { audio_config } : {})
+        };
+    });
 }
 
 function addModelRowInline(providerName) {
-    const providerItem = document.querySelector(`.compact-provider-item[data-provider="${providerName}"]`);
+    const content = document.getElementById('registry-tab-content');
+    const providerItem = content
+        ? content.querySelector('.compact-provider-item')
+        : document.querySelector(`.compact-provider-item[data-provider="${providerName}"]`);
     if (!providerItem) return;
 
     const tbody = providerItem.querySelector('tbody');
@@ -1307,77 +1412,8 @@ function addModelRowInline(providerName) {
 async function saveProviderSettings() {
     if (!_registryData) return;
 
-    const items = document.querySelectorAll('.compact-provider-item');
-    items.forEach(item => {
-        const name = item.dataset.provider;
-        const prov = _registryData.providers[name];
-        if (!prov) return;
-
-        prov.chat_config = { active: item.querySelector('.chat-active-toggle').checked, priority: 1 };
-        prov.agent_config = { active: item.querySelector('.agent-active-toggle').checked, priority: 1 };
-
-        // Model updates - Rebuild from scratch to handle additions/deletions
-        prov.models = {};
-        const modelRows = item.querySelectorAll('tbody tr.model-main-row');
-        modelRows.forEach(row => {
-            const input = row.querySelector('.model-id-input-small');
-            const modelName = input.value.trim();
-            if (!modelName) return; // Skip empty names
-
-            const costIn = parseFloat(row.querySelector('.model-cost-in').value);
-            const costOut = parseFloat(row.querySelector('.model-cost-out').value);
-            // Read capabilities from tag pills
-            const capsCell = row.querySelector('.caps-cell');
-            const capabilities = capsCell
-                ? Array.from(capsCell.querySelectorAll('.cap-tag')).map(t => t.dataset.cap)
-                : [];
-            const descInput = row.querySelector('.model-desc-input');
-            const description = descInput ? descInput.value.trim() : '';
-
-            // Image config (if row exists)
-            const imgRow = item.querySelector(`.image-config-row[data-model="${modelName}"]`);
-            let image_config = null;
-            if (imgRow && capabilities.includes('IMAGE')) {
-                const ar = [];
-                if (imgRow.querySelector('.img-ar-1-1').checked) ar.push('1:1');
-                if (imgRow.querySelector('.img-ar-16-9').checked) ar.push('16:9');
-                if (imgRow.querySelector('.img-ar-9-16').checked) ar.push('9:16');
-                if (imgRow.querySelector('.img-ar-custom').checked) ar.push('custom');
-
-                const qual = imgRow.querySelector('.img-quality-options').value.split(',').map(s => s.trim()).filter(Boolean);
-                const neg = imgRow.querySelector('.img-neg-prompt').checked;
-                const seed = imgRow.querySelector('.img-supports-seed').checked;
-
-                image_config = {
-                    aspect_ratios: ar,
-                    quality_options: qual,
-                    supports_negative_prompt: neg,
-                    supports_seed: seed
-                };
-            }
-
-            // Audio config (if row exists)
-            const audioRow = item.querySelector(`.audio-config-row[data-model="${modelName}"]`);
-            let audio_config = null;
-            if (audioRow && capabilities.includes('AUDIO')) {
-                audio_config = {
-                    voice: audioRow.querySelector('.audio-voice').value.trim(),
-                    format: audioRow.querySelector('.audio-format').value.trim(),
-                    supports_stt: audioRow.querySelector('.audio-stt').checked,
-                    supports_tts: audioRow.querySelector('.audio-tts').checked
-                };
-            }
-
-            prov.models[modelName] = {
-                input_cost_per_1m_tokens: costIn,
-                output_cost_per_1m_tokens: costOut,
-                capabilities: capabilities,
-                ...(description ? { description } : {}),
-                ...(image_config ? { image_config } : {}),
-                ...(audio_config ? { audio_config } : {})
-            };
-        });
-    });
+    // Sync the currently visible tab's DOM data into _registryData before saving
+    _syncActiveTabToRegistry();
 
     try {
         const res = await fetch('/api/registry', {
@@ -1770,6 +1806,7 @@ async function openAddModelModal(providerName) {
         _registryData.providers[providerName].models[modelId] = modelEntry;
 
         closeModal();
+        _activeRegistryTab = providerName;
         renderProviderCards(_registryData);
         await saveRegistry();
         clearSettingsDirty();
