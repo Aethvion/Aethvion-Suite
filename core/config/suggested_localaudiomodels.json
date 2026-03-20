@@ -1,0 +1,37 @@
+{
+    "audio_models": [
+        {
+            "id": "kokoro",
+            "name": "Kokoro TTS",
+            "version": "v1.0",
+            "size": "~330 MB",
+            "capabilities": ["TTS"],
+            "description": "Lightweight, fast, high-quality TTS model. 54M parameters. Supports English and multilingual voices. Best balance of speed and quality for local use.",
+            "tags": ["TTS", "Fast", "Multilingual"],
+            "device_support": ["cpu", "cuda"],
+            "voices": "built-in"
+        },
+        {
+            "id": "xtts-v2",
+            "name": "XTTS-v2",
+            "version": "v2",
+            "size": "~1.9 GB",
+            "capabilities": ["TTS"],
+            "description": "Coqui XTTS-v2 — powerful multilingual TTS with voice cloning. Supports 17 languages and custom voice references. Best for expressive, high-quality voice output.",
+            "tags": ["TTS", "Voice Cloning", "Multilingual"],
+            "device_support": ["cpu", "cuda"],
+            "voices": "cloneable"
+        },
+        {
+            "id": "whisper",
+            "name": "Whisper (faster-whisper)",
+            "version": "medium",
+            "size": "~1.5 GB (medium)",
+            "capabilities": ["STT"],
+            "description": "OpenAI Whisper via faster-whisper — accurate multilingual speech-to-text. Available in tiny/base/small/medium/large. Best local STT model.",
+            "tags": ["STT", "Multilingual", "OpenAI"],
+            "device_support": ["cpu", "cuda"],
+            "model_sizes": ["tiny", "base", "small", "medium", "large-v2", "large-v3"]
+        }
+    ]
+}

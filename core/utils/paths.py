@@ -9,6 +9,12 @@ from pathlib import Path
 _PROJECT = Path(__file__).parent.parent.parent
 DATA = _PROJECT / "data"
 
+# ── Committed config (lives in core/config/, version-controlled) ──────────────
+_CORE_CONFIG = _PROJECT / "core" / "config"
+SUGGESTED_API_MODELS    = _CORE_CONFIG / "suggested_apimodels.json"
+SUGGESTED_LOCAL_MODELS  = _CORE_CONFIG / "suggested_localmodels.json"
+SUGGESTED_AUDIO_MODELS  = _CORE_CONFIG / "suggested_localaudiomodels.json"
+
 # ── Local model storage (user-downloaded weights, separate from app data) ─────
 LOCAL_MODELS       = _PROJECT / "localmodels"
 LOCAL_MODELS_GGUF  = LOCAL_MODELS / "gguf"    # GGUF chat models (llama.cpp)
@@ -38,9 +44,8 @@ APP_TRACKING  = APPS / "tracking"
 APP_VTUBER    = APPS / "vtuber"
 
 # ── Config files ──────────────────────────────────────────────────────────────
-MODEL_REGISTRY         = CONFIG / "model_registry.json"
-SUGGESTED_LOCAL_MODELS = CONFIG / "suggested_local_models.json"
-SETTINGS               = CONFIG / "settings.json"
+MODEL_REGISTRY = CONFIG / "model_registry.json"
+SETTINGS       = CONFIG / "settings.json"
 
 # ── History ───────────────────────────────────────────────────────────────────
 HISTORY_CHAT     = HISTORY / "chat"             # Standard Misaka chat sessions

@@ -14,12 +14,12 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from core.utils.logger import get_logger
-from core.utils.paths import DATA
+from core.utils.paths import SUGGESTED_AUDIO_MODELS
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/audio/local", tags=["audio-models"])
 
-SUGGESTED_PATH = DATA / "config" / "suggested_audio_models.json"
+SUGGESTED_PATH = SUGGESTED_AUDIO_MODELS
 
 
 def _mgr():

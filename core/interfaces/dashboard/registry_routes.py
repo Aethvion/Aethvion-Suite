@@ -12,16 +12,17 @@ from fastapi import APIRouter, HTTPException, Request
 
 from core.utils import get_logger
 from core.utils.model_downloader import ModelDownloader
-from core.utils.paths import MODEL_REGISTRY, SUGGESTED_LOCAL_MODELS, LOCAL_MODELS_GGUF
+from core.utils.paths import MODEL_REGISTRY, SUGGESTED_API_MODELS, SUGGESTED_LOCAL_MODELS, LOCAL_MODELS_GGUF
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/registry", tags=["registry"])
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-REGISTRY_PATH = MODEL_REGISTRY
-SUGGESTED_PATH = SUGGESTED_LOCAL_MODELS
-GGUF_DIR = LOCAL_MODELS_GGUF
+REGISTRY_PATH        = MODEL_REGISTRY
+SUGGESTED_API_PATH   = SUGGESTED_API_MODELS
+SUGGESTED_LOCAL_PATH = SUGGESTED_LOCAL_MODELS
+GGUF_DIR             = LOCAL_MODELS_GGUF
 ENV_PATH = PROJECT_ROOT / ".env"
 ENV_EXAMPLE_PATH = PROJECT_ROOT / ".env.example"
 
@@ -138,12 +139,16 @@ async def update_env_key(data: Dict[str, Any]):
 
 @router.get("/suggested")
 async def get_all_suggested_models():
-    """Get all suggested models for all providers."""
+    """Get all suggested models for all providers (API + local GGUF combined)."""
     try:
-        if not SUGGESTED_PATH.exists():
-            return {}
-        with open(SUGGESTED_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
+        result = {}
+        if SUGGESTED_API_PATH.exists():
+            result = json.loads(SUGGESTED_API_PATH.read_text(encoding="utf-8"))
+        if SUGGESTED_LOCAL_PATH.exists():
+            local_models = json.loads(SUGGESTED_LOCAL_PATH.read_text(encoding="utf-8"))
+            # local_models is a flat list; wrap it under "local" key for the registry modal
+            result["local"] = local_models if isinstance(local_models, list) else local_models.get("local", [])
+        return result
     except Exception as e:
         logger.error(f"Error loading suggested models: {e}")
         return {}
@@ -599,18 +604,13 @@ async def get_local_models_status():
 
 @router.get("/local/suggested")
 async def get_suggested_local_models():
-    """Get list of recommended local models (backward compatible)."""
+    """Get list of recommended GGUF local models."""
     try:
-        if not SUGGESTED_PATH.exists():
+        if not SUGGESTED_LOCAL_PATH.exists():
             return {"suggested": []}
-            
-        with open(SUGGESTED_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            # If it's the new format, return only local part
-            if "local" in data:
-                return {"suggested": data["local"]}
-            # If it's the old format (from a dirty state), return as is
-            return data
+        data = json.loads(SUGGESTED_LOCAL_PATH.read_text(encoding="utf-8"))
+        models = data if isinstance(data, list) else data.get("local", [])
+        return {"suggested": models}
     except Exception as e:
         logger.error(f"Error loading local suggested models: {e}")
         return {"suggested": []}

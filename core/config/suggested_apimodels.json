@@ -1,0 +1,170 @@
+{
+    "google_ai": [
+        {
+            "id": "gemini-2.0-flash",
+            "tier": "fast",
+            "capabilities": ["CHAT", "AUDIO", "VOICEINPUT", "VOICEOUTPUT"],
+            "input_cost": 0.1,
+            "output_cost": 0.4,
+            "description": "Free tier. Fast model for routine tasks and verification."
+        },
+        {
+            "id": "gemini-2.0-flash-lite",
+            "tier": "fast",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.075,
+            "output_cost": 0.3,
+            "description": "Free tier. Lightest Gemini model, best for simple chat."
+        },
+        {
+            "id": "gemini-2.5-pro-preview-05-06",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 1.25,
+            "output_cost": 10,
+            "description": "Latest Gemini 2.5 Pro. Complex reasoning and architecture."
+        },
+        {
+            "id": "gemini-3-flash-preview",
+            "tier": "fast",
+            "capabilities": ["CHAT", "AUDIO", "VOICEINPUT", "VOICEOUTPUT"],
+            "input_cost": 0.5,
+            "output_cost": 3,
+            "description": "Latest Gemini 3 Flash. Fast model for routine tasks and verification."
+        },
+        {
+            "id": "imagen-3.0-generate-002",
+            "tier": "specialized",
+            "capabilities": ["IMAGE"],
+            "input_cost": 0,
+            "output_cost": 0,
+            "description": "Google Imagen 3 for image generation.",
+            "image_config": {
+                "aspect_ratios": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+                "resolutions": ["1024x1024"],
+                "supports_negative_prompt": true,
+                "supports_seed": true,
+                "steps_range": null,
+                "quality_options": ["standard"]
+            }
+        }
+    ],
+    "openai": [
+        {
+            "id": "gpt-4o-mini",
+            "tier": "fast",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.15,
+            "output_cost": 0.6,
+            "description": "Lightweight OpenAI model for simple tasks."
+        },
+        {
+            "id": "gpt-4o",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 2.5,
+            "output_cost": 10,
+            "description": "High-performance GPT-4o model."
+        },
+        {
+            "id": "o3-mini",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 1.1,
+            "output_cost": 4.4,
+            "description": "OpenAI o3-mini reasoning model."
+        },
+        {
+            "id": "dall-e-3",
+            "tier": "specialized",
+            "capabilities": ["IMAGE"],
+            "input_cost": 0,
+            "output_cost": 0,
+            "description": "DALL-E 3 for image generation.",
+            "image_config": {
+                "aspect_ratios": ["1:1", "16:9", "9:16"],
+                "resolutions": ["1024x1024", "1024x1792", "1792x1024"],
+                "supports_negative_prompt": false,
+                "supports_seed": false,
+                "steps_range": null,
+                "quality_options": ["standard", "hd"]
+            }
+        },
+        {
+            "id": "whisper-1",
+            "tier": "specialized",
+            "capabilities": ["VOICEINPUT"],
+            "input_cost": 0.006,
+            "output_cost": 0,
+            "description": "OpenAI Whisper for audio transcription (speech-to-text)."
+        },
+        {
+            "id": "tts-1",
+            "tier": "specialized",
+            "capabilities": ["VOICEOUTPUT"],
+            "input_cost": 0.015,
+            "output_cost": 0,
+            "description": "OpenAI TTS-1 for speech synthesis (text-to-speech).",
+            "audio_config": {
+                "voices": ["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
+                "formats": ["mp3", "opus", "aac", "flac"]
+            }
+        },
+        {
+            "id": "tts-1-hd",
+            "tier": "specialized",
+            "capabilities": ["VOICEOUTPUT"],
+            "input_cost": 0.03,
+            "output_cost": 0,
+            "description": "OpenAI TTS-1 HD for high-quality speech synthesis (text-to-speech).",
+            "audio_config": {
+                "voices": ["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
+                "formats": ["mp3", "opus", "aac", "flac"]
+            }
+        }
+    ],
+    "grok": [
+        {
+            "id": "grok-3-mini-fast",
+            "tier": "fast",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.3,
+            "output_cost": 0.5,
+            "description": "xAI Grok-3 Mini Fast. Cheapest and fastest Grok model."
+        },
+        {
+            "id": "grok-3",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 3,
+            "output_cost": 15,
+            "description": "Full Grok-3 model for complex tasks."
+        }
+    ],
+    "anthropic": [
+        {
+            "id": "claude-3-5-haiku-latest",
+            "tier": "fast",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.8,
+            "output_cost": 4,
+            "description": "Fast, affordable Claude model for simple tasks."
+        },
+        {
+            "id": "claude-sonnet-4-20250514",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 3,
+            "output_cost": 15,
+            "description": "Claude Sonnet 4. Excellent for code and reasoning."
+        },
+        {
+            "id": "claude-3-opus-latest",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 15,
+            "output_cost": 75,
+            "description": "Most capable Claude model for the hardest tasks."
+        }
+    ]
+}

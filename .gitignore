@@ -7,8 +7,6 @@ core/config/security.yaml
 # Ignore all generated content in the data vault. 
 # Folders are created at runtime by the startup script.
 data/*
-# Allow Example + Suggestion files
-!data/config/suggested_local_models.json
 
 # Ignore internal DB and graph files to prevent leaking research history.
 *.db
