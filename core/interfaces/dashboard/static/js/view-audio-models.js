@@ -330,6 +330,8 @@ const AudioModels = (() => {
                 btn.innerHTML = '<i class="fas fa-check-circle"></i> Registered';
                 btn.classList.remove('secondary');
                 btn.classList.add('success');
+                // Immediately refresh Misaka Cipher voice dropdown
+                if (typeof loadMisakaTTSModels === 'function') loadMisakaTTSModels();
             } else {
                 showNotification(`Registration failed: ${d.detail || 'Error'}`, 'error');
                 btn.disabled = false;

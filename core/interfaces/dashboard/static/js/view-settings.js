@@ -1399,13 +1399,33 @@ function addModelRowInline(providerName) {
         <td>${renderCapsTd([], '')}</td>
         <td><input type="text" class="model-desc-input" value="" placeholder="Best for..."></td>
         <td>
+            <button class="btn-icon xs-btn confirm-new-model" title="Save model" style="color:#00ff88"><i class="fas fa-check"></i></button>
             <button class="btn-icon xs-btn del-model" onclick="this.closest('tr').remove(); markSettingsDirty();"><i class="fas fa-trash"></i></button>
         </td>
     `;
     tbody.appendChild(row);
     // Note: We don't render image config row for new models until they get the 'image' cap
     initCapsTd(row.querySelector('.caps-cell'));
-    markSettingsDirty();
+
+    // Confirm button — validate then auto-save so the model persists immediately
+    row.querySelector('.confirm-new-model').onclick = async () => {
+        const modelId = row.querySelector('.model-id-input-small').value.trim();
+        if (!modelId) {
+            row.querySelector('.model-id-input-small').focus();
+            showNotification('Model ID is required.', 'warning');
+            return;
+        }
+        await saveProviderSettings();
+    };
+
+    // Also save on Enter in the model ID input
+    row.querySelector('.model-id-input-small').addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            row.querySelector('.confirm-new-model').click();
+        }
+    });
+
     row.querySelector('input').focus();
 }
 
@@ -1845,6 +1865,9 @@ async function moveProfile(element, direction) {
 }
 
 // Global initialization
+// Expose so other views can trigger a fresh reload of registry data + re-render
+window.loadProviderSettings = loadProviderSettings;
+
 window.addEventListener('DOMContentLoaded', () => {
     loadPreferences();
     loadProviderSettings();

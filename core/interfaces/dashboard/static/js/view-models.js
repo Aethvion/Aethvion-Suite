@@ -224,8 +224,12 @@ const LocalModels = {
             if (res.ok) {
                 showNotification(`Model ${filename} registered!`, 'success');
                 this.loadModels();
-                // We might also need to notify the provider manager to reload,
-                // but the backend endpoint already calls reload_config()
+                // Reload the Model Registry settings panel so _registryData stays fresh.
+                // Without this, a later "Save Changes" in settings would overwrite the
+                // registry file with stale data that doesn't include the newly registered model.
+                if (typeof window.loadProviderSettings === 'function') {
+                    window.loadProviderSettings();
+                }
             } else {
                 const err = await res.json();
                 showNotification(err.detail || 'Registration failed', 'error');
