@@ -543,3 +543,169 @@
     padding: 0.9rem 1.25rem;
     border-top: 1px solid var(--border);
 }
+
+/* ── Path input row (with Browse button) ─────────────────────── */
+.agents-path-input-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: stretch;
+}
+
+.agents-path-input {
+    flex: 1;
+}
+
+.agents-browse-btn {
+    flex-shrink: 0;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    padding: 0.45rem 0.65rem;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.agents-browse-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* ── Inline folder browser ───────────────────────────────────── */
+.agents-folder-browser {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-primary);
+    margin-top: 0.4rem;
+    overflow: hidden;
+    max-height: 260px;
+    display: flex;
+    flex-direction: column;
+}
+
+.agents-browser-crumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0;
+    padding: 0.4rem 0.65rem;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.78rem;
+    font-family: 'Fira Code', monospace;
+    color: var(--text-secondary);
+    min-height: 28px;
+}
+
+.agents-crumb-seg {
+    cursor: pointer;
+    color: var(--primary);
+    padding: 0 2px;
+    border-radius: 3px;
+}
+
+.agents-crumb-seg:hover {
+    background: rgba(var(--primary-rgb, 99,102,241), 0.15);
+}
+
+.agents-crumb-sep {
+    color: var(--text-secondary);
+    opacity: 0.5;
+    padding: 0 1px;
+    user-select: none;
+}
+
+.agents-browser-list {
+    overflow-y: auto;
+    flex: 1;
+    padding: 0.25rem 0;
+}
+
+.agents-browser-loading,
+.agents-browser-empty {
+    padding: 0.6rem 0.9rem;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-style: italic;
+}
+
+.agents-browser-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.9rem;
+    cursor: pointer;
+    font-size: 0.84rem;
+    color: var(--text-primary);
+    transition: background 0.1s;
+    user-select: none;
+    position: relative;
+}
+
+.agents-browser-entry:hover {
+    background: var(--bg-secondary);
+}
+
+.agents-browser-entry i {
+    color: #e8b84b;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+}
+
+.agents-browser-entry span {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.agents-browser-up {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.agents-browser-up i {
+    color: var(--text-secondary);
+}
+
+.agents-browser-pick {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    padding: 0.15rem 0.4rem;
+    cursor: pointer;
+    font-size: 0.72rem;
+    opacity: 0;
+    transition: opacity 0.1s, border-color 0.1s, color 0.1s;
+}
+
+.agents-browser-entry:hover .agents-browser-pick {
+    opacity: 1;
+}
+
+.agents-browser-pick:hover {
+    border-color: var(--success, #22c55e);
+    color: var(--success, #22c55e);
+}
+
+.agents-browser-select-current {
+    width: calc(100% - 1.8rem);
+    margin: 0.4rem 0.9rem;
+    background: rgba(var(--primary-rgb, 99,102,241), 0.1);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    border-radius: 5px;
+    padding: 0.4rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.82rem;
+    text-align: center;
+    transition: background 0.15s;
+}
+
+.agents-browser-select-current:hover {
+    background: rgba(var(--primary-rgb, 99,102,241), 0.2);
+}

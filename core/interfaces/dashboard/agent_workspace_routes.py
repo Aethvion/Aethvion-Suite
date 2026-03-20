@@ -3,9 +3,11 @@ Agent Workspace Routes
 REST API endpoints for Agent Workspaces and Threads (/api/agents/...)
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional
+import os
+from pathlib import Path
 
 from core.utils.logger import get_logger
 from core.utils.paths import HISTORY_AGENTS
@@ -87,6 +89,44 @@ async def delete_workspace(workspace_id: str):
     if not ok:
         raise HTTPException(status_code=404, detail="Workspace not found")
     return {"status": "deleted", "id": workspace_id}
+
+
+# ── Folder browser endpoint ────────────────────────────────────────────────────
+
+@router.get("/browse")
+async def browse_folder(path: str = Query(default="")):
+    """
+    Server-side folder browser. Returns subdirectories at the given path.
+    Starts at the user home directory if no path is supplied.
+    """
+    try:
+        if not path:
+            target = Path.home()
+        else:
+            target = Path(path)
+
+        # If the path doesn't exist or isn't a directory, walk up to a valid parent
+        while target != target.parent and not (target.exists() and target.is_dir()):
+            target = target.parent
+
+        entries = []
+        try:
+            for item in sorted(target.iterdir(), key=lambda x: x.name.lower()):
+                if item.is_dir() and not item.name.startswith('.'):
+                    entries.append({"name": item.name, "path": str(item)})
+        except PermissionError:
+            pass  # Return empty entries for protected dirs
+
+        parent = str(target.parent) if target.parent != target else None
+
+        return {
+            "path": str(target),
+            "parent": parent,
+            "entries": entries,
+        }
+    except Exception as e:
+        logger.error(f"browse_folder error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── Thread endpoints ───────────────────────────────────────────────────────────

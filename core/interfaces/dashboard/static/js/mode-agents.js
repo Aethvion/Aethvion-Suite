@@ -491,6 +491,156 @@ function agentsShowAddWorkspaceModal(editMode = false) {
 function agentsHideAddWorkspaceModal() {
     const overlay = _agEl('agents-add-ws-overlay');
     if (overlay) overlay.style.display = 'none';
+    _agentsBrowserHide();
+}
+
+// ── Folder browser ────────────────────────────────────────────
+let _agentsBrowserOpen = false;
+
+async function _agentsBrowserNavigate(path) {
+    const browser = _agEl('agents-folder-browser');
+    const crumb = _agEl('agents-browser-crumb');
+    const list = _agEl('agents-browser-list');
+    if (!browser || !crumb || !list) return;
+
+    try {
+        list.innerHTML = '<div class="agents-browser-loading">Loading…</div>';
+        const resp = await fetch(`/api/agents/browse?path=${encodeURIComponent(path || '')}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+
+        // Render breadcrumb — split path into clickable segments
+        const parts = data.path.replace(/\\/g, '/').split('/').filter(Boolean);
+        let builtPath = data.path.startsWith('/') ? '/' : '';
+        // Detect Windows drive root (e.g. C:)
+        const isWindows = /^[A-Za-z]:/.test(data.path);
+        crumb.innerHTML = '';
+
+        if (isWindows) {
+            // Windows: C:\foo\bar
+            const winParts = data.path.replace(/\//g, '\\').split('\\').filter(Boolean);
+            let accumulated = '';
+            winParts.forEach((part, i) => {
+                accumulated = i === 0 ? part + '\\' : accumulated + part + (i < winParts.length - 1 ? '\\' : '');
+                const seg = document.createElement('span');
+                seg.className = 'agents-crumb-seg';
+                seg.textContent = i === 0 ? part : part;
+                const acc = accumulated; // capture
+                seg.onclick = () => _agentsBrowserNavigate(acc);
+                crumb.appendChild(seg);
+                if (i < winParts.length - 1) {
+                    const sep = document.createElement('span');
+                    sep.className = 'agents-crumb-sep';
+                    sep.textContent = '\\';
+                    crumb.appendChild(sep);
+                }
+            });
+        } else {
+            // Unix
+            const rootSeg = document.createElement('span');
+            rootSeg.className = 'agents-crumb-seg';
+            rootSeg.textContent = '/';
+            rootSeg.onclick = () => _agentsBrowserNavigate('/');
+            crumb.appendChild(rootSeg);
+            parts.forEach((part, i) => {
+                builtPath += (builtPath.endsWith('/') ? '' : '/') + part;
+                const seg = document.createElement('span');
+                seg.className = 'agents-crumb-seg';
+                seg.textContent = part;
+                const acc = builtPath;
+                seg.onclick = () => _agentsBrowserNavigate(acc);
+                crumb.appendChild(seg);
+                if (i < parts.length - 1) {
+                    const sep = document.createElement('span');
+                    sep.className = 'agents-crumb-sep';
+                    sep.textContent = '/';
+                    crumb.appendChild(sep);
+                }
+            });
+        }
+
+        // Render directory list
+        list.innerHTML = '';
+
+        // Up button
+        if (data.parent) {
+            const upBtn = document.createElement('div');
+            upBtn.className = 'agents-browser-entry agents-browser-up';
+            upBtn.innerHTML = '<i class="fas fa-level-up-alt"></i> ..';
+            upBtn.onclick = () => _agentsBrowserNavigate(data.parent);
+            list.appendChild(upBtn);
+        }
+
+        if (data.entries.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'agents-browser-empty';
+            empty.textContent = 'No subdirectories';
+            list.appendChild(empty);
+        } else {
+            data.entries.forEach(entry => {
+                const row = document.createElement('div');
+                row.className = 'agents-browser-entry';
+                row.innerHTML = `<i class="fas fa-folder"></i> <span>${entry.name}</span>`;
+                row.title = entry.path;
+                // Single click → navigate into
+                row.onclick = () => _agentsBrowserNavigate(entry.path);
+                // Double-click or select button → pick this folder
+                const pick = document.createElement('button');
+                pick.className = 'agents-browser-pick';
+                pick.title = 'Select this folder';
+                pick.innerHTML = '<i class="fas fa-check"></i>';
+                pick.onclick = (e) => {
+                    e.stopPropagation();
+                    _agentsBrowserSelect(entry.path, entry.name);
+                };
+                row.appendChild(pick);
+                list.appendChild(row);
+            });
+        }
+
+        // "Select current folder" button at bottom
+        const selCurrent = document.createElement('button');
+        selCurrent.className = 'agents-browser-select-current';
+        selCurrent.innerHTML = `<i class="fas fa-check-circle"></i> Use this folder`;
+        selCurrent.onclick = () => {
+            const folderName = data.path.replace(/\\/g, '/').split('/').filter(Boolean).pop() || data.path;
+            _agentsBrowserSelect(data.path, folderName);
+        };
+        list.appendChild(selCurrent);
+
+    } catch (e) {
+        console.error('[Agents] Browse error:', e);
+        list.innerHTML = `<div class="agents-browser-empty">Error: ${e.message}</div>`;
+    }
+}
+
+function _agentsBrowserSelect(path, name) {
+    const pathInput = _agEl('agents-ws-path-input');
+    const nameInput = _agEl('agents-ws-name-input');
+    if (pathInput) pathInput.value = path;
+    if (nameInput && !nameInput.value) nameInput.value = name;
+    _agentsBrowserHide();
+}
+
+function _agentsBrowserHide() {
+    const browser = _agEl('agents-folder-browser');
+    if (browser) browser.style.display = 'none';
+    _agentsBrowserOpen = false;
+}
+
+async function _agentsBrowserToggle() {
+    const browser = _agEl('agents-folder-browser');
+    if (!browser) return;
+    if (_agentsBrowserOpen) {
+        _agentsBrowserHide();
+    } else {
+        browser.style.display = 'block';
+        _agentsBrowserOpen = true;
+        // Start at current path input value, or home
+        const pathInput = _agEl('agents-ws-path-input');
+        const startPath = pathInput ? pathInput.value.trim() : '';
+        await _agentsBrowserNavigate(startPath);
+    }
 }
 
 async function agentsConfirmWorkspaceModal() {
@@ -721,6 +871,10 @@ function agentsInitEventHandlers() {
     // Modal confirm
     const modalConfirm = _agEl('agents-modal-confirm');
     if (modalConfirm) modalConfirm.addEventListener('click', agentsConfirmWorkspaceModal);
+
+    // Browse button → toggle inline folder browser
+    const browseBtn = _agEl('agents-browse-btn');
+    if (browseBtn) browseBtn.addEventListener('click', _agentsBrowserToggle);
 
     // Modal overlay click to close
     const overlay = _agEl('agents-add-ws-overlay');

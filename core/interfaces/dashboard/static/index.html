@@ -724,25 +724,13 @@
                                     <input type="number" id="global-ctx-window" class="control-select" min="1" max="50"
                                         value="5" style="width: 45px; text-align: center;">
                                 </div>
-                                <div class="status-divider">|</div>
-                                <!-- Agents Toggle -->
-                                <div class="control-item">
-                                    <label>AGENTS</label>
-                                    <div class="toggle-switch-mini" title="Enable Autonomous Agent Orchestration">
-                                        <input type="checkbox" id="global-agent-toggle">
-                                        <label for="global-agent-toggle"></label>
-                                    </div>
-                                </div>
                             </div>
                         </div>
 
                         <div class="chat-messages" id="chat-messages">
                             <div class="message system-message">
                                 <div class="message-content">
-                                    <strong>System:</strong> Chat Nexus Portal initialized.
-                                    Ask me anything - I'll autonomously coordinate agents, forge tools, and query
-                                    your
-                                    knowledge base.
+                                    <strong>System:</strong> Chat initialized. Ask me anything.
                                 </div>
                             </div>
                             <!-- Typing Indicator (Inside messages for flow) -->
@@ -786,18 +774,6 @@
                         </div>
                     </div>
 
-                    <!-- Resize handle: chat | agents -->
-                    <div class="col-resize-handle" id="resize-chat-agents" title="Drag to resize"></div>
-
-                    <!-- Right: Active Agents -->
-                    <div class="column agents-column">
-                        <div class="column-header">
-                            <h2>Active Agents</h2>
-                        </div>
-                        <div class="agents-list" id="agents-list">
-                            <div class="no-agents">No active agents</div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -856,7 +832,17 @@
                             </div>
                             <div class="agents-modal-body">
                                 <label>Directory Path</label>
-                                <input type="text" id="agents-ws-path-input" class="agents-modal-input" placeholder="C:\projects\my-project or /home/user/project" />
+                                <div class="agents-path-input-row">
+                                    <input type="text" id="agents-ws-path-input" class="agents-modal-input agents-path-input" placeholder="C:\projects\my-project or /home/user/project" />
+                                    <button id="agents-browse-btn" class="agents-browse-btn" title="Browse folders">
+                                        <i class="fas fa-folder-open"></i>
+                                    </button>
+                                </div>
+                                <!-- Inline folder browser (shown when Browse is clicked) -->
+                                <div id="agents-folder-browser" class="agents-folder-browser" style="display:none">
+                                    <div class="agents-browser-crumb" id="agents-browser-crumb"></div>
+                                    <div class="agents-browser-list" id="agents-browser-list"></div>
+                                </div>
                                 <label style="margin-top:0.75rem;">Name (optional)</label>
                                 <input type="text" id="agents-ws-name-input" class="agents-modal-input" placeholder="Defaults to folder name" />
                             </div>

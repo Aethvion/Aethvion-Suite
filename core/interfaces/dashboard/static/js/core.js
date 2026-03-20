@@ -947,25 +947,7 @@ window.ensureTabAndSubTab = ensureTabAndSubTab;
 function updateChatLayout() {
     const layout = document.querySelector('.three-column-layout');
     if (!layout) return;
-
-    const agentsCol = document.querySelector('.agents-column');
-    const agentToggle = document.getElementById('global-agent-toggle');
-
-    // Show agents column if chat panel is active AND agents are enabled
-    const showAgents = (currentMainTab === 'chat' || currentMainTab === 'agent') && agentToggle && agentToggle.checked;
-
-    if (agentsCol) {
-        agentsCol.style.display = ''; // Clear legacy inline style
-        agentsCol.style.opacity = ''; // Clear legacy inline style
-    }
-
-    if (showAgents) {
-        layout.classList.remove('agents-collapsed');
-    } else {
-        layout.classList.add('agents-collapsed');
-    }
-    
-    // Clear legacy inline grids
+    layout.classList.add('agents-collapsed');
     layout.style.gridTemplateColumns = '';
 }
 

@@ -66,16 +66,9 @@ function initThreadManagement() {
     }
 
     // Global Settings Listeners
-    ['global-ctx-mode', 'global-ctx-window', 'global-agent-toggle'].forEach(id => {
+    ['global-ctx-mode', 'global-ctx-window'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('change', () => {
-                saveGlobalChatSettings();
-                if (id === 'global-agent-toggle') {
-                    if (typeof updateChatLayout === 'function') updateChatLayout();
-                }
-            });
-        }
+        if (el) el.addEventListener('change', () => saveGlobalChatSettings());
     });
 
     // Load persisted global settings
@@ -721,7 +714,6 @@ function saveGlobalChatSettings() {
     const settings = {
         context_mode: document.getElementById('global-ctx-mode').value,
         context_window: parseInt(document.getElementById('global-ctx-window').value) || 5,
-        agents_enabled: document.getElementById('global-agent-toggle').checked
     };
     localStorage.setItem('global_chat_settings', JSON.stringify(settings));
 }
@@ -733,10 +725,6 @@ function loadGlobalChatSettings() {
             const settings = JSON.parse(saved);
             document.getElementById('global-ctx-mode').value = settings.context_mode || 'smart';
             document.getElementById('global-ctx-window').value = settings.context_window || 5;
-            document.getElementById('global-agent-toggle').checked = !!settings.agents_enabled;
-
-            // Trigger layout update based on loaded setting
-            if (typeof updateChatLayout === 'function') updateChatLayout();
         }
     } catch (e) {
         console.error("Failed to load global chat settings:", e);
@@ -901,14 +889,13 @@ async function sendMessage() {
         // Submit task to queue
         const ctxMode = document.getElementById('global-ctx-mode').value;
         const ctxWin = parseInt(document.getElementById('global-ctx-window').value) || 5;
-        const agentsEnabled = document.getElementById('global-agent-toggle').checked;
 
         const payload = {
             prompt: message || `Please review the attached file: ${attachedFileName || 'file'}`,
             thread_id: messageThreadId,
             thread_title: threads[messageThreadId]?.title,
             model_id: modelId || 'auto',
-            mode: agentsEnabled ? 'auto' : 'chat_only',
+            mode: 'chat_only',
             settings: {
                 context_mode: ctxMode,
                 context_window: ctxWin
