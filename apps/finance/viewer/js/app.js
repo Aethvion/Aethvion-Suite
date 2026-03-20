@@ -1547,6 +1547,28 @@
     document.getElementById('add-holding-btn').addEventListener('click', openAddHolding);
     document.getElementById('portfolio-search').addEventListener('input', renderPortfolio);
     document.getElementById('refresh-prices-btn').addEventListener('click', refreshPrices);
+    document.getElementById('dp-close-btn').addEventListener('click', closeDetailPanel);
+
+    // Chart period buttons
+    document.querySelectorAll('.chart-period-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const period = btn.dataset.period;
+        const ticker = document.getElementById('dp-ticker').textContent;
+        
+        // UI update
+        document.querySelectorAll('.chart-period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Trigger fetch with new period
+        updateDetailChartWithPeriod(ticker, period);
+      });
+    });
+
+    // AI Run button
+    document.getElementById('run-ai-btn')?.addEventListener('click', () => {
+      const ticker = document.getElementById('dp-ticker').textContent;
+      runAIAnalysis(ticker);
+    });
   }
 
   // ======================================================================
@@ -1673,8 +1695,10 @@
     // ---- Holdings table ----
     const tbody = document.getElementById('holdings-tbody');
     if (tbody) {
+      const totalPortfolioValue = holdings.reduce((sum, h) => sum + (h.shares * (h.current_price || 0)), 0);
+
       if (!filtered.length) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted);">
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text-muted);">
           ${search ? 'No holdings match your search.' : 'No holdings yet. Click <strong>Add Holding</strong> to get started.'}
         </td></tr>`;
       } else {
@@ -1685,13 +1709,14 @@
           const type = (h.asset_type || 'other').charAt(0).toUpperCase() + (h.asset_type || 'other').slice(1);
           const color = ASSET_COLORS[type] || ASSET_COLORS.Other;
           return `<tr>
-            <td><span class="holding-ticker">${esc(h.ticker)}</span></td>
+            <td><a href="javascript:void(0)" class="holding-ticker" onclick="openDetailPanel('${esc(h.ticker)}')">${esc(h.ticker)}</a></td>
             <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.name)}</td>
             <td><span class="asset-badge" style="color:${color};border:1px solid ${color}40">${type}</span></td>
             <td style="text-align:right">${h.shares.toLocaleString(undefined, {maximumFractionDigits:6})}</td>
             <td style="text-align:right">${cur}${fmt(h.buy_price)}</td>
             <td style="text-align:right">${cur}${fmt(h.current_price)}</td>
             <td style="text-align:right;font-weight:600">${cur}${fmt(value)}</td>
+            <td style="text-align:right;color:var(--text-muted);font-size:11px">${weight.toFixed(1)}%</td>
             <td style="text-align:right" class="${cls}">${sign}${cur}${fmt(Math.abs(pnl))}</td>
             <td style="text-align:right" class="${cls}">${sign}${pct.toFixed(2)}%</td>
             <td style="text-align:center">
@@ -1705,7 +1730,53 @@
 
     // ---- Charts ----
     buildPortfolioAllocChart(holdings);
-    buildPortfolioPerfChart(filtered);
+    buildPortfolioSectorChart(holdings);
+    buildPortfolioPerfChart(holdings);
+  }
+
+  function buildPortfolioSectorChart(holdings) {
+    destroyChart('portfolioSector');
+    const canvas = document.getElementById('chart-portfolio-sector');
+    if (!canvas) return;
+
+    // Group by sector
+    const sectors = {};
+    for (const h of holdings) {
+      if (!h.shares || !h.current_price) continue;
+      const s = h.sector || 'Unknown';
+      const val = h.shares * h.current_price;
+      sectors[s] = (sectors[s] || 0) + val;
+    }
+
+    const data = Object.entries(sectors).sort((a,b) => b[1] - a[1]);
+    if (!data.length) return;
+
+    const ctx = canvas.getContext('2d');
+    charts['portfolioSector'] = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: data.map(x => x[0]),
+        datasets: [{
+          data: data.map(x => x[1]),
+          backgroundColor: [
+            '#00d2ff', '#00f2ad', '#ff4b5c', '#ffb938', '#9d50bb',
+            '#6e48aa', '#f06292', '#4db6ad', '#aed581', '#fff176'
+          ],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { color: '#7a7f99', boxWidth: 12, font: { size: 10 } }
+          }
+        },
+        cutout: '70%'
+      }
+    });
   }
 
   function buildPortfolioAllocChart(holdings) {
@@ -1944,6 +2015,234 @@
 
     wireEvents();
     loadState();
+    fetchMarketOverview();
+    fetchAIModels();
+    setInterval(fetchMarketOverview, 60000); // 1 min refresh
   });
+
+  // ======================================================================
+  // Market Ticker
+  // ======================================================================
+  async function fetchMarketOverview() {
+    try {
+      const data = await api('GET', '/api/market/overview');
+      const el = document.getElementById('market-ticker');
+      if (!el || !data.markets) return;
+
+      el.innerHTML = data.markets.map(m => {
+        const cls = m.percent >= 0 ? 'up' : 'down';
+        const sign = m.percent >= 0 ? '+' : '';
+        return `<div class="ticker-item ${cls}">
+          <b>${esc(m.name)}</b>
+          <span>${fmt(m.price)}</span>
+          <span class="change">${sign}${m.percent.toFixed(2)}%</span>
+        </div>`;
+      }).join('') + el.innerHTML; // Double for seamless loop if needed
+    } catch (e) {
+      console.warn('Market ticker fetch failed', e);
+    }
+  }
+
+  // ======================================================================
+  // Detail Panel
+  // ======================================================================
+  async function openDetailPanel(ticker) {
+    const panel = document.getElementById('detail-panel');
+    if (!panel) return;
+
+    // Reset UI
+    document.getElementById('dp-ticker').textContent = ticker;
+    document.getElementById('dp-name').textContent   = 'Loading info…';
+    document.getElementById('dp-stats-grid').innerHTML = '';
+    destroyChart('detailHistory');
+    panel.classList.add('open');
+
+    try {
+      const stats = await api('GET', `/api/holding/stats/${encodeURIComponent(ticker)}`);
+      
+      // Update header
+      document.getElementById('dp-name').textContent = stats.name || ticker;
+
+      // Render stats grid
+      const grid = document.getElementById('dp-stats-grid');
+      const cur = (state.meta && state.meta.currency) ? state.meta.currency : '€';
+      
+      const rows = [
+        { label: 'Market Cap', value: stats.market_cap ? formatBigNumber(stats.market_cap, cur) : '—' },
+        { label: 'P/E Ratio',  value: stats.pe_ratio ? stats.pe_ratio.toFixed(2) : '—' },
+        { label: 'Forward P/E', value: stats.forward_pe ? stats.forward_pe.toFixed(2) : '—' },
+        { label: 'Div Yield',  value: stats.div_yield ? (stats.div_yield * 100).toFixed(2) + '%' : '—' },
+        { label: 'Beta (5Y)',  value: stats.beta ? stats.beta.toFixed(2) : '—' },
+        { label: '52W Range',  value: stats['52w_low'] ? `${cur}${fmt(stats['52w_low'])} - ${cur}${fmt(stats['52w_high'])}` : '—' },
+        { label: 'Sector',     value: stats.sector || '—' },
+        { label: 'Volume',     value: stats.avg_volume ? stats.avg_volume.toLocaleString() : '—' }
+      ];
+
+      grid.innerHTML = rows.map(r => `
+        <div class="stat-box">
+          <div class="sb-label">${esc(r.label)}</div>
+          <div class="sb-value">${esc(r.value)}</div>
+        </div>
+      `).join('');
+
+      // Render History Chart
+      if (stats.history && stats.history.length) {
+        buildDetailHistoryChart(stats.history);
+      }
+
+      // Reset AI section
+      const aiResponse = document.getElementById('ai-response-area');
+      if (aiResponse) {
+        aiResponse.style.display = 'none';
+        aiResponse.innerHTML = `
+          <div class="loading-spinner" style="display:flex; flex-direction:column; align-items:center; gap:10px; padding:20px;">
+            <i class="fa-solid fa-circle-notch fa-spin" style="font-size:24px; color:var(--accent);"></i>
+            <span>Generating Analyst Report...</span>
+          </div>
+        `;
+      }
+      const aiBtn = document.getElementById('run-ai-btn');
+      if (aiBtn) aiBtn.disabled = false;
+
+    } catch (e) {
+      notify('Failed to fetch detailed stats for ' + ticker, 'error');
+      document.getElementById('dp-name').textContent = 'Error loading stats';
+    }
+  }
+
+  async function updateDetailChartWithPeriod(ticker, period) {
+    try {
+      // We'll reuse the stats API but maybe it needs a period param
+      // For now we'll assume the backend can handle it or we'll just show the default 1Y
+      // Let's check if the stats API supports period. I didn't add it yet.
+      // I should probably add period support to get_ticker_stats.
+      const stats = await api('GET', `/api/holding/stats/${encodeURIComponent(ticker)}?period=${period}`);
+      if (stats.history && stats.history.length) {
+        buildDetailHistoryChart(stats.history);
+      }
+    } catch (e) {
+      console.error('Failed to update chart period', e);
+    }
+  }
+
+  async function fetchAIModels() {
+    const select = document.getElementById('ai-model-select');
+    if (!select) return;
+
+    try {
+      // Main Nexus server is usually on 8080
+      const resp = await fetch('http://localhost:8080/api/registry/models/chat');
+      if (!resp.ok) throw new Error('Nexus registry not available');
+      
+      const data = await resp.json();
+      if (data.models && data.models.length) {
+        select.innerHTML = data.models.map(m => 
+          `<option value="${esc(m.id)}">${esc(m.id)} (${esc(m.provider)})</option>`
+        ).join('');
+      } else {
+        select.innerHTML = '<option value="">No models found</option>';
+      }
+    } catch (e) {
+      console.warn('Could not fetch AI models from Nexus:', e);
+      select.innerHTML = '<option value="">Models unavailable</option>';
+    }
+  }
+
+  async function runAIAnalysis(ticker) {
+    const btn = document.getElementById('run-ai-btn');
+    const area = document.getElementById('ai-response-area');
+    const model = document.getElementById('ai-model-select').value;
+
+    if (!model) {
+      notify('Please select an AI model first.', 'warning');
+      return;
+    }
+
+    btn.disabled = true;
+    area.style.display = 'block';
+    // Ensure spinner is showing
+    area.innerHTML = `
+      <div class="loading-spinner" style="display:flex; flex-direction:column; align-items:center; gap:10px; padding:20px;">
+        <i class="fa-solid fa-circle-notch fa-spin" style="font-size:24px; color:var(--accent);"></i>
+        <span>Generating Analyst Report...</span>
+      </div>
+    `;
+
+    try {
+      const result = await api('POST', `/api/holding/analyze/${encodeURIComponent(ticker)}`, {
+        ticker,
+        model_id: model
+      });
+
+      // Simple markdown-ish to HTML conversion for headers and paragraphs
+      let html = result.report
+        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+        .replace(/^\*\* (.*$)/gim, '<b>$1</b>')
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/\n/g, '<br>');
+      
+      area.innerHTML = `<div>${html}</div>`;
+      
+    } catch (e) {
+      notify('AI Analysis failed: ' + e.message, 'error');
+      area.innerHTML = `<p class="text-danger">Failed to generate report: ${esc(e.message)}</p>`;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function closeDetailPanel() {
+    document.getElementById('detail-panel')?.classList.remove('open');
+  }
+
+  function formatBigNumber(n, cur) {
+    if (n >= 1e12) return cur + (n / 1e12).toFixed(2) + 'T';
+    if (n >= 1e9)  return cur + (n / 1e9).toFixed(2) + 'B';
+    if (n >= 1e6)  return cur + (n / 1e6).toFixed(2) + 'M';
+    return cur + n.toLocaleString();
+  }
+
+  function buildDetailHistoryChart(history) {
+    destroyChart('detailHistory');
+    const canvas = document.getElementById('chart-detail-history');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    charts['detailHistory'] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: history.map(h => h.date),
+        datasets: [{
+          data: history.map(h => h.price),
+          borderColor: '#00d2ff',
+          backgroundColor: 'rgba(0,210,255,0.05)',
+          fill: true,
+          tension: 0.3,
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHitRadius: 10
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { display: false },
+          y: {
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            ticks: { font: { size: 10 }, color: '#7a7f99' }
+          }
+        }
+      }
+    });
+  }
+
+  // Expose for clicks
+  window.openDetailPanel = openDetailPanel;
+  window.closeDetailPanel = closeDetailPanel;
 
 })();

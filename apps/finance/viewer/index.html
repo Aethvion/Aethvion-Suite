@@ -354,6 +354,129 @@
       color: var(--text-muted);
       margin-bottom: 10px;
     }
+    .dp-header #dp-name {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .dp-content {
+      padding: 20px;
+      height: calc(100% - 100px);
+      overflow-y: auto;
+    }
+    #dp-stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .dp-stat-item .label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .dp-stat-item .value {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 20px 0;
+    }
+
+    /* AI Analysis Section */
+    .ai-analysis-box {
+      background: var(--bg-card-2);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-top: 20px;
+    }
+    .ai-analysis-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .ai-analysis-title {
+      font-weight: 600;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #ai-model-select {
+      background: var(--bg-darker);
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      outline: none;
+      max-width: 150px;
+    }
+    #run-ai-btn {
+      width: 100%;
+      background: var(--accent);
+      color: var(--bg-darker);
+      font-weight: 700;
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    #run-ai-btn:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+    #run-ai-btn:disabled {
+      background: var(--text-muted);
+      cursor: not-allowed;
+    }
+    #ai-response-area {
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.6;
+      white-space: pre-wrap;
+      max-height: 400px;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+    #ai-response-area h1, #ai-response-area h2, #ai-response-area h3 {
+      color: var(--accent);
+      margin: 16px 0 8px 0;
+      font-size: 15px;
+    }
+    #ai-response-area p { margin-bottom: 10px; }
+    
+    /* Chart Controls */
+    .chart-controls {
+      display: flex;
+      gap: 6px;
+    }
+    .chart-period-btn {
+      background: var(--bg-card-2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .chart-period-btn.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
     .kpi-value {
       font-size: 24px;
       font-weight: 700;
@@ -750,7 +873,7 @@
     ================================================================ */
     .portfolio-layout {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 14px;
       margin-top: 14px;
     }
@@ -1030,6 +1153,125 @@
     .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
 
     /* Responsive tweaks */
+    /* Market Ticker */
+    #market-ticker-container {
+      flex: 1;
+      max-width: 600px;
+      overflow: hidden;
+      background: rgba(0,0,0,0.2);
+      border-radius: 6px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      margin-left: 20px;
+    }
+    #market-ticker {
+      display: flex;
+      gap: 24px;
+      white-space: nowrap;
+      animation: ticker-slide 30s linear infinite;
+    }
+    @keyframes ticker-slide {
+      from { transform: translateX(100%); }
+      to   { transform: translateX(-100%); }
+    }
+    .ticker-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+    .ticker-item b { color: var(--text); }
+    .ticker-item.up .change { color: var(--success); }
+    .ticker-item.down .change { color: var(--danger); }
+
+    /* Detail Panel (Bloomberg style) */
+    #detail-panel {
+      position: fixed;
+      top: var(--header-h);
+      right: -400px;
+      bottom: 0;
+      width: 400px;
+      background: var(--bg-dark);
+      border-left: 1px solid var(--border);
+      z-index: 500;
+      transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      box-shadow: -8px 0 32px rgba(0,0,0,0.5);
+    }
+    #detail-panel.open { right: 0; }
+    .dp-header {
+      padding: 24px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+    }
+    #dp-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    #dp-ticker {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+    }
+    #dp-name {
+      font-size: 14px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    #dp-close-btn {
+      background: rgba(255,255,255,0.05);
+      color: var(--text-muted);
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    #dp-close-btn:hover { background: rgba(255,75,92,0.15); color: var(--danger); }
+    .dp-content {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+    }
+    #dp-stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .stat-box {
+      background: rgba(255,255,255,0.03);
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .sb-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .sb-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* Analyst density adjustments */
+    .kpi-card { padding: 14px 18px; }
+    .kpi-value { font-size: 20px; }
+    .chart-card { padding: 16px; }
+    table { font-size: 12.5px; }
+    tbody td { padding: 8px 16px; }
+
     @media (max-width: 1100px) {
       .kpi-grid { grid-template-columns: 1fr 1fr; }
     }
@@ -1063,6 +1305,13 @@
     <div class="header-meta">
       <span id="meta-name"></span>
       <span id="meta-currency"></span>
+    </div>
+
+    <!-- Market Ticker -->
+    <div id="market-ticker-container">
+      <div id="market-ticker">
+        <!-- JS injects index items here -->
+      </div>
     </div>
 
     <div class="spacer"></div>
@@ -1432,6 +1681,7 @@
                 <th style="text-align:right">Buy Price</th>
                 <th style="text-align:right">Current</th>
                 <th style="text-align:right">Value</th>
+                <th style="text-align:right">Weight %</th>
                 <th style="text-align:right">P&amp;L</th>
                 <th style="text-align:right">Return</th>
                 <th style="text-align:center">Actions</th>
@@ -1445,6 +1695,67 @@
     </div><!-- /#view-portfolio -->
 
   </main>
+
+  <!-- ================================================================
+       DETAIL PANEL (Sliding)
+  ================================================================ -->
+  <aside id="detail-panel">
+    <div class="dp-header">
+      <div id="dp-title-row">
+        <span id="dp-ticker">AAPL</span>
+        <button id="dp-close-btn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="dp-name">Apple Inc.</div>
+    </div>
+    <div class="dp-content">
+      <!-- Market data / Stats -->
+      <div id="dp-stats-grid">
+        <!-- JS injects stats here -->
+      </div>
+      <div class="divider"></div>
+      <div id="dp-chart-container">
+        <div class="ai-analysis-header">
+            <div class="chart-card-title">Performance View</div>
+            <div class="chart-controls">
+                <button class="chart-period-btn" data-period="1mo">1M</button>
+                <button class="chart-period-btn" data-period="3mo">3M</button>
+                <button class="chart-period-btn" data-period="6mo">6M</button>
+                <button class="chart-period-btn active" data-period="1y">1Y</button>
+                <button class="chart-period-btn" data-period="5y">5Y</button>
+            </div>
+        </div>
+        <div style="height:180px;position:relative;">
+          <canvas id="chart-detail-history"></canvas>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- AI Analysis Section -->
+      <div class="ai-analysis-box">
+        <div class="ai-analysis-header">
+          <div class="ai-analysis-title">
+            <i class="fa-solid fa-microchip"></i> AI Deep Analysis
+          </div>
+          <select id="ai-model-select">
+            <option value="">Loading models...</option>
+          </select>
+        </div>
+        <p class="text-xs text-muted" style="font-size:11px;">Get a comprehensive analyst report using selected AI model.</p>
+        <button id="run-ai-btn">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Run Analysis
+        </button>
+        <div id="ai-response-area" style="display:none;">
+          <!-- AI Markdowm results go here -->
+          <div class="loading-spinner" style="display:flex; flex-direction:column; align-items:center; gap:10px; padding:20px;">
+            <i class="fa-solid fa-circle-notch fa-spin" style="font-size:24px; color:var(--accent);"></i>
+            <span>Generating Analyst Report...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
 </div><!-- /#app -->
 
 <!-- ================================================================

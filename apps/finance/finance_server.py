@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import uvicorn
+import requests
 
 # ---------------------------------------------------------------------------
 # Bootstrap workspace root & imports
@@ -233,8 +234,12 @@ class FullState(BaseModel):
 async def health():
     return {"status": "ok"}
 
+class AnalyzeRequest(BaseModel):
+    model_id: str
+    ticker: str
+
 # ---------------------------------------------------------------------------
-# State
+# State Management
 # ---------------------------------------------------------------------------
 @app.get("/api/state")
 async def get_state():
@@ -477,38 +482,57 @@ def refresh_holding_prices():
     # Deduplicate symbols for batch download
     unique_syms = list(set(ticker_map.values()))
 
-    # --- Fetch prices ---
+    # --- Fetch prices and metadata ---
     prices: dict = {}
+    metadata: dict = {}
     errors: list = []
 
     try:
-        # yf.Tickers handles multiple symbols efficiently
         batch = yf.Tickers(" ".join(unique_syms))
         for sym in unique_syms:
             try:
                 t = batch.tickers[sym]
+                # Price
                 price = t.fast_info.last_price
-                # fast_info can return None for illiquid / delisted tickers
                 if price is None or price <= 0:
                     hist = t.history(period="5d", auto_adjust=True, progress=False)
                     if not hist.empty:
                         price = float(hist["Close"].iloc[-1])
+                
                 if price and price > 0:
                     prices[sym] = round(float(price), 8)
-                else:
-                    errors.append(f"{sym}: no price data returned")
+                
+                # Metadata (if not already cached in state for a holding)
+                # We only peek at info if we need sector/industry to avoid slow calls
+                # However, for simplicity in refresh, we'll try to get basic name/sector
+                info = t.info
+                metadata[sym] = {
+                    "name": info.get("longName") or info.get("shortName"),
+                    "sector": info.get("sector"),
+                    "industry": info.get("industry")
+                }
             except Exception as exc:
                 errors.append(f"{sym}: {str(exc)[:100]}")
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Yahoo Finance error: {exc}")
 
-    # --- Apply prices to state ---
+    # --- Apply to state ---
     updated = 0
     skipped = 0
     for h in holdings:
         sym = ticker_map.get(h["id"])
         if sym and sym in prices:
             h["current_price"] = prices[sym]
+            
+            # Update metadata if missing
+            meta = metadata.get(sym, {})
+            if not h.get("name") and meta.get("name"):
+                h["name"] = meta["name"]
+            if not h.get("sector") and meta.get("sector"):
+                h["sector"] = meta["sector"]
+            if not h.get("industry") and meta.get("industry"):
+                h["industry"] = meta["industry"]
+            
             updated += 1
         else:
             skipped += 1
@@ -522,6 +546,186 @@ def refresh_holding_prices():
         "errors": errors,
         "holdings": holdings,
     }
+
+# ---------------------------------------------------------------------------
+# Market Overview API
+# ---------------------------------------------------------------------------
+@app.get("/api/market/overview")
+def get_market_overview():
+    """
+    Fetch major market indices for a quick dashboard ticker.
+    """
+    try:
+        import yfinance as yf
+    except ImportError:
+        raise HTTPException(status_code=500, detail="yfinance not installed")
+
+    symbols = {
+        "^GSPC": "S&P 500",
+        "^IXIC": "Nasdaq",
+        "BTC-USD": "Bitcoin",
+        "ETH-USD": "Ethereum",
+        "GC=F": "Gold",
+        "^TNX": "10Y Yield"
+    }
+    
+    try:
+        tickers = yf.Tickers(" ".join(symbols.keys()))
+        results = []
+        for sym, name in symbols.items():
+            try:
+                t = tickers.tickers[sym]
+                price = t.fast_info.last_price
+                prev_close = t.fast_info.previous_close
+                
+                # Fallback if fast_info fails
+                if price is None or prev_close is None:
+                    hist = t.history(period="2d")
+                    if len(hist) >= 2:
+                        price = float(hist["Close"].iloc[-1])
+                        prev_close = float(hist["Close"].iloc[-2])
+                
+                if price and prev_close:
+                    change = price - prev_close
+                    pct = (change / prev_close) * 100
+                    results.append({
+                        "symbol": sym,
+                        "name": name,
+                        "price": round(float(price), 2),
+                        "change": round(float(change), 2),
+                        "percent": round(float(pct), 2)
+                    })
+            except Exception:
+                continue
+        return {"markets": results}
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Market data error: {exc}")
+
+@app.get("/api/holding/stats/{ticker}")
+def get_ticker_stats(ticker: str, period: str = "1y"):
+    """
+    Fetch deep analyst stats for a specific ticker.
+    """
+    try:
+        import yfinance as yf
+    except ImportError:
+        raise HTTPException(status_code=500, detail="yfinance not installed")
+
+    try:
+        t = yf.Ticker(ticker.upper())
+        info = t.info
+        
+        # Extract key analyst metrics
+        stats = {
+            "symbol": ticker.upper(),
+            "name": info.get("longName") or info.get("shortName") or ticker.upper(),
+            "sector": info.get("sector"),
+            "industry": info.get("industry"),
+            "market_cap": info.get("marketCap"),
+            "pe_ratio": info.get("trailingPE"),
+            "forward_pe": info.get("forwardPE"),
+            "div_yield": info.get("dividendYield"),
+            "beta": info.get("beta"),
+            "52w_high": info.get("fiftyTwoWeekHigh"),
+            "52w_low": info.get("fiftyTwoWeekLow"),
+            "avg_volume": info.get("averageVolume"),
+            "summarized_stats": True
+        }
+        
+        # Fetch history with requested period
+        hist = t.history(period=period)
+        if not hist.empty:
+            # Resample based on period to keep payload small
+            if period in ["1mo", "3mo"]:
+                hist_resampled = hist # Daily
+            elif period in ["6mo", "1y"]:
+                hist_resampled = hist.resample('W').last() # Weekly
+            else:
+                hist_resampled = hist.resample('M').last() # Monthly
+                
+            stats["history"] = [
+                {"date": d.strftime("%Y-%m-%d"), "price": round(float(p), 2)}
+                for d, p in zip(hist_resampled.index, hist_resampled["Close"])
+            ]
+            
+        return stats
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Ticker data error: {exc}")
+
+@app.post("/api/holding/analyze/{ticker}")
+async def analyze_holding(ticker: str, req: AnalyzeRequest):
+    """
+    Perform deep AI analysis on a ticker using Nexus AI core.
+    """
+    try:
+        import yfinance as yf
+    except ImportError:
+        raise HTTPException(status_code=500, detail="yfinance not installed")
+
+    try:
+        # 1. Fetch data for prompt
+        t = yf.Ticker(ticker)
+        info = t.info
+        hist = t.history(period="1y")
+        
+        # Calculate some basic tech indicators for the AI
+        last_price = info.get("currentPrice") or info.get("regularMarketPrice")
+        avg_50 = info.get("fiftyDayAverage")
+        avg_200 = info.get("twoHundredDayAverage")
+        
+        data_summary = f"""
+        Company: {info.get('longName')} ({ticker})
+        Sector/Industry: {info.get('sector')} / {info.get('industry')}
+        Current Price: {last_price}
+        Market Cap: {info.get('marketCap')}
+        P/E Ratio: {info.get('trailingPE')}
+        Dividend Yield: {info.get('dividendYield')}
+        52W High/Low: {info.get('fiftyTwoWeekHigh')} / {info.get('fiftyTwoWeekLow')}
+        50D/200D Avg: {avg_50} / {avg_200}
+        Business Summary: {info.get('longBusinessSummary')[:1000]}...
+        """
+
+        # 2. Build Prompt
+        prompt = f"""
+        As a Senior Financial Analyst, provide a deep analysis of {info.get('longName')} ({ticker}).
+        
+        Financial Data:
+        {data_summary}
+        
+        Please provide:
+        1. **Investment Thesis**: A summary of why this might be a good or bad investment.
+        2. **Financial Health**: Analysis of their key ratios and market position.
+        3. **Technical Outlook**: Based on the 50D/200D averages and 52W range.
+        4. **Risks & Opportunities**: Key headwinds and tailwinds.
+        5. **Analyst Verdict**: Final recommendation (Buy/Hold/Sell) with justification.
+        
+        Format the output in clean Markdown with professional headers.
+        """
+
+        # 3. Call Nexus AI API
+        nexus_port = int(os.getenv("PORT", "8080"))
+        nexus_url = f"http://localhost:{nexus_port}/api/chat"
+        
+        payload = {
+            "message": prompt,
+            "model_id": req.model_id
+        }
+        
+        # We use the main chat endpoint but we'll try to get more direct if possible.
+        # However, the orchestrator handles model routing well.
+        # If we want a raw generation, we'd need another endpoint.
+        # But /api/chat is easiest since it's already exposed.
+        
+        resp = requests.post(nexus_url, json=payload, timeout=60)
+        if resp.status_code != 200:
+            raise Exception(f"Nexus AI Error ({resp.status_code}): {resp.text}")
+            
+        result = resp.json()
+        return {"report": result.get("response", "No response from AI")}
+
+    except Exception as exc:
+        logger.error(f"AI Analysis failed for {ticker}: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 # ---------------------------------------------------------------------------
 # Project save/load
