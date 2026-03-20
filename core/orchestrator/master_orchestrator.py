@@ -141,17 +141,22 @@ class MasterOrchestrator:
         
         try:
             # IDENTIFY PERSONA SOURCE (usually everything but specialized tool-only requests)
-            use_persona = (source in ["dashboard", "discord", "misakacipher"])
+            use_persona = (source in ["discord", "misakacipher"])
             
             if use_persona:
                 logger.info(f"[{trace_id}] Routing directly to PersonaManager (source={source})")
                 import asyncio
+                # When agents are disabled (chat_only mode), disable tool usage
+                effective_allow_tools = allow_tools and (mode != "chat_only")
                 try:
-                    result = asyncio.run(self._execute_persona_chat(user_message, trace_id, model_id, images, source, security_context, allow_tools))
+                    result = asyncio.run(self._execute_persona_chat(user_message, trace_id, model_id, images, source, security_context, effective_allow_tools))
                 except RuntimeError:
-                    # If this is called from a thread that already has an event loop (shouldn't happen with run_in_executor)
-                    loop = asyncio.get_event_loop()
-                    result = loop.run_until_complete(self._execute_persona_chat(user_message, trace_id, model_id, images, source, security_context, allow_tools))
+                    # If called from a thread that already has an event loop, create a fresh one
+                    new_loop = asyncio.new_event_loop()
+                    try:
+                        result = new_loop.run_until_complete(self._execute_persona_chat(user_message, trace_id, model_id, images, source, security_context, effective_allow_tools))
+                    finally:
+                        new_loop.close()
 
                 
                 # PersonaManager handles memory updates inside the loop or we do it here

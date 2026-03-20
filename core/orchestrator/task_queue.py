@@ -142,7 +142,10 @@ class TaskWorker:
                                 logger.info(f"[{task.id}] Injected context ({len(history_tasks)//2} turns)")
 
                     model_id = task.metadata.get('selected_model')
-                    
+                    # Normalize 'auto' → None so provider manager uses its default routing
+                    if model_id == 'auto':
+                        model_id = None
+
                     # Parse attached files for images
                     images = []
                     attached_files = task.metadata.get('attached_files')
@@ -158,11 +161,14 @@ class TaskWorker:
                                     })
                                 except Exception as e:
                                     logger.error(f"Failed to load attached image '{file_data.get('filename')}': {e}")
-                                    
+
                     # Use lambda to pass mode argument since run_in_executor only takes args for the callable
                     result = await loop.run_in_executor(
                         None,  # Use default executor
-                        lambda: self.orchestrator.process_message(context_prompt, mode=mode, trace_id=task.id, model_id=model_id, images=images)
+                        lambda: self.orchestrator.process_message(
+                            context_prompt, mode=mode, trace_id=task.id,
+                            model_id=model_id, images=images, source="chat"
+                        )
                     )
                     
                     # Convert ExecutionResult to dict
@@ -211,7 +217,15 @@ class TaskWorker:
                     if result.model_id:
                         task.metadata['actual_model'] = result.model_id
                     task.completed_at = datetime.now()
-                    
+
+                    # Log conversation to HistoryManager so persona gets context in future turns
+                    try:
+                        from core.memory.history_manager import HistoryManager
+                        HistoryManager.log_message("user", task.prompt, platform="dashboard")
+                        HistoryManager.log_message("assistant", result.response, platform="dashboard")
+                    except Exception as hist_err:
+                        logger.debug(f"[{task.id}] History logging failed (non-critical): {hist_err}")
+
                     logger.info(
                         f"Worker {self.worker_id} completed task {task.id} "
                         f"in {task.duration:.2f}s"

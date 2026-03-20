@@ -1,25 +1,6 @@
 // Misaka Cipher - Chat & Terminal Mode
 // Handles chat messages, terminal logging, and agent actions
 
-// function sendMessage() {
-function _legacy_sendMessage() {
-    const chatInput = document.getElementById('chat-input');
-    const message = chatInput.value.trim();
-
-    if (!message || chatWs.readyState !== WebSocket.OPEN) return;
-
-    // Add user message to UI
-    addMessage('user', message);
-
-    // Send via WebSocket
-    const messageData = { message: message };
-    chatWs.send(JSON.stringify(messageData));
-
-    // Clear input and reset height
-    chatInput.value = '';
-    chatInput.style.height = '';
-}
-
 // Configure Marked options
 if (typeof marked !== 'undefined') {
     marked.setOptions({
@@ -39,7 +20,7 @@ function handleChatMessage(event) {
     if (data.type === 'response') {
         addMessage('ai', data.response, {
             trace_id: data.trace_id,
-            actions: data.actions_taken,
+            actions: data.actions,
             tools: data.tools_forged,
             agents: data.agents_spawned
         });
