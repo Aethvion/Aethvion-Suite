@@ -710,6 +710,14 @@ function initCategoryCollapse() {
         const body  = document.querySelector(`.cat-body[data-cat-body="${catId}"]`);
         if (!body) return;
 
+        // Add tab count to label
+        const tabCount = body.querySelectorAll('.main-tab').length;
+        const labelEl = catEl.querySelector('.cat-label');
+        if (labelEl && tabCount > 0) {
+            if (!labelEl.dataset.origText) labelEl.dataset.origText = labelEl.textContent.trim();
+            labelEl.textContent = `${labelEl.dataset.origText} (${tabCount})`;
+        }
+
         // Restore saved state
         const collapsed = typeof prefs !== 'undefined' && prefs.get(`cat_collapsed_${catId}`, false);
         if (collapsed === true || collapsed === 'true') {
