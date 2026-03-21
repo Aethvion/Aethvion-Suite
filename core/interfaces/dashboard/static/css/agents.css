@@ -718,6 +718,7 @@
     overflow: hidden;
     background: var(--bg-secondary);
     font-size: 0.84rem;
+    flex-shrink: 0;
 }
 
 .agent-step--done,
