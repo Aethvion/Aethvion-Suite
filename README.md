@@ -15,6 +15,8 @@
 
 *Connect cloud providers or run local GGUF models. Control everything from a 25+ tab dashboard, an AI-powered code IDE, or a terminal CLI — your platform, your rules.*
 
+**Current version: v9.0.0**
+
 ⚠️ **EXPERIMENTAL — EARLY DEVELOPMENT** · Actively being built. Expect rough edges and partially-implemented features.
 
 </div>
@@ -75,9 +77,10 @@ Professional-grade tools built on the Aethvion core. Each app runs as a standalo
 | **Aethvion VTuber** | 2D character rigging and animation engine | 8081 |
 | **Aethvion Audio** | Multi-track timeline editor and effects processor | 8081* |
 | **Aethvion Photo** | Layer-based image generation and editor | 8081* |
-| **Aethvion Tracking** | AI-powered facial motion capture bridge | 8081* |
+| **Aethvion Tracking** | AI-powered facial motion capture bridge with HUD | 8081* |
 | **Aethvion Drive Info** | Interactive disk space and storage analyzer | 8084 |
-| **Aethvion Finance** | Personal financial tracking and portfolio hub | 8081* |
+| **Aethvion Finance** | Personal financial tracking, portfolio, and AI market analysis | 8081* |
+| **Aethvion Hardware Info** | System hardware information and monitoring | 8081* |
 
 *\* Note: Apps sharing port 8081 will automatically negotiate the next available port (8082, etc.) if multiple are running simultaneously.*
 
@@ -110,9 +113,7 @@ copy .env.example .env
 # Leave them blank to use only local models
 ```
 
-**One-click (Windows):** Double-click a launcher bat — it creates the virtual environment, installs dependencies, and opens the app automatically.
-
-**One-click (Windows):** Each application includes a dedicated launcher script. Double-click the `.bat` file to automatically check dependencies and start the server.
+**One-click (Windows):** Each application includes a dedicated launcher script. Double-click the `.bat` file to automatically create the virtual environment, install dependencies, and open the app.
 
 | Application | Launcher | Default URL |
 |-------------|----------|-------------|
@@ -124,6 +125,7 @@ copy .env.example .env
 | **Finance Hub** | `apps/finance/Start_Finance.bat` | http://localhost:8081* |
 | **Drive Info** | `apps/driveinfo/Start_DriveInfo.bat` | http://localhost:8084 |
 | **Tracking Bridge**| `apps/tracking/Start_Tracking.bat` | http://localhost:8081* |
+| **Hardware Info** | `apps/hardwareinfo/Start_HardwareInfo.bat` | http://localhost:8081* |
 
 **Manual:**
 ```bash
@@ -144,10 +146,13 @@ python apps/code/code_server.py    # Code IDE standalone
 - Per-message model selection or **auto-routing** (LLM picks the best model from your enabled pool)
 - Collapsible, flush-edge chat UI with persistent layout state memory
 
-### 🤖 Agent Mode
-- Basic agent spawning for analysis and execution tasks
-- Intent detection routes messages to chat or agent execution
-- Step-by-step execution visible in the System Terminal panel
+### 🤖 Agent Workspaces
+- **Agent Workspaces tab**: Create named workspaces, each with their own thread history
+- **Agent threads**: Start tasks from a workspace — the agent runner executes them step-by-step in a chosen folder
+- **ReAct-style execution loop**: Agent reads files, writes files, lists directories, and runs shell commands to complete tasks
+- **Real-time SSE streaming**: Each agent action and result streams live to the dashboard via Server-Sent Events
+- **Step history**: Previous runs are saved and re-rendered when revisiting a thread; actions and results displayed inline
+- Folder browser for selecting a workspace directory on the server filesystem
 
 ### ⚒️ Tool Forge
 - AI can generate Python tools and register them for reuse
@@ -160,8 +165,17 @@ python apps/code/code_server.py    # Code IDE standalone
 ### 💻 Code IDE
 - Full Monaco editor (VS Code engine) with syntax highlighting for 30+ languages
 - AI copilot: chat, explain, fix, complete, refactor — all with streaming responses
+- **Chat thread system** — create, rename, switch, and delete threads per workspace; threads persist between sessions
 - **File creation from chat** — the AI uses `### FILE:` markers; files are written to disk automatically
-- Code execution: Python, Node.js, Bash/Shell — output streams to the built-in terminal
+- **Python-exec blocks** — AI outputs Python code for file operations; executed server-side with Approve/Deny security toggle
+- Code execution: Python, Node.js, Bash/Shell — output streams live to the built-in terminal via SSE
+- **Ctrl+P fuzzy file finder palette** — quickly open any file with substring and character-sequence scoring
+- **Status bar** — shows git branch, language, cursor position, and dirty-state indicator
+- **AI Project Notes panel** — saved per-workspace and auto-injected into every AI system prompt
+- Apply/Copy buttons on AI chat code blocks; collapsed file write cards with expand-on-click
+- **AI continuation loop** — automatically chains follow-up calls so large tasks don't get cut off mid-response
+- File context menu: Move to…, Duplicate, Delete, Open in Explorer actions
+- Usage logging compatible with the dashboard Usage tab (logged under `data/ai/logs/usage/`)
 - Persistent workspace state — remembers open tabs, last workspace, and recent projects per folder
 - Project context injection — the AI receives your workspace file structure on every request
 - Native OS folder picker for workspace selection
@@ -169,7 +183,17 @@ python apps/code/code_server.py    # Code IDE standalone
 
 ### 🎙️ Audio Interaction (Core)
 - Built-in Text-to-speech (TTS) and speech-to-text (STT) support within the dashboard and chat.
+- **Misaka TTS voice UI** — select voice profiles directly from the chat interface.
+- **Local TTS/STT routing** — routes to local audio models when loaded, falls back to browser/API.
 - Configurable voice profiles and audio processing settings.
+
+### 🔊 Local Audio Models
+- **Audio Models tab** in the dashboard for managing local TTS and STT models.
+- **Kokoro** (TTS) — lightweight, fast local text-to-speech model.
+- **XTTS-v2** (Coqui TTS) — high-quality TTS with voice cloning support; cloned voice WAVs stored under `localmodels/audio/voices/`.
+- **Whisper** (faster-whisper) — accurate local speech-to-text transcription.
+- Model lifecycle management: load/unload models, generate TTS, transcribe audio, manage cloned voices, and install pip packages via the dashboard.
+- Models stored under `localmodels/audio/`; GGUF chat models under `localmodels/gguf/`.
 
 ### 🎵 Aethvion Audio (Standalone)
 - Full multi-track timeline editor with per-track volume, solo, and pan.
@@ -183,6 +207,7 @@ python apps/code/code_server.py    # Code IDE standalone
 ### 🎭 VTuber & 📊 Tracking
 - **Aethvion VTuber:** Visualization and animation engine — rigging, real-time deformation, preview/live modes
 - **Aethvion Tracking:** Motion tracking via WebSocket at port 8082, streams parameters directly to the VTuber viewer
+- **Revamped Tracking UI** with a live HUD overlay, real-time telemetry readout, and FPS counter
 - Live mode auto-discovers the tracking server; browser connects directly with auto-reconnect
 
 ### 🔌 Nexus Module
@@ -195,9 +220,9 @@ python apps/code/code_server.py    # Code IDE standalone
 |-----|--------|-------|
 | Chat | ✅ Working | Threads, context, model selection, auto-routing |
 | Image | ✅ Working | Imagen 3 / DALL-E 3 image generation |
-| Audio | ✅ Working | Text-to-speech and speech-to-text |
-| Arena | ✅ Working | Side-by-side model comparison |
-| AI Conversations | ✅ Working | Two-party model conversation |
+| Audio | ✅ Working | Text-to-speech and speech-to-text; Misaka TTS voice selection |
+| Arena | ✅ Working | Side-by-side model comparison with enhanced leaderboard |
+| AI Conversations | ✅ Working | Two-party model conversation with history persistence, human participant, pause/inject, share/export |
 | Advanced AI Conversation | ✅ Working | Multi-persona conversation threads |
 | Leaderboards | ✅ Working | Game scores and rankings |
 | Logic Quest | 🎮 Game | AI-powered logic puzzles |
@@ -206,19 +231,21 @@ python apps/code/code_server.py    # Code IDE standalone
 | Word Search | 🎮 Game | Word search puzzles |
 | Checkers (vs AI) | 🎮 Game | Checkers against an AI opponent |
 | Misaka Cipher | ✅ Working | Main hub: output files, screenshots, camera, uploads |
+| Agent Workspaces | ✅ Working | Create workspaces, run multi-step agent tasks with real-time SSE streaming |
 | Tools | ✅ Working | View registered tools and agents |
 | Packages | 🧪 Experimental | Package install with safety scoring — unstable |
 | Memory | ✅ Working | Browse task history and episodic memory |
 | Misaka Memory | ✅ Working | Dedicated episodic memory browser |
+| Audio Models | ✅ Working | Manage local TTS/STT models (Kokoro, XTTS-v2, Whisper) |
 | Aethvion VTuber | ✅ Working | Character animation and visualization engine |
-| Aethvion Tracking | ✅ Working | Motion tracking module |
+| Aethvion Tracking | ✅ Working | Motion tracking module with HUD and telemetry |
 | Aethvion Code | ✅ Working | AI-powered IDE (standalone app, port 8083) |
 | Logs | ✅ Working | Live log stream |
 | Documentation | ✅ Working | In-dashboard documentation viewer |
-| Usage | ✅ Working | Token usage, cost tracking, and granular queries |
+| Usage | ✅ Working | Token usage, cost tracking, Local/API filters, and granular queries |
 | Status | ✅ Working | System and provider health |
 | Port Manager | ✅ Working | View and manage active service ports |
-| Settings | ✅ Working | Providers, routing profiles, Discord, assistant, environment config |
+| Settings | ✅ Working | Tabbed Model Registry, routing profiles, Discord, assistant, environment config, self-update |
 
 ---
 
@@ -243,38 +270,62 @@ Aethvion-Suite/
 │   ├── main.py                  # Entry point (web / CLI / test modes)
 │   ├── nexus_core.py            # Central orchestration hub
 │   ├── config/                  # Configuration files (YAML/JSON)
+│   │   ├── suggested_apimodels.json      # Suggested cloud model configs
+│   │   ├── suggested_localmodels.json    # Suggested GGUF model configs
+│   │   └── suggested_localaudiomodels.json # Suggested local audio model configs
 │   ├── factory/                 # Agent spawning engine
 │   ├── forge/                   # Tool generation pipeline
 │   ├── memory/                  # Episodic memory + knowledge graph (ChromaDB)
+│   │   └── agent_workspace_manager.py   # Agent workspace and thread state manager
 │   ├── nexus/                   # Nexus manager (peripheral plugin system)
 │   ├── orchestrator/            # Master orchestrator + task queue
+│   │   ├── agent_events.py      # Thread-safe per-task SSE event store
+│   │   └── agent_runner.py      # ReAct-style multi-step agent execution loop
 │   ├── providers/               # Google / OpenAI / Grok / Anthropic / Local adapters
 │   ├── security/                # Intelligence Firewall
-│   ├── utils/                   # Shared utilities (port manager, helpers)
+│   ├── utils/                   # Shared utilities
+│   │   └── paths.py             # Canonical data path constants (single source of truth)
 │   ├── workers/                 # Background workers
 │   ├── workspace/               # Usage tracker, package manager
 │   └── interfaces/
 │       ├── dashboard/           # Web dashboard (FastAPI + static files)
+│       │   ├── agent_workspace_routes.py  # Agent workspace + browse API
+│       │   ├── audio_models_routes.py     # Local TTS/STT model management API
+│       │   └── task_routes.py             # Task submission + SSE streaming endpoint
 │       └── cli_modules/         # CLI module implementations
 │
 ├── apps/                        # Standalone apps — each has its own server + launcher
 │   ├── audio/                   # Audio processing (TTS / STT)
+│   │   ├── models/              # Local audio model adapters (Kokoro, XTTS-v2, Whisper)
+│   │   └── tts_manager.py       # TTS model lifecycle manager
 │   ├── code/                    # Code IDE — Monaco editor + AI copilot (port 8083)
 │   │   ├── Start_Code.bat       # One-click launcher
-│   │   ├── code_server.py       # FastAPI backend — FS, execution, AI endpoints
+│   │   ├── code_server.py       # FastAPI backend — FS, execution, AI, threads, usage
 │   │   └── viewer/              # Frontend: Monaco editor, file tree, AI chat
 │   ├── driveinfo/               # System storage and drive info
-│   ├── finance/                 # Finance tracking
+│   ├── finance/                 # Finance tracking + AI market analysis
+│   ├── hardwareinfo/            # System hardware information
 │   ├── photo/                   # AI-powered photo editing
 │   ├── tracking/                # Motion tracking — WebSocket server (port 8082)
 │   └── vtuber/                  # VTuber engine — character animation (port 8081)
 │
 ├── data/                        # Runtime data — never committed
-│   └── code/                    # Code IDE persistence
-│       ├── settings.json        # Last workspace + recent workspaces
-│       └── projects/            # Per-workspace state (open tabs, file structure, AI context)
+│   ├── apps/                    # Per-app runtime data (arena, audio, code, finance, …)
+│   ├── config/                  # Runtime config (model_registry.json, settings.json)
+│   ├── history/                 # Persistent conversation history
+│   │   ├── chat/                # Standard Misaka chat sessions
+│   │   ├── ai_conversations/    # AI Conversations saves (JSON per conversation)
+│   │   └── agents/              # Agent workspace thread history
+│   ├── logs/                    # Usage logs (YYYY-MM/usage_YYYY-MM-DD.json) + system logs
+│   ├── system/                  # Lock file, launcher log, ports registry
+│   ├── vault/                   # Persistent brain (personas, knowledge graph, episodic)
+│   └── workspaces/              # Output files, uploads, tools, projects, preferences
 │
-├── LocalModels/                 # GGUF model files — place models here
+├── localmodels/                 # Model files — never committed
+│   ├── gguf/                    # GGUF chat models (llama.cpp)
+│   └── audio/                   # TTS / STT / voice models
+│       └── voices/              # Voice cloning source WAVs (XTTS-v2)
+│
 ├── tools/                       # Tool registry (standard + AI-generated)
 ├── tests/                       # Test suite
 └── assets/                      # Static assets (character sprites, showcase images)
@@ -291,16 +342,26 @@ Aethvion-Suite/
 - Tool forge and agent spawning
 - Intelligence Firewall (PII/credential scan)
 - Web dashboard with 25+ tabs
-- API usage tracking with cost estimates
-- LLM Arena, Image Studio, Advanced AI Conversation
+- API usage tracking with cost estimates (Local/API filters)
+- LLM Arena with enhanced leaderboard, system prompt pass-through
+- Image Studio (Imagen 3, DALL-E 3)
+- Advanced AI Conversation (multi-persona)
 - Routing profiles with configurable model pools
 - Discord integration (bot worker, message mirroring, dashboard controls)
-- Audio tab (TTS and STT)
+- Audio tab (TTS and STT) with local TTS routing and Misaka voice selection
+- Local Audio Models: Kokoro (TTS), XTTS-v2 (voice cloning), Whisper (STT)
+- Tabbed Model Registry UI with suggested model configs and registry support
 - Games suite with leaderboards
-- Aethvion VTuber and Tracking (WebSocket bridge, live mode)
-- Nexus peripheral module
+- Aethvion VTuber and Tracking (WebSocket bridge, live mode, HUD + telemetry)
+- Nexus peripheral module with refresh button
 - Documentation viewer, Port Manager, and in-dashboard assistant
-- **Code IDE** — Monaco editor, AI copilot, file creation, code execution, persistent workspace state
+- **Code IDE** — Monaco editor, AI copilot, file creation, streaming execution, persistent workspace, chat threads, Ctrl+P palette, status bar, Project Notes, python-exec blocks, continuation loop
+- **AI Conversations** — human participant, pause/inject, continue conversation, shareable links, participant personality, history persistence
+- **Agent Workspaces** — create workspaces and threads, ReAct-style agent runner, real-time SSE step streaming, step history
+- Self-update via dashboard (Settings → Version Control)
+- Centralized data path management (`core/utils/paths.py`)
+- Aethvion Hardware Info app
+- Finance: AI market analysis and per-ticker detail panel with live data
 
 ### 🔄 In Progress / Near-Term
 - Improved agent reliability for multi-step goals
