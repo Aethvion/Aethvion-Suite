@@ -11,47 +11,36 @@ logger = get_logger(__name__)
 
 MAX_ITERATIONS = 20
 
+# Use <action> XML tags instead of backticks — backticks in prompts can
+# trigger Gemini's internal safety parser and return 500 INTERNAL.
 SYSTEM_PROMPT = """\
-You are an expert AI software agent. You execute tasks step by step by taking real actions.
+You are an AI coding assistant that builds software by taking real actions step by step.
 
 Working directory: {workspace}
 
-## HOW TO TAKE ACTIONS
+To perform an action, output a JSON object wrapped in <action> tags.
 
-Output JSON action blocks using triple backticks labeled "action":
-
-Write or create a file (use full content — no placeholders):
-```action
-{{"type": "write_file", "path": "relative/path.html", "content": "full content here"}}
-```
+Write or create a file (use FULL content — no placeholders):
+<action>{{"type": "write_file", "path": "relative/path.html", "content": "full content here"}}</action>
 
 Read a file:
-```action
-{{"type": "read_file", "path": "relative/path"}}
-```
+<action>{{"type": "read_file", "path": "relative/path"}}</action>
 
-List directory:
-```action
-{{"type": "list_dir", "path": ""}}
-```
+List a directory:
+<action>{{"type": "list_dir", "path": ""}}</action>
 
 Run a shell command:
-```action
-{{"type": "run_command", "command": "npm install"}}
-```
+<action>{{"type": "run_command", "command": "npm install"}}</action>
 
 Mark the task as fully complete:
-```action
-{{"type": "done", "summary": "What was accomplished"}}
-```
+<action>{{"type": "done", "summary": "What was accomplished"}}</action>
 
-## RULES
-
-1. Create REAL, COMPLETE files — not stubs. Full HTML, CSS, JS, etc.
-2. After each action you will see its result. Use that to decide next steps.
-3. Paths are relative to the working directory.
-4. Keep going until the task is genuinely finished. Only use `done` when everything is complete.
-5. You have up to {max_iterations} actions.
+Rules:
+1. Create REAL, COMPLETE files — no stubs, no placeholders.
+2. After each action you will see its result. Use that to plan the next step.
+3. All paths are relative to the working directory.
+4. Keep going until the task is genuinely finished, then use the done action.
+5. You have up to {max_iterations} actions total.
 """
 
 
@@ -79,21 +68,22 @@ class AgentRunner:
 
     # ── LLM call ──────────────────────────────────────────────────
     def _build_prompt(self) -> str:
-        system = SYSTEM_PROMPT.format(workspace=str(self.workspace), max_iterations=MAX_ITERATIONS)
-        parts = [system, "\n---\n", f"USER TASK:\n{self.task}\n"]
+        system = SYSTEM_PROMPT.format(
+            workspace=str(self.workspace),
+            max_iterations=MAX_ITERATIONS,
+        )
+        parts = [system, f"Task: {self.task}"]
         parts.extend(self.conversation)
-        parts.append("\nAGENT:")
-        return "\n".join(parts)
+        return "\n\n".join(parts)
 
-    def _call_llm(self) -> str:
+    def _call_llm(self, iteration: int = 0) -> str:
         from core.nexus_core import Request
         try:
             req = Request(
                 prompt=self._build_prompt(),
                 request_type="generation",
                 temperature=0.2,
-                max_tokens=4096,
-                trace_id=self.trace_id,
+                trace_id=f"{self.trace_id}-i{iteration}",
                 model=self.model_id,
             )
             resp = self.nexus.route_request(req)
@@ -104,7 +94,7 @@ class AgentRunner:
 
     # ── parsing ───────────────────────────────────────────────────
     def _parse_actions(self, text: str) -> List[Dict[str, Any]]:
-        pattern = r"```action\s*\n(.*?)\n```"
+        pattern = r"<action>\s*(.*?)\s*</action>"
         actions = []
         for m in re.findall(pattern, text, re.DOTALL):
             try:
@@ -114,7 +104,7 @@ class AgentRunner:
         return actions
 
     def _thinking_text(self, text: str) -> str:
-        idx = text.find("```action")
+        idx = text.find("<action>")
         return text[:idx].strip() if idx != -1 else text.strip()
 
     # ── tool execution ────────────────────────────────────────────
@@ -202,25 +192,23 @@ class AgentRunner:
         self._emit({"type": "start", "title": "Starting task", "detail": self.task})
 
         for iteration in range(MAX_ITERATIONS):
-            response = self._call_llm()
+            response = self._call_llm(iteration)
 
-            # Emit thinking text before first action
             thinking = self._thinking_text(response)
             if thinking:
                 self._emit({"type": "thinking", "title": "Planning" if iteration == 0 else "Continuing", "detail": thinking})
 
             actions = self._parse_actions(response)
 
+
             if not actions:
-                # No actions — treat response as final answer
                 self._emit({"type": "done", "title": "Complete", "detail": thinking or response})
                 return thinking or response
-
-            self.conversation.append(f"\nAGENT:\n{response}")
 
             results = []
             done_triggered = False
             done_summary = ""
+            compact_actions = []
 
             for action in actions:
                 if action.get("type") == "done":
@@ -234,13 +222,30 @@ class AgentRunner:
                 self._emit(event)
                 results.append(f"<result>{result}</result>")
 
+                # Build compact action summary (strip large content fields)
+                t = action.get("type", "")
+                if t == "write_file":
+                    compact_actions.append(f'write_file("{action.get("path")}")')
+                elif t == "read_file":
+                    compact_actions.append(f'read_file("{action.get("path")}")')
+                elif t == "list_dir":
+                    compact_actions.append(f'list_dir("{action.get("path", "")}")')
+                elif t == "run_command":
+                    compact_actions.append(f'run_command("{action.get("command")}")')
+
             if done_triggered:
                 self._emit({"type": "done", "title": "Complete", "detail": done_summary})
                 return done_summary
 
+            # Store compact history (no large content blobs) to avoid bloating future prompts
+            thinking = self._thinking_text(response)
+            history_entry = thinking or "(no reasoning)"
+            if compact_actions:
+                history_entry += "\nActions taken: " + ", ".join(compact_actions)
+            self.conversation.append(f"Assistant: {history_entry}")
             self.conversation.append(
-                "\nRESULTS:\n" + "\n".join(results) +
-                "\n\nContinue. When the task is fully done, use the `done` action."
+                "Results:\n" + "\n".join(results) +
+                "\n\nContinue working on the task. Use the done action when fully complete."
             )
 
         summary = f"Reached {MAX_ITERATIONS} action limit."

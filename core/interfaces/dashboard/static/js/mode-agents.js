@@ -212,9 +212,8 @@ function _agentsRenderMessages(messages) {
     const emptyState = container.querySelector('.agents-empty-state');
     if (emptyState) emptyState.remove();
 
-    // Clear existing messages (except typing indicator)
-    const existing = container.querySelectorAll('.agents-message');
-    existing.forEach(el => el.remove());
+    // Clear existing messages and SSE step cards
+    container.querySelectorAll('.agents-message, .agent-step, .agent-typing-indicator').forEach(el => el.remove());
 
     if (messages.length === 0) {
         _agentsShowEmptyState('Empty thread', 'Submit a task to get started');
