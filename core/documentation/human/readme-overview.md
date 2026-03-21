@@ -1,6 +1,6 @@
-# Misaka Cipher - System Overview
+# Aethvion Suite - System Overview
 
-**Note: This documentation was updated on 2026-02-25 to reflect the current system state.**
+**Note: This documentation was updated on 2026-03-21 to reflect the current system state (v9.0.0).**
 
 ---
 
@@ -252,7 +252,10 @@ The system becomes more capable without human intervention.
 - **Google AI**: Gemini 2.0 Flash, Gemini 1.5 Pro, Imagen 3
 - **OpenAI**: GPT-4o, GPT-4o-mini, DALL-E 3
 - **xAI**: Grok-3 Mini Fast
-- **Local (Roadmap)**: Ollama, vLLM
+- **Anthropic**: Claude (optional)
+- **Local GGUF models**: llama-cpp-python inference — place GGUF files in `localmodels/gguf/`
+- **Local Audio models**: Kokoro (TTS), XTTS-v2 (voice cloning), Whisper (STT) — place in `localmodels/audio/`
+- **Local (cloud-routing replacement, roadmap)**: Ollama, vLLM
 
 ### Security Features
 - Pre-flight content scanning (regex-based PII detection)

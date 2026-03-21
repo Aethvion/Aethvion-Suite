@@ -1,6 +1,6 @@
-# Getting Started with Misaka Cipher
+# Getting Started with Aethvion Suite
 
-**Note: This documentation was updated on 2026-03-11 to reflect the current system state.**
+**Note: This documentation was updated on 2026-03-21 to reflect the current system state (v9.0.0).**
 
 ---
 
@@ -47,7 +47,7 @@ Result: Fully automatic, model-agnostic, self-improving system
 Result: ~$1.60 in API costs vs. $200 with a naive GPT-4 wrapper
 ```
 
-> **Note:** Local model routing (Ollama/vLLM) is on the roadmap but not yet implemented. All inference currently goes to cloud providers.
+> **Note:** Local GGUF model inference (via llama-cpp-python) is supported — place models in `localmodels/gguf/`. Local audio models (Kokoro TTS, XTTS-v2, Whisper STT) are available via the Audio Models tab. Full Ollama/vLLM integration for cloud-routing replacement is still on the roadmap.
 
 ### The Exponential Advantage
 
@@ -93,13 +93,13 @@ Result: ~$1.60 in API costs vs. $200 with a naive GPT-4 wrapper
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/Aethvion/Misaka-Cipher.git
-cd Misaka-Cipher
+git clone https://github.com/Aethvion/Aethvion-Suite.git
+cd Aethvion-Suite
 ```
 
 ### Step 2: Automated Setup (Windows)
 
-Double-click `Start_Misaka_Cipher.bat` in the root directory.
+Double-click `Start_Aethvion_Suite.bat` in the root directory.
 
 This script will:
 - Check your Python version (3.12+ recommended)
@@ -174,18 +174,20 @@ python -m core.main
 
 Open your browser to `http://localhost:8080`
 
-The dashboard includes tabs for Chat, Agent monitoring, Image Studio, LLM Arena, AI Conversation, Files, Tools, Packages, Memory, Logs, Usage analytics, Status, and Settings. See the [Dashboard Context docs](/documentation/ai/dashboard_interface_context.md) for full tab descriptions.
+The dashboard includes 25+ tabs: Chat, Agent Workspaces, Image Studio, LLM Arena, AI Conversations, Audio, Audio Models, Files, Tools, Packages, Memory, Games, Logs, Usage analytics, Status, Port Manager, and Settings. See the [Dashboard Context docs](/core/documentation/ai/dashboard-interface-context.md) for full tab descriptions.
 
 **Web Interface Features:**
 - Real-time chat with Misaka Cipher
 - Live system logs and terminal
-- Active agent monitoring
+- **Agent Workspaces** — multi-step AI task execution with real-time streaming
 - Memory explorer
 - Visual system status
-- LLM Arena (model battle testing)
+- LLM Arena (model comparison with enhanced leaderboard)
 - AI Image Studio
-- Advanced AI Conversation lab
-- API usage analytics
+- **Advanced AI Conversation lab** — human participant, pause/inject, shareable links, history persistence
+- **Local Audio Models** — Kokoro (TTS), XTTS-v2 (voice cloning), Whisper (STT)
+- **Tabbed Model Registry** — manage cloud and local models in one place
+- API usage analytics with Local/API filters
 - Package manager
 
 ### Option 2: Interactive CLI (For Power Users)
@@ -455,10 +457,10 @@ forge.forge_tool(
 ### High API Costs
 
 **Optimization Steps:**
-1. Check `logs/misaka_cipher.log` for routing decisions
+1. Check `data/logs/system/` for routing decisions
 2. Verify simple tasks use Flash model, not Pro
-3. Enable local model for data processing (roadmap feature)
-4. Review `config/model_registry.json` routing strategy
+3. Use local GGUF models for data processing — place models in `localmodels/gguf/`
+4. Review `data/config/model_registry.json` routing strategy (or use the Tabbed Model Registry in Settings)
 
 ---
 
@@ -488,30 +490,37 @@ forge.forge_tool(
 
 ## Community & Support
 
-- **Issues**: [GitHub Issues](https://github.com/Aethvion/Misaka-Cipher/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Aethvion/Misaka-Cipher/discussions)
-- **Documentation**: [Full Docs](/documentation/)
+- **Issues**: [GitHub Issues](https://github.com/Aethvion/Aethvion-Suite/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Aethvion/Aethvion-Suite/discussions)
+- **Documentation**: [Full Docs](/core/documentation/)
 
 ---
 
 ## The Vision: Where We're Going
 
-**Current State (Sprint 3+):**
+**Current State (v9.0.0):**
 - ✅ Core orchestration (Nexus)
-- ✅ Agent spawning (Factory)
+- ✅ Agent spawning (Factory) + **Agent Workspaces** with ReAct runner and SSE streaming
 - ✅ Tool generation (Forge)
 - ✅ Memory persistence
-- ✅ Multi-provider support
-- ✅ Web dashboard (FastAPI + WebSocket)
+- ✅ Multi-provider support + **Tabbed Model Registry**
+- ✅ Web dashboard (FastAPI) with 25+ tabs
 - ✅ Package manager with safety scoring
-- ✅ API usage analytics
-- ✅ LLM Arena & AI Image Studio
+- ✅ API usage analytics with Local/API filters
+- ✅ LLM Arena with enhanced leaderboard
+- ✅ AI Image Studio
+- ✅ **AI Conversations** — human participant, pause/inject, shareable links, history persistence
+- ✅ **Code IDE** — chat threads, streaming execution, Ctrl+P, status bar, Project Notes, python-exec, continuation loop
+- ✅ **Local Audio Models** — Kokoro, XTTS-v2, Whisper
+- ✅ Finance: AI market analysis and per-ticker detail panel
+- ✅ Tracking: revamped UI with HUD, telemetry, FPS counter
+- ✅ Self-update via dashboard Settings
 
 **Near-Term (Next 3 Months):**
-- 🔄 Local model integration (Ollama/vLLM)
-- 🔄 Advanced multi-agent coordination
-- 🔄 Tool validation improvements
-- 🔄 Enhanced memory retrieval
+- 🔄 Ollama integration for local model management UI
+- 🔄 Advanced multi-agent coordination and reliability
+- 🔄 Tool forge validation improvements
+- 🔄 Enhanced memory retrieval and deeper agent integration
 
 **Long-Term Vision:**
 - 🌟 True infinite sessions (weeks-long autonomous work)
