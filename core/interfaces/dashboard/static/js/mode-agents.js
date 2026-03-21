@@ -374,7 +374,40 @@ async function agentsSubmitTask() {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         _agentsCurrentTaskId = data.task_id;
-        _agentsPollTask(data.task_id);
+
+        // Start SSE stream instead of polling
+        const evtSource = new EventSource(`/api/tasks/${data.task_id}/events`);
+        _agentsPollTimer = evtSource;  // store reference for cancel
+
+        evtSource.onmessage = (e) => {
+            try {
+                const event = JSON.parse(e.data);
+                if (event.type === 'stream_end') {
+                    evtSource.close();
+                    _agentsPollTimer = null;
+                    _agentsIsPolling = false;
+                    _agentsCurrentTaskId = null;
+                    _agentsUpdateSubmitState();
+                    // Refresh thread metadata (message count updated by backend)
+                    if (_agentsCurrentWorkspace && _agentsCurrentThread) {
+                        agentsLoadThreads(_agentsCurrentWorkspace.id);
+                    }
+                    return;
+                }
+                renderAgentStep(event);
+            } catch (err) {
+                console.error('[Agents] SSE parse error:', err);
+            }
+        };
+
+        evtSource.onerror = () => {
+            evtSource.close();
+            _agentsPollTimer = null;
+            _agentsIsPolling = false;
+            _agentsCurrentTaskId = null;
+            _agentsUpdateSubmitState();
+            renderAgentStep({ type: 'error', title: 'Connection error', detail: 'Lost connection to agent stream' });
+        };
     } catch (e) {
         _agentsHideTyping();
         _agentsAppendMessage({ role: 'error', content: `Failed to submit task: ${e.message}`, timestamp: new Date().toISOString() });
@@ -458,6 +491,108 @@ function _agentsPollTask(taskId) {
     };
 
     poll();
+}
+
+// ── Agent step rendering (SSE) ────────────────────────────────
+function _htmlEscape(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function renderAgentStep(event) {
+    const container = _agEl('agents-messages');
+    const emptyState = _agEl('agents-empty-state');
+    if (emptyState) emptyState.style.display = 'none';
+    if (!container) return;
+
+    const ICONS = {
+        start: '🚀', thinking: '🧠', write_file: '📝', read_file: '📖',
+        list_dir: '📂', run_command: '⚡', done: '✅', error: '❌',
+    };
+    const icon = ICONS[event.type] || '•';
+    const title = event.title || event.type;
+    const detail = event.detail || event.result || '';
+    const isComplete = event.type === 'done' || event.type === 'error';
+
+    // Remove typing indicator when done or on error
+    if (isComplete) {
+        const ti = container.querySelector('.agent-typing-indicator');
+        if (ti) ti.remove();
+        // Also hide the legacy typing indicator if present
+        _agentsHideTyping();
+    }
+
+    if (event.type === 'stream_end') return;
+
+    if (event.type === 'start') {
+        // Replace legacy typing indicator with animated one
+        _agentsHideTyping();
+        const ti = document.createElement('div');
+        ti.className = 'agent-typing-indicator';
+        ti.innerHTML = '<span></span><span></span><span></span> Working...';
+        container.appendChild(ti);
+        container.scrollTop = container.scrollHeight;
+        return;
+    }
+
+    // Build step element
+    const step = document.createElement('div');
+    step.className = `agent-step agent-step--${event.type}${isComplete ? ' agent-step--complete' : ''}`;
+
+    const header = document.createElement('div');
+    header.className = 'agent-step-header';
+    header.innerHTML = `
+        <span class="agent-step-icon">${icon}</span>
+        <span class="agent-step-title">${_htmlEscape(title)}</span>
+        ${detail ? '<span class="agent-step-chevron">›</span>' : ''}
+    `;
+    step.appendChild(header);
+
+    if (detail) {
+        const body = document.createElement('div');
+        body.className = 'agent-step-body';
+
+        // Result line
+        if (event.result) {
+            const resultEl = document.createElement('div');
+            resultEl.className = 'agent-step-result';
+            resultEl.textContent = event.result;
+            body.appendChild(resultEl);
+        }
+
+        // Detail / content
+        const pre = document.createElement('pre');
+        pre.className = 'agent-step-content';
+        pre.textContent = detail.length > 2000 ? detail.slice(0, 2000) + '\n…' : detail;
+        body.appendChild(pre);
+
+        // Extra info (bytes)
+        if (event.bytes) {
+            const meta = document.createElement('div');
+            meta.className = 'agent-step-meta';
+            meta.textContent = `${event.bytes.toLocaleString()} bytes`;
+            body.appendChild(meta);
+        }
+
+        body.style.display = 'none';
+        step.appendChild(body);
+
+        header.style.cursor = 'pointer';
+        header.addEventListener('click', () => {
+            const open = body.style.display !== 'none';
+            body.style.display = open ? 'none' : 'block';
+            const chevron = header.querySelector('.agent-step-chevron');
+            if (chevron) chevron.textContent = open ? '›' : '⌄';
+        });
+    }
+
+    // Insert before typing indicator if present
+    const ti = container.querySelector('.agent-typing-indicator');
+    if (ti) {
+        container.insertBefore(step, ti);
+    } else {
+        container.appendChild(step);
+    }
+    container.scrollTop = container.scrollHeight;
 }
 
 // ── Add Workspace modal ───────────────────────────────────────

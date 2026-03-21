@@ -3,11 +3,15 @@ Misaka Cipher - Task Queue API Routes
 REST API endpoints for task queue management
 """
 
+import asyncio
+import json as _json
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from core.orchestrator.task_queue import get_task_queue_manager
+from core.orchestrator.agent_events import get_snapshot
 from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -270,11 +274,42 @@ async def create_thread(request: ThreadCreateRequest):
     try:
         task_manager = get_task_queue_manager()
         success = task_manager.create_thread(request.thread_id, request.title, request.mode)
-        
+
         if not success:
             return {"status": "exists", "message": f"Thread {request.thread_id} already exists"}
-            
+
         return {"status": "success", "message": f"Thread {request.thread_id} created"}
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{task_id}/events")
+async def stream_task_events(task_id: str):
+    """SSE stream of agent step events for a task."""
+    async def generate():
+        sent = 0
+        waited = 0.0
+        max_wait = 600.0  # 10 minute timeout
+        while waited < max_wait:
+            snap = get_snapshot(task_id)
+            if snap is None:
+                # Store not created yet — task may not have started
+                await asyncio.sleep(0.3)
+                waited += 0.3
+                continue
+            events = snap["events"]
+            while sent < len(events):
+                yield f"data: {_json.dumps(events[sent])}\n\n"
+                sent += 1
+            if snap["done"] and sent >= len(events):
+                break
+            await asyncio.sleep(0.25)
+            waited += 0.25
+        yield 'data: {"type":"stream_end"}\n\n'
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

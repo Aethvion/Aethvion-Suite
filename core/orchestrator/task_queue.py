@@ -184,14 +184,56 @@ class TaskWorker:
                                 except Exception as e:
                                     logger.error(f"Failed to load attached image '{file_data.get('filename')}': {e}")
 
-                    # Use lambda to pass mode argument since run_in_executor only takes args for the callable
-                    result = await loop.run_in_executor(
-                        None,  # Use default executor
-                        lambda: self.orchestrator.process_message(
-                            context_prompt, mode=mode, trace_id=task.id,
-                            model_id=model_id, images=images, source="chat"
+                    ws_id = task.metadata.get('workspace_id')
+                    if ws_id:
+                        # ── Agent workspace task → run full agent loop ─────────────
+                        from core.orchestrator.agent_runner import AgentRunner
+                        from core.orchestrator.agent_events import create_task_store, push_event, mark_task_done
+
+                        ws_info = None
+                        try:
+                            from core.interfaces.dashboard.agent_workspace_routes import workspace_manager as _aws_mgr
+                            ws_info = _aws_mgr.get_workspace(ws_id)
+                        except Exception:
+                            pass
+
+                        workspace_path = ws_info['path'] if ws_info else str(Path.home())
+                        create_task_store(task.id)
+
+                        def _agent_step_callback(event: dict):
+                            push_event(task.id, event)
+
+                        runner = AgentRunner(
+                            task=task.prompt,
+                            workspace_path=workspace_path,
+                            nexus=self.orchestrator.nexus,
+                            step_callback=_agent_step_callback,
+                            model_id=model_id,
+                            trace_id=task.id,
                         )
-                    )
+                        summary = await loop.run_in_executor(None, runner.run)
+                        mark_task_done(task.id)
+
+                        from core.orchestrator.master_orchestrator import ExecutionResult
+                        result = ExecutionResult(
+                            trace_id=task.id,
+                            response=summary,
+                            actions_taken=[],
+                            tools_forged=[],
+                            agents_spawned=[],
+                            memories_queried=0,
+                            execution_time=0.0,
+                            success=True,
+                        )
+                    else:
+                        # ── Regular chat task → orchestrator ───────────────────────
+                        result = await loop.run_in_executor(
+                            None,  # Use default executor
+                            lambda: self.orchestrator.process_message(
+                                context_prompt, mode=mode, trace_id=task.id,
+                                model_id=model_id, images=images, source="chat"
+                            )
+                        )
                     
                     # Convert ExecutionResult to dict
                     result_dict = {
