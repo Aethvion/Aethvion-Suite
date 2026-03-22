@@ -1,0 +1,913 @@
+/* =====================================================
+   Are You Smarter Than AI? — Gameshow Styling
+   ===================================================== */
+
+/* ── Container ─────────────────────────────────────── */
+.sta-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: radial-gradient(ellipse at 50% 0%, rgba(255, 200, 0, 0.07) 0%, transparent 65%),
+                radial-gradient(ellipse at 80% 100%, rgba(0, 217, 255, 0.05) 0%, transparent 60%),
+                #09090f;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Spotlight sweep effect */
+.sta-container::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: 30%;
+    width: 40%;
+    height: 120%;
+    background: conic-gradient(from 260deg, transparent 0deg, rgba(255, 220, 50, 0.04) 15deg, transparent 30deg);
+    pointer-events: none;
+    animation: spotlight 8s ease-in-out infinite alternate;
+    z-index: 0;
+}
+
+@keyframes spotlight {
+    0%   { transform: rotate(-10deg) translateX(-10%); opacity: 0.6; }
+    100% { transform: rotate(10deg)  translateX(10%);  opacity: 1; }
+}
+
+/* ── Header bar ────────────────────────────────────── */
+.sta-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.5rem;
+    background: rgba(0, 0, 0, 0.6);
+    border-bottom: 1px solid rgba(255, 210, 0, 0.25);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 5;
+    backdrop-filter: blur(10px);
+}
+
+.sta-header-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    color: #ffd700;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    margin: 0;
+}
+
+.sta-header-title i {
+    margin-right: 0.5rem;
+}
+
+.sta-round-indicator {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    background: rgba(255, 215, 0, 0.08);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+}
+
+/* ── Screens (lobby / game / final) ────────────────── */
+.sta-screen {
+    flex: 1;
+    overflow-y: auto;
+    position: relative;
+    z-index: 2;
+}
+
+/* ── Lobby ──────────────────────────────────────────── */
+.sta-lobby {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1.5rem;
+    gap: 1.5rem;
+}
+
+.sta-lobby-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.4rem, 3vw, 2.2rem);
+    font-weight: 900;
+    text-align: center;
+    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 50%, #ffd700 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    animation: fadeIn 0.6s ease-out;
+}
+
+.sta-lobby-subtitle {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: -1rem;
+}
+
+/* Setup card */
+.sta-setup-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 215, 0, 0.15);
+    border-radius: 14px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 680px;
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    animation: slideUp 0.5s ease-out;
+}
+
+.sta-setup-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.sta-setup-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    min-width: 130px;
+}
+
+.sta-setup-select,
+.sta-setup-input {
+    flex: 1;
+    min-width: 120px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.83rem;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.sta-setup-select:focus,
+.sta-setup-input:focus {
+    outline: none;
+    border-color: #ffd700;
+    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.12);
+}
+
+.sta-section-title {
+    font-size: 0.72rem;
+    color: #ffd700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+    padding-bottom: 0.4rem;
+}
+
+/* Player list */
+.sta-player-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-height: 40px;
+}
+
+.sta-player-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    transition: border-color 0.2s;
+    animation: slideUp 0.25s ease-out;
+}
+
+.sta-player-card.human {
+    border-left: 3px solid #00d9ff;
+}
+
+.sta-player-card.ai {
+    border-left: 3px solid #a855f7;
+}
+
+.sta-player-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.sta-player-name-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 0.88rem;
+    font-weight: 600;
+    outline: none;
+    min-width: 0;
+}
+
+.sta-model-badge {
+    font-size: 0.65rem;
+    font-family: 'Fira Code', monospace;
+    padding: 0.2rem 0.5rem;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+
+.sta-player-card.human .sta-model-badge {
+    background: rgba(0, 217, 255, 0.1);
+    color: #00d9ff;
+    border: 1px solid rgba(0, 217, 255, 0.3);
+}
+
+.sta-player-card.ai .sta-model-badge {
+    background: rgba(168, 85, 247, 0.1);
+    color: #a855f7;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.sta-player-model-select {
+    font-size: 0.72rem;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    color: var(--text);
+    border-radius: 5px;
+    padding: 0.2rem 0.4rem;
+    cursor: pointer;
+    max-width: 160px;
+}
+
+.sta-remove-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0.2rem;
+    border-radius: 4px;
+    transition: color 0.15s;
+    flex-shrink: 0;
+}
+
+.sta-remove-btn:hover {
+    color: #ff4757;
+}
+
+.sta-add-players-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.sta-add-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 6px;
+    border: 1px dashed;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.sta-add-btn.human {
+    border-color: rgba(0, 217, 255, 0.4);
+    color: #00d9ff;
+}
+
+.sta-add-btn.human:hover {
+    background: rgba(0, 217, 255, 0.08);
+    border-style: solid;
+}
+
+.sta-add-btn.ai {
+    border-color: rgba(168, 85, 247, 0.4);
+    color: #a855f7;
+}
+
+.sta-add-btn.ai:hover {
+    background: rgba(168, 85, 247, 0.08);
+    border-style: solid;
+}
+
+.sta-start-btn {
+    width: 100%;
+    max-width: 680px;
+    padding: 0.85rem;
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    color: #000;
+    font-weight: 900;
+    font-size: 1rem;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 0.1em;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    box-shadow: 0 4px 24px rgba(255, 215, 0, 0.25);
+}
+
+.sta-start-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(255, 215, 0, 0.4);
+    filter: brightness(1.05);
+}
+
+.sta-start-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ── Game stage ─────────────────────────────────────── */
+.sta-question-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem;
+    gap: 1.25rem;
+}
+
+.sta-category-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.3rem 1rem;
+    border-radius: 20px;
+    background: rgba(255, 215, 0, 0.1);
+    color: #ffd700;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.sta-question-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+    max-width: 740px;
+    width: 100%;
+    text-align: center;
+    animation: slideUp 0.4s ease-out;
+    box-shadow: 0 0 40px rgba(255, 215, 0, 0.06);
+}
+
+.sta-question-text {
+    font-size: clamp(1rem, 2.2vw, 1.5rem);
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* ── Timer ──────────────────────────────────────────── */
+.sta-timer-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sta-timer {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: conic-gradient(#ffd700 var(--progress, 100%), rgba(255,215,0,0.1) 0%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: background 0.5s linear;
+    flex-shrink: 0;
+}
+
+.sta-timer::before {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border-radius: 50%;
+    background: #09090f;
+}
+
+.sta-timer-num {
+    position: relative;
+    z-index: 1;
+    font-family: 'Fira Code', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #ffd700;
+    line-height: 1;
+}
+
+.sta-timer.urgent .sta-timer-num { color: #ff4757; }
+.sta-timer.urgent {
+    background: conic-gradient(#ff4757 var(--progress, 100%), rgba(255,71,87,0.1) 0%);
+    animation: urgentPulse 0.5s ease-in-out infinite;
+}
+
+@keyframes urgentPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(255, 71, 87, 0); }
+}
+
+/* ── Answers grid ───────────────────────────────────── */
+.sta-answers-section {
+    width: 100%;
+    max-width: 740px;
+}
+
+.sta-answers-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    font-weight: 700;
+}
+
+.sta-answers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+.sta-answer-box {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.sta-answer-box .sta-answer-player {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.sta-answer-player-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.sta-answer-box.human-player .sta-answer-player-dot { background: #00d9ff; }
+.sta-answer-box.ai-player   .sta-answer-player-dot { background: #a855f7; }
+
+.sta-answer-text {
+    font-size: 0.88rem;
+    color: var(--text);
+    font-style: italic;
+    flex: 1;
+    word-break: break-word;
+}
+
+.sta-answer-status {
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+/* Human input area */
+.sta-human-input-area {
+    width: 100%;
+    max-width: 740px;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.sta-answer-input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.9rem;
+    transition: border-color 0.2s;
+}
+
+.sta-answer-input:focus {
+    outline: none;
+    border-color: #ffd700;
+    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.1);
+}
+
+.sta-answer-input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.sta-submit-answer-btn {
+    padding: 0.6rem 1.2rem;
+    background: #ffd700;
+    color: #000;
+    font-weight: 800;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.sta-submit-answer-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+}
+
+.sta-submit-answer-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Answer reveal states */
+.sta-answer-box.correct {
+    border-color: #2ecc71;
+    background: rgba(46, 204, 113, 0.12);
+    animation: correctFlash 0.6s ease-out;
+}
+
+.sta-answer-box.wrong {
+    border-color: #e74c3c;
+    background: rgba(231, 76, 60, 0.1);
+    animation: wrongFlash 0.6s ease-out;
+}
+
+.sta-answer-box.correct .sta-answer-status { color: #2ecc71; }
+.sta-answer-box.wrong  .sta-answer-status  { color: #e74c3c; }
+
+@keyframes correctFlash {
+    0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(46,204,113,0.8); }
+    50%  { transform: scale(1.04); box-shadow: 0 0 0 12px rgba(46,204,113,0); }
+    100% { transform: scale(1);    box-shadow: none; }
+}
+
+@keyframes wrongFlash {
+    0%   { transform: translateX(0); }
+    20%  { transform: translateX(-6px); }
+    40%  { transform: translateX(6px); }
+    60%  { transform: translateX(-4px); }
+    80%  { transform: translateX(4px); }
+    100% { transform: translateX(0); }
+}
+
+/* ── Correct answer reveal ──────────────────────────── */
+.sta-correct-reveal {
+    width: 100%;
+    max-width: 740px;
+    background: rgba(46, 204, 113, 0.08);
+    border: 1px solid rgba(46, 204, 113, 0.35);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    animation: slideUp 0.4s ease-out;
+    display: none;
+}
+
+.sta-correct-reveal.visible { display: block; }
+
+.sta-correct-reveal-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #2ecc71;
+    font-weight: 700;
+}
+
+.sta-correct-reveal-answer {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0.25rem 0;
+}
+
+.sta-correct-reveal-explanation {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* ── Podiums ─────────────────────────────────────────── */
+.sta-podiums-section {
+    flex-shrink: 0;
+    background: rgba(0, 0, 0, 0.5);
+    border-top: 1px solid rgba(255, 215, 0, 0.12);
+    padding: 0.75rem 1.5rem;
+    position: relative;
+    z-index: 3;
+}
+
+.sta-podiums {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.sta-podium {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    min-width: 80px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0;
+}
+
+.sta-podium.leading {
+    background: rgba(255, 215, 0, 0.08);
+    border-color: rgba(255, 215, 0, 0.35);
+    transform: translateY(-3px);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
+}
+
+.sta-podium.human-type { border-top: 2px solid #00d9ff; }
+.sta-podium.ai-type    { border-top: 2px solid #a855f7; }
+
+.sta-podium.leading.human-type { border-color: #00d9ff; }
+.sta-podium.leading.ai-type    { border-color: #a855f7; }
+
+.sta-podium-name {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+}
+
+.sta-podium.leading .sta-podium-name {
+    color: #ffd700;
+}
+
+.sta-podium-score {
+    font-family: 'Fira Code', monospace;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+}
+
+.sta-podium.leading .sta-podium-score {
+    color: #ffd700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+@keyframes scoreCount {
+    0%   { transform: scale(1.4); color: #ffd700; }
+    100% { transform: scale(1); }
+}
+
+.sta-podium-score.bump {
+    animation: scoreCount 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Round controls bar ──────────────────────────────── */
+.sta-controls-bar {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(255, 215, 0, 0.1);
+    background: rgba(0, 0, 0, 0.4);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 3;
+}
+
+.sta-ctrl-btn {
+    padding: 0.5rem 1.25rem;
+    border-radius: 7px;
+    font-weight: 700;
+    font-size: 0.83rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid;
+    letter-spacing: 0.02em;
+}
+
+.sta-ctrl-btn.primary {
+    background: #ffd700;
+    color: #000;
+    border-color: #ffd700;
+    box-shadow: 0 3px 15px rgba(255, 215, 0, 0.2);
+}
+
+.sta-ctrl-btn.primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.35);
+}
+
+.sta-ctrl-btn.secondary {
+    background: transparent;
+    color: var(--text-muted);
+    border-color: var(--border);
+}
+
+.sta-ctrl-btn.secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+}
+
+.sta-ctrl-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ── Status / thinking indicator ────────────────────── */
+.sta-status-bar {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    min-height: 1.2rem;
+    font-style: italic;
+    padding: 0.25rem 1.5rem;
+    flex-shrink: 0;
+}
+
+.sta-status-bar.thinking {
+    color: #ffd700;
+}
+
+.sta-thinking-dots::after {
+    content: '';
+    animation: dots 1.2s steps(3, end) infinite;
+}
+
+@keyframes dots {
+    0%   { content: ''; }
+    33%  { content: '.'; }
+    66%  { content: '..'; }
+    100% { content: '...'; }
+}
+
+/* ── Final screen ──────────────────────────────────── */
+.sta-final-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1.5rem;
+    gap: 1.5rem;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.sta-final-trophy {
+    font-size: 4rem;
+    line-height: 1;
+    filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.6));
+    animation: slideUp 0.6s ease-out;
+}
+
+.sta-final-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 900;
+    color: #ffd700;
+    text-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+    text-align: center;
+    letter-spacing: 0.06em;
+}
+
+.sta-final-winner-name {
+    font-size: 1.2rem;
+    color: var(--text);
+    text-align: center;
+}
+
+.sta-final-leaderboard {
+    width: 100%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sta-final-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.65rem 1rem;
+    animation: slideUp 0.4s ease-out both;
+}
+
+.sta-final-row:nth-child(1) { animation-delay: 0.05s; border-color: rgba(255, 215, 0, 0.3); }
+.sta-final-row:nth-child(2) { animation-delay: 0.1s; }
+.sta-final-row:nth-child(3) { animation-delay: 0.15s; }
+.sta-final-row:nth-child(4) { animation-delay: 0.2s; }
+
+.sta-final-rank {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 900;
+    width: 28px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.sta-final-row:nth-child(1) .sta-final-rank { color: #ffd700; }
+.sta-final-row:nth-child(2) .sta-final-rank { color: #c0c0c0; }
+.sta-final-row:nth-child(3) .sta-final-rank { color: #cd7f32; }
+
+.sta-final-player-name {
+    flex: 1;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.sta-final-type-badge {
+    font-size: 0.68rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.sta-final-type-badge.human {
+    background: rgba(0, 217, 255, 0.1);
+    color: #00d9ff;
+    border: 1px solid rgba(0, 217, 255, 0.3);
+}
+
+.sta-final-type-badge.ai {
+    background: rgba(168, 85, 247, 0.1);
+    color: #a855f7;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.sta-final-score {
+    font-family: 'Fira Code', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #ffd700;
+    flex-shrink: 0;
+}
+
+.sta-play-again-btn {
+    padding: 0.75rem 2.5rem;
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    color: #000;
+    font-weight: 900;
+    font-size: 0.95rem;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 0.08em;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.25);
+}
+
+.sta-play-again-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(255, 215, 0, 0.4);
+}
+
+/* ── Utility animations ─────────────────────────────── */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { transform: translateY(16px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}

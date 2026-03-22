@@ -261,6 +261,7 @@ async def initialize_system_background():
         from .misaka_cipher_routes import router as misaka_cipher_router
         from .documentation_routes import router as documentation_router
         from .games_routes import router as games_router
+        from .smarter_than_ai_routes import router as smarter_than_ai_router
         from .discord_routes import router as discord_router
         from .audio_models_routes import router as audio_models_router
         from .agent_workspace_routes import router as agent_workspace_router
@@ -280,6 +281,7 @@ async def initialize_system_background():
         app.include_router(misaka_cipher_router)
         app.include_router(documentation_router)
         app.include_router(games_router)
+        app.include_router(smarter_than_ai_router)
         app.include_router(discord_router)
         app.include_router(audio_models_router)
         app.include_router(agent_workspace_router)
