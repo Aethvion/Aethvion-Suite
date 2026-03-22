@@ -357,14 +357,19 @@ async def judge_round(req: ShowIdRequest):
     )
 
     judge_prompt = (
-        f"You are the judge for 'Are You Smarter Than AI?' trivia gameshow. "
+        f"You are the judge for 'Are You Smarter Than AI?' trivia gameshow.\n"
         f"Question: {current_round.question}\n"
         f"Correct answer: {current_round.correct_answer}\n\n"
         f"Player answers:\n{answers_text}\n\n"
-        "For each player, determine if their answer is correct (accept reasonable variations, "
-        "abbreviations, and paraphrases). "
-        "Return ONLY valid JSON: "
-        '{"judgements": [{"player_id": "...", "is_correct": true, "points": 100}], "explanation": "..."}'
+        "Judge each answer LENIENTLY. Mark an answer as CORRECT if it conveys the same meaning as the correct answer, including:\n"
+        "  - Articles or prefixes: 'The Bishop' = 'Bishop', 'A diamond' = 'Diamond'\n"
+        "  - Singular/plural: 'bishops' = 'bishop'\n"
+        "  - Common abbreviations or alternate spellings\n"
+        "  - Reasonable paraphrases with the same core meaning\n"
+        "  - Numbers written as words: 'twelve' = '12'\n"
+        "Only mark an answer as WRONG if it is clearly and unambiguously incorrect or empty.\n\n"
+        "Return ONLY valid JSON:\n"
+        '{"judgements": [{"player_id": "...", "is_correct": true, "points": 100}], "explanation": "brief explanation of the correct answer"}'
     )
 
     raw = await _llm_call(
@@ -375,12 +380,25 @@ async def judge_round(req: ShowIdRequest):
 
     parsed = _parse_json_response(raw) if raw else None
 
-    # Fallback: exact string match
+    # Fallback: lenient string match (strips articles, punctuation, normalises whitespace)
     if not parsed or "judgements" not in parsed:
-        logger.warning(f"[STA] GM judging failed, falling back to exact match.")
+        logger.warning(f"[STA] GM judging failed, falling back to fuzzy match.")
+
+        def _normalise(s: str) -> str:
+            s = s.strip().lower()
+            # Strip leading articles
+            for article in ("the ", "a ", "an "):
+                if s.startswith(article):
+                    s = s[len(article):]
+            # Remove punctuation and collapse spaces
+            s = re.sub(r"[^\w\s]", "", s)
+            s = re.sub(r"\s+", " ", s).strip()
+            return s
+
+        correct_norm = _normalise(current_round.correct_answer)
         judgements = []
         for pid, ans in current_round.answers.items():
-            is_correct = ans.strip().lower() == current_round.correct_answer.strip().lower()
+            is_correct = _normalise(ans) == correct_norm
             judgements.append({"player_id": pid, "is_correct": is_correct, "points": current_round.points})
         parsed = {"judgements": judgements, "explanation": f"Correct answer: {current_round.correct_answer}"}
 

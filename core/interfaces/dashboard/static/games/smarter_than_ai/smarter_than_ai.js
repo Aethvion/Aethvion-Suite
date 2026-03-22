@@ -203,7 +203,6 @@
 
     async function staStartRound() {
         _stopNextRoundCountdown();
-        _setThinking('The Game Master is preparing a question...');
         _setBtns({ judge: false, next: false });
         _humanAnswered = false;
         _roundActive = false;
@@ -214,8 +213,21 @@
         const nextBtn = el('sta-next-round-btn');
         if (nextBtn) nextBtn.textContent = 'Next Round';
 
+        // Clear the question area immediately so the old question doesn't linger
+        const catBadge    = el('sta-category-badge');
+        const questionText = el('sta-question-text');
+        const humanInput  = el('sta-human-answer-input');
+        const submitBtn   = el('sta-submit-answer-btn');
+        if (catBadge)     catBadge.textContent    = '';
+        if (questionText) questionText.textContent = '';
+        if (humanInput)  { humanInput.value = ''; humanInput.disabled = true; }
+        if (submitBtn)     submitBtn.disabled = true;
+
         el('sta-correct-reveal')?.classList.remove('visible');
         _clearAnswerBoxes();
+
+        // Show "preparing" status AFTER clearing, so it's clear it's loading a new question
+        _setThinking('The Game Master is preparing a question...');
 
         const data = await staPost('round/start', { show_id: _show.show_id });
         if (!data.success) {
