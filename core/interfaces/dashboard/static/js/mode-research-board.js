@@ -5,20 +5,19 @@
 let rbActiveThreadId = null;
 let rbPersonas = [];
 let rbAllPersonas = [];
-let rbSelectedMemberIds = ['director_greedy', 'director_consumer', 'director_dev', 'director_marketer'];
-let rbTotalRounds = 3;
-let rbCurrentTurn = 0;
+let rbSelectedMemberIds = ['director_ops', 'director_cx', 'director_arch', 'director_growth'];
 let rbIsRunning = false;
 let rbRegistryData = null;
+let rbSprintCount = 0;
 
 // Elements (initialized in init)
-let rbPromptInput, rbRoundsSelect, rbModelSelect, rbStartBtn, rbTranscript;
+let rbPromptInput, rbModelSelect, rbStartBtn, rbTranscript;
 let rbDirectorsStrip, rbStatusText, rbProgressInfo, rbSynthesisPane, rbSynthesisBody, rbAddMemberBtn;
+let rbUserInputArea, rbUserSubmitBtn, rbSynthesisTriggerBtn;
 
 async function initResearchBoard() {
     // Capture elements
     rbPromptInput = document.getElementById('rb-prompt');
-    rbRoundsSelect = document.getElementById('rb-rounds');
     rbModelSelect = document.getElementById('rb-model-select');
     rbStartBtn = document.getElementById('rb-start-btn');
     rbTranscript = document.getElementById('rb-transcript');
@@ -28,6 +27,11 @@ async function initResearchBoard() {
     rbSynthesisPane = document.getElementById('rb-synthesis-pane');
     rbSynthesisBody = document.getElementById('rb-synthesis-body');
     rbAddMemberBtn = document.getElementById('rb-add-member-btn');
+    
+    rbUserInputArea = document.getElementById('rb-user-input-area');
+    rbUserSubmitBtn = document.getElementById('rb-user-submit-btn');
+    rbSynthesisTriggerBtn = document.getElementById('rb-synthesis-trigger');
+
     if (rbStartBtn) {
         rbStartBtn.addEventListener('click', startBoardMeeting);
     }
@@ -36,6 +40,12 @@ async function initResearchBoard() {
             if (rbIsRunning) return;
             openAddMemberSelector();
         });
+    }
+    if (rbUserSubmitBtn) {
+        rbUserSubmitBtn.addEventListener('click', submitUserDirective);
+    }
+    if (rbSynthesisTriggerBtn) {
+        rbSynthesisTriggerBtn.addEventListener('click', synthesizeBoard);
     }
 
     await fetchRbModels();
@@ -158,11 +168,10 @@ async function startBoardMeeting() {
 
     const topic = rbPromptInput.value.trim();
     if (!topic) {
-        showToast('Please enter a decision topic.', 'warn');
+        showToast('Please enter a strategic topic.', 'warn');
         return;
     }
 
-    rbTotalRounds = parseInt(rbRoundsSelect.value) || 3;
     const modelId = rbModelSelect ? rbModelSelect.value : 'auto';
 
     rbIsRunning = true;
@@ -172,6 +181,7 @@ async function startBoardMeeting() {
     // Clear previous
     rbTranscript.innerHTML = '';
     rbSynthesisPane.style.display = 'none';
+    rbSprintCount = 0;
 
     try {
         const res = await fetch('/api/board/start', {
@@ -179,7 +189,6 @@ async function startBoardMeeting() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 topic: topic,
-                round_count: rbTotalRounds,
                 model_id: modelId,
                 participants: rbSelectedMemberIds
             })
@@ -192,10 +201,13 @@ async function startBoardMeeting() {
         rbPersonas = data.personas;
 
         renderDirectorPills();
-        updateRbStatus('Meeting in progress...', true);
         
-        // Start autonomous loop
-        await runDebateLoop();
+        // Hide initial config
+        document.querySelector('.rb-config-bar').style.display = 'none';
+        rbSynthesisTriggerBtn.style.display = 'inline-block';
+        
+        // Start first sprint
+        await runNextSprint();
 
     } catch (e) {
         console.error(e);
@@ -205,59 +217,84 @@ async function startBoardMeeting() {
     }
 }
 
-async function runDebateLoop() {
-    const totalTurns = rbTotalRounds * rbPersonas.length;
-    rbCurrentTurn = 0;
-
+async function runNextSprint() {
+    if (!rbIsRunning) return;
+    rbSprintCount++;
+    
+    updateRbStatus(`Consulting Sprint ${rbSprintCount} in progress...`, true);
+    rbProgressInfo.innerText = `SPRINT ${rbSprintCount}`;
+    
     const modelId = rbModelSelect ? rbModelSelect.value : 'auto';
+    
+    for (let pIdx = 0; pIdx < rbPersonas.length; pIdx++) {
+        const persona = rbPersonas[pIdx];
+        
+        // UI Update
+        updateTurnUi(persona, rbSprintCount);
+        
+        await new Promise(r => setTimeout(r, 800));
 
-    for (let r = 1; r <= rbTotalRounds; r++) {
-        for (let pIdx = 0; pIdx < rbPersonas.length; pIdx++) {
-            if (!rbIsRunning) break;
-            
-            rbCurrentTurn++;
-            const persona = rbPersonas[pIdx];
-            
-            // UI Update
-            updateTurnUi(persona, r);
-            
-            // Simulation Wait (Small pause for realism)
-            await new Promise(r => setTimeout(r, 800));
+        try {
+            const genRes = await fetch(`/api/board/sessions/${rbActiveThreadId}/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    person_id: persona.id,
+                    model_id: modelId,
+                    max_context: 30
+                })
+            });
 
-            try {
-                const genRes = await fetch(`/api/board/sessions/${rbActiveThreadId}/generate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        person_id: persona.id,
-                        model_id: modelId,
-                        max_context: 20
-                    })
-                });
+            if (!genRes.ok) throw new Error('Consultation turn failed');
+            const genData = await genRes.json();
 
-                if (!genRes.ok) throw new Error('Generation failed');
-                const genData = await genRes.json();
+            appendRbMessage(genData.message, persona.id);
 
-                appendRbMessage(genData.message, persona.id);
-
-            } catch (e) {
-                console.error(e);
-                appendRbMessage({ role: 'system', content: `[ERROR] ${persona.name} failed to respond.` });
-            }
+        } catch (e) {
+            console.error(e);
+            appendRbMessage({ role: 'system', content: `[ERROR] ${persona.name} had a connection issue.` });
         }
     }
 
-    // Finished debate
-    updateRbStatus('Debate concluded. Synthesizing final recommendation...', true);
-    await synthesizeBoard();
-    
-    rbIsRunning = false;
-    rbStartBtn.disabled = false;
-    rbStartBtn.innerHTML = '<i class="fas fa-play"></i> Start Board Meeting';
-    renderDirectorPills(); // Re-render to show add/remove buttons again
+    // Sprint finished, wait for user
+    updateRbStatus(`Sprint ${rbSprintCount} complete. Awaiting CEO Feedback.`, false);
+    rbUserInputArea.style.display = 'flex';
+    rbUserInputArea.querySelector('textarea').focus();
 }
 
-function updateTurnUi(persona, round) {
+async function submitUserDirective() {
+    const input = rbUserInputArea.querySelector('textarea');
+    const directive = input.value.trim();
+    if (!directive) return;
+
+    input.value = '';
+    rbUserInputArea.style.display = 'none';
+    
+    // Add user message to transcript
+    const msg = {
+        id: 'user-' + Date.now(),
+        role: 'user',
+        name: 'CEO',
+        content: directive
+    };
+    
+    // POST to thread system message
+    try {
+        await fetch(`/api/research/threads/${rbActiveThreadId}/system_message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: `[CEO DIRECTIVE]: ${directive}` })
+        });
+        
+        appendRbMessage(msg);
+        await runNextSprint();
+    } catch (e) {
+        showToast('Failed to pulse directive: ' + e.message, 'error');
+        rbUserInputArea.style.display = 'flex';
+    }
+}
+
+function updateTurnUi(persona, sprint) {
     // Reset all pills
     document.querySelectorAll('.rb-director-pill').forEach(el => el.classList.remove('active'));
     // Activate current
@@ -265,7 +302,7 @@ function updateTurnUi(persona, round) {
     if (pill) pill.classList.add('active');
 
     rbStatusText.innerHTML = `<i class="fas fa-comment-dots"></i> ${persona.name} is speaking...`;
-    rbProgressInfo.innerText = `ROUND: ${round} / ${rbTotalRounds}`;
+    rbProgressInfo.innerText = `SPRINT: ${sprint}`;
 }
 
 function appendRbMessage(msg, personaId = null) {
@@ -276,22 +313,22 @@ function appendRbMessage(msg, personaId = null) {
         return;
     }
 
-    // Find the simple ID for the CSS class prefix (e.g., rb-msg-greedy)
-    let simpleId = 'custom';
+    let simpleId = 'default';
     if (personaId) {
-        if (personaId.includes('greedy')) simpleId = 'greedy';
-        else if (personaId.includes('consumer')) simpleId = 'consumer';
-        else if (personaId.includes('dev')) simpleId = 'dev';
-        else if (personaId.includes('marketer')) simpleId = 'marketer';
+        if (personaId.includes('ops')) simpleId = 'ops';
+        else if (personaId.includes('cx')) simpleId = 'cx';
+        else if (personaId.includes('arch')) simpleId = 'arch';
+        else if (personaId.includes('growth')) simpleId = 'growth';
     }
 
-    const persona = rbPersonas.find(p => p.id === personaId) || { name: msg.name || 'Unknown' };
+    const persona = rbPersonas.find(p => p.id === personaId) || { name: msg.name || 'User' };
+    const roleLabel = msg.role === 'user' ? 'CEO' : 'Consultant';
 
     const html = `
-        <div class="rb-message rb-msg-${simpleId}">
+        <div class="rb-message rb-msg-${simpleId} ${msg.role === 'user' ? 'user-msg' : ''}">
             <div class="rb-message-header">
                 <span class="rb-message-name">${persona.name}</span>
-                <span class="rb-message-role">Director</span>
+                <span class="rb-message-role">${roleLabel}</span>
             </div>
             <div class="rb-message-body">
                 ${msg.content}

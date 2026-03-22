@@ -210,11 +210,26 @@
     box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
 }
 
-/* Specific Director Colors */
-.rb-msg-greedy { --accent: #ffb86c; }
-.rb-msg-consumer { --accent: #50fa7b; }
-.rb-msg-dev { --accent: #8be9fd; }
-.rb-msg-marketer { --accent: #bd93f9; }
+/* Professional Persona Colors */
+.rb-msg-ops { --accent: #00d9ff; }
+.rb-msg-cx { --accent: #50fa7b; }
+.rb-msg-arch { --accent: #bd93f9; }
+.rb-msg-growth { --accent: #ffb86c; }
+
+/* CEO / User Message */
+.rb-message.user-msg {
+    align-self: flex-end;
+    max-width: 80%;
+}
+.rb-message.user-msg .rb-message-body {
+    border-left: none;
+    border-right: 4px solid var(--primary);
+    background: rgba(var(--primary-rgb), 0.05);
+}
+.rb-message.user-msg .rb-message-name {
+    color: var(--primary);
+    text-align: right;
+}
 
 /* Status Bar */
 .rb-status-bar {
@@ -272,14 +287,43 @@
     opacity: 1;
 }
 
-.rb-director-pill.add-more {
-    border-style: dashed;
-    cursor: pointer;
-    opacity: 0.7;
-}
-
 .rb-director-pill.add-more:hover {
     opacity: 1;
     border-style: solid;
     color: var(--primary);
+}
+
+/* User Feedback Input Area */
+.rb-user-input-area {
+    padding: 1rem 1.5rem;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.rb-user-input-area textarea {
+    flex: 1;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    resize: none;
+    height: 45px;
+    transition: all 0.2s;
+}
+
+.rb-user-input-area textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    height: 80px;
 }

@@ -42,40 +42,40 @@ class BoardGenerateRequest(BaseModel):
 
 DEFAULT_DIRECTORS = [
     {
-        "id": "director_greedy",
-        "name": "The Greedy Executive",
+        "id": "director_ops",
+        "name": "Strategic Operations Director",
         "type": "director",
         "gender": "Non-binary",
-        "background": "A high-stakes venture capitalist and corporate executive whose primary metric for success is short-term ROI and aggressive market capture. They view ethics as a secondary concern to profitability and efficiency.",
-        "traits": {"Profit-Focus": 10, "Empathy": 2, "Aggression": 8, "Efficiency": 9},
-        "memory": "Born from a board of directors template to maximize revenue at all costs."
+        "background": "An expert in scaling startups and optimizing unit economics. They focus on long-term sustainability, market expansion, and operational efficiency. They prioritize data-driven decisions and clear paths to profitability.",
+        "traits": {"Scaling": 9, "Efficiency": 10, "Risk-Assessment": 8, "Sustainability": 7},
+        "memory": "Expert in operational infrastructure and market entry."
     },
     {
-        "id": "director_consumer",
-        "name": "The Pro-Consumer Gamer",
+        "id": "director_cx",
+        "name": "Customer Experience Lead",
         "type": "director",
         "gender": "Female",
-        "background": "A veteran community advocate and hardcore consumer who despises predatory monetization. They value transparency, fairness, and long-term brand loyalty over quick profits.",
-        "traits": {"Consumer-Focus": 10, "Skepticism": 9, "Empathy": 8, "Patience": 7},
-        "memory": "Born to protect users from corporate greed."
+        "background": "A specialist in user retention, community building, and brand trust. They believe that long-term success comes from providing genuine value and maintaining a transparent relationship with the audience.",
+        "traits": {"Retention": 10, "Empathy": 9, "Community-Value": 10, "Transparency": 8},
+        "memory": "Expert in user psychology and community health."
     },
     {
-        "id": "director_dev",
-        "name": "The Cautious Developer",
+        "id": "director_arch",
+        "name": "Lead Technical Architect",
         "type": "director",
         "gender": "Male",
-        "background": "A lead technical architect who has seen too many projects fail due to scope creep. They prioritize stability, technical debt reduction, and realistic timelines. They are skeptical of 'silver bullet' solutions.",
-        "traits": {"Stability": 9, "Realism": 10, "Skepticism": 7, "Risk-Aversion": 8},
-        "memory": "Born to ensure projects actually ship and don't crash."
+        "background": "A veteran systems architect focused on technical stability, security, and reducing technical debt. They advocate for realistic development timelines and robust, maintainable infrastructure.",
+        "traits": {"Stability": 10, "Security": 9, "Feasibility": 10, "Long-term-Debt": 9},
+        "memory": "Expert in distributed systems and technical lifecycle management."
     },
     {
-        "id": "director_marketer",
-        "name": "The Strategic Marketer",
+        "id": "director_growth",
+        "name": "Market Strategy & Growth",
         "type": "director",
         "gender": "Fluid",
-        "background": "A trend-obsessed marketing specialist who focuses on viral potential, audience reach, and 'the narrative'. They care about how things look and how they can be sold to the masses.",
-        "traits": {"Hype-Focus": 10, "Creativity": 9, "Sociability": 8, "Trend-Awareness": 10},
-        "memory": "Born to make things viral and marketable."
+        "background": "A marketing and growth specialist focused on brand positioning, acquisition channels, and viral loops. They look for unique angles to reach the target audience and build a compelling brand narrative.",
+        "traits": {"Growth": 10, "Positioning": 9, "Creativity": 8, "Market-Fit": 10},
+        "memory": "Expert in brand storytelling and acquisition strategy."
     }
 ]
 
@@ -110,7 +110,7 @@ async def get_directors():
 @router.post("/start")
 async def start_board(req: BoardStartRequest):
     ensure_default_directors()
-    active_pids = req.participants if req.participants else [d['id'] for d in DEFAULT_DIRECTORS]
+    active_pids = req.participants if req.participants and len(req.participants) > 0 else [d['id'] for d in DEFAULT_DIRECTORS]
     
     sid = f"board-{uuid.uuid4().hex[:8]}"
     s_dir = SESSIONS_DIR / sid
@@ -162,19 +162,21 @@ async def generate_board_response(session_id: str, req: BoardGenerateRequest, re
     with open(msg_file, 'r', encoding='utf-8') as f:
         messages = json.load(f)
         
-    # Specialized Board prompt
-    system_prompt = f"""You are {person['name']}, a member of the Board of Directors.
-Your background: {person['background']}
-Your current metrics (scale 1-10): {json.dumps(person['traits'])}
-Your internal memory: {person['memory']}
+    # Specialized Professional Board prompt
+    system_prompt = f"""You are {person['name']}, a senior consultant on the Board of Directors.
+Your expertise: {person['background']}
+Your current focus areas (scale 1-10): {json.dumps(person['traits'])}
+Your internal professional context: {person['memory']}
 
-You are participating in a decision-making debate. Your goal is to represent your unique perspective and influence the final outcome.
+You are participating in a strategic consult for the CEO. Your goal is to provide realistic, professional, and useful advice from your specific area of expertise.
+Avoid extreme caricatures or roleplay jargon. Be concise, direct, and helpful.
+
 Output a strictly valid JSON object:
 {{
-    "spoken_response": "Your contribution to the debate",
+    "spoken_response": "Your professional contribution or question for the board/CEO",
     "updated_traits": {json.dumps(person['traits'])},
-    "memory_updates": "Briefly summarize what you learned or decided in this turn.",
-    "trait_changes_tldr": "Why did you react this way?"
+    "memory_updates": "Briefly update your context with new core facts from the debate.",
+    "trait_changes_tldr": "Why is your focus shifting?"
 }}
 """
 
