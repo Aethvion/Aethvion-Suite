@@ -11,20 +11,23 @@ let rbCurrentTurn = 0;
 let rbIsRunning = false;
 let rbRegistryData = null;
 
-// Elements
-const rbPromptInput = document.getElementById('rb-prompt');
-const rbRoundsSelect = document.getElementById('rb-rounds');
-const rbModelSelect = document.getElementById('rb-model-select');
-const rbStartBtn = document.getElementById('rb-start-btn');
-const rbTranscript = document.getElementById('rb-transcript');
-const rbDirectorsStrip = document.getElementById('rb-directors-strip');
-const rbStatusText = document.getElementById('rb-status-text');
-const rbProgressInfo = document.getElementById('rb-progress-info');
-const rbSynthesisPane = document.getElementById('rb-synthesis-pane');
-const rbSynthesisBody = document.getElementById('rb-synthesis-body');
-const rbAddMemberBtn = document.getElementById('rb-add-member-btn');
+// Elements (initialized in init)
+let rbPromptInput, rbRoundsSelect, rbModelSelect, rbStartBtn, rbTranscript;
+let rbDirectorsStrip, rbStatusText, rbProgressInfo, rbSynthesisPane, rbSynthesisBody, rbAddMemberBtn;
 
 async function initResearchBoard() {
+    // Capture elements
+    rbPromptInput = document.getElementById('rb-prompt');
+    rbRoundsSelect = document.getElementById('rb-rounds');
+    rbModelSelect = document.getElementById('rb-model-select');
+    rbStartBtn = document.getElementById('rb-start-btn');
+    rbTranscript = document.getElementById('rb-transcript');
+    rbDirectorsStrip = document.getElementById('rb-directors-strip');
+    rbStatusText = document.getElementById('rb-status-text');
+    rbProgressInfo = document.getElementById('rb-progress-info');
+    rbSynthesisPane = document.getElementById('rb-synthesis-pane');
+    rbSynthesisBody = document.getElementById('rb-synthesis-body');
+    rbAddMemberBtn = document.getElementById('rb-add-member-btn');
     if (rbStartBtn) {
         rbStartBtn.addEventListener('click', startBoardMeeting);
     }
@@ -56,7 +59,7 @@ async function fetchRbModels() {
 
 async function fetchRbAllPersonas() {
     try {
-        const res = await fetch('/api/research/people');
+        const res = await fetch('/api/board/directors');
         if (!res.ok) return;
         rbAllPersonas = await res.json();
     } catch (e) {
@@ -171,7 +174,7 @@ async function startBoardMeeting() {
     rbSynthesisPane.style.display = 'none';
 
     try {
-        const res = await fetch('/api/research/board/start', {
+        const res = await fetch('/api/board/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -222,7 +225,7 @@ async function runDebateLoop() {
             await new Promise(r => setTimeout(r, 800));
 
             try {
-                const genRes = await fetch(`/api/research/threads/${rbActiveThreadId}/generate`, {
+                const genRes = await fetch(`/api/board/sessions/${rbActiveThreadId}/generate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -306,7 +309,7 @@ async function synthesizeBoard() {
     const modelId = rbModelSelect ? rbModelSelect.value : 'auto';
     
     try {
-        const res = await fetch('/api/research/board/synthesize', {
+        const res = await fetch('/api/board/synthesize', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -359,7 +362,8 @@ function formatMarkdown(text) {
 window.initResearchBoard = initResearchBoard;
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('research-board-tab')) {
+    // Check for either the panel or the tab button being present
+    if (document.getElementById('researchboard-panel')) {
         setTimeout(initResearchBoard, 600);
     }
 });

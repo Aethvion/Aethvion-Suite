@@ -80,7 +80,7 @@ async function fetchAdvaiconvModels() {
 
 async function fetchPersonas() {
     try {
-        const res = await fetch('/api/research/people');
+        const res = await fetch('/api/research/people?type=research_subject');
         allPersonas = await res.json();
 
         let html = '<option value="" disabled selected>+ Add Person...</option>';

@@ -257,6 +257,7 @@ async def initialize_system_background():
         from .settings_routes import router as settings_router
         from .photo_routes import router as photo_router
         from .advanced_aiconv_routes import router as adv_aiconv_router
+        from .research_board_routes import router as board_router
         from .assistant_routes import router as assistant_router
         from .misaka_cipher_routes import router as misaka_cipher_router
         from .documentation_routes import router as documentation_router
@@ -277,6 +278,7 @@ async def initialize_system_background():
         app.include_router(settings_router)
         app.include_router(photo_router)
         app.include_router(adv_aiconv_router)
+        app.include_router(board_router)
         app.include_router(assistant_router)
         app.include_router(misaka_cipher_router)
         app.include_router(documentation_router)

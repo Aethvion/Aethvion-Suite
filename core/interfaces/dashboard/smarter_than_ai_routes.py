@@ -19,6 +19,71 @@ from core.utils import get_logger
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/smarter-than-ai", tags=["smarter-than-ai"])
 
+# ── Randomisation tables ───────────────────────────────────────────────────────
+# Per-category sub-topics that force the LLM into a specific corner of the topic
+# space, preventing it from always picking the most "famous" examples.
+
+_SUBTOPICS: Dict[str, List[str]] = {
+    "General Knowledge": [
+        "world records", "unusual units of measurement", "everyday objects and their inventors",
+        "foods and their origins", "animals with surprising abilities", "famous firsts in history",
+        "words borrowed from other languages", "coincidences in history", "common myths and misconceptions",
+        "things named after people", "record-breaking natural events", "surprising statistics",
+    ],
+    "Science": [
+        "quantum physics", "marine biology", "chemistry of everyday life", "space exploration missions",
+        "human anatomy", "genetics and DNA", "the periodic table", "climate science",
+        "neuroscience", "mathematics and geometry", "famous scientific experiments",
+        "materials science", "volcanology", "epidemiology", "optics and light",
+    ],
+    "History": [
+        "ancient civilisations", "medieval Europe", "the Renaissance", "World War I",
+        "World War II", "the Cold War", "the Ottoman Empire", "ancient Egypt",
+        "the Roman Empire", "the Age of Exploration", "revolutionary movements",
+        "the Industrial Revolution", "ancient China", "the Viking age", "colonial history",
+    ],
+    "Pop Culture": [
+        "1980s films", "1990s music", "video game history", "comic book characters",
+        "animated TV shows", "award show history", "internet culture and memes",
+        "fashion trends by decade", "famous advertising slogans", "reality television",
+        "sports records", "Broadway and theatre", "classic literature adaptations",
+        "social media milestones", "2000s nostalgia",
+    ],
+    "Technology": [
+        "early computing history", "programming languages", "cybersecurity", "smartphones",
+        "artificial intelligence milestones", "social media companies", "famous software bugs",
+        "space technology", "robotics", "cryptocurrency and blockchain",
+        "the history of the internet", "semiconductors and chips", "electric vehicles",
+        "telecommunications history", "open-source software",
+    ],
+}
+
+_DEFAULT_SUBTOPICS = [
+    "niche historical events", "unusual scientific facts", "geography of lesser-known countries",
+    "etymology of common words", "surprising records", "inventions and their unintended consequences",
+]
+
+_DIFFICULTY_ANGLES = [
+    "Make it a medium-difficulty question that most people would need to think about.",
+    "Make it a challenging question that requires specific knowledge.",
+    "Make it an easy but fun question with an unexpected twist.",
+    "Make it a question about something most people overlook or get wrong.",
+    "Make it a question about an obscure-but-real fact.",
+]
+
+_REGION_ERAS = [
+    "Focus on something from the last 20 years.",
+    "Focus on something from before the year 1500.",
+    "Focus on something related to Asia or the Pacific.",
+    "Focus on something related to the Americas.",
+    "Focus on something related to Africa or the Middle East.",
+    "Focus on something related to Europe.",
+    "Focus on something from the 20th century.",
+    "No region or era restriction — pick anything interesting.",
+    "No region or era restriction — pick anything interesting.",
+    "No region or era restriction — pick anything interesting.",
+]
+
 
 # ── Data classes ───────────────────────────────────────────────────────────────
 
@@ -130,7 +195,7 @@ def _parse_json_response(raw: str) -> Optional[Dict]:
     return None
 
 
-async def _llm_call(model: str, prompt: str, trace_id: str) -> Optional[str]:
+async def _llm_call(model: str, prompt: str, trace_id: str, temperature: float = 0.7) -> Optional[str]:
     """Thin wrapper around ProviderManager.call_with_failover using asyncio.to_thread."""
     from core.providers import ProviderManager
     pm = ProviderManager()
@@ -139,7 +204,7 @@ async def _llm_call(model: str, prompt: str, trace_id: str) -> Optional[str]:
             pm.call_with_failover,
             prompt=prompt,
             trace_id=trace_id,
-            temperature=0.7,
+            temperature=temperature,
             max_tokens=512,
             model=model,
             source="game"
@@ -211,29 +276,41 @@ async def start_round(req: ShowIdRequest):
     cat_idx = show.current_round_index % len(show._category_order)
     chosen_category = show._category_order[cat_idx]
 
+    # Pick a random sub-topic, difficulty angle, and region/era to force variety
+    subtopic_pool = _SUBTOPICS.get(chosen_category, _DEFAULT_SUBTOPICS)
+    subtopic      = random.choice(subtopic_pool)
+    difficulty    = random.choice(_DIFFICULTY_ANGLES)
+    region_era    = random.choice(_REGION_ERAS)
+
     # Collect already-asked questions so the LLM can avoid them
     asked_so_far = [r.question for r in show.rounds[:-1] if r.question]
     avoid_block = ""
     if asked_so_far:
         listed = "\n".join(f"  - {q}" for q in asked_so_far)
         avoid_block = (
-            f"\n\nIMPORTANT: These questions have already been asked this game — "
-            f"do NOT repeat or closely resemble any of them:\n{listed}"
+            f"\n\nDo NOT repeat or closely resemble any of these already-asked questions:\n{listed}"
         )
 
     prompt = (
         f"You are the host of 'Are You Smarter Than AI?' — a competitive trivia gameshow.\n"
-        f"Generate a unique, interesting trivia question for round {round_num} of {show.total_rounds}.\n"
-        f"Category: {chosen_category}.\n"
-        f"The question must be DIFFERENT from any question you have generated before.{avoid_block}\n\n"
-        "Return ONLY valid JSON with no additional text:\n"
-        '{"question": "...", "category": "...", "correct_answer": "...", "points": 100, "hint": "one short hint without giving away the answer"}'
+        f"Generate ONE trivia question for round {round_num} of {show.total_rounds}.\n\n"
+        f"Constraints:\n"
+        f"  - Category: {chosen_category}\n"
+        f"  - Sub-topic: {subtopic}\n"
+        f"  - {difficulty}\n"
+        f"  - {region_era}\n"
+        f"  - The question must be specific and based on a real, verifiable fact.\n"
+        f"  - Avoid generic or overused trivia questions (no 'capital of France', no 'who painted the Mona Lisa' style questions).\n"
+        f"{avoid_block}\n\n"
+        "Return ONLY valid JSON with no extra text:\n"
+        '{"question": "...", "category": "...", "correct_answer": "...", "points": 100, "hint": "one short hint that helps without giving away the answer"}'
     )
 
     raw = await _llm_call(
         model=show.game_master_model,
         prompt=prompt,
-        trace_id=f"sta-{show.show_id[:8]}-gm-q{round_num}"
+        trace_id=f"sta-{show.show_id[:8]}-gm-q{round_num}",
+        temperature=1.0,
     )
 
     parsed = _parse_json_response(raw) if raw else None
