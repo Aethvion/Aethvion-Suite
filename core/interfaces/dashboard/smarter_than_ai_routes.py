@@ -7,6 +7,7 @@ human and AI players answer, and the GM judges and awards points.
 import re
 import uuid
 import json
+import random
 import asyncio
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
@@ -204,17 +205,29 @@ async def start_round(req: ShowIdRequest):
 
     show.state = "playing"
 
-    # Pick a category (cycle through or random)
-    cat_idx = show.current_round_index % len(show.categories)
-    chosen_category = show.categories[cat_idx]
+    # Pick a category — shuffle order so it feels less mechanical
+    if not hasattr(show, '_category_order'):
+        show._category_order = random.sample(show.categories, len(show.categories))
+    cat_idx = show.current_round_index % len(show._category_order)
+    chosen_category = show._category_order[cat_idx]
 
-    # Build GM prompt
+    # Collect already-asked questions so the LLM can avoid them
+    asked_so_far = [r.question for r in show.rounds[:-1] if r.question]
+    avoid_block = ""
+    if asked_so_far:
+        listed = "\n".join(f"  - {q}" for q in asked_so_far)
+        avoid_block = (
+            f"\n\nIMPORTANT: These questions have already been asked this game — "
+            f"do NOT repeat or closely resemble any of them:\n{listed}"
+        )
+
     prompt = (
-        f"You are the host of 'Are You Smarter Than AI?' — a competitive trivia gameshow. "
-        f"Generate a challenging but fun trivia question for round {round_num} of {show.total_rounds}. "
-        f"Category: {chosen_category}. "
-        "Return ONLY valid JSON with no additional text: "
-        '{"question": "...", "category": "...", "correct_answer": "...", "points": 100, "hint": "..."}'
+        f"You are the host of 'Are You Smarter Than AI?' — a competitive trivia gameshow.\n"
+        f"Generate a unique, interesting trivia question for round {round_num} of {show.total_rounds}.\n"
+        f"Category: {chosen_category}.\n"
+        f"The question must be DIFFERENT from any question you have generated before.{avoid_block}\n\n"
+        "Return ONLY valid JSON with no additional text:\n"
+        '{"question": "...", "category": "...", "correct_answer": "...", "points": 100, "hint": "one short hint without giving away the answer"}'
     )
 
     raw = await _llm_call(
@@ -226,13 +239,33 @@ async def start_round(req: ShowIdRequest):
     parsed = _parse_json_response(raw) if raw else None
 
     if not parsed or not parsed.get("question"):
-        # Fallback question if LLM fails
+        # Diverse fallback pool — pick one not already used
+        fallback_pool = [
+            {"question": "What is the largest planet in our solar system?",      "correct_answer": "Jupiter",          "hint": "It has a famous storm called the Great Red Spot."},
+            {"question": "Who painted the Mona Lisa?",                           "correct_answer": "Leonardo da Vinci", "hint": "He was also a famous inventor and scientist."},
+            {"question": "In what year did the Berlin Wall fall?",                "correct_answer": "1989",             "hint": "It happened in the late 1980s."},
+            {"question": "What element has the chemical symbol 'Au'?",           "correct_answer": "Gold",             "hint": "It comes from the Latin word 'Aurum'."},
+            {"question": "How many sides does a dodecagon have?",                 "correct_answer": "12",               "hint": "The prefix 'dodeca' means twelve."},
+            {"question": "Which country invented the printing press?",           "correct_answer": "Germany",          "hint": "Johannes Gutenberg is credited with its invention."},
+            {"question": "What is the speed of light in km/s (approximate)?",   "correct_answer": "300,000 km/s",     "hint": "It takes about 8 minutes to travel from the Sun to Earth."},
+            {"question": "Who wrote 'Pride and Prejudice'?",                     "correct_answer": "Jane Austen",      "hint": "She was an English novelist of the early 19th century."},
+            {"question": "What is the smallest country in the world by area?",   "correct_answer": "Vatican City",     "hint": "It is located within Rome, Italy."},
+            {"question": "What gas do plants absorb during photosynthesis?",     "correct_answer": "Carbon dioxide",   "hint": "Humans exhale it."},
+            {"question": "Which programming language was created by Guido van Rossum?", "correct_answer": "Python",   "hint": "Named after a British comedy group."},
+            {"question": "What is the longest river in the world?",              "correct_answer": "The Nile",         "hint": "It flows through Egypt."},
+            {"question": "In chess, which piece can only move diagonally?",      "correct_answer": "Bishop",           "hint": "Each player starts with two of them."},
+            {"question": "What is the hardest natural substance on Earth?",      "correct_answer": "Diamond",          "hint": "It scores 10 on the Mohs hardness scale."},
+            {"question": "How many bones are in the adult human body?",          "correct_answer": "206",              "hint": "Babies are born with around 270."},
+        ]
+        used_questions = {r.question for r in show.rounds}
+        unused = [f for f in fallback_pool if f["question"] not in used_questions]
+        chosen = random.choice(unused if unused else fallback_pool)
         parsed = {
-            "question": f"What is the capital of France?",
+            "question": chosen["question"],
             "category": chosen_category,
-            "correct_answer": "Paris",
+            "correct_answer": chosen["correct_answer"],
             "points": 100,
-            "hint": "It's the city of lights."
+            "hint": chosen["hint"],
         }
         logger.warning(f"[STA] GM question generation failed, using fallback for round {round_num}.")
 

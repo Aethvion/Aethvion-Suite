@@ -357,3 +357,9 @@ function formatMarkdown(text) {
 
 // Global initialization hook
 window.initResearchBoard = initResearchBoard;
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('research-board-tab')) {
+        setTimeout(initResearchBoard, 600);
+    }
+});
