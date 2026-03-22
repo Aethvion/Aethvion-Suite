@@ -45,6 +45,8 @@
     <link rel="stylesheet" href="/static/css/misaka_cipher.css">
     <link rel="stylesheet" href="/static/css/misaka_timestamps.css">
     <link rel="stylesheet" href="/static/css/adv_aiconv.css">
+    <link rel="stylesheet" href="/static/css/mode-photo.css?v=__VNUM__">
+    <link rel="stylesheet" href="/static/css/research-board.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/audio-models.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/assistant.css">
     <link rel="stylesheet" href="/static/css/audio_studio.css">
@@ -56,6 +58,7 @@
     <link rel="stylesheet" href="/static/games/sudoku/sudoku.css">
     <link rel="stylesheet" href="/static/games/word_search/word_search.css">
     <link rel="stylesheet" href="/static/games/checkers/checkers.css">
+    <link rel="stylesheet" href="/static/games/smarter_than_ai/smarter_than_ai.css">
     <link rel="stylesheet" href="/static/css/app-tabs.css">
     <link rel="stylesheet" href="/static/css/suite.css">
     <link rel="stylesheet" href="/static/css/agents.css">
@@ -362,6 +365,9 @@
                 <div class="cat-body mode-ai" data-cat-body="research">
                     <button class="main-tab mode-ai" data-maintab="advaiconv" data-tooltip="Advanced AI Conv.">
                         <span class="tab-icon">🧪</span><span class="tab-label">Advanced AI Conversation</span></button>
+                    <button class="main-tab mode-ai" data-maintab="researchboard" data-tooltip="Board of Directors">
+                        <span class="tab-icon">⚖️</span> <span class="tab-label">Board of Directors</span>
+                    </button>
                 </div>
 
                 <!-- Sandbox -->
@@ -392,6 +398,7 @@
                         <span class="tab-icon">🔠</span><span class="tab-label">Word Search</span></button>
                     <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-checkers" data-tooltip="Checkers">
                         <span class="tab-icon">🔴</span><span class="tab-label">Checkers (vs AI)</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-smarter-than-ai" data-tooltip="Are You Smarter Than AI?"><i class="fas fa-microphone"></i><span class="tab-label">Smarter Than AI?</span></button>
                 </div>
 
                 <!-- Files -->
@@ -1219,6 +1226,91 @@
                         </div>
                     </div>
 
+                </div>
+            </div>
+            
+            <!-- Research Board (Board of Directors) Tab -->
+            <div class="main-tab-panel" id="researchboard-panel">
+                <div class="research-board-layout">
+                    <!-- Setup Area -->
+                    <div class="rb-setup-area">
+                        <div class="rb-setup-row">
+                            <div class="rb-input-group">
+                                <label><i class="fas fa-gavel"></i> Decision Topic / Prompt</label>
+                                <textarea id="rb-prompt" class="rb-prompt-input" rows="2" placeholder="Describe the complex decision you are facing..."></textarea>
+                            </div>
+                            <div style="width: 200px;">
+                                <label>AI Model</label>
+                                <select id="rb-model-select" class="control-select" style="width: 100%;">
+                                    <option value="auto">Auto-Select</option>
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                            <div style="width: 120px;">
+                                <label>Rounds</label>
+                                <select id="rb-rounds" class="control-select" style="width: 100%;">
+                                    <option value="1">1 Round</option>
+                                    <option value="2">2 Rounds</option>
+                                    <option value="3" selected>3 Rounds</option>
+                                    <option value="4">4 Rounds</option>
+                                    <option value="5">5 Rounds</option>
+                                </select>
+                            </div>
+                            <button id="rb-start-btn" class="action-btn primary" style="height: 45px; padding: 0 1.5rem;">
+                                <i class="fas fa-play"></i> Start Board Meeting
+                            </button>
+                        </div>
+
+                        <!-- Board Members Selection -->
+                        <div class="rb-members-section">
+                            <div class="rb-section-header">
+                                <span class="rb-section-title"><i class="fas fa-users"></i> Board Members</span>
+                                <button id="rb-add-member-btn" class="action-btn secondary xs-btn" title="Add Board Member">
+                                    <i class="fas fa-user-plus"></i> Add
+                                </button>
+                            </div>
+                            <div class="rb-directors-strip" id="rb-directors-strip">
+                                <!-- Populated by JS -->
+                                <div class="placeholder-text" style="font-size: 0.8rem; opacity: 0.5;">Loading board members...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Workspace -->
+                    <div class="rb-main-content">
+                        <!-- Left: Live Transcript -->
+                        <div class="rb-transcript-area" id="rb-transcript">
+                            <div class="arena-placeholder" id="rb-placeholder">
+                                <span class="tab-icon" style="font-size:3rem;">⚖️</span>
+                                <h3>Board of Directors</h3>
+                                <p>Input a decision topic above to begin the autonomous debate.</p>
+                                <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-secondary); max-width: 500px; text-align: center;">
+                                    The system will spawn 4 specialized AI personas with conflicting goals to analyze your prompt from every angle.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Final Recommendation (Hidden until synthesize) -->
+                        <div class="rb-synthesis-pane" id="rb-synthesis-pane">
+                            <div class="rb-synthesis-header">
+                                <h3 style="margin: 0; font-size: 0.95rem;"><i class="fas fa-file-contract"></i> Executive Summary</h3>
+                                <button class="icon-btn" onclick="document.getElementById('rb-synthesis-pane').style.display='none'" title="Hide Summary"><i class="fas fa-times"></i></button>
+                            </div>
+                            <div class="rb-synthesis-content" id="rb-synthesis-body">
+                                <!-- Populated by synthesis -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status Bar -->
+                    <div class="rb-status-bar">
+                        <div class="rb-status-indicator" id="rb-status-text">
+                            <i class="fas fa-info-circle"></i> Ready for session
+                        </div>
+                        <div id="rb-progress-info" style="font-weight: 500;">
+                            ROUND: 0 / 0
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -3043,6 +3135,131 @@
                 </div>
             </div> <!-- Close main-tab-panel for game-checkers -->
 
+            <!-- Games Panel: Are You Smarter Than AI? -->
+            <div class="main-tab-panel" id="game-smarter-than-ai-panel">
+                <div class="sta-container">
+
+                    <!-- Header -->
+                    <div class="sta-header">
+                        <h2 class="sta-header-title"><i class="fas fa-microphone"></i>Are You Smarter Than AI?</h2>
+                        <span class="sta-round-indicator" id="sta-round-indicator">Gameshow</span>
+                    </div>
+
+                    <!-- Status bar -->
+                    <div class="sta-status-bar" id="sta-status-bar"></div>
+
+                    <!-- Lobby screen -->
+                    <div class="sta-screen" id="sta-lobby-screen">
+                        <div class="sta-lobby">
+                            <h1 class="sta-lobby-title">Are You Smarter Than AI?</h1>
+                            <p class="sta-lobby-subtitle">Compete against AI models in a trivia gameshow hosted by a Game Master AI.</p>
+
+                            <div class="sta-setup-card">
+                                <!-- Game Master -->
+                                <div class="sta-section-title">Game Master</div>
+                                <div class="sta-setup-row">
+                                    <label class="sta-setup-label">GM Model</label>
+                                    <select class="sta-setup-select" id="sta-gm-model-select">
+                                        <option value="auto">⚡ Auto</option>
+                                    </select>
+                                </div>
+                                <div class="sta-setup-row">
+                                    <label class="sta-setup-label">Rounds</label>
+                                    <select class="sta-setup-select" id="sta-rounds-select">
+                                        <option value="5">5 Rounds</option>
+                                        <option value="10">10 Rounds</option>
+                                        <option value="15">15 Rounds</option>
+                                    </select>
+                                    <label class="sta-setup-label" style="min-width:80px;">Time Limit</label>
+                                    <select class="sta-setup-select" id="sta-time-select">
+                                        <option value="20">20 sec</option>
+                                        <option value="30" selected>30 sec</option>
+                                        <option value="45">45 sec</option>
+                                        <option value="60">60 sec</option>
+                                    </select>
+                                </div>
+
+                                <!-- Players -->
+                                <div class="sta-section-title">Players</div>
+                                <div class="sta-player-list" id="sta-player-list"></div>
+                                <div class="sta-add-players-row">
+                                    <button class="sta-add-btn human" id="sta-add-human-btn">
+                                        <i class="fas fa-user"></i> Add Human Player
+                                    </button>
+                                    <button class="sta-add-btn ai" id="sta-add-ai-btn">
+                                        <i class="fas fa-robot"></i> Add AI Player
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button class="sta-start-btn" id="sta-start-btn" disabled>
+                                🎤 START SHOW
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Game screen -->
+                    <div class="sta-screen" id="sta-game-screen" style="display:none;">
+                        <div class="sta-question-stage">
+                            <!-- Category badge + question -->
+                            <span class="sta-category-badge" id="sta-category-badge">Category</span>
+                            <div class="sta-question-card">
+                                <p class="sta-question-text" id="sta-question-text">Question will appear here...</p>
+                            </div>
+
+                            <!-- Timer -->
+                            <div class="sta-timer-row">
+                                <div class="sta-timer" id="sta-timer" style="--progress:100%">
+                                    <span class="sta-timer-num" id="sta-timer-num">30</span>
+                                </div>
+                            </div>
+
+                            <!-- Human answer input -->
+                            <div class="sta-human-input-area" id="sta-human-input-area">
+                                <input class="sta-answer-input" id="sta-human-answer-input"
+                                       type="text" placeholder="Type your answer and press Enter or Submit..." />
+                                <button class="sta-submit-answer-btn" id="sta-submit-answer-btn">Submit</button>
+                            </div>
+
+                            <!-- Answers grid -->
+                            <div class="sta-answers-section">
+                                <div class="sta-answers-title">Player Answers</div>
+                                <div class="sta-answers-grid" id="sta-answers-grid"></div>
+                            </div>
+
+                            <!-- Correct answer reveal -->
+                            <div class="sta-correct-reveal" id="sta-correct-reveal">
+                                <div class="sta-correct-reveal-label">Correct Answer</div>
+                                <div class="sta-correct-reveal-answer" id="sta-correct-answer-text"></div>
+                                <div class="sta-correct-reveal-explanation" id="sta-explanation-text"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Final screen -->
+                    <div class="sta-screen" id="sta-final-screen" style="display:none;">
+                        <div class="sta-final-screen">
+                            <div class="sta-final-trophy" id="sta-final-trophy">🏆</div>
+                            <div class="sta-final-title" id="sta-final-title">Winner!</div>
+                            <div class="sta-final-winner-name" id="sta-final-winner-name"></div>
+                            <div class="sta-final-leaderboard" id="sta-final-leaderboard"></div>
+                            <button class="sta-play-again-btn" id="sta-play-again-btn">Play Again</button>
+                        </div>
+                    </div>
+
+                    <!-- Podiums strip -->
+                    <div class="sta-podiums-section" id="sta-podiums-section" style="display:none;">
+                        <div class="sta-podiums" id="sta-podiums"></div>
+                    </div>
+
+                    <!-- Controls bar (game screen only) -->
+                    <div class="sta-controls-bar" id="sta-controls-bar" style="display:none;">
+                        <button class="sta-ctrl-btn secondary" id="sta-judge-btn" disabled>⚖️ Judge Now</button>
+                        <button class="sta-ctrl-btn primary"   id="sta-next-round-btn" disabled>Next Round →</button>
+                    </div>
+                </div>
+            </div> <!-- Close main-tab-panel for game-smarter-than-ai -->
+
             <!-- Documentation Panel -->
             <div class="main-tab-panel" id="documentation-panel">
                 <div class="panel-header borderless">
@@ -3350,6 +3567,7 @@
             <script src="/static/js/mode-agents.js?v=1"></script>
             <script src="/static/js/particle-sphere.js?v=5"></script>
             <script src="/static/js/mode-misakacipher.js?v=5"></script>
+            <script src="/static/js/mode-research-board.js?v=__VNUM__"></script>
             <script src="/static/js/assistant.js?v=5"></script>
             <!-- Games View -->
             <script src="/static/games/common/games-shared.js?v=5"></script>
@@ -3359,6 +3577,7 @@
             <script src="/static/games/word_search/word_search.js?v=5"></script>
             <script src="/static/games/sudoku/sudoku.js?v=5"></script>
             <script src="/static/games/checkers/checkers.js?v=5"></script>
+            <script src="/static/games/smarter_than_ai/smarter_than_ai.js?v=1"></script>
 
 </div><!-- /panel-nexus -->
 
@@ -3433,6 +3652,12 @@
         <div class="update-hint">The suite will restart automatically once finished.</div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('systemReady', () => {
+        if (window.initResearchBoard) window.initResearchBoard();
+    });
+</script>
 
 </body>
 
