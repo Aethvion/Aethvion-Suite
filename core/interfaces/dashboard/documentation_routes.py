@@ -39,6 +39,7 @@ async def get_documentation():
                     docs_grouped[display_folder].append({
                         "name": filename,
                         "path": os.path.relpath(file_path, PROJECT_ROOT).replace("\\", "/"),
+                        "directory": rel_root.replace("\\", "/"),
                         "content": content
                     })
                 except Exception as e:

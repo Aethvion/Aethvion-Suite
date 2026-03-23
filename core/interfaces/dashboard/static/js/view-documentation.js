@@ -11,7 +11,6 @@ async function loadDocumentation() {
         if (!response.ok) throw new Error('Failed to fetch documentation');
 
         const data = await response.json();
-        console.log('Documentation data received:', data);
         
         if (!data || !data.docs) {
             throw new Error('Invalid documentation data received from server');
@@ -39,6 +38,38 @@ async function loadDocumentation() {
 
             docs[folder].forEach(doc => {
                 const docId = `doc-${folder.replace(/[^a-zA-Z0-9]/g, '-')}-${doc.name.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                
+                // Fix for .env files which often use ```env but highlight.js doesn't know it
+                let content = doc.content;
+                if (doc.name.endsWith('.env') || doc.name.includes('.env.')) {
+                    content = content.replace(/```env/g, '```properties');
+                }
+
+                // Custom renderer to fix relative image paths in Markdown ![alt](url) syntax
+                const renderer = new marked.Renderer();
+                const docDir = (doc.directory === "Root" || doc.directory === ".") ? "" : doc.directory;
+                
+                renderer.image = (href, title, text) => {
+                    if (href && !href.startsWith('http') && !href.startsWith('/') && !href.startsWith('data:')) {
+                        const fullPath = docDir ? `${docDir}/${href}` : href;
+                        const src = `/api/workspace/files/serve?path=${encodeURIComponent(fullPath.replace(/\\/g, '/'))}`;
+                        return `<img src="${src}" title="${title || ''}" alt="${text || ''}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0;">`;
+                    }
+                    return `<img src="${href}" title="${title || ''}" alt="${text || ''}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 10px 0;">`;
+                };
+
+                let renderedHtml = marked.parse(content, { renderer });
+
+                // Also fix HTML <img> tags which marked doesn't handle via renderer
+                renderedHtml = renderedHtml.replace(/<img[^>]+src=["']([^"']+)["'][^>]*>/g, (match, src) => {
+                    if (src && !src.startsWith('http') && !src.startsWith('/') && !src.startsWith('data:')) {
+                        const fullPath = docDir ? `${docDir}/${src}` : src;
+                        const newSrc = `/api/workspace/files/serve?path=${encodeURIComponent(fullPath.replace(/\\/g, '/'))}`;
+                        return match.replace(src, newSrc);
+                    }
+                    return match;
+                });
+
                 html += `
                     <details class="doc-file-details" id="${docId}">
                         <summary class="doc-file-summary">
@@ -47,7 +78,7 @@ async function loadDocumentation() {
                             <i class="fas fa-chevron-down foldout-arrow"></i>
                         </summary>
                         <div class="doc-file-content markdown-body">
-                            ${marked.parse(doc.content)}
+                            ${renderedHtml}
                         </div>
                     </details>
                 `;
@@ -61,6 +92,11 @@ async function loadDocumentation() {
         // Apply syntax highlighting
         if (window.hljs) {
             container.querySelectorAll('pre code').forEach((block) => {
+                // Map 'env' to 'properties' if it's there as a class
+                if (block.classList.contains('language-env')) {
+                    block.classList.remove('language-env');
+                    block.classList.add('language-properties');
+                }
                 hljs.highlightElement(block);
             });
         }

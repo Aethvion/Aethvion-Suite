@@ -139,7 +139,12 @@ async def get_queue_status():
 async def list_threads():
     """List all chat threads."""
     try:
-        task_manager = get_task_queue_manager()
+        try:
+            task_manager = get_task_queue_manager()
+        except ValueError:
+            # Task manager not initialized yet (orchestrator not ready)
+            return {"threads": [], "status": "initializing"}
+            
         threads = []
         for thread in list(task_manager.threads.values()):
             try:
