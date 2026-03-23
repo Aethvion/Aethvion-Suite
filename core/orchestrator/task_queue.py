@@ -728,7 +728,9 @@ class TaskQueueManager:
                                     task_ids=data.get('task_ids', []),
                                     metadata=data.get('metadata', {}),
                                     mode=data.get('mode', 'auto'),
-                                    is_deleted=data.get('is_deleted', False)
+                                    settings=data.get('settings', {"context_mode": "none", "context_window": 5}),
+                                    is_deleted=data.get('is_deleted', False),
+                                    is_pinned=data.get('is_pinned', False)
                                 )
                                 
                                 if not thread.is_deleted:

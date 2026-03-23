@@ -255,6 +255,29 @@ async def update_thread_settings(thread_id: str, request: ThreadSettingsRequest)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.post("/thread/{thread_id}/pin")
+async def toggle_thread_pin(thread_id: str, request: Dict[str, bool]):
+    """Toggle thread pinned status."""
+    try:
+        is_pinned = request.get('is_pinned', False)
+        task_manager = get_task_queue_manager()
+        thread = task_manager.get_thread(thread_id)
+        
+        if not thread:
+            raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found")
+            
+        thread.is_pinned = is_pinned
+        thread.updated_at = datetime.now()
+        task_manager._save_thread(thread_id)
+        
+        return {"status": "success", "is_pinned": is_pinned}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/debug/persistence")
 async def debug_persistence():
     """Debug endpoint to inspect loaded tasks and threads."""

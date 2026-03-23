@@ -130,13 +130,15 @@ async function loadThreads() {
         data.threads.forEach(thread => {
             // Default mode if not set
             if (!thread.mode) thread.mode = 'auto';
+            if (thread.is_pinned === undefined) thread.is_pinned = false;
 
             if (!threads[thread.id]) {
                 threads[thread.id] = thread;
                 threadMessages[thread.id] = []; // Initialize message storage
             } else {
-                // Update existing thread data (e.g. mode)
+                // Update existing thread data
                 threads[thread.id].mode = thread.mode;
+                threads[thread.id].is_pinned = thread.is_pinned;
             }
         });
 
@@ -147,10 +149,12 @@ async function loadThreads() {
         if (!currentThreadId || currentThreadId === 'default' || onAgentThread) {
             const threadKeys = Object.keys(threads).filter(id => !id.startsWith('agents-'));
             if (threadKeys.length > 0) {
-                // Sort by date desc
-                const sorted = threadKeys.map(id => threads[id]).sort((a, b) =>
-                    new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
-                );
+                // Sort by pinned first, then by date desc
+                const sorted = threadKeys.map(id => threads[id]).sort((a, b) => {
+                    if (a.is_pinned && !b.is_pinned) return -1;
+                    if (!a.is_pinned && b.is_pinned) return 1;
+                    return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at);
+                });
                 switchThread(sorted[0].id);
             }
         }
@@ -178,7 +182,8 @@ async function createNewThread() {
         mode: 'chat_only', // Legacy field, we'll use global toggle now
         settings: {},
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        is_pinned: false
     };
 
     // Initialize message storage for new thread
@@ -546,10 +551,12 @@ function renderThreadList() {
     threadsList.innerHTML = '';
     const template = document.getElementById('thread-item-template');
 
-    // Sort threads by date desc
-    const sortedThreads = Object.values(threads).sort((a, b) =>
-        new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
-    );
+    // Sort threads by pinned first, then by date desc
+    const sortedThreads = Object.values(threads).sort((a, b) => {
+        if (a.is_pinned && !b.is_pinned) return -1;
+        if (!a.is_pinned && b.is_pinned) return 1;
+        return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at);
+    });
 
     sortedThreads.forEach(thread => {
         // Clone template
@@ -580,6 +587,41 @@ function renderThreadList() {
         // Relative date
         const date = relativeTime(thread.updated_at || thread.created_at);
         clone.querySelector('.thread-date').textContent = date;
+
+        // Pin State Visuals
+        if (thread.is_pinned) {
+            threadItem.classList.add('pinned');
+            const pinBtn = clone.querySelector('.pin-btn');
+            if (pinBtn) pinBtn.classList.add('active');
+        }
+
+        // Pin Action
+        const pinBtn = clone.querySelector('.pin-btn');
+        if (pinBtn) {
+            pinBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const newState = !thread.is_pinned;
+                thread.is_pinned = newState;
+                
+                // Visual feedback immediate
+                threadItem.classList.toggle('pinned', newState);
+                pinBtn.classList.toggle('active', newState);
+                
+                // Re-sort and render list to reflect new positions
+                renderThreadList();
+                
+                try {
+                    await fetch(`/api/tasks/thread/${thread.id}/pin`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ is_pinned: newState })
+                    });
+                } catch (err) {
+                    console.error("Failed to toggle pin state:", err);
+                    showToast("Failed to pin thread.", "error");
+                }
+            });
+        }
 
         // Edit Action — inline title rename
         const editBtn = clone.querySelector('.edit-btn');

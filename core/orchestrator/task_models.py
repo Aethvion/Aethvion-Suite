@@ -120,6 +120,7 @@ class ChatThread:
     mode: str = "auto"  # "auto" or "chat_only"
     settings: Dict[str, Any] = field(default_factory=lambda: {"context_mode": "none", "context_window": 5})
     is_deleted: bool = False
+    is_pinned: bool = False
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -132,7 +133,8 @@ class ChatThread:
             'metadata': _sanitize_for_json(self.metadata),
             'mode': self.mode,
             'settings': _sanitize_for_json(self.settings),
-            'is_deleted': self.is_deleted
+            'is_deleted': self.is_deleted,
+            'is_pinned': self.is_pinned
         }
 
 

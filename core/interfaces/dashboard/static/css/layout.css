@@ -184,6 +184,27 @@
     color: var(--primary);
 }
 
+.thread-action-btn.pin-btn.active {
+    color: var(--warning);
+}
+
+.thread-item.pinned {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.05);
+}
+
+.thread-item.pinned:hover {
+    background: rgba(245, 158, 11, 0.08);
+    border-color: rgba(245, 158, 11, 0.4);
+}
+
+.thread-item.pinned .thread-title::before {
+    content: '📌 ';
+    font-size: 0.85em;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
 .new-thread-button {
     background: transparent;
     color: var(--text-secondary);
