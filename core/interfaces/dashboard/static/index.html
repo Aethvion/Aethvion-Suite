@@ -61,6 +61,9 @@
     <link rel="stylesheet" href="/static/css/app-tabs.css">
     <link rel="stylesheet" href="/static/css/suite.css">
     <link rel="stylesheet" href="/static/css/agents.css">
+    <link rel="stylesheet" href="/static/css/themes.css?v=__VNUM__">
+    <link rel="stylesheet" href="/static/css/command-palette.css?v=__VNUM__">
+    <link rel="stylesheet" href="/static/css/notifications.css?v=__VNUM__">
     <style>
         /* Audio Studio Specific Feedback */
         #audio-panel .radio-toggle input:checked+span {
@@ -241,6 +244,13 @@
 
 <body>
 
+<script>
+(function(){
+    const t = localStorage.getItem('aethvion_theme');
+    if (t === 'light') { document.documentElement.setAttribute('data-theme', 'light'); }
+})();
+</script>
+
 <!-- ── App Tab Bar ─────────────────────────────────────────────────────────── -->
 <div id="app-tab-bar">
     <div class="atb-brand" onclick="ATB.switchTo('panel-nexus')" title="Go to Nexus">
@@ -326,6 +336,24 @@
                     <span class="status-text">Connecting...</span>
                 </div>
                 <button id="logout-btn" style="display:none;margin-left:0.75rem;padding:0.3rem 0.75rem;background:transparent;border:1px solid #3f3f46;border-radius:6px;color:#f8fafc;font-size:0.8rem;cursor:pointer;" onclick="fetch('/api/auth/logout',{method:'POST'}).then(()=>window.location.href='/login')">Logout</button>
+                <!-- Theme toggle -->
+                <button id="theme-toggle" class="icon-btn" title="Toggle Theme" style="margin-left:0.5rem;background:transparent;border:none;cursor:pointer;color:var(--text-secondary);font-size:1rem;padding:4px 8px;border-radius:6px;transition:color 0.2s,background 0.2s;" onmouseover="this.style.background='var(--bg-tertiary)';this.style.color='var(--text-primary)'" onmouseout="this.style.background='transparent';this.style.color='var(--text-secondary)'"><i class="fas fa-moon" id="theme-icon"></i></button>
+                <!-- Notification bell -->
+                <div class="notif-wrapper" id="notif-wrapper" style="margin-left:0.25rem;">
+                    <button id="notif-bell-btn" class="notif-bell-btn" title="Notifications">
+                        <i class="fas fa-bell"></i>
+                        <span id="notif-badge" class="notif-badge hidden">0</span>
+                    </button>
+                    <div id="notif-dropdown" class="notif-dropdown hidden">
+                        <div class="notif-header">
+                            <span>Notifications</span>
+                            <button id="notif-read-all" class="notif-read-all-btn">Mark all read</button>
+                        </div>
+                        <div class="notif-list" id="notif-list">
+                            <div class="notif-empty">No notifications</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
@@ -3645,11 +3673,77 @@
             <div class="kbd-row"><span class="kbd-desc">Home mode</span>             <span class="kbd-keys"><kbd>Alt</kbd><kbd>1</kbd></span></div>
             <div class="kbd-row"><span class="kbd-desc">AI mode</span>               <span class="kbd-keys"><kbd>Alt</kbd><kbd>2</kbd></span></div>
         </div>
+
+        <div class="kbd-section-title">Global (Phase 2)</div>
+        <div class="kbd-grid">
+            <div class="kbd-row"><span class="kbd-desc">Command palette</span>       <span class="kbd-keys"><kbd>Ctrl</kbd><kbd>K</kbd></span></div>
+            <div class="kbd-row"><span class="kbd-desc">New chat thread</span>       <span class="kbd-keys"><kbd>Ctrl</kbd><kbd>N</kbd></span></div>
+            <div class="kbd-row"><span class="kbd-desc">Send message</span>          <span class="kbd-keys"><kbd>Ctrl</kbd><kbd>Enter</kbd></span></div>
+            <div class="kbd-row"><span class="kbd-desc">Focus chat input</span>      <span class="kbd-keys"><kbd>Ctrl</kbd><kbd>/</kbd></span></div>
+            <div class="kbd-row"><span class="kbd-desc">Switch to tab N</span>       <span class="kbd-keys"><kbd>Alt</kbd><kbd>1–9</kbd></span></div>
+            <div class="kbd-row"><span class="kbd-desc">Toggle theme</span>          <span class="kbd-keys"><kbd>—</kbd> (use ☀️/🌙 button)</span></div>
+        </div>
     </div>
 </div>
 
+<!-- ── Command Palette Overlay (P-4) ─────────────────────────────── -->
+<div id="command-palette-overlay" class="cmd-palette-overlay hidden" role="dialog" aria-modal="true" aria-label="Command Palette">
+    <div class="cmd-palette">
+        <div class="cmd-palette-input-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" class="cmd-palette-input" placeholder="Search tabs, actions…" autocomplete="off" spellcheck="false">
+            <span class="cmd-palette-kbd-hint">Esc</span>
+        </div>
+        <div class="cmd-palette-results"></div>
+        <div class="cmd-palette-footer">
+            <span><kbd>↑↓</kbd> Navigate</span>
+            <span><kbd>Enter</kbd> Select</span>
+            <span><kbd>Esc</kbd> Close</span>
+        </div>
+    </div>
+</div>
+
+<!-- ── Shortcuts Modal (P-7 alias — kbd-overlay is primary) ─────── -->
+<div id="shortcuts-modal" class="shortcuts-modal hidden" role="dialog" aria-modal="true" style="display:none;"></div>
+
 <!-- ── App Tab System ────────────────────────────────────────────────────── -->
 <script src="/static/js/app-tabs.js?v=__VNUM__"></script>
+
+<!-- ── Phase 2 UX Scripts ────────────────────────────────────────────────── -->
+<script src="/static/js/command-palette.js?v=__VNUM__"></script>
+<script src="/static/js/notifications.js?v=__VNUM__"></script>
+<script src="/static/js/sidebar.js?v=__VNUM__"></script>
+<script src="/static/js/keyboard-shortcuts.js?v=__VNUM__"></script>
+
+<!-- ── Theme Toggle Wiring ────────────────────────────────────────────────── -->
+<script>
+(function(){
+    function applyTheme(theme) {
+        if (theme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+            const icon = document.getElementById('theme-icon');
+            if (icon) { icon.className = 'fas fa-sun'; }
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+            const icon = document.getElementById('theme-icon');
+            if (icon) { icon.className = 'fas fa-moon'; }
+        }
+    }
+    // Apply on load
+    applyTheme(localStorage.getItem('aethvion_theme') || 'dark');
+    document.addEventListener('DOMContentLoaded', function(){
+        const btn = document.getElementById('theme-toggle');
+        if (btn) {
+            btn.addEventListener('click', function(){
+                const current = document.documentElement.getAttribute('data-theme');
+                const next = (current === 'light') ? 'dark' : 'light';
+                localStorage.setItem('aethvion_theme', next);
+                applyTheme(next);
+            });
+        }
+    });
+})();
+</script>
 
 <!-- Update Progress Overlay -->
 <div id="self-update-overlay" class="update-overlay">

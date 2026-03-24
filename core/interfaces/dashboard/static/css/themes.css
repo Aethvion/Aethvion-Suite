@@ -1,0 +1,23 @@
+/* Aethvion Suite — Light Theme Override */
+[data-theme="light"] {
+    --bg-primary: #f8fafc;
+    --bg-secondary: #f1f5f9;
+    --bg-tertiary: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-tertiary: #64748b;
+    --border: rgba(0, 0, 0, 0.1);
+    --border-hover: rgba(0, 0, 0, 0.2);
+    --glass-bg: rgba(248, 250, 252, 0.8);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    /* primary, accent, success, error, warning remain unchanged */
+}
+
+[data-theme="light"] body {
+    color-scheme: light;
+}
+
+/* Smooth transition when toggling */
+html {
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
