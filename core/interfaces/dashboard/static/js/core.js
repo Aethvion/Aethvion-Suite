@@ -1145,6 +1145,12 @@ async function loadInitialData() {
         initThreadManagement();
     }
 
+    // On first boot the backend may not be fully ready when loadThreads() runs above.
+    // Re-fetch once the system confirms it is initialized (splash dismissed → systemReady).
+    window.addEventListener('systemReady', () => {
+        if (typeof loadThreads === 'function') loadThreads();
+    }, { once: true });
+
     if (currentMainTab === 'misaka-cipher' && typeof initializeMisakaCipher === 'function') {
         initializeMisakaCipher();
     }
