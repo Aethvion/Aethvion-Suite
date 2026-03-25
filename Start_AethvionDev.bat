@@ -48,27 +48,31 @@ call ".venv\Scripts\activate.bat"
 echo.
 echo [3/5] VERIFYING DEPENDENCIES...
 python -c "import fastapi" >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [SETUP] Installing dependencies from pyproject.toml...
-    python -m pip install --upgrade pip
-    pip install -e ".[memory]"
-    if !errorlevel! neq 0 (
-        echo.
-        echo [WARNING] Extended dependency installation failed.
-        echo [SETUP] Attempting minimal core installation...
-        pip install -e .
-        if !errorlevel! neq 0 (
-            echo [ERROR] Dependency installation failed.
-            echo [TIP] If you are on an older PC, ensure you have a stable Python version (e.g. 3.12).
-            goto :FAIL
-        )
-        echo [OK]   Core suite installed. Some optional local AI features were skipped.
-    ) else (
-        echo [OK]   Dependencies installed.
-    )
-) else (
+if !errorlevel! equ 0 (
     echo [OK]   Dependencies verified.
+    goto :FINALIZING
 )
+
+echo [SETUP] Installing dependencies from pyproject.toml...
+python -m pip install --upgrade pip
+pip install -e ".[memory]"
+if !errorlevel! equ 0 (
+    echo [OK]   Dependencies installed.
+    goto :FINALIZING
+)
+
+echo.
+echo [WARNING] Extended dependency installation failed.
+echo [SETUP] Attempting minimal core installation...
+pip install -e "."
+if !errorlevel! neq 0 (
+    echo [ERROR] Dependency installation failed.
+    echo [TIP] If you are on an older PC, ensure you have a stable Python version (e.g. 3.12).
+    goto :FAIL
+)
+echo [OK]   Core suite installed. Some optional local AI features were skipped.
+
+:FINALIZING
 
 :: ── 4. Configuration ─────────────────────────────────────────
 echo.
