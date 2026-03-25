@@ -22,17 +22,23 @@ ACTION: {{"type": "write_file", "path": "relative/path.txt", "content": "FULL fi
 ACTION: {{"type": "read_file", "path": "relative/file.txt"}}
 ACTION: {{"type": "list_dir", "path": ""}}
 ACTION: {{"type": "run_command", "command": "npm install"}}
+ACTION: {{"type": "search_web", "query": "your search query", "max_results": 6}}
+ACTION: {{"type": "fetch_url", "url": "https://api.github.com/repos/owner/repo"}}
 ACTION: {{"type": "set_plan", "steps": ["step 1", "step 2", "step 3"]}}
-ACTION: {{"type": "mark_done", "step": "exact step text"}}
+ACTION: {{"type": "mark_done", "step": "exact step text"}}  ← call this AFTER the real action succeeds, never instead of it
 ACTION: {{"type": "add_note", "note": "important context to remember"}}
 ACTION: {{"type": "done", "summary": "brief summary of what was accomplished"}}
 
 EFFICIENCY RULES:
 1. Write REAL, COMPLETE file content — never stubs or placeholders.
 2. WORKSPACE STATE (shown below) lists all known files. Files marked [cached] have known content — do NOT re-read them unless you need to modify them.
-3. Start complex tasks with set_plan. Use mark_done as you complete steps.
+3. Start complex tasks with set_plan. Call mark_done only AFTER the real action for that step has executed and returned a result — mark_done does NOT create files or run code, it is a tracker only.
 4. Batch multiple ACTION lines per response to minimize round-trips.
 5. You have up to {max_iterations} actions — be strategic.
+6. For internet research use search_web. For fetching a specific URL or API (e.g. GitHub API, JSON endpoints) use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
+7. Do NOT repeat the same search more than twice. If a search doesn't give you the exact data you need, use fetch_url with a known API URL or proceed with the best available information — never loop on searches.
+8. Write ALL deliverable files (reports, analysis, code output) BEFORE writing or running any verification/test scripts. A script that checks a file's existence must run AFTER that file is written.
+9. Before calling done, check your plan — every [ ] step must have a corresponding write_file or run_command result in this conversation. If any step is unmarked, complete it first.
 """
 
 
@@ -345,6 +351,19 @@ class AgentRunner:
             self.state.log_action(iteration, "run_command", short_cmd)
             return result
 
+        if t == "search_web":
+            query = action.get("query", "")
+            max_results = int(action.get("max_results", 6))
+            result = self._search_web(query, max_results)
+            self.state.log_action(iteration, "search_web", query[:40])
+            return result
+
+        if t == "fetch_url":
+            url = action.get("url", "")
+            result = self._fetch_url(url)
+            self.state.log_action(iteration, "fetch_url", url[:40])
+            return result
+
         return f"Unknown action: {t}"
 
     def _parse_list_dir_entries(self, listing: str) -> List[str]:
@@ -397,6 +416,43 @@ class AgentRunner:
         except Exception as e:
             return f"Error: {e}"
 
+    def _fetch_url(self, url: str) -> str:
+        try:
+            import urllib.request
+            import urllib.error
+            headers = {
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "application/json, text/plain, */*",
+            }
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                status = resp.status
+                body = resp.read().decode("utf-8", errors="replace")
+            if len(body) > 6000:
+                body = body[:6000] + "\n...(truncated)"
+            return f"HTTP {status}\n{body}"
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")[:500]
+            return f"HTTP {e.code} {e.reason}: {body}"
+        except Exception as e:
+            return f"Fetch error: {e}"
+
+    def _search_web(self, query: str, max_results: int = 6) -> str:
+        try:
+            from duckduckgo_search import DDGS
+            results = []
+            with DDGS() as ddgs:
+                for r in ddgs.text(query, max_results=max_results):
+                    title = r.get("title", "")
+                    href  = r.get("href", "")
+                    body  = r.get("body", "")
+                    results.append(f"[{title}]\n{href}\n{body}")
+            if not results:
+                return "No results found."
+            return "\n\n---\n\n".join(results)
+        except Exception as e:
+            return f"Search error: {e}"
+
     def _run_command(self, command: str) -> str:
         try:
             res = subprocess.run(
@@ -448,6 +504,14 @@ class AgentRunner:
 
         if t == "run_command":
             return {"type": t, "title": f"$ {cmd[:80]}", "command": cmd, "detail": ""}
+
+        if t == "search_web":
+            query = action.get("query", "")
+            return {"type": t, "title": f"Search: {query}", "query": query, "detail": ""}
+
+        if t == "fetch_url":
+            url = action.get("url", "")
+            return {"type": "fetch_url", "title": f"Fetch: {url}", "url": url, "detail": ""}
 
         return {"type": t, "title": t, "detail": str(action)}
 

@@ -831,6 +831,81 @@ function _agHandleListDir(event) {
     s.activity.appendChild(item);
 }
 
+// ── Web search ─────────────────────────────────────────────────
+function _agHandleSearch(event) {
+    const s = _agentsRenderState;
+    if (!s) return;
+    const query  = event.query || event.title || '';
+    s.searchCount = (s.searchCount || 0) + 1;
+    _agPhaseAdd('search', '🔍', `Web · ${s.searchCount}`);
+    const result = event.result || '';
+    const item   = document.createElement('div');
+    item.className = 'agent-act-item';
+    const row = document.createElement('div');
+    row.className = 'agent-act-row agent-act--search';
+    row.innerHTML = `<span class="agent-act-icon">🔍</span><span class="agent-act-name">${_htmlEscape(query)}</span>`;
+    if (result) {
+        const chevron = document.createElement('span');
+        chevron.className = 'agent-act-chevron';
+        chevron.textContent = '▸';
+        row.appendChild(chevron);
+        const expand = document.createElement('div');
+        expand.className = 'agent-act-expand';
+        expand.style.display = 'none';
+        // Render each result block as a mini card
+        const blocks = result.split(/\n---\n/);
+        blocks.forEach(block => {
+            const lines = block.trim().split('\n');
+            const title = lines[0]?.replace(/^\[|\]$/g, '') || '';
+            const url   = lines[1] || '';
+            const body  = lines.slice(2).join('\n').trim();
+            const card = document.createElement('div');
+            card.className = 'agent-search-result';
+            card.innerHTML = `<div class="agent-search-title">${_htmlEscape(title)}</div>${url ? `<a class="agent-search-url" href="${_htmlEscape(url)}" target="_blank" rel="noopener">${_htmlEscape(url)}</a>` : ''}${body ? `<div class="agent-search-snippet">${_htmlEscape(body)}</div>` : ''}`;
+            expand.appendChild(card);
+        });
+        item.appendChild(row);
+        item.appendChild(expand);
+        row.addEventListener('click', () => { const open = expand.style.display !== 'none'; expand.style.display = open ? 'none' : 'block'; chevron.textContent = open ? '▸' : '▾'; });
+    } else {
+        item.appendChild(row);
+    }
+    s.activity.appendChild(item);
+}
+
+// ── URL fetch ──────────────────────────────────────────────────
+function _agHandleFetch(event) {
+    const s = _agentsRenderState;
+    if (!s) return;
+    const url    = event.url || event.title || '';
+    const result = event.result || '';
+    const item   = document.createElement('div');
+    item.className = 'agent-act-item';
+    const row = document.createElement('div');
+    row.className = 'agent-act-row agent-act--fetch';
+    const shortUrl = url.replace(/^https?:\/\//, '').slice(0, 60);
+    row.innerHTML = `<span class="agent-act-icon">🌐</span><span class="agent-act-name agent-act-name--mono">${_htmlEscape(shortUrl)}</span>`;
+    if (result) {
+        const chevron = document.createElement('span');
+        chevron.className = 'agent-act-chevron';
+        chevron.textContent = '▸';
+        row.appendChild(chevron);
+        const expand = document.createElement('div');
+        expand.className = 'agent-act-expand';
+        expand.style.display = 'none';
+        const pre = document.createElement('pre');
+        pre.className = 'agent-act-content';
+        pre.textContent = result.slice(0, 1500);
+        expand.appendChild(pre);
+        item.appendChild(row);
+        item.appendChild(expand);
+        row.addEventListener('click', () => { const open = expand.style.display !== 'none'; expand.style.display = open ? 'none' : 'block'; chevron.textContent = open ? '▸' : '▾'; });
+    } else {
+        item.appendChild(row);
+    }
+    s.activity.appendChild(item);
+}
+
 // ── Completion ─────────────────────────────────────────────────
 function _agFinishRender(event) {
     const s = _agentsRenderState;
@@ -896,6 +971,8 @@ function renderAgentStep(event) {
         case 'read_file':   _agHandleReadFile(event);  break;
         case 'list_dir':    _agHandleListDir(event);   break;
         case 'run_command': _agHandleCommand(event);   break;
+        case 'search_web':  _agHandleSearch(event);    break;
+        case 'fetch_url':   _agHandleFetch(event);     break;
     }
 
     const ti = s.activity.querySelector('.agent-typing-indicator');

@@ -1042,6 +1042,53 @@
     font-style: italic;
 }
 
+/* ── Search row ──────────────────────────────────────────────── */
+.agent-act--search .agent-act-icon { color: #93c5fd; }
+.agent-act--search .agent-act-name { color: #93c5fd; font-style: italic; }
+
+.agent-act--fetch .agent-act-icon { color: #a5b4fc; }
+.agent-act--fetch .agent-act-name { color: #a5b4fc; font-family: 'Fira Code', monospace; font-size: 0.75rem; }
+
+.agent-search-result {
+    padding: 0.4rem 0.6rem 0.4rem 2.1rem;
+    border-left: 2px solid rgba(147,197,253,0.25);
+    margin-left: 0.6rem;
+    margin-bottom: 0.35rem;
+}
+
+.agent-search-title {
+    font-size: 0.77rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.agent-search-url {
+    display: block;
+    font-size: 0.68rem;
+    color: #93c5fd;
+    opacity: 0.65;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0.1rem 0;
+}
+
+.agent-search-url:hover { opacity: 1; text-decoration: underline; }
+
+.agent-search-snippet {
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    opacity: 0.8;
+    margin-top: 0.15rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
 /* Flash when a file row updates in-place */
 @keyframes agent-act-flash {
     0%   { background: rgba(99,102,241,0.18); }
