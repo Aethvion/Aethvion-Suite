@@ -1416,6 +1416,47 @@ async def upload_context(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# --- Reset ---
+
+@router.post("/reset")
+async def reset_misaka():
+    """
+    Permanently delete all Misaka Cipher conversation history and dynamic memory.
+    Base identity (persona definition) is preserved — only learned memory and
+    chat history are removed.
+    """
+    import shutil
+
+    deleted = []
+    errors  = []
+
+    # 1. Wipe chat history (HISTORY_CHAT directory)
+    try:
+        if HISTORY_DIR.exists():
+            shutil.rmtree(HISTORY_DIR)
+            HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+            deleted.append("conversation history")
+    except Exception as e:
+        errors.append(f"history: {e}")
+        logger.error(f"[reset] Failed to clear history: {e}")
+
+    # 2. Wipe dynamic memory inside MEMORY_DIR (memory.json only — keep base_info)
+    try:
+        memory_file = MEMORY_DIR / "memory.json"
+        if memory_file.exists():
+            memory_file.write_text("{}", encoding="utf-8")
+            deleted.append("dynamic memory")
+    except Exception as e:
+        errors.append(f"memory: {e}")
+        logger.error(f"[reset] Failed to clear memory: {e}")
+
+    if errors:
+        raise HTTPException(status_code=500, detail=f"Partial reset — errors: {'; '.join(errors)}")
+
+    logger.info(f"[reset] Misaka Cipher reset complete. Cleared: {', '.join(deleted)}")
+    return {"ok": True, "cleared": deleted}
+
+
 # --- Nexus Module Management ---
 
 @router.get("/nexus/registry")

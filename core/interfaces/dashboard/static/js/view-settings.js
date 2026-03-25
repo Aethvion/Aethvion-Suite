@@ -172,6 +172,48 @@ async function loadPreferences() {
         };
     }
 
+    // Reset button
+    const resetBtn = document.getElementById('misaka-reset-btn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', async () => {
+            const confirmed = confirm(
+                'This will permanently delete all of Misaka Cipher\'s conversation history and memory.\n\nAre you sure?'
+            );
+            if (!confirmed) return;
+
+            resetBtn.disabled = true;
+            resetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting…';
+
+            try {
+                const res = await fetch('/api/misakacipher/reset', { method: 'POST' });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || `HTTP ${res.status}`);
+                }
+                resetBtn.innerHTML = '<i class="fas fa-check"></i> Reset complete';
+                resetBtn.style.background = 'rgba(34,197,94,0.15)';
+                resetBtn.style.borderColor = 'rgba(34,197,94,0.4)';
+                resetBtn.style.color = 'rgba(34,197,94,0.9)';
+                setTimeout(() => {
+                    resetBtn.disabled = false;
+                    resetBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Misaka Cipher';
+                    resetBtn.style.cssText = '';
+                }, 3000);
+            } catch (e) {
+                resetBtn.disabled = false;
+                resetBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Reset failed';
+                resetBtn.style.background = 'rgba(239,68,68,0.15)';
+                resetBtn.style.borderColor = 'rgba(239,68,68,0.4)';
+                resetBtn.style.color = 'rgba(239,68,68,0.9)';
+                console.error('[Misaka Reset]', e);
+                setTimeout(() => {
+                    resetBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Misaka Cipher';
+                    resetBtn.style.cssText = '';
+                }, 3000);
+            }
+        });
+    }
+
     // Initialize Other Sections
     loadGlobalSettings();
     initDevMode();

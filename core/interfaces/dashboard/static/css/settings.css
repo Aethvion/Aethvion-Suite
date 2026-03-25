@@ -871,4 +871,54 @@ input::-webkit-inner-spin-button {
 .iface-children-dimmed {
     opacity: 0.35;
     pointer-events: none;
+}
+
+/* ── Misaka Cipher — Danger Zone ─────────────────────────────── */
+.misaka-reset-zone {
+    margin-top: 1.5rem;
+    padding: 1rem 1rem 1rem;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.04);
+}
+
+.misaka-reset-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(239, 68, 68, 0.7);
+    margin-bottom: 0.4rem;
+}
+
+.misaka-reset-desc {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.85rem;
+    line-height: 1.5;
+}
+
+.misaka-reset-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 6px;
+    background: rgba(239, 68, 68, 0.08);
+    color: rgba(239, 68, 68, 0.85);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.misaka-reset-btn:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.16);
+    border-color: rgba(239, 68, 68, 0.6);
+}
+
+.misaka-reset-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }

@@ -307,14 +307,6 @@ class TaskWorker:
                             logger.debug(f"[{task.id}] Agent thread save failed (non-critical): {_ag_save_err}")
                     # ── End save messages to agent thread ──────────────────────────
 
-                    # Log conversation to HistoryManager so persona gets context in future turns
-                    try:
-                        from core.memory.history_manager import HistoryManager
-                        HistoryManager.log_message("user", task.prompt, platform="dashboard")
-                        HistoryManager.log_message("assistant", result.response, platform="dashboard")
-                    except Exception as hist_err:
-                        logger.debug(f"[{task.id}] History logging failed (non-critical): {hist_err}")
-
                     logger.info(
                         f"Worker {self.worker_id} completed task {task.id} "
                         f"in {task.duration:.2f}s"
