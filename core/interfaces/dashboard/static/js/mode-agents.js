@@ -1162,10 +1162,26 @@ function _agHandleSearch(event) {
         item.appendChild(row);
         item.appendChild(expand);
         row.addEventListener('click', () => { const open = expand.style.display !== 'none'; expand.style.display = open ? 'none' : 'block'; chevron.textContent = open ? '▸' : '▾'; });
+
+        // Push a condensed summary of findings to the thoughts panel
+        _agSearchToThought(query, result, blocks);
     } else {
         item.appendChild(row);
     }
     s.activity.appendChild(item);
+}
+
+// Push search findings as a thought card so the right panel reflects what was found
+function _agSearchToThought(query, rawResult, blocks) {
+    if (!rawResult || rawResult === 'No results found.' || rawResult.startsWith('Search error')) return;
+    // Build a compact markdown summary: query as heading + top result titles
+    const topTitles = blocks
+        .slice(0, 5)
+        .map(b => b.trim().split('\n')[0]?.replace(/^\[|\]$/g, '').trim())
+        .filter(Boolean);
+    if (!topTitles.length) return;
+    const md = `**Search:** ${query}\n\n**Top results:**\n${topTitles.map(t => `- ${t}`).join('\n')}`;
+    _agAddThoughtCard(`🔍 Found ${topTitles.length} results`, md);
 }
 
 // ── URL fetch ──────────────────────────────────────────────────
@@ -1195,6 +1211,14 @@ function _agHandleFetch(event) {
         item.appendChild(row);
         item.appendChild(expand);
         row.addEventListener('click', () => { const open = expand.style.display !== 'none'; expand.style.display = open ? 'none' : 'block'; chevron.textContent = open ? '▸' : '▾'; });
+
+        // Push a short fetch summary to the thoughts panel
+        if (!result.startsWith('Fetch error') && !result.startsWith('HTTP 4') && !result.startsWith('HTTP 5')) {
+            const snippet = result.replace(/^HTTP \d+\n/, '').slice(0, 300).trim();
+            if (snippet) {
+                _agAddThoughtCard(`🌐 Fetched ${shortUrl}`, `**URL:** ${url}\n\n\`\`\`\n${snippet}${result.length > 300 ? '\n…' : ''}\n\`\`\``);
+            }
+        }
     } else {
         item.appendChild(row);
     }
