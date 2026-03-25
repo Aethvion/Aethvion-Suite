@@ -805,4 +805,70 @@ input::-webkit-inner-spin-button {
     font-size: 0.75rem;
     color: var(--text-secondary);
     margin-top: 0.4rem;
+}
+
+/* ===== Interface Settings Panel ===== */
+.iface-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.iface-visibility-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.iface-group {
+    margin-bottom: 4px;
+}
+
+.iface-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+
+.iface-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.iface-row-child {
+    padding-left: 30px;
+}
+
+.iface-row-icon {
+    font-size: 0.85rem;
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+    opacity: 0.8;
+}
+
+.iface-row-label {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.iface-row-cat .iface-row-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.iface-children {
+    transition: opacity 0.2s;
+}
+
+.iface-children-dimmed {
+    opacity: 0.35;
+    pointer-events: none;
 }

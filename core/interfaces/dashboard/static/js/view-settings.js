@@ -1923,6 +1923,10 @@ async function switchSettingsSubTab(subTab, save = true) {
         loadDiscordStatus();
     }
 
+    if (subTab === 'interface') {
+        loadInterfaceSettings();
+    }
+
     if (save && typeof savePreference === 'function') {
         savePreference('active_settings_subtab', subTab);
     }
@@ -2470,5 +2474,115 @@ function updateDiscordUI(status) {
         userDisplay.textContent = 'ERROR';
         userDisplay.title = status.error;
     }
+}
+
+// ===== Interface Settings (Sidebar Visibility) =====
+
+function buildNavStructure() {
+    const structure = [];
+    const mainTabs = document.querySelector('.sidebar-nav .main-tabs');
+    if (!mainTabs) return structure;
+
+    // Standalone tab buttons (direct children, not inside cat-body)
+    mainTabs.querySelectorAll(':scope > .main-tab[data-maintab]').forEach(tabEl => {
+        const tabId = tabEl.dataset.maintab;
+        if (!tabId || tabId === 'settings' || tabId === 'version') return;
+        const icon = tabEl.querySelector('.tab-icon')?.textContent?.trim() || '';
+        const label = tabEl.querySelector('.tab-label')?.textContent?.trim() || tabId;
+        structure.push({ type: 'tab', id: tabId, label, icon });
+    });
+
+    // Category headers + their child tabs
+    mainTabs.querySelectorAll(':scope > .sidebar-category[data-cat]').forEach(catEl => {
+        const catId = catEl.dataset.cat;
+        const labelEl = catEl.querySelector('.cat-label');
+        const catLabel = (labelEl?.dataset.origText || labelEl?.textContent || catId).replace(/\s*\(\d+\)/, '').trim();
+        const body = document.querySelector(`.cat-body[data-cat-body="${catId}"]`);
+        if (!body) return;
+
+        const tabs = [];
+        body.querySelectorAll('.main-tab[data-maintab]').forEach(tab => {
+            const tabId = tab.dataset.maintab;
+            const iconEl = tab.querySelector('.tab-icon');
+            const icon = iconEl ? iconEl.textContent.trim() : '';
+            const label = tab.querySelector('.tab-label')?.textContent?.trim() || tabId;
+            tabs.push({ id: tabId, label, icon });
+        });
+
+        structure.push({ type: 'category', id: catId, label: catLabel, tabs });
+    });
+
+    return structure;
+}
+
+function createIfaceRow(id, type, label, icon, checked, isChild) {
+    const row = document.createElement('div');
+    row.className = 'iface-row' + (isChild ? ' iface-row-child' : '') + (type === 'cat' ? ' iface-row-cat' : '');
+
+    const uid = `iface-${type}-${id.replace(/[^a-z0-9]/gi, '-')}`;
+
+    row.innerHTML = `
+        <div class="toggle-switch-mini">
+            <input type="checkbox" id="${uid}"${checked ? ' checked' : ''}>
+            <label for="${uid}"></label>
+        </div>
+        <span class="iface-row-icon">${icon}</span>
+        <span class="iface-row-label">${label}</span>
+    `;
+
+    const checkbox = row.querySelector('input');
+    checkbox.addEventListener('change', async () => {
+        const isNowVisible = checkbox.checked;
+        const prefKey = type === 'cat' ? `nav_cat_hidden_${id}` : `nav_tab_hidden_${id}`;
+        await prefs.set(prefKey, !isNowVisible);
+
+        // Dim/undim children when category is toggled
+        if (type === 'cat') {
+            const children = row.closest('.iface-group')?.querySelector('.iface-children');
+            if (children) children.classList.toggle('iface-children-dimmed', !isNowVisible);
+        }
+
+        // Apply visibility changes to the sidebar
+        if (typeof applyNavVisibility === 'function') applyNavVisibility();
+    });
+
+    return row;
+}
+
+function loadInterfaceSettings() {
+    const container = document.getElementById('iface-visibility-list');
+    if (!container) return;
+
+    const structure = buildNavStructure();
+    container.innerHTML = '';
+
+    structure.forEach(item => {
+        if (item.type === 'tab') {
+            const hidden = prefs.get(`nav_tab_hidden_${item.id}`, false);
+            const row = createIfaceRow(item.id, 'tab', item.label, item.icon, !(hidden === true || hidden === 'true'), false);
+            container.appendChild(row);
+        } else if (item.type === 'category') {
+            const catHidden = prefs.get(`nav_cat_hidden_${item.id}`, false);
+            const isHidden = catHidden === true || catHidden === 'true';
+
+            const group = document.createElement('div');
+            group.className = 'iface-group';
+
+            const catRow = createIfaceRow(item.id, 'cat', `Category — ${item.label}`, '', !isHidden, false);
+            group.appendChild(catRow);
+
+            const childrenEl = document.createElement('div');
+            childrenEl.className = 'iface-children' + (isHidden ? ' iface-children-dimmed' : '');
+
+            item.tabs.forEach(tab => {
+                const tabHidden = prefs.get(`nav_tab_hidden_${tab.id}`, false);
+                const tabRow = createIfaceRow(tab.id, 'tab', tab.label, tab.icon, !(tabHidden === true || tabHidden === 'true'), true);
+                childrenEl.appendChild(tabRow);
+            });
+
+            group.appendChild(childrenEl);
+            container.appendChild(group);
+        }
+    });
 }
 

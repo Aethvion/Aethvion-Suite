@@ -267,6 +267,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Restore category collapse states
             initCategoryCollapse();
 
+            // Apply interface visibility preferences (hidden tabs/categories)
+            applyNavVisibility();
+
             // The active tab is now restored automatically by setDashboardMode
         } else {
             // Fallback (redundant fetch but keeping for safety if view-settings isn't loaded)
@@ -745,6 +748,29 @@ function toggleCategory(catId) {
         savePreference(`cat_collapsed_${catId}`, isNowCollapsed);
     }
 }
+
+function applyNavVisibility() {
+    if (typeof prefs === 'undefined') return;
+
+    // Categories
+    document.querySelectorAll('.sidebar-category[data-cat]').forEach(catEl => {
+        const catId = catEl.dataset.cat;
+        const hidden = prefs.get(`nav_cat_hidden_${catId}`, false);
+        const isHidden = hidden === true || hidden === 'true';
+        const body = document.querySelector(`.cat-body[data-cat-body="${catId}"]`);
+        catEl.classList.toggle('nav-hidden', isHidden);
+        if (body) body.classList.toggle('nav-hidden', isHidden);
+    });
+
+    // Individual tabs (skip settings and version which are always visible)
+    document.querySelectorAll('.main-tab[data-maintab]').forEach(tabEl => {
+        const tabId = tabEl.dataset.maintab;
+        if (!tabId || tabId === 'settings' || tabId === 'version') return;
+        const hidden = prefs.get(`nav_tab_hidden_${tabId}`, false);
+        tabEl.classList.toggle('nav-hidden', hidden === true || hidden === 'true');
+    });
+}
+window.applyNavVisibility = applyNavVisibility;
 
 // ─── Tab scroll-position memory ──────────────────────────────────
 const _tabScrollPos = {};  // tabName → scrollTop

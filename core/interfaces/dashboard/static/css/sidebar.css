@@ -289,3 +289,4 @@
 .sidebar-nav.collapsed .sidebar-bottom {
     align-items: center;
 }
+.nav-hidden { display: none !important; }
