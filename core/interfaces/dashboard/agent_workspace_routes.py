@@ -3,11 +3,13 @@ Agent Workspace Routes
 REST API endpoints for Agent Workspaces and Threads (/api/agents/...)
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional
 import asyncio
+import mimetypes
 import os
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -223,3 +225,56 @@ async def get_thread_history(workspace_id: str, thread_id: str, limit: int = 20)
     if limit > 0:
         messages = messages[-limit:]
     return {"messages": messages, "total": len(thread.get("messages", []))}
+
+
+# ── File upload ─────────────────────────────────────────────────────────────
+
+_AGENTS_UPLOADS = Path(__file__).parent / "static" / "uploads" / "agents"
+_AGENTS_MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
+@router.post("/upload")
+async def upload_agent_file(file: UploadFile = File(...)):
+    """
+    Accept a file upload from the agents frontend (images, text, code, etc.)
+    and return metadata so the frontend can include it in the task payload.
+    """
+    raw = await file.read()
+    if len(raw) > _AGENTS_MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Max size is {_AGENTS_MAX_FILE_SIZE // (1024*1024)} MB."
+        )
+
+    filename = file.filename or "attachment"
+    mime_type, _ = mimetypes.guess_type(filename)
+    mime_type = mime_type or "application/octet-stream"
+    is_image = mime_type.startswith("image/")
+
+    # Try to decode text content
+    text_content: Optional[str] = None
+    if not is_image:
+        try:
+            text_content = raw.decode("utf-8")
+        except Exception:
+            pass
+
+    # Save to disk
+    import datetime
+    month_str = datetime.datetime.now().strftime("%Y-%m")
+    uploads_dir = _AGENTS_UPLOADS / month_str
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_filename = f"{uuid.uuid4().hex[:8]}_{filename}"
+    file_path = uploads_dir / safe_filename
+
+    with open(file_path, "wb") as f:
+        f.write(raw)
+
+    return {
+        "filename": filename,
+        "path": str(file_path),
+        "is_image": is_image,
+        "mime_type": mime_type,
+        "content": text_content,
+        "size": len(raw),
+    }

@@ -205,6 +205,7 @@ class AgentRunner:
         model_id: Optional[str] = None,
         trace_id: Optional[str] = None,
         state_path: Optional[Path] = None,
+        images: Optional[List[Dict]] = None,
     ):
         self.task = task
         self.workspace = Path(workspace_path) if workspace_path else Path.cwd()
@@ -217,6 +218,9 @@ class AgentRunner:
         self._start_time = datetime.utcnow()
         self.run_input_tokens = 0
         self.run_output_tokens = 0
+        # Images attached to this task — consumed on first LLM call only
+        self._images: Optional[List[Dict]] = images or None
+        self._images_sent: bool = False
 
     # ── emit ──────────────────────────────────────────────────────
 
@@ -250,6 +254,14 @@ class AgentRunner:
         """Use streaming — same path as the working Code IDE — for reliability."""
         prompt = self._build_prompt()
         logger.info(f"[AgentRunner iter={iteration}] prompt_chars={len(prompt)}")
+
+        # Pass images only on the first LLM call so vision context is available
+        # for the initial plan; subsequent iterations are text-only to save tokens
+        call_images = None
+        if self._images and not self._images_sent:
+            call_images = self._images
+            self._images_sent = True
+
         try:
             chunks: list[str] = []
             for chunk in self.nexus.provider_manager.call_with_failover_stream(
@@ -260,6 +272,7 @@ class AgentRunner:
                 request_type="generation",
                 source="agent",
                 max_tokens=8192,
+                images=call_images,
             ):
                 chunks.append(chunk)
             full = "".join(chunks).strip()

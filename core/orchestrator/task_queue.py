@@ -191,14 +191,29 @@ class TaskWorker:
                         if ws_id and ag_tid:
                             state_path = HISTORY_AGENTS / ws_id / "threads" / f"{ag_tid}_state.json"
 
+                        # Prepend text file contents to the prompt so the agent
+                        # can read them as context (images are passed separately)
+                        agent_prompt = task.prompt
+                        if attached_files:
+                            text_parts = []
+                            for file_data in attached_files:
+                                if not file_data.get("is_image") and file_data.get("content"):
+                                    text_parts.append(
+                                        f"[Attached file: {file_data.get('filename', 'file')}]\n"
+                                        f"{file_data['content']}\n[End of attachment]"
+                                    )
+                            if text_parts:
+                                agent_prompt = "\n\n".join(text_parts) + "\n\n" + agent_prompt
+
                         runner = AgentRunner(
-                            task=task.prompt,
+                            task=agent_prompt,
                             workspace_path=workspace_path,
                             nexus=self.orchestrator.nexus,
                             step_callback=_agent_step_callback,
                             model_id=model_id,
                             trace_id=task.id,
                             state_path=state_path,
+                            images=images or None,
                         )
                         summary = await loop.run_in_executor(None, runner.run)
                         mark_task_done(task.id)

@@ -167,28 +167,40 @@ class GoogleAIProvider(BaseProvider):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
+        images: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> Iterator[str]:
         """Stream response using Google AI."""
         try:
             logger.debug(f"[{trace_id}] Streaming with Google AI model {self.config.model}")
-            
+
             # Configure generation
             config_params = {
                 'temperature': temperature,
             }
             if max_tokens:
                 config_params['max_output_tokens'] = max_tokens
-            
-            # Stream response
+
+            # Build contents — include image parts if provided
             from google.genai import types
             active_model = model if model else self.config.model
+            if images:
+                contents = []
+                for img in images:
+                    contents.append(types.Part.from_bytes(
+                        data=img['data'],
+                        mime_type=img.get('mime_type', 'image/jpeg')
+                    ))
+                contents.append(types.Part.from_text(text=prompt))
+            else:
+                contents = prompt
+
             response = self.client.models.generate_content_stream(
                 model=active_model,
-                contents=prompt,
+                contents=contents,
                 config=types.GenerateContentConfig(**config_params)
             )
-            
+
             for chunk in response:
                 if chunk.text:
                     yield chunk.text

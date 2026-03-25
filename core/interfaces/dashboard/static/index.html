@@ -922,9 +922,17 @@
                             <i class="fas fa-folder"></i>
                             <span id="agents-input-path"></span>
                         </div>
+                        <!-- Attached file chips strip -->
+                        <div class="agents-attach-strip" id="agents-attach-strip" style="display:none"></div>
                         <div class="agents-input-row">
                             <textarea id="agents-task-input" class="agents-textarea" placeholder="Describe a task for the agent..." rows="3" disabled></textarea>
                             <div class="agents-input-actions">
+                                <!-- Hidden file input -->
+                                <input type="file" id="agents-file-input" style="display:none" multiple
+                                    accept="image/*,.txt,.md,.py,.js,.ts,.json,.csv,.log,.yaml,.yml,.toml,.html,.css,.xml,.sh,.bat">
+                                <button id="agents-attach-btn" class="agents-attach-btn" title="Attach file" disabled>
+                                    <i class="fas fa-paperclip"></i>
+                                </button>
                                 <select id="agents-model-select" class="control-select" title="Model">
                                     <option value="auto">Auto</option>
                                 </select>

@@ -120,6 +120,7 @@ class AnthropicProvider(BaseProvider):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
+        images: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> Iterator[str]:
         """Stream response using Anthropic Claude."""
@@ -129,9 +130,27 @@ class AnthropicProvider(BaseProvider):
 
             system_prompt = kwargs.pop('system_prompt', None)
 
+            # Build content — include image blocks if provided
+            if images:
+                import base64
+                content: Any = [{"type": "text", "text": prompt}]
+                for img in images:
+                    b64_data = base64.b64encode(img['data']).decode('utf-8')
+                    mime = img.get('mime_type', 'image/jpeg')
+                    content.append({
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": mime,
+                            "data": b64_data,
+                        }
+                    })
+            else:
+                content = prompt
+
             create_kwargs: Dict[str, Any] = {
                 "model": active_model,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [{"role": "user", "content": content}],
                 "temperature": temperature,
                 "max_tokens": max_tokens or 8192,
             }

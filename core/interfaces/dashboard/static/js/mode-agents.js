@@ -23,6 +23,7 @@ let _agentsModelCosts = {};          // model_id → {input, output} per 1M toke
 let _agentsPollTimer = null;
 let _agentsCurrentTaskId = null;
 let _agentsIsPolling = false;
+let _agentsAttachedFiles = [];       // [{filename, path, is_image, mime_type, content, size, _previewUrl}]
 
 // ── DOM helpers ───────────────────────────────────────────────
 const _agEl = (id) => document.getElementById(id);
@@ -289,11 +290,31 @@ function _agentsAppendMessage(msg, scroll = true) {
 
     if (role === 'user') {
         // Task prompt header — compact, dashboard style
-        wrapper.innerHTML = `
-            <div class="agents-task-header">
-                <span class="agents-task-label">Task</span>
-                <span class="agents-task-text">${_htmlEscape(msg.content || '')}</span>
-            </div>`;
+        const header = document.createElement('div');
+        header.className = 'agents-task-header';
+        header.innerHTML = `
+            <span class="agents-task-label">Task</span>
+            <span class="agents-task-text">${_htmlEscape(msg.content || '')}</span>`;
+        // Show attached file thumbnails/chips if present
+        const attachments = msg.attachments || [];
+        if (attachments.length > 0) {
+            const chips = document.createElement('div');
+            chips.className = 'agents-task-attachments';
+            attachments.forEach(file => {
+                const chip = document.createElement('div');
+                chip.className = 'agents-task-attach-chip';
+                if (file.is_image && file._previewUrl) {
+                    chip.innerHTML = `<img src="${file._previewUrl}" class="agents-attach-thumb" alt="${_htmlEscape(file.filename)}">`;
+                } else if (file.is_image) {
+                    chip.innerHTML = `<i class="fas fa-image"></i><span>${_htmlEscape(file.filename)}</span>`;
+                } else {
+                    chip.innerHTML = `<i class="fas fa-file-alt"></i><span>${_htmlEscape(file.filename)}</span>`;
+                }
+                chips.appendChild(chip);
+            });
+            header.appendChild(chips);
+        }
+        wrapper.appendChild(header);
     } else if (role === 'error') {
         wrapper.innerHTML = `<div class="agents-response-error">${_htmlEscape(msg.content || 'An error occurred.')}</div>`;
     } else {
@@ -364,10 +385,12 @@ function _agentsHideTyping() {
 
 // ── Submit state ──────────────────────────────────────────────
 function _agentsUpdateSubmitState() {
-    const btn = _agEl('agents-submit-btn');
-    const textarea = _agEl('agents-task-input');
-    const enabled = !!(_agentsCurrentWorkspace && _agentsCurrentThread && !_agentsIsPolling);
-    if (btn) btn.disabled = !enabled;
+    const btn       = _agEl('agents-submit-btn');
+    const attachBtn = _agEl('agents-attach-btn');
+    const textarea  = _agEl('agents-task-input');
+    const enabled   = !!(_agentsCurrentWorkspace && _agentsCurrentThread && !_agentsIsPolling);
+    if (btn)       btn.disabled       = !enabled;
+    if (attachBtn) attachBtn.disabled = !enabled;
     if (textarea) textarea.disabled = !enabled;
     if (textarea && enabled) textarea.placeholder = 'Describe a task for the agent...';
     if (textarea && !enabled && !_agentsCurrentWorkspace) textarea.placeholder = 'Select a workspace first...';
@@ -387,13 +410,26 @@ async function agentsSubmitTask() {
     const modelSel = _agEl('agents-model-select');
     const modelId = modelSel ? modelSel.value : 'auto';
 
-    // Append user message locally
-    _agentsAppendMessage({ role: 'user', content: prompt, timestamp: new Date().toISOString() });
+    // Snapshot and clear attached files before appending the message
+    const filesSnapshot = _agentsAttachedFiles.slice();
+    _agentsAttachedFiles = [];
+    _agentsRenderAttachStrip();
+
+    // Append user message locally (show file thumbnails inline)
+    _agentsAppendMessage({
+        role: 'user',
+        content: prompt,
+        timestamp: new Date().toISOString(),
+        attachments: filesSnapshot,
+    });
     if (textarea) textarea.value = '';
 
     _agentsIsPolling = true;
     _agentsUpdateSubmitState();
     _agentsShowTyping();
+
+    // Strip preview URL before sending to backend
+    const filesForApi = filesSnapshot.map(({ _previewUrl, ...rest }) => rest);
 
     try {
         const resp = await fetch('/api/tasks/submit', {
@@ -406,6 +442,7 @@ async function agentsSubmitTask() {
                 mode: 'auto',
                 workspace_id: _agentsCurrentWorkspace.id,
                 agent_thread_id: _agentsCurrentThread.id,
+                attached_files: filesForApi.length ? filesForApi : undefined,
             })
         });
 
@@ -1515,6 +1552,73 @@ async function agentsLoadModels() {
     }
 }
 
+// ── File attachment helpers ────────────────────────────────────
+function _agentsRenderAttachStrip() {
+    const strip = _agEl('agents-attach-strip');
+    if (!strip) return;
+    if (_agentsAttachedFiles.length === 0) {
+        strip.style.display = 'none';
+        strip.innerHTML = '';
+        return;
+    }
+    strip.style.display = 'flex';
+    strip.innerHTML = '';
+    _agentsAttachedFiles.forEach((file, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'agents-attach-chip';
+        const thumb = file._previewUrl
+            ? `<img src="${file._previewUrl}" class="agents-attach-thumb" alt="">`
+            : `<i class="fas fa-file-alt agents-attach-file-icon"></i>`;
+        chip.innerHTML = `
+            ${thumb}
+            <span class="agents-attach-chip-name">${_htmlEscape(file.filename)}</span>
+            <button class="agents-attach-chip-remove" data-idx="${idx}" title="Remove">
+                <i class="fas fa-times"></i>
+            </button>`;
+        chip.querySelector('.agents-attach-chip-remove').addEventListener('click', () => {
+            if (file._previewUrl) URL.revokeObjectURL(file._previewUrl);
+            _agentsAttachedFiles.splice(idx, 1);
+            _agentsRenderAttachStrip();
+        });
+        strip.appendChild(chip);
+    });
+}
+
+async function _agentsHandleFileSelect(files) {
+    if (!files || files.length === 0) return;
+    const attachBtn = _agEl('agents-attach-btn');
+    if (attachBtn) {
+        attachBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        attachBtn.disabled = true;
+    }
+    try {
+        for (const file of Array.from(files)) {
+            const fd = new FormData();
+            fd.append('file', file);
+            const resp = await fetch('/api/agents/upload', { method: 'POST', body: fd });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                console.error('[Agents attach]', err.detail || `HTTP ${resp.status}`);
+                continue;
+            }
+            const data = await resp.json();
+            // Create local preview URL for images
+            if (data.is_image) {
+                data._previewUrl = URL.createObjectURL(file);
+            }
+            _agentsAttachedFiles.push(data);
+        }
+    } catch (e) {
+        console.error('[Agents attach] Upload error:', e);
+    } finally {
+        if (attachBtn) {
+            attachBtn.innerHTML = '<i class="fas fa-paperclip"></i>';
+            attachBtn.disabled = !(_agentsCurrentWorkspace && _agentsCurrentThread && !_agentsIsPolling);
+        }
+    }
+    _agentsRenderAttachStrip();
+}
+
 // ── Event wiring (called once after DOM is ready) ─────────────
 function agentsInitEventHandlers() {
     // Workspace select change
@@ -1587,6 +1691,17 @@ function agentsInitEventHandlers() {
             if (e.key === 'Escape') agentsHideAddWorkspaceModal();
         });
     });
+
+    // Attach button + hidden file input
+    const attachBtn  = _agEl('agents-attach-btn');
+    const fileInput  = _agEl('agents-file-input');
+    if (attachBtn && fileInput) {
+        attachBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => {
+            _agentsHandleFileSelect(fileInput.files);
+            fileInput.value = ''; // reset so same file can be re-added
+        });
+    }
 
     // Submit button
     const submitBtn = _agEl('agents-submit-btn');

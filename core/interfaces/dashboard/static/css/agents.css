@@ -447,6 +447,121 @@
     cursor: not-allowed;
 }
 
+/* ── Attach button ───────────────────────────────────────────── */
+.agents-attach-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.4rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.agents-attach-btn:hover:not(:disabled) {
+    background: rgba(255,255,255,0.06);
+    color: var(--text-primary);
+    border-color: var(--primary);
+}
+
+.agents-attach-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* ── Attach strip (below context bar, above textarea row) ─────── */
+.agents-attach-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.4rem 0.5rem 0.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.agents-attach-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem 0.2rem 0.3rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    max-width: 180px;
+}
+
+.agents-attach-thumb {
+    width: 22px;
+    height: 22px;
+    object-fit: cover;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.agents-attach-file-icon {
+    font-size: 0.8rem;
+    width: 22px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.agents-attach-chip-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+.agents-attach-chip-remove {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.7rem;
+    line-height: 1;
+    opacity: 0.6;
+}
+.agents-attach-chip-remove:hover { opacity: 1; }
+
+/* ── Task header attachments row ─────────────────────────────── */
+.agents-task-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.35rem;
+    width: 100%;
+}
+
+.agents-task-attach-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.15rem 0.5rem 0.15rem 0.3rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+
+.agents-task-attach-chip img {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 3px;
+}
+
+.agents-task-attach-chip i { font-size: 0.8rem; }
+
 /* ── Modal overlay ───────────────────────────────────────────── */
 .agents-modal-overlay {
     position: fixed;
