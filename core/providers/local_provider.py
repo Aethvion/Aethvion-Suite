@@ -40,7 +40,11 @@ class LocalProvider(BaseProvider):
                 logger.info("Successfully imported llama-cpp-python")
             except Exception as e:
                 logger.error(f"Failed to import llama-cpp-python: {e}", exc_info=True)
-                raise ImportError(f"llama-cpp-python not installed or failed to load: {e}")
+                raise ImportError(
+                    f"llama-cpp-python not installed or failed to load. "
+                    f"To use local models, run: pip install -e \".[local-llm]\" "
+                    f"(Original error: {e})"
+                )
 
         # Resolve model path
         model_path = self.base_dir / model_id
