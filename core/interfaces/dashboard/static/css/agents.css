@@ -710,282 +710,416 @@
     background: rgba(var(--primary-rgb, 99,102,241), 0.2);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   DASHBOARD LAYOUT
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Body: left panel + main area ────────────────────────────── */
+.agents-body {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* ── Left panel ──────────────────────────────────────────────── */
+.agents-dash-left {
+    width: 195px;
+    min-width: 195px;
+    max-width: 195px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+}
+
+.agents-dash-left-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    opacity: 0.5;
+    line-height: 1.5;
+}
+
+.agents-dash-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding-bottom: 1rem;
+}
+
+.agents-dash-section {
+    padding: 0.65rem 0.75rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.agents-dash-section:last-child { border-bottom: none; }
+
+.agents-dash-section-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.agents-dash-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.05rem 0.35rem;
+    border-radius: 8px;
+    background: rgba(99,102,241,0.15);
+    color: var(--primary);
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+/* ── Stat rows ───────────────────────────────────────────────── */
+.agents-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    padding: 0.18rem 0;
+}
+
+.agents-stat-row span:first-child { font-size: 0.82rem; width: 1.1rem; text-align: center; flex-shrink: 0; }
+.agents-stat-row span:last-child  { font-variant-numeric: tabular-nums; }
+
+/* ── Vertical timeline ───────────────────────────────────────── */
+.agents-vert-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.agent-vtl-item {
+    display: flex;
+    gap: 0.55rem;
+    align-items: flex-start;
+}
+
+.agent-vtl-track {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    padding-top: 2px;
+}
+
+.agent-vtl-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    opacity: 0.4;
+    flex-shrink: 0;
+    transition: background 0.2s, opacity 0.2s;
+}
+
+.agent-vtl-line {
+    width: 1px;
+    flex: 1;
+    min-height: 14px;
+    background: var(--border);
+    margin: 2px 0;
+}
+
+.agent-vtl-item:last-child .agent-vtl-line { display: none; }
+
+.agent-vtl-label {
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
+    padding: 0 0 10px;
+    word-break: break-word;
+}
+
+/* Timeline state variants */
+.agent-vtl--done .agent-vtl-dot  { background: rgba(34,197,94,0.75); opacity: 1; }
+.agent-vtl--done .agent-vtl-label { opacity: 0.65; }
+
+.agent-vtl--active .agent-vtl-dot {
+    background: var(--primary);
+    opacity: 1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
+    animation: agent-vtl-pulse 1.4s ease-in-out infinite;
+}
+.agent-vtl--active .agent-vtl-label { color: var(--text-primary); }
+
+.agent-vtl--error .agent-vtl-dot { background: rgba(239,68,68,0.8); opacity: 1; }
+.agent-vtl--error .agent-vtl-label { color: rgba(239,68,68,0.8); }
+
+@keyframes agent-vtl-pulse {
+    0%, 100% { box-shadow: 0 0 0 0   rgba(99,102,241,0.5); }
+    50%       { box-shadow: 0 0 0 5px rgba(99,102,241,0);   }
+}
+
+/* ── Plan compact checklist ──────────────────────────────────── */
+.agents-plan-compact-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.agents-plan-ci {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    line-height: 1.35;
+}
+
+.agents-plan-ci-check { flex-shrink: 0; font-size: 0.72rem; width: 0.9rem; }
+.agents-plan-ci-text  { flex: 1; word-break: break-word; }
+
+.agents-plan-ci--done .agents-plan-ci-text {
+    text-decoration: line-through;
+    opacity: 0.45;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MAIN AREA — MESSAGES + ACTIVITY
+   ══════════════════════════════════════════════════════════════ */
+
+.agents-dash-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
 /* ── Agent run wrapper ───────────────────────────────────────── */
 .agent-run {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    margin: 0.5rem 0 1rem;
-}
-
-/* ── Timeline strip ──────────────────────────────────────────── */
-.agent-timeline {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
     gap: 0;
-    padding: 0.6rem 0.75rem;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    position: sticky;
-    top: 0;
-    z-index: 2;
+    margin: 0.25rem 0 0.75rem;
 }
 
-.agent-tl-item {
+/* ── Activity list ───────────────────────────────────────────── */
+.agent-activity {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 0.25rem;
+}
+
+/* ── Activity row (base) ─────────────────────────────────────── */
+.agent-act-item { display: contents; }
+
+.agent-act-row {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.2rem 0.5rem;
-    border-radius: 20px;
-    font-size: 0.78rem;
-    font-weight: 500;
-    transition: background 0.2s, color 0.2s;
+    gap: 0.45rem;
+    padding: 0.22rem 0.6rem;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    min-height: 28px;
+    cursor: default;
+    transition: background 0.12s;
+    position: relative;
 }
 
-.agent-tl--done {
-    color: var(--text-secondary);
+.agent-act-row:hover { background: rgba(255,255,255,0.035); }
+
+.agent-act-icon {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    width: 1.1rem;
+    text-align: center;
     opacity: 0.75;
 }
 
-.agent-tl--active {
-    background: rgba(99, 102, 241, 0.12);
-    color: var(--primary);
-    border: 1px solid rgba(99, 102, 241, 0.3);
-}
-
-.agent-tl--active .agent-tl-dot {
-    background: var(--primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
-    animation: agent-tl-pulse 1.4s ease-in-out infinite;
-}
-
-.agent-tl--error {
-    color: rgba(239, 68, 68, 0.9);
-}
-
-.agent-tl-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--text-secondary);
-    flex-shrink: 0;
-    transition: background 0.2s;
-}
-
-.agent-tl--done .agent-tl-dot { background: rgba(34, 197, 94, 0.7); }
-.agent-tl--error .agent-tl-dot { background: rgba(239, 68, 68, 0.8); }
-
-.agent-tl-icon { font-size: 0.85rem; }
-.agent-tl-label { white-space: nowrap; }
-
-.agent-tl-line {
-    flex: 1;
-    min-width: 18px;
-    height: 1px;
-    background: var(--border);
-    margin: 0 4px;
-}
-
-@keyframes agent-tl-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
-    50% { box-shadow: 0 0 0 5px rgba(99, 102, 241, 0); }
-}
-
-/* ── Cards area ──────────────────────────────────────────────── */
-.agent-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-/* ── Base card ───────────────────────────────────────────────── */
-.agent-card {
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    overflow: hidden;
-    background: var(--bg-secondary);
-    font-size: 0.83rem;
-    transition: border-color 0.15s;
-}
-
-.agent-card-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    cursor: pointer;
-    user-select: none;
-}
-
-.agent-card-header:hover { background: rgba(255,255,255,0.03); }
-
-.agent-card-icon {
-    flex-shrink: 0;
-    font-size: 0.9rem;
-    width: 1.2rem;
-    text-align: center;
-}
-
-.agent-card-title {
-    flex: 1;
+.agent-act-name {
+    font-weight: 500;
     color: var(--text-primary);
-    font-size: 0.83rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 180px;
+    flex-shrink: 0;
+}
+
+.agent-act-path {
+    font-size: 0.71rem;
+    color: var(--text-secondary);
+    opacity: 0.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
     min-width: 0;
-}
-
-.agent-card-title--mono {
     font-family: 'Fira Code', monospace;
-    font-size: 0.8rem;
 }
 
-.agent-card-path {
-    font-size: 0.72rem;
-    color: var(--text-secondary);
-    opacity: 0.6;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 220px;
-    flex-shrink: 1;
-}
-
-.agent-card-bytes {
-    font-size: 0.72rem;
-    color: var(--text-secondary);
-    opacity: 0.6;
-    white-space: nowrap;
-    flex-shrink: 0;
-}
-
-.agent-card-badge {
+.agent-act-size {
     font-size: 0.7rem;
-    padding: 0.1rem 0.4rem;
-    border-radius: 10px;
-    background: rgba(255,255,255,0.07);
     color: var(--text-secondary);
+    opacity: 0.5;
+    flex-shrink: 0;
     white-space: nowrap;
-    flex-shrink: 0;
 }
 
-.agent-card-chevron {
+.agent-act-chevron {
     flex-shrink: 0;
+    font-size: 0.7rem;
     color: var(--text-secondary);
-    font-size: 0.75rem;
-    width: 1rem;
+    opacity: 0.4;
+    width: 0.9rem;
     text-align: center;
+    transition: transform 0.15s;
+    cursor: pointer;
 }
 
-.agent-card-body {
-    border-top: 1px solid var(--border);
-    padding: 0.6rem 0.75rem;
-    background: var(--bg-primary);
+/* Expandable content */
+.agent-act-expand {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.2s ease;
 }
 
-.agent-card-desc {
-    font-size: 0.78rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.4rem;
-    line-height: 1.4;
-}
+.agent-act-expand.open { max-height: 400px; }
 
-.agent-card-content {
+.agent-act-result,
+.agent-act-content {
     margin: 0;
+    padding: 0.45rem 0.6rem 0.45rem 2.1rem;
     font-family: 'Fira Code', monospace;
-    font-size: 0.77rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
     white-space: pre-wrap;
     word-break: break-all;
-    max-height: 320px;
+    border-left: 2px solid var(--border);
+    margin-left: 0.6rem;
+    margin-bottom: 0.2rem;
+    max-height: 280px;
     overflow-y: auto;
-    line-height: 1.55;
+    line-height: 1.5;
+    background: rgba(0,0,0,0.15);
+    border-radius: 0 4px 4px 0;
 }
 
-.agent-card-meta {
+/* ── Row type variants ───────────────────────────────────────── */
+.agent-act--file .agent-act-icon { color: #6ee7b7; }
+.agent-act--file .agent-act-name { color: #6ee7b7; }
+
+.agent-act--cmd  .agent-act-icon { color: #fcd34d; }
+.agent-act--cmd  .agent-act-name { color: #fcd34d; font-family: 'Fira Code', monospace; font-size: 0.77rem; max-width: 100%; }
+
+.agent-act--read  { opacity: 0.6; }
+.agent-act--dir   { opacity: 0.55; }
+
+.agent-act--done .agent-act-icon { color: rgba(34,197,94,0.8); }
+
+.agent-act--error { background: rgba(239,68,68,0.05); }
+.agent-act--error .agent-act-icon { color: rgba(239,68,68,0.8); }
+.agent-act--error .agent-act-name { color: rgba(239,68,68,0.9); }
+
+.agent-act--summary {
+    border-top: 1px solid var(--border);
     margin-top: 0.35rem;
-    font-size: 0.7rem;
+    padding-top: 0.45rem;
+    font-size: 0.79rem;
     color: var(--text-secondary);
-    opacity: 0.6;
+    font-style: italic;
 }
 
-/* ── Card type variants ──────────────────────────────────────── */
-.agent-card--plan { border-color: rgba(99, 102, 241, 0.3); }
-.agent-card--plan .agent-card-header { background: rgba(99, 102, 241, 0.04); }
-
-.agent-card--file { }
-
-.agent-card--cmd { border-color: rgba(245, 158, 11, 0.25); }
-.agent-card--cmd .agent-card-header { background: rgba(245, 158, 11, 0.04); }
-
-.agent-card--read, .agent-card--dir {
-    opacity: 0.7;
-    font-size: 0.78rem;
+/* Flash when a file row updates in-place */
+@keyframes agent-act-flash {
+    0%   { background: rgba(99,102,241,0.18); }
+    100% { background: transparent; }
 }
-.agent-card--read .agent-card-header,
-.agent-card--dir .agent-card-header { padding: 0.35rem 0.75rem; }
+.agent-act--flash { animation: agent-act-flash 0.65s ease-out forwards; }
 
-.agent-card--done {
-    border-color: rgba(34, 197, 94, 0.4);
-    background: rgba(34, 197, 94, 0.04);
-}
-
-.agent-card--error {
-    border-color: rgba(239, 68, 68, 0.4);
-    background: rgba(239, 68, 68, 0.04);
-}
-
-.agent-card--summary .agent-card-body { display: block; }
-
-/* Flash animation when a file card updates */
-@keyframes agent-card-flash {
-    0%   { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
-    100% { border-color: var(--border); box-shadow: none; }
-}
-.agent-card--flash { animation: agent-card-flash 0.7s ease-out forwards; }
-
-/* ── Plan checklist ──────────────────────────────────────────── */
-.agent-plan-list {
+/* ── Task header (user prompt) ───────────────────────────────── */
+.agents-task-header {
     display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    padding: 0.2rem 0;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.55rem 0.75rem 0.4rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0.3rem;
 }
 
-.agent-plan-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    font-size: 0.82rem;
+.agents-task-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--primary);
+    flex-shrink: 0;
+    opacity: 0.85;
+}
+
+.agents-task-text {
+    font-size: 0.85rem;
     color: var(--text-primary);
     line-height: 1.4;
+    font-weight: 500;
 }
 
-.agent-plan-item--done .agent-plan-text {
-    text-decoration: line-through;
-    opacity: 0.5;
+/* ── Assistant response ──────────────────────────────────────── */
+.agents-response-body {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.83rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    border-left: 2px solid rgba(99,102,241,0.3);
+    margin: 0.25rem 0.75rem 0.5rem;
+    background: rgba(99,102,241,0.03);
+    border-radius: 0 5px 5px 0;
 }
 
-.agent-plan-check { flex-shrink: 0; font-size: 0.8rem; }
-.agent-plan-text  { flex: 1; }
+.agents-response-meta {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    opacity: 0.45;
+    padding: 0.15rem 0.75rem 0.5rem;
+}
+
+.agents-response-error {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.82rem;
+    color: rgba(239,68,68,0.9);
+    background: rgba(239,68,68,0.06);
+    border-left: 2px solid rgba(239,68,68,0.4);
+    margin: 0.25rem 0.75rem 0.5rem;
+    border-radius: 0 5px 5px 0;
+}
 
 /* ── Typing indicator ────────────────────────────────────────── */
 .agent-typing-indicator {
     display: flex;
     align-items: center;
     gap: 0.35rem;
-    padding: 0.55rem 0.75rem;
+    padding: 0.3rem 0.65rem;
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: 0.78rem;
+    opacity: 0.7;
 }
 
 .agent-typing-indicator span {
     display: inline-block;
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
     background: var(--primary);
     animation: agent-bounce 1.2s infinite;
@@ -996,5 +1130,5 @@
 
 @keyframes agent-bounce {
     0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-    40% { transform: scale(1); opacity: 1; }
+    40%            { transform: scale(1);   opacity: 1;   }
 }

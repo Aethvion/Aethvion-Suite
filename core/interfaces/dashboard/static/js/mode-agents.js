@@ -220,12 +220,13 @@ function _agentsRenderMessages(messages) {
     const container = _agEl('agents-messages');
     if (!container) return;
 
-    // Remove empty state
+    // Reset dashboard left panel and stop any running timer
+    _agResetDashboard();
+
     const emptyState = container.querySelector('.agents-empty-state');
     if (emptyState) emptyState.remove();
 
-    // Clear existing messages and SSE step cards
-    container.querySelectorAll('.agents-message, .agent-step, .agent-typing-indicator').forEach(el => el.remove());
+    container.querySelectorAll('.agents-message, .agent-run, .agent-typing-indicator').forEach(el => el.remove());
 
     if (messages.length === 0) {
         _agentsShowEmptyState('Empty thread', 'Submit a task to get started');
@@ -242,17 +243,15 @@ function _agentsAppendMessage(msg, scroll = true) {
     const container = _agEl('agents-messages');
     if (!container) return;
 
-    // Agent step history — render as step cards
+    // Agent step history — replay through the dashboard renderer
     if (msg.role === 'agent_steps') {
         for (const event of (msg.events || [])) {
-            if (event.type === 'start') continue;
             renderAgentStep(event);
         }
         if (scroll) container.scrollTop = container.scrollHeight;
         return;
     }
 
-    // Remove empty state if present
     const emptyState = container.querySelector('.agents-empty-state');
     if (emptyState) emptyState.remove();
 
@@ -260,46 +259,36 @@ function _agentsAppendMessage(msg, scroll = true) {
     const wrapper = document.createElement('div');
     wrapper.className = `agents-message agents-message--${role}`;
 
-    const bubble = document.createElement('div');
-    bubble.className = 'agents-bubble';
-
     if (role === 'user') {
-        bubble.textContent = msg.content || '';
+        // Task prompt header — compact, dashboard style
+        wrapper.innerHTML = `
+            <div class="agents-task-header">
+                <span class="agents-task-label">Task</span>
+                <span class="agents-task-text">${_htmlEscape(msg.content || '')}</span>
+            </div>`;
     } else if (role === 'error') {
-        bubble.textContent = msg.content || 'An error occurred.';
+        wrapper.innerHTML = `<div class="agents-response-error">${_htmlEscape(msg.content || 'An error occurred.')}</div>`;
     } else {
-        bubble.innerHTML = _agentsRenderMarkdown(msg.content || '');
-        // Syntax highlight if available
+        // Assistant final response — clean reading area
+        const body = document.createElement('div');
+        body.className = 'agents-response-body';
+        body.innerHTML = _agentsRenderMarkdown(msg.content || '');
         if (typeof hljs !== 'undefined') {
-            bubble.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+            body.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+        }
+        wrapper.appendChild(body);
+
+        const ts = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+        const modelStr = msg.model ? ` · ${msg.model}` : '';
+        if (ts || modelStr) {
+            const meta = document.createElement('div');
+            meta.className = 'agents-response-meta';
+            meta.textContent = ts + modelStr;
+            wrapper.appendChild(meta);
         }
     }
-
-    wrapper.appendChild(bubble);
-
-    // Actions taken pills
-    if (role === 'assistant' && msg.actions && msg.actions.length > 0) {
-        const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'agents-actions-taken';
-        for (const action of msg.actions) {
-            const pill = document.createElement('span');
-            pill.className = 'agents-action-pill';
-            pill.textContent = action;
-            actionsDiv.appendChild(pill);
-        }
-        wrapper.appendChild(actionsDiv);
-    }
-
-    // Model badge + timestamp
-    const meta = document.createElement('div');
-    meta.className = 'agents-bubble-meta';
-    const ts = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-    const modelStr = msg.model ? ` · ${msg.model}` : '';
-    meta.textContent = ts + modelStr;
-    wrapper.appendChild(meta);
 
     container.appendChild(wrapper);
-
     if (scroll) container.scrollTop = container.scrollHeight;
 }
 
@@ -522,37 +511,70 @@ function _htmlEscape(str) {
 // Per-run view state (reset on each new task start)
 let _agentsRenderState = null;
 
+// ── Reset left panel to empty state ──────────────────────────
+function _agResetDashboard() {
+    if (_agentsRenderState && _agentsRenderState.timerInterval) {
+        clearInterval(_agentsRenderState.timerInterval);
+    }
+    _agentsRenderState = null;
+    const leftEmpty   = _agEl('agents-dash-left-empty');
+    const dashContent = _agEl('agents-dash-content');
+    if (leftEmpty)   leftEmpty.style.display   = 'flex';
+    if (dashContent) dashContent.style.display = 'none';
+}
+
 // ── Bootstrap a new run ───────────────────────────────────────
 function _agInitRender() {
     const container = _agEl('agents-messages');
     if (!container) return null;
 
+    // Activity block in the main messages area
     const run = document.createElement('div');
     run.className = 'agent-run';
 
-    const timeline = document.createElement('div');
-    timeline.className = 'agent-timeline';
-    run.appendChild(timeline);
-
-    const cards = document.createElement('div');
-    cards.className = 'agent-cards';
-    run.appendChild(cards);
-
+    const activity = document.createElement('div');
+    activity.className = 'agent-activity';
+    run.appendChild(activity);
     container.appendChild(run);
 
+    // Activate left panel
+    const leftEmpty   = _agEl('agents-dash-left-empty');
+    const dashContent = _agEl('agents-dash-content');
+    const vtl         = _agEl('agents-vert-timeline');
+    const planSection = _agEl('agents-plan-section');
+    const statsSection= _agEl('agents-stats-section');
+    const planList    = _agEl('agents-plan-compact-list');
+    if (leftEmpty)    leftEmpty.style.display    = 'none';
+    if (dashContent)  dashContent.style.display  = 'flex';
+    if (planSection)  planSection.style.display  = 'none';
+    if (statsSection) statsSection.style.display = 'block';
+    if (planList)     planList.innerHTML          = '';
+    if (vtl)          vtl.innerHTML               = '';
+
+    // Elapsed-time timer
+    const startTime = Date.now();
+    const timerInterval = setInterval(() => {
+        const secs = Math.floor((Date.now() - startTime) / 1000);
+        const el = _agEl('agents-stat-time');
+        if (el) el.textContent =
+            String(Math.floor(secs / 60)).padStart(2, '0') + ':' +
+            String(secs % 60).padStart(2, '0');
+    }, 1000);
+
     _agentsRenderState = {
-        run, timeline, cards,
+        run, activity,
         phases: [],
-        planCard: null,
         planItems: [],
-        fileCards: {},   // path → {el, hdr, statusEl, contentEl, metaEl, writeCount}
+        fileCards: {},   // path → { row, expand, sizeEl, contentEl, writeCount }
         fileCount: 0,
         cmdCount: 0,
+        startTime,
+        timerInterval,
     };
     return _agentsRenderState;
 }
 
-// ── Timeline ──────────────────────────────────────────────────
+// ── Timeline (vertical, renders into left panel) ──────────────
 function _agPhaseAdd(id, icon, label) {
     const s = _agentsRenderState;
     if (!s) return;
@@ -570,22 +592,26 @@ function _agPhaseAdd(id, icon, label) {
 function _agRenderTimeline() {
     const s = _agentsRenderState;
     if (!s) return;
-    const tl = s.timeline;
-    tl.innerHTML = '';
+    const vtl = _agEl('agents-vert-timeline');
+    if (!vtl) return;
+    vtl.innerHTML = '';
     s.phases.forEach((ph, i) => {
         const item = document.createElement('div');
-        item.className = `agent-tl-item agent-tl--${ph.status}`;
-        item.innerHTML = `<span class="agent-tl-dot"></span><span class="agent-tl-icon">${ph.icon}</span><span class="agent-tl-label">${ph.label}</span>`;
-        tl.appendChild(item);
-        if (i < s.phases.length - 1) {
-            const line = document.createElement('div');
-            line.className = 'agent-tl-line';
-            tl.appendChild(line);
-        }
+        item.className = `agent-vtl-item agent-vtl--${ph.status}`;
+        item.innerHTML = `
+            <div class="agent-vtl-track">
+                <span class="agent-vtl-dot"></span>
+                ${i < s.phases.length - 1 ? '<span class="agent-vtl-line"></span>' : ''}
+            </div>
+            <div class="agent-vtl-label">
+                <span class="agent-vtl-icon">${ph.icon}</span>
+                <span>${ph.label}</span>
+            </div>`;
+        vtl.appendChild(item);
     });
 }
 
-// ── Plan card ─────────────────────────────────────────────────
+// ── Plan (left panel checklist) ───────────────────────────────
 function _agHandleThinking(event) {
     const s = _agentsRenderState;
     if (!s) return;
@@ -593,11 +619,6 @@ function _agHandleThinking(event) {
 
     const opMatch = (event.title || '').match(/\(([^)]+)\)/);
     const op = opMatch ? opMatch[1].trim() : '';
-
-    if (!s.planCard) {
-        s.planCard = _agBuildPlanCard();
-        s.cards.insertBefore(s.planCard.el, s.cards.firstChild);
-    }
 
     if (op === 'set_plan') {
         const lines = (event.detail || '').split('\n').map(l => l.trim()).filter(Boolean);
@@ -617,258 +638,220 @@ function _agHandleThinking(event) {
                 }
             }
         }
-        // Fallback: mark the next undone item
-        if (!marked) {
-            const next = s.planItems.find(p => !p.done);
-            if (next) next.done = true;
-        }
+        if (!marked) { const next = s.planItems.find(p => !p.done); if (next) next.done = true; }
         _agRenderPlanItems();
     }
 }
 
-function _agBuildPlanCard() {
-    const el = document.createElement('div');
-    el.className = 'agent-card agent-card--plan';
-
-    const hdr = document.createElement('div');
-    hdr.className = 'agent-card-header';
-    hdr.innerHTML = `
-        <span class="agent-card-icon">📋</span>
-        <span class="agent-card-title">Task Plan</span>
-        <span class="agent-card-badge"></span>
-        <span class="agent-card-chevron">▾</span>`;
-    el.appendChild(hdr);
-
-    const body = document.createElement('div');
-    body.className = 'agent-card-body';
-    const list = document.createElement('div');
-    list.className = 'agent-plan-list';
-    body.appendChild(list);
-    el.appendChild(body);
-
-    hdr.addEventListener('click', () => _agToggleCardBody(body, hdr));
-    return { el, hdr, body, list };
-}
-
 function _agRenderPlanItems() {
     const s = _agentsRenderState;
-    if (!s || !s.planCard) return;
-    const { list, hdr } = s.planCard;
-    list.innerHTML = '';
-    const done = s.planItems.filter(i => i.done).length;
+    if (!s) return;
+    const planSection = _agEl('agents-plan-section');
+    const planList    = _agEl('agents-plan-compact-list');
+    const badge       = _agEl('agents-plan-badge');
+    if (planSection) planSection.style.display = 'block';
+    if (!planList) return;
+    planList.innerHTML = '';
+    const done  = s.planItems.filter(i => i.done).length;
     const total = s.planItems.length;
-    const badge = hdr.querySelector('.agent-card-badge');
-    if (badge) badge.textContent = total ? `${done} / ${total}` : '';
+    if (badge) badge.textContent = `${done}/${total}`;
     s.planItems.forEach(item => {
         const row = document.createElement('div');
-        row.className = 'agent-plan-item' + (item.done ? ' agent-plan-item--done' : '');
-        row.innerHTML = `<span class="agent-plan-check">${item.done ? '✅' : '⬜'}</span><span class="agent-plan-text">${_htmlEscape(item.text)}</span>`;
-        list.appendChild(row);
+        row.className = 'agents-plan-ci' + (item.done ? ' agents-plan-ci--done' : '');
+        row.title = item.text;
+        row.textContent = (item.done ? '✅ ' : '⬜ ') + item.text;
+        planList.appendChild(row);
     });
 }
 
-// ── File cards ────────────────────────────────────────────────
+// ── Stats ─────────────────────────────────────────────────────
+function _agUpdateStats() {
+    const s = _agentsRenderState;
+    if (!s) return;
+    const filesEl = _agEl('agents-stat-files');
+    const cmdsEl  = _agEl('agents-stat-cmds');
+    if (filesEl) filesEl.textContent = `${s.fileCount} file${s.fileCount !== 1 ? 's' : ''}`;
+    if (cmdsEl)  cmdsEl.textContent  = `${s.cmdCount} cmd${s.cmdCount !== 1 ? 's' : ''}`;
+}
+
+// ── File activity rows ─────────────────────────────────────────
+function _agFormatBytes(b) {
+    if (b < 1024)        return `${b} B`;
+    if (b < 1048576)     return `${(b / 1024).toFixed(1)} KB`;
+    return `${(b / 1048576).toFixed(1)} MB`;
+}
+
 function _agHandleWriteFile(event) {
     const s = _agentsRenderState;
     if (!s) return;
     s.fileCount++;
     _agPhaseAdd('files', '📄', `Files · ${s.fileCount}`);
+    _agUpdateStats();
 
-    const path = event.path || (event.title || '').replace(/^Writing\s+/, '').trim();
-    const detail = event.detail || '';
+    const path      = event.path || (event.title || '').replace(/^Writing\s+/, '').trim();
+    const filename  = path.replace(/\\/g, '/').split('/').pop() || path;
+    const detail    = event.detail || '';
     const truncated = detail.length > 4000 ? detail.slice(0, 4000) + '\n…' : detail;
+    const sizeStr   = event.bytes ? _agFormatBytes(event.bytes) : '';
 
     if (s.fileCards[path]) {
-        // Update existing card in-place
         const fc = s.fileCards[path];
         fc.writeCount++;
-        const badge = fc.hdr.querySelector('.agent-card-badge');
-        if (badge) badge.textContent = `×${fc.writeCount}`;
-        if (detail) fc.contentEl.textContent = truncated;
-        if (event.bytes) {
-            fc.metaEl.textContent = `${event.bytes.toLocaleString()} bytes`;
-            const inlineBytes = fc.hdr.querySelector('.agent-card-bytes');
-            if (inlineBytes) inlineBytes.textContent = `${event.bytes.toLocaleString()} B`;
-        }
-        if (event.result) fc.statusEl.textContent = event.result;
-        fc.el.classList.add('agent-card--flash');
-        setTimeout(() => fc.el.classList.remove('agent-card--flash'), 700);
+        if (fc.sizeEl)    fc.sizeEl.textContent    = sizeStr;
+        if (fc.contentEl && detail) fc.contentEl.textContent = truncated;
+        const wc = fc.row.querySelector('.agent-act-wcount');
+        if (wc) wc.textContent = `×${fc.writeCount}`;
+        fc.row.classList.add('agent-act--flash');
+        setTimeout(() => fc.row.classList.remove('agent-act--flash'), 600);
     } else {
-        const fc = _agBuildFileCard(event, path, truncated);
-        s.fileCards[path] = fc;
-        s.cards.appendChild(fc.el);
+        const item    = document.createElement('div');
+        item.className = 'agent-act-item';
+        const row     = document.createElement('div');
+        row.className = 'agent-act-row agent-act--file';
+        const sizeEl  = document.createElement('span');
+        sizeEl.className = 'agent-act-size';
+        sizeEl.textContent = sizeStr;
+        const chevron = document.createElement('span');
+        chevron.className = 'agent-act-chevron';
+        chevron.textContent = '▸';
+
+        row.innerHTML = `<span class="agent-act-icon">📄</span><span class="agent-act-name">${_htmlEscape(filename)}</span><span class="agent-act-path">${_htmlEscape(path)}</span>`;
+        row.appendChild(sizeEl);
+        row.appendChild(chevron);
+
+        const expand = document.createElement('div');
+        expand.className = 'agent-act-expand';
+        expand.style.display = 'none';
+        if (event.result) {
+            const res = document.createElement('div');
+            res.className = 'agent-act-result';
+            res.textContent = event.result;
+            expand.appendChild(res);
+        }
+        const contentEl = document.createElement('pre');
+        contentEl.className = 'agent-act-content';
+        contentEl.textContent = truncated;
+        expand.appendChild(contentEl);
+
+        item.appendChild(row);
+        item.appendChild(expand);
+        row.addEventListener('click', () => {
+            const open = expand.style.display !== 'none';
+            expand.style.display = open ? 'none' : 'block';
+            chevron.textContent = open ? '▸' : '▾';
+        });
+
+        s.fileCards[path] = { row, expand, sizeEl, contentEl, writeCount: 1 };
+        s.activity.appendChild(item);
     }
 }
 
-function _agBuildFileCard(event, path, truncated) {
-    const el = document.createElement('div');
-    el.className = 'agent-card agent-card--file';
-
-    const filename = path.replace(/\\/g, '/').split('/').pop() || path;
-    const bytes = event.bytes || 0;
-
-    const hdr = document.createElement('div');
-    hdr.className = 'agent-card-header';
-    hdr.innerHTML = `
-        <span class="agent-card-icon">📄</span>
-        <span class="agent-card-title agent-card-title--mono">${_htmlEscape(filename)}</span>
-        <span class="agent-card-path">${_htmlEscape(path)}</span>
-        <span class="agent-card-bytes">${bytes ? bytes.toLocaleString() + ' B' : ''}</span>
-        <span class="agent-card-badge"></span>
-        <span class="agent-card-chevron">▸</span>`;
-    el.appendChild(hdr);
-
-    const body = document.createElement('div');
-    body.className = 'agent-card-body';
-    body.style.display = 'none';
-
-    const statusEl = document.createElement('div');
-    statusEl.className = 'agent-card-desc';
-    statusEl.textContent = event.result || '';
-    body.appendChild(statusEl);
-
-    const contentEl = document.createElement('pre');
-    contentEl.className = 'agent-card-content';
-    contentEl.textContent = truncated;
-    body.appendChild(contentEl);
-
-    const metaEl = document.createElement('div');
-    metaEl.className = 'agent-card-meta';
-    metaEl.textContent = bytes ? `${bytes.toLocaleString()} bytes` : '';
-    body.appendChild(metaEl);
-
-    el.appendChild(body);
-    hdr.addEventListener('click', () => _agToggleCardBody(body, hdr));
-
-    return { el, hdr, body, statusEl, contentEl, metaEl, writeCount: 1 };
-}
-
-// ── Command cards ─────────────────────────────────────────────
+// ── Command activity rows ──────────────────────────────────────
 function _agHandleCommand(event) {
     const s = _agentsRenderState;
     if (!s) return;
     s.cmdCount++;
     _agPhaseAdd('commands', '⚡', `Commands · ${s.cmdCount}`);
+    _agUpdateStats();
 
-    const el = document.createElement('div');
-    el.className = 'agent-card agent-card--cmd';
-
-    const cmd = (event.command || event.title || '').replace(/^\$\s*/, '');
+    const cmd    = (event.command || event.title || '').replace(/^\$\s*/, '');
     const result = event.result || '';
     const detail = event.detail || '';
     const hasBody = !!(result || detail);
 
-    const hdr = document.createElement('div');
-    hdr.className = 'agent-card-header';
-    hdr.innerHTML = `
-        <span class="agent-card-icon">⚡</span>
-        <span class="agent-card-title agent-card-title--mono">$ ${_htmlEscape(cmd)}</span>
-        ${hasBody ? '<span class="agent-card-chevron">▸</span>' : ''}`;
-    el.appendChild(hdr);
+    const item = document.createElement('div');
+    item.className = 'agent-act-item';
+    const row = document.createElement('div');
+    row.className = 'agent-act-row agent-act--cmd';
+    row.innerHTML = `<span class="agent-act-icon">⚡</span><span class="agent-act-name agent-act-name--mono">$ ${_htmlEscape(cmd)}</span>`;
 
     if (hasBody) {
-        const body = document.createElement('div');
-        body.className = 'agent-card-body';
-        body.style.display = 'none';
-        if (result) {
-            const r = document.createElement('div');
-            r.className = 'agent-card-desc';
-            r.textContent = result;
-            body.appendChild(r);
-        }
-        if (detail) {
-            const pre = document.createElement('pre');
-            pre.className = 'agent-card-content';
-            pre.textContent = detail.length > 3000 ? detail.slice(0, 3000) + '\n…' : detail;
-            body.appendChild(pre);
-        }
-        el.appendChild(body);
-        hdr.addEventListener('click', () => _agToggleCardBody(body, hdr));
+        const chevron = document.createElement('span');
+        chevron.className = 'agent-act-chevron';
+        chevron.textContent = '▸';
+        row.appendChild(chevron);
+        const expand = document.createElement('div');
+        expand.className = 'agent-act-expand';
+        expand.style.display = 'none';
+        if (result) { const r = document.createElement('div'); r.className = 'agent-act-result'; r.textContent = result; expand.appendChild(r); }
+        if (detail) { const pre = document.createElement('pre'); pre.className = 'agent-act-content'; pre.textContent = detail.length > 3000 ? detail.slice(0, 3000) + '\n…' : detail; expand.appendChild(pre); }
+        item.appendChild(row);
+        item.appendChild(expand);
+        row.addEventListener('click', () => { const open = expand.style.display !== 'none'; expand.style.display = open ? 'none' : 'block'; chevron.textContent = open ? '▸' : '▾'; });
+    } else {
+        item.appendChild(row);
     }
-
-    s.cards.appendChild(el);
+    s.activity.appendChild(item);
 }
 
-// ── Read / list (compact) ─────────────────────────────────────
+// ── Read / list (compact dimmed) ──────────────────────────────
 function _agHandleReadFile(event) {
     const s = _agentsRenderState;
     if (!s) return;
     const path = event.path || event.title || '';
-    // Skip if we already have a write card for this file
     if (s.fileCards[path]) return;
-
-    const el = document.createElement('div');
-    el.className = 'agent-card agent-card--read';
+    const item = document.createElement('div');
+    item.className = 'agent-act-item';
+    const row = document.createElement('div');
+    row.className = 'agent-act-row agent-act--read';
     const filename = path.replace(/\\/g, '/').split('/').pop() || path;
-    el.innerHTML = `<div class="agent-card-header">
-        <span class="agent-card-icon">📖</span>
-        <span class="agent-card-title agent-card-title--mono">${_htmlEscape(filename)}</span>
-        <span class="agent-card-path">${_htmlEscape(path)}</span>
-    </div>`;
-    s.cards.appendChild(el);
+    row.innerHTML = `<span class="agent-act-icon">📖</span><span class="agent-act-name">${_htmlEscape(filename)}</span><span class="agent-act-path">${_htmlEscape(path)}</span>`;
+    item.appendChild(row);
+    s.activity.appendChild(item);
 }
 
 function _agHandleListDir(event) {
     const s = _agentsRenderState;
     if (!s) return;
-    const path = event.path || '.';
-    const el = document.createElement('div');
-    el.className = 'agent-card agent-card--dir';
-    const hasDetail = !!(event.result);
-
-    const hdr = document.createElement('div');
-    hdr.className = 'agent-card-header';
-    hdr.innerHTML = `
-        <span class="agent-card-icon">📂</span>
-        <span class="agent-card-title agent-card-title--mono">${_htmlEscape(path)}</span>
-        ${hasDetail ? '<span class="agent-card-chevron">▸</span>' : ''}`;
-    el.appendChild(hdr);
-
-    if (hasDetail) {
-        const body = document.createElement('div');
-        body.className = 'agent-card-body';
-        body.style.display = 'none';
+    const path   = event.path || '.';
+    const detail = event.result || '';
+    const item   = document.createElement('div');
+    item.className = 'agent-act-item';
+    const row = document.createElement('div');
+    row.className = 'agent-act-row agent-act--dir';
+    row.innerHTML = `<span class="agent-act-icon">📂</span><span class="agent-act-name agent-act-name--mono">${_htmlEscape(path)}</span>`;
+    if (detail) {
+        const chevron = document.createElement('span');
+        chevron.className = 'agent-act-chevron';
+        chevron.textContent = '▸';
+        row.appendChild(chevron);
+        const expand = document.createElement('div');
+        expand.className = 'agent-act-expand';
+        expand.style.display = 'none';
         const pre = document.createElement('pre');
-        pre.className = 'agent-card-content';
-        pre.textContent = event.result;
-        body.appendChild(pre);
-        el.appendChild(body);
-        hdr.addEventListener('click', () => _agToggleCardBody(body, hdr));
+        pre.className = 'agent-act-content';
+        pre.textContent = detail;
+        expand.appendChild(pre);
+        item.appendChild(row);
+        item.appendChild(expand);
+        row.addEventListener('click', () => { const open = expand.style.display !== 'none'; expand.style.display = open ? 'none' : 'block'; chevron.textContent = open ? '▸' : '▾'; });
+    } else {
+        item.appendChild(row);
     }
-    s.cards.appendChild(el);
+    s.activity.appendChild(item);
 }
 
-// ── Completion ────────────────────────────────────────────────
+// ── Completion ─────────────────────────────────────────────────
 function _agFinishRender(event) {
     const s = _agentsRenderState;
     if (!s) return;
+    if (s.timerInterval) clearInterval(s.timerInterval);
 
     const isOk = event.type === 'done';
     s.phases.forEach(p => { p.status = 'done'; });
     s.phases.push({ id: 'final', icon: isOk ? '✅' : '❌', label: isOk ? 'Done' : 'Error', status: isOk ? 'done' : 'error' });
     _agRenderTimeline();
 
-    // Auto-complete all plan items on success
     if (isOk) { s.planItems.forEach(i => { i.done = true; }); _agRenderPlanItems(); }
 
-    const summary = document.createElement('div');
-    summary.className = `agent-card agent-card--summary ${isOk ? 'agent-card--done' : 'agent-card--error'}`;
+    const item = document.createElement('div');
+    item.className = 'agent-act-item';
+    const row = document.createElement('div');
     const label = event.title || (isOk ? 'Completed' : 'Error');
-    summary.innerHTML = `
-        <div class="agent-card-header">
-            <span class="agent-card-icon">${isOk ? '✅' : '❌'}</span>
-            <span class="agent-card-title">${_htmlEscape(label)}</span>
-        </div>
-        ${event.detail ? `<div class="agent-card-body"><div class="agent-card-desc">${_htmlEscape(event.detail)}</div></div>` : ''}`;
-    s.cards.appendChild(summary);
-}
-
-// ── Shared helper ─────────────────────────────────────────────
-function _agToggleCardBody(body, hdr) {
-    const open = body.style.display !== 'none';
-    body.style.display = open ? 'none' : 'block';
-    const ch = hdr.querySelector('.agent-card-chevron');
-    if (ch) ch.textContent = open ? '▸' : '▾';
+    row.className = `agent-act-row agent-act--summary ${isOk ? 'agent-act--done' : 'agent-act--error'}`;
+    row.innerHTML = `<span class="agent-act-icon">${isOk ? '✅' : '❌'}</span><span class="agent-act-name">${_htmlEscape(label)}</span>${event.detail ? `<span class="agent-act-path">${_htmlEscape(event.detail.slice(0, 120))}</span>` : ''}`;
+    item.appendChild(row);
+    s.activity.appendChild(item);
 }
 
 // ── Main entry point (called for every SSE event) ─────────────
@@ -889,18 +872,17 @@ function renderAgentStep(event) {
             const ti = document.createElement('div');
             ti.className = 'agent-typing-indicator';
             ti.innerHTML = '<span></span><span></span><span></span>';
-            s.cards.appendChild(ti);
+            s.activity.appendChild(ti);
         }
         container.scrollTop = container.scrollHeight;
         return;
     }
 
-    // Auto-init if we somehow missed the start event (e.g. history replay)
     if (!_agentsRenderState) _agInitRender();
     const s = _agentsRenderState;
 
     if (event.type === 'done' || event.type === 'error') {
-        const ti = s.cards.querySelector('.agent-typing-indicator');
+        const ti = s.activity.querySelector('.agent-typing-indicator');
         if (ti) ti.remove();
         _agentsHideTyping();
         _agFinishRender(event);
@@ -909,16 +891,15 @@ function renderAgentStep(event) {
     }
 
     switch (event.type) {
-        case 'thinking':   _agHandleThinking(event);  break;
-        case 'write_file': _agHandleWriteFile(event); break;
-        case 'read_file':  _agHandleReadFile(event);  break;
-        case 'list_dir':   _agHandleListDir(event);   break;
-        case 'run_command':_agHandleCommand(event);   break;
+        case 'thinking':    _agHandleThinking(event);  break;
+        case 'write_file':  _agHandleWriteFile(event); break;
+        case 'read_file':   _agHandleReadFile(event);  break;
+        case 'list_dir':    _agHandleListDir(event);   break;
+        case 'run_command': _agHandleCommand(event);   break;
     }
 
-    // Keep typing indicator anchored at the bottom
-    const ti = s.cards.querySelector('.agent-typing-indicator');
-    if (ti) s.cards.appendChild(ti);
+    const ti = s.activity.querySelector('.agent-typing-indicator');
+    if (ti) s.activity.appendChild(ti);
     container.scrollTop = container.scrollHeight;
 }
 

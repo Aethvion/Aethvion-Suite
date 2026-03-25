@@ -857,13 +857,50 @@
                         </div>
                     </div>
 
-                    <!-- Messages area -->
-                    <div id="agents-messages" class="agents-messages">
-                        <div class="agents-empty-state" id="agents-empty-state">
-                            <div class="agents-empty-icon">🤖</div>
-                            <div class="agents-empty-title">No workspace selected</div>
-                            <div class="agents-empty-sub">Add or select a workspace to start working with agents</div>
+                    <!-- Dashboard body: left panel + main area -->
+                    <div class="agents-body">
+
+                        <!-- Left panel: timeline / plan / stats -->
+                        <div class="agents-dash-left" id="agents-dash-left">
+                            <div class="agents-dash-left-empty" id="agents-dash-left-empty">
+                                <span style="font-size:1.4rem;opacity:0.4">⚡</span>
+                                <span>Run a task to<br>see activity here</span>
+                            </div>
+                            <div class="agents-dash-content" id="agents-dash-content" style="display:none">
+                                <!-- Timeline -->
+                                <div class="agents-dash-section">
+                                    <div class="agents-dash-section-label">Timeline</div>
+                                    <div class="agents-vert-timeline" id="agents-vert-timeline"></div>
+                                </div>
+                                <!-- Plan -->
+                                <div class="agents-dash-section" id="agents-plan-section" style="display:none">
+                                    <div class="agents-dash-section-label">
+                                        Plan
+                                        <span class="agents-dash-badge" id="agents-plan-badge"></span>
+                                    </div>
+                                    <div class="agents-plan-compact-list" id="agents-plan-compact-list"></div>
+                                </div>
+                                <!-- Stats -->
+                                <div class="agents-dash-section" id="agents-stats-section" style="display:none">
+                                    <div class="agents-dash-section-label">Stats</div>
+                                    <div class="agents-stat-row"><span>⏱</span><span id="agents-stat-time">00:00</span></div>
+                                    <div class="agents-stat-row"><span>📄</span><span id="agents-stat-files">—</span></div>
+                                    <div class="agents-stat-row"><span>⚡</span><span id="agents-stat-cmds">—</span></div>
+                                </div>
+                            </div>
                         </div>
+
+                        <!-- Main content area -->
+                        <div class="agents-dash-main">
+                            <div id="agents-messages" class="agents-messages">
+                                <div class="agents-empty-state" id="agents-empty-state">
+                                    <div class="agents-empty-icon">🤖</div>
+                                    <div class="agents-empty-title">No workspace selected</div>
+                                    <div class="agents-empty-sub">Add or select a workspace to start working with agents</div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
 
                     <!-- Input area -->
