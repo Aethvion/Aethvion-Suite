@@ -799,6 +799,37 @@ async function _agentsBrowserToggle() {
     }
 }
 
+async function _agentsNativeBrowse() {
+    const browseBtn = _agEl('agents-browse-btn');
+    const pathInput = _agEl('agents-ws-path-input');
+
+    // Show a spinner while the user has the dialog open
+    if (browseBtn) {
+        browseBtn.disabled = true;
+        browseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
+    try {
+        const currentPath = pathInput ? pathInput.value.trim() : '';
+        const url = '/api/agents/browse/native' + (currentPath ? `?initial=${encodeURIComponent(currentPath)}` : '');
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+
+        if (!data.cancelled && data.path) {
+            _agentsBrowserSelect(data.path, data.name || '');
+        }
+    } catch (e) {
+        console.error('[Agents] Native browse error:', e);
+        if (typeof showToast === 'function') showToast('Could not open folder picker', 'error');
+    } finally {
+        if (browseBtn) {
+            browseBtn.disabled = false;
+            browseBtn.innerHTML = '<i class="fas fa-folder-open"></i>';
+        }
+    }
+}
+
 async function agentsConfirmWorkspaceModal() {
     const overlay = _agEl('agents-add-ws-overlay');
     const pathInput = _agEl('agents-ws-path-input');
@@ -1039,9 +1070,9 @@ function agentsInitEventHandlers() {
     const modalConfirm = _agEl('agents-modal-confirm');
     if (modalConfirm) modalConfirm.addEventListener('click', agentsConfirmWorkspaceModal);
 
-    // Browse button → toggle inline folder browser
+    // Browse button → open native OS folder picker
     const browseBtn = _agEl('agents-browse-btn');
-    if (browseBtn) browseBtn.addEventListener('click', _agentsBrowserToggle);
+    if (browseBtn) browseBtn.addEventListener('click', _agentsNativeBrowse);
 
     // Modal overlay click to close
     const overlay = _agEl('agents-add-ws-overlay');

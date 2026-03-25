@@ -6,7 +6,9 @@ REST API endpoints for Agent Workspaces and Threads (/api/agents/...)
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional
+import asyncio
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from core.utils.logger import get_logger
@@ -91,7 +93,43 @@ async def delete_workspace(workspace_id: str):
     return {"status": "deleted", "id": workspace_id}
 
 
-# ── Folder browser endpoint ────────────────────────────────────────────────────
+# ── Folder browser endpoints ──────────────────────────────────────────────────
+
+@router.get("/browse/native")
+async def browse_folder_native(initial: str = Query(default="")):
+    """
+    Open the native OS folder-picker dialog (Windows Explorer / macOS Finder)
+    and return the path the user selected. Returns cancelled=true if dismissed.
+    Runs in a thread executor so the async event loop is not blocked.
+    """
+    def _open_dialog() -> str | None:
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+            root = tk.Tk()
+            root.withdraw()
+            root.wm_attributes("-topmost", True)
+            initial_dir = initial if initial and os.path.isdir(initial) else str(Path.home())
+            folder = filedialog.askdirectory(
+                parent=root,
+                initialdir=initial_dir,
+                title="Select Workspace Folder",
+            )
+            root.destroy()
+            return folder or None
+        except Exception as exc:
+            logger.error(f"Native folder dialog error: {exc}")
+            return None
+
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        folder = await loop.run_in_executor(pool, _open_dialog)
+
+    if folder:
+        name = Path(folder).name or folder
+        return {"path": folder, "name": name, "cancelled": False}
+    return {"path": None, "name": None, "cancelled": True}
+
 
 @router.get("/browse")
 async def browse_folder(path: str = Query(default="")):
