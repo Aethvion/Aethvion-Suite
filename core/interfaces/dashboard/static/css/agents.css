@@ -710,107 +710,276 @@
     background: rgba(var(--primary-rgb, 99,102,241), 0.2);
 }
 
-/* ── Agent step items ─────────────────────────────────────────── */
-.agent-step {
-    margin: 0.35rem 0;
+/* ── Agent run wrapper ───────────────────────────────────────── */
+.agent-run {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0.5rem 0 1rem;
+}
+
+/* ── Timeline strip ──────────────────────────────────────────── */
+.agent-timeline {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0;
+    padding: 0.6rem 0.75rem;
+    background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 8px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.agent-tl-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    transition: background 0.2s, color 0.2s;
+}
+
+.agent-tl--done {
+    color: var(--text-secondary);
+    opacity: 0.75;
+}
+
+.agent-tl--active {
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--primary);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.agent-tl--active .agent-tl-dot {
+    background: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    animation: agent-tl-pulse 1.4s ease-in-out infinite;
+}
+
+.agent-tl--error {
+    color: rgba(239, 68, 68, 0.9);
+}
+
+.agent-tl-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+
+.agent-tl--done .agent-tl-dot { background: rgba(34, 197, 94, 0.7); }
+.agent-tl--error .agent-tl-dot { background: rgba(239, 68, 68, 0.8); }
+
+.agent-tl-icon { font-size: 0.85rem; }
+.agent-tl-label { white-space: nowrap; }
+
+.agent-tl-line {
+    flex: 1;
+    min-width: 18px;
+    height: 1px;
+    background: var(--border);
+    margin: 0 4px;
+}
+
+@keyframes agent-tl-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
+    50% { box-shadow: 0 0 0 5px rgba(99, 102, 241, 0); }
+}
+
+/* ── Cards area ──────────────────────────────────────────────── */
+.agent-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+/* ── Base card ───────────────────────────────────────────────── */
+.agent-card {
+    border: 1px solid var(--border);
+    border-radius: 7px;
     overflow: hidden;
     background: var(--bg-secondary);
-    font-size: 0.84rem;
-    flex-shrink: 0;
+    font-size: 0.83rem;
+    transition: border-color 0.15s;
 }
 
-.agent-step--done,
-.agent-step--complete {
-    border-color: rgba(34, 197, 94, 0.4);
-    background: rgba(34, 197, 94, 0.05);
-}
-
-.agent-step--error {
-    border-color: rgba(239, 68, 68, 0.4);
-    background: rgba(239, 68, 68, 0.05);
-}
-
-.agent-step--thinking {
-    border-color: rgba(99, 102, 241, 0.3);
-    background: rgba(99, 102, 241, 0.04);
-}
-
-.agent-step-header {
+.agent-card-header {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.45rem 0.75rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
     user-select: none;
 }
 
-.agent-step-icon {
+.agent-card-header:hover { background: rgba(255,255,255,0.03); }
+
+.agent-card-icon {
     flex-shrink: 0;
     font-size: 0.9rem;
     width: 1.2rem;
     text-align: center;
 }
 
-.agent-step-title {
+.agent-card-title {
     flex: 1;
     color: var(--text-primary);
-    font-family: 'Fira Code', monospace;
-    font-size: 0.82rem;
+    font-size: 0.83rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
 }
 
-.agent-step-chevron {
+.agent-card-title--mono {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.8rem;
+}
+
+.agent-card-path {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+    flex-shrink: 1;
+}
+
+.agent-card-bytes {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.agent-card-badge {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.07);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.agent-card-chevron {
     flex-shrink: 0;
     color: var(--text-secondary);
-    font-size: 0.9rem;
-    transition: transform 0.15s;
+    font-size: 0.75rem;
+    width: 1rem;
+    text-align: center;
 }
 
-.agent-step-body {
+.agent-card-body {
     border-top: 1px solid var(--border);
-    padding: 0.5rem 0.75rem;
+    padding: 0.6rem 0.75rem;
     background: var(--bg-primary);
 }
 
-.agent-step-result {
-    font-family: 'Fira Code', monospace;
+.agent-card-desc {
     font-size: 0.78rem;
-    color: var(--success, #22c55e);
+    color: var(--text-secondary);
     margin-bottom: 0.4rem;
-    padding: 0.2rem 0;
+    line-height: 1.4;
 }
 
-.agent-step-content {
+.agent-card-content {
     margin: 0;
     font-family: 'Fira Code', monospace;
-    font-size: 0.78rem;
+    font-size: 0.77rem;
     color: var(--text-secondary);
     white-space: pre-wrap;
     word-break: break-all;
-    max-height: 300px;
+    max-height: 320px;
     overflow-y: auto;
-    line-height: 1.5;
+    line-height: 1.55;
 }
 
-.agent-step-meta {
-    margin-top: 0.3rem;
-    font-size: 0.72rem;
+.agent-card-meta {
+    margin-top: 0.35rem;
+    font-size: 0.7rem;
     color: var(--text-secondary);
-    opacity: 0.7;
+    opacity: 0.6;
 }
 
-/* ── Typing indicator ─────────────────────────────────────────── */
+/* ── Card type variants ──────────────────────────────────────── */
+.agent-card--plan { border-color: rgba(99, 102, 241, 0.3); }
+.agent-card--plan .agent-card-header { background: rgba(99, 102, 241, 0.04); }
+
+.agent-card--file { }
+
+.agent-card--cmd { border-color: rgba(245, 158, 11, 0.25); }
+.agent-card--cmd .agent-card-header { background: rgba(245, 158, 11, 0.04); }
+
+.agent-card--read, .agent-card--dir {
+    opacity: 0.7;
+    font-size: 0.78rem;
+}
+.agent-card--read .agent-card-header,
+.agent-card--dir .agent-card-header { padding: 0.35rem 0.75rem; }
+
+.agent-card--done {
+    border-color: rgba(34, 197, 94, 0.4);
+    background: rgba(34, 197, 94, 0.04);
+}
+
+.agent-card--error {
+    border-color: rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.04);
+}
+
+.agent-card--summary .agent-card-body { display: block; }
+
+/* Flash animation when a file card updates */
+@keyframes agent-card-flash {
+    0%   { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+    100% { border-color: var(--border); box-shadow: none; }
+}
+.agent-card--flash { animation: agent-card-flash 0.7s ease-out forwards; }
+
+/* ── Plan checklist ──────────────────────────────────────────── */
+.agent-plan-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.2rem 0;
+}
+
+.agent-plan-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.agent-plan-item--done .agent-plan-text {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+.agent-plan-check { flex-shrink: 0; font-size: 0.8rem; }
+.agent-plan-text  { flex: 1; }
+
+/* ── Typing indicator ────────────────────────────────────────── */
 .agent-typing-indicator {
     display: flex;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0.6rem 0.75rem;
+    gap: 0.35rem;
+    padding: 0.55rem 0.75rem;
     color: var(--text-secondary);
     font-size: 0.8rem;
-    font-style: italic;
 }
 
 .agent-typing-indicator span {
