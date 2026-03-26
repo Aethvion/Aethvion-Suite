@@ -1,0 +1,206 @@
+"""
+Agent Corp API Routes
+"""
+import json
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+from typing import Optional
+
+from core.orchestrator.corp_manager import get_corp_manager
+from core.utils.logger import get_logger
+
+logger = get_logger(__name__)
+router = APIRouter(prefix="/api/corp", tags=["corp"])
+
+
+# ── Request models ────────────────────────────────────────────────────────────
+
+class CreateCorpRequest(BaseModel):
+    name: str
+    description: str = ""
+    workspace_path: str = ""
+
+
+class UpdateCorpRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    workspace_path: Optional[str] = None
+
+
+class AddWorkerRequest(BaseModel):
+    name: str
+    role: str
+    model: str = "claude-sonnet-4-5"
+    personality: str = ""
+    color: str = "#7c3aed"
+
+
+class UpdateWorkerRequest(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    model: Optional[str] = None
+    personality: Optional[str] = None
+    color: Optional[str] = None
+
+
+class CreateTaskRequest(BaseModel):
+    title: str
+    description: str
+    assigned_to: str = "any"
+    priority: str = "medium"
+
+
+class UpdateTaskRequest(BaseModel):
+    status: Optional[str] = None
+    assigned_to: Optional[str] = None
+    priority: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+
+# ── Corp CRUD ─────────────────────────────────────────────────────────────────
+
+@router.get("/list")
+async def list_corps():
+    return get_corp_manager().list_corps()
+
+
+@router.post("/create")
+async def create_corp(req: CreateCorpRequest):
+    return get_corp_manager().create_corp(req.name, req.description, req.workspace_path)
+
+
+@router.get("/{corp_id}")
+async def get_corp(corp_id: str):
+    try:
+        return get_corp_manager().get_corp(corp_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Corp {corp_id} not found")
+
+
+@router.patch("/{corp_id}")
+async def update_corp(corp_id: str, req: UpdateCorpRequest):
+    fields = {k: v for k, v in req.dict().items() if v is not None}
+    try:
+        return get_corp_manager().update_corp(corp_id, **fields)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Corp {corp_id} not found")
+
+
+@router.delete("/{corp_id}")
+async def delete_corp(corp_id: str):
+    mgr = get_corp_manager()
+    await mgr.stop_corp(corp_id)
+    mgr.delete_corp(corp_id)
+    return {"ok": True}
+
+
+# ── Worker CRUD ───────────────────────────────────────────────────────────────
+
+@router.post("/{corp_id}/workers")
+async def add_worker(corp_id: str, req: AddWorkerRequest):
+    try:
+        return get_corp_manager().add_worker(
+            corp_id, req.name, req.role, req.model, req.personality, req.color
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Corp {corp_id} not found")
+
+
+@router.patch("/{corp_id}/workers/{worker_id}")
+async def update_worker(corp_id: str, worker_id: str, req: UpdateWorkerRequest):
+    fields = {k: v for k, v in req.dict().items() if v is not None}
+    get_corp_manager().update_worker(corp_id, worker_id, **fields)
+    return {"ok": True}
+
+
+@router.delete("/{corp_id}/workers/{worker_id}")
+async def remove_worker(corp_id: str, worker_id: str):
+    get_corp_manager().remove_worker(corp_id, worker_id)
+    return {"ok": True}
+
+
+# ── Corp control ──────────────────────────────────────────────────────────────
+
+@router.post("/{corp_id}/start")
+async def start_corp(corp_id: str):
+    try:
+        await get_corp_manager().start_corp(corp_id)
+        return {"ok": True, "status": "running"}
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Corp {corp_id} not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{corp_id}/stop")
+async def stop_corp(corp_id: str):
+    await get_corp_manager().stop_corp(corp_id)
+    return {"ok": True, "status": "stopped"}
+
+
+# ── Task management ───────────────────────────────────────────────────────────
+
+@router.get("/{corp_id}/tasks")
+async def get_tasks(corp_id: str):
+    return get_corp_manager().get_tasks(corp_id)
+
+
+@router.post("/{corp_id}/tasks")
+async def create_task(corp_id: str, req: CreateTaskRequest):
+    return get_corp_manager().add_task(
+        corp_id, req.title, req.description, req.assigned_to, req.priority
+    )
+
+
+@router.patch("/{corp_id}/tasks/{task_id}")
+async def update_task(corp_id: str, task_id: str, req: UpdateTaskRequest):
+    fields = {k: v for k, v in req.dict().items() if v is not None}
+    get_corp_manager().update_task(corp_id, task_id, **fields)
+    return {"ok": True}
+
+
+# ── Message log ───────────────────────────────────────────────────────────────
+
+@router.get("/{corp_id}/log")
+async def get_log(corp_id: str):
+    return {"log": get_corp_manager().read_log(corp_id, last_n=100)}
+
+
+# ── Stats ─────────────────────────────────────────────────────────────────────
+
+@router.get("/{corp_id}/stats")
+async def get_stats(corp_id: str):
+    mgr = get_corp_manager()
+    try:
+        cfg = mgr.get_corp(corp_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Corp not found")
+    result = {}
+    for w in cfg.get("workers", []):
+        wid = w["id"]
+        stats = mgr._stats.get(wid)
+        result[wid] = stats.to_dict() if stats else {}
+    return result
+
+
+# ── SSE event stream ──────────────────────────────────────────────────────────
+
+@router.get("/{corp_id}/events")
+async def corp_events(corp_id: str):
+    async def generate():
+        try:
+            async for event in get_corp_manager().subscribe(corp_id):
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            logger.error(f"[corp_events] SSE error for {corp_id}: {e}")
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
