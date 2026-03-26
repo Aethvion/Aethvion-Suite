@@ -5,17 +5,18 @@ Each worker is a CorpWorkerRunner (AgentRunner subclass) with its own memory,
 role, personality and stats. Workers communicate via shared .md files (task board
 + message log) rather than re-injecting full history, keeping token usage lean.
 
-Workspaces are stored under:
-  agent_corps/
-    {corp_id}/
-      config.json          Corp definition + worker list
-      tasks.json           Task board
-      shared_log.md        Inter-agent communication
-      workers/
-        {worker_id}/
-          memory.md        Persistent context for this worker
-          state.json       AgentState (plan, notes, prior_tasks…)
-      workspace/           Shared file output (agents write here)
+Workspaces are stored under data/agent_corps/:
+  {corp_id}/
+    config.json          Corp definition + worker list
+    tasks.json           Task board
+    feed.jsonl           Persistent live-activity feed (last 500 events)
+    shared_log.md        Inter-agent communication
+    workers/
+      {worker_id}/
+        memory.md        Persistent context for this worker
+        state.json       AgentState (plan, notes, prior_tasks…)
+        stats.json       Cumulative token/cost/file counters
+    workspace/           Shared file output (agents write here)
 """
 import asyncio
 import json
@@ -27,10 +28,11 @@ from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from core.utils.logger import get_logger
+from core.utils.paths import CORP_ROOT
 
 logger = get_logger(__name__)
 
-CORP_ROOT = Path("agent_corps")
+FEED_MAX_LINES = 500   # cap the on-disk feed so it never grows unbounded
 
 
 # ── Cost estimation ──────────────────────────────────────────────────────────
@@ -54,6 +56,10 @@ def _estimate_cost(tokens_in: int, tokens_out: int, model: str) -> float:
 # ── Worker stats ─────────────────────────────────────────────────────────────
 
 class WorkerStats:
+    # Fields that are cumulative and must survive restarts
+    _PERSISTENT = ("tokens_in", "tokens_out", "files_created", "files_updated",
+                   "tasks_completed", "tasks_failed", "cost_usd")
+
     def __init__(self):
         self.tokens_in: int = 0
         self.tokens_out: int = 0
@@ -64,10 +70,34 @@ class WorkerStats:
         self.cost_usd: float = 0.0
         self.tokens_per_second: float = 0.0
         self.current_thought: str = "Waiting for tasks…"
-        self.status: str = "idle"          # idle | running | stopped
+        self.status: str = "idle"            # idle | running | stopped
         self.session_start: float = time.time()
         self._last_token_time: Optional[float] = None
-        self._last_out_tokens: int = 0
+
+    # ── persistence ───────────────────────────────────────────────
+
+    def save(self, path: Path) -> None:
+        """Persist cumulative counters to disk."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        data = {k: getattr(self, k) for k in self._PERSISTENT}
+        try:
+            path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"[WorkerStats] Could not save stats to {path}: {e}")
+
+    def load(self, path: Path) -> None:
+        """Load cumulative counters from disk (session metrics stay at default)."""
+        if not path.exists():
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            for k in self._PERSISTENT:
+                if k in data:
+                    setattr(self, k, data[k])
+        except Exception as e:
+            logger.warning(f"[WorkerStats] Could not load stats from {path}: {e}")
+
+    # ── runtime ───────────────────────────────────────────────────
 
     def add_tokens(self, in_tok: int, out_tok: int, model: str) -> None:
         self.tokens_in += in_tok
@@ -82,17 +112,17 @@ class WorkerStats:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "tokens_in":        self.tokens_in,
-            "tokens_out":       self.tokens_out,
-            "files_created":    self.files_created,
-            "files_updated":    self.files_updated,
-            "tasks_completed":  self.tasks_completed,
-            "tasks_failed":     self.tasks_failed,
-            "cost_usd":         round(self.cost_usd, 5),
+            "tokens_in":         self.tokens_in,
+            "tokens_out":        self.tokens_out,
+            "files_created":     self.files_created,
+            "files_updated":     self.files_updated,
+            "tasks_completed":   self.tasks_completed,
+            "tasks_failed":      self.tasks_failed,
+            "cost_usd":          round(self.cost_usd, 5),
             "tokens_per_second": self.tokens_per_second,
-            "current_thought":  self.current_thought,
-            "status":           self.status,
-            "uptime_s":         int(time.time() - self.session_start),
+            "current_thought":   self.current_thought,
+            "status":            self.status,
+            "uptime_s":          int(time.time() - self.session_start),
         }
 
 
@@ -124,6 +154,12 @@ class CorpManager:
 
     def _log_path(self, corp_id: str) -> Path:
         return self._corp_dir(corp_id) / "shared_log.md"
+
+    def _feed_path(self, corp_id: str) -> Path:
+        return self._corp_dir(corp_id) / "feed.jsonl"
+
+    def _stats_path(self, corp_id: str, worker_id: str) -> Path:
+        return self._worker_dir(corp_id, worker_id) / "stats.json"
 
     def _workspace_path(self, corp_id: str) -> Path:
         try:
@@ -353,6 +389,85 @@ class CorpManager:
         content_lines = [l for l in lines if l.strip() and not l.startswith("#")]
         return "\n".join(content_lines[-last_n:])
 
+    # ── persistent feed ──────────────────────────────────────────────────────
+
+    # Event types that are worth persisting across reloads.
+    _FEED_PERSIST_TYPES = frozenset({
+        "worker_thought", "worker_action", "worker_message",
+        "task_update", "corp_status",
+    })
+
+    def _append_feed(self, corp_id: str, event: Dict[str, Any]) -> None:
+        """Append one event to feed.jsonl; trim to FEED_MAX_LINES."""
+        if event.get("type") not in self._FEED_PERSIST_TYPES:
+            return
+        path = self._feed_path(corp_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            line = json.dumps(event, ensure_ascii=False) + "\n"
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(line)
+            # Trim file if it has grown too large
+            self._trim_feed(path)
+        except Exception as e:
+            logger.warning(f"[CorpManager] feed write error: {e}")
+
+    def _trim_feed(self, path: Path) -> None:
+        """Keep only the last FEED_MAX_LINES lines in feed.jsonl."""
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+            if len(lines) > FEED_MAX_LINES:
+                path.write_text("".join(lines[-FEED_MAX_LINES:]), encoding="utf-8")
+        except Exception:
+            pass
+
+    def get_feed(self, corp_id: str, last_n: int = 200) -> List[Dict[str, Any]]:
+        """Return the last *last_n* persisted feed events for this corp."""
+        path = self._feed_path(corp_id)
+        if not path.exists():
+            return []
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+            events = []
+            for line in lines[-last_n:]:
+                line = line.strip()
+                if line:
+                    try:
+                        events.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        pass
+            return events
+        except Exception as e:
+            logger.warning(f"[CorpManager] feed read error: {e}")
+            return []
+
+    # ── worker stats persistence ──────────────────────────────────────────────
+
+    def _save_worker_stats(self, corp_id: str, worker_id: str) -> None:
+        stats = self._stats.get(worker_id)
+        if stats:
+            stats.save(self._stats_path(corp_id, worker_id))
+
+    def get_all_worker_stats(self, corp_id: str) -> Dict[str, Dict]:
+        """Return stats dicts for all workers — live in-memory, or loaded from disk."""
+        try:
+            cfg = self.get_corp(corp_id)
+        except FileNotFoundError:
+            return {}
+        result: Dict[str, Dict] = {}
+        for w in cfg.get("workers", []):
+            wid = w["id"]
+            if wid in self._stats:
+                # Worker is (or was) running this session — use live data
+                result[wid] = self._stats[wid].to_dict()
+            else:
+                # Load persisted cumulative counters from disk
+                stats = WorkerStats()
+                stats.load(self._stats_path(corp_id, wid))
+                stats.status = "idle"
+                result[wid] = stats.to_dict()
+        return result
+
     # ── worker memory ─────────────────────────────────────────────────────────
 
     def read_worker_memory(self, corp_id: str, worker_id: str) -> str:
@@ -369,7 +484,10 @@ class CorpManager:
     # ── SSE broadcast ─────────────────────────────────────────────────────────
 
     def emit(self, corp_id: str, event: Dict[str, Any]) -> None:
-        """Put event onto every subscriber queue for this corp (fire-and-forget)."""
+        """Broadcast event to all live SSE subscribers and persist to feed.jsonl."""
+        # 1. Persist (only meaningful event types, skips ping / worker_stats etc.)
+        self._append_feed(corp_id, event)
+        # 2. Push to every connected SSE client
         queues = self._queues.get(corp_id, [])
         for q in list(queues):
             try:
@@ -454,6 +572,8 @@ class CorpManager:
         worker_col  = worker.get("color", "#7c3aed")
 
         stats = WorkerStats()
+        # Load cumulative counters persisted from previous sessions
+        stats.load(self._stats_path(corp_id, worker_id))
         self._stats[worker_id] = stats
         stats.status = "idle"
 
@@ -550,6 +670,8 @@ class CorpManager:
                         in_tok  = event.get("input_tokens", 0)
                         out_tok = event.get("output_tokens", 0)
                         stats.add_tokens(in_tok, out_tok, worker.get("model", ""))
+                        # Persist cumulative counters so they survive restarts
+                        self._save_worker_stats(corp_id, worker_id)
                         self.emit(corp_id, {
                             "type":        "worker_stats",
                             "worker_id":   worker_id,
@@ -610,6 +732,8 @@ class CorpManager:
 
                 stats.current_thought = f"Finished: {task['title'][:60]}"
                 stats.status = "idle"
+                # Persist final stats for this task (completed/failed counters updated)
+                self._save_worker_stats(corp_id, worker_id)
                 self.emit(corp_id, {
                     "type":        "worker_stats",
                     "worker_id":   worker_id,

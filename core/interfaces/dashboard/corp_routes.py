@@ -172,17 +172,17 @@ async def get_log(corp_id: str):
 
 @router.get("/{corp_id}/stats")
 async def get_stats(corp_id: str):
-    mgr = get_corp_manager()
+    """Return per-worker stats — live if running, disk-loaded if not."""
     try:
-        cfg = mgr.get_corp(corp_id)
+        return get_corp_manager().get_all_worker_stats(corp_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Corp not found")
-    result = {}
-    for w in cfg.get("workers", []):
-        wid = w["id"]
-        stats = mgr._stats.get(wid)
-        result[wid] = stats.to_dict() if stats else {}
-    return result
+
+
+@router.get("/{corp_id}/feed")
+async def get_feed(corp_id: str, last_n: int = 200):
+    """Return the last N persisted feed events for display on page load."""
+    return get_corp_manager().get_feed(corp_id, last_n=last_n)
 
 
 # ── SSE event stream ──────────────────────────────────────────────────────────

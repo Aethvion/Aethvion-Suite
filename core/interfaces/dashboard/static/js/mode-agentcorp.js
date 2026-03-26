@@ -83,7 +83,10 @@ async function corpOnSelect(corpId) {
     // Load tasks
     await corpRefreshTasks();
 
-    // Render workers panel
+    // Load persisted worker stats from disk (populates cards before any SSE arrives)
+    await corpRestoreStats(corpId);
+
+    // Render workers panel (uses _corpWorkerStats populated above)
     corpRenderWorkers();
 
     // Show controls
@@ -100,7 +103,10 @@ async function corpOnSelect(corpId) {
     _corpIsRunning = !!_corpCurrent.is_running;
     corpUpdateRunButtons();
 
-    // Subscribe to SSE
+    // Replay persisted feed events into the panel
+    await corpRestoreFeed(corpId);
+
+    // Subscribe to SSE for live updates going forward
     corpConnectSSE(corpId);
 }
 
@@ -215,6 +221,46 @@ function corpConnectSSE(corpId) {
     _corpSSE.onerror = () => {
         // Will auto-retry — EventSource behaviour
     };
+}
+
+// ── Restore persisted state on load ──────────────────────────────────────────
+
+async function corpRestoreStats(corpId) {
+    try {
+        const data = await (await fetch(`/api/corp/${corpId}/stats`)).json();
+        for (const [wid, stats] of Object.entries(data)) {
+            _corpWorkerStats[wid] = stats;
+        }
+    } catch (e) {
+        console.error('[AgentCorp] Failed to restore stats:', e);
+    }
+}
+
+async function corpRestoreFeed(corpId) {
+    try {
+        const events = await (await fetch(`/api/corp/${corpId}/feed?last_n=200`)).json();
+        if (!events || events.length === 0) return;
+
+        // Clear current feed display (keep header)
+        _corpFeedItems = [];
+        const feed = document.getElementById('corp-feed');
+        if (feed) {
+            const items = feed.querySelectorAll('.corp-feed-item');
+            items.forEach(i => i.remove());
+        }
+
+        // Replay events — map SSE types to feed types
+        for (const ev of events) {
+            const t = ev.type;
+            if (t === 'worker_thought')  _corpAddFeedItem('thought',     ev);
+            else if (t === 'worker_action')   _corpAddFeedItem('action',      ev);
+            else if (t === 'worker_message')  _corpAddFeedItem('message',     ev);
+            else if (t === 'task_update')     _corpAddFeedItem('task-update', ev);
+            else if (t === 'corp_status')     _corpAddFeedItem('corp-event',  ev);
+        }
+    } catch (e) {
+        console.error('[AgentCorp] Failed to restore feed:', e);
+    }
 }
 
 // ── Worker panel rendering ────────────────────────────────────────────────────
@@ -513,8 +559,8 @@ async function corpStartCorp() {
         await fetch(`/api/corp/${_corpCurrent.id}/start`, { method: 'POST' });
         _corpIsRunning = true;
         corpUpdateRunButtons();
-        _corpFeedClear();
-        _corpWorkerStats = {};
+        _corpFeedClear();  // Clear display — history is preserved on disk
+        // Don't wipe stats: workers load from disk and add to cumulative totals
         corpRenderWorkers();
     } catch (e) {
         console.error('[AgentCorp] Start failed:', e);

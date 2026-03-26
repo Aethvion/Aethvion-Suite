@@ -90,6 +90,9 @@ WS_PREFERENCES = WORKSPACES / "preferences.json"
 WS_PACKAGES    = WORKSPACES / "packages.json"
 WS_FILES_INDEX = WORKSPACES / "files.json"
 
+# ── Agent Corp ─────────────────────────────────────────────────────────────────
+CORP_ROOT = DATA / "agent_corps"
+
 
 def ensure_all() -> None:
     """Create all required data directories. Safe to call at startup."""
@@ -110,6 +113,7 @@ def ensure_all() -> None:
         VAULT, VAULT_PERSONAS, VAULT_KNOWLEDGE, VAULT_SEARCH, VAULT_EPISODIC,
         PERSONA_MISAKA, PERSONA_MISAKA_THREADS,
         WORKSPACES, WS_OUTPUTS, WS_TOOLS, WS_MEDIA, WS_UPLOADS, WS_PROJECTS,
+        CORP_ROOT,
     ]
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
