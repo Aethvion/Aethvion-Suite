@@ -1090,16 +1090,46 @@
     padding: 0.5rem 0.6rem;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end; /* push cards to bottom like a chat */
     gap: 0.4rem;
-    /* Ensure scroll works correctly with flex-end */
     min-height: 0;
+    /* Scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139,92,246,0.3) transparent;
 }
 
-/* When there are enough cards to fill the panel, justify-content has no effect
-   and items just stack naturally from top — that's fine and correct */
-.agents-thoughts-list > * {
-    flex-shrink: 0;
+.agents-thoughts-list::-webkit-scrollbar {
+    width: 4px;
+}
+.agents-thoughts-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.agents-thoughts-list::-webkit-scrollbar-thumb {
+    background: rgba(139,92,246,0.35);
+    border-radius: 4px;
+}
+.agents-thoughts-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(139,92,246,0.6);
+}
+
+/* ── Task divider in thoughts panel ─────────────────────────── */
+.agent-thought-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+    padding: 0.3rem 0.2rem;
+    margin: 0.25rem 0 0.1rem;
+}
+.agent-thought-divider::before,
+.agent-thought-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.08);
 }
 
 /* ── Thought chat messages ───────────────────────────────────── */

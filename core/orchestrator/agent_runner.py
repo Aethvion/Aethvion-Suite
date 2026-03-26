@@ -36,11 +36,11 @@ EFFICIENCY RULES:
 1. Write REAL, COMPLETE file content — never stubs or placeholders.
 2. Before every response that takes actions, write 1–2 sentences describing what you're about to do and why. This reasoning appears before any ACTION: lines.
 3. SIMPLE QUESTIONS: If the user asks a conversational follow-up (e.g. "what anime are on the site?", "list the files you created", "what does X contain?") — read the relevant file(s) OR make ONE fetch_url call, then immediately call done with the answer. Never paginate, loop, or make multiple API calls just to answer a simple question.
-4. Run list_dir ONCE as your very first action to discover the workspace state. Do NOT call list_dir again unless you explicitly need to verify a specific subdirectory after creating it.
+4. WORKSPACE CONTEXT: If "Files:" are already listed in the Context block above, you already know what exists — skip list_dir and proceed directly. Only run list_dir if the Context shows no files at all.
 5. If images are attached to the task, use observe as your FIRST action to describe exactly what you see in each image before doing anything else.
 6. When switching tech stack or approach (e.g. React → plain HTML/CSS/JS), use delete_file to remove ALL old files that no longer belong BEFORE writing new ones. Never leave orphaned files from a previous approach.
 7. Start complex tasks with set_plan. Call mark_done only AFTER the real action for that step has executed and returned a result — mark_done does NOT create files or run code, it is a tracker only.
-8. Batch multiple ACTION lines per response to minimize round-trips.
+8. BATCH EVERYTHING: Issue all independent ACTION lines in a single response. If you need data for 10 characters, write all 10 fetch_url calls in ONE response — never fetch one item, wait for the result, then fetch the next. Same for write_file: write all files in one response.
 9. You have up to {max_iterations} actions — be strategic and do not waste actions repeating yourself.
 10. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without the data you need, switch to fetch_url with a direct API/page URL, or proceed with best available information. NEVER loop on searches — it wastes your action budget.
 11. For fetching a specific URL or API (e.g. GitHub API, JSON endpoints, known web pages) use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
@@ -68,6 +68,7 @@ class AgentState:
         self.file_cache: Dict[str, Dict[str, Any]] = {}  # path -> {size, cached_at}
         self.workspace_map: List[str] = []
         self.action_log: List[Dict[str, Any]] = []  # [{i, type, detail, at}]
+        self.prior_tasks: List[Dict[str, str]] = []  # [{task, summary}] across the thread
 
         self._load()
 
@@ -85,6 +86,7 @@ class AgentState:
                 self.file_cache = data.get("file_cache", {})
                 self.workspace_map = data.get("workspace_map", [])
                 self.action_log = data.get("action_log", [])
+                self.prior_tasks = data.get("prior_tasks", [])
                 logger.info(f"[AgentState] Loaded state from {self.state_path}")
         except Exception as e:
             logger.warning(f"[AgentState] Could not load state from {self.state_path}: {e}")
@@ -101,6 +103,7 @@ class AgentState:
                 "file_cache": self.file_cache,
                 "workspace_map": self.workspace_map,
                 "action_log": self.action_log,
+                "prior_tasks": self.prior_tasks,
             }
             p.write_text(json.dumps(data, indent=2), encoding="utf-8")
         except Exception as e:
@@ -145,6 +148,17 @@ class AgentState:
                 item["done"] = True
                 return
 
+    # ── prior task history ────────────────────────────────────────
+
+    def record_task(self, task: str, summary: str) -> None:
+        """Append a completed task to the thread history (capped at 20)."""
+        self.prior_tasks.append({
+            "task": task[:300],
+            "summary": summary[:500],
+        })
+        if len(self.prior_tasks) > 20:
+            self.prior_tasks = self.prior_tasks[-20:]
+
     # ── notes ─────────────────────────────────────────────────────
 
     def add_note(self, note: str) -> None:
@@ -169,6 +183,14 @@ class AgentState:
     def build_context(self) -> str:
         """Return a compact context string injected into every prompt."""
         parts: List[str] = []
+
+        # Prior task history (most recent last so it's closest to the current task)
+        if self.prior_tasks:
+            history_lines = ["Thread history (previous tasks in this thread):"]
+            for pt in self.prior_tasks[-5:]:
+                history_lines.append(f"  • Task: {pt['task']}")
+                history_lines.append(f"    Result: {pt['summary']}")
+            parts.append("\n".join(history_lines))
 
         # Files line
         if self.workspace_map:
@@ -222,21 +244,25 @@ class AgentRunner:
         self.trace_id = trace_id
         self.conversation: List[str] = []
         self.state = AgentState(state_path)
-        # Each task starts with a clean slate — reset ALL task-specific state
-        # so previous task runs in the same thread don't contaminate the new task.
-        # file_cache and workspace_map are also reset so the agent always does a
-        # fresh list_dir instead of relying on stale file listings from a prior task.
+        # Reset only task-specific planning state between tasks.
+        # file_cache and workspace_map are intentionally KEPT so the agent knows
+        # what files it already created in this thread — follow-up tasks can skip
+        # list_dir and re-reading files it already has in context.
+        # The list_dir-first rule handles any genuinely stale workspace state.
         self.state.plan = []
         self.state.action_log = []
         self.state.notes = []
-        self.state.file_cache = {}
-        self.state.workspace_map = []
         self._start_time = datetime.utcnow()
         self.run_input_tokens = 0
         self.run_output_tokens = 0
         # Images attached to this task — consumed on first LLM call only
         self._images: Optional[List[Dict]] = images or None
         self._images_sent: bool = False
+        # Hard search limits enforced in code — the model cannot exceed these
+        # regardless of what the prompt rules say, because conversation history
+        # is bounded to 4 entries and the model forgets previous searches.
+        self._search_count: int = 0
+        self._search_cache: Dict[str, str] = {}  # query → result (dedup same query)
 
     # ── emit ──────────────────────────────────────────────────────
 
@@ -423,7 +449,20 @@ class AgentRunner:
         if t == "search_web":
             query = action.get("query", "")
             max_results = int(action.get("max_results", 6))
+            # Hard limit: max 3 searches per task, enforced in code
+            if self._search_count >= 3:
+                return (
+                    "[SEARCH BLOCKED: you have already used all 3 search calls for this task. "
+                    "You MUST now use fetch_url with a specific URL, or write the output "
+                    "using the best information you already have. Do NOT search again.]"
+                )
+            # Dedup: never run the exact same query twice
+            if query in self._search_cache:
+                cached = self._search_cache[query]
+                return f"[DUPLICATE SEARCH — returning cached result]\n{cached}"
+            self._search_count += 1
             result = self._search_web(query, max_results)
+            self._search_cache[query] = result
             self.state.log_action(iteration, "search_web", query[:40])
             return result
 
@@ -663,6 +702,7 @@ class AgentRunner:
 
             if done_triggered:
                 self._emit({"type": "done", "title": "Complete", "detail": done_summary})
+                self.state.record_task(self.task, done_summary)
                 self.state.save()
                 return done_summary
 
@@ -682,5 +722,6 @@ class AgentRunner:
 
         summary = f"Reached {MAX_ITERATIONS} action limit."
         self._emit({"type": "done", "title": "Stopped (limit)", "detail": summary})
+        self.state.record_task(self.task, f"[incomplete — hit limit] {summary}")
         self.state.save()
         return summary

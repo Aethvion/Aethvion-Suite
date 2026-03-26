@@ -576,7 +576,10 @@ function _htmlEscape(str) {
 // Per-run view state (reset on each new task start)
 let _agentsRenderState = null;
 
-// ── Reset left panel to empty state ──────────────────────────
+// Thread-level thought counter — persists across tasks, resets on thread switch
+let _agentsThoughtTotal = 0;
+
+// ── Reset left panel to empty state (also clears thoughts on thread switch) ──
 function _agResetDashboard() {
     if (_agentsRenderState && _agentsRenderState.timerInterval) {
         clearInterval(_agentsRenderState.timerInterval);
@@ -586,6 +589,15 @@ function _agResetDashboard() {
     const dashContent = _agEl('agents-dash-content');
     if (leftEmpty)   leftEmpty.style.display   = 'flex';
     if (dashContent) dashContent.style.display = 'none';
+
+    // Full reset of the thoughts panel — called on thread switch / full re-render
+    _agentsThoughtTotal = 0;
+    const thoughtsList = _agEl('agents-thoughts-list');
+    const rightEmpty   = _agEl('agents-dash-right-empty');
+    const badge        = _agEl('agents-thought-badge');
+    if (thoughtsList) { thoughtsList.innerHTML = ''; thoughtsList.style.display = 'none'; }
+    if (rightEmpty)   rightEmpty.style.display = 'flex';
+    if (badge)        { badge.textContent = ''; badge.style.display = 'none'; }
 }
 
 // ── Bootstrap a new run ───────────────────────────────────────
@@ -616,13 +628,18 @@ function _agInitRender(isReplay = false) {
     if (planList)     planList.innerHTML          = '';
     if (vtl)          vtl.innerHTML               = '';
 
-    // Reset right panel (chain of thought)
+    // Right panel (chain of thought) — add a task divider if thoughts already exist,
+    // otherwise just ensure the list is visible. Never clear between tasks in same thread.
     const rightEmpty  = _agEl('agents-dash-right-empty');
     const thoughtsList= _agEl('agents-thoughts-list');
-    const thoughtBadge= _agEl('agents-thought-badge');
-    if (rightEmpty)   { rightEmpty.style.display   = 'flex'; }
-    if (thoughtsList) { thoughtsList.style.display = 'none'; thoughtsList.innerHTML = ''; }
-    if (thoughtBadge) { thoughtBadge.style.display = 'none'; thoughtBadge.textContent = ''; }
+    if (thoughtsList && thoughtsList.children.length > 0 && !isReplay) {
+        // Insert a task-separator so you can visually tell where each task starts
+        const divider = document.createElement('div');
+        divider.className = 'agent-thought-divider';
+        divider.textContent = '▸ new task';
+        thoughtsList.appendChild(divider);
+        thoughtsList.scrollTop = thoughtsList.scrollHeight;
+    }
 
     // Elapsed-time timer
     const startTime = Date.now();
@@ -741,8 +758,9 @@ function _agAddThoughtCard(title, detail) {
     if (rightEmpty) rightEmpty.style.display = 'none';
     thoughtsList.style.display = 'flex';
 
-    s.thoughtCount++;
-    if (badge) { badge.style.display = 'inline'; badge.textContent = s.thoughtCount; }
+    _agentsThoughtTotal++;
+    if (s) s.thoughtCount = _agentsThoughtTotal; // keep render state in sync
+    if (badge) { badge.style.display = 'inline'; badge.textContent = _agentsThoughtTotal; }
 
     const msg = document.createElement('div');
     msg.className = 'agent-thought-msg';
@@ -750,7 +768,7 @@ function _agAddThoughtCard(title, detail) {
     // Label chip (source tag: "Thinking", "🔍 Found…", etc.)
     const tag = document.createElement('span');
     tag.className = 'agent-thought-tag';
-    tag.textContent = title;
+    tag.textContent = `#${_agentsThoughtTotal} ${title}`;
     msg.appendChild(tag);
 
     // Body text rendered as markdown
