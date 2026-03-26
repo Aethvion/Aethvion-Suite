@@ -1063,7 +1063,7 @@ CRITICAL: Never output raw JSON or technical jargon unless specifically requeste
             model = prefs.get('misakacipher', {}).get('model', 'gemini-1.5-flash')
             
             # Yield start event
-            yield json.dumps({"type": "tool_start", "content": "Initializing neural pathways..."}) + "\n"
+            yield json.dumps({"type": "tool_start", "content": "..."}) + "\n"
 
             # 1. Main Stream Loop (Token streaming)
             full_content = ""
@@ -1074,12 +1074,18 @@ CRITICAL: Never output raw JSON or technical jargon unless specifically requeste
                 # Strip <memory_update> XML blocks (expected format)
                 t = re.sub(r'<memory_update>.*?</memory_update>', '', t, flags=re.IGNORECASE | re.DOTALL)
                 t = re.sub(r'<memory_update>.*$', '', t, flags=re.IGNORECASE)
+                # Strip [Emotion:] and [Mood:] tags — should never reach the user
+                # Use [^\]]+ so multi-word emotions like "warm smile" are matched
+                t = re.sub(r'\[Emotion:[^\]]*\]?', '', t, flags=re.IGNORECASE)
+                t = re.sub(r'\[Mood:[^\]]*\]?', '', t, flags=re.IGNORECASE)
                 # Strip bare JSON memory blobs the model outputs without the XML wrapper
                 # e.g. { "recent_observations": [...] } or { "user_info": {...}, ... }
                 _mem_keys = r'"(?:user_info|recent_observations|base_info|synthesis_notes)"'
                 t = re.sub(r'\n?\{[^{]*' + _mem_keys + r'[\s\S]*?\}', '', t)
                 # Strip trailing partial JSON blob that hasn't closed yet
                 t = re.sub(r'\n\{[^{]*' + _mem_keys + r'.*$', '', t, flags=re.DOTALL)
+                # Strip partial fragment like `,  "user_info":...` (JSON key without opening brace)
+                t = re.sub(r',?\s*"(?:user_info|recent_observations|base_info|synthesis_notes)"[\s\S]*', '', t)
                 return t
 
             # For Vision Context Rotation
@@ -1264,19 +1270,23 @@ CRITICAL: Never output raw JSON or technical jargon unless specifically requeste
                     new_content = followup.content.strip()
                     # Strip cumulative context if the model repeated it despite instructions
                     # Some models echo the prompt/context in the response
-                    if new_content.startswith(cumulative_context[:100]): 
-                         # Use fuzzy start check
-                         new_content = new_content[len(cumulative_context):].strip()
-                    
+                    if new_content.startswith(cumulative_context[:100]):
+                        new_content = new_content[len(cumulative_context):].strip()
+
                     if new_content:
                         response_parts.append(new_content)
                         # Yield follow-up (Cleaned)
-                        # Ensure we don't yield raw tool tags to user
                         clean_followup = new_content
-                        clean_followup = re.sub(r'\[Mood:\s*\w+\]?', '', clean_followup, flags=re.IGNORECASE)
-                        clean_followup = re.sub(r'\[Emotion:\s*\w+\]?', '', clean_followup, flags=re.IGNORECASE)
-                        clean_followup = re.sub(r'\[tool:.*?\]', '', clean_followup, flags=re.IGNORECASE) # MUST STRIP TOOLS
+                        clean_followup = re.sub(r'\[Mood:[^\]]*\]?', '', clean_followup, flags=re.IGNORECASE)
+                        clean_followup = re.sub(r'\[Emotion:[^\]]*\]?', '', clean_followup, flags=re.IGNORECASE)
+                        clean_followup = re.sub(r'\[tool:.*?\]', '', clean_followup, flags=re.IGNORECASE)
                         clean_followup = clean_followup.replace("[msg_break]", "\n\n").strip()
+                        # Strip leading greeting if the model re-greeted despite instructions.
+                        # Matches "Hey, ...", "Hi, ...", "Hello, ..." at the very start.
+                        clean_followup = re.sub(
+                            r'^(?:Hey|Hi|Hello|Heya)[,!]?\s+',
+                            '', clean_followup, flags=re.IGNORECASE
+                        )
                         if clean_followup and len(clean_followup) > 5:
                             yield json.dumps({"type": "message", "content": clean_followup}) + "\n"
                 else:

@@ -299,8 +299,8 @@ function createMessageElement(role, text, timestamp = null, attachments = null, 
     const textContainer = document.createElement('div');
     if (role === 'assistant') {
         const cleanText = text.replace(/<memory_update>[\s\S]*?<\/memory_update>/gi, '')
-            .replace(/\[Emotion:\s*\w+\]/gi, '')
-            .replace(/\[Mood:\s*\w+\]/gi, '')
+            .replace(/\[Emotion:\s*[^\]]+\]/gi, '')   // multi-word: "warm smile", "happy closedeyes" etc
+            .replace(/\[Mood:\s*[^\]]+\]/gi, '')
             .replace(/\[tool:[\s\S]*?\](?=(?:\s*\[tool:)|(?:\s*$)|(?:\s*\[msg_break\]))/gi, '')
             .replace(/\[msg_break\]/gi, '')
             .trim();
@@ -511,6 +511,8 @@ async function sendMisakaMessage() {
 
     // Activate particle sphere while AI responds
     if (window.ParticleSphere) ParticleSphere.setActive(true);
+    // Show dots indicator immediately — don't wait for first server chunk
+    addAssistantToolStatus();
 
     try {
         const statusLine = document.getElementById('misaka-status-line');
@@ -545,7 +547,7 @@ async function sendMisakaMessage() {
                     const data = JSON.parse(line);
 
                     if (data.type === 'message') {
-                        removeAssistantToolStatus();
+                        removeAssistantToolStatus(); // hide dots as soon as text starts
                         untypedText += data.content;
 
                         // Process the untyped buffer for breaks and packets
@@ -593,8 +595,8 @@ async function sendMisakaMessage() {
                         }
                     }
                     else if (data.type === 'tool_start') {
-                        addAssistantToolStatus(data.content || "Executing neural tools...");
-                        if (statusLine) statusLine.textContent = data.content || "Executing neural tools...";
+                        addAssistantToolStatus(); // dots only, already showing
+                        if (statusLine) statusLine.textContent = data.content || "Processing...";
                     }
                     else if (data.type === 'done') {
                         removeAssistantToolStatus();
@@ -679,17 +681,22 @@ function renderMarkdown(text) {
 
 function cleanStreamingDisplay(rawText) {
     // Remove expression/mood/break tags (complete + partial at string end)
+    // [^\]]+ matches multi-word emotions like "warm smile", "happy closedeyes"
     let clean = rawText
-        .replace(/\[Emotion:.*?\]/gi, '')
-        .replace(/\[Mood:.*?\]/gi, '')
+        .replace(/\[Emotion:[^\]]*\]/gi, '')
+        .replace(/\[Mood:[^\]]*\]/gi, '')
         .replace(/\[msg_break\]/gi, '')
-        .replace(/\[(E(m(o(t(i(o(n(:.*)?)?)?)?)?)?)?|M(o(o(d(:.*)?)?)?)?|m(s(g(_(b(r(e(a(k)?)?)?)?)?)?)?)?)?$/i, '');
+        // Strip partial tag still being typed at end of string
+        .replace(/\[(Emotion|Mood|msg_break)[^\]]*$/i, '');
 
     // Strip complete bare JSON memory blobs (model forgot <memory_update> wrapper)
     const memKeys = /"(?:user_info|recent_observations|base_info|synthesis_notes)"/;
     clean = clean.replace(/\n?\{[^{]*"(?:user_info|recent_observations|base_info|synthesis_notes)"[\s\S]*?\}/g, '');
 
-    // Strip trailing partial JSON blob still being typed
+    // Strip partial JSON fragments like `,  "user_info":...` that haven't closed yet
+    clean = clean.replace(/,?\s*"(?:user_info|recent_observations|base_info|synthesis_notes)"[\s\S]*/g, '');
+
+    // Strip trailing partial JSON blob still being typed (starts with \n{ )
     const trailingJson = clean.match(/\n(\{[^{]*)$/);
     if (trailingJson && memKeys.test(trailingJson[1])) {
         clean = clean.slice(0, clean.length - trailingJson[0].length);
@@ -698,41 +705,22 @@ function cleanStreamingDisplay(rawText) {
     return clean.trim();
 }
 
-function addAssistantToolStatus(text) {
+function addAssistantToolStatus() {
     const container = document.getElementById('misaka-chat-messages');
     if (!container) return;
-
-    if (currentToolBubble) {
-        const textSpan = currentToolBubble.querySelector('.tool-text');
-        if (textSpan) textSpan.textContent = text;
-        return;
-    }
+    if (currentToolBubble) return; // already showing
 
     const div = document.createElement('div');
     div.className = 'chat-message assistant tool-indicator';
 
     const bubble = document.createElement('div');
-    bubble.className = 'message-bubble tool-bubble';
-    bubble.style.padding = '8px 12px';
-    bubble.style.fontSize = '0.85rem';
-    bubble.style.opacity = '0.8';
-    bubble.style.fontStyle = 'italic';
-    bubble.style.display = 'flex';
-    bubble.style.alignItems = 'center';
-    bubble.style.gap = '8px';
-    bubble.style.background = 'rgba(255, 255, 255, 0.05)';
-    bubble.style.border = '1px dashed rgba(255, 255, 255, 0.2)';
+    bubble.className = 'message-bubble misaka-busy-bubble';
 
-    const icon = document.createElement('span');
-    icon.innerHTML = '⚙️';
-    icon.style.animation = 'spin 2s linear infinite';
+    const dots = document.createElement('div');
+    dots.className = 'misaka-dots';
+    dots.innerHTML = '<span></span><span></span><span></span>';
 
-    const span = document.createElement('span');
-    span.className = 'tool-text';
-    span.textContent = text;
-
-    bubble.appendChild(icon);
-    bubble.appendChild(span);
+    bubble.appendChild(dots);
     div.appendChild(bubble);
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
