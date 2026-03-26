@@ -6,10 +6,12 @@ from pathlib import Path
 from typing import Callable, Optional, List, Dict, Any
 
 from core.utils.logger import get_logger
+from core.orchestrator.task_queue import is_agent_task_cancelled
 
 logger = get_logger(__name__)
 
-MAX_ITERATIONS = 20
+# Safety backstop — effectively unlimited; the Stop button is the user's control.
+MAX_ITERATIONS = 200
 
 SYSTEM_PROMPT = """\
 You are an expert software engineer completing coding tasks efficiently.
@@ -41,7 +43,7 @@ EFFICIENCY RULES:
 6. When switching tech stack or approach (e.g. React → plain HTML/CSS/JS), use delete_file to remove ALL old files that no longer belong BEFORE writing new ones. Never leave orphaned files from a previous approach.
 7. Start complex tasks with set_plan. Call mark_done only AFTER the real action for that step has executed and returned a result — mark_done does NOT create files or run code, it is a tracker only.
 8. BATCH EVERYTHING: Issue all independent ACTION lines in a single response. If you need data for 10 characters, write all 10 fetch_url calls in ONE response — never fetch one item, wait for the result, then fetch the next. Same for write_file: write all files in one response.
-9. You have up to {max_iterations} actions — be strategic and do not waste actions repeating yourself.
+9. Be strategic: do not waste iterations repeating the same action. If an action returns a DUPLICATE or BLOCKED message, stop doing that action and move on.
 10. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without the data you need, switch to fetch_url with a direct API/page URL, or proceed with best available information. NEVER loop on searches — it wastes your action budget.
 11. For fetching a specific URL or API (e.g. GitHub API, JSON endpoints, known web pages) use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
 12. Write ALL deliverable files (reports, analysis, code output) BEFORE writing or running any verification/test scripts. A script that checks a file's existence must run AFTER that file is written.
@@ -277,7 +279,6 @@ class AgentRunner:
         system + double-newline-separated 'User:' / 'Assistant:' blocks."""
         system = SYSTEM_PROMPT.format(
             workspace=str(self.workspace),
-            max_iterations=MAX_ITERATIONS,
             current_date=datetime.utcnow().strftime("%B %d, %Y"),
         )
         parts = [system]
@@ -479,7 +480,10 @@ class AgentRunner:
                     f"Use the data from the cached result below and write your files now.]\n{cached}"
                 )
             result = self._fetch_url(url)
-            self._fetch_cache[url] = result
+            # Only cache successful responses — never cache 429/5xx errors so
+            # the agent can retry after a rate-limit window passes.
+            if not result.startswith("HTTP 429") and not result.startswith("HTTP 5"):
+                self._fetch_cache[url] = result
             self.state.log_action(iteration, "fetch_url", url[:40])
             return result
 
@@ -661,6 +665,14 @@ class AgentRunner:
         self._emit({"type": "start", "title": "Starting task", "detail": self.task})
 
         for iteration in range(MAX_ITERATIONS):
+            # Check for user-requested stop (sent via POST /api/tasks/{id}/cancel)
+            if self.trace_id and is_agent_task_cancelled(self.trace_id):
+                summary = "Task stopped by user."
+                self._emit({"type": "done", "title": "Stopped", "detail": summary})
+                self.state.record_task(self.task, f"[stopped] {summary}")
+                self.state.save()
+                return summary
+
             response = self._call_llm(iteration)
 
             thinking = self._thinking_text(response)

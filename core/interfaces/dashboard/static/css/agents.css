@@ -447,6 +447,28 @@
     cursor: not-allowed;
 }
 
+.agents-stop-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+    white-space: nowrap;
+}
+
+.agents-stop-btn:hover {
+    background: rgba(239, 68, 68, 0.28);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
+
 /* ── Attach button ───────────────────────────────────────────── */
 .agents-attach-btn {
     display: flex;

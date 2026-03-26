@@ -386,16 +386,36 @@ function _agentsHideTyping() {
 // ── Submit state ──────────────────────────────────────────────
 function _agentsUpdateSubmitState() {
     const btn       = _agEl('agents-submit-btn');
+    const stopBtn   = _agEl('agents-stop-btn');
     const attachBtn = _agEl('agents-attach-btn');
     const textarea  = _agEl('agents-task-input');
     const enabled   = !!(_agentsCurrentWorkspace && _agentsCurrentThread && !_agentsIsPolling);
     if (btn)       btn.disabled       = !enabled;
     if (attachBtn) attachBtn.disabled = !enabled;
     if (textarea) textarea.disabled = !enabled;
+    // Show Stop button only while agent is running; hide Submit
+    if (stopBtn) stopBtn.style.display = _agentsIsPolling ? '' : 'none';
+    if (btn)     btn.style.display     = _agentsIsPolling ? 'none' : '';
     if (textarea && enabled) textarea.placeholder = 'Describe a task for the agent...';
     if (textarea && !enabled && !_agentsCurrentWorkspace) textarea.placeholder = 'Select a workspace first...';
     if (textarea && !enabled && _agentsCurrentWorkspace && !_agentsCurrentThread) textarea.placeholder = 'Select or create a thread first...';
     if (textarea && !enabled && _agentsIsPolling) textarea.placeholder = 'Waiting for agent response...';
+}
+
+async function agentsStopTask() {
+    if (!_agentsCurrentTaskId) return;
+    const taskId = _agentsCurrentTaskId;
+    try {
+        await fetch(`/api/tasks/${taskId}/cancel`, { method: 'POST' });
+    } catch (_) { /* ignore network errors — runner will check flag next iteration */ }
+    // Close the SSE stream immediately from the client side too
+    if (_agentsPollTimer && _agentsPollTimer.close) {
+        _agentsPollTimer.close();
+        _agentsPollTimer = null;
+    }
+    _agentsIsPolling = false;
+    _agentsCurrentTaskId = null;
+    _agentsUpdateSubmitState();
 }
 
 // ── Task submission & polling ─────────────────────────────────
@@ -1897,9 +1917,11 @@ function agentsInitEventHandlers() {
         });
     }
 
-    // Submit button
+    // Submit / Stop buttons
     const submitBtn = _agEl('agents-submit-btn');
     if (submitBtn) submitBtn.addEventListener('click', agentsSubmitTask);
+    const stopBtn = _agEl('agents-stop-btn');
+    if (stopBtn) stopBtn.addEventListener('click', agentsStopTask);
 
     // Textarea Enter to submit (Shift+Enter for newline)
     const taskInput = _agEl('agents-task-input');

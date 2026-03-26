@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from core.orchestrator.task_queue import get_task_queue_manager
+from core.orchestrator.task_queue import get_task_queue_manager, cancel_agent_task
 from core.orchestrator.agent_events import get_snapshot
 from core.utils.logger import get_logger
 
@@ -321,6 +321,13 @@ async def create_thread(request: ThreadCreateRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{task_id}/cancel")
+async def cancel_task(task_id: str):
+    """Signal a running agent task to stop after its current iteration."""
+    cancel_agent_task(task_id)
+    return {"ok": True, "task_id": task_id}
 
 
 @router.get("/{task_id}/events")
