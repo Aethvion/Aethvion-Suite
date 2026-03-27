@@ -99,6 +99,12 @@ async function corpOnSelect(corpId) {
     if (wsBar) wsBar.style.display = 'flex';
     if (wsInput) wsInput.value = _corpCurrent.workspace_path || '';
 
+    // Show goal bar and populate it
+    const goalBar   = document.getElementById('corp-goal-bar');
+    const goalInput = document.getElementById('corp-goal-input');
+    if (goalBar) goalBar.style.display = 'flex';
+    if (goalInput) goalInput.value = _corpCurrent.goal || '';
+
     // Determine running state
     _corpIsRunning = !!_corpCurrent.is_running;
     corpUpdateRunButtons();
@@ -158,6 +164,8 @@ function corpShowEmpty() {
     document.getElementById('corp-stop-btn').style.display       = 'none';
     const wsBar = document.getElementById('corp-workspace-bar');
     if (wsBar) wsBar.style.display = 'none';
+    const goalBar = document.getElementById('corp-goal-bar');
+    if (goalBar) goalBar.style.display = 'none';
 }
 
 // ── SSE ───────────────────────────────────────────────────────────────────────
@@ -297,6 +305,12 @@ function _corpBuildWorkerCard(worker) {
     card.className = `corp-worker-card ${status}`;
     card.id = `corp-worker-card-${worker.id}`;
 
+    const autoLabel = worker.can_create_tasks
+        ? `<span class="corp-worker-autoplan active" title="Auto-planning enabled — click to disable"
+                onclick="corpToggleAutoplan('${worker.id}', false)">⚡ auto-plan</span>`
+        : `<span class="corp-worker-autoplan" title="Auto-planning disabled — click to enable"
+                onclick="corpToggleAutoplan('${worker.id}', true)">⚡ auto-plan</span>`;
+
     card.innerHTML = `
         <div class="corp-worker-header">
             <div class="corp-worker-avatar" style="background:${worker.color || '#7c3aed'}">${initials}</div>
@@ -304,7 +318,10 @@ function _corpBuildWorkerCard(worker) {
                 <div class="corp-worker-name">${_esc(worker.name)}</div>
                 <div class="corp-worker-role">${_esc(worker.role)}</div>
             </div>
-            <div class="corp-worker-badge ${status}" id="corp-badge-${worker.id}">${status}</div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.25rem">
+                <div class="corp-worker-badge ${status}" id="corp-badge-${worker.id}">${status}</div>
+                ${autoLabel}
+            </div>
         </div>
         <div class="corp-worker-thought" id="corp-thought-${worker.id}">${_esc(stats.current_thought || 'Waiting…')}</div>
         <div class="corp-worker-stats">
@@ -611,6 +628,7 @@ function corpShowCreateModal() {
     if (m) {
         document.getElementById('corp-modal-name').value = '';
         document.getElementById('corp-modal-desc').value = '';
+        document.getElementById('corp-modal-goal').value = '';
         m.style.display = 'flex';
         setTimeout(() => document.getElementById('corp-modal-name').focus(), 50);
     }
@@ -619,13 +637,14 @@ function corpShowCreateModal() {
 async function corpSubmitCreate() {
     const name = (document.getElementById('corp-modal-name').value || '').trim();
     const desc = (document.getElementById('corp-modal-desc').value || '').trim();
+    const goal = (document.getElementById('corp-modal-goal').value || '').trim();
     if (!name) { alert('Corp name is required.'); return; }
 
     try {
         const corp = await (await fetch('/api/corp/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, description: desc }),
+            body: JSON.stringify({ name, description: desc, goal }),
         })).json();
 
         document.getElementById('corp-create-modal').style.display = 'none';
@@ -647,6 +666,8 @@ function corpShowAddWorkerModal() {
     document.getElementById('corp-wmodal-name').value        = '';
     document.getElementById('corp-wmodal-role').value        = '';
     document.getElementById('corp-wmodal-personality').value = '';
+    const canPlanChk = document.getElementById('corp-wmodal-can-plan');
+    if (canPlanChk) canPlanChk.checked = false;
     document.getElementById('corp-wmodal-color').value       = _randomColor();
 
     // Ensure models are loaded, then restore last-used selection
@@ -664,11 +685,13 @@ function corpShowAddWorkerModal() {
 }
 
 async function corpSubmitAddWorker() {
-    const name        = (document.getElementById('corp-wmodal-name').value || '').trim();
-    const role        = (document.getElementById('corp-wmodal-role').value || '').trim();
-    const model       = document.getElementById('corp-wmodal-model').value || 'claude-sonnet-4-5';
-    const personality = (document.getElementById('corp-wmodal-personality').value || '').trim();
-    const color       = document.getElementById('corp-wmodal-color').value || '#7c3aed';
+    const name           = (document.getElementById('corp-wmodal-name').value || '').trim();
+    const role           = (document.getElementById('corp-wmodal-role').value || '').trim();
+    const model          = document.getElementById('corp-wmodal-model').value || 'claude-sonnet-4-5';
+    const personality    = (document.getElementById('corp-wmodal-personality').value || '').trim();
+    const color          = document.getElementById('corp-wmodal-color').value || '#7c3aed';
+    const canPlanChk     = document.getElementById('corp-wmodal-can-plan');
+    const can_create_tasks = canPlanChk ? canPlanChk.checked : false;
 
     if (!name || !role) { alert('Name and role are required.'); return; }
 
@@ -679,7 +702,7 @@ async function corpSubmitAddWorker() {
         await fetch(`/api/corp/${_corpCurrent.id}/workers`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, role, model, personality, color }),
+            body: JSON.stringify({ name, role, model, personality, color, can_create_tasks }),
         });
         document.getElementById('corp-worker-modal').style.display = 'none';
         // Refresh corp config and re-render
@@ -770,6 +793,58 @@ async function corpBrowseWorkspace() {
     }
 }
 
+async function corpToggleAutoplan(workerId, enable) {
+    if (!_corpCurrent) return;
+    try {
+        await fetch(`/api/corp/${_corpCurrent.id}/workers/${workerId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ can_create_tasks: enable }),
+        });
+        // Update local config and re-render the worker card
+        for (const w of (_corpCurrent.workers || [])) {
+            if (w.id === workerId) { w.can_create_tasks = enable; break; }
+        }
+        const card = document.getElementById(`corp-worker-card-${workerId}`);
+        if (card) {
+            // Find the worker and rebuild just the card
+            const worker = (_corpCurrent.workers || []).find(w => w.id === workerId);
+            if (worker) {
+                const newCard = _corpBuildWorkerCard(worker);
+                card.replaceWith(newCard);
+            }
+        }
+        if (typeof showToast === 'function') {
+            showToast(enable ? 'Auto-planning enabled' : 'Auto-planning disabled', 'success');
+        }
+    } catch (e) {
+        console.error('[AgentCorp] Toggle auto-plan failed:', e);
+    }
+}
+
+async function corpSaveGoal() {
+    if (!_corpCurrent) return;
+    const input = document.getElementById('corp-goal-input');
+    const goal  = (input ? input.value : '').trim();
+
+    try {
+        const updated = await (await fetch(`/api/corp/${_corpCurrent.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ goal }),
+        })).json();
+
+        _corpCurrent.goal = updated.goal ?? goal;
+
+        if (typeof showToast === 'function') {
+            showToast(goal ? 'Company goal saved' : 'Goal cleared', 'success');
+        }
+    } catch (e) {
+        console.error('[AgentCorp] Save goal failed:', e);
+        if (typeof showToast === 'function') showToast('Failed to save goal', 'error');
+    }
+}
+
 async function corpSaveWorkspacePath() {
     if (!_corpCurrent) return;
     const input = document.getElementById('corp-workspace-input');
@@ -845,6 +920,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (wsSave)   wsSave.addEventListener('click', corpSaveWorkspacePath);
     if (wsInput)  wsInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') corpSaveWorkspacePath();
+    });
+
+    // Goal bar
+    const goalSave  = document.getElementById('corp-goal-save-btn');
+    const goalInput = document.getElementById('corp-goal-input');
+    if (goalSave)  goalSave.addEventListener('click', corpSaveGoal);
+    if (goalInput) goalInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') corpSaveGoal();
     });
 
     // Close modals on overlay click

@@ -1008,6 +1008,17 @@
                         </button>
                     </div>
 
+                    <!-- Top bar (row 3: company goal) -->
+                    <div class="corp-workspace-bar" id="corp-goal-bar" style="display:none">
+                        <i class="fas fa-bullseye" style="color:var(--text-secondary);font-size:.8rem"></i>
+                        <span class="corp-topbar-label">Goal</span>
+                        <input type="text" id="corp-goal-input" class="corp-workspace-input"
+                            placeholder="Set a company goal — workers with auto-plan will pursue it continuously…">
+                        <button id="corp-goal-save-btn" class="corp-icon-btn" title="Save company goal">
+                            <i class="fas fa-check"></i> Save
+                        </button>
+                    </div>
+
                     <!-- 3-column body -->
                     <div class="corp-body">
                         <!-- Left: worker cards -->
@@ -1046,7 +1057,11 @@
                         </div>
                         <div class="corp-modal-field">
                             <label class="corp-modal-label">Description</label>
-                            <textarea id="corp-modal-desc" class="corp-modal-input" rows="3" placeholder="What does this corp work on?"></textarea>
+                            <textarea id="corp-modal-desc" class="corp-modal-input" rows="2" placeholder="What does this corp work on?"></textarea>
+                        </div>
+                        <div class="corp-modal-field">
+                            <label class="corp-modal-label">Company Goal <span style="opacity:.5;font-weight:400">(optional — drives autonomous planning)</span></label>
+                            <textarea id="corp-modal-goal" class="corp-modal-input" rows="3" placeholder="e.g. Build a complete REST API with auth, database, and documentation…"></textarea>
                         </div>
                         <div class="corp-modal-footer">
                             <button id="corp-create-cancel" class="corp-modal-btn">Cancel</button>
@@ -1080,9 +1095,18 @@
                             <textarea id="corp-wmodal-personality" class="corp-modal-input" rows="3"
                                 placeholder="Describe their work style, strengths, and traits…"></textarea>
                         </div>
-                        <div class="corp-modal-field">
-                            <label class="corp-modal-label">Colour</label>
-                            <input type="color" id="corp-wmodal-color" value="#7c3aed" class="corp-color-picker">
+                        <div class="corp-modal-grid2">
+                            <div class="corp-modal-field">
+                                <label class="corp-modal-label">Colour</label>
+                                <input type="color" id="corp-wmodal-color" value="#7c3aed" class="corp-color-picker">
+                            </div>
+                            <div class="corp-modal-field" style="justify-content:flex-end;padding-top:1.4rem">
+                                <label class="corp-modal-toggle-label">
+                                    <input type="checkbox" id="corp-wmodal-can-plan">
+                                    <span>Auto-plan when idle</span>
+                                </label>
+                                <div style="font-size:.68rem;color:var(--text-secondary);margin-top:.25rem">Worker creates tasks autonomously to pursue the company goal</div>
+                            </div>
                         </div>
                         <div class="corp-modal-footer">
                             <button id="corp-worker-cancel" class="corp-modal-btn">Cancel</button>

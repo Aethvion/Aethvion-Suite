@@ -199,13 +199,14 @@ class CorpManager:
         return result
 
     def create_corp(self, name: str, description: str = "",
-                    workspace_path: str = "") -> Dict[str, Any]:
+                    workspace_path: str = "", goal: str = "") -> Dict[str, Any]:
         corp_id = str(uuid.uuid4())[:8]
         cfg = {
             "id":             corp_id,
             "name":           name,
             "description":    description,
             "workspace_path": workspace_path,
+            "goal":           goal,
             "created_at":     datetime.utcnow().isoformat(),
             "status":         "stopped",
             "workers":        [],
@@ -231,9 +232,9 @@ class CorpManager:
         self._config_path(corp_id).write_text(json.dumps(cfg, indent=2), encoding="utf-8")
 
     def update_corp(self, corp_id: str, **fields) -> Dict[str, Any]:
-        """Update top-level fields on a corp (name, description, workspace_path…)."""
+        """Update top-level fields on a corp (name, description, workspace_path, goal…)."""
         cfg = self.get_corp(corp_id)
-        allowed = {"name", "description", "workspace_path"}
+        allowed = {"name", "description", "workspace_path", "goal"}
         for k, v in fields.items():
             if k in allowed:
                 cfg[k] = v
@@ -249,15 +250,17 @@ class CorpManager:
     # ── worker CRUD ───────────────────────────────────────────────────────────
 
     def add_worker(self, corp_id: str, name: str, role: str,
-                   model: str, personality: str, color: str) -> Dict[str, Any]:
+                   model: str, personality: str, color: str,
+                   can_create_tasks: bool = False) -> Dict[str, Any]:
         cfg = self.get_corp(corp_id)
         worker = {
-            "id":          str(uuid.uuid4())[:8],
-            "name":        name,
-            "role":        role,
-            "model":       model,
-            "personality": personality,
-            "color":       color,
+            "id":               str(uuid.uuid4())[:8],
+            "name":             name,
+            "role":             role,
+            "model":            model,
+            "personality":      personality,
+            "color":            color,
+            "can_create_tasks": can_create_tasks,
         }
         cfg["workers"].append(worker)
         self._save_config(corp_id, cfg)
@@ -592,16 +595,104 @@ class CorpManager:
                 task = self.get_next_task_for_worker(corp_id, worker)
 
                 if task is None:
-                    stats.current_thought = "Waiting for tasks…"
-                    stats.status = "idle"
-                    self.emit(corp_id, {
-                        "type":        "worker_stats",
-                        "worker_id":   worker_id,
-                        "worker_name": worker_name,
-                        "color":       worker_col,
-                        "stats":       stats.to_dict(),
-                    })
-                    await asyncio.sleep(4)
+                    # Reload fresh config to pick up runtime changes (e.g. can_create_tasks toggle)
+                    cfg_fresh    = self.get_corp(corp_id)
+                    worker_fresh = next(
+                        (w for w in cfg_fresh.get("workers", []) if w["id"] == worker_id),
+                        worker,
+                    )
+                    can_plan = worker_fresh.get("can_create_tasks", False)
+                    goal     = cfg_fresh.get("goal", "").strip()
+
+                    if can_plan and goal:
+                        # ── Autonomous planning run ────────────────────────
+                        stats.current_thought = "Planning next tasks…"
+                        stats.status = "running"
+                        self.emit(corp_id, {
+                            "type":        "worker_stats",
+                            "worker_id":   worker_id,
+                            "worker_name": worker_name,
+                            "color":       worker_col,
+                            "stats":       stats.to_dict(),
+                        })
+
+                        planning_prompt = self._build_planning_prompt(corp_id, worker_fresh)
+
+                        from core.orchestrator.corp_worker_runner import CorpWorkerRunner as _CWR
+
+                        plan_nexus = self._get_nexus()
+                        if plan_nexus is None:
+                            await asyncio.sleep(10)
+                            continue
+
+                        plan_ws = str(self._workspace_path(corp_id))
+                        os.makedirs(plan_ws, exist_ok=True)
+
+                        def plan_step_cb(event: Dict) -> None:  # noqa: E306
+                            et = event.get("type", "")
+                            if et == "thinking":
+                                thought = (event.get("detail") or "")[:120]
+                                stats.current_thought = thought
+                                self.emit(corp_id, {
+                                    "type":        "worker_thought",
+                                    "worker_id":   worker_id,
+                                    "worker_name": worker_name,
+                                    "color":       worker_col,
+                                    "thought":     thought,
+                                })
+                            elif et == "usage":
+                                in_tok  = event.get("input_tokens", 0)
+                                out_tok = event.get("output_tokens", 0)
+                                stats.add_tokens(in_tok, out_tok, worker.get("model", ""))
+                                self._save_worker_stats(corp_id, worker_id)
+                                self.emit(corp_id, {
+                                    "type":        "worker_stats",
+                                    "worker_id":   worker_id,
+                                    "worker_name": worker_name,
+                                    "color":       worker_col,
+                                    "stats":       stats.to_dict(),
+                                })
+
+                        planning_runner = _CWR(
+                            task=planning_prompt,
+                            workspace_path=plan_ws,
+                            nexus=plan_nexus,
+                            step_callback=plan_step_cb,
+                            model_id=worker_fresh.get("model"),
+                            state_path=self._state_path(corp_id, worker_id),
+                            corp_manager=self,
+                            corp_id=corp_id,
+                            worker_id=worker_id,
+                            worker_name=worker_name,
+                        )
+
+                        try:
+                            await asyncio.to_thread(planning_runner.run)
+                        except Exception as e:
+                            logger.error(f"[CorpManager] Planning failed for {worker_name}: {e}")
+
+                        stats.current_thought = "Finished planning — picking up tasks…"
+                        stats.status = "idle"
+                        self.emit(corp_id, {
+                            "type":        "worker_stats",
+                            "worker_id":   worker_id,
+                            "worker_name": worker_name,
+                            "color":       worker_col,
+                            "stats":       stats.to_dict(),
+                        })
+                        await asyncio.sleep(2)
+                    else:
+                        # ── Standard idle wait ─────────────────────────────
+                        stats.current_thought = "Waiting for tasks…"
+                        stats.status = "idle"
+                        self.emit(corp_id, {
+                            "type":        "worker_stats",
+                            "worker_id":   worker_id,
+                            "worker_name": worker_name,
+                            "color":       worker_col,
+                            "stats":       stats.to_dict(),
+                        })
+                        await asyncio.sleep(4)
                     continue
 
                 # ── Mark task in-progress ──────────────────────────────────
@@ -782,10 +873,15 @@ class CorpManager:
             w["name"] for w in cfg.get("workers", [])
         ) or "any"
 
+        goal_section = ""
+        if cfg.get("goal", "").strip():
+            goal_section = f"## Company Goal\n{cfg['goal'].strip()}\n\n"
+
         return (
             f"You are {worker['name']}, a {worker['role']} at {cfg['name']}.\n\n"
             f"## Company\n"
             f"{cfg['name']}: {cfg.get('description', '')}\n\n"
+            f"{goal_section}"
             f"## Your Personality\n"
             f"{worker.get('personality', 'Professional and helpful.')}\n\n"
             f"## Your Persistent Memory\n"
@@ -812,6 +908,70 @@ class CorpManager:
             f"(keep under 400 words — be concise).\n"
             f"- Complete the task thoroughly, then call "
             f'ACTION: {{"type": "done", "summary": "brief summary"}}.\n'
+        )
+
+    def _build_planning_prompt(self, corp_id: str, worker: Dict) -> str:
+        """Build the autonomous planning prompt used when a worker is idle and can_create_tasks=True."""
+        cfg        = self.get_corp(corp_id)
+        goal       = cfg.get("goal", "").strip()
+        memory     = self.read_worker_memory(corp_id, worker["id"])
+        recent_log = self.read_log(corp_id, last_n=30)
+
+        tasks = self.get_tasks(corp_id)
+        pending   = [t for t in tasks if t["status"] == "pending"]
+        done_last = [t for t in tasks if t["status"] in ("done", "failed")][-10:]
+
+        board_lines = []
+        for t in pending:
+            board_lines.append(f"[PENDING] {t['task_id']}: {t['title']} (assigned: {t['assigned_to']})")
+        board_summary = "\n".join(board_lines) or "No pending tasks right now."
+
+        done_lines = []
+        for t in done_last:
+            done_lines.append(f"[{t['status'].upper()}] {t['task_id']}: {t['title']}")
+        done_summary = "\n".join(done_lines) or "No completed tasks yet."
+
+        worker_names = ", ".join(w["name"] for w in cfg.get("workers", [])) or "any"
+
+        # Workspace listing (top-level only — keep prompt lean)
+        ws_path = self._workspace_path(corp_id)
+        ws_listing = "(empty)"
+        try:
+            entries = list(ws_path.iterdir()) if ws_path.exists() else []
+            ws_listing = "\n".join(e.name for e in entries[:40]) or "(empty)"
+        except Exception:
+            pass
+
+        return (
+            f"You are {worker['name']}, a {worker['role']} at {cfg['name']}.\n\n"
+            f"## Company Goal\n"
+            f"{goal}\n\n"
+            f"## Your Role\n"
+            f"{worker.get('personality', 'Professional and proactive.')}\n\n"
+            f"## Your Memory\n"
+            f"{memory or 'No memory yet.'}\n\n"
+            f"## Current Task Board — Pending\n"
+            f"{board_summary}\n\n"
+            f"## Recently Completed / Failed\n"
+            f"{done_summary}\n\n"
+            f"## Recent Team Messages\n"
+            f"{recent_log or 'No messages yet.'}\n\n"
+            f"## Workspace Contents (top-level)\n"
+            f"{ws_listing}\n\n"
+            f"## Your Job RIGHT NOW\n"
+            f"The task board is empty (or all tasks are assigned). Evaluate the company goal, "
+            f"what has been done, and what is still needed. Then create 1-3 concrete, actionable "
+            f"tasks that will move the company closer to its goal. Be specific — each task should "
+            f"be completable in one agent session.\n\n"
+            f"Use these ACTIONs:\n"
+            f"  ACTION: {{\"type\": \"create_task\", \"title\": \"...\", \"description\": \"...\", "
+            f"\"assigned_to\": \"worker_name_or_any\", \"priority\": \"high|medium|low\"}}\n"
+            f"  ACTION: {{\"type\": \"post_to_log\", \"message\": \"...\", \"to\": \"All\"}}\n"
+            f"  ACTION: {{\"type\": \"update_memory\", \"content\": \"full replacement memory text\"}}\n\n"
+            f"Team members (for assigned_to): {worker_names}\n\n"
+            f"After creating the tasks, optionally post a brief planning note to the log, "
+            f"update your memory with key context, then call:\n"
+            f'ACTION: {{"type": "done", "summary": "Created N tasks: ..."}}\n'
         )
 
     # ── nexus accessor ────────────────────────────────────────────────────────

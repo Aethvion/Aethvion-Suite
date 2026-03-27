@@ -20,12 +20,14 @@ class CreateCorpRequest(BaseModel):
     name: str
     description: str = ""
     workspace_path: str = ""
+    goal: str = ""
 
 
 class UpdateCorpRequest(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     workspace_path: Optional[str] = None
+    goal: Optional[str] = None
 
 
 class AddWorkerRequest(BaseModel):
@@ -34,6 +36,7 @@ class AddWorkerRequest(BaseModel):
     model: str = "claude-sonnet-4-5"
     personality: str = ""
     color: str = "#7c3aed"
+    can_create_tasks: bool = False
 
 
 class UpdateWorkerRequest(BaseModel):
@@ -42,6 +45,7 @@ class UpdateWorkerRequest(BaseModel):
     model: Optional[str] = None
     personality: Optional[str] = None
     color: Optional[str] = None
+    can_create_tasks: Optional[bool] = None
 
 
 class CreateTaskRequest(BaseModel):
@@ -68,7 +72,7 @@ async def list_corps():
 
 @router.post("/create")
 async def create_corp(req: CreateCorpRequest):
-    return get_corp_manager().create_corp(req.name, req.description, req.workspace_path)
+    return get_corp_manager().create_corp(req.name, req.description, req.workspace_path, req.goal)
 
 
 @router.get("/{corp_id}")
@@ -102,7 +106,7 @@ async def delete_corp(corp_id: str):
 async def add_worker(corp_id: str, req: AddWorkerRequest):
     try:
         return get_corp_manager().add_worker(
-            corp_id, req.name, req.role, req.model, req.personality, req.color
+            corp_id, req.name, req.role, req.model, req.personality, req.color, req.can_create_tasks
         )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Corp {corp_id} not found")
