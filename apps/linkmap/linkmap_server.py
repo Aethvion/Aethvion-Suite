@@ -95,15 +95,27 @@ class ProjectAnalyzer:
         self.nodes = {}
         self.links = []
         
+        logger.info(f"LinkMap: Scanning project at {target}")
+        
+        # Supported extensions
+        extensions = [".py", ".js", ".ts", ".jsx", ".tsx"]
+        files_found = 0
+        
         # Analyze files
-        for py_path in target.rglob("*.py"):
-            if any(part.startswith(".") or part in ["__pycache__", "node_modules", "venv", ".venv"] for part in py_path.parts):
-                continue
-            self._analyze_file(py_path)
+        for ext in extensions:
+            for f_path in target.rglob(f"*{ext}"):
+                if any(part.startswith(".") or part in ["__pycache__", "node_modules", "venv", ".venv", "dist", "build"] for part in f_path.parts):
+                    continue
+                files_found += 1
+                if ext == ".py":
+                    self._analyze_python_file(f_path)
+                else:
+                    self._analyze_generic_file(f_path)
             
+        logger.info(f"LinkMap: Scan complete. Found {files_found} files, {len(self.nodes)} nodes, {len(self.links)} links.")
         return {"nodes": [n.dict() for n in self.nodes.values()], "links": [l.dict() for l in self.links]}
 
-    def _analyze_file(self, file_path: Path):
+    def _analyze_python_file(self, file_path: Path):
         rel_path = str(file_path.relative_to(self.root)).replace("\\", "/")
         file_id = f"file:{rel_path}"
         
@@ -139,14 +151,26 @@ class ProjectAnalyzer:
                     )
                     # Link file to its functions
                     self.links.append(Link(source=file_id, target=func_id, type="contains"))
-                    
-                    # Function calls within this function
-                    for child in ast.walk(node):
-                        if isinstance(child, ast.Call):
-                            self._handle_call(child, func_id, rel_path)
 
         except Exception as e:
-            logger.warning(f"Failed to analyze {file_path}: {e}")
+            logger.warning(f"Failed to analyze Python file {file_path}: {e}")
+
+    def _analyze_generic_file(self, file_path: Path):
+        """Simple node creation for non-python files."""
+        rel_path = str(file_path.relative_to(self.root)).replace("\\", "/")
+        file_id = f"file:{rel_path}"
+        
+        if file_id in self.nodes:
+            return
+            
+        ext = file_path.suffix.lower()[1:]
+        self.nodes[file_id] = Node(
+            id=file_id,
+            name=file_path.name,
+            type="file",
+            path=rel_path,
+            language=ext
+        )
 
     def _handle_import(self, node, source_file_id: str):
         if isinstance(node, ast.Import):

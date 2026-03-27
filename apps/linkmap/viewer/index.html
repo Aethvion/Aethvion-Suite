@@ -9,7 +9,7 @@
     <style>
         :root {
             --bg-color: #030712;
-            --panel-bg: rgba(10, 15, 25, 0.85);
+            --panel-bg: rgba(10, 15, 25, 0.9);
             --accent-color: #00d2ff;
             --accent-glow: rgba(0, 210, 255, 0.3);
             --text-primary: #f9fafb;
@@ -44,13 +44,13 @@
             pointer-events: none;
             display: flex;
             flex-direction: column;
-            padding: 24px;
+            padding: clamp(12px, 3vw, 24px);
             box-sizing: border-box;
         }
 
         .card {
             background: var(--panel-bg);
-            backdrop-filter: blur(16px);
+            backdrop-filter: blur(20px);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 20px;
@@ -61,7 +61,7 @@
         /* Top Left Panel */
         #main-controls {
             width: fit-content;
-            max-width: 340px;
+            max-width: min(340px, 90vw);
         }
 
         h1 {
@@ -113,9 +113,9 @@
         /* Bottom Details Panel */
         #info-panel {
             position: absolute;
-            bottom: 24px;
-            left: 24px;
-            width: 340px;
+            bottom: clamp(12px, 3vw, 24px);
+            left: clamp(12px, 3vw, 24px);
+            width: min(340px, 90vw);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             opacity: 1;
             transform: translateY(0);
@@ -156,18 +156,18 @@
             word-break: break-all;
         }
 
-        /* Right Side Code Viewer */
+        /* Side Code Viewer */
         #code-viewer {
             position: absolute;
-            top: 24px;
-            right: 24px;
-            bottom: 24px;
-            width: 500px;
+            top: clamp(12px, 3vw, 24px);
+            right: clamp(12px, 3vw, 24px);
+            bottom: clamp(12px, 3vw, 24px);
+            width: min(500px, 85vw);
             z-index: 200;
             display: flex;
             flex-direction: column;
             transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateX(540px);
+            transform: translateX(calc(100% + 40px));
         }
 
         #code-viewer.visible {
@@ -207,8 +207,8 @@
         /* Legend */
         .legend {
             position: absolute;
-            bottom: 24px;
-            right: 24px;
+            bottom: clamp(12px, 3vw, 24px);
+            right: clamp(12px, 3vw, 24px);
             font-size: 0.75rem;
             color: var(--text-secondary);
             background: var(--panel-bg);
@@ -241,7 +241,7 @@
         .dot.file { background-color: #00d2ff; box-shadow: 0 0 8px var(--accent-glow); }
         .dot.function { background-color: #f472b6; box-shadow: 0 0 8px rgba(244, 114, 182, 0.3); }
 
-        /* Loading */
+        /* Loading & Errors */
         #loading-overlay {
             position: fixed;
             top: 0;
@@ -279,17 +279,32 @@
             from { opacity: 0.2; transform: scale(0.7); }
             to { opacity: 1; transform: scale(1.2); }
         }
+
+        #error-msg {
+            color: #ef4444;
+            font-size: 0.875rem;
+            margin-top: 20px;
+            display: none;
+            text-align: center;
+            max-width: 80%;
+        }
     </style>
 </head>
 <body>
 
     <div id="loading-overlay">
-        <div class="dots">
-            <div class="dot-pulse"></div>
-            <div class="dot-pulse"></div>
-            <div class="dot-pulse"></div>
+        <div id="loading-content">
+            <div class="dots">
+                <div class="dot-pulse"></div>
+                <div class="dot-pulse"></div>
+                <div class="dot-pulse"></div>
+            </div>
+            <div class="subtitle" id="loading-text" style="font-family: 'Outfit'; letter-spacing: 0.1em; text-transform: uppercase;">Synthesizing Context Map</div>
         </div>
-        <div class="subtitle" style="font-family: 'Outfit'; letter-spacing: 0.1em; text-transform: uppercase;">Synthesizing Context Map</div>
+        <div id="error-msg"></div>
+        <button id="retry-btn" onclick="location.reload()" style="display: none; margin-top: 16px;">
+            Retry Connection
+        </button>
     </div>
 
     <div id="graph-container"></div>
@@ -324,7 +339,7 @@
             </div>
             <div class="info-group">
                 <div class="label">Relative Path</div>
-                <div id="info-path" class="value" style="font-family: 'Fira Code'; font-size: 0.75rem; color: var(--text-secondary);">-</div>
+                <div id="info-path" class="value" style="font-family: 'Fira Code'; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.2;">-</div>
             </div>
             <div class="info-group" style="display: flex; justify-content: space-between;">
                 <div>
@@ -371,28 +386,40 @@
         async function init() {
             const container = document.getElementById('graph-container');
             
-            graph = ForceGraph3D()(container)
-                .backgroundColor('#030712')
-                .showNavInfo(false)
-                .nodeId('id')
-                .nodeLabel(node => `<div style="background: rgba(10,15,25,0.95); padding: 8px 12px; border-radius: 8px; border: 1px solid #00d2ff; color: #fff; font-family: 'Outfit'; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
-                    <div style="font-size: 10px; color: #9ca3af; text-transform: uppercase;">${node.type}</div>
-                    <div style="font-size: 14px; font-weight: 600;">${node.name}</div>
-                </div>`)
-                .nodeColor(node => node.type === 'file' ? '#00d2ff' : '#f472b6')
-                .nodeOpacity(0.9)
-                .nodeRelSize(5)
-                .linkWidth(node => node.type === 'contains' ? 0.5 : 1.5)
-                .linkColor(link => link.type === 'contains' ? 'rgba(255,255,255,0.1)' : 'rgba(0, 210, 255, 0.4)')
-                .linkDirectionalArrowLength(3)
-                .linkDirectionalArrowRelPos(1)
-                .onNodeClick(node => {
-                    handleNodeSelection(node);
-                    focusNode(node);
-                });
+            console.log("[LinkMap] Initializing Three.js engine...");
+            
+            if (typeof ForceGraph3D === 'undefined') {
+                showError("3D Engine (ForceGraph3D) failed to load from CDN. Check your internet connection.");
+                return;
+            }
 
-            await loadData();
-            hideLoading();
+            try {
+                graph = ForceGraph3D()(container)
+                    .backgroundColor('#030712')
+                    .showNavInfo(false)
+                    .nodeId('id')
+                    .nodeLabel(node => `<div style="background: rgba(10,15,25,0.95); padding: 8px 12px; border-radius: 8px; border: 1px solid #00d2ff; color: #fff; font-family: 'Outfit'; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+                        <div style="font-size: 10px; color: #9ca3af; text-transform: uppercase;">${node.type}</div>
+                        <div style="font-size: 14px; font-weight: 600;">${node.name}</div>
+                    </div>`)
+                    .nodeColor(node => node.type === 'file' ? '#00d2ff' : '#f472b6')
+                    .nodeOpacity(0.9)
+                    .nodeRelSize(5)
+                    .linkWidth(node => node.type === 'contains' ? 0.5 : 1.5)
+                    .linkColor(link => link.type === 'contains' ? 'rgba(255,255,255,0.1)' : 'rgba(0, 210, 255, 0.4)')
+                    .linkDirectionalArrowLength(3)
+                    .linkDirectionalArrowRelPos(1)
+                    .onNodeClick(node => {
+                        handleNodeSelection(node);
+                        focusNode(node);
+                    });
+
+                await loadData();
+                hideLoading();
+            } catch (err) {
+                console.error("[LinkMap] Initialization error:", err);
+                showError("Engine error: " + err.message);
+            }
         }
 
         function hideLoading() {
@@ -405,15 +432,38 @@
             const overlay = document.getElementById('loading-overlay');
             overlay.style.display = 'flex';
             overlay.style.opacity = '1';
+            document.getElementById('loading-content').style.display = 'block';
+            document.getElementById('error-msg').style.display = 'none';
+            document.getElementById('retry-btn').style.display = 'none';
+        }
+
+        function showError(msg) {
+            console.error("[LinkMap] Error:", msg);
+            document.getElementById('loading-content').style.display = 'none';
+            const errDiv = document.getElementById('error-msg');
+            errDiv.innerText = msg;
+            errDiv.style.display = 'block';
+            document.getElementById('retry-btn').style.display = 'block';
         }
 
         async function loadData() {
+            console.log("[LinkMap] Fetching map data...");
             try {
                 const response = await fetch('/api/map');
+                if (!response.ok) throw new Error("API responded with status " + response.status);
+                
                 allData = await response.json();
+                console.log("[LinkMap] Data received:", allData.nodes.length, "nodes,", allData.links.length, "links.");
+                
+                if (allData.nodes.length === 0) {
+                    showError("No connected components found. Try refreshing or browsing to a different folder.");
+                    return;
+                }
+                
                 updateGraph();
             } catch (err) {
-                console.error('Failed to load map data:', err);
+                console.error("[LinkMap] Failed to load data:", err);
+                showError("Data error: " + err.message);
             }
         }
 
@@ -442,24 +492,35 @@
                     refreshMap();
                 }
             } catch (err) {
-                console.error('Browse failed:', err);
+                console.error("[LinkMap] Browse failed:", err);
             }
         }
 
         async function refreshMap() {
             showLoading();
+            console.log("[LinkMap] Starting project scan...");
             try {
                 const response = await fetch('/api/scan', { 
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ path: scanPath })
                 });
+                
+                if (!response.ok) throw new Error("Scan failed: status " + response.status);
+                
                 allData = await response.json();
+                console.log("[LinkMap] Scan complete. Received", allData.nodes.length, "nodes.");
+                
+                if (allData.nodes.length === 0) {
+                    showError("Scan returned 0 components. Ensure the folder exists and contains supported code files (.py).");
+                    return;
+                }
+                
                 updateGraph();
-            } catch (err) {
-                console.error('Refresh failed:', err);
-            } finally {
                 hideLoading();
+            } catch (err) {
+                console.error("[LinkMap] Refresh error:", err);
+                showError("Refresh failed: " + err.message);
             }
         }
 
@@ -481,7 +542,7 @@
             document.getElementById('info-path').innerText = node.path;
             document.getElementById('info-type').innerText = node.type;
             
-            const connections = allData.links.filter(l => 
+            const connections = (allData.links || []).filter(l => 
                 (l.source.id || l.source) === node.id || 
                 (l.target.id || l.target) === node.id
             ).length;
@@ -499,9 +560,9 @@
 
         function focusNode(node) {
             const distance = 100;
-            const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
+            const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z || 0);
             graph.cameraPosition(
-                { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
+                { x: node.x * distRatio, y: node.y * distRatio, z: (node.z || 0) * distRatio },
                 node,
                 1500
             );
@@ -520,10 +581,12 @@
 
             try {
                 const res = await fetch(`/api/file/read?path=${encodeURIComponent(path)}`);
+                if (!res.ok) throw new Error("Status " + res.status);
                 const data = await res.json();
                 content.innerText = data.content;
+                content.scrollTop = 0;
             } catch (err) {
-                content.innerText = 'Failed to load source code.';
+                content.innerText = 'Failed to load source code: ' + err.message;
             }
         }
 
