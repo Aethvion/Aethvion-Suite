@@ -1,5 +1,6 @@
 """Agent Runner — multi-step ReAct-style execution loop with persistent state."""
 import json
+import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -55,14 +56,15 @@ EFFICIENCY RULES:
 12. When switching tech stack or approach (e.g. React → plain HTML/CSS/JS), use delete_file to remove ALL old files that no longer belong BEFORE writing new ones.
 13. Start complex tasks with set_plan. Call mark_done only AFTER the real action for that step has executed and returned a result.
 14. BATCH EVERYTHING: Issue all independent ACTION lines in a single response. Multiple patch_file/append_file calls for different files are fine in one response.
-15. FILE READING: read_file returns up to 50,000 chars per call — enough for most files in one shot. If a result ends with [TRUNCATED], use the exact offset shown to continue. NEVER re-read the same path+offset — the system blocks it and forces you forward. NEVER use shell commands (PowerShell, sed, grep, etc.) to paginate files; use offset instead.
-16. SPIN PREVENTION: If a patch_file is blocked with [SPIN BLOCKED], you have tried the same patch 3+ times. Stop and try a different approach: re-read the file to get the exact current content, switch to append_file for new functions, or use write_file to replace the whole file.
-17. Be strategic: do not repeat the same action. If an action returns DUPLICATE, BLOCKED, or SPIN BLOCKED, move on immediately.
-18. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without data, switch to fetch_url or proceed with what you have.
-19. For fetching a specific URL or API use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
-20. Write ALL deliverable files BEFORE writing or running verification/test scripts.
-21. Before calling done, check your plan — every [ ] step must have a corresponding action result. Complete any unmarked steps first.
-22. NAMING: Never name user projects, games, apps, or deliverables after the workspace directory path. Use the name the user specified, or a descriptive/generic name if none was given.
+15. KNOWLEDGE BLOCK: The Context section contains a "Knowledge" block listing every file you have ever read or modified, with function names and their exact line numbers (e.g. handleMouseMove@L145). Use this to jump directly to the right section: read_file with offset=145 to see that function. Check the Knowledge block before deciding to read a file at all — you may already know what you need.
+16. FILE READING: read_file returns up to 50,000 chars per call — enough for most files in one shot. If a result ends with [TRUNCATED], use the exact offset shown to continue. If you see a [NOTE] about reading a section multiple times, check the Knowledge block — it has the function locations. Use offset-based reads to jump directly to the function you need.
+17. PATCH FAILURES: If patch_file returns "FAILED: exact 'old' string not found", the file was likely changed since you last read it. Re-read the file (or the relevant section using offset) to get the current exact content, then retry. If you see a [NOTE] about repeated attempts, switch to append_file for new functions or write_file for a full replacement.
+18. Be strategic: prefer targeted offset reads and append_file over full-file reads. Read only the section you need.
+19. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without data, switch to fetch_url or proceed with what you have.
+20. For fetching a specific URL or API use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
+21. Write ALL deliverable files BEFORE writing or running verification/test scripts.
+22. Before calling done, check your plan — every [ ] step must have a corresponding action result. Complete any unmarked steps first.
+23. NAMING: Never name user projects, games, apps, or deliverables after the workspace directory path. Use the name the user specified, or a descriptive/generic name if none was given.
 """
 
 
@@ -86,6 +88,10 @@ class AgentState:
         self.workspace_map: List[str] = []
         self.action_log: List[Dict[str, Any]] = []  # [{i, type, detail, at}]
         self.prior_tasks: List[Dict[str, str]] = []  # [{task, summary}] across the thread
+        # Semantic memory: compact structural digest for every file ever read/modified.
+        # Persists across iterations and tasks so the agent always knows what's in each file
+        # without having to re-read raw content that long-since scrolled out of history.
+        self.file_digests: Dict[str, str] = {}      # path -> digest string
 
         self._load()
 
@@ -104,6 +110,7 @@ class AgentState:
                 self.workspace_map = data.get("workspace_map", [])
                 self.action_log = data.get("action_log", [])
                 self.prior_tasks = data.get("prior_tasks", [])
+                self.file_digests = data.get("file_digests", {})
                 logger.info(f"[AgentState] Loaded state from {self.state_path}")
         except Exception as e:
             logger.warning(f"[AgentState] Could not load state from {self.state_path}: {e}")
@@ -121,6 +128,7 @@ class AgentState:
                 "workspace_map": self.workspace_map,
                 "action_log": self.action_log,
                 "prior_tasks": self.prior_tasks,
+                "file_digests": self.file_digests,
             }
             p.write_text(json.dumps(data, indent=2), encoding="utf-8")
         except Exception as e:
@@ -178,6 +186,10 @@ class AgentState:
 
     # ── notes ─────────────────────────────────────────────────────
 
+    def update_file_digest(self, path: str, digest: str) -> None:
+        """Store or update the semantic digest for a file."""
+        self.file_digests[path] = digest
+
     def add_note(self, note: str) -> None:
         self.notes.append(note)
         if len(self.notes) > self._MAX_NOTES:
@@ -232,6 +244,14 @@ class AgentState:
         # Notes
         if self.notes:
             parts.append("Notes: " + "; ".join(self.notes))
+
+        # Semantic file digests — compact structural knowledge about every file
+        # ever read or modified; persists across all iterations in this thread.
+        if self.file_digests:
+            digest_lines = ["Knowledge (file structure — use this before re-reading):"]
+            for path, digest in self.file_digests.items():
+                digest_lines.append(f"  {digest}")
+            parts.append("\n".join(digest_lines))
 
         # Recent actions
         if self.action_log:
@@ -292,9 +312,101 @@ class AgentRunner:
     def _invalidate_read_cache(self, path: str) -> None:
         """Remove all read-dedup entries for `path` so the agent can re-read
         it after a write/patch without being blocked by the duplicate guard."""
-        keys = [k for k in self._read_cache if k == path or k.startswith(path + ":")]
+        keys = [k for k in list(self._read_cache) if k.startswith(path + ":") or k == path]
         for k in keys:
             del self._read_cache[k]
+
+    def _generate_digest(self, path: str, content: str,
+                         last_action: Optional[str] = None) -> str:
+        """Build a rich semantic digest of a file's structure.
+
+        Includes function/selector names WITH line numbers so the agent can jump
+        directly to `offset=N` for any function without scanning the whole file.
+        Stored in AgentState.file_digests; injected into every prompt as the
+        Knowledge block.  Target size: ~400 chars per file.
+        """
+        ext   = Path(path).suffix.lower()
+        lines = content.splitlines()
+        ts    = datetime.utcnow().strftime("%H:%M")
+        header = f"{path} [{len(lines)}L, {len(content):,}ch]"
+
+        entries: List[str] = []   # "name@line" or "name@line: first-sig"
+
+        if ext in (".js", ".ts", ".jsx", ".tsx", ".mjs"):
+            seen: set = set()
+            globals_top: List[str] = []
+            fns_with_lines: List[str] = []
+
+            for i, line in enumerate(lines, 1):
+                # function declarations
+                m = re.match(r"\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*(\([^)]*\))?", line)
+                if m and m.group(1) not in seen:
+                    sig = m.group(2) or "()"
+                    fns_with_lines.append(f"{m.group(1)}@L{i}{sig}")
+                    seen.add(m.group(1))
+                    continue
+                # const/let/var arrow functions
+                m = re.match(r"\s*(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(([^)]*)\)", line)
+                if m and m.group(1) not in seen:
+                    fns_with_lines.append(f"{m.group(1)}@L{i}({m.group(2)})")
+                    seen.add(m.group(1))
+                    continue
+                # top-of-file globals (first 30 lines only)
+                if i <= 30:
+                    m = re.match(r"^\s*(?:const|let|var)\s+(\w+)\s*=\s*([^;]{0,40})", line)
+                    if m and m.group(1) not in seen:
+                        globals_top.append(f"{m.group(1)}={m.group(2).strip()[:20]}")
+
+            if fns_with_lines:
+                entries.append("functions:\n    " + "\n    ".join(fns_with_lines[:30]))
+            if globals_top:
+                entries.append("globals: " + ", ".join(globals_top[:8]))
+
+        elif ext == ".css":
+            sel_with_lines: List[str] = []
+            seen_sel: set = set()
+            for i, line in enumerate(lines, 1):
+                m = re.match(r"^([.#]?[\w][\w\s.#:>+~\[\]\"'=*-]*?)\s*\{", line)
+                if m:
+                    sel = m.group(1).strip()
+                    if sel and sel not in seen_sel:
+                        sel_with_lines.append(f"{sel}@L{i}")
+                        seen_sel.add(sel)
+            if sel_with_lines:
+                entries.append("selectors:\n    " + "\n    ".join(sel_with_lines[:30]))
+
+        elif ext in (".html", ".htm"):
+            ids = re.findall(r'\bid=["\']([^"\']+)["\']', content)
+            unique_ids = list(dict.fromkeys(ids))
+            if unique_ids:
+                entries.append("ids: " + ", ".join(unique_ids[:20]))
+            # key script/link/meta tags summary
+            scripts = re.findall(r'<script[^>]*src=["\']([^"\']+)["\']', content)
+            if scripts:
+                entries.append("scripts: " + ", ".join(scripts[:6]))
+
+        elif ext == ".py":
+            cls_with_lines: List[str] = []
+            fn_with_lines:  List[str] = []
+            for i, line in enumerate(lines, 1):
+                m = re.match(r"^class (\w+)", line)
+                if m:
+                    cls_with_lines.append(f"{m.group(1)}@L{i}")
+                m = re.match(r"^\s*def (\w+)\s*(\([^)]*\))?", line)
+                if m:
+                    sig = (m.group(2) or "()").replace("\n", "")[:40]
+                    fn_with_lines.append(f"{m.group(1)}@L{i}{sig}")
+            if cls_with_lines:
+                entries.append("classes: " + ", ".join(cls_with_lines[:10]))
+            if fn_with_lines:
+                entries.append("functions:\n    " + "\n    ".join(fn_with_lines[:25]))
+
+        body = ""
+        if entries:
+            body = "\n  " + "\n  ".join(entries)
+
+        last = f"\n  last: {last_action} @ {ts}" if last_action else ""
+        return f"{header}{body}{last}"
 
     # ── emit ──────────────────────────────────────────────────────
 
@@ -439,14 +551,8 @@ class AgentRunner:
             new  = action.get("new", "")
             repeat_key = f"patch_file:{path}:{old[:60]}"
             self._action_repeats[repeat_key] = self._action_repeats.get(repeat_key, 0) + 1
-            if self._action_repeats[repeat_key] > 3:
-                return (
-                    f"[SPIN BLOCKED — you have attempted the same patch_file on {path} "
-                    f"{self._action_repeats[repeat_key]} times without making progress. "
-                    f"Use read_file to get the current file content and ensure your 'old' "
-                    f"string exactly matches, or use append_file to add new content at the "
-                    f"end of the file, or use write_file to replace the whole file.]"
-                )
+            attempt = self._action_repeats[repeat_key]
+
             result = self._patch_file(path, old, new)
             self.state.log_action(iteration, "patch_file", path)
             self._emit({"type": "write_file", "path": path, "detail": f"patch: {len(old)}→{len(new)} chars"})
@@ -454,6 +560,23 @@ class AgentRunner:
                 # Successful patch — reset the repeat counter and clear read dedup
                 self._action_repeats.pop(repeat_key, None)
                 self._invalidate_read_cache(path)
+                # Update digest to reflect the change
+                try:
+                    fp = self.workspace / path
+                    full = fp.read_text(encoding="utf-8", errors="replace")
+                    summary = f"patched ({len(old)}→{len(new)} chars)"
+                    digest = self._generate_digest(path, full, last_action=summary)
+                    self.state.update_file_digest(path, digest)
+                except Exception:
+                    pass
+            # Soft nudge on repeated failed patches — never block, just guide
+            if result.startswith("patch_file FAILED") and attempt >= 2:
+                result += (
+                    f"\n[NOTE: This is attempt {attempt} with the same 'old' string. "
+                    f"Use read_file to get the exact current content of {path} — "
+                    f"the file may have changed since you last read it. "
+                    f"Or use append_file to add the new code at the end of the file.]"
+                )
             return result
 
         if t == "append_file":
@@ -463,6 +586,14 @@ class AgentRunner:
             self.state.log_action(iteration, "append_file", path)
             self._emit({"type": "write_file", "path": path, "detail": f"append: {len(content)} chars"})
             self._invalidate_read_cache(path)
+            if not result.startswith("Error:"):
+                try:
+                    fp = self.workspace / path
+                    full = fp.read_text(encoding="utf-8", errors="replace")
+                    digest = self._generate_digest(path, full, last_action=f"appended {len(content)} chars")
+                    self.state.update_file_digest(path, digest)
+                except Exception:
+                    pass
             return result
 
         if t == "write_file":
@@ -473,6 +604,13 @@ class AgentRunner:
             self.state.log_action(iteration, "write_file", path)
             # File was written — clear its read-dedup entries.
             self._invalidate_read_cache(path)
+            # Generate digest for the newly written content
+            if not result.startswith("Error:"):
+                try:
+                    digest = self._generate_digest(path, content, last_action="written")
+                    self.state.update_file_digest(path, digest)
+                except Exception:
+                    pass
             return result
 
         if t == "delete_file":
@@ -492,21 +630,39 @@ class AgentRunner:
             limit  = action.get("limit")            # max lines to return (None = all)
             limit  = int(limit) if limit is not None else None
 
-            # Dedup: block re-reading the same section to prevent infinite read loops.
-            cache_key = f"{path}:{offset}"
+            # Track reads per section for the nudge system — no hard blocks.
+            # Bucket offsets into 100-line windows so offset=0 and offset=10 are treated
+            # identically.
+            bucket    = (offset // 100) * 100
+            cache_key = f"{path}:{bucket}"
             self._read_cache[cache_key] = self._read_cache.get(cache_key, 0) + 1
-            if self._read_cache[cache_key] > 1:
-                return (
-                    f"[DUPLICATE READ BLOCKED — you already read {path} at offset {offset}. "
-                    f"Re-reading the same section will NOT give different content. "
-                    f"If the file was truncated, use offset={offset + (limit or 300)} to read the next section. "
-                    f"If you already have all the content you need, stop reading and apply your fix now.]"
-                )
+            read_count = self._read_cache[cache_key]
 
             result = self._read_file(path, offset=offset, limit=limit)
             # Cache with actual byte size of result if successful
             if not result.startswith("Error:") and not result.startswith("Not found:"):
                 self.state.cache_file(path, len(result.encode()))
+                # Generate / refresh semantic digest on a full read (offset=0).
+                # This populates the Knowledge block so subsequent iterations don't
+                # need to re-read just to find out what functions are in the file.
+                if offset == 0:
+                    try:
+                        fp = self.workspace / path
+                        full = fp.read_text(encoding="utf-8", errors="replace")
+                        digest = self._generate_digest(path, full)
+                        self.state.update_file_digest(path, digest)
+                    except Exception:
+                        pass
+                # Soft nudge after repeated reads of the same section — never block,
+                # just remind the agent that the Knowledge block has the structure.
+                if read_count >= 3:
+                    nudge = (
+                        f"\n\n[NOTE: You have read this section of {path} {read_count} times. "
+                        f"The Knowledge block in Context already lists all functions with line "
+                        f"numbers — check it before reading again. If you have the content you "
+                        f"need, write your patch now.]"
+                    )
+                    result = result + nudge
             suffix = f"@{offset}" if offset else ""
             self.state.log_action(iteration, "read_file", f"{path}{suffix}")
             return result
@@ -890,14 +1046,17 @@ class AgentRunner:
                 path = action.get("path", "")
                 cmd = action.get("command", "")
                 short = path or (cmd[:30] if cmd else "")
-                # Cap large results (e.g. big file reads) stored in conversation history.
-                # The full content was already processed by the LLM in this iteration.
-                # Storing 13k of file content in every subsequent prompt wastes tokens.
-                MAX_HIST = 5_000
+                # Cap large results stored in conversation history.
+                # 8k is enough to cover most individual functions the agent will need
+                # to patch, while avoiding the full 50k file repeated every iteration.
+                # The Knowledge block (in Context) carries structural info across iterations;
+                # raw history carries the exact content needed for the next patch.
+                MAX_HIST = 8_000
                 hist_result = (
                     result if len(result) <= MAX_HIST
                     else result[:MAX_HIST]
-                    + f"\n…[{len(result):,} chars total — use read_file with offset if you need more]"
+                    + f"\n…[{len(result):,} chars total — see Knowledge block for structure, "
+                    f"or use read_file with offset={offset + (limit or 200)} for more]"
                 )
                 results.append(f"{action_type}({short}): {hist_result}")
                 compact_actions.append(f"{action_type}({short})")
