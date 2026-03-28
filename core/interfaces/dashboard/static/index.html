@@ -1160,6 +1160,28 @@
                     </div>
                 </div>
 
+                <!-- Task Detail Modal -->
+                <div class="corp-modal-overlay" id="corp-task-detail-modal" style="display:none" onclick="if(event.target===this)corpCloseTaskDetail()">
+                    <div class="corp-modal corp-modal-wide">
+                        <div class="corp-modal-title-row">
+                            <h3 class="corp-modal-title" id="corp-detail-title"></h3>
+                            <span class="corp-detail-status-badge" id="corp-detail-status"></span>
+                        </div>
+                        <div class="corp-detail-meta" id="corp-detail-meta"></div>
+                        <div class="corp-modal-field">
+                            <label class="corp-modal-label">Description</label>
+                            <div class="corp-detail-description" id="corp-detail-description"></div>
+                        </div>
+                        <div class="corp-detail-result" id="corp-detail-result-wrap" style="display:none">
+                            <label class="corp-modal-label">Result</label>
+                            <div class="corp-detail-result-body" id="corp-detail-result"></div>
+                        </div>
+                        <div class="corp-modal-footer">
+                            <button class="corp-modal-btn primary" onclick="corpCloseTaskDetail()">Close</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Company Chat Popup -->
                 <div class="corp-chat-popup" id="corp-chat-popup" style="display:none">
                     <div class="corp-chat-header">

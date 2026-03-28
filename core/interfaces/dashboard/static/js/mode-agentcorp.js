@@ -519,6 +519,15 @@ function _corpBuildTaskCard(task) {
         card.querySelector('.corp-task-id').after(rejectBtn);
     }
 
+    // Show description tooltip on hover + open detail modal on click
+    if (task.description) {
+        card.title = task.description.length > 120
+            ? task.description.slice(0, 120) + '…'
+            : task.description;
+    }
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', () => corpOpenTaskDetail(task));
+
     return card;
 }
 
@@ -1050,6 +1059,43 @@ async function corpTogglePauseWorker(workerId) {
 }
 
 // ── Task reject ────────────────────────────────────────────────────────────────
+
+function corpOpenTaskDetail(task) {
+    const modal = document.getElementById('corp-task-detail-modal');
+    if (!modal) return;
+
+    document.getElementById('corp-detail-title').textContent = task.title;
+
+    const statusEl = document.getElementById('corp-detail-status');
+    statusEl.textContent = task.status.replace('_', ' ');
+    statusEl.className = `corp-detail-status-badge ${task.status}`;
+
+    const assignedName = _corpResolveAssigned(task.assigned_to);
+    const createdAt = task.created_at ? new Date(task.created_at).toLocaleString() : '—';
+    const workerName = task.worker_id ? (_corpWorkerNames[task.worker_id] || task.worker_id) : '—';
+    document.getElementById('corp-detail-meta').innerHTML =
+        `<span class="corp-detail-meta-item"><b>Priority:</b> <span class="corp-task-priority ${task.priority}">${task.priority}</span></span>` +
+        `<span class="corp-detail-meta-item"><b>Assigned to:</b> ${_esc(assignedName)}</span>` +
+        `<span class="corp-detail-meta-item"><b>Created:</b> ${_esc(createdAt)}</span>` +
+        (task.worker_id ? `<span class="corp-detail-meta-item"><b>Worker:</b> ${_esc(workerName)}</span>` : '');
+
+    document.getElementById('corp-detail-description').textContent = task.description || '(no description)';
+
+    const resultWrap = document.getElementById('corp-detail-result-wrap');
+    if (task.result_summary) {
+        document.getElementById('corp-detail-result').textContent = task.result_summary;
+        resultWrap.style.display = '';
+    } else {
+        resultWrap.style.display = 'none';
+    }
+
+    modal.style.display = 'flex';
+}
+
+function corpCloseTaskDetail() {
+    const modal = document.getElementById('corp-task-detail-modal');
+    if (modal) modal.style.display = 'none';
+}
 
 async function corpRejectTask(taskId) {
     if (!_corpCurrent) return;
