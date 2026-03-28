@@ -112,7 +112,38 @@ class CorpWorkerRunner(AgentRunner):
             f"Use Knowledge block for file structure. patch_file for edits, append_file for new code."
         )
 
-    # ── Corp-specific system prompt ───────────────────────────────────────────
+    # ── Corp-specific system prompt & prompt building ─────────────────────────
+
+    def _build_prompt(self) -> str:
+        """Like parent, but injects recent operator steering messages on iterations 1+."""
+        if not self.conversation or not self._task_short:
+            return super()._build_prompt()
+
+        task_block = self._task_short
+        if self._corp_manager:
+            try:
+                log = self._corp_manager.read_log(self._corp_id, last_n=20)
+                op_lines = [
+                    line for line in log.splitlines() if "[Operator →" in line
+                ]
+                if op_lines:
+                    recent_op = "\n".join(op_lines[-3:])
+                    task_block = (
+                        f"OPERATOR STEERING (read and respond/act if relevant):\n"
+                        f"{recent_op}\n\n{self._task_short}"
+                    )
+            except Exception:
+                pass
+
+        system = self._get_system_prompt()
+        parts = [system]
+        ctx = self.state.build_context()
+        if ctx:
+            parts.append(f"Context:\n{ctx}")
+        parts.append(f"User: {task_block}")
+        recent = self.conversation[-self._conv_window:]
+        parts.extend(recent)
+        return "\n\n".join(parts)
 
     def _get_system_prompt(self) -> str:
         from datetime import datetime

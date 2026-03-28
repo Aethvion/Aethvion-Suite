@@ -1082,8 +1082,6 @@ async function corpSendChatMessage() {
             body: JSON.stringify({ message: msg }),
         });
         if (input) input.value = '';
-        // Optimistically add to chat (SSE will also fire, but showing immediately feels better)
-        _corpAddChatMessage('user', 'You', msg);
     } catch (e) {
         console.error('[AgentCorp] Send message failed:', e);
     }
