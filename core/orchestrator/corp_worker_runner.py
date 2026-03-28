@@ -105,6 +105,14 @@ class CorpWorkerRunner(AgentRunner):
         self._worker_id = worker_id
         self._worker_name = worker_name
 
+        # Route blueprint cache to the corp data dir so it never appears
+        # inside the user's project workspace.
+        if corp_manager and corp_id:
+            try:
+                self._blueprint_cache_path = corp_manager._corp_dir(corp_id) / "_blueprint.txt"
+            except Exception:
+                pass
+
         # ── Token optimisations ───────────────────────────────────────────────
         # Narrow conversation window: focused corp tasks need less lookback.
         self._conv_window = 6

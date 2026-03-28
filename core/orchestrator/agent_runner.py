@@ -40,11 +40,16 @@ def _bp_fmt_size(n: int) -> str:
     return f"{n / 1_048_576:.1f}M"
 
 
-def build_workspace_blueprint(workspace: Path, sub_path: str = "") -> str:
+def build_workspace_blueprint(
+    workspace: Path,
+    sub_path: str = "",
+    cache_path: Optional[Path] = None,
+) -> str:
     """Walk the workspace once and return a compact hierarchical file map.
 
-    • Caches result to ``_blueprint.txt`` in the workspace root for 120 s so
-      all corp workers share the same snapshot without re-walking the tree.
+    • ``cache_path`` — where to write the cached snapshot.  Corp callers pass a
+      path inside ``data/agent_corps/{id}/`` so the file never appears in the
+      user's project.  Standalone agents default to ``workspace/_blueprint.txt``.
     • Pass ``sub_path`` to get an expanded view of a specific subdirectory.
     • Binary assets (images, fonts, video…) and tooling dirs (.git, node_modules…)
       are silently excluded so the output stays focused on source files.
@@ -55,11 +60,11 @@ def build_workspace_blueprint(workspace: Path, sub_path: str = "") -> str:
     if not root.exists():
         return f"Error: path '{sub_path}' not found in workspace."
 
-    cache_path = workspace / "_blueprint.txt"
-    if not sub_path and cache_path.exists():
+    effective_cache = cache_path or (workspace / "_blueprint.txt")
+    if not sub_path and effective_cache.exists():
         try:
-            if time.time() - cache_path.stat().st_mtime < BLUEPRINT_CACHE_SECS:
-                return cache_path.read_text(encoding="utf-8")
+            if time.time() - effective_cache.stat().st_mtime < BLUEPRINT_CACHE_SECS:
+                return effective_cache.read_text(encoding="utf-8")
         except Exception:
             pass
 
@@ -140,7 +145,8 @@ def build_workspace_blueprint(workspace: Path, sub_path: str = "") -> str:
 
     if not sub_path:
         try:
-            cache_path.write_text(result, encoding="utf-8")
+            effective_cache.parent.mkdir(parents=True, exist_ok=True)
+            effective_cache.write_text(result, encoding="utf-8")
         except Exception:
             pass
 
@@ -424,6 +430,9 @@ class AgentRunner:
         #   _task_short   — compact reminder used for iterations 1+ (None = repeat full task)
         self._conv_window: int = 8
         self._task_short: Optional[str] = None
+        # Corp workers set this to their corp data dir so _blueprint.txt is written
+        # there instead of into the user's project workspace.
+        self._blueprint_cache_path: Optional[Path] = None
         # Reset only per-task planning state between tasks.
         # file_cache and workspace_map are intentionally KEPT so the agent knows
         # what files it already created in this thread — follow-up tasks can skip
@@ -603,6 +612,7 @@ class AgentRunner:
 
         try:
             chunks: list[str] = []
+            _llm_start = datetime.utcnow()
             for chunk in self.nexus.provider_manager.call_with_failover_stream(
                 prompt=prompt,
                 trace_id=f"{self.trace_id}-i{iteration}",
@@ -614,17 +624,20 @@ class AgentRunner:
                 images=call_images,
             ):
                 chunks.append(chunk)
+            llm_elapsed = (datetime.utcnow() - _llm_start).total_seconds()
             full = "".join(chunks).strip()
             if not full:
                 return "(LLM error: Provider returned empty response)"
 
-            # Estimate token usage (~4 chars/token) and emit for the UI
+            # Estimate token usage (~4 chars/token) and emit for the UI.
+            # llm_elapsed_s is the actual streaming duration — used for accurate t/s
+            # (excludes tool execution time that sits between LLM calls).
             est_in  = len(prompt) // 4
             est_out = len(full)   // 4
             self.run_input_tokens  += est_in
             self.run_output_tokens += est_out
-            elapsed = (datetime.utcnow() - self._start_time).total_seconds()
-            total   = self.run_input_tokens + self.run_output_tokens
+            run_elapsed = (datetime.utcnow() - self._start_time).total_seconds()
+            total       = self.run_input_tokens + self.run_output_tokens
             self._emit({
                 "type":          "usage",
                 "input_tokens":  est_in,
@@ -632,7 +645,8 @@ class AgentRunner:
                 "run_input":     self.run_input_tokens,
                 "run_output":    self.run_output_tokens,
                 "run_total":     total,
-                "tok_per_sec":   round(total / elapsed, 1) if elapsed > 0 else 0,
+                "llm_elapsed_s": round(llm_elapsed, 2),
+                "tok_per_sec":   round(est_out / llm_elapsed, 1) if llm_elapsed > 0 else 0,
             })
 
             return full
@@ -877,7 +891,9 @@ class AgentRunner:
 
         if t == "get_project_blueprint":
             sub_path = action.get("path", "")
-            result = build_workspace_blueprint(self.workspace, sub_path)
+            result = build_workspace_blueprint(
+                self.workspace, sub_path, cache_path=self._blueprint_cache_path
+            )
             self.state.log_action(iteration, "get_project_blueprint", sub_path or "workspace")
             return result
 

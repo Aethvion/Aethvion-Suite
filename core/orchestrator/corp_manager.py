@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from core.utils.logger import get_logger
-from core.utils.paths import CORP_ROOT
+from core.utils.paths import CORP_ROOT, MODEL_REGISTRY
 
 logger = get_logger(__name__)
 
@@ -40,19 +40,36 @@ _PRIORITY_ORDER = {"urgent": 0, "high": 1, "medium": 2, "low": 3}
 
 # ── Cost estimation ──────────────────────────────────────────────────────────
 
+# Module-level cache: {model_id: (input_cost_per_1m, output_cost_per_1m)}
+_MODEL_PRICE_CACHE: Dict[str, tuple] = {}
+
+
+def _load_model_prices() -> Dict[str, tuple]:
+    """Load model pricing from data/config/model_registry.json.
+
+    Returns a dict mapping model_id → (input_cost_per_1m, output_cost_per_1m).
+    Result is cached in _MODEL_PRICE_CACHE so the file is only read once.
+    """
+    global _MODEL_PRICE_CACHE
+    if _MODEL_PRICE_CACHE:
+        return _MODEL_PRICE_CACHE
+    try:
+        with open(MODEL_REGISTRY, "r", encoding="utf-8") as f:
+            registry = json.load(f)
+        for _provider, pdata in registry.get("providers", {}).items():
+            for model_id, mdata in pdata.get("models", {}).items():
+                in_cost  = float(mdata.get("input_cost_per_1m_tokens",  0.0))
+                out_cost = float(mdata.get("output_cost_per_1m_tokens", 0.0))
+                _MODEL_PRICE_CACHE[model_id] = (in_cost, out_cost)
+    except Exception as exc:
+        logger.warning("corp_manager: could not load model_registry.json: %s", exc)
+    return _MODEL_PRICE_CACHE
+
+
 def _estimate_cost(tokens_in: int, tokens_out: int, model: str) -> float:
-    """Approximate USD cost. Prices per 1 M tokens (input / output)."""
-    pricing = {
-        "claude-opus":   (15.0, 75.0),
-        "claude-sonnet": (3.0,  15.0),
-        "claude-haiku":  (0.25,  1.25),
-    }
-    key = "claude-sonnet"
-    for k in pricing:
-        if k in model.lower():
-            key = k
-            break
-    in_p, out_p = pricing[key]
+    """Exact USD cost from model_registry.json, falling back to $0 for unknowns."""
+    prices = _load_model_prices()
+    in_p, out_p = prices.get(model, (0.0, 0.0))
     return (tokens_in / 1_000_000) * in_p + (tokens_out / 1_000_000) * out_p
 
 
@@ -102,14 +119,21 @@ class WorkerStats:
 
     # ── runtime ───────────────────────────────────────────────────
 
-    def add_tokens(self, in_tok: int, out_tok: int, model: str) -> None:
-        self.tokens_in += in_tok
+    def add_tokens(
+        self, in_tok: int, out_tok: int, model: str, llm_elapsed_s: float = 0.0
+    ) -> None:
+        self.tokens_in  += in_tok
         self.tokens_out += out_tok
-        self.cost_usd += _estimate_cost(in_tok, out_tok, model)
+        self.cost_usd   += _estimate_cost(in_tok, out_tok, model)
         now = time.time()
-        if self._last_token_time:
+        if llm_elapsed_s > 0:
+            # Prefer the actual LLM streaming time — excludes tool execution overhead.
+            self.tokens_per_second = round(out_tok / llm_elapsed_s, 1)
+        elif self._last_token_time:
             elapsed = now - self._last_token_time
-            if elapsed > 0:
+            # Only use wall-clock gap when it's short enough to reflect generation
+            # speed, not idle time between tasks (gaps > 60 s are treated as pauses).
+            if 0 < elapsed <= 60:
                 self.tokens_per_second = round(out_tok / elapsed, 1)
         self._last_token_time = now
 
@@ -630,12 +654,13 @@ class CorpManager:
         self._save_config(corp_id, cfg)
 
         # Pre-generate workspace blueprint so workers don't have to walk the tree themselves.
-        # Runs synchronously before workers start; result is cached to _blueprint.txt.
+        # Cache is written to the corp data dir, NOT into the user's project workspace.
         try:
             from core.orchestrator.agent_runner import build_workspace_blueprint
             ws = self._workspace_path(corp_id)
             if ws.exists():
-                build_workspace_blueprint(ws)
+                bp_cache = self._corp_dir(corp_id) / "_blueprint.txt"
+                build_workspace_blueprint(ws, cache_path=bp_cache)
                 logger.info(f"[CorpManager] Blueprint generated for {corp_id}")
         except Exception as e:
             logger.warning(f"[CorpManager] Blueprint generation failed: {e}")
@@ -792,9 +817,10 @@ class CorpManager:
                                     "thought":     thought,
                                 })
                             elif et == "usage":
-                                in_tok  = event.get("input_tokens", 0)
-                                out_tok = event.get("output_tokens", 0)
-                                stats.add_tokens(in_tok, out_tok, worker.get("model", ""))
+                                in_tok      = event.get("input_tokens", 0)
+                                out_tok     = event.get("output_tokens", 0)
+                                llm_elapsed = event.get("llm_elapsed_s", 0.0)
+                                stats.add_tokens(in_tok, out_tok, worker.get("model", ""), llm_elapsed)
                                 self._save_worker_stats(corp_id, worker_id)
                                 self.emit(corp_id, {
                                     "type":        "worker_stats",
@@ -913,9 +939,10 @@ class CorpManager:
                             "detail":      event.get("detail", "")[:200],
                         })
                     elif et == "usage":
-                        in_tok  = event.get("input_tokens", 0)
-                        out_tok = event.get("output_tokens", 0)
-                        stats.add_tokens(in_tok, out_tok, worker.get("model", ""))
+                        in_tok      = event.get("input_tokens", 0)
+                        out_tok     = event.get("output_tokens", 0)
+                        llm_elapsed = event.get("llm_elapsed_s", 0.0)
+                        stats.add_tokens(in_tok, out_tok, worker.get("model", ""), llm_elapsed)
                         # Persist cumulative counters so they survive restarts
                         self._save_worker_stats(corp_id, worker_id)
                         self.emit(corp_id, {
@@ -1057,7 +1084,7 @@ class CorpManager:
         blueprint_section = ""
         if ws.exists():
             try:
-                bp = build_workspace_blueprint(ws)
+                bp = build_workspace_blueprint(ws, cache_path=self._corp_dir(corp_id) / "_blueprint.txt")
                 # Cap at 3 k chars in the prompt; workers can call get_project_blueprint for full view
                 if len(bp) > 3000:
                     bp = bp[:3000] + "\n… [truncated — call get_project_blueprint for full view]"
@@ -1121,7 +1148,7 @@ class CorpManager:
         blueprint_section = ""
         if ws_path.exists():
             try:
-                bp = build_workspace_blueprint(ws_path)
+                bp = build_workspace_blueprint(ws_path, cache_path=self._corp_dir(corp_id) / "_blueprint.txt")
                 if len(bp) > 3000:
                     bp = bp[:3000] + "\n… [truncated — call get_project_blueprint for full view]"
                 blueprint_section = f"## Workspace Blueprint\n{bp}\n\n"
