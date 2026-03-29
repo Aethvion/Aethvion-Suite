@@ -317,3 +317,81 @@
 }
 .am-small-drop { padding: 0.75rem; }
 .am-small-drop i { font-size: 1rem; }
+
+/* ── New / badge labels ────────────────────────────────────────────────────── */
+.am-new-badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ── Install progress log ──────────────────────────────────────────────────── */
+.am-install-log {
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.am-log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.am-log-bar-wrap {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.am-log-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 99px;
+    width: 5%;
+    transition: width 0.4s ease;
+    animation: am-bar-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes am-bar-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.55; }
+}
+
+.am-log-bar.am-bar-done {
+    animation: none;
+    background: #34d399;
+}
+
+.am-log-bar.am-bar-fail {
+    animation: none;
+    background: #f87171;
+}
+
+.am-log-output {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.71rem;
+    color: var(--text-secondary);
+    max-height: 150px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.5;
+}

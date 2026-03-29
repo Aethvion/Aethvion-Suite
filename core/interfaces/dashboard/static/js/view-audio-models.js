@@ -86,9 +86,9 @@ const AudioModels = (() => {
         ).join('');
 
         // Status pill
-        let statusPill = `<span class="status-badge">Not Installed</span>`;
-        if (installed && loaded)   statusPill = `<span class="status-badge success-v12">Loaded · ${device}</span>`;
-        else if (installed)        statusPill = `<span class="status-badge warning-v12">Installed</span>`;
+        let statusPill = `<span class="am-status am-status-missing">Not Installed</span>`;
+        if (installed && loaded)   statusPill = `<span class="am-status am-status-loaded">Loaded · ${device}</span>`;
+        else if (installed)        statusPill = `<span class="am-status am-status-installed">Installed</span>`;
 
         const isDefault = _defaultModel === m.id;
         const isRegistered = _registered.has(m.id);
@@ -144,6 +144,7 @@ const AudioModels = (() => {
                 <div class="am-card-title">
                     <span class="am-model-name">${m.name}</span>
                     ${m.recommended ? '<span class="am-recommended">★ Recommended</span>' : ''}
+                    ${m.badge ? `<span class="am-new-badge">${m.badge}</span>` : ''}
                     ${statusPill}
                 </div>
                 <div class="am-caps">${capBadges}</div>
@@ -187,13 +188,23 @@ const AudioModels = (() => {
     }
 
     function _getVoiceOptions(modelId) {
-        // For kokoro: return built-in voices from statuses (or hardcode known ones)
-        // For xtts: cloned voices from voices section
         if (modelId === 'kokoro') {
             const voices = [
                 ['af_heart','Heart (F)'],['af_bella','Bella (F)'],['af_nova','Nova (F)'],
                 ['af_sky','Sky (F)'],['am_adam','Adam (M)'],['am_echo','Echo (M)'],
                 ['am_michael','Michael (M)'],['bf_emma','Emma (F, GB)'],['bm_george','George (M, GB)'],
+            ];
+            return voices.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+        }
+        if (modelId === 'vibevoice-realtime') {
+            const voices = [
+                ['en-Carter_man.pt', 'Carter (M)'],
+                ['en-Davis_man.pt',  'Davis (M)'],
+                ['en-Emma_woman.pt', 'Emma (F)'],
+                ['en-Frank_man.pt',  'Frank (M)'],
+                ['en-Grace_woman.pt','Grace (F)'],
+                ['en-Mike_man.pt',   'Mike (M)'],
+                ['in-Samuel_man.pt', 'Samuel (M · Indian)'],
             ];
             return voices.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
         }
@@ -256,22 +267,87 @@ const AudioModels = (() => {
 
     // ── Actions ───────────────────────────────────────────────────────────────
     async function install(modelId, packages, btn) {
+        const card = document.getElementById(`am-card-${modelId}`);
+
+        // Inject (or reuse) install log panel
+        let logEl = card.querySelector('.am-install-log');
+        if (!logEl) {
+            logEl = document.createElement('div');
+            logEl.className = 'am-install-log';
+            logEl.innerHTML = `
+                <div class="am-log-header">
+                    <span class="am-log-title"><i class="fas fa-terminal"></i> Installing…</span>
+                    <span class="am-log-pct">0%</span>
+                </div>
+                <div class="am-log-bar-wrap"><div class="am-log-bar"></div></div>
+                <pre class="am-log-output"></pre>`;
+            card.appendChild(logEl);
+        }
+
+        const logTitle  = logEl.querySelector('.am-log-title');
+        const logPct    = logEl.querySelector('.am-log-pct');
+        const logBar    = logEl.querySelector('.am-log-bar');
+        const logOutput = logEl.querySelector('.am-log-output');
+
+        // Reset state
+        logTitle.innerHTML = '<i class="fas fa-terminal"></i> Installing…';
+        logPct.textContent = '0%';
+        logBar.style.width = '5%';
+        logBar.className   = 'am-log-bar';
+        logOutput.textContent = '';
+
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Installing…';
+
         try {
-            const r = await fetch('/api/audio/local/install', {
+            const resp = await fetch('/api/audio/local/install/stream', {
                 method: 'POST',
                 headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({packages}),
             });
-            const d = await r.json();
-            if (d.success) {
-                showNotification(`${modelId} installed successfully`, 'success');
-                await refresh();
-            } else {
-                showNotification(`Install failed: ${d.error}`, 'error');
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-download"></i> Install';
+
+            const reader  = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let   buffer  = '';
+            let   lines   = 0;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, {stream: true});
+
+                const parts = buffer.split('\n\n');
+                buffer = parts.pop();
+
+                for (const part of parts) {
+                    if (!part.startsWith('data: ')) continue;
+                    let msg;
+                    try { msg = JSON.parse(part.slice(6)); } catch (_) { continue; }
+
+                    if (msg.line !== undefined) {
+                        logOutput.textContent += msg.line + '\n';
+                        logOutput.scrollTop = logOutput.scrollHeight;
+                        lines++;
+                        const pct = Math.min(5 + lines * 1.5, 90);
+                        logBar.style.width = pct + '%';
+                        logPct.textContent = Math.round(pct) + '%';
+                    } else if (msg.done) {
+                        logBar.style.width = '100%';
+                        logPct.textContent = '100%';
+                        if (msg.success) {
+                            logBar.classList.add('am-bar-done');
+                            logTitle.innerHTML = '<i class="fas fa-check-circle" style="color:#34d399"></i> Installed';
+                            showNotification(`${modelId} installed successfully`, 'success');
+                            setTimeout(() => refresh(), 600);
+                        } else {
+                            logBar.classList.add('am-bar-fail');
+                            logTitle.innerHTML = '<i class="fas fa-times-circle" style="color:#f87171"></i> Failed';
+                            showNotification('Install failed — see log above', 'error');
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fas fa-redo"></i> Retry';
+                        }
+                    }
+                }
             }
         } catch (e) {
             showNotification('Install request failed', 'error');
