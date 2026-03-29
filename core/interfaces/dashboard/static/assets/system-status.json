@@ -29,7 +29,13 @@
                     "Usage Analytics: /api/usage/daily endpoint backed by get_daily_breakdown() for heatmap and bar chart data",
                     "Infrastructure: Registry-based model pricing — _estimate_cost in corp_manager.py reads input_cost_per_1m_tokens and output_cost_per_1m_tokens from data/config/model_registry.json via a module-level cache; supports all configured providers",
                     "License: Dual license (AGPLv3 + Commercial) replacing MIT; includes version history note, commercial trigger definitions, and CLA section",
-                    "License: Asset license v1.1 — CC BY-NC-ND 4.0 with explicit Commercial Inclusion, Modification, Standalone Redistribution, and Trademark Use clauses"
+                    "License: Asset license v1.1 — CC BY-NC-ND 4.0 with explicit Commercial Inclusion, Modification, Standalone Redistribution, and Trademark Use clauses",
+                    "Infrastructure: C-level crash logging — enabled faulthandler in core/main.py to capture segmentation faults automatically to data/logs/system/crashlog.txt",
+                    "Infrastructure: Unified environment setup — extracted common batch initialization logic cleanly into setup/setup_environment.bat",
+                    "Aethvion LinkMap: Standalone 3D codebase visualizer app supporting Python, JavaScript, TypeScript, JSX, and TSX parsing",
+                    "Aethvion LinkMap: Interactive 3D force-directed graph UI with persistent node labels via SpriteText and dynamic connection highlighting",
+                    "Aethvion LinkMap: Responsive split-screen layout with an integrated inline code viewer highlighting function dependencies",
+                    "Aethvion LinkMap: ProjectAnalyzer backend that caches parsed AST read-outs to data/apps/linkmap/ for fast, recurring workspace loads"
                 ],
                 "improved": [
                     "Agent Corp: Knowledge block MRU ordering — file digests shown most-recently-used first with a 1,500-char hard cap; sessions touching 30+ files stay lean",
@@ -50,7 +56,9 @@
                     "Agent Corp: Cost always defaulting to Sonnet pricing — replaced hardcoded substring table with model_registry.json lookup",
                     "Agent Corp: Tokens-per-second showing unrealistically low values — was using wall-clock time including tool execution; fixed by measuring only LLM streaming window",
                     "Infrastructure: Flake8 lint error F824 — Removed unused global _MODEL_PRICE_CACHE declaration in core/orchestrator/corp_manager.py",
-                    "Infrastructure: False positive API key detection — Modified a comment in core/orchestrator/corp_manager.py to replace task-completion with completed task, preventing GitHub Actions from falsely flagging it as an OpenAI API key (sk-...)"
+                    "Infrastructure: False positive API key detection — Modified a comment in core/orchestrator/corp_manager.py to replace task-completion with completed task, preventing GitHub Actions from falsely flagging it as an OpenAI API key (sk-...)",
+                    "Infrastructure: Prevented llama-cpp-python from hard-crashing the uvicorn server (ERR_CONNECTION_REFUSED) on older CPUs missing AVX instructions by isolating model loading in a multiprocessing spawn check",
+                    "Infrastructure: False positive API key detection — Modified docstring in core/interfaces/dashboard/corp_routes.py replacing disk-loaded with loaded from disk to prevent GitHub flag"
                 ]
             },
             {
