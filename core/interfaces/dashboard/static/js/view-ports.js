@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </a>
                 </td>
                 <td style="text-align: right;">
-                    ${moduleName === 'Aethvion Suite Nexus' ? `
+                    ${moduleName.toLowerCase().includes('nexus') ? `
                         <span style="font-size: 0.75rem; color: var(--text-tertiary); font-style: italic; margin-right: 10px;">System Service</span>
                     ` : `
                         <button class="terminate-btn" onclick="terminatePortApp(${port}, '${escapeHtml(moduleName)}')">
