@@ -2,6 +2,7 @@
 Aethvion Drive Info — FastAPI Server
 """
 
+import subprocess as _sp
 import sys
 from pathlib import Path
 
@@ -138,6 +139,31 @@ async def api_delete_scan(filename: str):
 @app.get("/api/drives")
 async def api_drives():
     return list_drives()
+
+# ---------------------------------------------------------------------------
+# Open in Explorer
+# ---------------------------------------------------------------------------
+
+class ExplorerRequest(BaseModel):
+    path: str
+
+@app.post("/api/open-explorer")
+async def api_open_explorer(req: ExplorerRequest):
+    """Open *path* in the OS file manager (Windows Explorer, macOS Finder, etc.)."""
+    path = req.path.strip()
+    if not path:
+        raise HTTPException(status_code=400, detail="No path provided")
+    try:
+        if sys.platform == "win32":
+            # Use explorer.exe — works for both files and directories
+            _sp.Popen(["explorer", path], shell=False)
+        elif sys.platform == "darwin":
+            _sp.Popen(["open", path])
+        else:
+            _sp.Popen(["xdg-open", path])
+        return {"opened": True, "path": path}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 # ---------------------------------------------------------------------------
 # Health

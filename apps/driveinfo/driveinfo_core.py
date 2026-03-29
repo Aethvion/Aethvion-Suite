@@ -83,8 +83,17 @@ _scan_lock  = threading.Lock()
 # Directory scanner
 # ---------------------------------------------------------------------------
 
-def _scan_node(path: Path, state: ScanState) -> dict:
-    """Recursively scan *path* and return a tree node dict."""
+def _scan_node(path: Path, state: ScanState, seen_inodes: set = None) -> dict:
+    """Recursively scan *path* and return a tree node dict.
+
+    *seen_inodes* is a ``set`` of ``(st_dev, st_ino)`` tuples shared across
+    the entire recursion.  Files whose inode has already been counted are
+    skipped, which prevents NTFS hard-links (e.g. inside WinSxS) from
+    inflating the reported size.
+    """
+    if seen_inodes is None:
+        seen_inodes = set()
+
     node: dict = {
         "name":       path.name or str(path),
         "path":       str(path),
@@ -115,7 +124,15 @@ def _scan_node(path: Path, state: ScanState) -> dict:
 
             if entry.is_file(follow_symlinks=False):
                 try:
-                    size = entry.stat(follow_symlinks=False).st_size
+                    st   = entry.stat(follow_symlinks=False)
+                    size = st.st_size
+                    # Deduplicate hard-linked files by (device, inode).
+                    # st_ino may be 0 on non-NTFS volumes — skip dedup then.
+                    if st.st_ino:
+                        inode_key = (st.st_dev, st.st_ino)
+                        if inode_key in seen_inodes:
+                            continue
+                        seen_inodes.add(inode_key)
                 except OSError:
                     size = 0
                 ext = Path(entry.name).suffix.lower()
@@ -131,7 +148,19 @@ def _scan_node(path: Path, state: ScanState) -> dict:
                 state.increment(files=1, size=size)
 
             elif entry.is_dir(follow_symlinks=False):
-                child = _scan_node(Path(entry.path), state)
+                # Skip Windows reparse points (junctions, volume mount points)
+                # that are not caught by is_symlink().  These would cause the
+                # scanner to follow cross-drive links and double-count data.
+                if sys.platform == "win32":
+                    try:
+                        dstat = entry.stat(follow_symlinks=False)
+                        fa = getattr(dstat, "st_file_attributes", 0)
+                        if fa & 0x400:   # FILE_ATTRIBUTE_REPARSE_POINT
+                            continue
+                    except OSError:
+                        pass
+
+                child = _scan_node(Path(entry.path), state, seen_inodes)
                 node["children"].append(child)
                 node["size"]       += child["size"]
                 node["file_count"] += child["file_count"]

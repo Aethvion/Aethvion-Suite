@@ -140,9 +140,13 @@ function _worst(row, rowSum, strip, sw) {
 
 /* ── Treemap rendering ────────────────────────────────────────── */
 const DPR       = window.devicePixelRatio || 1;
-const DIR_HDR_H = 16;   // px — directory label bar height
+const DIR_HDR_H = 20;   // px — directory label bar height (base)
 const MIN_LABEL = 32;   // min rect size to draw a label
 const MIN_CHILD = 3;    // min rect size to recurse into children
+
+/* Depth-based accent palette for directory headers */
+const DEPTH_HUES = [195, 270, 140, 35, 0, 185, 310];
+function _depthHue(depth) { return DEPTH_HUES[depth % DEPTH_HUES.length]; }
 
 function resizeCanvas() {
     const rect = diRight.getBoundingClientRect();
@@ -227,42 +231,89 @@ function _drawFile(node, x, y, w, h) {
 
 function _drawDir(node, x, y, w, h, depth) {
     const cx = x * DPR, cy = y * DPR, cw = w * DPR, ch = h * DPR;
+    const hue = _depthHue(depth);
 
-    // Directory background
-    let dirColor = "#14141e";
-    if (depth > 0) {
-        // Variation based on name hash for sectioning
-        let h = 0;
-        const n = node.name || "";
-        for(let i=0; i<n.length; i++) h = ((h << 5) - h) + n.charCodeAt(i);
-        const hue = Math.abs(h % 360);
-        dirColor = `hsla(${hue}, 20%, 15%, 0.8)`;
-    }
-    ctx.fillStyle = depth === 0 ? "#0f0f16" : dirColor;
+    // ── Directory body background ───────────────────────────────
+    // Slightly lighter background at shallower depths for visual layering
+    const bgL = depth === 0 ? 5 : Math.max(7, 13 - depth * 1.5);
+    ctx.fillStyle = `hsl(240, 10%, ${bgL}%)`;
     ctx.fillRect(cx, cy, cw, ch);
 
-    // Title bar
-    const hdrH = Math.min(DIR_HDR_H, h);
-    ctx.fillStyle = "#1c1c2e";
-    ctx.fillRect(cx, cy, cw, hdrH * DPR);
+    // ── Header bar — taller for shallow directories ─────────────
+    const hdrH = Math.min(
+        depth === 0 ? 26 : depth === 1 ? 22 : DIR_HDR_H,
+        h
+    );
+    const hdrPx = hdrH * DPR;
 
-    // Border
-    ctx.strokeStyle = "#2a2a3a";
-    ctx.lineWidth   = 1;
+    // Header background with depth-tinted fill
+    ctx.fillStyle = depth === 0
+        ? `hsl(240, 18%, 12%)`
+        : `hsla(${hue}, 28%, 16%, 0.97)`;
+    ctx.fillRect(cx, cy, cw, hdrPx);
+
+    // Accent left stripe — thicker at top level, 1px accent line at depth
+    const stripeW = Math.min((depth === 0 ? 3 : 2) * DPR, cw);
+    ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
+    ctx.fillRect(cx, cy, stripeW, hdrPx);
+
+    // ── Outer border ─────────────────────────────────────────────
+    ctx.strokeStyle = depth === 0
+        ? "#2a2a3a"
+        : `hsla(${hue}, 55%, 50%, 0.35)`;
+    ctx.lineWidth = 1;
     ctx.strokeRect(cx + .5, cy + .5, cw - 1, ch - 1);
 
-    // Directory label
-    if (w > 20) {
-        _drawLabel(node.name, cx + 4, cy + 2, cw - 8, hdrH * DPR - 4, "#ccc", 10);
+    // ── Header separator line ────────────────────────────────────
+    if (hdrH < h) {
+        ctx.strokeStyle = depth === 0
+            ? "#2a2a3a"
+            : `hsla(${hue}, 55%, 45%, 0.25)`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx + stripeW, cy + hdrPx - .5);
+        ctx.lineTo(cx + cw, cy + hdrPx - .5);
+        ctx.stroke();
+    }
+
+    // ── Directory label ──────────────────────────────────────────
+    if (w > 24) {
+        const labelColor = depth === 0
+            ? "#d0d0e0"
+            : `hsl(${hue}, 65%, 80%)`;
+        _drawLabel(
+            node.name,
+            cx + stripeW + 4 * DPR,
+            cy + 3 * DPR,
+            cw - stripeW - 8 * DPR,
+            hdrPx - 6 * DPR,
+            labelColor,
+            depth === 0 ? 11 : 10
+        );
+
+        // Size badge — show when header is wide enough
+        if (w > 110 && node.size && hdrH >= 16) {
+            const sizeText = fmtBytes(node.size);
+            ctx.save();
+            ctx.fillStyle = depth === 0
+                ? "rgba(150,150,180,0.6)"
+                : `hsla(${hue}, 60%, 65%, 0.55)`;
+            ctx.font        = `${9 * DPR}px "Segoe UI",sans-serif`;
+            ctx.textAlign   = "right";
+            ctx.textBaseline = "top";
+            ctx.fillText(sizeText, cx + cw - 5 * DPR, cy + 4 * DPR);
+            ctx.restore();
+        }
     }
 
     hitCells.push({ node, x, y, w, h });
 
-    // Recurse into children if enough space remains
+    // ── Recurse into children ─────────────────────────────────────
+    const pad    = depth === 0 ? 1 : 1;
     const innerY = y + hdrH;
     const innerH = h - hdrH - 1;
     if (cw > MIN_CHILD && innerH > MIN_CHILD) {
-        _renderNode(node, x + 1, innerY, w - 2, innerH, depth + 1);
+        _renderNode(node, x + pad, innerY, w - pad * 2, innerH, depth + 1);
     }
 }
 
@@ -876,16 +927,143 @@ function findNodeByPath(root, path) {
     return null;
 }
 
+/* ── Context Menu ─────────────────────────────────────────────── */
+const ctxMenu     = $("di-ctx-menu");
+const ctxOpenExpl = $("ctx-open-explorer");
+const ctxCopyPath = $("ctx-copy-path");
+const ctxCopySize = $("ctx-copy-size");
+const ctxNavigate = $("ctx-navigate");
+let   ctxNode     = null;
+
+function showContextMenu(screenX, screenY, node) {
+    ctxNode = node;
+    ctxMenu.style.left = screenX + "px";
+    ctxMenu.style.top  = screenY + "px";
+    ctxMenu.classList.remove("di-hidden");
+
+    // Flip if menu runs off the right/bottom edge
+    requestAnimationFrame(() => {
+        const r = ctxMenu.getBoundingClientRect();
+        if (r.right  > window.innerWidth)  ctxMenu.style.left = (screenX - r.width)  + "px";
+        if (r.bottom > window.innerHeight) ctxMenu.style.top  = (screenY - r.height) + "px";
+    });
+
+    // Dim the navigate option for files (navigates to parent)
+    ctxNavigate.style.opacity = node.type === "file" ? "0.6" : "1";
+    ctxNavigate.querySelector("i").className =
+        node.type === "file" ? "fas fa-level-up-alt" : "fas fa-arrow-right";
+    ctxNavigate.title = node.type === "file"
+        ? "Navigate to parent directory"
+        : "Navigate into this directory";
+}
+
+function hideContextMenu() {
+    ctxMenu.classList.add("di-hidden");
+    ctxNode = null;
+}
+
+/* Right-click on canvas */
+canvas.addEventListener("contextmenu", e => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mx   = e.clientX - rect.left;
+    const my   = e.clientY - rect.top;
+    const node = hitTest(mx, my);
+    if (!node) { hideContextMenu(); return; }
+    showContextMenu(e.clientX, e.clientY, node);
+});
+
+/* Open in Explorer */
+ctxOpenExpl.addEventListener("click", async () => {
+    if (!ctxNode) return;
+    // For a file, open its containing folder; for a dir open the dir itself
+    let path = ctxNode.path;
+    if (ctxNode.type === "file") {
+        path = path.includes("\\")
+            ? path.substring(0, path.lastIndexOf("\\"))
+            : path.substring(0, path.lastIndexOf("/"));
+    }
+    try {
+        const res = await fetch("/api/open-explorer", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ path }),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            alert("Could not open Explorer: " + (err.detail || res.status));
+        }
+    } catch (err) {
+        alert("Network error: " + err.message);
+    }
+    hideContextMenu();
+});
+
+/* Copy Path */
+ctxCopyPath.addEventListener("click", () => {
+    if (!ctxNode) return;
+    const text = ctxNode.path;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).catch(() => _fallbackCopy(text));
+    } else {
+        _fallbackCopy(text);
+    }
+    hideContextMenu();
+});
+
+/* Copy Size */
+ctxCopySize.addEventListener("click", () => {
+    if (!ctxNode) return;
+    const text = fmtBytes(ctxNode.size);
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).catch(() => _fallbackCopy(text));
+    } else {
+        _fallbackCopy(text);
+    }
+    hideContextMenu();
+});
+
+/* Navigate Here */
+ctxNavigate.addEventListener("click", () => {
+    if (!ctxNode) return;
+    if (ctxNode.type === "dir") {
+        navigateTo(ctxNode);
+    } else {
+        const parent = getParent(ctxNode);
+        if (parent) navigateTo(parent);
+    }
+    hideContextMenu();
+});
+
+function _fallbackCopy(text) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity  = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch (_) {}
+    document.body.removeChild(ta);
+}
+
 /* ── Init ─────────────────────────────────────────────────────── */
 loadDrives();
 loadSavedScans();
 renderTreemap();   // draws empty state
 
-// Hide search results on outside click
+// Hide search results + context menu on outside click
 document.addEventListener("click", e => {
-    if (!treeSearchInput.contains(e.target) && !searchResults.contains(e.target)) {
+    if (!ctxMenu.classList.contains("di-hidden") && !ctxMenu.contains(e.target)) {
+        hideContextMenu();
+    }
+    if (treeSearchInput && !treeSearchInput.contains(e.target) && !searchResults.contains(e.target)) {
         searchResults.classList.add("di-hidden");
     }
+});
+
+// Dismiss context menu on Escape
+document.addEventListener("keydown", e => {
+    if (e.key === "Escape") hideContextMenu();
 });
 
 })(); // end IIFE

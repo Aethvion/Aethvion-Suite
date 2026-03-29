@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aethvion Drive Info</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💾</text></svg>">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -108,6 +108,23 @@
     <div id="di-status" class="di-status">No scan loaded.</div>
 </footer>
 
-<script src="app.js?v=2"></script>
+<!-- ── Right-click context menu ──────────────────────────────── -->
+<div id="di-ctx-menu" class="di-ctx-menu di-hidden">
+    <div class="di-ctx-item" id="ctx-open-explorer">
+        <i class="fas fa-folder-open"></i> Open in Explorer
+    </div>
+    <div class="di-ctx-item" id="ctx-copy-path">
+        <i class="fas fa-copy"></i> Copy Path
+    </div>
+    <div class="di-ctx-item" id="ctx-copy-size">
+        <i class="fas fa-database"></i> Copy Size
+    </div>
+    <div class="di-ctx-sep"></div>
+    <div class="di-ctx-item" id="ctx-navigate">
+        <i class="fas fa-arrow-right"></i> Navigate Here
+    </div>
+</div>
+
+<script src="app.js?v=3"></script>
 </body>
 </html>
