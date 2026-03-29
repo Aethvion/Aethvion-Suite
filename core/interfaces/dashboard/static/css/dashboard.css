@@ -233,7 +233,6 @@
     padding: 1.3rem 1.4rem;
     box-shadow: var(--shadow-md);
 }
-.usage-chart-full { /* spans full width when used standalone */ }
 
 .usage-chart-container h3 {
     font-size: 0.82rem; color: var(--text-secondary);
@@ -600,5 +599,126 @@
     .app-suite-list {
         grid-template-columns: 1fr;
     }
+}
+
+/* ===== Port Manager Redesign (v12) ===== */
+
+.premium-table-wrapper {
+    background: rgba(18, 18, 22, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+.cyber-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.cyber-table thead {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.cyber-table th {
+    padding: 16px 20px;
+    text-align: left;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 1.2px;
+    border-bottom: 1px solid var(--border);
+}
+
+.cyber-table td {
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    vertical-align: middle;
+}
+
+.cyber-table tr:last-child td {
+    border-bottom: none;
+}
+
+.cyber-table tr:hover td {
+    background: rgba(0, 217, 255, 0.02);
+}
+
+.mini-stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 15px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.mini-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--text-tertiary);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.mini-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    font-family: 'Outfit', sans-serif;
+    color: var(--text-primary);
+}
+
+.port-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    background: rgba(0, 217, 255, 0.1);
+    color: var(--primary);
+    border-radius: 6px;
+    font-family: 'Fira Code', monospace;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border: 1px solid rgba(0, 217, 255, 0.15);
+}
+
+.terminate-btn {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    float: right;
+}
+
+.terminate-btn:hover {
+    background: #ef4444;
+    color: #fff;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+    transform: translateY(-1px);
+}
+
+.terminate-btn:active {
+    transform: translateY(0);
+}
+
+.shimmer-line {
+    background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
 }
 

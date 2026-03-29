@@ -544,6 +544,67 @@ async def get_system_ports():
     return PortManager.get_registered_ports()
 
 
+@app.post("/api/system/ports/{port}/terminate")
+async def terminate_app_by_port(port: int):
+    """
+    Force-close any application listening on a specific local port.
+    Useful for 'Closing' apps from the Port Manager UI.
+    """
+    # 1. Find the process listening on this port
+    target_pid = None
+    try:
+        for proc in psutil.process_iter(['pid', 'name', 'connections']):
+            try:
+                for conn in proc.connections(kind='inet'):
+                    if conn.laddr.port == port and conn.status == 'LISTEN':
+                        target_pid = proc.pid
+                        break
+                if target_pid:
+                    break
+            except (psutil.AccessDenied, psutil.NoSuchProcess):
+                continue
+    except Exception as e:
+        logger.error(f"Error scanning for process on port {port}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to scan processes")
+
+    if not target_pid:
+        # Check if it's just in the registry but not actually listening
+        from core.utils.port_manager import PortManager
+        PortManager.release_port(port)
+        return {"status": "success", "message": f"Port {port} registry entry cleared (no active process found)."}
+
+    # 2. Terminate the process
+    try:
+        proc = psutil.Process(target_pid)
+        name = proc.name()
+        
+        # Kill logic: Try terminate first, then kill
+        proc.terminate()
+        try:
+            proc.wait(timeout=2)
+        except psutil.TimeoutExpired:
+            proc.kill()
+        
+        # 3. Clean up from our local tracking and the port registry
+        from core.utils.port_manager import PortManager
+        PortManager.release_port(port)
+        
+        # Scrub from RUNNING_APPS if it matches
+        for app_name, pid in list(RUNNING_APPS.items()):
+            if pid == target_pid:
+                del RUNNING_APPS[app_name]
+                break
+
+        logger.info(f"Terminated application '{name}' on PID {target_pid} (Port {port})")
+        return {"status": "success", "message": f"Terminated {name} (PID {target_pid}) on port {port}"}
+
+    except psutil.NoSuchProcess:
+        return {"status": "success", "message": "Process already stopped."}
+    except Exception as e:
+        logger.error(f"Failed to terminate process {target_pid}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to terminate process: {str(e)}")
+
+
 @app.post("/api/system/shutdown")
 async def shutdown_system():
     """Gracefully shut down the entire Aethvion Suite."""
