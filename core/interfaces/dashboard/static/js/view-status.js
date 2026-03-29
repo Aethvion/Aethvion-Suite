@@ -132,7 +132,7 @@ async function loadSystemStatusTab() {
         };
 
         // --- Core System Roadmap ---
-        html += `<div class="section-label roadmap-full-width" style="margin-top: 1rem; margin-bottom: 1.5rem; justify-content: flex-start; font-size: 1.2rem; letter-spacing: 0.2em; color: var(--text-bright);">MISAKA CIPHER</div>`;
+        html += `<div class="section-label roadmap-full-width" style="margin-top: 1rem; margin-bottom: 1.5rem; justify-content: flex-start; font-size: 1.2rem; letter-spacing: 0.2em; color: var(--text-bright);">AETHVION SUITE</div>`;
         html += renderSection('FEATURES', roadmap.features || roadmap.working, 'working');
         html += renderSection('WORK IN PROGRESS', roadmap.wip, 'wip');
         html += renderSection('PLANNED', roadmap.planned, 'planned');
@@ -246,10 +246,32 @@ function renderSystemTelemetry(apiData, metricsData) {
                 <div class="t-value">${formatBytes(systemMetrics.db_size_bytes)} <span class="t-sub">(DB)</span></div>
             </div>
             <div class="telemetry-card">
-                <div class="t-label">TOOLS</div>
+                <div class="t-label">TOOLS-FORGED</div>
                 <div class="t-value">${forgeStatus.total_tools || 0}</div>
             </div>
         `;
+
+        const extContainer = document.getElementById('extended-info-grid');
+        if (extContainer) {
+            extContainer.innerHTML = `
+                <div class="telemetry-card">
+                    <div class="t-label">GIT LATEST</div>
+                    <div class="t-value" style="font-size: 0.85rem; font-family: 'Fira Code', monospace; line-height: 1.4;">${systemMetrics.git_commit || 'Unknown'}</div>
+                </div>
+                <div class="telemetry-card">
+                    <div class="t-label">HOST PLATFORM</div>
+                    <div class="t-value" style="font-size: 0.95rem;">${systemMetrics.platform || 'Unknown'}</div>
+                </div>
+                <div class="telemetry-card">
+                    <div class="t-label">PYTHON RUNTIME</div>
+                    <div class="t-value">${systemMetrics.python_version || 'Unknown'}</div>
+                </div>
+                <div class="telemetry-card">
+                    <div class="t-label">LOCAL MODELS</div>
+                    <div class="t-value">${systemMetrics.model_count || 0} <span class="t-sub">GGUF</span></div>
+                </div>
+            `;
+        }
     }
 }
 

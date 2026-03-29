@@ -16,6 +16,7 @@ import logging
 import sys
 import os
 import subprocess
+import platform
 from datetime import datetime
 
 from core.version import VERSION
@@ -880,11 +881,36 @@ async def _perform_telemetry_sync() -> Dict[str, Any]:
             episodic_count = orchestrator.episodic_memory.collection.count()
         except Exception: pass
 
+    # 4. Gather Git Info
+    git_commit = "Unknown"
+    try:
+        git_commit = subprocess.check_output(
+            ['git', 'log', '-1', '--format=%h - %s (%cr)'],
+            cwd=str(root_dir),
+            text=True,
+            stderr=subprocess.STDOUT
+        ).strip()
+    except Exception:
+        pass
+
+    # 5. Count GGUF Models
+    model_count = 0
+    try:
+        models_dir = root_dir / "localmodels" / "gguf"
+        if models_dir.exists():
+            model_count = len([f for f in models_dir.iterdir() if f.is_file()])
+    except Exception:
+        pass
+
     metrics = {
         "system": {
             "project_size_bytes": project_size,
             "db_size_bytes": db_size,
-            "last_sync": datetime.now().isoformat()
+            "last_sync": datetime.now().isoformat(),
+            "git_commit": git_commit,
+            "model_count": model_count,
+            "python_version": sys.version.split()[0],
+            "platform": f"{platform.system()} {platform.release()}"
         },
         "memory": {"episodic_count": episodic_count}
     }
