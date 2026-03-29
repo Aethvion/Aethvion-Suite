@@ -66,7 +66,7 @@ class ScanRequest(BaseModel):
 class Node(BaseModel):
     id: str
     name: str
-    type: str  # "file" | "function"
+    type: str  # "file" | "function" | "dir"
     path: str
     language: str = "python"
     size: int = 1
@@ -74,7 +74,7 @@ class Node(BaseModel):
 class Link(BaseModel):
     source: str
     target: str
-    type: str  # "import" | "call"
+    type: str  # "import" | "call" | "contains"
 
 class MapData(BaseModel):
     nodes: List[Node]
@@ -88,29 +88,69 @@ class ProjectAnalyzer:
         self.root = root
         self.nodes: Dict[str, Node] = {}
         self.links: List[Link] = []
-        self.visited_files: Set[str] = set()
+        self.function_defs: Dict[str, str] = {} # name -> func_id
 
     def scan(self, target_path: Optional[Path] = None):
         target = target_path or self.root
         self.nodes = {}
         self.links = []
+        self.function_defs = {}
         
         logger.info(f"LinkMap: Scanning project at {target}")
         
-        # Supported extensions
+        # 1. Create root directory node
+        rel_root = str(target.relative_to(self.root)).replace("\\", "/")
+        if rel_root == ".": rel_root = ""
+        root_id = f"dir:{rel_root}"
+        self.nodes[root_id] = Node(id=root_id, name=target.name or "root", type="dir", path=rel_root)
+
+        # 2. Supported extensions
         extensions = [".py", ".js", ".ts", ".jsx", ".tsx"]
         files_found = 0
         
-        # Analyze files
-        for ext in extensions:
-            for f_path in target.rglob(f"*{ext}"):
-                if any(part.startswith(".") or part in ["__pycache__", "node_modules", "venv", ".venv", "dist", "build"] for part in f_path.parts):
-                    continue
-                files_found += 1
-                if ext == ".py":
-                    self._analyze_python_file(f_path)
-                else:
-                    self._analyze_generic_file(f_path)
+        # 3. First pass: Collect all files and directories to build the tree
+        for dirpath, dirnames, filenames in os.walk(target):
+            d_path = Path(dirpath)
+            if any(part.startswith(".") or part in ["__pycache__", "node_modules", "venv", ".venv", "dist", "build"] for part in d_path.parts):
+                continue
+                
+            rel_dir = str(d_path.relative_to(self.root)).replace("\\", "/")
+            if rel_dir == ".": rel_dir = ""
+            dir_id = f"dir:{rel_dir}"
+            
+            # Ensure directory node exists
+            if dir_id not in self.nodes:
+                self.nodes[dir_id] = Node(id=dir_id, name=d_path.name, type="dir", path=rel_dir)
+                
+            # Link to parent directory
+            if d_path != target:
+                parent_rel = str(d_path.parent.relative_to(self.root)).replace("\\", "/")
+                if parent_rel == ".": parent_rel = ""
+                parent_id = f"dir:{parent_rel}"
+                if parent_id in self.nodes:
+                    self.links.append(Link(source=parent_id, target=dir_id, type="contains"))
+
+            for f in filenames:
+                f_path = d_path / f
+                if f_path.suffix.lower() in extensions:
+                    rel_f = str(f_path.relative_to(self.root)).replace("\\", "/")
+                    file_id = f"file:{rel_f}"
+                    
+                    # Create File Node
+                    ext = f_path.suffix.lower()[1:]
+                    self.nodes[file_id] = Node(
+                        id=file_id, name=f, type="file", path=rel_f, language=ext
+                    )
+                    
+                    # Link file to current directory
+                    self.links.append(Link(source=dir_id, target=file_id, type="contains"))
+                    files_found += 1
+
+        # 4. Second pass: Deep analysis (Python symbols)
+        for node_id, node in list(self.nodes.items()):
+            if node.type == "file" and node.language == "python":
+                full_path = self.root / node.path
+                self._analyze_python_file(full_path)
             
         logger.info(f"LinkMap: Scan complete. Found {files_found} files, {len(self.nodes)} nodes, {len(self.links)} links.")
         return {"nodes": [n.dict() for n in self.nodes.values()], "links": [l.dict() for l in self.links]}
@@ -119,70 +159,47 @@ class ProjectAnalyzer:
         rel_path = str(file_path.relative_to(self.root)).replace("\\", "/")
         file_id = f"file:{rel_path}"
         
-        if file_id in self.nodes:
-            return
-            
-        self.nodes[file_id] = Node(
-            id=file_id,
-            name=file_path.name,
-            type="file",
-            path=rel_path,
-            language="python"
-        )
-        
         try:
             content = file_path.read_text(encoding="utf-8", errors="ignore")
             tree = ast.parse(content)
             
+            # Sub-pass 1: Discover all function definitions
             for node in ast.walk(tree):
-                # Imports
-                if isinstance(node, (ast.Import, ast.ImportFrom)):
-                    self._handle_import(node, file_id)
-                
-                # Functions
-                elif isinstance(node, ast.FunctionDef):
+                if isinstance(node, ast.FunctionDef):
                     func_id = f"func:{rel_path}:{node.name}"
                     self.nodes[func_id] = Node(
-                        id=func_id,
-                        name=node.name,
-                        type="function",
-                        path=rel_path,
-                        language="python"
+                        id=func_id, name=node.name, type="function", path=rel_path, language="python"
                     )
-                    # Link file to its functions
+                    self.function_defs[node.name] = func_id
+                    # Link file to function
                     self.links.append(Link(source=file_id, target=func_id, type="contains"))
+                
+                elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                    self._handle_import(node, file_id)
+
+            # Sub-pass 2: Discover calls
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef):
+                    source_func_id = f"func:{rel_path}:{node.name}"
+                    for subnode in ast.walk(node):
+                        if isinstance(subnode, ast.Call):
+                            self._handle_call(subnode, source_func_id)
 
         except Exception as e:
             logger.warning(f"Failed to analyze Python file {file_path}: {e}")
 
     def _analyze_generic_file(self, file_path: Path):
-        """Simple node creation for non-python files."""
-        rel_path = str(file_path.relative_to(self.root)).replace("\\", "/")
-        file_id = f"file:{rel_path}"
-        
-        if file_id in self.nodes:
-            return
-            
-        ext = file_path.suffix.lower()[1:]
-        self.nodes[file_id] = Node(
-            id=file_id,
-            name=file_path.name,
-            type="file",
-            path=rel_path,
-            language=ext
-        )
+        # Already handled in the first pass
+        pass
 
     def _handle_import(self, node, source_file_id: str):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                target_module = alias.name
-                self._link_import(source_file_id, target_module)
+                self._link_import(source_file_id, alias.name)
         elif isinstance(node, ast.ImportFrom):
-            target_module = node.module or ""
-            self._link_import(source_file_id, target_module)
+            self._link_import(source_file_id, node.module or "")
 
     def _link_import(self, source_id: str, module_name: str):
-        # Heuristic: try to find if it's a local module
         parts = module_name.split(".")
         potential_path = self.root / "/".join(parts)
         
@@ -194,23 +211,24 @@ class ProjectAnalyzer:
             rel = str((potential_path / "__init__.py").relative_to(self.root)).replace("\\", "/")
             target_id = f"file:{rel}"
             
-        if target_id:
+        if target_id and target_id in self.nodes:
             self.links.append(Link(source=source_id, target=target_id, type="import"))
 
-    def _handle_call(self, node: ast.Call, source_func_id: str, rel_path: str):
-        # Basic call analysis (very simplified)
+    def _handle_call(self, node: ast.Call, source_func_id: str):
         target_name = None
         if isinstance(node.func, ast.Name):
             target_name = node.func.id
         elif isinstance(node.func, ast.Attribute):
             target_name = node.func.attr
             
-        if target_name:
-            # We don't know exactly WHICH function it calls if it's from another file
-            # But we can link to functions in the SAME file
-            local_func_id = f"func:{rel_path}:{target_name}"
-            # self.links.append(Link(source=source_func_id, target=local_func_id, type="call"))
-            pass
+        if target_name and target_name in self.function_defs:
+            target_id = self.function_defs[target_name]
+            # Avoid self-calls and duplicates
+            if target_id != source_func_id:
+                # Check for existing link
+                exists = any(l.source == source_func_id and l.target == target_id for l in self.links)
+                if not exists:
+                    self.links.append(Link(source=source_func_id, target=target_id, type="call"))
 
 # ---------------------------------------------------------------------------
 # Global State

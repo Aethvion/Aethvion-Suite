@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aethvion LinkMap — 3D Context Visualization</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Inter:wght@400;500&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/3d-force-graph"></script>
+    <script src="https://unpkg.com/force-graph"></script>
     <style>
         :root {
             --bg-color: #030712;
@@ -240,6 +240,7 @@
 
         .dot.file { background-color: #00d2ff; box-shadow: 0 0 8px var(--accent-glow); }
         .dot.function { background-color: #f472b6; box-shadow: 0 0 8px rgba(244, 114, 182, 0.3); }
+        .dot.dir { background-color: #6366f1; border: 1px solid #fff; box-shadow: 0 0 8px rgba(99, 102, 241, 0.5); }
 
         /* Loading & Errors */
         #loading-overlay {
@@ -367,6 +368,10 @@
 
     <div id="legendbox" class="legend">
         <div class="legend-item">
+            <div class="dot dir"></div>
+            <span>Directory</span>
+        </div>
+        <div class="legend-item">
             <div class="dot file"></div>
             <span>File</span>
         </div>
@@ -386,32 +391,99 @@
         async function init() {
             const container = document.getElementById('graph-container');
             
-            console.log("[LinkMap] Initializing Three.js engine...");
+            console.log("[LinkMap] Initializing 2D Gource-style engine...");
             
-            if (typeof ForceGraph3D === 'undefined') {
-                showError("3D Engine (ForceGraph3D) failed to load from CDN. Check your internet connection.");
+            if (typeof ForceGraph === 'undefined') {
+                showError("2D Engine (ForceGraph) failed to load from CDN. Check your internet connection.");
                 return;
             }
 
             try {
-                graph = ForceGraph3D()(container)
+                graph = ForceGraph()(container)
                     .backgroundColor('#030712')
-                    .showNavInfo(false)
+                    .width(container.clientWidth || window.innerWidth)
+                    .height(container.clientHeight || window.innerHeight)
                     .nodeId('id')
-                    .nodeLabel(node => `<div style="background: rgba(10,15,25,0.95); padding: 8px 12px; border-radius: 8px; border: 1px solid #00d2ff; color: #fff; font-family: 'Outfit'; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
-                        <div style="font-size: 10px; color: #9ca3af; text-transform: uppercase;">${node.type}</div>
-                        <div style="font-size: 14px; font-weight: 600;">${node.name}</div>
-                    </div>`)
-                    .nodeColor(node => node.type === 'file' ? '#00d2ff' : '#f472b6')
-                    .nodeOpacity(0.9)
-                    .nodeRelSize(5)
-                    .linkWidth(node => node.type === 'contains' ? 0.5 : 1.5)
-                    .linkColor(link => link.type === 'contains' ? 'rgba(255,255,255,0.1)' : 'rgba(0, 210, 255, 0.4)')
+                    .nodeRelSize(6)
                     .linkDirectionalArrowLength(3)
                     .linkDirectionalArrowRelPos(1)
                     .onNodeClick(node => {
                         handleNodeSelection(node);
                         focusNode(node);
+                    });
+
+                // Window Resize Handler
+                window.addEventListener('resize', () => {
+                    graph.width(container.clientWidth || window.innerWidth);
+                    graph.height(container.clientHeight || window.innerHeight);
+                });
+
+                graph.nodeCanvasObject((node, ctx, globalScale) => {
+                        const label = node.name;
+                        const fontSize = node.type === 'dir' ? 14 / globalScale : 10 / globalScale;
+                        ctx.font = `${fontSize}px Outfit`;
+                        const textWidth = ctx.measureText(label).width;
+                        const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2);
+
+                        // Node shape & Glow
+                        ctx.beginPath();
+                        const r = node.type === 'dir' ? 10 : (node.type === 'file' ? 5 : 2.5);
+                        ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
+                        
+                        let color = '#00d2ff';
+                        if (node.type === 'dir') color = '#6366f1';
+                        if (node.type === 'function') color = '#f472b6';
+                        
+                        ctx.shadowBlur = 15 / globalScale;
+                        ctx.shadowColor = color;
+                        
+                        if (node.type === 'dir') {
+                            ctx.fillStyle = 'rgba(99, 102, 241, 0.1)';
+                            ctx.fill();
+                            ctx.strokeStyle = color;
+                            ctx.lineWidth = 1.5 / globalScale;
+                            ctx.stroke();
+                        } else {
+                            ctx.fillStyle = color;
+                            ctx.fill();
+                        }
+                        
+                        ctx.shadowBlur = 0; // Reset shadow for text
+
+                        // Permanent Labels for Directories and selected nodes
+                        if (node.type === 'dir' || globalScale > 1.5 || (selectedNode && selectedNode.id === node.id)) {
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillStyle = node.type === 'dir' ? '#fff' : 'rgba(255,255,255,0.7)';
+                            ctx.fillText(label, node.x, node.y + r + fontSize);
+                        }
+                    })
+                    .linkCanvasObject((link, ctx, globalScale) => {
+                        const start = link.source;
+                        const end = link.target;
+
+                        if (typeof start !== 'object' || typeof end !== 'object') return;
+
+                        ctx.beginPath();
+                        ctx.moveTo(start.x, start.y);
+                        ctx.lineTo(end.x, end.y);
+
+                        let color = 'rgba(255, 255, 255, 0.1)';
+                        if (link.type === 'import') color = 'rgba(0, 210, 255, 0.6)';
+                        if (link.type === 'call') color = 'rgba(244, 114, 182, 0.7)';
+                        if (link.type === 'contains') color = 'rgba(255, 255, 255, 0.15)';
+
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = link.type === 'contains' ? 0.5 / globalScale : 1 / globalScale;
+                        
+                        // Beam effect
+                        if (link.type !== 'contains') {
+                            ctx.shadowBlur = 5 / globalScale;
+                            ctx.shadowColor = color;
+                        }
+                        
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
                     });
 
                 await loadData();
@@ -559,13 +631,8 @@
         }
 
         function focusNode(node) {
-            const distance = 100;
-            const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z || 0);
-            graph.cameraPosition(
-                { x: node.x * distRatio, y: node.y * distRatio, z: (node.z || 0) * distRatio },
-                node,
-                1500
-            );
+            graph.centerAt(node.x, node.y, 1000);
+            graph.zoom(3, 1000);
         }
 
         async function openCodeViewer(path, filename) {
