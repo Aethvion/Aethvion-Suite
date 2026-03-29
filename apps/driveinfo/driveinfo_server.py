@@ -149,14 +149,23 @@ class ExplorerRequest(BaseModel):
 
 @app.post("/api/open-explorer")
 async def api_open_explorer(req: ExplorerRequest):
-    """Open *path* in the OS file manager (Windows Explorer, macOS Finder, etc.)."""
+    """Open *path* in the OS file manager and bring the window to focus."""
     path = req.path.strip()
     if not path:
         raise HTTPException(status_code=400, detail="No path provided")
     try:
         if sys.platform == "win32":
-            # Use explorer.exe — works for both files and directories
-            _sp.Popen(["explorer", path], shell=False)
+            # ShellExecuteW with SW_SHOWNORMAL (1) activates and foregrounds
+            # the Explorer window, unlike Popen which opens it in the background.
+            import ctypes
+            ctypes.windll.shell32.ShellExecuteW(
+                None,       # hwnd — no parent
+                "explore",  # verb
+                path,       # target path
+                None,       # parameters
+                None,       # working directory
+                1,          # nShowCmd — SW_SHOWNORMAL: activate & display
+            )
         elif sys.platform == "darwin":
             _sp.Popen(["open", path])
         else:

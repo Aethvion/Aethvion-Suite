@@ -144,9 +144,11 @@ const DIR_HDR_H = 20;   // px — directory label bar height (base)
 const MIN_LABEL = 32;   // min rect size to draw a label
 const MIN_CHILD = 3;    // min rect size to recurse into children
 
-/* Depth-based accent palette for directory headers */
-const DEPTH_HUES = [195, 270, 140, 35, 0, 185, 310];
-function _depthHue(depth) { return DEPTH_HUES[depth % DEPTH_HUES.length]; }
+/* Section-colour palette — each top-level folder in the current view
+   gets one of these hues; all its descendants share the same hue with
+   slight saturation / lightness variations so the whole section reads
+   as one coherent colour family.                                        */
+const SECTION_HUES = [195, 340, 130, 42, 265, 18, 168, 305, 55, 215, 85, 0];
 
 function resizeCanvas() {
     const rect = diRight.getBoundingClientRect();
@@ -171,7 +173,7 @@ function renderTreemap() {
 
     const W = canvas.width / DPR;
     const H = canvas.height / DPR;
-    _renderNode(node, 2, 2, W - 4, H - 4, 0);
+    _renderNode(node, 2, 2, W - 4, H - 4, 0, null);
 
     // Draw highlight for hoveredNode if it's within the current view
     if (hoveredNode) {
@@ -187,7 +189,7 @@ function renderTreemap() {
     }
 }
 
-function _renderNode(node, x, y, w, h, depth) {
+function _renderNode(node, x, y, w, h, depth, baseHue) {
     if (w < 2 || h < 2) return;
 
     const children = (node.children || []).filter(c => c.size > 0);
@@ -195,30 +197,40 @@ function _renderNode(node, x, y, w, h, depth) {
 
     squarify(children, x, y, w, h);
 
-    for (const child of children) {
+    for (let i = 0; i < children.length; i++) {
+        const child = children[i];
         const cx = child._x, cy = child._y;
         const cw = child._w, ch = child._h;
         if (cw < 1 || ch < 1) continue;
 
+        // At the outermost level of each view (depth 0) every section gets
+        // its own distinct hue.  All descendants inherit that same hue so
+        // an entire folder tree reads as one coherent colour family.
+        const childHue = (depth === 0)
+            ? SECTION_HUES[i % SECTION_HUES.length]
+            : baseHue;
+
         if (child.type === "file") {
-            _drawFile(child, cx, cy, cw, ch);
+            _drawFile(child, cx, cy, cw, ch, childHue);
         } else {
-            _drawDir(child, cx, cy, cw, ch, depth);
+            _drawDir(child, cx, cy, cw, ch, depth, childHue);
         }
     }
 }
 
-function _drawFile(node, x, y, w, h) {
+function _drawFile(node, x, y, w, h, hue) {
     const color = extColor(node.ext || "");
     const cx = x * DPR, cy = y * DPR, cw = w * DPR, ch = h * DPR;
 
-    // Fill
+    // Main fill: extension colour keeps file-type identification intact
     ctx.fillStyle = color + "cc";
     ctx.fillRect(cx, cy, cw, ch);
 
-    // 1px dark border
-    ctx.strokeStyle = "rgba(0,0,0,.55)";
-    ctx.lineWidth   = 1;
+    // Border in the section hue so files visually belong to their parent
+    ctx.strokeStyle = hue != null
+        ? `hsla(${hue}, 40%, 22%, 0.75)`
+        : "rgba(0,0,0,.55)";
+    ctx.lineWidth = 1;
     ctx.strokeRect(cx + .5, cy + .5, cw - 1, ch - 1);
 
     // Label if large enough
@@ -229,58 +241,51 @@ function _drawFile(node, x, y, w, h) {
     hitCells.push({ node, x, y, w, h });
 }
 
-function _drawDir(node, x, y, w, h, depth) {
+function _drawDir(node, x, y, w, h, depth, hue) {
     const cx = x * DPR, cy = y * DPR, cw = w * DPR, ch = h * DPR;
-    const hue = _depthHue(depth);
 
-    // ── Directory body background ───────────────────────────────
-    // Slightly lighter background at shallower depths for visual layering
-    const bgL = depth === 0 ? 5 : Math.max(7, 13 - depth * 1.5);
-    ctx.fillStyle = `hsl(240, 10%, ${bgL}%)`;
+    // ── Body background — very dark tint of the section hue ──────
+    // Progressively darker as depth increases so nesting is obvious
+    const bgL = Math.max(4, 8 - depth * 0.8);
+    ctx.fillStyle = `hsl(${hue}, 20%, ${bgL}%)`;
     ctx.fillRect(cx, cy, cw, ch);
 
-    // ── Header bar — taller for shallow directories ─────────────
-    const hdrH = Math.min(
-        depth === 0 ? 26 : depth === 1 ? 22 : DIR_HDR_H,
-        h
-    );
+    // ── Header — taller at shallower depths ───────────────────────
+    const hdrH  = Math.min(depth === 0 ? 26 : depth === 1 ? 22 : DIR_HDR_H, h);
     const hdrPx = hdrH * DPR;
 
-    // Header background with depth-tinted fill
-    ctx.fillStyle = depth === 0
-        ? `hsl(240, 18%, 12%)`
-        : `hsla(${hue}, 28%, 16%, 0.97)`;
+    // Header fill: medium-dark tint of the section hue
+    const hdrL = Math.max(10, 16 - depth * 1.5);
+    ctx.fillStyle = `hsl(${hue}, 28%, ${hdrL}%)`;
     ctx.fillRect(cx, cy, cw, hdrPx);
 
-    // Accent left stripe — thicker at top level, 1px accent line at depth
+    // Accent left stripe — vibrant at top level, slightly muted deeper down
     const stripeW = Math.min((depth === 0 ? 3 : 2) * DPR, cw);
-    ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
+    const stripeS = Math.max(55, 85 - depth * 7);
+    const stripeL = Math.max(38, 60 - depth * 5);
+    ctx.fillStyle = `hsl(${hue}, ${stripeS}%, ${stripeL}%)`;
     ctx.fillRect(cx, cy, stripeW, hdrPx);
 
-    // ── Outer border ─────────────────────────────────────────────
-    ctx.strokeStyle = depth === 0
-        ? "#2a2a3a"
-        : `hsla(${hue}, 55%, 50%, 0.35)`;
-    ctx.lineWidth = 1;
+    // ── Outer border — section-hue tinted, fades with depth ───────
+    const borderA = Math.max(0.12, 0.45 - depth * 0.07);
+    ctx.strokeStyle = `hsla(${hue}, 55%, 50%, ${borderA})`;
+    ctx.lineWidth   = 1;
     ctx.strokeRect(cx + .5, cy + .5, cw - 1, ch - 1);
 
-    // ── Header separator line ────────────────────────────────────
+    // Header separator
     if (hdrH < h) {
-        ctx.strokeStyle = depth === 0
-            ? "#2a2a3a"
-            : `hsla(${hue}, 55%, 45%, 0.25)`;
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = `hsla(${hue}, 45%, 45%, ${Math.max(0.08, 0.22 - depth * 0.03)})`;
+        ctx.lineWidth   = 1;
         ctx.beginPath();
         ctx.moveTo(cx + stripeW, cy + hdrPx - .5);
-        ctx.lineTo(cx + cw, cy + hdrPx - .5);
+        ctx.lineTo(cx + cw,      cy + hdrPx - .5);
         ctx.stroke();
     }
 
-    // ── Directory label ──────────────────────────────────────────
+    // ── Label ─────────────────────────────────────────────────────
     if (w > 24) {
-        const labelColor = depth === 0
-            ? "#d0d0e0"
-            : `hsl(${hue}, 65%, 80%)`;
+        const labelL  = Math.max(62, 82 - depth * 5);
+        const labelColor = `hsl(${hue}, 65%, ${labelL}%)`;
         _drawLabel(
             node.name,
             cx + stripeW + 4 * DPR,
@@ -291,29 +296,25 @@ function _drawDir(node, x, y, w, h, depth) {
             depth === 0 ? 11 : 10
         );
 
-        // Size badge — show when header is wide enough
+        // Size badge when there's room
         if (w > 110 && node.size && hdrH >= 16) {
-            const sizeText = fmtBytes(node.size);
             ctx.save();
-            ctx.fillStyle = depth === 0
-                ? "rgba(150,150,180,0.6)"
-                : `hsla(${hue}, 60%, 65%, 0.55)`;
-            ctx.font        = `${9 * DPR}px "Segoe UI",sans-serif`;
-            ctx.textAlign   = "right";
+            ctx.fillStyle    = `hsla(${hue}, 55%, 65%, 0.5)`;
+            ctx.font         = `${9 * DPR}px "Segoe UI",sans-serif`;
+            ctx.textAlign    = "right";
             ctx.textBaseline = "top";
-            ctx.fillText(sizeText, cx + cw - 5 * DPR, cy + 4 * DPR);
+            ctx.fillText(fmtBytes(node.size), cx + cw - 5 * DPR, cy + 4 * DPR);
             ctx.restore();
         }
     }
 
     hitCells.push({ node, x, y, w, h });
 
-    // ── Recurse into children ─────────────────────────────────────
-    const pad    = depth === 0 ? 1 : 1;
+    // ── Recurse — pass the same section hue down ──────────────────
     const innerY = y + hdrH;
     const innerH = h - hdrH - 1;
     if (cw > MIN_CHILD && innerH > MIN_CHILD) {
-        _renderNode(node, x + pad, innerY, w - pad * 2, innerH, depth + 1);
+        _renderNode(node, x + 1, innerY, w - 2, innerH, depth + 1, hue);
     }
 }
 
