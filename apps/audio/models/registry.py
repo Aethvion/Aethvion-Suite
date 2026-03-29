@@ -7,11 +7,14 @@ from .base import LocalAudioModel
 from .kokoro import KokoroModel
 from .xtts import XTTSv2Model
 from .whisper_model import WhisperModel
+from .vibevoice import VibeVoiceRealtimeModel, VibeVoiceASRModel
 
 _REGISTRY: Dict[str, Type[LocalAudioModel]] = {
-    KokoroModel.MODEL_ID:  KokoroModel,
-    XTTSv2Model.MODEL_ID:  XTTSv2Model,
-    WhisperModel.MODEL_ID: WhisperModel,
+    KokoroModel.MODEL_ID:          KokoroModel,
+    XTTSv2Model.MODEL_ID:          XTTSv2Model,
+    WhisperModel.MODEL_ID:         WhisperModel,
+    VibeVoiceRealtimeModel.MODEL_ID: VibeVoiceRealtimeModel,
+    VibeVoiceASRModel.MODEL_ID:    VibeVoiceASRModel,
 }
 
 

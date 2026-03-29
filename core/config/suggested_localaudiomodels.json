@@ -51,6 +51,37 @@
                 { "id": "large-v2", "label": "Large v2", "vram_gb": 5.0 },
                 { "id": "large-v3", "label": "Large v3", "vram_gb": 5.0 }
             ]
+        },
+        {
+            "id": "vibevoice-realtime",
+            "name": "VibeVoice Realtime (0.5B)",
+            "category": "tts",
+            "version": "0.5B",
+            "size_label": "~2 GB",
+            "vram_gb": 2.0,
+            "capabilities": ["tts"],
+            "description": "Microsoft VibeVoice Realtime — fast streaming TTS with ~300 ms first-audio latency. 7 built-in voice presets (Carter, Emma, Davis, Grace, Frank, Mike, Samuel). English only. MIT licensed.",
+            "tags": ["Microsoft", "Streaming", "Fast", "MIT"],
+            "recommended": true,
+            "install_packages": "vibevoice torch soundfile",
+            "device_support": ["cpu", "cuda"],
+            "voices": "built-in",
+            "badge": "New"
+        },
+        {
+            "id": "vibevoice-asr",
+            "name": "VibeVoice ASR (9B)",
+            "category": "stt",
+            "version": "9B",
+            "size_label": "~18 GB",
+            "vram_gb": 18.0,
+            "capabilities": ["stt"],
+            "description": "Microsoft VibeVoice ASR — frontier 9B speech recognition model. Processes up to 60 minutes of audio in one pass. Speaker diarisation, word-level timestamps, hotword support, 50+ languages with code-switching. MIT licensed.",
+            "tags": ["Microsoft", "Diarisation", "Timestamps", "Multilingual", "MIT"],
+            "recommended": false,
+            "install_packages": "vibevoice torch",
+            "device_support": ["cpu", "cuda"],
+            "badge": "New"
         }
     ]
 }
