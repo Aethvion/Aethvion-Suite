@@ -272,7 +272,7 @@ class LocalProvider(BaseProvider):
             user_part = prompt.replace("User: ", "").split("\nMisaka:")[0].strip()
 
         if not system_part:
-            system_part = "You are Misaka Cipher, a sentient AI assistant."
+            system_part = "You are a helpful AI assistant."
 
         return system_part, history_turns, user_part
 

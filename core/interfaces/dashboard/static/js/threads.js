@@ -343,8 +343,14 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
         messageContent = `${modelLabel} <strong>Chat:</strong> <div style="display:inline-block; width:100%;">${parsedContent}</div>`;
 
 
-        // Add expandable task details if available
-        if (taskData) {
+        // Add expandable task details only for complex tasks (tools used, agents spawned, or auto-routing happened)
+        const _isComplexTask = taskData && (
+            (taskData.result?.tools_forged  > 0) ||
+            (taskData.result?.agents_spawned > 0) ||
+            !!(taskData.result?.usage?.routing_reason  || taskData.metadata?.routing_reason)  ||
+            !!(taskData.result?.usage?.routed_model    || taskData.metadata?.routed_model)
+        );
+        if (_isComplexTask) {
             const usage = taskData.result?.usage;
             let usageHtml = '';
 
