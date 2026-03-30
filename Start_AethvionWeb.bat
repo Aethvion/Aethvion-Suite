@@ -1,12 +1,12 @@
 @echo off
 SETLOCAL EnableDelayedExpansion
 :: ============================================================
-::  AETHVION SUITE — Web Launcher
+::  AETHVION SUITE - Web Launcher
 ::  Standard background mode: auto-install + standard browser.
 :: ============================================================
 SET PROJECT_DIR=%~dp0
 cd /d "%PROJECT_DIR%"
-TITLE Aethvion Suite — Initializing Web Mode...
+TITLE Aethvion Suite - Initializing Web Mode...
 
 echo.
 echo ============================================================

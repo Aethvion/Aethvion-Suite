@@ -10,7 +10,7 @@ if not defined AETHVION_LAUNCHED (
 
 SET PROJECT_DIR=%~dp0
 cd /d "%PROJECT_DIR%"
-TITLE Aethvion Suite — Developer Portal
+TITLE Aethvion Suite - Developer Portal
 
 echo.
 echo ============================================================
@@ -24,7 +24,7 @@ if %errorlevel% neq 0 (
 )
 
 
-:: ── 6. Launch (dev mode — visible consoles, web browser tab) ─
+:: ── 6. Launch (dev mode - visible consoles, web browser tab) ─
 echo.
 echo [5/5] LAUNCHING CORE ENGINE...
 echo [INFO] Dashboard  -^> http://localhost:8080

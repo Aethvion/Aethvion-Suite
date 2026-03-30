@@ -1,12 +1,12 @@
 @echo off
 SETLOCAL EnableDelayedExpansion
 :: ============================================================
-::  AETHVION SUITE — Consumer Launcher
+::  AETHVION SUITE - Consumer Launcher
 ::  Standard background mode: auto-install + auto-browser.
 :: ============================================================
 SET PROJECT_DIR=%~dp0
 cd /d "%PROJECT_DIR%"
-TITLE Aethvion Suite — Initializing...
+TITLE Aethvion Suite - Initializing...
 
 echo.
 echo ============================================================
