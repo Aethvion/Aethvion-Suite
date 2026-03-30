@@ -1,4 +1,4 @@
-// Misaka Cipher - AI Conversations Mode
+// Aethvion Suite - AI Conversations Mode
 // Handles the multi-agent AI Conversation loop and generation UI
 
 let aiconvSelectedModels = [];

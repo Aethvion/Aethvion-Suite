@@ -1,6 +1,6 @@
-﻿"""
-Misaka Cipher - Package Intelligence System
-Fetches package metadata from PyPI and calculates safety ratings
+"""
+Aethvion Suite - Package Intelligence System
+Analyzes and maps system packages for integration
 """
 
 import requests

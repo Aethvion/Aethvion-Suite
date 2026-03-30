@@ -1,6 +1,6 @@
 """
-Misaka Cipher - Main CLI Interface
-Interactive command-line interface for Misaka Cipher system
+Aethvion Suite - Main CLI Interface
+Interactive command-line interface for Aethvion Suite system
 """
 
 import sys
@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 
 
 class MisakaCLI:
-    """Main CLI coordinator for Misaka Cipher."""
+    """Main CLI coordinator for Aethvion Suite."""
 
     def __init__(self):
         """Initialize CLI and system components."""
@@ -35,7 +35,7 @@ class MisakaCLI:
     def initialize(self):
         """Initialize all system components."""
         try:
-            console.print("[bold cyan]Initializing Misaka Cipher...[/bold cyan]")
+            console.print("[bold cyan]Initializing Aethvion Suite...[/bold cyan]")
 
             # Initialize Nexus Core
             console.print("  • Nexus Core...", end="")

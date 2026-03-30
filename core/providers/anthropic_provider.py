@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Anthropic Provider
+Aethvion Suite - Anthropic Provider
 Anthropic Claude implementation
 """
 

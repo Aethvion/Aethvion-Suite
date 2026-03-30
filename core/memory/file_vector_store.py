@@ -1,5 +1,5 @@
 """
-Misaka Cipher - File Vector Store
+Aethvion Suite - File Vector Store
 Manages semantic indexing and search for workspace files.
 """
 
@@ -51,7 +51,7 @@ class FileVectorStore:
         
         self.collection = self.client.get_or_create_collection(
             name="workspace_files",
-            metadata={"description": "Semantic index for Misaka Cipher workspace files"}
+            metadata={"description": "Semantic index for Aethvion Suite workspace files"}
         )
         
         logger.info("File Vector Store initialized successfully")

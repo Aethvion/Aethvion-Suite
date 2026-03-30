@@ -1,5 +1,5 @@
-MISAKA CIPHER - DASHBOARD INTERFACE CONTEXT
-This document describes the tabs and features of the Misaka Cipher dashboard. For information about the assistant's specific tools and capabilities, refer to [assistant-tools.md](file:///c:/Aethvion/Misaka-Cipher/documentation/ai/assistant-tools.md).
+AETHVION SUITE - DASHBOARD INTERFACE CONTEXT
+This document describes the tabs and features of the Aethvion Suite dashboard. For information about the assistant's specific tools and capabilities, refer to [assistant-tools.md](file:///c:/Aethvion/Aethvion-Suite/documentation/ai/assistant-tools.md).
 
 TABS (format: tab_id | display name | description)
 
@@ -31,14 +31,22 @@ logs | Logs | Live log stream panel. [SwitchTab: logs]
 
 usage | Usage | API usage analytics. [SwitchTab: usage]
 
-status | Status | Live system status dashboard. [SwitchTab: status]
+status | Status | Live system status dashboard and changelog summaries. [SwitchTab: status]
 
-settings | Misaka Cipher | Core configuration hub. The "Misaka Cipher" (previously Assistant) section allows for configuring both the floating assistant and your specific chat model. [SwitchTab: settings]
+finance | Finance | Personal financial tracking, portfolio, and AI market analysis. [SwitchTab: finance]
+
+tracking | Tracking | Motion tracking bridge with HUD, telemetry, and FPS counter. [SwitchTab: tracking]
+
+linkmap | LinkMap | Visual representation of tool and agent relationships. [SwitchTab: linkmap]
+
+code | Code IDE | AI-powered development environment with streaming execution. [SwitchTab: code]
+
+settings | Settings | Core configuration hub. The "Misaka Cipher" (previously Assistant) section allows for configuring the floating persona and individual chat models. [SwitchTab: settings]
 
 TAB SWITCHING
 If Dashboard Control is enabled in the assistant settings, the assistant can navigate the user to any tab.
 
-Valid main tab IDs: chat, agent, image, advaiconv, arena, aiconv, files, tools, packages, memory, logs, usage, status, settings, misaka-cipher, misaka-memory
+Valid main tab IDs: chat, agent, image, advaiconv, arena, aiconv, files, tools, packages, memory, logs, usage, status, settings, misaka-cipher, misaka-memory, finance, tracking, linkmap, code
 
 Valid subtab IDs (inside settings): assistant (labeled 'Misaka Cipher'), system, env, providers, profiles
 

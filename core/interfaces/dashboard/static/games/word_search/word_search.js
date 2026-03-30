@@ -1,5 +1,5 @@
 /**
- * Misaka Cipher — Word Search (JS)
+ * Aethvion Suite — Word Search (JS)
  * Fully Client-Side with optional AI-powered theme generation.
  */
 
@@ -222,7 +222,7 @@ class WordSearchGame {
             this.startGame(size, data.words);
 
         } catch (err) {
-            this._showAIError('Could not reach the server. Is Misaka running?');
+            this._showAIError('Could not reach the server. Is Aethvion running?');
             console.error('[WordSearch AI]', err);
         } finally {
             this.isGenerating = false;

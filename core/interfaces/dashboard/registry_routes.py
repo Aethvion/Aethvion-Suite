@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Registry Routes
+Aethvion Suite - Registry Routes
 API endpoints for managing the Model Registry (config/model_registry.json)
 """
 

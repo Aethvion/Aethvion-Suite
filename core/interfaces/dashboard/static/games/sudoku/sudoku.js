@@ -1,5 +1,5 @@
 /**
- * Misaka Cipher — Sudoku (JS)
+ * Aethvion Suite — Sudoku (JS)
  * Fully Client-Side Implementation
  */
 

@@ -1,5 +1,5 @@
-﻿"""
-Misaka Cipher - Output Validator
+"""
+Aethvion Suite - Output Validator
 Validates agent outputs to ensure they match user intent
 """
 
@@ -13,7 +13,7 @@ from core.utils.paths import WS_OUTPUTS
 logger = get_logger(__name__)
 
 # Use environment variable or default to WS_OUTPUTS
-WORK_FOLDER = Path(os.environ.get("MISAKA_WORKSPACE", str(WS_OUTPUTS)))
+WORK_FOLDER = Path(os.environ.get("AETHVION_WORKSPACE", os.environ.get("MISAKA_WORKSPACE", str(WS_OUTPUTS))))
 
 
 @dataclass

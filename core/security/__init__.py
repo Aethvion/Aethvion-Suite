@@ -1,6 +1,6 @@
 """
-Misaka Cipher - Security Package
-Intelligence Firewall and security scanning
+Aethvion Suite - Security Package
+System-wide security and sandbox management
 """
 
 from .scanner import ContentScanner, ScanResult, ScanAction, ScanSeverity

@@ -1,5 +1,5 @@
 /**
- * Misaka Cipher — Shared Games Framework (JS)
+ * Aethvion Suite — Shared Games Framework (JS)
  * 
  * Provides the base GameSession class and shared utility functions.
  * Each game module registers itself via registerGame().

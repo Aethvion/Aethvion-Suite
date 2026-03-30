@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Memory Specification
+Aethvion Suite - Memory Specification
 Data models for episodic memory and core insights
 """
 
@@ -17,7 +17,7 @@ class EpisodicMemory:
     Stored with vector embedding for semantic search.
     """
     
-    memory_id: str              # MCMEM-YYYYMMDDHHMMSS-HASH
+    memory_id: str              # ASMEM-YYYYMMDDHHMMSS-HASH
     trace_id: str               # Linked Trace_ID from source interaction
     timestamp: str
     event_type: str             # agent_spawn, tool_forge, request, error, etc.
@@ -54,7 +54,7 @@ class CoreInsight:
     These are persistent facts that remain even when episodic memories are pruned.
     """
     
-    insight_id: str             # MCINS-YYYYMMDD-SESSION#
+    insight_id: str             # ASINS-YYYYMMDD-SESSION#
     timestamp: str
     time_window_start: str
     time_window_end: str
@@ -94,13 +94,13 @@ def generate_memory_id() -> str:
     import random
     import string
     hash_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-    return f"MCMEM-{timestamp}-{hash_part}"
+    return f"ASMEM-{timestamp}-{hash_part}"
 
 
 def generate_insight_id(session_number: int = 1) -> str:
     """Generate unique insight ID."""
     date = datetime.now().strftime("%Y%m%d")
-    return f"MCINS-{date}-SESSION{session_number}"
+    return f"ASINS-{date}-SESSION{session_number}"
 
 
 # Alias for backward compatibility and CI checks

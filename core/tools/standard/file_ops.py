@@ -1,5 +1,5 @@
-﻿"""
-Misaka Cipher - Standard File Operations
+"""
+Aethvion Suite - Standard File Operations
 """
 
 import os
@@ -9,8 +9,10 @@ from typing import Optional, Union, Any, Dict
 from datetime import datetime
 from core.utils.paths import WS_OUTPUTS
 
-# Define workspace root - use environment variable or default to WS_OUTPUTS
-WORKSPACE_ROOT = Path(os.environ.get("MISAKA_WORKSPACE", str(WS_OUTPUTS)))
+# Define workspace root - Use environment variable or default to WS_OUTPUTS
+WORKSPACE_ROOT = Path(os.environ.get("AETHVION_WORKSPACE", str(WS_OUTPUTS)))
+# Alias for newer components
+WORK_FOLDER = WORKSPACE_ROOT
 
 def data_save_file(content: Any, filename: str, domain: str = "General") -> Dict[str, Any]:
     """

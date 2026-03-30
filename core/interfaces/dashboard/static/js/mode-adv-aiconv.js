@@ -1,5 +1,5 @@
 /**
- * Misaka Cipher - Advanced AI Conversation (Research Mode)
+ * Aethvion Suite - Advanced AI Conversation (Research Mode)
  */
 
 let allPersonas = [];

@@ -1,9 +1,8 @@
-# Misaka Cipher - Aethvion Global Configuration
-# M.I.S.A.K.A.: Multitask Intelligence & Strategic Analysis Kernel Architecture
+# Aethvion Suite - Global Configuration
 
 
 system:
-  name: "Misaka Cipher"
+  name: "Aethvion Suite"
   version: "1.0.0-sprint2"
   codename: "M.I.S.A.K.A."
 

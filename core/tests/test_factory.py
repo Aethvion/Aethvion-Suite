@@ -1,6 +1,6 @@
-﻿"""
-Misaka Cipher - Factory Test Script
-Test The Factory agent spawning system
+"""
+Aethvion Suite - Factory Test Script
+Test AgentFactory spawning and execution
 """
 
 import os
@@ -22,9 +22,8 @@ logger = get_logger(__name__)
 def test_factory():
     """Test The Factory functionality."""
     
-    print("\n" + "=" * 70)
-    print("MISAKA CIPHER - SPRINT 2 VERIFICATION TEST")
-    print("THE FACTORY - Agent Spawning System")
+    print("=" * 70)
+    print("AETHVION SUITE - FACTORY VERIFICATION TEST")
     print("=" * 70 + "\n")
     
     # Initialize Nexus Core

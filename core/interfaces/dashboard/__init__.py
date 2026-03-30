@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Web Package
+Aethvion Suite - Web Package
 FastAPI backend and dashboard frontend
 """
 

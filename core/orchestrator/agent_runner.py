@@ -1,4 +1,7 @@
-"""Agent Runner — multi-step ReAct-style execution loop with persistent state."""
+"""
+Aethvion Suite - Agent Runner
+Multi-step ReAct-style execution loop with persistent state.
+"""
 import json
 import re
 import subprocess

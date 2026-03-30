@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Intelligence Firewall
+Aethvion Suite - Intelligence Firewall
 Pre-flight scanning and routing for sensitive content
 """
 

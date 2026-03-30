@@ -1,6 +1,6 @@
-﻿"""
-Misaka Cipher - OpenAI Provider
-OpenAI GPT implementation (fallback provider)
+"""
+Aethvion Suite - OpenAI Provider
+OpenAI GPT-4 implementation
 """
 
 import os
@@ -16,7 +16,7 @@ class OpenAIProvider(BaseProvider):
     """
     OpenAI (GPT) provider implementation.
     
-    First fallback provider for Misaka Cipher system.
+    Secondary provider for Aethvion Suite.
     """
     
     def __init__(self, config: ProviderConfig):

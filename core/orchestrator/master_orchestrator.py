@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Master Orchestrator
+Aethvion Suite - Master Orchestrator
 Autonomous coordinator for Factory, Forge, and Memory Tier
 """
 
@@ -63,7 +63,7 @@ class ExecutionResult:
 
 class MasterOrchestrator:
     """
-    Master Orchestrator - Autonomous coordinator for Misaka Cipher.
+    Master Orchestrator - Autonomous coordinator for Aethvion Suite.
     
     Analyzes user intents and autonomously decides when to:
     - Spawn specialized agents (Factory)

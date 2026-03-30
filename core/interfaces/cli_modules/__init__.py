@@ -1,6 +1,6 @@
 """
-Misaka Cipher - CLI Package
-Interactive command-line interface for all system modules
+Aethvion Suite - CLI Package
+Command-line interface modules
 """
 
 from .utils import (

@@ -1,5 +1,5 @@
 """
-Misaka Cipher - FastAPI Web Server
+Aethvion Suite - FastAPI Web Server
 REST API and WebSocket server for web dashboard
 """
 
@@ -68,7 +68,7 @@ async def root():
             "Expires": "0"
         }
         return HTMLResponse(content=content, headers=headers)
-    return HTMLResponse("<h1>Misaka Cipher Dashboard</h1><p>index.html not found</p>")
+    return HTMLResponse("<h1>Aethvion Suite Dashboard</h1><p>index.html not found</p>")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -373,7 +373,7 @@ def perform_blocking_init():
 
         startup_status["status"] = "Initializing Nexus Core..."
         startup_status["progress"] = 15
-        logger.info("Initializing Misaka Cipher Web Server...")
+        logger.info("Initializing Aethvion Suite Web Server...")
         
         nexus = NexusCore()
         nexus.initialize()
@@ -414,7 +414,7 @@ def perform_blocking_init():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown."""
-    logger.info("Shutting down Misaka Cipher Web Server...")
+    logger.info("Shutting down Aethvion Suite Web Server...")
 
 
 # Static mounting moved to Instant Accessibility section

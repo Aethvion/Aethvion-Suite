@@ -1,5 +1,5 @@
-﻿"""
-Misaka Cipher - Memory API Routes
+"""
+Aethvion Suite - Memory API Routes
 FastAPI routes for memory management and visualization
 """
 

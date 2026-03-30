@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Task Queue Models
+Aethvion Suite - Task Queue Models
 Data models for async task management
 """
 

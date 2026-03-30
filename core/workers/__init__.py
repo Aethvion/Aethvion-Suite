@@ -1,4 +1,4 @@
 """
-Misaka Cipher - Background Workers
-Package for background worker processes
+Aethvion Suite - Background Workers
+Root package for various background execution tasks
 """

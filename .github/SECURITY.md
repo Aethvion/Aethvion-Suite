@@ -2,7 +2,7 @@
 
 ## 🛡️ Security Philosophy
 
-Misaka Cipher takes security seriously. As a self-evolving AI system that can generate code and spawn agents, we implement multiple layers of security:
+Aethvion Suite takes security seriously. As a self-evolving AI system that can generate code and spawn agents, we implement multiple layers of security:
 
 * **Intelligence Firewall**: Pre-flight scanning for PII and credentials
 * **Code Validation**: All generated tools are validated before execution
@@ -20,7 +20,7 @@ We appreciate your efforts to responsibly disclose your findings and will make e
 Instead, please report security vulnerabilities by:
 
 1. **Opening a Security Advisory** on GitHub:
-   * Go to the [Security tab](https://github.com/Aethvion/Misaka-Cipher/security)
+   * Go to the [Security tab](https://github.com/Aethvion/Aethvion-Suite/security)
    * Click "Report a vulnerability"
    * Fill in the details
 
@@ -54,7 +54,7 @@ Please include the following information:
 
 ### Intelligence Firewall
 
-Misaka Cipher includes a built-in Intelligence Firewall that:
+Aethvion Suite includes a built-in Intelligence Firewall that:
 
 * **Scans all prompts** before sending to external APIs
 * **Detects PII**: Social Security Numbers, credit cards, emails, etc.
@@ -176,6 +176,6 @@ We will recognize security researchers who responsibly disclose vulnerabilities:
 
 ---
 
-**Thank you for helping keep Misaka Cipher and its users safe!** 🛡️
+**Thank you for helping keep Aethvion Suite and its users safe!** 🛡️
 
 _Last updated: 2026-02-18_

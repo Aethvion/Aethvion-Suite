@@ -1,10 +1,10 @@
 # Getting Started with Aethvion Suite
 
-**Note: This documentation was updated on 2026-03-21 to reflect the current system state (v10).**
+**Note: This documentation was updated on 2026-03-30 to reflect the current Aethvion Suite (v11) state.**
 
 ---
 
-## Why Misaka Cipher? The Value Proposition
+## Why Aethvion Suite? The Value Proposition
 
 ### The Problem with Traditional AI Systems
 
@@ -23,13 +23,13 @@ AI Wrapper: Analyzes all 1000 files with GPT-4
 Result: $200 in API costs, but automatic execution
 ```
 
-### The Misaka Cipher Difference
+### The Aethvion Suite Difference
 
 **Current Approach (cloud providers + smart routing):**
 ```
 User: "I need to analyze 1000 CSV files and generate insights"
 
-Misaka Cipher:
+Aethvion Suite:
 1. Recognizes this is data processing
 2. Routes to Gemini Flash for fast, cheap bulk processing
 3. If CSV tool doesn't exist, forges one automatically
@@ -78,7 +78,7 @@ Result: ~$1.60 in API costs vs. $200 with a naive GPT-4 wrapper
 
 4. **Cost Efficiency at Scale:**
     - Traditional: Every improvement costs more (better model = higher prices)
-    - Misaka Cipher: Cost per task decreases over time (smart routing + forged tools reduce cloud API needs)
+    - Aethvion Suite: Cost per task decreases over time (smart routing + forged tools reduce cloud API needs)
 
 ---
 
@@ -142,7 +142,7 @@ python -m core.main --test
 You should see:
 ```
 ============================================================
-MISAKA CIPHER - SPRINT 1 VERIFICATION TEST
+AETHVION SUITE - SPRINT 1 VERIFICATION TEST
 ============================================================
 
 SYSTEM STATUS
@@ -177,7 +177,7 @@ Open your browser to `http://localhost:8080`
 The dashboard includes 25+ tabs: Chat, Agent Workspaces, Image Studio, LLM Arena, AI Conversations, Audio, Audio Models, Files, Tools, Packages, Memory, Games, Logs, Usage analytics, Status, Port Manager, and Settings. See the [Dashboard Context docs](/core/documentation/ai/dashboard-interface-context.md) for full tab descriptions.
 
 **Web Interface Features:**
-- Real-time chat with Misaka Cipher
+- Real-time chat with the Misaka Cipher persona
 - Live system logs and terminal
 - **Agent Workspaces** — multi-step AI task execution with real-time streaming
 - Memory explorer
@@ -202,7 +202,7 @@ You'll see the main menu:
 
 ```
 ============================================================
-         MISAKA CIPHER - M.I.S.A.K.A.
+         AETHVION SUITE - M.I.S.A.K.A.
     Multitask Intelligence & Strategic Analysis
             Kernel Architecture
 ============================================================
@@ -356,7 +356,7 @@ Select: 5. System Status → View Provider Health
 Select: 5. System Status → View Active Traces
 
 # Review recent logs
-Check: logs/misaka_cipher.log
+Check: data/logs/system/aethvion.log
 ```
 
 ### 5. Incremental Tool Building
@@ -460,7 +460,7 @@ forge.forge_tool(
 1. Check `data/logs/system/` for routing decisions
 2. Verify simple tasks use Flash model, not Pro
 3. Use local GGUF models for data processing — place models in `localmodels/gguf/`
-4. Review `data/config/model_registry.json` routing strategy (or use the Tabbed Model Registry in Settings)
+4. Review `data/config/model_registry.json` routing strategy (or use the Model Registry in Settings)
 
 ---
 
@@ -498,7 +498,7 @@ forge.forge_tool(
 
 ## The Vision: Where We're Going
 
-**Current State (v10):**
+**Current State (v11):**
 - ✅ Core orchestration (Nexus)
 - ✅ Agent spawning (Factory) + **Agent Workspaces** with ReAct runner and SSE streaming
 - ✅ Tool generation (Forge)
@@ -530,7 +530,7 @@ forge.forge_tool(
 
 **The Ultimate Goal:**
 ```
-Give Misaka Cipher a goal of any complexity
+Give Aethvion Suite a goal of any complexity
 → System breaks it down autonomously
 → Forges necessary tools
 → Spawns required agents

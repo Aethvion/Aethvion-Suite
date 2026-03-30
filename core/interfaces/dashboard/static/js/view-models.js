@@ -1,5 +1,5 @@
 /**
- * Misaka Cipher - Local Models Management View
+ * Aethvion Suite - Local Models Management View
  */
 
 const LocalModels = {

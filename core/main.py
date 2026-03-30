@@ -1,6 +1,5 @@
 """
-Misaka Cipher - Main Entry Point
-M.I.S.A.K.A.: Multitask Intelligence & Strategic Analysis Kernel Architecture
+Aethvion Suite - Main Entry Point
 
 Interactive CLI Interface (default)
 Use --test flag to run verification tests

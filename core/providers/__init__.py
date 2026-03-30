@@ -1,6 +1,6 @@
 """
-Misaka Cipher - Providers Package
-Multi-provider LLM abstraction layer
+Aethvion Suite - Providers Package
+Interface to various LLM providers
 """
 
 from .base_provider import (

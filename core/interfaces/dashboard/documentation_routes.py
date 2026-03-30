@@ -1,3 +1,7 @@
+"""
+Aethvion Suite - Documentation Routes
+REST API endpoints for scanning and retrieving system documentation.
+"""
 from fastapi import APIRouter, HTTPException
 from pathlib import Path
 import os

@@ -1,5 +1,5 @@
 """
-Agent Workspace Routes
+Aethvion Suite - Agent Workspace Routes
 REST API endpoints for Agent Workspaces and Threads (/api/agents/...)
 """
 

@@ -1,6 +1,6 @@
 """
-Misaka Cipher - Social Registry
-Maps platform-specific IDs to human-readable names and memory profiles.
+Aethvion Suite - Social Registry
+Tracks user relationships and interactions
 """
 
 import json

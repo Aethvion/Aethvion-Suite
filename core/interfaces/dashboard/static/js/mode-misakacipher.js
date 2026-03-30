@@ -1,5 +1,5 @@
 /**
- * Misaka Cipher Companion - Persistence & History
+ * Aethvion Suite - Misaka Cipher Companion - Persistence & History
  */
 
 // Global State

@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Identity Manager
+Aethvion Suite - Identity Manager
 Handles persistent identity (base_info.json) and dynamic memory (memory.json).
 """
 

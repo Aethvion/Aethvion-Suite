@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Advanced AI Conversation (Research Mode) API
+Aethvion Suite - Advanced AI Conversation (Research Mode) API
 """
 
 from fastapi import APIRouter, HTTPException, Request

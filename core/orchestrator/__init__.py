@@ -1,6 +1,6 @@
 """
-Misaka Cipher - Orchestrator Package
-Autonomous coordination of Factory, Forge, and Memory Tier
+Aethvion Suite - Orchestrator Package
+Core logic for task routing and execution
 """
 
 from .master_orchestrator import MasterOrchestrator

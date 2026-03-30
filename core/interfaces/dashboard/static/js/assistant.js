@@ -1,5 +1,5 @@
 /**
- * Misaka Cipher Personal Assistant logic
+ * Aethvion Suite - Personal Assistant logic
  */
 
 document.addEventListener('DOMContentLoaded', () => {

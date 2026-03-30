@@ -1,5 +1,5 @@
-﻿"""
-Misaka Cipher - Package Management API Routes
+"""
+Aethvion Suite - Package Management API Routes
 FastAPI routes for package management operations
 """
 

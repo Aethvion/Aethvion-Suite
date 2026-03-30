@@ -1,5 +1,5 @@
-﻿"""
-Misaka Cipher - Grok Provider
+"""
+Aethvion Suite - Grok Provider
 xAI Grok implementation (tertiary fallback provider)
 """
 
@@ -16,7 +16,7 @@ class GrokProvider(BaseProvider):
     """
     xAI Grok provider implementation.
     
-    Tertiary fallback provider for Misaka Cipher system.
+    Tertiary fallback provider for Aethvion Suite.
     """
     
     def __init__(self, config: ProviderConfig):

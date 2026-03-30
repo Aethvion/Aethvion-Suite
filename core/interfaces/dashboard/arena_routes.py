@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Arena Routes
+Aethvion Suite - Arena Routes
 API endpoints for the Arena Mode (model comparison battles)
 """
 

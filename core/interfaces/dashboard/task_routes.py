@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Task Queue API Routes
+Aethvion Suite - Task Queue API Routes
 REST API endpoints for task queue management
 """
 

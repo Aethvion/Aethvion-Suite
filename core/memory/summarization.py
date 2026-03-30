@@ -1,6 +1,6 @@
-﻿"""
-Misaka Cipher - Heartbeat Summarization
-Recursive log compression into Core Insights
+"""
+Aethvion Suite - Heartbeat Summarization
+Aggregates and summarizes system activity for long-term memory
 """
 
 import yaml

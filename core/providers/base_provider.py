@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Base Provider
+Aethvion Suite - Base Provider
 Abstract base class for all LLM providers
 """
 

@@ -1,6 +1,6 @@
 """
-Misaka Cipher - Memory Package
-Persistent intelligence and knowledge management
+Aethvion Suite - Memory Package
+System-wide memory management and persistence
 """
 
 from .memory_spec import EpisodicMemory, EpisodicEntry, CoreInsight, generate_memory_id, generate_insight_id

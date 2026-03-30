@@ -1,4 +1,7 @@
-"""Thread-safe per-task event store for agent step streaming."""
+"""
+Aethvion Suite - Agent Events
+Thread-safe per-task event store for agent step streaming.
+"""
 import threading
 from typing import Dict, List, Optional, Any
 

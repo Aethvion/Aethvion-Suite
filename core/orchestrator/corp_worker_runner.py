@@ -1,5 +1,6 @@
 """
-CorpWorkerRunner — AgentRunner subclass for Agent Corp workers.
+Aethvion Suite - Corp Worker Runner
+AgentRunner subclass for Agent Corp workers.
 
 Adds corp-specific tools (post_to_log, create_task, update_memory,
 read_log, read_task_board) on top of the standard agent toolkit.

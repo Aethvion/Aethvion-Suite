@@ -1,4 +1,4 @@
-// Misaka Cipher - Memory View
+// Aethvion Suite - Memory View
 // Handles interacting with the Memory Database tables
 
 async function loadMemoryData() {

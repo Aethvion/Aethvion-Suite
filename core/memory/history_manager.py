@@ -1,6 +1,6 @@
 """
-Misaka Cipher - History Manager
-Unifies chat history across different platforms (Dashboard, Discord).
+Aethvion Suite - History Manager
+Manages chat session history and thread persistence
 """
 
 import json

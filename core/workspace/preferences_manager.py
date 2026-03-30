@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Preferences Manager
+Aethvion Suite - Preferences Manager
 Manages user UI preferences and persistence to a local JSON file.
 """
 

@@ -1,14 +1,14 @@
 # Aethvion Suite - System Overview
 
-**Note: This documentation was updated on 2026-03-21 to reflect the current system state (v10).**
+**Note: This documentation was updated on 2026-03-30 to reflect the current Aethvion Suite (v11) state.**
 
 ---
 
 ## The Vibe: This Is Not Just a Chatbot
 
-Misaka Cipher (M.I.S.A.K.A. - **Multitask Intelligence & Strategic Analysis Kernel Architecture**) is fundamentally different from traditional AI assistants. Think of it less as a conversational partner and more as a **Forge for Self-Evolving Software**.
+Aethvion Suite (**M.I.S.A.K.A.** - Multitask Intelligence & Strategic Analysis Kernel Architecture) is fundamentally different from traditional AI assistants. Think of it less as a conversational partner and more as a **Forge for Self-Evolving Software**.
 
-### What Makes Misaka Cipher Different?
+### What Makes Aethvion Suite Different?
 
 **🔄 Self-Evolution at the Core**
 - The system doesn't just execute tasks—it creates its own tools to solve problems
@@ -71,7 +71,7 @@ The most revolutionary component: an autonomous system that writes its own Pytho
 6. Registers tool in system registry
 7. Tool immediately available for use
 
-**API Awareness:** Generated tools automatically inject available environment API keys (Google, OpenAI, Grok) to ensure immediate functionality.
+**API Awareness:** Generated tools automatically inject available environment API keys (Google, OpenAI, Grok, Anthropic) to ensure immediate functionality.
 
 ### 4. **The Memory Tier** - Knowledge Persistence
 Multi-tiered memory architecture for learning and context retention.
@@ -89,19 +89,19 @@ Multi-tiered memory architecture for learning and context retention.
 
 **Web Interface (Default):**
 ```bash
-python main.py
+python -m core.main
 # Access dashboard at http://localhost:8080
 # API docs at http://localhost:8080/docs
 ```
 
 **Interactive CLI:**
 ```bash
-python main.py --cli
+python -m core.main --cli
 ```
 
 **Verification Tests:**
 ```bash
-python main.py --test
+python -m core.main --test
 ```
 
 ### CLI Menu Structure
@@ -137,7 +137,7 @@ When you launch the CLI, you'll see five main options:
 
 ## The "Infinite Session" Goal
 
-Traditional AI systems handle discrete, bounded tasks. Misaka Cipher aims higher.
+Traditional AI systems handle discrete, bounded tasks. Aethvion Suite aims higher.
 
 ### Vision: Autonomous Goal Achievement
 
@@ -205,7 +205,7 @@ Result: Complete business platform, ready to launch
 
 ### 1. **Wrapper Support + Model Advancement = Exponential Progress**
 
-As AI models improve (GPT-5, Gemini 3, Claude Opus 4), Misaka Cipher automatically benefits. The wrapper provides:
+As AI models improve (GPT-5, Gemini 3, Claude Opus 4), Aethvion Suite automatically benefits. The wrapper provides:
 - Consistent interface regardless of underlying model
 - Automatic failover to best available model
 - Cost optimization through smart routing
@@ -220,7 +220,7 @@ Analyze results with GPT-4 → $$$$$
 Make decisions with GPT-4 → $$$$$
 ```
 
-Misaka Cipher approach:
+Aethvion Suite approach:
 ```
 Read 1000 files with Local Llama → $ (near zero)
 Distill insights with Flash → $
@@ -246,7 +246,7 @@ The system becomes more capable without human intervention.
 - **Vector DB**: ChromaDB (for memory embeddings)
 - **Graph Engine**: NetworkX (for knowledge relationships)
 - **Web Framework**: FastAPI + uvicorn (for dashboard with WebSocket support)
-- **Persistence**: JSON (no SQLite dependency)
+- **Persistence**: JSON-based storage (centrally managed via `data/` and `core/utils/paths.py`)
 
 ### Provider Support
 - **Google AI**: Gemini 2.0 Flash, Gemini 1.5 Pro, Imagen 3
@@ -278,7 +278,7 @@ Ready to dive in? Check out [Getting_Started.md](./Getting_Started.md) for:
 
 ## Philosophy: The Forge Metaphor
 
-Think of Misaka Cipher as a **digital forge** where:
+Think of Aethvion Suite as a **digital forge** where:
 - Raw ideas are the **ore**
 - The AI is the **blacksmith**
 - Generated tools are the **forged implements**
@@ -293,4 +293,4 @@ This is not just automation—it's **evolution**.
 
 **Need technical details?** → [AI Documentation](/documentation/ai/)
 
-**Questions?** → Check the root [README.md](/README.md) for community and support
+**Questions?** → Check the root [README.md](../../README.md) for community and support

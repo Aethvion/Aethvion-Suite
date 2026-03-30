@@ -1,5 +1,5 @@
 /**
- * Misaka Cipher — Checkers (JS)
+ * Aethvion Suite — Checkers (JS)
  * Fully Client-Side Implementation with Minimax AI
  */
 

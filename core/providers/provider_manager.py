@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Provider Manager
+Aethvion Suite - Provider Manager
 Orchestrates multi-provider failover and routing
 """
 

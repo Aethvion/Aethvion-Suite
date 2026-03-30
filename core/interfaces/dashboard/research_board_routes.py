@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Research Board of Directors API
+Aethvion Suite - Research Board of Directors API
 """
 
 from fastapi import APIRouter, HTTPException, Request

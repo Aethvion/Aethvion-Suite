@@ -1,5 +1,5 @@
-﻿"""
-Misaka Cipher - Cross-Sprint Integration Test
+"""
+Aethvion Suite - Cross-Sprint Integration Test
 Test Memory Tier integration with Factory and Forge
 """
 
@@ -24,8 +24,8 @@ logger = get_logger(__name__)
 def test_cross_sprint_integration():
     """Test memory integration with Factory and Forge."""
     
-    print("\n" + "=" * 70)
-    print("MISAKA CIPHER - CROSS-SPRINT INTEGRATION TEST")
+    print("=" * 70)
+    print("AETHVION SUITE - CROSS-SPRINT INTEGRATION TEST")
     print("Memory Tier ↔ Factory ↔ Forge")
     print("=" * 70 + "\n")
     

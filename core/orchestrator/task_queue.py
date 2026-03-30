@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Task Queue Manager
+Aethvion Suite - Task Queue Manager
 Manages async task execution with worker pool
 """
 

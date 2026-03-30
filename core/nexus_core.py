@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Nexus Core
+Aethvion Suite - Nexus Core
 Central routing, logging, and orchestration layer
 
 This is the SINGLE POINT OF ENTRY for all system interactions.
@@ -73,9 +73,7 @@ class NexusCore:
         self._initialized = False
 
         logger.info("=" * 60)
-        logger.info("MISAKA CIPHER - NEXUS CORE")
-        logger.info("M.I.S.A.K.A.: Multitask Intelligence & Strategic Analysis")
-        logger.info("          Kernel Architecture")
+        logger.info("Aethvion Suite - NEXUS CORE")
         logger.info("=" * 60)
 
     def initialize(self):

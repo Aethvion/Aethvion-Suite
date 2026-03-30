@@ -1,5 +1,5 @@
-﻿"""
-Misaka Cipher - Settings Routes
+"""
+Aethvion Suite - Settings Routes
 API endpoints for managing system settings (config/settings.json)
 """
 

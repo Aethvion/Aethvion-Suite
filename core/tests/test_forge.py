@@ -1,6 +1,6 @@
-﻿"""
-Misaka Cipher - Forge Test Script
-Test The Forge tool generation system
+"""
+Aethvion Suite - Forge Test Script
+Test ToolForge generation and registration
 """
 
 import os
@@ -22,9 +22,8 @@ logger = get_logger(__name__)
 def test_forge():
     """Test The Forge functionality."""
     
-    print("\n" + "=" * 70)
-    print("MISAKA CIPHER - SPRINT 3 VERIFICATION TEST")
-    print("THE FORGE - Tool Generation System")
+    print("=" * 70)
+    print("AETHVION SUITE - FORGE VERIFICATION TEST")
     print("=" * 70 + "\n")
     
     # Initialize Nexus Core

@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Episodic Memory
+Aethvion Suite - Episodic Memory
 Vector-based semantic memory storage using ChromaDB
 """
 
@@ -86,7 +86,7 @@ class EpisodicMemoryStore:
                     return
 
         # Get or create collection
-        collection_name = self.config.get('collection_name', 'misaka_episodic')
+        collection_name = self.config.get('collection_name', 'aethvion_episodic')
         try:
             self.collection = self.client.get_collection(name=collection_name)
             logger.info(f"Loaded existing ChromaDB collection: {collection_name}")

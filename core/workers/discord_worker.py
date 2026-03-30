@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Discord Persistent Worker
+Aethvion Suite - Discord Persistent Worker
 Persistent background service for real-time Discord communication.
 """
 

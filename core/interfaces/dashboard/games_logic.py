@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Games Engine
+Aethvion Suite - Games Engine
 Modular Loader.
 """
 

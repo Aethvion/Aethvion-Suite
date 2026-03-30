@@ -1,14 +1,14 @@
-MISAKA CIPHER - EVOLUTION LOGIC (TOOL CREATION & VALIDATION)
-Core architecture is consistent; tool implementations evolve during agentic sprints. Updated: 2026-02-25.
+AETHVION SUITE - EVOLUTION LOGIC (TOOL CREATION & VALIDATION)
+Core architecture is consistent; tool implementations evolve during agentic sprints. Updated: 2026-03-30.
 
 OVERVIEW
-The Forge is Misaka Cipher's self-evolution engine. It autonomously writes Python code to expand system capabilities. Philosophy: if the system encounters a problem it cannot solve, it creates a tool to solve it; that tool becomes part of the permanent toolkit.
+The Forge is Aethvion Suite's self-evolution engine. It autonomously writes Python code to expand system capabilities. Philosophy: if the system encounters a problem it cannot solve, it creates a tool to solve it; that tool becomes part of the permanent toolkit.
 
 TOOL CREATION PIPELINE (4 PHASES)
 Phase 1: Analysis -> Phase 2: Generation -> Phase 3: Validation -> Phase 4: Registration -> Tool Available System-Wide
 
 PHASE 1: ANALYSIS (forge/tool_forge.py::forge_tool())
-Step 1.1: Load model registry (config/model_registry.json) to know available providers, API key env vars, and model capabilities. Needed so generated tools know which APIs they can call.
+Step 1.1: Load model registry (`data/config/model_registry.json`) to know available providers, API key env vars, and model capabilities. Needed so generated tools know which APIs they can call.
 Step 1.2: Build provider context string listing providers, key env vars, and model capabilities. This prevents generated tools from using placeholder URLs or invalid API keys.
 Step 1.3: Extract tool specification via LLM analysis. LLM extracts: domain (e.g. Data, Code, Image, Math), action (e.g. Read, Write, Generate, Analyze), object (e.g. CSV, JSON, Image, File), parameters (input/output requirements). Output is ToolSpec(name, description, parameters, returns) following Aethvion Standard [Domain]_[Action]_[Object].
 Example ToolSpec output: name="Data_Analysis_CSV", description="Analyzes CSV files and returns statistics", parameters=[{name="filepath", type="str", required=True}, {name="columns", type="List[str]", required=False}], returns="Dict[str, Any]"

@@ -1,5 +1,5 @@
-﻿"""
-Misaka Cipher - Content Scanner
+"""
+Aethvion Suite - Content Scanner
 Analyzes content for restricted patterns and security threats
 """
 

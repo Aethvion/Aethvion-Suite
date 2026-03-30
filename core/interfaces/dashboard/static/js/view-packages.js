@@ -1,4 +1,4 @@
-// Misaka Cipher - Packages View
+// Aethvion Suite - Packages View
 // Handles interacting with the Package Registry table
 
 let allPackages = [];

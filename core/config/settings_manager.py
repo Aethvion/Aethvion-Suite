@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Settings Manager
+Aethvion Suite - Settings Manager
 Manages system configuration and user preferences
 """
 

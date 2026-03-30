@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Workspace Manager
+Aethvion Suite - Workspace Manager
 Manages user-facing output files in outputfiles
 """
 

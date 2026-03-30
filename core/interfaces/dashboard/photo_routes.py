@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Image Generation Routes
+Aethvion Suite - Image Generation Routes
 API endpoints for image generation via LLM providers
 """
 

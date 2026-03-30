@@ -1,5 +1,5 @@
-﻿"""
-Misaka Cipher - Package Installer Worker
+"""
+Aethvion Suite - Package Installer Worker
 Background worker for async package installation
 """
 

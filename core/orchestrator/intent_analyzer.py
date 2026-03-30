@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Intent Analyzer
+Aethvion Suite - Intent Analyzer
 Classifies user messages into actionable intents
 """
 
@@ -108,7 +108,7 @@ class IntentAnalyzer:
     
     def _build_analysis_prompt(self, user_message: str) -> str:
         """Build prompt for intent classification."""
-        return f"""You are an intent classifier for Misaka Cipher system. Analyze this user message and respond with JSON.
+        return f"""You are an intent classifier for Aethvion Suite system. Analyze this user message and respond with JSON.
 
 User Message: "{user_message}"
 

@@ -1,6 +1,6 @@
 """
 Aethvion Suite - Local Provider
-Implementation for local LLMs using llama-cpp-python
+Local LLM implementation (llama-cpp-python)
 """
 
 import os
@@ -44,7 +44,7 @@ Llama = None
 
 class LocalProvider(BaseProvider):
     """
-    Provider implementation for local models using llama-cpp-python.
+    Local provider for Aethvion Suite (private offline fallback).
     """
     
     def __init__(self, config: ProviderConfig):

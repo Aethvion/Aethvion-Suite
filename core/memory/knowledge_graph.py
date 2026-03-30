@@ -1,5 +1,5 @@
-﻿"""
-Misaka Cipher - Knowledge Graph
+"""
+Aethvion Suite - Knowledge Graph
 NetworkX-based relationship mapping for domains, tools, agents, and trace IDs
 """
 
@@ -24,8 +24,8 @@ class KnowledgeGraph:
     - Domains (Finance, Data, Security, etc.)
     - Tools (Finance_Fetch_StockPrice, etc.)
     - Agents (Data_Analyze_Dataset, etc.)
-    - Trace IDs (MCTR-20260201...)
-    - Core Insights (MCINS-20260201...)
+    - Trace IDs (ASTR-20260201...)
+    - Core Insights (ASINS-20260201...)
     """
     
     def __init__(self, storage_path: Optional[Path] = None):
@@ -134,7 +134,7 @@ class KnowledgeGraph:
         Add a Trace_ID node.
         
         Args:
-            trace_id: Trace ID (MCTR-20260201...)
+            trace_id: Trace ID (ASTR-20260201...)
             event_type: Type of event (tool_forge, agent_spawn, etc.)
             metadata: Optional metadata
         """
@@ -202,7 +202,7 @@ class KnowledgeGraph:
         Add a Core Insight and link it to originating Trace_IDs.
         
         Args:
-            insight_id: Insight ID (MCINS-20260201...)
+            insight_id: Insight ID (ASINS-20260201...)
             trace_ids: List of Trace_IDs this insight summarizes
             metadata: Optional metadata
         """

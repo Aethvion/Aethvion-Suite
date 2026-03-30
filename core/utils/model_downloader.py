@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Model Downloader
+Aethvion Suite - Model Downloader
 Handles downloading models from Hugging Face
 """
 

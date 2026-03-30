@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Validators
+Aethvion Suite - Validators
 Input validation and Aethvion naming convention enforcement
 """
 

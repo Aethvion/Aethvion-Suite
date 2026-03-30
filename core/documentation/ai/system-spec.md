@@ -1,9 +1,9 @@
-MISAKA CIPHER - SYSTEM SPECIFICATION
-Core architecture is consistent; tool implementations evolve during agentic sprints. Updated: 2026-03-21.
+AETHVION SUITE - SYSTEM SPECIFICATION
+Core architecture is consistent; tool implementations evolve during agentic sprints. Updated: 2026-03-30.
 
 SYSTEM IDENTITY
-Name: Misaka Cipher | Acronym: M.I.S.A.K.A. | Full Name: Multitask Intelligence & Strategic Analysis Kernel Architecture
-Version: v10 | Language: Python 3.10+ | Purpose: Self-evolving agentic system for autonomous tool generation and task execution
+Name: Aethvion Suite | Acronym: M.I.S.A.K.A. | Full Name: Multitask Intelligence & Strategic Analysis Kernel Architecture
+Version: v11 | Language: Python 3.10+ | Purpose: Self-evolving agentic system for autonomous tool generation and task execution
 
 DIRECTORY STRUCTURE
 main.py - entry point (CLI/Web/Test modes)
@@ -97,7 +97,7 @@ data/ - runtime data (never committed)
   data/apps/ - per-app runtime data (arena, audio, code, driveinfo, finance, games, hardwareinfo, nexus, photo, tracking, vtuber)
   data/config/ - runtime config (model_registry.json, settings.json)
   data/history/ - persistent conversation history
-    data/history/chat/ - standard Misaka chat sessions (daily JSON files)
+    data/history/chat/ - standard Misaka persona chat sessions (daily JSON files)
     data/history/ai_conversations/ - AI Conversations saves (id, name, topic, participants, messageHistory, stats, created/updated timestamps)
     data/history/advanced/ - advanced AI conversation threads
     data/history/agents/ - agent workspace thread history
@@ -118,7 +118,7 @@ localmodels/ - user-downloaded model weights (never committed)
 tests/ - test suite (test_factory.py, test_forge.py, test_memory.py, test_integration.py, test_model_selection.py)
 
 DATA FLOW ARCHITECTURE
-Entry point: main.py -> mode selection -> CLI (cli.py/MisakaCLI), Test (run_verification_tests()), or Web (core/interfaces/dashboard/server.py with FastAPI+uvicorn at http://localhost:8080)
+Entry point: main.py -> mode selection -> CLI (cli.py/AethvionCLI), Test (run_verification_tests()), or Web (core/interfaces/dashboard/server.py with FastAPI+uvicorn at http://localhost:8080)
 All requests -> nexus_core.NexusCore.route_request() [SINGLE POINT OF ENTRY]
 Nexus -> security/firewall.py [PII detection, credential scanning, routing decision]
 Routing: CLEAN -> external providers; FLAGGED -> local (roadmap) or warn; BLOCKED -> reject
@@ -129,7 +129,7 @@ Agent workspace flow: Dashboard POSTs task to /api/tasks -> task_queue creates t
 Forge flow: tool_forge.py::forge_tool(description) -> load model_registry.json -> build provider context -> analyze description via Nexus -> generate code (code_generator.py) -> validate tool (security + syntax + Aethvion) -> save to tools/generated/ -> register in tool_registry -> tool available system-wide
 Memory flow: interaction occurs -> episodic_memory.py -> generate embedding (sentence-transformers/all-MiniLM-L6-v2) -> store in ChromaDB (collection: episodic_memories) -> update knowledge graph (NetworkX) -> periodic summarization -> persist to data/vault/knowledge/graph.json
 Discord worker flow: discord_worker.py (persistent) -> receives message -> social_registry maps Discord user to internal profile -> firewall scan -> PersonaManager builds system prompt + context -> NexusCore routes request -> response sent back to Discord channel -> history_manager mirrors full exchange to daily JSON log
-Chat history flow: any platform message -> history_manager.py -> append to daily file at data/history/chat/YYYY-MM/chat_YYYY-MM-DD.json -> fields: role, content, platform, timestamp, attachments, metadata
+Chat history flow: any platform message -> history_manager.py -> append to daily file at data/history/chat/YYYY-MM/chat_YYYY-MM-DD.json -> fields: role, content, platform, timestamp, attachments, metadata; used by the Misaka persona
 AI Conversation save flow: conversation stop or turn end -> arena_routes.py saves to data/history/ai_conversations/{id}.json -> fields: id, name, topic, participants, messageHistory, stats, created_at, updated_at
 Local audio flow: client requests TTS/STT -> audio_models_routes.py -> TTSManager.get_model(model_id) -> load model if not cached -> generate TTS or transcribe STT -> return result; voice cloning reads source WAV from localmodels/audio/voices/
 Usage logging flow: any AI call (dashboard or Code IDE) -> provider logs token counts, costs, provider, model, source to data/logs/usage/YYYY-MM/usage_YYYY-MM-DD.json
@@ -177,16 +177,16 @@ Retrieval: natural language query, returns top-N similar memories (default 10), 
 Knowledge graph (NetworkX): node types: Domain, Tool, Agent, Concept, Insight; edge types: uses (Tool->Tool), spawned_by (Agent->Tool/User), related_to (Concept<->Concept), derived_from (Insight->Memory)
 Graph persistence: JSON format, file: data/vault/knowledge/graph.json, updated on every tool forge / agent spawn / memory summarization
 Core insights: triggered every N episodic memories (default 100), method: LLM summarization via Nexus Core, format: {insight_id, content, source_memories, confidence (0.0-1.0), created_at (ISO-8601)}
-Unified chat history (history_manager.py): all platform messages (Dashboard + Discord) logged to daily JSON files; fields: role, content, platform, timestamp, attachments, metadata; path: data/history/chat/YYYY-MM/chat_YYYY-MM-DD.json
+Unified chat history (history_manager.py): all platform messages (Dashboard + Discord) logged to daily JSON files; fields: role, content, platform, timestamp, attachments, metadata; path: data/history/chat/YYYY-MM/chat_YYYY-MM-DD.json; consumed by Misaka persona
 AI Conversation history (arena_routes.py): saves/loads full conversation state at data/history/ai_conversations/{id}.json; supports CRUD (list, save, load, delete, rename); fields: id, name, topic, participants, messageHistory, stats, created_at, updated_at
 Identity manager (identity_manager.py): persistent base identity at data/vault/personas/misakacipher/base_info.json; dynamic memory profile at data/vault/personas/misakacipher/memory.json
 Social registry (social_registry.py): platform-ID-to-profile mapping (Discord user IDs -> internal names + memory context); persisted to data/vault/knowledge/social.json; enables cross-platform identity resolution
 File vector store (file_vector_store.py): semantic indexing of workspace files using FastEmbed for embeddings + ChromaDB for storage; enables natural language file search within the workspace
 
-TRACE MANAGEMENT
+MISAKA PERSONA TRACE MANAGEMENT
 Format: MCTR-YYYYMMDDHHMMSS-UUID | Example: MCTR-20260218104223-a3f2c1b9
 Lifecycle: start_trace() -> generate ID -> request processing -> log to trace file -> end_trace(status) -> persist metadata to memory
-Log location: logs/trace_MCTR-[id].log
+Log location: data/logs/system/aethvion.log (trace details inline) or logs/trace_MCTR-[id].log
 Metadata fields: trace_id, start_time, end_time, status (completed|failed|blocked), request_type, provider, model, firewall_status (clean|flagged|blocked), routing_decision (external|local)
 
 SECURITY FIREWALL RULES
@@ -253,11 +253,11 @@ SECURITY-001: PII detected | SECURITY-002: credential detected | SECURITY-003: r
 
 VERSION
 CurrVersion: Current: v10 (March 2026) | History: Sprint 1-3 (Foundation), v3-v8 (Apps), v9 (Agent Workspaces, local models, Finance AI, Tracking HUD), v10 (Centralized Versioning, Financial Analyst Dashboard, Tracking Terminal Redesign)
-Breaking changes: v9 data paths migrated to data/ root (centralised via core/utils/paths.py); history moved from memory/storage/ to data/history/; vault data moved to data/vault/; localmodels paths changed from LocalModels/ to localmodels/gguf/ and localmodels/audio/
+Breaking changes: v9 data paths migrated to data/ root (centralised via core/utils/paths.py); history moved from memory/storage/ to data/history/; vault data moved to data/vault/; localmodels paths changed from LocalModels/ to localmodels/gguf/ and localmodels/audio/; v11 rebranding to Aethvion Suite.
 
 PERFORMANCE TARGETS
 Request latency: <2s (Flash), <5s (Pro) | Tool generation: <30s (simple), <120s (complex) | Agent spawn: <1s | Memory retrieval: <500ms (10 results) | Agent runner step: depends on action (file I/O <100ms, shell command variable)
 
-LAST UPDATED: 2026-03-21
+LAST UPDATED: 2026-03-30
 MAINTAINED BY: Agentic Sprint Cycles
 STABILITY: Core architecture stable, tool implementations evolve rapidly

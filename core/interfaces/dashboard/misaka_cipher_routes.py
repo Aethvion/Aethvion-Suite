@@ -1,3 +1,7 @@
+"""
+Aethvion Suite - Misaka Cipher Routes
+REST API endpoints for the chat persona interface.
+"""
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel

@@ -1,5 +1,5 @@
-﻿"""
-Misaka Cipher - Tool Registry API Routes
+"""
+Aethvion Suite - Tool Registry API Routes
 FastAPI routes for tool management operations
 """
 

@@ -1,5 +1,5 @@
-﻿"""
-Misaka Cipher - Google AI Provider
+"""
+Aethvion Suite - Google AI Provider
 Google Generative AI (Gemini) implementation
 """
 
@@ -17,7 +17,7 @@ class GoogleAIProvider(BaseProvider):
     """
     Google AI (Gemini) provider implementation.
     
-    Primary provider for Misaka Cipher system.
+    Primary provider for Aethvion Suite.
     """
     
     def __init__(self, config: ProviderConfig):

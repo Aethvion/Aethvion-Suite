@@ -1,5 +1,5 @@
 """
-Agent Corp Manager — orchestrates multiple autonomous workers as a company team.
+Aethvion Suite - Agent Corp Manager — orchestrates multiple autonomous workers as a company team.
 
 Each worker is a CorpWorkerRunner (AgentRunner subclass) with its own memory,
 role, personality and stats. Workers communicate via shared .md files (task board

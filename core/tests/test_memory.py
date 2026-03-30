@@ -1,6 +1,6 @@
-﻿"""
-Misaka Cipher - Memory Tier Complete Test
-Test all memory components: Episodic Memory, Knowledge Graph, Heartbeat
+"""
+Aethvion Suite - Memory Tier Complete Test
+Verify Episodic Memory and Knowledge Graph functionality
 """
 
 import os
@@ -27,8 +27,8 @@ def test_complete_memory_tier():
     """Test complete Memory Tier functionality."""
     
     print("\n" + "=" * 70)
-    print("MISAKA CIPHER - SPRINT 4 COMPLETE VERIFICATION")
-    print("THE MEMORY TIER - All Phases (1, 2, 3)")
+    print("AETHVION SUITE - MEMORY TIER VERIFICATION")
+    print("MEMORY TIER - All Phases (1, 2, 3)")
     print("=" * 70 + "\n")
     
     # Initialize components

@@ -1,5 +1,5 @@
 /**
- * Misaka Cipher — Particle Sphere
+ * Aethvion Suite — Particle Sphere
  * Animated 3D particle sphere rendered on a 2D canvas.
  * Reacts to AI "speaking" state with expansion, glow, and speed changes.
  * Mood-aware: color adapts via setColor().

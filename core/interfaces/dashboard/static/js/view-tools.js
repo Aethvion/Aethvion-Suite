@@ -1,4 +1,4 @@
-// Misaka Cipher - Tools View
+// Aethvion Suite - Tools View
 // Handles interacting with the Tool Registry table
 
 let allTools = [];

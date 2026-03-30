@@ -78,7 +78,7 @@ async function loadSystemStatusTab() {
 
         const sys = roadmapData.system || roadmapData;
 
-        if (nameEl) nameEl.textContent = sys.name || sys.system_name || 'Misaka Cipher';
+        if (nameEl) nameEl.textContent = sys.name || sys.system_name || 'Aethvion Suite';
         if (verEl) verEl.textContent = sys.version ? `v${sys.version}` : '';
         if (dateEl) dateEl.textContent = sys.last_sync || sys.last_update || 'Unknown';
         if (compEl) compEl.textContent = sys.company || '';

@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Games Routes
+Aethvion Suite - Games Routes
 AI-powered thinking games API.
 """
 
