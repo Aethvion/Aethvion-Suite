@@ -49,6 +49,8 @@ app.add_middleware(
 
 # --- INSTANT ACCESSIBILITY SECTION ---
 STATIC_DIR = Path(__file__).parent / "static"
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+ASSETS_DIR = PROJECT_ROOT / "assets"
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -90,6 +92,7 @@ async def shutdown_event():
 
 # Mount static files immediately
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
 
 # Global instances (initialized on startup in background)
 orchestrator = None

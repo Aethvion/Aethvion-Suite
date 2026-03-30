@@ -588,16 +588,16 @@ textarea.term-input {
     }
 }
 
-.misaka-character-container {
+.splash-logo-container {
     position: relative;
-    width: 220px;
-    height: 220px;
+    width: 240px;
+    height: 240px;
     margin-bottom: 2rem;
-    filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.3));
-    animation: float 4s ease-in-out infinite, fadeIn 1s ease-out;
+    filter: drop-shadow(0 0 30px rgba(99, 102, 241, 0.4));
+    animation: float 4s ease-in-out infinite, fadeIn 1.2s ease-out;
 }
 
-.splash-misaka {
+.splash-logo-img {
     width: 100%;
     height: 100%;
     object-fit: contain;
