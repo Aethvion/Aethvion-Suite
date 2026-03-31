@@ -6,8 +6,12 @@ API endpoints for managing the Model Registry (config/model_registry.json)
 import json
 import os
 import re
+import subprocess
 from pathlib import Path
 from typing import Dict, Any
+
+# Windows window suppression
+CREATE_NO_WINDOW = 0x08000000 if os.name == 'nt' else 0
 from fastapi import APIRouter, HTTPException, Request
 
 from core.utils import get_logger
@@ -857,7 +861,6 @@ async def save_inference_config(request: Request):
 @router.get("/local/gpu-status")
 async def get_gpu_status():
     """Report GPU availability for local inference."""
-    import subprocess as _sp
     result = {
         "llama_cuda": False,
         "cuda_available": False,
@@ -883,11 +886,12 @@ async def get_gpu_status():
 
     # 2 — Detect GPU via nvidia-smi (works on Windows without torch)
     try:
-        proc = _sp.run(
+        proc = subprocess.run(
             ["nvidia-smi",
              "--query-gpu=name,memory.total",
              "--format=csv,noheader,nounits"],
             capture_output=True, text=True, timeout=5,
+            creationflags=CREATE_NO_WINDOW
         )
         if proc.returncode == 0 and proc.stdout.strip():
             parts = [p.strip() for p in proc.stdout.strip().split(",")]
@@ -929,6 +933,7 @@ async def install_cuda_llama():
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
             env=env,
+            creationflags=CREATE_NO_WINDOW
         )
         async for raw in proc.stdout:
             line = raw.decode("utf-8", errors="replace").rstrip()

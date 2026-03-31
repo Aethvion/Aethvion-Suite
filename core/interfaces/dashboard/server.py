@@ -25,6 +25,9 @@ from core.config.settings_manager import get_settings_manager
 from core.utils.paths import WS_OUTPUTS, WS_MEDIA, WS_UPLOADS
 import psutil
 
+# Windows window suppression
+CREATE_NO_WINDOW = 0x08000000 if os.name == 'nt' else 0
+
 logger = get_logger(__name__)
 
 # Track dynamically started apps: { module_name: pid }
@@ -795,7 +798,8 @@ def _get_git_remote_head(root_dir):
             ['git', 'ls-remote', 'origin', 'HEAD'],
             cwd=str(root_dir),
             text=True,
-            stderr=subprocess.DEVNULL
+            stderr=subprocess.DEVNULL,
+            creationflags=CREATE_NO_WINDOW
         )
         if output:
             return output.split()[0][:7]  # Short hash
@@ -818,7 +822,8 @@ async def get_version_info():
             ['git', 'rev-parse', '--short', 'HEAD'],
             cwd=str(root_dir),
             text=True,
-            stderr=subprocess.DEVNULL
+            stderr=subprocess.DEVNULL,
+            creationflags=CREATE_NO_WINDOW
         ).strip()
     except Exception: pass
     
@@ -880,6 +885,7 @@ async def trigger_self_update():
                 timeout=180,          # hard cap: 3 min
                 stdin=_sp.DEVNULL,    # ← no terminal; never block on input
                 env={**os.environ},   # pass full PATH so git is always found
+                creationflags=CREATE_NO_WINDOW
             )
 
         result = await asyncio.to_thread(_run_updater)
@@ -898,7 +904,8 @@ async def trigger_self_update():
                 ['git', 'rev-parse', '--short', 'HEAD'],
                 cwd=str(root_dir),
                 text=True,
-                stderr=subprocess.DEVNULL
+                stderr=subprocess.DEVNULL,
+                creationflags=CREATE_NO_WINDOW
             ).strip()
             
             status_path = Path(__file__).parent / "static" / "assets" / "system-status.json"
@@ -980,7 +987,8 @@ async def _perform_telemetry_sync() -> Dict[str, Any]:
             ['git', 'log', '-1', '--format=%h - %s (%cr)'],
             cwd=str(root_dir),
             text=True,
-            stderr=subprocess.STDOUT
+            stderr=subprocess.STDOUT,
+            creationflags=CREATE_NO_WINDOW
         ).strip()
     except Exception:
         pass

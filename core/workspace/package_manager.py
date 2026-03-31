@@ -6,8 +6,12 @@ Manages Python package requests, approvals, and installations
 import json
 import subprocess
 import sys
+import os
 from pathlib import Path
 from dataclasses import dataclass, asdict
+
+# Windows window suppression
+CREATE_NO_WINDOW = 0x08000000 if os.name == 'nt' else 0
 from datetime import datetime
 from typing import List, Dict, Optional
 from enum import Enum
@@ -253,7 +257,8 @@ class PackageManager:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                check=False  # We check returncode manually
+                check=False,  # We check returncode manually
+                creationflags=CREATE_NO_WINDOW
             )
             
             if result.returncode == 0:
@@ -392,7 +397,8 @@ class PackageManager:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                check=True
+                check=True,
+                creationflags=CREATE_NO_WINDOW
             )
             
             installed_list = json.loads(result.stdout)
@@ -449,10 +455,12 @@ class PackageManager:
         logger.info(f"Uninstalling package: {package_name}...")
         
         try:
-            subprocess.check_call(
+            subprocess.run(
                 [sys.executable, "-m", "pip", "uninstall", "-y", package_name],
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
+                check=True,
+                creationflags=CREATE_NO_WINDOW
             )
             
             # Update status

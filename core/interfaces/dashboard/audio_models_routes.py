@@ -7,8 +7,12 @@ import base64
 import subprocess
 import sys
 import json
+import os
 from pathlib import Path
 from typing import Optional
+
+# Windows window suppression
+CREATE_NO_WINDOW = 0x08000000 if os.name == 'nt' else 0
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -337,6 +341,7 @@ async def install_packages(req: InstallRequest):
             subprocess.run,
             [sys.executable, "-m", "pip", "install"] + packages,
             capture_output=True, text=True,
+            creationflags=CREATE_NO_WINDOW
         )
         if proc.returncode != 0:
             return {"success": False, "error": proc.stderr[-2000:]}
@@ -359,6 +364,7 @@ async def install_packages_stream(req: InstallRequest):
             sys.executable, "-m", "pip", "install", *packages,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            creationflags=CREATE_NO_WINDOW
         )
         async for raw_line in proc.stdout:
             line = raw_line.decode("utf-8", errors="replace").rstrip()
