@@ -14,8 +14,8 @@ Comprehensive, user-friendly guides for humans interacting with the system.
 **Files:**
 - **[readme-overview.md](./human/readme-overview.md)** - System philosophy and architecture
   - Understanding the "vibe" of Aethvion Suite
-  - The Four Pillars (Nexus, Factory, Forge, Memory)
-  - Infinite session goals and capabilities
+  - The Four Pillars (Nexus, Workspaces, Persistent Memory, Apps)
+  - Infinite session goals and agentic workflows
   - Why this architecture matters
   
 - **[getting-started.md](./human/getting-started.md)** - Practical guide for new users
@@ -57,12 +57,10 @@ Machine-readable specifications for AI agents operating within the system.
   - Navigation tag specifications ([SwitchTab])
   - Subtab deep-linking IDs
 
-- **[evolution-logic.md](./ai/evolution-logic.md)** - Tool creation and validation
-  - The Forge pipeline (4 phases: Analysis, Generation, Validation, Registration)
-  - How the system "knows" a tool is ready
-  - Tool lifecycle management
-  - Self-improvement mechanism
-  - Quality metrics and validation feedback loop
+- **[evolution-logic.md](./ai/evolution-logic.md)** - Self-evolution strategy
+  - Shifting from static Tool Forging to dynamic Agentic Workspaces
+  - Persistent Memory Topic creation and curation
+  - Self-improvement feedback loops
 
 ---
 
@@ -208,9 +206,10 @@ Machine-readable specifications for AI agents operating within the system.
 **Key Terms Referenced in Documentation:**
 
 - **Nexus Core:** Central orchestration hub, single point of entry for all requests
-- **The Factory:** Agent spawning engine that creates transient worker agents
-- **The Forge:** Tool generation pipeline that writes Python tools autonomously
-- **The Memory Tier:** Multi-tiered persistence system (Episodic, Insights, Knowledge Graph)
+- **The Factory:** Agent execution hub that manages specialized workers in Workspaces
+- **The Forge:** [Legacy] Static tool generation pipeline for permanent Python tools
+- **Workspaces:** Dedicated filesystems for agents to perform iterative ReAct loops
+- **Persistent Memory:** Curated knowledge topics (JSON) for long-term consistency
 - **Trace ID:** Unique identifier (format: `MCTR-YYYYMMDDHHMMSS-UUID`) for request tracking
 - **Aethvion Standard:** Naming convention `[Domain]_[Action]_[Object]` for tools/agents
 - **Intelligence Firewall:** Security layer that scans for PII/credentials before external API calls
@@ -244,7 +243,7 @@ This documentation follows a **dual-tier approach**:
 
 ---
 
-**Last Updated:** 2026-03-30
+**Last Updated:** 2026-03-31
 
 **Maintained By:** Agentic Sprint Cycles + Human Contributors
 

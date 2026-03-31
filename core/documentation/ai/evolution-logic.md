@@ -1,17 +1,12 @@
-AETHVION SUITE - EVOLUTION LOGIC (TOOL CREATION & VALIDATION)
-Core architecture is consistent; tool implementations evolve during agentic sprints. Updated: 2026-03-30.
+Core architecture is consistent; self-evolution logic shifts towards Agentic Workspaces and Persistent Memory Topics. Updated: 2026-03-31.
 
 OVERVIEW
-The Forge is Aethvion Suite's self-evolution engine. It autonomously writes Python code to expand system capabilities. Philosophy: if the system encounters a problem it cannot solve, it creates a tool to solve it; that tool becomes part of the permanent toolkit.
+Self-evolution in Aethvion Suite has transitioned from static **Tool Forging** to dynamic **Agentic Problem Solving**. While the system can still autonomously write Python code files (The Forge), modern evolution occurs through agents operating in **Workspaces**, performing iterative ReAct loops, and persisting curated knowledge as **Persistent Memory Topics**.
 
-TOOL CREATION PIPELINE (4 PHASES)
-Phase 1: Analysis -> Phase 2: Generation -> Phase 3: Validation -> Phase 4: Registration -> Tool Available System-Wide
-
-PHASE 1: ANALYSIS (forge/tool_forge.py::forge_tool())
-Step 1.1: Load model registry (`data/config/model_registry.json`) to know available providers, API key env vars, and model capabilities. Needed so generated tools know which APIs they can call.
-Step 1.2: Build provider context string listing providers, key env vars, and model capabilities. This prevents generated tools from using placeholder URLs or invalid API keys.
-Step 1.3: Extract tool specification via LLM analysis. LLM extracts: domain (e.g. Data, Code, Image, Math), action (e.g. Read, Write, Generate, Analyze), object (e.g. CSV, JSON, Image, File), parameters (input/output requirements). Output is ToolSpec(name, description, parameters, returns) following Aethvion Standard [Domain]_[Action]_[Object].
-Example ToolSpec output: name="Data_Analysis_CSV", description="Analyzes CSV files and returns statistics", parameters=[{name="filepath", type="str", required=True}, {name="columns", type="List[str]", required=False}], returns="Dict[str, Any]"
+DYNAMIC EVOLUTION PATHS
+1. **Agentic Workspaces (Modern)**: Agents use the `AgentRunner` to perform multi-step tasks. Successful patterns and scripts are saved within the workspace and documented in **Persistent Memory**.
+2. **Persistent Memory Topics (Modern)**: Curated "Ground Truth" facts and logic stored as JSON topics, indexed for semantic retrieval by future agents.
+3. **The Forge Pipeline (Legacy/Static)**: Autonomous generation of permanent `.py` tools in `data/workspaces/tools/generated/`. Used for highly reusable, general-purpose capabilities.
 
 PHASE 2: GENERATION (forge/code_generator.py::generate_tool_code())
 Step 2.1: Select template. Standard tool template includes: description header, trace_id, timestamp, type imports, API imports, function name, parameters, return type, docstring with Args/Returns/Raises, try-except block, self-test in __main__.
@@ -62,10 +57,10 @@ Tool generation success rate: ~95% first-attempt (target >90%). Breakdown: ~3% f
 Tool reliability: ~99% execution success rate (target >95%).
 
 EVOLUTION SUMMARY
-The Forge enables five self-capabilities: Self-Extend (create new capabilities autonomously), Self-Improve (regenerate failed tools automatically), Self-Organize (build tool chains and pipelines), Self-Document (generate documentation for all tools), Self-Optimize (track usage and deprecate unused tools).
-Result: system becomes exponentially more capable over time without human intervention.
-Key insight: every tool forged is a permanent upgrade; better tools enable more complex tasks which require new tools which improve capability further. This is true self-evolution.
+Self-evolution now enables five integrated capabilities: **Workspace Execution** (iterative task solving), **Persistent Knowledge Hub** (curated long-term learning), **Self-Improvement** (automatic fixing of agentic scripts), **Skill Documentation** (agent-written memory topics), and **Universal Orchestration** (Nexus Core routing).
+Result: The system becomes exponentially more capable by accumulating both **Code (Tools)** and **Knowledge (Persistent Memory)**.
+Current focus: Transitioning from a "Tool-First" mindset to a "Capability-First" architecture where agents are the primary drivers of evolution.
 
-LAST UPDATED: 2026-02-25
-STATUS: Active System Documentation
-NEXT EVOLUTION: Automated tool testing, template library expansion, cross-tool optimization
+LAST UPDATED: 2026-03-31
+STATUS: Active System Documentation (v11)
+NEXT EVOLUTION: Deeper Agent-Memory integration, Cross-Workspace Knowledge Transfer, Automated Persistent Memory Refinement

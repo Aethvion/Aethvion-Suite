@@ -11,9 +11,10 @@ Aethvion Suite (**M.I.S.A.K.A.** - Multitask Intelligence & Strategic Analysis K
 ### What Makes Aethvion Suite Different?
 
 **🔄 Self-Evolution at the Core**
-- The system doesn't just execute tasks—it creates its own tools to solve problems
-- Each tool generated becomes part of the system's expanding capability set
-- The AI can spawn specialized agents, forge new tools, and update its own architecture
+- The system doesn't just execute tasks—it solves them by iteratively generating and running code in specialized **Workspaces**.
+- Dynamic agents perform multi-step ReAct loops, learning and persisting knowledge as they go.
+- The AI can spawn specialized agents, refine its own scripts, and update its memory topics autonomously.
+- **Legacy Forging**: While the system can still "forge" permanent tools, modern operations favor transient, workspace-specific capabilities.
 
 **♾️ Infinite Session Architecture**
 - Designed for long-running, autonomous loops
@@ -46,40 +47,25 @@ The absolute single point of entry for all operations. Every request, whether fr
 - Intelligence Firewall integration
 - Smart routing decisions based on task complexity and sensitivity
 
-### 2. **The Factory** - Agent Spawning Engine
-Creates transient, stateless worker agents on-demand. Each agent is purpose-built for a specific task and automatically terminates when complete.
+### 2. **The Factory & Workspaces** - Agent Execution Engine
+Creates specialized worker agents on-demand that operate within dedicated filesystem **Workspaces**. This integrates the old "Forge" logic into a more flexible, iterative execution loop.
 
 **Lifecycle:**
-1. User requests a complex task
-2. Factory analyzes requirements
-3. Spawns specialized agent with focused capabilities
-4. Agent executes task through Nexus Core
-5. Returns results and self-terminates
+1. User requests a complex goal (e.g., "Analyze this repository for security flaws")
+2. Factory analyzes requirements and selects/spawns a specialized agent
+3. Agent enters a **Workspace** (a dedicated folder with its own context and files)
+4. Agent executes a **ReAct Loop** (Reasoning + Acting: `read_file`, `write_file`, `run_command`, `done`)
+5. Results are streamed in real-time to the dashboard via SSE (Server-Sent Events)
 
-**Naming Convention:** Follows Aethvion Standard: `[Domain]_[Action]_[Object]`
-- Example: `Data_Analysis_CSV`, `Code_Generation_Python`, `System_Monitor_Health`
+### 3. **The Memory Tier** - Knowledge Persistence & Retrieval
+A multi-layered cognitive architecture ensuring that what the system learns today, it remembers tomorrow.
 
-### 3. **The Forge** - Tool Generation Pipeline
-The most revolutionary component: an autonomous system that writes its own Python tools based on natural language descriptions.
-
-**Process:**
-1. Receives tool description: "Create a tool that can analyze sentiment in text files"
-2. Analyzes requirements via Nexus Core
-3. Generates Python code with proper structure and error handling
-4. Validates against Aethvion compliance standards
-5. Performs security scanning
-6. Registers tool in system registry
-7. Tool immediately available for use
-
-**API Awareness:** Generated tools automatically inject available environment API keys (Google, OpenAI, Grok, Anthropic) to ensure immediate functionality.
-
-### 4. **The Memory Tier** - Knowledge Persistence
-Multi-tiered memory architecture for learning and context retention.
-
-**Three Memory Types:**
-- **Episodic Memory**: Raw interaction logs with semantic embeddings (ChromaDB vector storage)
-- **Core Insights**: Recursive summarization of memories into high-level facts
-- **Knowledge Graph**: NetworkX-based relationship mapping between Domains, Tools, and Agents
+**Layered Architecture:**
+- **Persistent Memory (Knowledge Hub)**: Curated, long-term topics and facts managed in the dashboard. This is the top-tier "Ground Truth".
+- **Core Insights**: Recursive summarization of interactions into high-level patterns and behavioral facts.
+- **Episodic Memory**: Raw interaction logs with semantic embeddings for vector-based search (ChromaDB).
+- **Knowledge Graph**: NetworkX-based mapping showing how domains, agents, and concepts are interlinked.
+- **File Vector Store**: Semantic indexing of workspace files for natural language searching.
 
 ---
 
@@ -255,6 +241,7 @@ The system becomes more capable without human intervention.
 - **Anthropic**: Claude (optional)
 - **Local GGUF models**: llama-cpp-python inference — place GGUF files in `localmodels/gguf/`
 - **Local Audio models**: Kokoro (TTS), XTTS-v2 (voice cloning), Whisper (STT) — place in `localmodels/audio/`
+- **Persistent Memory Hub**: Real-time management of long-term knowledge topics
 - **Local (cloud-routing replacement, roadmap)**: Ollama, vLLM
 
 ### Security Features
@@ -289,7 +276,7 @@ This is not just automation—it's **evolution**.
 
 ---
 
-**Ready to start forging?** → [Getting Started Guide](./Getting_Started.md)
+**Last Updated:** 2026-03-31
 
 **Need technical details?** → [AI Documentation](/documentation/ai/)
 

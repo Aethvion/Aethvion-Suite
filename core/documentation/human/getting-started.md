@@ -30,13 +30,13 @@ Result: $200 in API costs, but automatic execution
 User: "I need to analyze 1000 CSV files and generate insights"
 
 Aethvion Suite:
-1. Recognizes this is data processing
-2. Routes to Gemini Flash for fast, cheap bulk processing
-3. If CSV tool doesn't exist, forges one automatically
-4. Routes strategic insights to Gemini Pro
-5. Stores learning in memory for future similar tasks
+1. Recognizes this is a data processing objective.
+2. Routes to local model or Gemini Flash for fast, cheap bulk processing.
+3. Spawns an agent in a dedicated Workspace to perform the analysis iteratively.
+4. Agent documents reusable findings as a Topic in **Persistent Memory**.
+5. Routes final strategic insights to Gemini Pro.
 
-Result: Fully automatic, model-agnostic, self-improving system
+Result: Fully automatic, model-agnostic, self-improving system.
 ```
 
 **Planned Future Approach (once local model support is added):**
@@ -207,11 +207,15 @@ You'll see the main menu:
             Kernel Architecture
 ============================================================
 
-1. Nexus Core - Direct AI Interaction
-2. The Factory - Spawn Agents
-3. The Forge - Generate Tools
-4. The Memory Tier - Query Knowledge
-5. System Status - Diagnostics
+1. Nexus Core         — Direct AI Interaction
+2. The Factory        — Agent Spawning & Execution (Workspaces)
+3. The Forge          — Legacy Tool Generation [Advanced]
+4. Memory             — Query Knowledge & Persistent Memory
+5. Chat History       — Browse Unified History
+6. Advanced AI Conv.  — Research Lab
+7. LLM Arena          — Model Comparison & Leaderboard
+8. Settings           — Configuration & Providers
+9. System Status      — Diagnostics
 0. Exit
 
 Select option:
@@ -238,28 +242,22 @@ Select option:
 - Response returns with metadata
 - Interaction stored in episodic memory
 
-### Use Case 2: Forge Your First Tool
+### Use Case 2: Manage Persistent Memory
 
-**Scenario:** Create a tool to count words in text files
+**Scenario:** Save an important fact about a project for future agents to use.
 
-**Steps (CLI):**
-1. Select `3. The Forge`
-2. Choose `1. Forge New Tool`
-3. Enter description:
-   ```
-   Create a tool that counts words in text files and returns statistics 
-   including total words, unique words, and top 10 most common words
-   ```
-4. System analyzes → generates code → validates → registers
-5. Tool is now available system-wide
+**Steps (Web Dashboard):**
+1. Select the **Persistent Memory** tab.
+2. Click **Create Topic**.
+3. Enter Topic: `Project_Alpha_Architecture`.
+4. Enter Content: `The project uses a microservices architecture with a shared Redis cache.`
+5. Click **Commit**.
+6. Future agents spawned for this project will now automatically retrieve this context.
 
-**Generated Tool Example:**
-- Name: `Text_Analysis_WordCount`
-- Location: `tools/generated/text_analysis_wordcount.py`
-- Registered in: `tools/registry.json`
-- Available to: All agents, orchestrator, and manual use
-
-**Cost:** ~$0.05 (uses Gemini Flash for code generation)
+**What Happens Behind the Scenes:**
+- Topic is stored in `data/vault/knowledge/persistent_memory.json`.
+- Entry is indexed for semantic retrieval.
+- Agents injected with "Project Alpha" context will prioritize this Topic.
 
 ### Use Case 3: Spawn a Specialized Agent
 
@@ -543,11 +541,13 @@ No human intervention needed.
 
 ---
 
-**Ready to start?** Fire up the system and let's forge something amazing! 🔥
+**Ready to start?** Fire up the system and experience the power of v11! 🚀
 
 ```bash
 python -m core.main --cli
 ```
+
+**Last Updated:** 2026-03-31
 
 ---
 

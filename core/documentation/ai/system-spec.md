@@ -3,7 +3,7 @@ Core architecture is consistent; tool implementations evolve during agentic spri
 
 SYSTEM IDENTITY
 Name: Aethvion Suite | Acronym: M.I.S.A.K.A. | Full Name: Multitask Intelligence & Strategic Analysis Kernel Architecture
-Version: v11 | Language: Python 3.10+ | Purpose: Self-evolving agentic system for autonomous tool generation and task execution
+Version: v11 | Language: Python 3.10+ | Purpose: Self-evolving agentic research and execution engine with multi-tiered memory and integrated app ecosystem
 
 DIRECTORY STRUCTURE
 main.py - entry point (CLI/Web/Test modes)
@@ -40,8 +40,8 @@ factory/ - the Factory (agent spawning)
   factory/agent_registry.py - active agent tracking
   factory/agent_result.py - agent result models
   factory/agent_templates.py - pre-defined agent templates
-forge/ - the Forge (tool generation)
-  forge/tool_forge.py - main forging engine [ENTRY]
+forge/ - Legacy Forge (static tool generation)
+  forge/tool_forge.py - tool generation engine (deprecated in favor of Agentic Skill execution)
   forge/code_generator.py - Python code generation
   forge/tool_validator.py - validation and security checking
   forge/tool_registry.py - tool registration system
@@ -52,9 +52,10 @@ memory/ - the Memory Tier (knowledge persistence)
   memory/file_vector_store.py - semantic indexing and search for workspace files [FastEmbed + ChromaDB]
   memory/history_manager.py - unified chat history across platforms (Dashboard + Discord); daily JSON files
   memory/identity_manager.py - persistent system identity (base_info.json) and dynamic memory profile (memory.json)
+  memory/persistent_memory.py - Persistent Memory (long-term knowledge topics stored in JSON) [DASHBOARD KNOWLEDGE HUB]
   memory/knowledge_graph.py - relationship mapping [NetworkX]
   memory/social_registry.py - maps platform-specific IDs (Discord, etc.) to internal profiles and episodic memory context
-  memory/summarization.py - memory summarization
+  memory/summarization.py - memory summarization [Core Insights generation]
   memory/memory_spec.py - memory data models
   memory/agent_workspace_manager.py - agent workspace and thread state manager; CRUD for workspaces and threads; used by task queue for agent context injection
 providers/ - provider abstraction layer
@@ -106,7 +107,7 @@ data/ - runtime data (never committed)
   data/system/ - lock file, launcher log, ports registry
   data/vault/ - persistent brain (personas, knowledge graph, episodic memory, search)
     data/vault/personas/misakacipher/ - base_info.json (identity), memory.json (dynamic profile), threads/
-    data/vault/knowledge/ - graph.json (NetworkX), social.json (social registry), insights.json
+    data/vault/knowledge/ - graph.json (NetworkX), social.json (social registry), insights.json, persistent_memory.json (long-term knowledge topics)
   data/workspaces/ - outputs, uploads, tools, media, projects, preferences.json, packages.json, files.json
 localmodels/ - user-downloaded model weights (never committed)
   localmodels/gguf/ - GGUF chat models (llama.cpp inference)
@@ -123,11 +124,11 @@ All requests -> nexus_core.NexusCore.route_request() [SINGLE POINT OF ENTRY]
 Nexus -> security/firewall.py [PII detection, credential scanning, routing decision]
 Routing: CLEAN -> external providers; FLAGGED -> local (roadmap) or warn; BLOCKED -> reject
 External path -> providers/provider_manager.py -> provider selection + failover -> Google/OpenAI/Grok -> Response -> Trace Logging -> Memory Storage -> Return to User
-Orchestrator flow (web): Web Chat Input -> orchestrator/master_orchestrator.py -> intent_analyzer.py [detect: chat/tool/agent/memory] -> action plan [Chat/Tool/Agent] -> [Nexus/Forge/Factory] -> Execution -> Validation -> Memory Recording -> Response
-Factory flow: agent_factory.py::spawn(spec) -> validate Aethvion naming -> check resource limits (max 10 concurrent) -> create agent instance -> register in registry -> agent executes via Nexus -> agent returns result -> agent self-terminates -> unregister
+Orchestrator flow (web): Web Chat Input -> orchestrator/master_orchestrator.py -> intent_analyzer.py [detect: chat/agent/memory/app] -> action plan [Chat/Agent/App] -> [Nexus/Factory/Workspace] -> Execution -> Validation -> Memory Recording -> Response
+Factory flow: agent_factory.py::spawn(spec) -> validate Aethvion naming -> check resource limits (max 10 concurrent) -> create agent instance -> register in registry -> [LEGACY path]: agent executes via Nexus; [MODERN path]: agent assigned to Workspace Thread -> [AgentRunner] executes ReAct loop -> self-terminates -> unregister
 Agent workspace flow: Dashboard POSTs task to /api/tasks -> task_queue creates task with workspace context -> AgentWorkspaceManager injects workspace folder path -> AgentRunner executes ReAct loop (read_file/write_file/list_dir/run_command/done actions) -> each step emitted to agent_events.py store -> client streams steps via SSE GET /api/tasks/{task_id}/events -> completed steps saved to data/history/agents/{workspace_id}/{thread_id}.json
-Forge flow: tool_forge.py::forge_tool(description) -> load model_registry.json -> build provider context -> analyze description via Nexus -> generate code (code_generator.py) -> validate tool (security + syntax + Aethvion) -> save to tools/generated/ -> register in tool_registry -> tool available system-wide
-Memory flow: interaction occurs -> episodic_memory.py -> generate embedding (sentence-transformers/all-MiniLM-L6-v2) -> store in ChromaDB (collection: episodic_memories) -> update knowledge graph (NetworkX) -> periodic summarization -> persist to data/vault/knowledge/graph.json
+Forge flow (Legacy): tool_forge.py::forge_tool(description) -> code_generator.py -> tool_validator.py -> save to data/workspaces/tools/generated/ -> register in tools/registry.json; Tools in this directory are available system-wide but static.
+Memory flow: interaction occurs -> episodic_memory.py -> store in ChromaDB -> [Periodic Job]: summarization.py generates Core Insights -> [User/AI]: persistent_memory.py manages long-term topics -> [System]: update knowledge graph (NetworkX)
 Discord worker flow: discord_worker.py (persistent) -> receives message -> social_registry maps Discord user to internal profile -> firewall scan -> PersonaManager builds system prompt + context -> NexusCore routes request -> response sent back to Discord channel -> history_manager mirrors full exchange to daily JSON log
 Chat history flow: any platform message -> history_manager.py -> append to daily file at data/history/chat/YYYY-MM/chat_YYYY-MM-DD.json -> fields: role, content, platform, timestamp, attachments, metadata; used by the Misaka persona
 AI Conversation save flow: conversation stop or turn end -> arena_routes.py saves to data/history/ai_conversations/{id}.json -> fields: id, name, topic, participants, messageHistory, stats, created_at, updated_at
@@ -258,6 +259,6 @@ Breaking changes: v9 data paths migrated to data/ root (centralised via core/uti
 PERFORMANCE TARGETS
 Request latency: <2s (Flash), <5s (Pro) | Tool generation: <30s (simple), <120s (complex) | Agent spawn: <1s | Memory retrieval: <500ms (10 results) | Agent runner step: depends on action (file I/O <100ms, shell command variable)
 
-LAST UPDATED: 2026-03-30
+LAST UPDATED: 2026-03-31
 MAINTAINED BY: Agentic Sprint Cycles
 STABILITY: Core architecture stable, tool implementations evolve rapidly
