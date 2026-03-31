@@ -16,6 +16,9 @@ data/*
 knowledge_graph.json
 core_insights.json
 
+# Ignore log files created at runtime.
+*.log
+
 # Ignore tools created by Misaka at runtime; users should forge their own.
 tools/generated/*
 tools/registry.json
