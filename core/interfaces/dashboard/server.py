@@ -302,9 +302,6 @@ async def initialize_system_background():
         # Step 3: Start Workers (Must happen on event loop for async workers)
         startup_status["status"] = "Connecting Workers..."
         startup_status["progress"] = 80
-        from workers.package_installer import get_installer_worker
-        installer_worker = get_installer_worker()
-        installer_worker.start()
         
         from core.orchestrator.task_queue import get_task_queue_manager
         task_manager = get_task_queue_manager(orchestrator, max_workers=4)
