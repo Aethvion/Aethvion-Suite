@@ -933,9 +933,6 @@ function switchMainTab(tabName, save = true) {
         loadDocumentation();
     }
 
-    // Update layout based on mode
-    updateChatLayout();
-
     // Restore scroll position for the new tab
     _restoreTabScroll(actualTabName);
 
@@ -976,12 +973,7 @@ function ensureTabAndSubTab(mainTab, subTab = null) {
 // Attach to window
 window.ensureTabAndSubTab = ensureTabAndSubTab;
 
-function updateChatLayout() {
-    const layout = document.querySelector('.three-column-layout');
-    if (!layout) return;
-    layout.classList.add('agents-collapsed');
-    layout.style.gridTemplateColumns = '';
-}
+
 
 /**
  * Launches an Aethvion module in a new tab by looking up its registered port.

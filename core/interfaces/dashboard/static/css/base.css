@@ -1321,10 +1321,6 @@ kbd {
         --col-threads: 220px;
     }
 
-    .three-column-layout:not(.agents-collapsed) {
-        --col-agents: 260px;
-    }
-
     .main-panel {
         padding: 0.75rem;
     }

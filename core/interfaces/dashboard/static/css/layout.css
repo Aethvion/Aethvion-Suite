@@ -1,25 +1,17 @@
 /* ===== Modern Dashboard Layout ===== */
 
-/* 4-Column Layout (Chat Tab with Threads) */
-/* Columns: threads | handle | chat | handle | agents */
+/* 3-Column Layout (Chat Tab with Threads) */
+/* Columns: threads | handle | chat */
 .three-column-layout {
     display: grid;
-    grid-template-columns: var(--col-threads, 260px) 4px 1fr 4px var(--col-agents, 320px);
+    grid-template-columns: var(--col-threads, 260px) 4px 1fr;
     height: 100%;
     gap: 0;
     padding: 0;
 }
 
 .three-column-layout.threads-collapsed {
-    grid-template-columns: 0 0 1fr 4px var(--col-agents, 320px);
-}
-
-.three-column-layout.agents-collapsed {
-    grid-template-columns: var(--col-threads, 260px) 4px 1fr 0 0;
-}
-
-.three-column-layout.threads-collapsed.agents-collapsed {
-    grid-template-columns: 0 0 1fr 0 0;
+    grid-template-columns: 0 0 1fr;
 }
 
 .three-column-layout.threads-collapsed .threads-column,
@@ -32,27 +24,7 @@
     padding: 0;
 }
 
-.three-column-layout.agents-collapsed .agents-column,
-.three-column-layout.agents-collapsed #resize-chat-agents {
-    width: 0;
-    overflow: hidden;
-    pointer-events: none;
-    border: none;
-    margin: 0;
-    padding: 0;
-}
 
-.three-column-layout .column {
-    border-radius: 0;
-    border-top: none;
-    border-bottom: none;
-    border-right: none;
-    box-shadow: none;
-}
-
-.agents-column {
-    border-left: 1px solid var(--border);
-}
 
 .column {
     background: rgba(15, 15, 19, 0.4);
@@ -436,10 +408,7 @@
     color: var(--text-primary);
 }
 
-/* Agents Column */
-.agents-column {
-    background: rgba(9, 9, 11, 0.5);
-}
+
 
 .agents-list {
     padding: 1rem;
