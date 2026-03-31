@@ -274,3 +274,36 @@
         box-shadow: 0 0 8px var(--primary);
     }
 }
+.chat-date-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 2.5rem 0 1.5rem;
+    position: relative;
+    user-select: none;
+}
+
+.chat-date-divider::before {
+    content: '';
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border), transparent);
+    z-index: 1;
+}
+
+.chat-date-divider span {
+    background: #141419; /* Slightly darker than column to pop */
+    padding: 0.4rem 1.1rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}

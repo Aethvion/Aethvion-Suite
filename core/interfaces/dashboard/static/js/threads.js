@@ -271,7 +271,20 @@ function renderThreadMessages() {
     const messages = threadMessages[currentThreadId] || [];
 
     // Render each message
+    let lastDate = null;
     messages.forEach(msg => {
+        // Date Divider
+        const timestamp = msg.timestamp || new Date().toISOString();
+        const msgDateStr = new Date(timestamp).toDateString();
+        if (msgDateStr !== lastDate) {
+            const divider = document.createElement('div');
+            divider.className = 'chat-date-divider';
+            const displayDate = msgDateStr === new Date().toDateString() ? 'Today' : msgDateStr;
+            divider.innerHTML = `<span>${displayDate}</span>`;
+            chatMessages.appendChild(divider);
+            lastDate = msgDateStr;
+        }
+
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${msg.role}-message`;
         if (msg.taskId) {
@@ -290,7 +303,7 @@ function renderThreadMessages() {
 }
 
 // Add message to specific thread
-function addMessageToThread(threadId, role, content, taskId = null, taskData = null, attachments = null) {
+function addMessageToThread(threadId, role, content, taskId = null, taskData = null, attachments = null, timestamp = null) {
     // Ensure thread message storage exists
     if (!threadMessages[threadId]) {
         threadMessages[threadId] = [];
@@ -436,7 +449,7 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
         taskId: taskId,
         taskData: taskData,
         html: html,
-        timestamp: new Date().toISOString()
+        timestamp: timestamp || new Date().toISOString()
     });
 
     try {
@@ -468,15 +481,19 @@ async function loadThreadMessages(threadId) {
 
         // Load tasks and their results
         if (data.tasks && data.tasks.length > 0) {
-            data.tasks.forEach(task => {
+            // Sort by created_at asc for flow
+            const sortedTasks = [...data.tasks].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            
+            sortedTasks.forEach(task => {
+                const ts = task.created_at || task.updated_at;
                 // Add user message
-                addMessageToThread(threadId, 'user', task.prompt, task.id);
+                addMessageToThread(threadId, 'user', task.prompt, task.id, null, null, ts);
 
                 // Add assistant response if completed
                 if (task.status === 'completed' && task.result) {
-                    addMessageToThread(threadId, 'assistant', task.result.response, task.id, task);
+                    addMessageToThread(threadId, 'assistant', task.result.response, task.id, task, null, task.updated_at || ts);
                 } else if (task.status === 'failed') {
-                    addMessageToThread(threadId, 'error', `Task failed: ${task.error}`, task.id);
+                    addMessageToThread(threadId, 'error', `Task failed: ${task.error}`, task.id, null, null, task.updated_at || ts);
                 }
             });
         }
@@ -512,6 +529,23 @@ function relativeTime(dateStr) {
     return new Date(dateStr).toLocaleDateString();
 }
 
+function getThreadGroupName(dateStr) {
+    if (!dateStr) return 'Unknown';
+    const target = new Date(dateStr);
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const targetTimestamp = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
+    const diffMs = todayMidnight - targetTimestamp;
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 0) return 'Today';
+    if (diffDays < 3) return 'Past 3 days';
+    if (diffDays < 7) return 'Past week';
+    if (diffDays < 30) return 'Past month';
+    if (diffDays < 365) return 'Past year';
+    return 'More than a year';
+}
+
 // ─── Thread search wiring (called once after DOM ready) ───────────
 function initThreadSearch() {
     const input = document.getElementById('threads-search');
@@ -523,25 +557,47 @@ function initThreadSearch() {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
             const q = input.value.trim().toLowerCase();
-            let visible = 0;
+            let visibleTotal = 0;
+            
+            // First hide all headers
+            const headers = document.querySelectorAll('.thread-group-header');
+            headers.forEach(h => h.style.display = 'none');
+
             document.querySelectorAll('.thread-item').forEach(item => {
                 const title   = (item.querySelector('.thread-title')?.textContent   || '').toLowerCase();
                 const preview = (item.querySelector('.thread-preview')?.textContent || '').toLowerCase();
                 const show    = !q || title.includes(q) || preview.includes(q);
                 item.style.display = show ? '' : 'none';
-                if (show) visible++;
+                
+                if (show) {
+                    visibleTotal++;
+                    // Find the preceding header and show it
+                    let sibling = item.previousElementSibling;
+                    while (sibling) {
+                        if (sibling.classList.contains('thread-group-header')) {
+                            sibling.style.display = '';
+                            break;
+                        }
+                        sibling = sibling.previousElementSibling;
+                    }
+                }
             });
+
             // Show empty state if nothing matches
             let noResults = document.getElementById('threads-no-results');
-            if (!noResults) {
-                noResults = document.createElement('div');
-                noResults.id = 'threads-no-results';
-                noResults.className = 'threads-empty-state';
-                noResults.innerHTML = '<i class="fas fa-search"></i><span>No threads match</span>';
-                document.getElementById('threads-list')?.appendChild(noResults);
+            if (visibleTotal === 0 && q) {
+                if (!noResults) {
+                    noResults = document.createElement('div');
+                    noResults.id = 'threads-no-results';
+                    noResults.className = 'threads-empty-state';
+                    noResults.innerHTML = '<i class="fas fa-search"></i><span>No threads match</span>';
+                    document.getElementById('threads-list')?.appendChild(noResults);
+                }
+                noResults.style.display = 'flex';
+            } else if (noResults) {
+                noResults.style.display = 'none';
             }
-            noResults.style.display = (q && visible === 0) ? 'flex' : 'none';
-        }, 280);
+        }, 150);
     });
 
     // Clear search when clicking outside or switching tabs
@@ -564,7 +620,30 @@ function renderThreadList() {
         return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at);
     });
 
+    let lastGroupName = '';
+
     sortedThreads.forEach(thread => {
+        // Grouping Dividers (only for non-pinned or first group of non-pinned)
+        if (!thread.is_pinned) {
+            const groupName = getThreadGroupName(thread.updated_at || thread.created_at);
+            if (groupName !== lastGroupName) {
+                const divider = document.createElement('div');
+                divider.className = 'thread-group-header';
+                divider.textContent = groupName;
+                threadsList.appendChild(divider);
+                lastGroupName = groupName;
+            }
+        } else {
+             // For pinned threads, display only 'Pinned' header once
+             if (lastGroupName !== 'Pinned') {
+                const divider = document.createElement('div');
+                divider.className = 'thread-group-header';
+                divider.innerHTML = '<i class="fas fa-thumbtack"></i> Pinned';
+                threadsList.appendChild(divider);
+                lastGroupName = 'Pinned';
+             }
+        }
+
         // Clone template
         const clone = template.content.cloneNode(true);
         const threadItem = clone.querySelector('.thread-item');
@@ -589,10 +668,6 @@ function renderThreadList() {
             previewEl.textContent = previewText;
             previewEl.title = previewText;   // tooltip for truncated preview
         }
-
-        // Relative date
-        const date = relativeTime(thread.updated_at || thread.created_at);
-        clone.querySelector('.thread-date').textContent = date;
 
         // Pin State Visuals
         if (thread.is_pinned) {

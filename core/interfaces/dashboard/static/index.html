@@ -686,15 +686,9 @@
 
                     <template id="thread-item-template">
                         <div class="thread-item">
-                            <div class="thread-header-row">
-                                <div class="thread-info">
-                                    <div class="thread-title"></div>
-                                    <div class="thread-preview"></div>
-                                    <div class="thread-meta">
-                                        <span class="thread-date"></span>
-                                    </div>
-                                </div>
-                                <div class="thread-actions" style="display: flex; gap: 0.2rem;">
+                            <div class="thread-line-1">
+                                <span class="thread-title"></span>
+                                <div class="thread-actions">
                                     <button class="thread-action-btn pin-btn" title="Pin thread" aria-label="Pin thread">
                                         <i class="fas fa-thumbtack" aria-hidden="true"></i>
                                     </button>
@@ -705,6 +699,9 @@
                                         <i class="fas fa-trash" aria-hidden="true"></i>
                                     </button>
                                 </div>
+                            </div>
+                            <div class="thread-line-2">
+                                <div class="thread-preview"></div>
                             </div>
                         </div>
                     </template>
