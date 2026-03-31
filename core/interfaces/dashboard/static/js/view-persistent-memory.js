@@ -2,29 +2,47 @@
 // Handles management of the cross-thread persistent JSON memory store.
 
 const PersistentMemory = {
+    isInitializing: false,
+    lastLoadTime: 0,
+
     async init() {
-        console.log("PersistentMemory: Initializing...");
-        await this.load();
+        if (this.isInitializing) return;
         
-        // Refresh button
-        const refreshBtn = document.getElementById('refresh-persistent-memory-btn');
-        if (refreshBtn) {
-            refreshBtn.onclick = () => this.load();
+        // Don't re-init if loaded within last 2 seconds (debounce)
+        if (Date.now() - this.lastLoadTime < 2000) return;
+
+        console.log("[PersistentMemory] Initializing visualization...");
+        this.isInitializing = true;
+        
+        try {
+            await this.load();
+        } finally {
+            this.isInitializing = false;
         }
     },
 
     async load() {
         const grid = document.getElementById('persistent-memory-grid');
-        if (grid) grid.innerHTML = '<div class="loading-placeholder">Loading topics...</div>';
+        if (grid) grid.innerHTML = '<div class="loading-placeholder">Searching neural nodes...</div>';
 
+        console.log("[PersistentMemory] Fetching from API...");
         try {
             const response = await fetch('/api/memory/persistent');
-            if (!response.ok) throw new Error("Failed to load persistent memory");
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
+            
+            console.log(`[PersistentMemory] Received ${Object.keys(data).length} topics`);
+            this.lastLoadTime = Date.now();
             this.render(data);
         } catch (err) {
-            console.error("PersistentMemory load error:", err);
-            if (grid) grid.innerHTML = `<p class="error-text">Error: ${err.message}</p>`;
+            console.error("[PersistentMemory] load error:", err);
+            if (grid) grid.innerHTML = `
+                <div class="error-notice" style="padding: 2rem; text-align: center; color: var(--error);">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <p>Failed to retrieve persistent memory.</p>
+                    <small style="opacity: 0.7;">${err.message}</small>
+                </div>
+            `;
         }
     },
 
@@ -32,13 +50,20 @@ const PersistentMemory = {
         const grid = document.getElementById('persistent-memory-grid');
         if (!grid) return;
 
+        if (!memory || typeof memory !== 'object') {
+            console.warn("[PersistentMemory] Received invalid memory data:", memory);
+            return;
+        }
+
         const topics = Object.keys(memory).sort();
+        this.updateStats(memory);
+
         if (topics.length === 0) {
             grid.innerHTML = `
-                <div class="empty-state-notice" style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px dashed var(--border);">
-                    <i class="fas fa-brain" style="font-size: 3rem; opacity: 0.2; margin-bottom: 1rem;"></i>
-                    <h3>No persistent insights found</h3>
-                    <p style="color: var(--text-secondary);">The AI will populate this as it learns from your conversations.</p>
+                <div class="empty-state-notice" style="grid-column: 1 / -1; text-align: center; padding: 4rem; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px dashed var(--border); margin: 1rem;">
+                    <i class="fas fa-brain" style="font-size: 3.5rem; opacity: 0.15; margin-bottom: 1.5rem; display: block;"></i>
+                    <h3 style="font-family: 'Orbitron', sans-serif; letter-spacing: 1px; color: var(--text-primary);">No persistent insights indexed yet</h3>
+                    <p style="color: var(--text-tertiary); max-width: 400px; margin: 1rem auto; font-size: 0.9rem;">As you interact with the AI, important facts and preferences will be distilled into this long-term knowledge base.</p>
                 </div>
             `;
             return;
@@ -46,43 +71,78 @@ const PersistentMemory = {
 
         grid.innerHTML = topics.map(topic => {
             const data = memory[topic];
-            const content = typeof data === 'object' ? (data.content || '') : data;
-            const updated = typeof data === 'object' ? data.updated_at : null;
+            // Support both old string format and new object format
+            const content = (data && typeof data === 'object') ? (data.content || '') : String(data || '');
+            const updated = (data && typeof data === 'object') ? data.updated_at : null;
             const safeTopic = topic.replace(/"/g, '&quot;');
             
+            const updatedStr = updated ? new Date(updated).toLocaleString('en-GB', { 
+                day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' 
+            }) : 'Historical';
+
             return `
-                <div class="memory-card" data-topic="${safeTopic}" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column;">
-                    <div class="card-header" style="padding: 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.1);">
-                        <div>
-                            <h4 style="margin: 0; color: var(--primary); font-family: 'Orbitron', sans-serif; font-size: 0.9rem;">${topic}</h4>
-                            ${updated ? `<div style="font-size: 0.7rem; color: var(--text-tertiary); margin-top: 4px;">Last updated: ${new Date(updated).toLocaleString()}</div>` : ''}
+                <div class="memory-card" data-topic="${safeTopic}" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden; position: relative;">
+                    <div class="card-header" style="padding: 1.2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; background: rgba(255,255,255,0.02);">
+                        <div style="flex: 1; padding-right: 12px;">
+                            <h4 style="margin: 0; color: var(--primary); font-family: 'Orbitron', sans-serif; font-size: 0.85rem; line-height: 1.4; word-break: break-all; letter-spacing: 0.5px;">${topic}</h4>
+                            <div style="font-size: 0.68rem; color: var(--text-tertiary); margin-top: 6px; display: flex; gap: 12px; align-items: center; font-family: 'Fira Code', monospace;">
+                                <span><i class="far fa-clock" style="margin-right: 4px;"></i>${updatedStr}</span>
+                                <span><i class="fas fa-hashtag" style="margin-right: 4px;"></i>${content.length} chars</span>
+                            </div>
                         </div>
-                        <div class="card-actions">
-                            <button class="icon-btn xs-btn edit-btn" onclick="PersistentMemory.editTopic('${safeTopic}')" title="Edit Topic"><i class="fas fa-edit"></i></button>
-                            <button class="icon-btn xs-btn danger delete-btn" onclick="PersistentMemory.deleteTopic('${safeTopic}')" title="Delete Topic"><i class="fas fa-trash-alt"></i></button>
+                        <div class="card-actions" style="display: flex; gap: 6px;">
+                            <button class="icon-btn xs-btn edit-btn" onclick="PersistentMemory.editTopic('${safeTopic}')" title="Modify Knowledge"><i class="fas fa-pen-nib"></i></button>
+                            <button class="icon-btn xs-btn danger delete-btn" onclick="PersistentMemory.deleteTopic('${safeTopic}')" title="Prune Insight"><i class="fas fa-trash-alt"></i></button>
                         </div>
                     </div>
-                    <div class="card-body" style="padding: 1rem; flex: 1; max-height: 300px; overflow-y: auto; font-size: 0.85rem; line-height: 1.5; color: var(--text-secondary); white-space: pre-wrap;">${content}</div>
+                    <div class="card-body" style="padding: 1.5rem; flex: 1; max-height: 350px; overflow-y: auto; font-size: 0.88rem; line-height: 1.7; color: var(--text-secondary); white-space: pre-wrap; font-family: 'Inter', sans-serif; scrollbar-width: thin;">${content.trim()}</div>
                 </div>
             `;
         }).join('');
     },
 
+    formatContent(content) {
+        return content.trim();
+    },
+
+    updateStats(memory) {
+        const topics = Object.keys(memory);
+        const count = topics.length;
+        let totalChars = 0;
+        
+        topics.forEach(t => {
+            const data = memory[t];
+            const content = (data && typeof data === 'object') ? (data.content || '') : String(data || '');
+            totalChars += content.length;
+        });
+
+        const estTokens = Math.ceil(totalChars / 3.75);
+        const totalSizeKB = (totalChars / 1024).toFixed(1);
+
+        const countEl = document.getElementById('pm-stat-count');
+        const sizeEl = document.getElementById('pm-stat-size');
+        const tokensEl = document.getElementById('pm-stat-tokens');
+
+        if (countEl) countEl.innerText = count;
+        if (sizeEl) sizeEl.innerText = `${totalSizeKB} KB`;
+        if (tokensEl) tokensEl.innerText = estTokens.toLocaleString();
+    },
+
     async deleteTopic(topic) {
-        if (!confirm(`Are you sure you want to delete "${topic}"?`)) return;
+        if (!confirm(`Permanently remove insight "${topic}" from neural memory?`)) return;
 
         try {
             const response = await fetch(`/api/memory/persistent/${encodeURIComponent(topic)}`, {
                 method: 'DELETE'
             });
             if (response.ok) {
-                showToast(`Deleted topic: ${topic}`, 'info');
+                showToast(`Pruned topic: ${topic}`, 'info');
                 await this.load();
             } else {
-                throw new Error("Delete failed");
+                throw new Error("Delete operation failed");
             }
         } catch (err) {
-            showToast("Failed to delete topic: " + err.message, 'error');
+            showToast("Failed to prune topic: " + err.message, 'error');
         }
     },
 
@@ -93,22 +153,24 @@ const PersistentMemory = {
         const body = card.querySelector('.card-body');
         const currentContent = body.innerText;
 
-        // Replace body with textarea
+        card.classList.add('editing');
+
         body.innerHTML = `
-            <textarea style="width: 100%; height: 200px; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--primary); border-radius: 4px; padding: 0.5rem; font-family: inherit; font-size: 0.85rem; outline: none; resize: vertical;">${currentContent}</textarea>
+            <textarea style="width: 100%; min-height: 250px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid var(--primary); border-radius: 6px; padding: 1rem; font-family: 'Fira Code', monospace; font-size: 0.85rem; outline: none; resize: vertical; line-height: 1.6; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);">${currentContent}</textarea>
+            <div style="margin-top: 12px; font-size: 0.72rem; color: var(--text-tertiary); font-style: italic; background: rgba(99, 102, 241, 0.05); padding: 8px; border-radius: 4px; border-left: 2px solid var(--primary);">
+                <i class="fas fa-info-circle"></i> Direct neural modification will synchronize across all active AI instances.
+            </div>
         `;
 
-        // Change actions to Save/Cancel
         const actions = card.querySelector('.card-actions');
-        const originalHtml = actions.innerHTML;
         actions.innerHTML = `
-            <button class="icon-btn xs-btn primary save-btn" onclick="PersistentMemory.saveTopic('${topic.replace(/"/g, '&quot;')}')" title="Save"><i class="fas fa-save"></i></button>
-            <button class="icon-btn xs-btn secondary cancel-btn" onclick="PersistentMemory.cancelEdit('${topic.replace(/"/g, '&quot;')}', \`${currentContent.replace(/`/g, '\\`').replace(/\${/g, '\\${')}\`)" title="Cancel"><i class="fas fa-times"></i></button>
+            <button class="action-btn sm-btn primary save-btn" onclick="PersistentMemory.saveTopic('${topic.replace(/"/g, '&quot;')}')"><i class="fas fa-save"></i> Commit</button>
+            <button class="action-btn sm-btn secondary cancel-btn" onclick="PersistentMemory.cancelEdit('${topic.replace(/"/g, '&quot;')}')"><i class="fas fa-times"></i> Revert</button>
         `;
     },
 
-    cancelEdit(topic, content) {
-        this.load(); // Quickest way to reset
+    cancelEdit(topic) {
+        this.load();
     },
 
     async saveTopic(topic) {
@@ -126,33 +188,42 @@ const PersistentMemory = {
             });
 
             if (response.ok) {
-                showToast(`Updated topic: ${topic}`, 'success');
+                showToast(`Synchronized insight: ${topic}`, 'success');
                 await this.load();
             } else {
-                throw new Error("Update failed");
+                const errData = await response.json();
+                throw new Error(errData.detail || "Update synchronized failure");
             }
         } catch (err) {
-            showToast("Failed to update topic: " + err.message, 'error');
+            showToast("Sync error: " + err.message, 'error');
         }
     }
 };
 
-// Hook into the main tabs
+// Global hook for tab switching
 document.addEventListener('DOMContentLoaded', () => {
-    // We listen for tab switches
+    const panel = document.getElementById('persistent-memory-panel');
+    if (!panel) return;
+
+    // Listen for tab switching (class changes in core.js)
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
-            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                const panel = mutation.target;
-                if (panel.id === 'persistent-memory-panel' && panel.style.display !== 'none') {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                if (panel.classList.contains('active')) {
                     PersistentMemory.init();
                 }
             }
         });
     });
 
-    const panel = document.getElementById('persistent-memory-panel');
-    if (panel) {
-        observer.observe(panel, { attributes: true });
+    observer.observe(panel, { attributes: true });
+
+    // One-time check on load
+    if (panel.classList.contains('active')) {
+        setTimeout(() => PersistentMemory.init(), 100);
     }
+
+    // Refresh button hook
+    const refreshBtn = document.getElementById('refresh-persistent-memory-btn');
+    if (refreshBtn) refreshBtn.onclick = () => PersistentMemory.load();
 });

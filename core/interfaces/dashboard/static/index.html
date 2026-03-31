@@ -1852,7 +1852,12 @@
                         </button>
                     </div>
                 </div>
-                <div class="panel-content" style="padding: 1.5rem; overflow-y: auto; height: calc(100% - 70px);">
+                <div class="memory-stats-bar" id="persistent-memory-stats" style="padding: 0.8rem 1.5rem; background: rgba(0,217,255,0.05); border-bottom: 1px solid var(--border); display: flex; gap: 2rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    <div class="stat-item">Entries: <strong id="pm-stat-count">0</strong></div>
+                    <div class="stat-item">Total Size: <strong id="pm-stat-size">0 KB</strong></div>
+                    <div class="stat-item">Est. Tokens: <strong id="pm-stat-tokens">0</strong></div>
+                </div>
+                <div class="panel-content" style="padding: 1.5rem; overflow-y: auto; height: calc(100% - 110px);">
                     <div class="memory-grid" id="persistent-memory-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;">
                         <!-- Topic cards will be injected here -->
                         <div class="loading-placeholder">Loading persistent memory topics...</div>
@@ -3975,8 +3980,7 @@
             <!-- Views (Passive Data Renderers) -->
             <script src="/static/js/view-files.js?v=5"></script>
             <script src="/static/js/view-memory.js?v=5"></script>
-            <script src="/static/js/view-tools.js?v=5"></script>
-            <script src="/static/js/view-packages.js?v=5"></script>
+            <script src="/static/js/view-persistent-memory.js?v=__VNUM__"></script>
             <script src="/static/js/view-usage.js?v=5"></script>
             <script src="/static/js/view-status.js?v=5"></script>
             <script src="/static/js/view-settings.js?v=5"></script>
@@ -3984,7 +3988,6 @@
             <script src="/static/js/view-models.js?v=5"></script>
             <script src="/static/js/view-audio-models.js?v=__VNUM__"></script>
             <script src="/static/js/view-ports.js?v=5"></script>
-            <script src="/static/js/view-persistent-memory.js?v=__VNUM__"></script>
 
             <!-- Modes (Active Interactive Panels) -->
             <script src="/static/js/mode-photo.js?v=5"></script>
