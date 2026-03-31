@@ -52,6 +52,11 @@ class PreferencesManager:
                     "hide_agents_panel": False,
                     "hide_system_logs": False
                 },
+                "assistant": {
+                    "enabled": False,
+                    "typing_speed": 75,
+                    "context_limit": 5
+                },
                 "theme": "dark"
             }
             self._save_prefs()

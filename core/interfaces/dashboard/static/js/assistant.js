@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.ok) {
                 const data = await res.json();
                 if (data.assistant) {
-                    isAssistantEnabled = data.assistant.enabled !== undefined ? data.assistant.enabled : true;
+                    isAssistantEnabled = data.assistant.enabled !== undefined ? data.assistant.enabled : false;
                     typingSpeed = data.assistant.typing_speed !== undefined ? data.assistant.typing_speed : 75;
                     contextHistoryLimit = data.assistant.context_limit !== undefined ? data.assistant.context_limit : 5;
 
@@ -45,14 +45,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         container.style.top = pos.top + 'px';
                     }
                 } else {
-                    isAssistantEnabled = true; // default
+                    isAssistantEnabled = false; // default
                 }
             } else {
-                isAssistantEnabled = true;
+                isAssistantEnabled = false;
             }
         } catch (e) {
             console.error("Failed to load assistant preferences", e);
-            isAssistantEnabled = true;
+            isAssistantEnabled = false;
         }
 
         if (isAssistantEnabled) {
