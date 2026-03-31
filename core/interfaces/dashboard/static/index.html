@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="/static/css/chat.css">
     <link rel="stylesheet" href="/static/css/files_tools.css">
     <link rel="stylesheet" href="/static/css/logs_memory.css">
-    <link rel="stylesheet" href="/static/css/packages.css">
+
     <link rel="stylesheet" href="/static/css/settings.css">
     <link rel="stylesheet" href="/static/css/dashboard.css">
     <link rel="stylesheet" href="/static/css/sidebar.css">
@@ -318,8 +318,6 @@
                     <span title="Cost Today">Cost: <strong id="cost-today">$0.00</strong></span>
                     <span class="status-divider">|</span>
                     <span title="Active Agents">Agents: <strong id="agents-count">0</strong></span>
-                    <span class="status-divider">|</span>
-                    <span title="Registered Tools">Tools: <strong id="tools-count">--</strong></span>
                 </div>
                 <div class="status-indicator" id="status-indicator">
                     <span class="status-dot"></span>
@@ -428,16 +426,7 @@
                         <span class="tab-icon">🔊</span><span class="tab-label">Audio Models</span></button>
                 </div>
 
-                <!-- ToolKit -->
-                <div class="sidebar-category mode-ai" data-cat="toolkit">
-                    <span class="cat-label">ToolKit</span><span class="cat-chevron">▾</span>
-                </div>
-                <div class="cat-body mode-ai" data-cat-body="toolkit">
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="tools" data-tooltip="Tools">
-                        <span class="tab-icon">🔧</span><span class="tab-label">Tools</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="packages" data-tooltip="Packages">
-                        <span class="tab-icon">📦</span><span class="tab-label">Packages</span></button>
-                </div>
+
 
                 <!-- Knowledge -->
                 <div class="sidebar-category mode-ai" data-cat="knowledge">
@@ -1786,131 +1775,9 @@
                 </div>
             </div>
 
-            <!-- Tools Tab -->
-            <div class="main-tab-panel" id="tools-panel">
-                <div class="panel-header">
-                    <h2>Tool Registry <span class="panel-ts-badge" data-panel-ts="tools"></span></h2>
-                    <div class="panel-controls">
-                        <input type="text" id="tool-search" placeholder="Search tools..." class="search-input">
-                        <select id="tool-domain-filter" class="filter-select">
-                            <option value="">All Domains</option>
-                            <!-- Domains will be populated by JS -->
-                        </select>
-                        <div class="toggle-control" style="display: flex; align-items: center; margin-right: 1rem;">
-                            <input type="checkbox" id="hide-system-tools" style="margin-right: 0.5rem;">
-                            <label for="hide-system-tools" style="font-size: 0.9rem; cursor: pointer;">Hide System
-                                Tools</label>
-                        </div>
-                        <button id="refresh-tools-btn" class="action-btn secondary" title="Refresh list">
-                            <i class="fas fa-redo"></i> Refresh
-                        </button>
-                        <button id="forge-tool-button" class="forge-button">+ Forge New Tool</button>
-                    </div>
-                </div>
 
-                <div class="tools-table-container" style="overflow-x: auto;">
-                    <table class="data-table" id="tools-table" style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="text-align: left; border-bottom: 2px solid var(--border);">
-                                <th class="sortable" data-sort="name" style="padding: 10px; cursor: pointer;">Tool
-                                    Name ↕
-                                </th>
-                                <th class="sortable" data-sort="domain" style="padding: 10px; cursor: pointer;">
-                                    Domain ↕
-                                </th>
-                                <th class="sortable" data-sort="usage" style="padding: 10px; cursor: pointer;">Usage
-                                    ↕</th>
-                                <th style="padding: 10px;">Description</th>
-                                <th class="sortable" data-sort="created" style="padding: 10px; cursor: pointer;">
-                                    Created ↕
-                                </th>
-                                <th style="padding: 10px;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tools-table-body">
-                            <!-- Rows injected by JS -->
-                            <tr>
-                                <td colspan="5" class="placeholder-text" style="text-align: center; padding: 20px;">
-                                    Loading
-                                    tools...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
 
-            <!-- Packages Tab -->
-            <div class="main-tab-panel" id="packages-panel">
-                <div class="panel-header">
-                    <h2>Package Management <span class="panel-ts-badge" data-panel-ts="packages"></span></h2>
-                    <div class="panel-controls">
-                        <input type="text" id="package-search" placeholder="Search packages..." class="search-input">
-                        <select id="package-status-filter" class="filter-select">
-                            <option value="all">All Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="installed">Installed</option>
-                            <option value="approved">Approved</option>
-                            <option value="denied">Denied</option>
-                            <option value="failed">Failed</option>
-                        </select>
-                        <div class="toggle-control"
-                            style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
-                            <input type="checkbox" id="hide-system-packages">
-                            <label for="hide-system-packages">Hide System Pkgs</label>
-                        </div>
-                        <button id="sync-packages-btn" class="action-btn secondary"
-                            title="Sync with installed packages">
-                            <i class="fas fa-sync"></i> Sync
-                        </button>
-                        <button id="refresh-packages-btn" class="action-btn secondary" title="Refresh list" aria-label="Refresh packages list">
-                            <i class="fas fa-redo" aria-hidden="true"></i>
-                        </button>
-                        <!-- Bulk actions bar — shown when ≥1 checkbox is selected -->
-                        <div class="bulk-actions-bar" id="pkg-bulk-bar">
-                            <span class="bulk-count" id="pkg-bulk-count">0 selected</span>
-                            <button class="action-btn small success" id="pkg-bulk-approve" aria-label="Approve selected packages">
-                                <i class="fas fa-check" aria-hidden="true"></i> Approve
-                            </button>
-                            <button class="action-btn small danger" id="pkg-bulk-deny" aria-label="Deny selected packages">
-                                <i class="fas fa-times" aria-hidden="true"></i> Deny
-                            </button>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="packages-table-container" style="overflow-x: auto;">
-                    <table class="data-table" id="packages-table" style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="text-align: left; border-bottom: 2px solid var(--border);">
-                                <th class="pkg-select-col" style="padding: 10px;">
-                                    <input type="checkbox" id="pkg-select-all" class="pkg-row-checkbox" title="Select all" aria-label="Select all packages">
-                                </th>
-                                <th class="sortable" data-sort="name" style="padding: 10px; cursor: pointer;">
-                                    Package ↕</th>
-                                <th class="sortable" data-sort="status" style="padding: 10px; cursor: pointer;">
-                                    Status ↕
-                                </th>
-                                <th class="sortable" data-sort="usage" style="padding: 10px; cursor: pointer;">Usage
-                                    ↕</th>
-                                <th class="sortable" data-sort="safety" style="padding: 10px; cursor: pointer;">
-                                    Safety ↕
-                                </th>
-                                <th class="sortable" data-sort="updated" style="padding: 10px; cursor: pointer;">
-                                    Updated ↕
-                                </th>
-                                <th style="padding: 10px;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="packages-table-body">
-                            <!-- Rows injected by JS -->
-                            <tr>
-                                <td colspan="7" class="placeholder-text" style="text-align: center; padding: 20px;">
-                                    Loading packages...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
 
             <!-- Memory Tab -->
             <div class="main-tab-panel" id="memory-panel">

@@ -461,14 +461,6 @@
             ],
             "tooling": [
                 {
-                    "name": "Dynamic Tool Forge",
-                    "desc": "Create, test, and deploy custom tools for AI models on the fly."
-                },
-                {
-                    "name": "Python Package Manager",
-                    "desc": "Install and manage dependencies directly from the dashboard."
-                },
-                {
                     "name": "Environment (.env) Manager",
                     "desc": "Securely handle API keys and system variables without leaving the UI."
                 }

@@ -254,9 +254,7 @@ async def initialize_system_background():
     
     try:
         # Step 1: Resource Imports (CPU bound, moved to thread later if needed, but routers are fast)
-        from .package_routes import router as package_router
         from .task_routes import router as task_router
-        from .tool_routes import router as tool_router
         from .memory_routes import router as memory_router
         from .registry_routes import router as registry_router
         from .usage_routes import router as usage_router
@@ -277,9 +275,7 @@ async def initialize_system_background():
         from .corp_routes import router as corp_router
 
         # Immediate Router Inclusion (Sync but fast)
-        app.include_router(package_router)
         app.include_router(task_router)
-        app.include_router(tool_router)
         app.include_router(memory_router)
         app.include_router(registry_router)
         app.include_router(usage_router)
@@ -782,7 +778,7 @@ async def get_system_status():
                 "active_agents": factory.registry.get_active_count() if factory else 0,
                 "total_agents": len(factory.registry.get_all_agents()) if factory else 0
             },
-            "forge": {"total_tools": len(forge.registry.list_tools()) if forge else 0},
+
             "vitals": vitals,
             "usage_today": usage_today
         }

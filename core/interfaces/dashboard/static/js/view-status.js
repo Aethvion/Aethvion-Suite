@@ -6,8 +6,6 @@ async function loadHeaderStatus() {
         if (!response.ok) return;
         const data = await response.json();
 
-        const nexusEl = document.getElementById('nexus-status');
-        const agentsEl = document.getElementById('agents-count');
         const indicator = document.getElementById('nexus-status-indicator');
         if (indicator) {
             const dot = indicator.querySelector('.status-dot');
@@ -23,12 +21,8 @@ async function loadHeaderStatus() {
         }
 
         const agentsCount = document.getElementById('agents-count');
-        const toolsCount = document.getElementById('tools-count');
-
         if (agentsCount) agentsCount.textContent = data.factory ? data.factory.active_agents : '0';
-        if (toolsCount) toolsCount.textContent = data.forge ? data.forge.total_tools : '0';
 
-        // Update compact status bar with today's usage
         if (data.usage_today) {
             const tokensEl = document.getElementById('tokens-today');
             const costEl = document.getElementById('cost-today');
@@ -39,19 +33,8 @@ async function loadHeaderStatus() {
                 costEl.textContent = formatCost(data.usage_today.cost || 0);
             }
         }
-
     } catch (error) {
-        const indicator = document.getElementById('nexus-status-indicator');
-        if (indicator) {
-            const dot = indicator.querySelector('.status-dot');
-            const text = indicator.querySelector('.status-text');
-            if (dot) dot.style.backgroundColor = 'var(--error)';
-            if (indicator) indicator.style.borderColor = 'var(--error)';
-            if (text) {
-                text.textContent = 'DISCONNECTED';
-                text.style.color = 'var(--error)';
-            }
-        }
+        console.error("Failed to load header status:", error);
     }
 }
 
@@ -245,10 +228,7 @@ function renderSystemTelemetry(apiData, metricsData) {
                 <div class="t-label">KNOWLEDGE BASE</div>
                 <div class="t-value">${formatBytes(systemMetrics.db_size_bytes)} <span class="t-sub">(DB)</span></div>
             </div>
-            <div class="telemetry-card">
-                <div class="t-label">TOOLS-FORGED</div>
-                <div class="t-value">${forgeStatus.total_tools || 0}</div>
-            </div>
+
         `;
 
         const extContainer = document.getElementById('extended-info-grid');

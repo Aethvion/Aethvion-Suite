@@ -519,13 +519,7 @@ function initializeUI() {
     if (typeFilter) typeFilter.addEventListener('change', loadFiles);
     // if (refreshFilesList) refreshFilesList.addEventListener('click', loadFiles);
 
-    // Tools forge button
-    const forgeBtn = document.getElementById('forge-tool-button');
-    if (forgeBtn) {
-        forgeBtn.addEventListener('click', () => {
-            showToast('Tool forging via UI coming soon! Use chat: "Create a tool to…"', 'info', 5000);
-        });
-    }
+
 
     // Voice Mode Toggle
     const voiceButton = document.getElementById('voice-mode-toggle');
@@ -1131,8 +1125,7 @@ async function loadInitialData() {
     if (typeof loadPreferences === 'function') await loadPreferences();
     if (typeof loadHeaderStatus === 'function') await loadHeaderStatus();
     if (typeof loadSystemStatusTab === 'function') await loadSystemStatusTab();
-    if (typeof loadTools === 'function') await loadTools();
-    if (typeof loadPackages === 'function') loadPackages();
+
     if (typeof loadMemoryData === 'function') loadMemoryData();
     if (typeof loadChatModels === 'function') loadChatModels();
 
@@ -1151,7 +1144,7 @@ async function loadInitialData() {
     }
 
     if (typeof loadSystemStatus === 'function') setInterval(loadSystemStatus, 5000);
-    if (typeof loadPackages === 'function') setInterval(loadPackages, 10000);
+
     if (typeof loadHeaderStatus === 'function') setInterval(loadHeaderStatus, 15000);
 }
 

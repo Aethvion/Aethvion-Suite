@@ -132,6 +132,7 @@ th.sortable:hover {
     color: var(--primary);
 }
 
+
 th.sortable i {
     margin-left: 0.3rem;
     font-size: 0.8em;
@@ -153,63 +154,4 @@ th.sortable.active-sort i {
 .file-meta {
     font-size: 0.75rem;
     color: var(--text-secondary);
-}
-
-.forge-button {
-    padding: 0.6rem 1.2rem;
-    background: var(--primary);
-    color: var(--bg-primary);
-    border: none;
-    border-radius: 4px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.forge-button:hover {
-    box-shadow: var(--glow);
-    transform: translateY(-1px);
-}
-
-.tools-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-    overflow-y: auto;
-}
-
-.tool-card {
-    padding: 1.5rem;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-}
-
-.tool-header {
-    margin-bottom: 1rem;
-}
-
-.tool-name {
-    font-weight: 600;
-    color: var(--primary);
-    font-size: 1.1rem;
-}
-
-.tool-domain {
-    font-size: 0.8rem;
-    color: var(--accent);
-    margin-top: 0.2rem;
-}
-
-.tool-description {
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
-    line-height: 1.5;
-}
-
-.tool-params {
-    font-family: 'Fira Code', monospace;
-    font-size: 0.8rem;
-    background: var(--bg-primary);
-    padding: 0.8rem;
-}
+}
