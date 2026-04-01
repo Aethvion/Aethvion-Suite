@@ -58,8 +58,9 @@ HISTORY_AGENTS   = HISTORY / "agents"           # Agent Workspace threads
 SCHEDULED_TASKS  = DATA / "scheduled_tasks"     # Recurring AI task definitions
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
-LOGS_USAGE  = LOGS / "usage"   # AI API usage — YYYY-MM/usage_YYYY-MM-DD.json
-LOGS_SYSTEM = LOGS / "system"  # System / launcher / app logs
+LOGS_USAGE          = LOGS / "usage"          # AI API usage — YYYY-MM/usage_YYYY-MM-DD.json
+LOGS_SYSTEM         = LOGS / "system"         # System / launcher / app logs
+LOGS_NOTIFICATIONS  = LOGS / "notifications"  # Notifications — YYYY-MM/YYYY-MM-DD.json
 
 # ── System runtime ────────────────────────────────────────────────────────────
 LOCK_FILE    = SYSTEM / "aethvion.lock"
@@ -112,7 +113,7 @@ def ensure_all() -> None:
         APP_GAMES, APP_HARDWARE, APP_NEXUS, APP_PHOTO, APP_TRACKING, APP_VTUBER,
         CONFIG,
         HISTORY, HISTORY_CHAT, HISTORY_AI_CONV, HISTORY_ADVANCED, HISTORY_AGENTS,
-        LOGS, LOGS_USAGE, LOGS_SYSTEM,
+        LOGS, LOGS_USAGE, LOGS_SYSTEM, LOGS_NOTIFICATIONS,
         SYSTEM,
         VAULT, VAULT_PERSONAS, VAULT_KNOWLEDGE, VAULT_SEARCH, VAULT_EPISODIC,
         PERSONA_MISAKA, PERSONA_MISAKA_THREADS,

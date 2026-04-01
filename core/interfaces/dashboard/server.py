@@ -276,6 +276,7 @@ async def initialize_system_background():
         from .corp_routes import router as corp_router
         from .persistent_memory_routes import router as persistent_memory_router
         from .schedule_routes import router as schedule_router
+        from .notification_routes import router as notification_router
 
         # Immediate Router Inclusion (Sync but fast)
         app.include_router(task_router)
@@ -299,6 +300,7 @@ async def initialize_system_background():
         app.include_router(agent_workspace_router)
         app.include_router(corp_router)
         app.include_router(schedule_router)
+        app.include_router(notification_router)
 
         # Step 2: Offload Heavy Component Initialization to a Thread
         # This keeps the FastAPI event loop free to serve requests.
