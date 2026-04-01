@@ -2519,14 +2519,14 @@
                 <div class="settings-dashboard sidebar-layout">
                     <!-- Sidebar Navigation -->
                     <div class="settings-sidebar">
-                        <button class="settings-nav-item active" data-settingsubtab="assistant">
+                        <button class="settings-nav-item active" data-settingsubtab="system">
+                            <i class="fas fa-cog"></i> Global System
+                        </button>
+                        <button class="settings-nav-item" data-settingsubtab="assistant">
                             <i class="fas fa-robot"></i> Assistant
                         </button>
                         <button class="settings-nav-item" data-settingsubtab="misakacipher">
                             <i class="fas fa-brain"></i> Misaka Cipher
-                        </button>
-                        <button class="settings-nav-item" data-settingsubtab="system">
-                            <i class="fas fa-cog"></i> Global System
                         </button>
                         <button class="settings-nav-item" data-settingsubtab="env">
                             <i class="fas fa-key"></i> Environment
@@ -2554,7 +2554,7 @@
                     <!-- Settings Content Pane -->
                     <div class="settings-content-wrapper">
                         <!-- Panel: Assistant -->
-                        <div class="settings-panel active" id="settings-panel-assistant">
+                        <div class="settings-panel" id="settings-panel-assistant">
                             <div class="setting-card" id="card-assistant">
                                 <div class="card-header">
                                     <div class="header-title">
@@ -2864,7 +2864,62 @@
                         </div>
 
                         <!-- Panel: Global Settings -->
-                        <div class="settings-panel" id="settings-panel-system">
+                        <div class="settings-panel active" id="settings-panel-system">
+                            <!-- Timezone card — always at the top -->
+                            <div class="setting-card" id="card-timezone" style="margin-bottom: 18px;">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-clock"></i>
+                                        <span>Display &amp; Scheduling Timezone</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="section-hint" style="margin-bottom: 12px;">
+                                        All timestamps in the interface are shown in this timezone.
+                                        Scheduled tasks are also created in this timezone by default — the AI will use it when setting up cron times.
+                                        The system always stores times in UTC internally.
+                                    </p>
+                                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                        <select id="display-timezone-select" style="flex: 1; min-width: 220px; max-width: 380px; background: var(--surface-2, #1e1e2e); color: var(--text-primary, #e0e0e0); border: 1px solid var(--border, #333); border-radius: 8px; padding: 8px 12px; font-size: 0.875rem;">
+                                            <option value="UTC">UTC</option>
+                                            <optgroup label="Europe">
+                                                <option value="Europe/London">London (GMT/BST)</option>
+                                                <option value="Europe/Amsterdam">Amsterdam / Berlin / Paris (CET/CEST)</option>
+                                                <option value="Europe/Helsinki">Helsinki / Kyiv (EET/EEST)</option>
+                                                <option value="Europe/Moscow">Moscow (MSK)</option>
+                                            </optgroup>
+                                            <optgroup label="Americas">
+                                                <option value="America/New_York">New York (ET)</option>
+                                                <option value="America/Chicago">Chicago (CT)</option>
+                                                <option value="America/Denver">Denver (MT)</option>
+                                                <option value="America/Los_Angeles">Los Angeles (PT)</option>
+                                                <option value="America/Anchorage">Anchorage (AKT)</option>
+                                                <option value="Pacific/Honolulu">Honolulu (HST)</option>
+                                                <option value="America/Toronto">Toronto (ET)</option>
+                                                <option value="America/Sao_Paulo">São Paulo (BRT)</option>
+                                                <option value="America/Buenos_Aires">Buenos Aires (ART)</option>
+                                            </optgroup>
+                                            <optgroup label="Asia / Pacific">
+                                                <option value="Asia/Dubai">Dubai (GST)</option>
+                                                <option value="Asia/Karachi">Karachi (PKT)</option>
+                                                <option value="Asia/Kolkata">Mumbai / Kolkata (IST)</option>
+                                                <option value="Asia/Dhaka">Dhaka (BST)</option>
+                                                <option value="Asia/Bangkok">Bangkok / Jakarta (ICT/WIB)</option>
+                                                <option value="Asia/Singapore">Singapore / Kuala Lumpur (SGT)</option>
+                                                <option value="Asia/Shanghai">Beijing / Shanghai (CST)</option>
+                                                <option value="Asia/Tokyo">Tokyo (JST)</option>
+                                                <option value="Asia/Seoul">Seoul (KST)</option>
+                                                <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
+                                                <option value="Pacific/Auckland">Auckland (NZST/NZDT)</option>
+                                            </optgroup>
+                                        </select>
+                                        <button id="display-timezone-save-btn" class="action-btn xs-btn" style="white-space: nowrap;">
+                                            <i class="fas fa-save"></i> Save
+                                        </button>
+                                        <span id="display-timezone-saved" style="font-size: 0.8rem; color: var(--accent-green, #4caf50); display: none;">Saved ✓</span>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="setting-card" id="card-system">
                                 <div class="card-header">
                                     <div class="header-title">
@@ -3118,55 +3173,7 @@
                                     <div id="iface-visibility-list" class="iface-visibility-list"></div>
                                 </div>
                             </div>
-                            <div class="setting-card" style="margin-top: 18px;">
-                                <div class="card-header">
-                                    <div class="header-title">
-                                        <i class="fas fa-clock"></i>
-                                        <span>Display Timezone</span>
-                                    </div>
-                                </div>
-                                <div class="card-content">
-                                    <p class="iface-desc">Choose how timestamps are displayed throughout the interface. Scheduled tasks fire based on their own configured timezone; this only affects display.</p>
-                                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 12px;">
-                                        <select id="display-timezone-select" style="flex: 1; max-width: 360px; background: var(--surface-2, #1e1e2e); color: var(--text-primary, #e0e0e0); border: 1px solid var(--border, #333); border-radius: 8px; padding: 8px 12px; font-size: 0.875rem;">
-                                            <option value="UTC">UTC</option>
-                                            <optgroup label="Europe">
-                                                <option value="Europe/London">London (GMT/BST)</option>
-                                                <option value="Europe/Amsterdam">Amsterdam / Berlin / Paris (CET/CEST)</option>
-                                                <option value="Europe/Helsinki">Helsinki / Kyiv (EET/EEST)</option>
-                                                <option value="Europe/Moscow">Moscow (MSK)</option>
-                                            </optgroup>
-                                            <optgroup label="Americas">
-                                                <option value="America/New_York">New York (ET)</option>
-                                                <option value="America/Chicago">Chicago (CT)</option>
-                                                <option value="America/Denver">Denver (MT)</option>
-                                                <option value="America/Los_Angeles">Los Angeles (PT)</option>
-                                                <option value="America/Anchorage">Anchorage (AKT)</option>
-                                                <option value="Pacific/Honolulu">Honolulu (HST)</option>
-                                                <option value="America/Toronto">Toronto (ET)</option>
-                                                <option value="America/Sao_Paulo">São Paulo (BRT)</option>
-                                                <option value="America/Buenos_Aires">Buenos Aires (ART)</option>
-                                            </optgroup>
-                                            <optgroup label="Asia / Pacific">
-                                                <option value="Asia/Dubai">Dubai (GST)</option>
-                                                <option value="Asia/Karachi">Karachi (PKT)</option>
-                                                <option value="Asia/Kolkata">Mumbai / Kolkata (IST)</option>
-                                                <option value="Asia/Dhaka">Dhaka (BST)</option>
-                                                <option value="Asia/Bangkok">Bangkok / Jakarta (ICT/WIB)</option>
-                                                <option value="Asia/Singapore">Singapore / Kuala Lumpur (SGT)</option>
-                                                <option value="Asia/Shanghai">Beijing / Shanghai (CST)</option>
-                                                <option value="Asia/Tokyo">Tokyo (JST)</option>
-                                                <option value="Asia/Seoul">Seoul (KST)</option>
-                                                <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
-                                                <option value="Pacific/Auckland">Auckland (NZST/NZDT)</option>
-                                            </optgroup>
-                                        </select>
-                                        <button id="display-timezone-save-btn" class="action-btn xs-btn" style="white-space: nowrap;">
-                                            <i class="fas fa-save"></i> Save
-                                        </button>
-                                        <span id="display-timezone-saved" style="font-size: 0.8rem; color: var(--accent-green, #4caf50); display: none;">Saved</span>
-                                    </div>
-                                </div>
+                            <!-- Timezone moved to Global System panel -->
                             </div>
                         </div>
                         <!-- Panel: Notifications -->

@@ -5,6 +5,7 @@ Stores each task as data/scheduled_tasks/{task_id}.json.
 No external scheduler dependencies — uses a polling background thread.
 """
 import json
+import re
 import uuid
 import threading
 from pathlib import Path
@@ -126,9 +127,55 @@ class ScheduleManager:
         )
         self._thread.start()
         logger.info("[ScheduleManager] Started — polling every %ds", POLL_INTERVAL)
+        # Run catch-up in background so nexus can be attached first
+        threading.Thread(target=self._startup_catchup, daemon=True,
+                         name="ScheduleManager-catchup").start()
 
     def set_nexus(self, nexus) -> None:
         self.nexus = nexus
+
+    # ── Startup catch-up ───────────────────────────────────────────
+
+    def _startup_catchup(self):
+        """On startup, fire missed runs for active tasks whose next_run_at is in the past.
+
+        The number of immediate runs is capped by queue_max (0 = unlimited → 1 catch-up run).
+        This means:
+          queue_max=1  → execute once, no matter how many slots were missed
+          queue_max=2  → execute twice (two back-to-back catch-up runs)
+          queue_max=0  → execute once (unlimited queue, but one catch-up is enough)
+        """
+        # Wait briefly so nexus can be set before we try to call the AI
+        import time
+        time.sleep(5)
+
+        for p in self.data_dir.glob('*.json'):
+            try:
+                task = json.loads(p.read_text(encoding='utf-8'))
+                if task.get('status') != 'active' or not task.get('cron'):
+                    continue
+
+                nxt_iso = task.get('next_run_at')
+                if not nxt_iso:
+                    continue
+
+                # Parse next_run_at as UTC
+                normalised = nxt_iso if re.search(r'[Zz]$|[+-]\d{2}:\d{2}$', nxt_iso) else nxt_iso + 'Z'
+                nxt_dt = datetime.fromisoformat(normalised.replace('Z', '+00:00'))
+                if nxt_dt > datetime.now(timezone.utc):
+                    continue   # not missed — nothing to catch up
+
+                # Determine how many catch-up runs to fire
+                qmax = task.get('queue_max', 1)
+                catch_up_runs = qmax if qmax and qmax > 0 else 1
+                logger.info(
+                    "[ScheduleManager] Catch-up: '%s' missed run(s) — firing %d time(s)",
+                    task.get('name'), catch_up_runs,
+                )
+                for _ in range(catch_up_runs):
+                    self._execute(task, manual=False)
+            except Exception as exc:
+                logger.warning("[ScheduleManager] Catch-up error for %s: %s", p.name, exc)
 
     # ── Storage helpers ────────────────────────────────────────────
 
@@ -153,11 +200,42 @@ class ScheduleManager:
 
     # ── CRUD ──────────────────────────────────────────────────────
 
+    def _refresh_next_run(self, task: dict) -> bool:
+        """If the task is active and next_run_at is stale (in the past or missing),
+        recalculate and persist it.  Returns True if the task was updated."""
+        if task.get('status') != 'active' or not task.get('cron'):
+            return False
+
+        # Parse the stored next_run_at as UTC
+        nxt_iso = task.get('next_run_at')
+        stale = True
+        if nxt_iso:
+            try:
+                # Normalise: add 'Z' if no timezone marker present
+                normalised = nxt_iso if re.search(r'[Zz]$|[+-]\d{2}:\d{2}$', nxt_iso) else nxt_iso + 'Z'
+                nxt_dt = datetime.fromisoformat(normalised.replace('Z', '+00:00'))
+                stale = nxt_dt <= datetime.now(timezone.utc)
+            except Exception:
+                stale = True
+
+        if not stale:
+            return False
+
+        # Recalculate from now
+        new_nxt = next_run_after(task['cron'], tz_name=task.get('timezone', 'UTC'))
+        task['next_run_at'] = (new_nxt.isoformat() + 'Z') if new_nxt else None
+        try:
+            self._save(task)
+        except Exception:
+            pass
+        return True
+
     def list_tasks(self) -> list:
         out = []
         for p in self.data_dir.glob('*.json'):
             try:
                 t = json.loads(p.read_text(encoding='utf-8'))
+                self._refresh_next_run(t)   # heal stale next_run_at on every read
                 # Strip heavy fields from list view
                 out.append({k: v for k, v in t.items() if k not in ('thread', 'runs')})
             except Exception:
@@ -165,7 +243,10 @@ class ScheduleManager:
         return sorted(out, key=lambda x: x.get('updated_at', ''), reverse=True)
 
     def get_task(self, task_id: str) -> Optional[dict]:
-        return self._load(task_id)
+        task = self._load(task_id)
+        if task:
+            self._refresh_next_run(task)
+        return task
 
     def create_task(self, model_id: str = None) -> dict:
         now = _utcnow_iso()

@@ -1928,16 +1928,14 @@ async function initSettingsSubNav() {
     // Restore active sub-tab from server
     try {
         const response = await fetch('/api/preferences/get?key=active_settings_subtab');
-        let savedSubTab = 'assistant';
+        let savedSubTab = 'system';
         if (response.ok) {
             const data = await response.json();
             if (data.value) savedSubTab = data.value;
         }
-        // Redirect 'assistant' to 'assistant' (default) if that's what was intended
-        // or stay on 'assistant' if it was renamed from something else.
         switchSettingsSubTab(savedSubTab, false);
     } catch (e) {
-        switchSettingsSubTab('assistant', false);
+        switchSettingsSubTab('system', false);
     }
 }
 
@@ -1967,6 +1965,9 @@ async function switchSettingsSubTab(subTab, save = true) {
 
     if (subTab === 'interface') {
         loadInterfaceSettings();
+    }
+
+    if (subTab === 'system') {
         loadDisplayTimezone();
     }
 

@@ -34,31 +34,42 @@ class UpdateSettingsRequest(BaseModel):
 _SYSTEM_PROMPT = """\
 You are a scheduling assistant for Aethvion Suite. You help users set up recurring AI tasks.
 
+USER TIMEZONE: {user_timezone}
+All times the user mentions are in this timezone. Always set the "timezone" field to this value unless the user explicitly requests a different one.
+
 YOUR JOB:
 1. Listen to what the user wants to automate / schedule.
-2. If you need more information (e.g. what time, what day, how often, what timezone), ask for it clearly.
+2. If you need more information (e.g. what time, what day, how often), ask clearly.
 3. Once you have enough info, confirm the schedule and output a SCHEDULE_UPDATE block.
 
 OUTPUT FORMAT — write on its own line, exactly as shown:
-SCHEDULE_UPDATE: {{"name": "Task Name", "cron": "0 9 * * 1", "cron_human": "Every Monday at 9:00 AM", "prompt": "The prompt the AI will receive on each run", "timezone": "Europe/Amsterdam"}}
+SCHEDULE_UPDATE: {{"name": "Task Name", "cron": "0 9 * * 1", "cron_human": "Every Monday at 9:00 AM", "prompt": "The prompt the AI will receive on each run", "timezone": "{user_timezone}"}}
 
 CRON REFERENCE (5 fields: minute hour day-of-month month day-of-week):
-  Every day at 9:00 AM      → 0 9 * * *
-  Every Monday at 9:00 AM   → 0 9 * * 1
-  Every weekday at 8:30 AM  → 30 8 * * 1-5
-  Every hour                → 0 * * * *
-  Every 30 minutes          → */30 * * * *
-  Every Sunday at noon      → 0 12 * * 0
+  Every day at 9:00 AM                   → 0 9 * * *
+  Every Monday at 9:00 AM                → 0 9 * * 1
+  Every weekday at 8:30 AM               → 30 8 * * 1-5
+  Every hour                             → 0 * * * *
+  Every 30 minutes                       → */30 * * * *
+  Every Sunday at noon                   → 0 12 * * 0
+  Every 2 hours from 8 AM to 10 PM      → 0 8-22/2 * * *
+  Every hour from 9 AM to 5 PM weekdays → 0 9-17 * * 1-5
+  Every 15 min from 8 AM to 6 PM        → */15 8-18 * * *
   Day-of-week: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
+
+TIME RANGES IN CRON:
+To restrict a task to certain hours, use a range in the hour field:
+  "0 8-22/2 * * *"  = every 2 hours, but ONLY between 8 AM and 10 PM (22:00)
+  "0 9-17 * * 1-5"  = every hour between 9 AM and 5 PM, weekdays only
+IMPORTANT: Always use hour ranges when the user says "from X to Y" or "during the day".
+DO NOT use "0 */2 * * *" for "every 2 hours during the day" — that fires at midnight and 2 AM too.
 
 TIMEZONE:
 The "timezone" field must be a valid IANA timezone name (e.g. "Europe/Amsterdam", "America/New_York", "Asia/Tokyo").
-The cron times are interpreted in this timezone. If the user doesn't specify, ask them or use their system timezone.
-Default is "UTC" if unspecified.
+Default to the user's timezone ({user_timezone}) unless they say otherwise.
 
 PROMPT FIELD:
-The "prompt" is what the AI receives automatically when the schedule fires.
-Make it specific and self-contained — the AI won't have prior context.
+The "prompt" is what the AI receives automatically when the schedule fires. Make it specific and self-contained.
 Example: "Review my workout routine progress for the week and give me a brief motivational summary with 2-3 actionable suggestions."
 
 PAUSING / RESUMING:
@@ -68,7 +79,7 @@ To resume: include "status": "active" in SCHEDULE_UPDATE.
 CURRENT TASK STATE:
 {task_info}
 
-After outputting SCHEDULE_UPDATE, always confirm the schedule in plain, friendly language including the timezone.
+After outputting SCHEDULE_UPDATE, confirm the schedule in plain, friendly language (mention the time and timezone).
 Keep responses concise. Do not repeat information the user already knows.
 """
 
@@ -147,7 +158,10 @@ async def delete_task(task_id: str):
 @router.patch("/tasks/{task_id}")
 async def update_settings(task_id: str, req: UpdateSettingsRequest):
     from core.schedulers.schedule_manager import get_schedule_manager
-    updates = {k: v for k, v in req.dict().items() if v is not None}
+    raw = req.dict()
+    # Keep fields that were explicitly supplied (including None, e.g. clearing model_id)
+    # Exclude fields that were never sent at all by using __fields_set__
+    updates = {k: raw[k] for k in req.__fields_set__}
     task = get_schedule_manager().update_task(task_id, **updates)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -169,8 +183,17 @@ async def chat(task_id: str, req: ChatRequest):
     mgr.add_message(task_id, 'user', req.message)
     task = mgr.get_task(task_id)  # reload with new message
 
+    # Resolve the user's configured display/scheduling timezone
+    user_tz = 'UTC'
+    try:
+        from core.config.settings_manager import get_settings_manager
+        _sm = get_settings_manager()
+        user_tz = (_sm.settings.get('display', {}) or {}).get('timezone', 'UTC') or 'UTC'
+    except Exception:
+        pass
+
     # Build full prompt
-    system = _SYSTEM_PROMPT.format(task_info=_task_info_block(task))
+    system = _SYSTEM_PROMPT.format(task_info=_task_info_block(task), user_timezone=user_tz)
     prompt = _build_prompt(task, system)
 
     # Call AI

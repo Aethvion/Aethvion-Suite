@@ -218,10 +218,15 @@ function _schedUpdateInfoCard(task) {
 
     if (queueInp) queueInp.value = task.queue_max ?? 1;
 
-    // Sync model select
+    // Sync model select to THIS task's saved model (per-task)
     const modelSel = _sEl('sched-model-select');
-    if (modelSel && task.model_id) {
-        modelSel.value = task.model_id;
+    if (modelSel) {
+        const wanted = task.model_id || 'auto';
+        if (modelSel.querySelector(`option[value="${CSS.escape(wanted)}"]`)) {
+            modelSel.value = wanted;
+        } else {
+            modelSel.value = 'auto';
+        }
     }
 
     // Update sidebar item too
@@ -631,11 +636,25 @@ function scheduleInit() {
         });
     }
 
-    // Persist model selection
+    // Per-task model: save to the task (PATCH) when changed
     const modelSel = _sEl('sched-model-select');
     if (modelSel) {
-        modelSel.addEventListener('change', () => {
-            localStorage.setItem('schedule_model_id', modelSel.value);
+        modelSel.addEventListener('change', async () => {
+            const val = modelSel.value;
+            // Always store last used as fallback for new tasks
+            localStorage.setItem('schedule_model_id', val);
+            if (_schedCurrentId) {
+                try {
+                    await fetch(`/api/schedule/tasks/${_schedCurrentId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ model_id: val === 'auto' ? null : val }),
+                    });
+                    if (_schedCurrentTask) _schedCurrentTask.model_id = val === 'auto' ? null : val;
+                } catch (e) {
+                    console.error('[Schedule] Failed to save model to task:', e);
+                }
+            }
         });
     }
 
