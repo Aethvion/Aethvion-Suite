@@ -1021,6 +1021,7 @@
                                     </div>
                                     <div class="sched-info-meta">
                                         <span class="sched-meta-item" id="sched-cron-human">Not scheduled yet</span>
+                                        <span class="sched-meta-sep" id="sched-tz-wrap" style="display:none"> · <i class="fas fa-globe" style="font-size:0.75rem; opacity:0.6;"></i> <span id="sched-tz-display"></span></span>
                                         <span class="sched-meta-sep" id="sched-next-run-wrap" style="display:none"> · Next: <span id="sched-next-run"></span></span>
                                         <span class="sched-meta-sep" id="sched-last-run-wrap" style="display:none"> · Last: <span id="sched-last-run"></span></span>
                                     </div>
@@ -3115,6 +3116,56 @@
                                 <div class="card-content">
                                     <p class="iface-desc">Toggle which categories and tabs appear in the sidebar. Settings and Version Control are always visible.</p>
                                     <div id="iface-visibility-list" class="iface-visibility-list"></div>
+                                </div>
+                            </div>
+                            <div class="setting-card" style="margin-top: 18px;">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-clock"></i>
+                                        <span>Display Timezone</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="iface-desc">Choose how timestamps are displayed throughout the interface. Scheduled tasks fire based on their own configured timezone; this only affects display.</p>
+                                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 12px;">
+                                        <select id="display-timezone-select" style="flex: 1; max-width: 360px; background: var(--surface-2, #1e1e2e); color: var(--text-primary, #e0e0e0); border: 1px solid var(--border, #333); border-radius: 8px; padding: 8px 12px; font-size: 0.875rem;">
+                                            <option value="UTC">UTC</option>
+                                            <optgroup label="Europe">
+                                                <option value="Europe/London">London (GMT/BST)</option>
+                                                <option value="Europe/Amsterdam">Amsterdam / Berlin / Paris (CET/CEST)</option>
+                                                <option value="Europe/Helsinki">Helsinki / Kyiv (EET/EEST)</option>
+                                                <option value="Europe/Moscow">Moscow (MSK)</option>
+                                            </optgroup>
+                                            <optgroup label="Americas">
+                                                <option value="America/New_York">New York (ET)</option>
+                                                <option value="America/Chicago">Chicago (CT)</option>
+                                                <option value="America/Denver">Denver (MT)</option>
+                                                <option value="America/Los_Angeles">Los Angeles (PT)</option>
+                                                <option value="America/Anchorage">Anchorage (AKT)</option>
+                                                <option value="Pacific/Honolulu">Honolulu (HST)</option>
+                                                <option value="America/Toronto">Toronto (ET)</option>
+                                                <option value="America/Sao_Paulo">São Paulo (BRT)</option>
+                                                <option value="America/Buenos_Aires">Buenos Aires (ART)</option>
+                                            </optgroup>
+                                            <optgroup label="Asia / Pacific">
+                                                <option value="Asia/Dubai">Dubai (GST)</option>
+                                                <option value="Asia/Karachi">Karachi (PKT)</option>
+                                                <option value="Asia/Kolkata">Mumbai / Kolkata (IST)</option>
+                                                <option value="Asia/Dhaka">Dhaka (BST)</option>
+                                                <option value="Asia/Bangkok">Bangkok / Jakarta (ICT/WIB)</option>
+                                                <option value="Asia/Singapore">Singapore / Kuala Lumpur (SGT)</option>
+                                                <option value="Asia/Shanghai">Beijing / Shanghai (CST)</option>
+                                                <option value="Asia/Tokyo">Tokyo (JST)</option>
+                                                <option value="Asia/Seoul">Seoul (KST)</option>
+                                                <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
+                                                <option value="Pacific/Auckland">Auckland (NZST/NZDT)</option>
+                                            </optgroup>
+                                        </select>
+                                        <button id="display-timezone-save-btn" class="action-btn xs-btn" style="white-space: nowrap;">
+                                            <i class="fas fa-save"></i> Save
+                                        </button>
+                                        <span id="display-timezone-saved" style="font-size: 0.8rem; color: var(--accent-green, #4caf50); display: none;">Saved</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

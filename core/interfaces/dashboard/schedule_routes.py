@@ -36,11 +36,11 @@ You are a scheduling assistant for Aethvion Suite. You help users set up recurri
 
 YOUR JOB:
 1. Listen to what the user wants to automate / schedule.
-2. If you need more information (e.g. what time, what day, how often), ask for it clearly.
+2. If you need more information (e.g. what time, what day, how often, what timezone), ask for it clearly.
 3. Once you have enough info, confirm the schedule and output a SCHEDULE_UPDATE block.
 
 OUTPUT FORMAT — write on its own line, exactly as shown:
-SCHEDULE_UPDATE: {{"name": "Task Name", "cron": "0 9 * * 1", "cron_human": "Every Monday at 9:00 AM", "prompt": "The prompt the AI will receive on each run"}}
+SCHEDULE_UPDATE: {{"name": "Task Name", "cron": "0 9 * * 1", "cron_human": "Every Monday at 9:00 AM", "prompt": "The prompt the AI will receive on each run", "timezone": "Europe/Amsterdam"}}
 
 CRON REFERENCE (5 fields: minute hour day-of-month month day-of-week):
   Every day at 9:00 AM      → 0 9 * * *
@@ -50,6 +50,11 @@ CRON REFERENCE (5 fields: minute hour day-of-month month day-of-week):
   Every 30 minutes          → */30 * * * *
   Every Sunday at noon      → 0 12 * * 0
   Day-of-week: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
+
+TIMEZONE:
+The "timezone" field must be a valid IANA timezone name (e.g. "Europe/Amsterdam", "America/New_York", "Asia/Tokyo").
+The cron times are interpreted in this timezone. If the user doesn't specify, ask them or use their system timezone.
+Default is "UTC" if unspecified.
 
 PROMPT FIELD:
 The "prompt" is what the AI receives automatically when the schedule fires.
@@ -63,7 +68,7 @@ To resume: include "status": "active" in SCHEDULE_UPDATE.
 CURRENT TASK STATE:
 {task_info}
 
-After outputting SCHEDULE_UPDATE, always confirm the schedule in plain, friendly language.
+After outputting SCHEDULE_UPDATE, always confirm the schedule in plain, friendly language including the timezone.
 Keep responses concise. Do not repeat information the user already knows.
 """
 
@@ -77,6 +82,7 @@ def _task_info_block(task: dict) -> str:
         parts.append(f"Cron: {task['cron']}")
     else:
         parts.append("Schedule: Not yet configured")
+    parts.append(f"Timezone: {task.get('timezone', 'UTC')}")
     if task.get('prompt'):
         parts.append(f"Prompt: {task['prompt']}")
     parts.append(f"Status: {task.get('status', 'draft')}")
@@ -189,7 +195,7 @@ async def chat(task_id: str, req: ChatRequest):
     # Apply any schedule updates embedded in the reply
     update = _parse_schedule_update(ai_reply)
     if update:
-        allowed = {'name', 'cron', 'cron_human', 'prompt', 'status'}
+        allowed = {'name', 'cron', 'cron_human', 'prompt', 'status', 'timezone'}
         filtered = {k: v for k, v in update.items() if k in allowed and v}
         if filtered:
             task = mgr.update_task(task_id, **filtered) or task

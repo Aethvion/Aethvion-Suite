@@ -28,18 +28,50 @@ function _schedMd(text) {
                .replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\n/g, '<br>');
 }
 
-function _schedFmtTime(iso) {
+function _schedGetDisplayTz() {
+    return localStorage.getItem('display_timezone') || 'UTC';
+}
+
+function _schedFmtTime(iso, opts = {}) {
+    // opts.future: if true, render as "in Xm" style; if false, "Xm ago" style.
+    // opts.absolute: always render absolute datetime.
     if (!iso) return '';
     try {
-        const d = new Date(iso);
+        // Ensure the string is treated as UTC. Strings ending in 'Z' are fine;
+        // strings without timezone info get 'Z' appended so JS parses as UTC.
+        const normalized = /[Zz]$|[+-]\d{2}:\d{2}$/.test(iso) ? iso : iso + 'Z';
+        const d = new Date(normalized);
+        if (isNaN(d.getTime())) return iso;
+
         const now = new Date();
-        const diffMs = d - now;
-        const diffDays = Math.round(Math.abs(diffMs) / 86400000);
-        if (Math.abs(diffMs) < 60000) return 'just now';
-        if (Math.abs(diffMs) < 3600000) return `${Math.round(Math.abs(diffMs)/60000)}m`;
-        if (diffDays === 0) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        if (diffDays < 7) return d.toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
-        return d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const diffMs = d - now;           // positive = future, negative = past
+        const absDiffMs = Math.abs(diffMs);
+        const tz = _schedGetDisplayTz();
+
+        // Relative label for very recent / near-future
+        if (absDiffMs < 60000) return 'just now';
+        if (absDiffMs < 3600000) {
+            const mins = Math.round(absDiffMs / 60000);
+            return diffMs > 0 ? `in ${mins}m` : `${mins}m ago`;
+        }
+        if (absDiffMs < 86400000) {
+            const hrs = Math.round(absDiffMs / 3600000);
+            return diffMs > 0 ? `in ${hrs}h` : `${hrs}h ago`;
+        }
+
+        // Absolute display in the user's chosen timezone
+        const fmt = new Intl.DateTimeFormat(undefined, {
+            timeZone: tz,
+            month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit',
+        });
+        const label = fmt.format(d);
+        if (absDiffMs < 7 * 86400000) {
+            // Also show weekday for near dates
+            const dayFmt = new Intl.DateTimeFormat(undefined, { timeZone: tz, weekday: 'short' });
+            return `${dayFmt.format(d)}, ${label}`;
+        }
+        return label;
     } catch (_) { return iso; }
 }
 
@@ -146,6 +178,18 @@ function _schedUpdateInfoCard(task) {
         dot.className = `sched-status-dot ${{ active: 'dot-active', paused: 'dot-paused', draft: 'dot-draft' }[task.status] || 'dot-draft'}`;
     }
     if (cronHuman) cronHuman.textContent = task.cron_human || (task.cron ? `cron: ${task.cron}` : 'Not scheduled yet');
+
+    const tzWrap    = _sEl('sched-tz-wrap');
+    const tzDisplay = _sEl('sched-tz-display');
+    if (tzWrap && tzDisplay) {
+        const tz = task.timezone || 'UTC';
+        if (task.cron && tz !== 'UTC') {
+            tzDisplay.textContent  = tz;
+            tzWrap.style.display   = '';
+        } else {
+            tzWrap.style.display   = 'none';
+        }
+    }
 
     if (nextWrap && nextRun) {
         if (task.next_run_at && task.status === 'active') {
@@ -298,7 +342,7 @@ async function scheduleSendMessage() {
     _schedIsSending = true;
     _sEl('sched-send-btn').disabled = true;
 
-    // Optimistically add user message
+    // Optimistically add user message (toISOString() always returns UTC with 'Z')
     _schedAppendMessage({ role: 'user', content: text, ts: new Date().toISOString() });
 
     // Show typing
@@ -318,7 +362,7 @@ async function scheduleSendMessage() {
         const data = await resp.json();
 
         if (typing) typing.style.display = 'none';
-        _schedAppendMessage({ role: 'assistant', content: data.reply, ts: new Date().toISOString() });
+        _schedAppendMessage({ role: 'assistant', content: data.reply, ts: new Date().toISOString() });  // toISOString = UTC+Z
 
         // Update info card if schedule changed
         if (data.task) {

@@ -1967,6 +1967,7 @@ async function switchSettingsSubTab(subTab, save = true) {
 
     if (subTab === 'interface') {
         loadInterfaceSettings();
+        loadDisplayTimezone();
     }
 
     if (subTab === 'notifications') {
@@ -2620,6 +2621,45 @@ function createIfaceRow(id, type, label, icon, checked, isChild) {
     });
 
     return row;
+}
+
+// ===== Display Timezone =====
+
+async function loadDisplayTimezone() {
+    const sel = document.getElementById('display-timezone-select');
+    if (!sel) return;
+    try {
+        const resp = await fetch('/api/settings');
+        if (!resp.ok) throw new Error('settings fetch failed');
+        const data = await resp.json();
+        const tz = (data.display && data.display.timezone) || localStorage.getItem('display_timezone') || 'UTC';
+        if (sel.querySelector(`option[value="${tz}"]`)) sel.value = tz;
+    } catch (_) {
+        const stored = localStorage.getItem('display_timezone');
+        if (stored && sel.querySelector(`option[value="${stored}"]`)) sel.value = stored;
+    }
+
+    const saveBtn = document.getElementById('display-timezone-save-btn');
+    const savedSpan = document.getElementById('display-timezone-saved');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', async () => {
+            const tz = sel.value;
+            localStorage.setItem('display_timezone', tz);
+            try {
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 'display.timezone': tz }),
+                });
+            } catch (_) {}
+            if (savedSpan) {
+                savedSpan.style.display = 'inline';
+                setTimeout(() => { savedSpan.style.display = 'none'; }, 2000);
+            }
+        }, { once: false });
+        // Guard against attaching twice on re-entry
+        saveBtn.dataset.tzWired = '1';
+    }
 }
 
 function loadInterfaceSettings() {

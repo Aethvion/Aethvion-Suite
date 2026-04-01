@@ -8,8 +8,15 @@ import json
 import uuid
 import threading
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
+
+try:
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+except ImportError:
+    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore
+
+_UTC = ZoneInfo('UTC')
 
 from core.utils.logger import get_logger
 
@@ -71,16 +78,36 @@ def cron_matches(cron_expr: str, dt: datetime) -> bool:
         return False
 
 
-def next_run_after(cron_expr: str, after: datetime = None) -> Optional[datetime]:
-    """Return the next UTC datetime matching *cron_expr*, at least 1 minute after *after*."""
+def _utcnow_iso() -> str:
+    """Return current UTC time as an ISO-8601 string with 'Z' suffix."""
+    return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f') + 'Z'
+
+
+def next_run_after(cron_expr: str, after: datetime = None, tz_name: str = 'UTC') -> Optional[datetime]:
+    """Return the next UTC datetime matching *cron_expr* when evaluated in *tz_name*.
+
+    The cron expression is interpreted in the task's local timezone so that e.g.
+    "0 9 * * *" means 9 AM local — not 9 AM UTC.
+    Returns a naive UTC datetime for storage (with 'Z' appended when serialised).
+    """
     if not cron_expr:
         return None
-    dt = (after or datetime.utcnow()).replace(second=0, microsecond=0) + timedelta(minutes=1)
-    limit = dt + timedelta(days=366 * 2)
-    while dt <= limit:
-        if cron_matches(cron_expr, dt):
-            return dt
-        dt += timedelta(minutes=1)
+    try:
+        tz = ZoneInfo(tz_name)
+    except Exception:
+        tz = _UTC
+
+    # Start searching 1 minute after *after* (UTC), expressed in task's local timezone
+    after_utc = (after or datetime.now(timezone.utc))
+    if after_utc.tzinfo is None:
+        after_utc = after_utc.replace(tzinfo=_UTC)
+    dt_local = after_utc.astimezone(tz).replace(second=0, microsecond=0) + timedelta(minutes=1)
+    limit = dt_local + timedelta(days=366 * 2)
+    while dt_local <= limit:
+        if cron_matches(cron_expr, dt_local):
+            # Return as naive UTC datetime
+            return dt_local.astimezone(_UTC).replace(tzinfo=None)
+        dt_local += timedelta(minutes=1)
     return None
 
 
@@ -118,7 +145,7 @@ class ScheduleManager:
             return None
 
     def _save(self, task: dict) -> None:
-        task['updated_at'] = datetime.utcnow().isoformat()
+        task['updated_at'] = _utcnow_iso()
         self._path(task['id']).write_text(
             json.dumps(task, indent=2, ensure_ascii=False),
             encoding='utf-8',
@@ -141,7 +168,7 @@ class ScheduleManager:
         return self._load(task_id)
 
     def create_task(self, model_id: str = None) -> dict:
-        now = datetime.utcnow().isoformat()
+        now = _utcnow_iso()
         task = {
             'id': str(uuid.uuid4()),
             'name': 'New Schedule',
@@ -173,8 +200,8 @@ class ScheduleManager:
                     task[k] = v
             # Recalculate next_run and auto-activate when cron is set/changed
             if 'cron' in kwargs and task.get('cron'):
-                nxt = next_run_after(task['cron'])
-                task['next_run_at'] = nxt.isoformat() if nxt else None
+                nxt = next_run_after(task['cron'], tz_name=task.get('timezone', 'UTC'))
+                task['next_run_at'] = (nxt.isoformat() + 'Z') if nxt else None
                 if task.get('status') == 'draft':
                     task['status'] = 'active'
             self._save(task)
@@ -188,7 +215,7 @@ class ScheduleManager:
             task['thread'].append({
                 'role': role,
                 'content': content,
-                'ts': datetime.utcnow().isoformat(),
+                'ts': _utcnow_iso(),
             })
             self._save(task)
             return task
@@ -212,7 +239,7 @@ class ScheduleManager:
     def _execute(self, task: dict, manual: bool = False) -> dict:
         task_id = task['id']
         run_id  = str(uuid.uuid4())
-        now_iso = datetime.utcnow().isoformat()
+        now_iso = _utcnow_iso()
 
         run = {
             'id':           run_id,
@@ -246,8 +273,8 @@ class ScheduleManager:
             t.setdefault('runs', []).append(run)
             t['last_run_at'] = now_iso
             if t.get('cron'):
-                nxt = next_run_after(t['cron'])
-                t['next_run_at'] = nxt.isoformat() if nxt else None
+                nxt = next_run_after(t['cron'], tz_name=t.get('timezone', 'UTC'))
+                t['next_run_at'] = (nxt.isoformat() + 'Z') if nxt else None
             t['runs'] = t['runs'][-MAX_RUNS_STORED:]
             self._save(t)
 
@@ -286,7 +313,7 @@ class ScheduleManager:
                 result_text = f'Error: {exc}'
                 logger.error("[ScheduleManager] Run %s failed: %s", run_id, exc)
 
-            completed = datetime.utcnow().isoformat()
+            completed = _utcnow_iso()
             with self._lock:
                 t2 = self._load(task_id)
                 if t2:
@@ -334,26 +361,36 @@ class ScheduleManager:
     def _loop(self):
         while not self._stop_evt.is_set():
             try:
-                now = datetime.utcnow().replace(second=0, microsecond=0)
-                key = now.strftime('%Y%m%d%H%M')
+                now_utc = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+                key = now_utc.strftime('%Y%m%d%H%M')
                 if key not in self._checked:
                     self._checked.add(key)
                     if len(self._checked) > 20:
                         self._checked = set(sorted(self._checked)[-10:])
-                    self._check_and_fire(now)
+                    self._check_and_fire(now_utc)
             except Exception as exc:
                 logger.error("[ScheduleManager] Loop error: %s", exc)
             self._stop_evt.wait(POLL_INTERVAL)
 
-    def _check_and_fire(self, now: datetime):
+    def _check_and_fire(self, now_utc: datetime):
+        """Check all active tasks and fire those whose cron matches the current local time."""
         for p in self.data_dir.glob('*.json'):
             try:
                 task = json.loads(p.read_text(encoding='utf-8'))
                 if task.get('status') != 'active':
                     continue
                 cron = task.get('cron')
-                if cron and cron_matches(cron, now):
-                    logger.info("[ScheduleManager] Firing '%s'", task.get('name'))
+                if not cron:
+                    continue
+                # Convert UTC now to the task's local timezone before matching
+                tz_name = task.get('timezone', 'UTC')
+                try:
+                    tz = ZoneInfo(tz_name)
+                except Exception:
+                    tz = _UTC
+                now_local = now_utc.astimezone(tz)
+                if cron_matches(cron, now_local):
+                    logger.info("[ScheduleManager] Firing '%s' (tz=%s)", task.get('name'), tz_name)
                     threading.Thread(
                         target=self._execute,
                         args=(task, False),
