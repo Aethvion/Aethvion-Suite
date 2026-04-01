@@ -2545,6 +2545,9 @@
                         <button class="settings-nav-item" data-settingsubtab="interface">
                             <i class="fas fa-eye"></i> Interface
                         </button>
+                        <button class="settings-nav-item" data-settingsubtab="notifications">
+                            <i class="fas fa-bell"></i> Notifications
+                        </button>
                     </div>
 
                     <!-- Settings Content Pane -->
@@ -3112,6 +3115,21 @@
                                 <div class="card-content">
                                     <p class="iface-desc">Toggle which categories and tabs appear in the sidebar. Settings and Version Control are always visible.</p>
                                     <div id="iface-visibility-list" class="iface-visibility-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Panel: Notifications -->
+                        <div class="settings-panel" id="settings-panel-notifications">
+                            <div class="setting-card">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-bell"></i>
+                                        <span>Active Notifications</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="iface-desc">Enable or disable active notifications for specific sources. All notifications will still be stored in the backlog.</p>
+                                    <div id="notif-visibility-list" class="iface-visibility-list"></div>
                                 </div>
                             </div>
                         </div>

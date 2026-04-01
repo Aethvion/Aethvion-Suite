@@ -118,6 +118,57 @@ def _update_in_day(notification_id: str, updates: Dict[str, Any]) -> None:
         _save_day(entries)
 
 
+# ── Internal Python API — call this from other modules ────────────────────────
+
+def notify(
+    title: str,
+    message: str,
+    source: str = "system",
+    level: str = "info",
+    target: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Push a notification directly in-process (no HTTP round-trip).
+
+    Usage from any module::
+
+        from core.interfaces.dashboard.notification_routes import notify
+        notify(
+            title="Task Done",
+            message="MyTask completed successfully.",
+            source="schedule",
+            level="success",
+            target={"tab": "schedule"},
+        )
+
+    ``target`` keys:
+        tab      — dashboard tab to navigate to (e.g. "schedule", "agents", "chat")
+        context  — optional sub-context (e.g. task_id, thread_id)
+    """
+    _ensure_loaded()
+
+    now = datetime.utcnow()
+    notif_id = f"notif-{int(now.timestamp() * 1000)}-{uuid.uuid4().hex[:6]}"
+
+    notification: Dict[str, Any] = {
+        "id":        notif_id,
+        "timestamp": now.isoformat() + "Z",
+        "title":     title,
+        "message":   message,
+        "source":    source,
+        "level":     level,
+        "target":    target,
+        "seen":      False,
+    }
+
+    with _lock:
+        _active[notif_id] = notification
+
+    _append_to_day(notification)
+    logger.info("Notification pushed: [%s] %s (source=%s)", level, title, source)
+    return notification
+
+
 # ── API Endpoints ─────────────────────────────────────────────────────────────
 
 @router.post("/", response_model=Dict[str, Any], summary="Push a new notification")

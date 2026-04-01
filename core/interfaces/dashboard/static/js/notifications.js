@@ -158,8 +158,18 @@ window.Notifications = (() => {
             return;
         }
 
-        _active.forEach(n => listEl.appendChild(_buildRow(n, false)));
-    }
+    _active.forEach(n => {
+        if (!_isHidden(n.source)) {
+            listEl.appendChild(_buildRow(n, false));
+        }
+    });
+}
+
+function _isHidden(source) {
+    if (typeof prefs === 'undefined' || !source) return false;
+    const hidden = prefs.get(`notification_hidden_${source}`, false);
+    return hidden === true || hidden === 'true';
+}
 
     function _makeEmpty() {
         const div = document.createElement('div');
@@ -180,7 +190,8 @@ window.Notifications = (() => {
     // ── Badge ──────────────────────────────────────────────────────────
     function _updateBadge() {
         if (!badge) return;
-        const count = _active.length;
+        // Count only non-hidden active notifications
+        const count = _active.filter(n => !_isHidden(n.source)).length;
         badge.textContent = count > 99 ? '99+' : String(count);
         badge.classList.toggle('visible', count > 0);
         if (bellBtn) bellBtn.classList.toggle('has-unread', count > 0);
@@ -279,8 +290,15 @@ window.Notifications = (() => {
             if (res.ok) {
                 const notif = await res.json();
                 _active.unshift(notif);
-                _updateBadge();
-                if (_panelOpen) _renderActive();
+                
+                // If not hidden, update UI immediately
+                if (!_isHidden(notif.source)) {
+                    _updateBadge();
+                    if (_panelOpen) _renderActive();
+                } else {
+                    // Still update badge if panel is closed to ensure consistency
+                    _updateBadge();
+                }
                 return notif;
             }
         } catch (err) {

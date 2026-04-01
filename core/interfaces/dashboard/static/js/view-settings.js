@@ -1969,6 +1969,10 @@ async function switchSettingsSubTab(subTab, save = true) {
         loadInterfaceSettings();
     }
 
+    if (subTab === 'notifications') {
+        loadNotificationSettings();
+    }
+
     if (save && typeof savePreference === 'function') {
         savePreference('active_settings_subtab', subTab);
     }
@@ -2652,6 +2656,63 @@ function loadInterfaceSettings() {
             group.appendChild(childrenEl);
             container.appendChild(group);
         }
+    });
+}
+
+// ===== Notification Visibility Management =====
+
+function createNotifRow(id, label, icon, checked) {
+    const row = document.createElement('div');
+    row.className = 'iface-row'; // reuse iface-row style
+
+    const uid = `notif-vis-${id}`;
+
+    row.innerHTML = `
+        <div class="toggle-switch-mini">
+            <input type="checkbox" id="${uid}"${checked ? ' checked' : ''}>
+            <label for="${uid}"></label>
+        </div>
+        <span class="iface-row-icon">${icon}</span>
+        <span class="iface-row-label">${label}</span>
+    `;
+
+    const checkbox = row.querySelector('input');
+    checkbox.addEventListener('change', async () => {
+        const isNowVisible = checkbox.checked;
+        const prefKey = `notification_hidden_${id}`;
+        await prefs.set(prefKey, !isNowVisible);
+
+        // Tell notification system to refresh/re-render
+        if (window.Notifications && typeof window.Notifications.refresh === 'function') {
+            window.Notifications.refresh();
+        }
+    });
+
+    return row;
+}
+
+function loadNotificationSettings() {
+    const container = document.getElementById('notif-visibility-list');
+    if (!container) return;
+
+    // Based on SOURCE_ICONS in notifications.js
+    const sources = [
+        { id: 'agents',   label: 'Agents',   icon: '🤖' },
+        { id: 'schedule', label: 'Schedule', icon: '🗓️' },
+        { id: 'system',   label: 'System',   icon: '⚙️' },
+        { id: 'chat',     label: 'Chat',     icon: '💬' },
+        { id: 'audio',    label: 'Audio',    icon: '🎙️' },
+        { id: 'photo',    label: 'Photo',    icon: '🎨' },
+        { id: 'corp',     label: 'Corp',     icon: '🏢' },
+        { id: 'memory',   label: 'Memory',   icon: '🧠' }
+    ];
+
+    container.innerHTML = '';
+
+    sources.forEach(source => {
+        const hidden = prefs.get(`notification_hidden_${source.id}`, false);
+        const row = createNotifRow(source.id, source.label, source.icon, !(hidden === true || hidden === 'true'));
+        container.appendChild(row);
     });
 }
 

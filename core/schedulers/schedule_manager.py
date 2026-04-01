@@ -253,6 +253,29 @@ class ScheduleManager:
 
         # Run AI call in a thread so we don't block the caller
         def _do():
+            # Lazy import to avoid circular deps at module load time
+            try:
+                from core.interfaces.dashboard.notification_routes import notify as _notify
+            except Exception:
+                _notify = None  # Notifications not available yet (early startup)
+
+            task_name = task.get('name', 'Scheduled Task')
+            task_id   = task['id']
+            nav_target = {"tab": "schedule", "context": task_id}
+
+            # ── Notify: task started ───────────────────────────────────
+            if _notify:
+                try:
+                    _notify(
+                        title=f"Running: {task_name}",
+                        message="Scheduled task is being executed…",
+                        source="schedule",
+                        level="info",
+                        target=nav_target,
+                    )
+                except Exception:
+                    pass
+
             result_text = None
             status = 'failed'
             try:
@@ -286,6 +309,33 @@ class ScheduleManager:
                             break
                     self._save(t2)
             logger.info("[ScheduleManager] Run %s → %s", run_id, status)
+
+            # ── Notify: task completed ─────────────────────────────────
+            if _notify:
+                try:
+                    # Truncate result to a readable preview
+                    preview = (result_text or '').strip()
+                    if len(preview) > 160:
+                        preview = preview[:157] + "…"
+
+                    if status == 'success':
+                        _notify(
+                            title=f"✓ {task_name} — Done",
+                            message=preview or "Task completed with no output.",
+                            source="schedule",
+                            level="success",
+                            target=nav_target,
+                        )
+                    else:
+                        _notify(
+                            title=f"✗ {task_name} — Failed",
+                            message=preview or "Task encountered an error.",
+                            source="schedule",
+                            level="error",
+                            target=nav_target,
+                        )
+                except Exception:
+                    pass
 
         threading.Thread(target=_do, daemon=True, name=f"sched-run-{run_id[:8]}").start()
         return run
