@@ -62,11 +62,20 @@ window.Notifications = (() => {
 
         const iconCls = _iconFor(notif.source);
 
+        let messageHtml = _esc(notif.message);
+        try {
+            if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
+                messageHtml = marked.parse(notif.message);
+            }
+        } catch (e) {
+            console.warn('[Notifications] Markdown parse failed:', e);
+        }
+
         row.innerHTML = `
             <div class="notif-icon"><i class="fas ${iconCls}"></i></div>
             <div class="notif-body">
                 <div class="notif-title">${_esc(notif.title)}</div>
-                <div class="notif-message">${_esc(notif.message)}</div>
+                <div class="notif-message">${messageHtml}</div>
                 <div class="notif-meta">
                     <span class="notif-source-tag">${_esc(notif.source)}</span>
                     <span class="notif-time">${_relTime(notif.timestamp)}</span>
@@ -160,9 +169,19 @@ window.Notifications = (() => {
 
     _active.forEach(n => {
         if (!_isHidden(n.source)) {
-            listEl.appendChild(_buildRow(n, false));
+            const row = _buildRow(n, false);
+            listEl.appendChild(row);
+            _highlightRow(row);
         }
     });
+}
+
+function _highlightRow(row) {
+    if (typeof hljs !== 'undefined') {
+        row.querySelectorAll('pre code').forEach(block => {
+            hljs.highlightElement(block);
+        });
+    }
 }
 
 function _isHidden(source) {
@@ -253,7 +272,11 @@ function _isHidden(source) {
                 listEl.appendChild(_makeEmpty());
                 return;
             }
-            data.forEach(n => listEl.appendChild(_buildRow(n, true)));
+            data.forEach(n => {
+                const row = _buildRow(n, true);
+                listEl.appendChild(row);
+                _highlightRow(row);
+            });
         } catch (err) {
             listEl.innerHTML = '<div class="notif-empty"><i class="fas fa-exclamation-circle"></i><p>Failed to load history</p></div>';
         }

@@ -247,10 +247,43 @@
     color: var(--text-secondary, rgba(255,255,255,0.55));
     line-height: 1.4;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.notif-row:hover .notif-message {
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    color: var(--text-primary, #fff);
+}
+
+.notif-message p { margin: 0 0 6px 0; }
+.notif-message p:last-child { margin-bottom: 0; }
+.notif-message h1, .notif-message h2, .notif-message h3, 
+.notif-message h4, .notif-message h5, .notif-message h6 { 
+    font-size: 0.85rem; 
+    margin: 6px 0 4px 0; 
+    color: var(--primary, #00d9ff);
+    font-weight: 600;
+}
+.notif-message ul, .notif-message ol { 
+    margin: 4px 0 6px 14px; 
+    padding: 0;
+}
+.notif-message li { margin-bottom: 2px; }
+.notif-message code {
+    background: rgba(255,255,255,0.08);
+    border-radius: 3px;
+    padding: 1px 3px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.72rem;
+}
+.notif-message strong {
+    color: var(--text-primary, #fff);
+    font-weight: 600;
 }
 
 .notif-meta {
