@@ -50,6 +50,16 @@
         "tags": ["Advanced", "Mistral", "NVIDIA"]
     },
     {
+        "id": "gemma-3-1b-it",
+        "name": "Gemma 3 1B Instruct",
+        "repo": "unsloth/gemma-3-1b-it-GGUF",
+        "filename": "gemma-3-1b-it-Q4_K_M.gguf",
+        "size": "0.8 GB",
+        "capabilities": ["CHAT"],
+        "description": "Google's Gemma 3 1B — ultra-lightweight model for low-end hardware and edge devices. Surprisingly capable for its size.",
+        "tags": ["Fast", "Google", "Gemma 3", "Lightweight"]
+    },
+    {
         "id": "gemma-3-4b-it",
         "name": "Gemma 3 4B Instruct",
         "repo": "unsloth/gemma-3-4b-it-GGUF",
@@ -58,6 +68,26 @@
         "capabilities": ["CHAT"],
         "description": "Google's Gemma 3 4B — strong instruction-tuned model with excellent multilingual support and long context (128K).",
         "tags": ["Balanced", "Google", "Gemma 3", "Multilingual"]
+    },
+    {
+        "id": "gemma-3-12b-it",
+        "name": "Gemma 3 12B Instruct",
+        "repo": "unsloth/gemma-3-12b-it-GGUF",
+        "filename": "gemma-3-12b-it-Q4_K_M.gguf",
+        "size": "7.0 GB",
+        "capabilities": ["CHAT"],
+        "description": "Google's Gemma 3 12B — highly capable mid-size model with 128K context. Excellent reasoning, coding, and multilingual performance.",
+        "tags": ["Advanced", "Google", "Gemma 3", "Multilingual"]
+    },
+    {
+        "id": "gemma-3-27b-it",
+        "name": "Gemma 3 27B Instruct",
+        "repo": "unsloth/gemma-3-27b-it-GGUF",
+        "filename": "gemma-3-27b-it-Q4_K_M.gguf",
+        "size": "16.0 GB",
+        "capabilities": ["CHAT"],
+        "description": "Google's Gemma 3 27B — the most powerful Gemma model. Top-tier reasoning and instruction following. Requires 16 GB+ VRAM or high-RAM CPU.",
+        "tags": ["Powerful", "Google", "Gemma 3", "High VRAM"]
     },
     {
         "id": "deepseek-r1-distill-7b",
