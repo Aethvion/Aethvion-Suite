@@ -1,0 +1,106 @@
+<div class="arena-layout aiconv-layout">
+                    <!-- AI Conv Controls -->
+                    <div class="arena-controls aiconv-controls">
+
+                        <!-- History -->
+                        <div class="arena-section">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                                <h3 style="margin:0;">💬 History</h3>
+                                <button id="aiconv-new-conv-btn" class="action-btn secondary" style="padding:0.2rem 0.6rem; font-size:0.78rem;" title="Clear and start fresh">
+                                    <i class="fas fa-plus"></i> New
+                                </button>
+                            </div>
+                            <div id="aiconv-conv-list" style="max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:0.2rem;">
+                                <div id="aiconv-conv-empty" style="font-size:0.8rem; color:var(--text-secondary); text-align:center; padding:0.5rem 0;">No saved conversations yet.</div>
+                            </div>
+                        </div>
+
+                        <div class="arena-section">
+                            <h3>🎭 Conversation Models</h3>
+                            <p class="arena-hint">Select models to converse with each other turn by turn.</p>
+                            <div class="arena-model-selector">
+                                <select id="aiconv-model-add" class="control-select">
+                                    <option value="">+ Add Model...</option>
+                                </select>
+                                <button id="aiconv-add-self-btn" class="action-btn secondary" style="width:100%; margin-top:0.4rem; font-size:0.82rem;">
+                                    <i class="fas fa-user-plus"></i> Add Yourself to Conversation
+                                </button>
+                                <div class="arena-model-chips" id="aiconv-model-chips">
+                                    <!-- model chips inserted by JS -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="arena-section">
+                            <h3>⚙️ Configuration</h3>
+
+                            <div style="margin-bottom: 0.8rem;">
+                                <label
+                                    style="display:block; font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.25rem;">Messages
+                                    per Model</label>
+                                <input type="number" id="aiconv-msg-count" class="term-input" style="width:100%;"
+                                    min="1" max="50" value="5">
+                            </div>
+
+                            <div style="margin-bottom: 0.8rem;">
+                                <label
+                                    style="display:block; font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.25rem;">Initial
+                                    Topic / Prompt</label>
+                                <textarea id="aiconv-topic" class="chat-input"
+                                    style="width:100%; min-height:80px; resize:vertical; font-size:0.85rem;"
+                                    placeholder="E.g., Debate the ethics of AI consciousness..."></textarea>
+                            </div>
+
+                            <div style="display:flex; gap: 0.5rem; flex-direction:column; margin-top: 1rem;">
+                                <button id="aiconv-start-btn" class="action-btn primary" style="width:100%;">
+                                    <i class="fas fa-play"></i> Start Conversation
+                                </button>
+                                <div style="display:flex; gap: 0.5rem;">
+                                    <button id="aiconv-pause-btn" class="action-btn secondary" style="flex:1;" disabled>
+                                        <i class="fas fa-pause"></i> Pause
+                                    </button>
+                                    <button id="aiconv-stop-btn" class="action-btn danger" style="flex:1;" disabled>
+                                        <i class="fas fa-stop"></i> Stop
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Conv Chat -->
+                    <div class="arena-chat-area aiconv-chat-area">
+                        <!-- Added header row for detailed token tracking -->
+                        <div
+                            style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-tertiary); flex-wrap: wrap; gap: 0.5rem;">
+                            <h3 style="margin: 0; font-size: 0.9rem; color: var(--primary);">Live Conversation</h3>
+                            <button id="aiconv-share-btn" class="action-btn secondary" style="padding:0.2rem 0.65rem; font-size:0.78rem; display:none;" title="Share this conversation">
+                                <i class="fas fa-share-nodes"></i> Share
+                            </button>
+                            <div style="font-size: 0.8rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <span title="Input Tokens"><i class="fas fa-sign-in-alt"
+                                        style="color:var(--text-secondary);"></i> <span id="aiconv-in-tokens"
+                                        style="font-weight:bold;">0</span> in</span>
+                                <span title="Output Tokens"><i class="fas fa-sign-out-alt"
+                                        style="color:var(--text-secondary);"></i> <span id="aiconv-out-tokens"
+                                        style="font-weight:bold;">0</span> out</span>
+                                <span title="Total Tokens"><i class="fas fa-coins"
+                                        style="color:var(--text-secondary);"></i>
+                                    <span id="aiconv-live-tokens" style="font-weight:bold;">0</span> total</span>
+                                <span title="Estimated Cost"><i class="fas fa-dollar-sign"
+                                        style="color:var(--text-secondary);"></i> <span id="aiconv-live-cost"
+                                        style="font-weight:bold; color:var(--success);">0.000</span></span>
+                                <span title="Messages Completed/Total"><i class="fas fa-exchange-alt"
+                                        style="color:var(--text-secondary);"></i> <span id="aiconv-progress"
+                                        style="font-weight:bold;">0/0</span> msgs</span>
+                            </div>
+                        </div>
+
+                        <div class="chat-messages" id="aiconv-messages"
+                            style="flex:1; overflow-y:auto; padding:1rem; background: var(--bg-primary);">
+                            <div class="arena-placeholder" id="aiconv-placeholder">
+                                <span class="tab-icon" style="font-size:3rem;">🎭</span>
+                                <p>Select models, configure the topic, and start the conversation!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>

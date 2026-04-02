@@ -1,0 +1,60 @@
+<div class="companion-layout">
+                    <!-- Companion Column (Left) -->
+                    <div class="companion-avatar-view">
+                        <div class="avatar-container">
+                            <img id="misaka-expression-img"
+                                src="/static/misakacipher/expressions/misakacipher_default.png" alt="Misaka Cipher">
+                            <canvas id="misaka-particle-sphere" width="320" height="320"></canvas>
+                        </div>
+                        <div id="misaka-status-line" class="status-line">Neural core engaged.</div>
+                    </div>
+
+                    <!-- Chat Column (Middle) -->
+                    <div class="companion-chat-column">
+                        <div class="chat-header">
+                            <h2>Misaka Cipher</h2>
+                            <div class="misaka-header-controls">
+                                <!-- Voice Output Toggle -->
+                                <div class="misaka-voice-bar" id="misaka-voice-bar">
+                                    <button id="misaka-voice-toggle" class="icon-btn misaka-voice-btn" title="Toggle voice output" onclick="toggleMisakaVoice()">
+                                        <i class="fas fa-volume-mute"></i>
+                                    </button>
+                                    <div id="misaka-voice-options" class="misaka-voice-options" style="display:none">
+                                        <select id="misaka-voice-model" class="setting-select setting-select-sm" onchange="loadMisakaVoiceOptions()">
+                                            <option value="">Select TTS model…</option>
+                                        </select>
+                                        <select id="misaka-voice-id" class="setting-select setting-select-sm">
+                                            <option value="">Default voice</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button id="misaka-settings-btn" class="misaka-settings-btn" title="Misaka Cipher Settings">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="chat-messages" id="misaka-chat-messages">
+                            <!-- Messages will scroll here -->
+                            <div class="chat-message assistant">
+                                <div class="message-bubble">Hello! I am Misaka Cipher. Ready to assist you.</div>
+                            </div>
+                        </div>
+                        <div class="chat-input-area">
+                            <div class="misaka-attach-pill" id="misaka-attach-pill" style="display:none;">
+                                <i class="fas fa-file-alt"></i>
+                                <span id="misaka-attach-name"></span>
+                                <button onclick="clearMisakaAttachment()" class="attach-clear-btn"
+                                    title="Remove attachment">✕</button>
+                            </div>
+                            <div class="misaka-input-row">
+                                <button id="misaka-attach-btn" class="icon-btn" title="Attach a file" aria-label="Attach a file">
+                                    <i class="fas fa-paperclip" aria-hidden="true"></i>
+                                </button>
+                                <input type="file" id="misaka-file-input" style="display:none;" accept="*/*">
+                                <textarea id="misaka-chat-input" placeholder="Type a message to Misaka..."></textarea>
+                                <button id="send-misaka-msg" class="send-btn"><i
+                                        class="fas fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>

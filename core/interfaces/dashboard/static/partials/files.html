@@ -1,0 +1,83 @@
+<div class="panel-header"
+                    style="flex-direction: column; align-items: stretch; gap: 1rem; height: auto; min-height: 70px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Workspace Files</h2>
+                        <div class="file-filters"
+                            style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                            <input type="text" id="file-search" placeholder="Search files or paths..."
+                                class="search-input" style="width: 200px;">
+
+                            <!-- Semantic Search Toggle -->
+                            <button id="semantic-search-toggle" class="icon-btn" title="Semantic Search Mode"
+                                style="border-radius: 6px; padding: 6px 10px; background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-secondary);">
+                                <i class="fas fa-brain"></i>
+                            </button>
+
+                            <!-- NEW: Folder Exclusion Toggle -->
+                            <div class="toggle-control"
+                                style="display: flex; align-items: center; background: var(--bg-tertiary); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border);">
+                                <input type="checkbox" id="exclude-folders-toggle"
+                                    style="margin-right: 0.5rem; cursor: pointer;">
+                                <label for="exclude-folders-toggle"
+                                    style="font-size: 0.85rem; cursor: pointer; color: var(--text-secondary); white-space: nowrap;">Hide
+                                    Folders</label>
+                            </div>
+
+                            <!-- NEW: Sort Dropdown -->
+                            <select id="sort-filter" class="filter-select">
+                                <option value="relevance_desc">Best Match</option>
+                                <option value="name_asc">Name (A-Z)</option>
+                                <option value="name_desc">Name (Z-A)</option>
+                                <option value="date_desc">Newest First</option>
+                                <option value="date_asc">Oldest First</option>
+                                <option value="size_desc">Largest First</option>
+                                <option value="size_asc">Smallest First</option>
+                                <option value="path_asc">Path (A-Z)</option>
+                            </select>
+
+                            <div class="view-toggles"
+                                style="display: flex; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; padding: 2px;">
+                                <button id="view-grid-btn" class="icon-btn active" title="Grid View" aria-label="Grid view"
+                                    style="border-radius: 4px; padding: 4px 8px;"><i
+                                        class="fas fa-th-large" aria-hidden="true"></i></button>
+                                <button id="view-list-btn" class="icon-btn" title="List View" aria-label="List view"
+                                    style="border-radius: 4px; padding: 4px 8px;"><i class="fas fa-list" aria-hidden="true"></i></button>
+                            </div>
+                            <select id="type-filter" class="filter-select">
+                                <option value="">All Types</option>
+                                <option value="pdf">PDF</option>
+                                <option value="txt">Text</option>
+                                <option value="csv">CSV</option>
+                                <option value="json">JSON</option>
+                                <option value="html">HTML</option>
+                                <option value="py">Python</option>
+                                <option value="js">JavaScript</option>
+                            </select>
+                            <button id="refresh-files" class="refresh-button">🔄 Refresh</button>
+                        </div>
+                    </div>
+                    <!-- Global Stats Bar -->
+                    <div class="file-stats-container"
+                        style="display: flex; flex-direction: column; gap: 0.5rem; background: var(--bg-secondary); padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border);">
+                        <div
+                            style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-secondary);">
+                            <span style="font-weight: 600; color: var(--text-primary);"><i class="fas fa-chart-pie"
+                                    style="margin-right: 4px; color: var(--primary);"></i> Global Statistics</span>
+                            <span id="file-total-count">0 files mapped</span>
+                        </div>
+                        <div id="file-stats-bar"
+                            style="display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--bg-tertiary);">
+                            <!-- Segments injected by JS -->
+                        </div>
+                        <div id="file-stats-legend"
+                            style="display: flex; gap: 1rem; font-size: 0.75rem; color: var(--text-secondary); flex-wrap: wrap;">
+                            <!-- Legend injected by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="files-container files-grid-view" id="files-grid"
+                    style="margin-top: 1rem; flex: 1; overflow-y: auto; padding-bottom: 2rem;">
+                    <p class="placeholder-text">No files yet. Ask Misaka to create reports, analysis, or other
+                        outputs!</p>
+                </div>

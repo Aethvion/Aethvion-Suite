@@ -1,0 +1,148 @@
+<div class="advaiconv-split-layout">
+
+                    <!-- LEFT SIDEBAR: Controls & Configuration -->
+                    <div class="advaiconv-sidebar">
+
+                        <!-- Section 1: Threads -->
+                        <div class="advaiconv-section">
+                            <div class="advaiconv-section-header">
+                                <h3><i class="fas fa-list"></i> Threads</h3>
+                                <button id="advaiconv-new-thread-btn" class="action-btn secondary xs-btn"
+                                    title="New Thread"><i class="fas fa-plus"></i></button>
+                            </div>
+                            <div class="advaiconv-thread-list" id="advaiconv-thread-list">
+                                <!-- Populated by JS -->
+                                <div class="placeholder-text" style="padding: 0.5rem; font-size: 0.8rem;">No threads
+                                    found.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Environment & Controls -->
+                        <div class="advaiconv-section">
+                            <div class="advaiconv-section-header">
+                                <h3><i class="fas fa-globe"></i> Environment & Controls</h3>
+                            </div>
+                            <div class="advaiconv-section-body">
+                                <div style="margin-bottom: 0.8rem;">
+                                    <label
+                                        style="display:block; font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.25rem;">Topic
+                                        / Scenario</label>
+                                    <textarea id="advaiconv-topic" class="chat-input"
+                                        style="width:100%; min-height:60px; resize:vertical; font-size:0.85rem;"
+                                        placeholder="E.g., You are locked in a room together..."></textarea>
+                                </div>
+
+                                <div style="display:flex; gap: 0.5rem; margin-bottom: 0.8rem;">
+                                    <div style="flex: 1;">
+                                        <label
+                                            style="display:block; font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.25rem;"
+                                            title="Delay between generation turns in ms">Speed (ms)</label>
+                                        <input type="number" id="advaiconv-speed-input" class="term-input"
+                                            style="width:100%;" min="0" step="500" value="2000">
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <label
+                                            style="display:block; font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.25rem;"
+                                            title="Max history messages to send to LLM">Max Context</label>
+                                        <input type="number" id="advaiconv-context-input" class="term-input"
+                                            style="width:100%;" min="1" max="100" value="20">
+                                    </div>
+                                </div>
+
+                                <div style="display:flex; gap: 0.5rem; flex-direction:column;">
+                                    <button id="advaiconv-main-btn" class="action-btn primary" style="width:100%;">
+                                        <i class="fas fa-play"></i> Start Simulation
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 3: People Settings -->
+                        <div class="advaiconv-section">
+                            <div class="advaiconv-section-header">
+                                <h3><i class="fas fa-users"></i> Research Subjects</h3>
+                                <button id="advaiconv-new-person-btn" class="action-btn secondary xs-btn"
+                                    title="Create New Persona"><i class="fas fa-user-plus"></i></button>
+                            </div>
+                            <div class="advaiconv-section-body">
+                                <select id="advaiconv-person-add" class="control-select"
+                                    style="width:100%; margin-bottom: 0.8rem;">
+                                    <option value="">+ Add Person to Thread...</option>
+                                </select>
+
+                                <div class="advaiconv-active-people" id="advaiconv-person-chips">
+                                    <!-- person chips inserted by JS -->
+                                    <div class="placeholder-text"
+                                        style="font-size: 0.8rem; text-align: center; margin-top: 0.5rem;">No active
+                                        subjects in thread.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- RIGHT MAIN: Advanced AI Conv Chat -->
+                    <div class="advaiconv-chat-area">
+                        <div class="advaiconv-chat-header"
+                            style="justify-content: space-between; align-items: center; padding: 0.8rem 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+                                <i class="fas fa-vial" style="color: var(--primary);"></i>
+                                <h3 id="advaiconv-active-thread-title"
+                                    style="margin: 0; font-size: 1rem; color: var(--text-primary); cursor: pointer;"
+                                    title="Double-click to rename" ondblclick="renameAdvaiconvThread()">New
+                                    Simulation</h3>
+                                <button onclick="renameAdvaiconvThread()" class="icon-btn" title="Rename Thread"
+                                    style="background:none; border:none; color:var(--text-secondary); cursor:pointer;"><i
+                                        class="fas fa-edit"></i></button>
+                            </div>
+
+                            <div class="advaiconv-view-tabs"
+                                style="display: flex; gap: 0.2rem; background: var(--bg-tertiary); padding: 0.2rem; border-radius: 6px; border: 1px solid var(--border); margin-right: 1rem;">
+                                <button class="advaiconv-view-tab active" data-view="simulation"
+                                    onclick="switchAdvaiconvView('simulation')"
+                                    style="background: var(--bg-secondary); border: 1px solid var(--border); padding: 0.3rem 0.8rem; border-radius: 4px; color: var(--text-primary); cursor: pointer; font-size: 0.8rem; font-weight: 500;">Simulation</button>
+                                <button class="advaiconv-view-tab" data-view="backend"
+                                    onclick="switchAdvaiconvView('backend')"
+                                    style="background: transparent; border: 1px solid transparent; padding: 0.3rem 0.8rem; border-radius: 4px; color: var(--text-secondary); cursor: pointer; font-size: 0.8rem;">Backend</button>
+                                <button class="advaiconv-view-tab" data-view="people"
+                                    onclick="switchAdvaiconvView('people')"
+                                    style="background: transparent; border: 1px solid transparent; padding: 0.3rem 0.8rem; border-radius: 4px; color: var(--text-secondary); cursor: pointer; font-size: 0.8rem;">People</button>
+                                <button class="advaiconv-view-tab" data-view="statistics"
+                                    onclick="switchAdvaiconvView('statistics')"
+                                    style="background: transparent; border: 1px solid transparent; padding: 0.3rem 0.8rem; border-radius: 4px; color: var(--text-secondary); cursor: pointer; font-size: 0.8rem;">Statistics</button>
+                            </div>
+
+                            <div id="advaiconv-status-indicator" class="advaiconv-status-badge">IDLE</div>
+                        </div>
+
+                        <div class="chat-messages advaiconv-messages-container" id="advaiconv-messages">
+                            <div class="arena-placeholder" id="advaiconv-placeholder">
+                                <span class="tab-icon" style="font-size:3rem;">🧪</span>
+                                <p>Select subjects, configure the environment, and start the simulation!</p>
+                            </div>
+                        </div>
+
+                        <div class="advaiconv-backend-container" id="advaiconv-backend-view"
+                            style="display: none; padding: 1rem; overflow-y: auto; height: calc(100% - 60px);">
+                            <div class="placeholder-text" style="text-align: center; margin-top: 2rem;">No backend
+                                logs yet.
+                                Start the simulation to see prompts and raw generations.</div>
+                        </div>
+
+                        <div class="advaiconv-people-container" id="advaiconv-people-view"
+                            style="display: none; padding: 1rem; overflow-y: auto; height: calc(100% - 60px);">
+                            <div class="placeholder-text" style="text-align: center; margin-top: 2rem;">No people
+                                info yet.
+                                Add subjects to the simulation.</div>
+                        </div>
+
+                        <div class="advaiconv-statistics-container" id="advaiconv-statistics-view"
+                            style="display: none; padding: 1rem; overflow-y: auto; height: calc(100% - 60px);">
+                            <div class="placeholder-text" style="text-align: center; margin-top: 2rem;">No
+                                statistics
+                                available yet. Add subjects to view their analytics.</div>
+                        </div>
+                    </div>
+
+                </div>

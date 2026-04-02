@@ -1,0 +1,54 @@
+<div class="results-container">
+                    <div class="game-header">
+                        <div class="game-header-left">
+                            <span class="game-icon">📊</span>
+                            <div class="game-title-block">
+                                <h2>Game Statistics</h2>
+                                <p class="game-subtitle">Your Lifetime Performance</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button id="results-refresh-btn" class="action-btn">Refresh Data</button>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span id="res-total-games" class="stat-val">0</span>
+                            <span class="stat-lbl">Total Games</span>
+                        </div>
+                        <div class="stat-card">
+                            <span id="res-win-rate" class="stat-val">0%</span>
+                            <span class="stat-lbl">Win Rate</span>
+                        </div>
+                        <div class="stat-card">
+                            <span id="res-total-wins" class="stat-val">0</span>
+                            <span class="stat-lbl">Wins</span>
+                        </div>
+                        <div class="stat-card">
+                            <span id="res-total-losses" class="stat-val">0</span>
+                            <span class="stat-lbl">Losses</span>
+                        </div>
+                    </div>
+
+                    <div id="res-breakdown" class="games-breakdown">
+                        <!-- Cards per game type -->
+                    </div>
+
+                    <div class="games-table-container">
+                        <table class="games-table">
+                            <thead>
+                                <tr>
+                                    <th>Session</th>
+                                    <th>Game Type</th>
+                                    <th>Result</th>
+                                    <th>Score</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="res-history-body">
+                                <!-- Populated via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>

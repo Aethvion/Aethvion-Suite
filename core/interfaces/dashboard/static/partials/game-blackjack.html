@@ -1,0 +1,73 @@
+<div class="game-layout">
+                    <!-- Premium Game Header -->
+                    <div class="game-header">
+                        <div class="game-header-left">
+                            <span class="game-icon">🃏</span>
+                            <div class="game-title-block">
+                                <h2>Blackjack</h2>
+                                <p class="game-subtitle">AI Dealer Duel</p>
+                            </div>
+                        </div>
+                        <div class="game-toolbar"
+                            style="background:transparent; border:none; margin:0; padding:0 15px;">
+                            <select id="pc-model-select" class="control-select"></select>
+                            <select id="pc-difficulty-select" class="control-select">
+                                <option value="easy">Passive</option>
+                                <option value="medium" selected>Rational</option>
+                                <option value="hard">Aggressive</option>
+                                <option value="expert">Card Counter</option>
+                            </select>
+                            <div class="game-stat" style="margin-left:20px;">
+                                <span class="stat-label">STREAK</span>
+                                <span id="pc-streak" class="stat-value" style="color:var(--primary)">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- The Blackjack Table -->
+                    <div class="blackjack-table" id="pc-table">
+                        <!-- Status Banner (Replaces Overlay) -->
+                        <div id="pc-status-banner" class="game-status-banner" style="display:none;">
+                            <h2 id="pc-status-title">YOU WIN</h2>
+                            <p id="pc-status-msg"></p>
+                        </div>
+
+                        <!-- Start Screen Overlay -->
+                        <div id="game-overlay-blackjack-start" class="game-overlay">
+                            <div class="overlay-title" style="color:var(--text-primary)">JOIN TABLE</div>
+                            <div class="overlay-subtitle" style="margin-bottom: 2rem;">The dealer is
+                                waiting.<br>Entering this game will consume tokens.</div>
+                            <button class="game-btn" onclick="startPlayingCards()" id="bj-start-btn">Join Table</button>
+                        </div>
+
+                        <div class="bj-hands-area">
+                            <!-- Dealer Zone -->
+                            <div class="bj-dealer-hand">
+                                <div class="bj-label">DEALER <span id="pc-ai-score" class="pc-score-badge">0</span>
+                                </div>
+                                <div id="pc-ai-hand" class="pc-hand"></div>
+                            </div>
+
+                            <!-- Thought Bubble -->
+                            <div id="pc-display" class="dealer-bubble">Good luck, player. The house always wins...
+                            </div>
+
+                            <!-- Player Zone -->
+                            <div class="bj-player-hand">
+                                <div id="pc-player-hand" class="pc-hand"></div>
+                                <div class="bj-label">YOUR HAND <span id="pc-player-score"
+                                        class="pc-score-badge">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="player-controls-area">
+                        <button id="pc-hit-btn" class="bj-btn bj-btn-primary">Hit</button>
+                        <button id="pc-stay-btn" class="bj-btn bj-btn-secondary">Stay</button>
+                        <button id="pc-reset-btn" class="bj-btn bj-btn-secondary">New Hand</button>
+                        <button id="pc-hint-btn" class="bj-btn bj-btn-secondary"
+                            style="font-size: 1.2rem; padding: 10px 15px;">💡</button>
+                        <button id="pc-reveal-btn" class="bj-btn bj-btn-secondary" style="color: #ff7675;">Fold</button>
+                    </div>
+                </div>

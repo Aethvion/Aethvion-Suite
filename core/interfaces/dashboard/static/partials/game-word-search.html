@@ -1,0 +1,51 @@
+<div class="game-header">
+                    <div class="game-header-left">
+                        <span class="game-icon">🔠</span>
+                        <div class="game-title-block">
+                            <h2>Word Search</h2>
+                            <p class="game-subtitle">Find the hidden tech terms</p>
+                        </div>
+                    </div>
+                    <div class="game-toolbar"
+                        style="background:transparent; border:none; margin:0; padding:0 15px; flex-wrap:wrap; gap:8px;">
+                        <select id="ws-size-select" class="control-select">
+                            <option value="10">10x10</option>
+                            <option value="12">12x12</option>
+                            <option value="15" selected>15x15</option>
+                            <option value="20">20x20</option>
+                        </select>
+                        <button id="ws-restart-btn" class="action-btn secondary">New Puzzle</button>
+                        <div class="ws-divider"></div>
+                        <input id="ws-topic" type="text" class="ws-topic-input"
+                            placeholder="Topic — e.g. Space, Anime, Cooking…" maxlength="60" autocomplete="off"
+                            spellcheck="false" />
+                        <select id="ws-model-select" class="control-select"></select>
+                        <button id="ws-ai-btn" class="action-btn primary ws-ai-btn">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> AI Puzzle
+                        </button>
+                    </div>
+                    <div id="ws-ai-error" class="ws-ai-error" style="display:none;"></div>
+                </div>
+                <div class="word-search-layout">
+                    <div class="ws-progress-container">
+                        <div id="ws-progress-bar" class="ws-progress-bar"></div>
+                    </div>
+                    <div class="ws-main">
+                        <div class="ws-sidebar">
+                            <h3 style="margin-top: 0;">Words to Find</h3>
+                            <span id="ws-topic-badge" class="ws-topic-badge" style="display:none;"></span>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">
+                                Found <span id="ws-found-count">0</span> of <span id="ws-total-count">0</span>
+                            </div>
+                            <div id="ws-words-list" class="ws-words-list"></div>
+                        </div>
+                        <div class="ws-board-container">
+                            <div id="ws-grid" class="ws-grid" data-size="15"></div>
+                        </div>
+                    </div>
+                    <div id="game-overlay-word-search" class="game-overlay" style="display:none;">
+                        <div class="overlay-title">ALL WORDS FOUND</div>
+                        <button class="game-btn" onclick="document.getElementById('ws-restart-btn').click();">Next
+                            Puzzle</button>
+                    </div>
+                </div>

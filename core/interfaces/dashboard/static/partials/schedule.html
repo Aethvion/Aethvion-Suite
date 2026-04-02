@@ -1,0 +1,94 @@
+<div class="sched-layout">
+
+                    <!-- Left sidebar: task list -->
+                    <div class="sched-sidebar">
+                        <div class="sched-sidebar-header">
+                            <span class="sched-sidebar-title">Schedules</span>
+                            <button id="sched-new-btn" class="sched-new-btn" title="New scheduled task">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <div class="sched-task-list" id="sched-task-list">
+                            <div class="sched-empty-list" id="sched-empty-list">
+                                <span>No schedules yet</span>
+                                <span style="font-size:0.8rem;opacity:0.6">Click + to create one</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main content: info card + chat + input -->
+                    <div class="sched-main" id="sched-main">
+
+                        <!-- Empty state (no task selected) -->
+                        <div class="sched-no-task" id="sched-no-task">
+                            <div class="sched-no-task-icon">🗓️</div>
+                            <div class="sched-no-task-title">No schedule selected</div>
+                            <div class="sched-no-task-sub">Create a new schedule or select one from the list</div>
+                            <button class="sched-no-task-btn" id="sched-no-task-new-btn">
+                                <i class="fas fa-plus"></i> New Schedule
+                            </button>
+                        </div>
+
+                        <!-- Task view (shown when a task is selected) -->
+                        <div class="sched-task-view" id="sched-task-view" style="display:none">
+
+                            <!-- Info card -->
+                            <div class="sched-info-card" id="sched-info-card">
+                                <div class="sched-info-left">
+                                    <div class="sched-info-name-row">
+                                        <span class="sched-status-dot" id="sched-status-dot"></span>
+                                        <span class="sched-info-name" id="sched-info-name">New Schedule</span>
+                                        <span class="sched-status-badge" id="sched-status-badge">draft</span>
+                                    </div>
+                                    <div class="sched-info-meta">
+                                        <span class="sched-meta-item" id="sched-cron-human">Not scheduled yet</span>
+                                        <span class="sched-meta-sep" id="sched-tz-wrap" style="display:none"> · <i class="fas fa-globe" style="font-size:0.75rem; opacity:0.6;"></i> <span id="sched-tz-display"></span></span>
+                                        <span class="sched-meta-sep" id="sched-next-run-wrap" style="display:none"> · Next: <span id="sched-next-run"></span></span>
+                                        <span class="sched-meta-sep" id="sched-last-run-wrap" style="display:none"> · Last: <span id="sched-last-run"></span></span>
+                                    </div>
+                                </div>
+                                <div class="sched-info-right">
+                                    <select id="sched-model-select" class="control-select sched-model-select" title="Model">
+                                        <option value="auto">Auto</option>
+                                    </select>
+                                    <div class="sched-queue-row" title="Max queued runs (1 = skip if already running, 0 = unlimited)">
+                                        <label class="sched-queue-label">Queue max</label>
+                                        <input type="number" id="sched-queue-max" class="sched-queue-input" min="0" max="99" value="1">
+                                        <button id="sched-queue-save-btn" class="sched-icon-btn" title="Save queue setting"><i class="fas fa-check"></i></button>
+                                    </div>
+                                    <button id="sched-run-btn" class="sched-action-btn sched-run-btn" title="Run now (does not affect schedule)">
+                                        <i class="fas fa-play"></i> Run Now
+                                    </button>
+                                    <button id="sched-pause-btn" class="sched-action-btn sched-pause-btn" title="Pause / Resume">
+                                        <i class="fas fa-pause"></i> <span id="sched-pause-label">Pause</span>
+                                    </button>
+                                    <button id="sched-delete-btn" class="sched-action-btn sched-delete-btn" title="Delete this scheduled task">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Conversation messages -->
+                            <div class="sched-messages" id="sched-messages"></div>
+
+                            <!-- Input area -->
+                            <div class="sched-input-area">
+                                <div class="sched-typing" id="sched-typing" style="display:none">
+                                    <span class="sched-typing-dot"></span>
+                                    <span class="sched-typing-dot"></span>
+                                    <span class="sched-typing-dot"></span>
+                                </div>
+                                <div class="sched-input-row">
+                                    <textarea id="sched-input" class="sched-textarea"
+                                        placeholder="Describe what you want to schedule, or ask to change the schedule…"
+                                        rows="2"></textarea>
+                                    <button id="sched-send-btn" class="sched-send-btn" title="Send">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>

@@ -1,0 +1,31 @@
+<div class="panel-header">
+                    <h2>Version Control</h2>
+                </div>
+                <div class="setting-card" id="card-version" style="max-width: 800px; margin: 0 auto;">
+                    <div class="card-header">
+                        <div class="header-title">
+                            <i class="fas fa-code-branch"></i>
+                            <span>System Build & Changelog</span>
+                        </div>
+                        <button id="settings-check-update-btn" class="action-btn xs-btn secondary"
+                            style="min-width: 140px;">
+                            <i class="fas fa-sync"></i> Check for Updates
+                        </button>
+                    </div>
+                    <div class="card-content">
+                        <div id="local-version-info"
+                            style="margin-bottom: 20px; padding: 15px; background: rgba(0, 217, 255, 0.05); border-radius: 6px; border: 1px solid rgba(0, 217, 255, 0.1);">
+                            <div class="loading-placeholder">Loading local version...</div>
+                        </div>
+
+                        <div id="settings-version-banner"></div>
+
+                        <h3 style="margin-top: 25px;">Remote Changelog (GitHub)</h3>
+
+                        <p class="section-hint">Recent improvements and fixes from the main repository.</p>
+                        <ul id="settings-changelog-list"
+                            style="margin-top: 10px; padding-left: 20px; color: var(--text-secondary); line-height: 1.6;">
+                            <li>Checking for remote changes...</li>
+                        </ul>
+                    </div>
+                </div>

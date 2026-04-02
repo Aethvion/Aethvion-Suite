@@ -1,0 +1,155 @@
+<div class="panel-header">
+                    <h2>Local Models Management <span class="panel-ts-badge" data-panel-ts="models"></span></h2>
+                    <div class="header-actions">
+                        <button id="refresh-local-models" class="action-btn secondary">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <!-- GPU Configuration Section -->
+                    <div class="glass-panel" id="gpu-config-panel">
+                        <div class="section-header-v12">
+                            <i class="fas fa-bolt"></i>
+                            <h3>GPU Acceleration</h3>
+                        </div>
+                        <div id="gpu-status-row" class="gpu-status-row">
+                            <span class="placeholder-text">Checking GPU status…</span>
+                        </div>
+                        <div id="gpu-settings-form" class="gpu-settings-form" style="display:none;">
+                            <div class="gpu-setting-row">
+                                <label class="gpu-setting-label">
+                                    <i class="fas fa-layer-group"></i> GPU Layers
+                                    <span class="gpu-setting-hint">-1 = all layers on GPU (recommended). 0 = CPU only.</span>
+                                </label>
+                                <div class="gpu-setting-controls">
+                                    <input type="range" id="gpu-layers-slider" min="-1" max="100" step="1" value="-1" class="gpu-slider">
+                                    <input type="number" id="gpu-layers-input" min="-1" max="512" value="-1" class="setting-input gpu-num-input">
+                                </div>
+                            </div>
+                            <div class="gpu-setting-row">
+                                <label class="gpu-setting-label">
+                                    <i class="fas fa-text-width"></i> Context Window (n_ctx)
+                                    <span class="gpu-setting-hint">Tokens of context. Larger = more VRAM.</span>
+                                </label>
+                                <div class="gpu-setting-controls">
+                                    <select id="gpu-ctx-select" class="setting-select" style="width:140px;">
+                                        <option value="2048">2 048</option>
+                                        <option value="4096" selected>4 096</option>
+                                        <option value="8192">8 192</option>
+                                        <option value="16384">16 384</option>
+                                        <option value="32768">32 768</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="gpu-setting-row">
+                                <label class="gpu-setting-label">
+                                    <i class="fas fa-microchip"></i> CPU Threads
+                                    <span class="gpu-setting-hint">-1 = auto (uses all cores).</span>
+                                </label>
+                                <div class="gpu-setting-controls">
+                                    <input type="number" id="gpu-threads-input" min="-1" max="64" value="-1" class="setting-input gpu-num-input">
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:0.75rem; align-items:center; margin-top:0.25rem;">
+                                <button class="action-btn primary" onclick="LocalModels.saveGPUConfig()">
+                                    <i class="fas fa-save"></i> Save &amp; Apply
+                                </button>
+                                <span id="gpu-save-status" style="font-size:0.8rem; color:var(--text-tertiary);"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ollama Section -->
+                    <div class="glass-panel">
+                        <div class="section-header-v12">
+                            <i class="fas fa-server"></i>
+                            <h3>Ollama <span style="font-size:0.75rem; font-weight:400; color:var(--text-tertiary);">— automatic GPU offload, no rebuilding required</span></h3>
+                        </div>
+                        <div id="ollama-status-row" class="ollama-status-row">
+                            <span class="placeholder-text">Checking Ollama…</span>
+                        </div>
+                        <div id="ollama-models-section" style="display:none;">
+                            <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1rem; align-items:center;">
+                                <input type="text" id="ollama-pull-name" class="setting-input" placeholder="Model to pull  (e.g. llama3.2, mistral, qwen2.5-coder)" style="flex:2; min-width:220px;">
+                                <button class="action-btn primary" onclick="LocalModels.pullOllamaModel()">
+                                    <i class="fas fa-download"></i> Pull Model
+                                </button>
+                            </div>
+                            <div id="ollama-pull-progress" style="display:none; margin-bottom:1rem;">
+                                <div class="model-dl-row">
+                                    <span class="model-dl-label" id="ollama-pull-label">Pulling…</span>
+                                    <span class="model-dl-pct" id="ollama-pull-pct">0%</span>
+                                </div>
+                                <div class="model-dl-bar-wrap">
+                                    <div class="model-dl-bar" id="ollama-pull-bar" style="width:0%"></div>
+                                </div>
+                            </div>
+                            <div id="ollama-models-list" class="ollama-models-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- Downloaded Models Section -->
+                    <div class="glass-panel">
+                        <div class="section-header-v12">
+                            <i class="fas fa-microchip"></i>
+                            <h3>Downloaded Models (llama.cpp)</h3>
+                        </div>
+                        <p class="section-desc">Manage GGUF models stored in <code>localmodels/gguf/</code>.</p>
+                        <table class="models-table-v12">
+                            <thead>
+                                <tr>
+                                    <th>Filename</th>
+                                    <th>Size</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="local-models-list">
+                                <!-- Populated by JS -->
+                                <tr>
+                                    <td colspan="4" class="placeholder-text">Checking for local models...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Suggested Models Section -->
+                    <div class="glass-panel">
+                        <div class="section-header-v12">
+                            <i class="fas fa-sparkles"></i>
+                            <h3>Suggested Models</h3>
+                        </div>
+                        <p class="section-desc">Recommended GGUF models for one-click installation from Hugging Face.</p>
+                        <div id="suggested-models-grid"
+                            style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+                            <!-- Populated by JS -->
+                            <div class="placeholder-text">Loading suggestions...</div>
+                        </div>
+                    </div>
+
+                    <!-- Download New Models Section -->
+                    <div class="glass-panel">
+                        <div class="section-header-v12">
+                            <i class="fas fa-cloud-download-alt"></i>
+                            <h3>Download New Models</h3>
+                        </div>
+                        <p class="section-desc">Download a GGUF model directly from Hugging Face into your local models folder.</p>
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center;">
+                            <input type="text" id="hf-repo-id" class="setting-input" placeholder="Repo ID  (e.g. TheBloke/Mistral-7B-GGUF)" style="flex: 2; min-width: 200px;">
+                            <input type="text" id="hf-filename" class="setting-input" placeholder="Filename  (e.g. mistral-7b.Q4_K_M.gguf)" style="flex: 2; min-width: 200px;">
+                            <button id="start-hf-download" class="action-btn primary">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                        </div>
+                        <div id="download-progress-container" style="display:none;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                <span id="download-status">Downloading…</span>
+                                <span id="download-percent">0%</span>
+                            </div>
+                            <div class="splash-loader-bar" style="height:8px;">
+                                <div id="download-progress-bar" class="splash-progress" style="width:0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>

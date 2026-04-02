@@ -1,0 +1,231 @@
+<div class="corp-layout">
+
+                    <!-- Top bar (row 1: corp selector + action buttons) -->
+                    <div class="corp-topbar">
+                        <span class="corp-topbar-label">Corp</span>
+                        <select id="corp-select" class="corp-select"></select>
+                        <button id="corp-create-btn" class="corp-icon-btn" title="New Corp">
+                            <i class="fas fa-plus"></i> New
+                        </button>
+                        <div class="corp-topbar-sep"></div>
+                        <div id="corp-status-dot" class="corp-status-dot" title="Corp status"></div>
+                        <div class="corp-topbar-spacer"></div>
+                        <button id="corp-add-worker-btn" class="corp-icon-btn" style="display:none" title="Add Worker">
+                            <i class="fas fa-user-plus"></i> Add Worker
+                        </button>
+                        <button id="corp-add-task-btn" class="corp-icon-btn" style="display:none" title="Add Task">
+                            <i class="fas fa-tasks"></i> Add Task
+                        </button>
+                        <button id="corp-start-btn" class="corp-start-btn" style="display:none">
+                            <i class="fas fa-play"></i> Start Corp
+                        </button>
+                        <button id="corp-stop-btn" class="corp-stop-btn" style="display:none">
+                            <i class="fas fa-stop"></i> Stop
+                        </button>
+                        <div class="corp-topbar-sep"></div>
+                        <button id="corp-chat-btn" class="corp-chat-toggle-btn" style="display:none" title="Message the Company">
+                            <i class="fas fa-comments"></i> Chat
+                        </button>
+                    </div>
+
+                    <!-- Top bar (row 2: workspace path) -->
+                    <div class="corp-workspace-bar" id="corp-workspace-bar" style="display:none">
+                        <i class="fas fa-folder-open" style="color:var(--text-secondary);font-size:.8rem"></i>
+                        <span class="corp-topbar-label">Workspace</span>
+                        <input type="text" id="corp-workspace-input" class="corp-workspace-input"
+                            placeholder="Select a folder… (leave blank to use default corp folder)">
+                        <button id="corp-workspace-browse-btn" class="corp-icon-btn" title="Browse for folder">
+                            <i class="fas fa-folder"></i> Browse
+                        </button>
+                        <button id="corp-workspace-save-btn" class="corp-icon-btn" title="Save workspace path">
+                            <i class="fas fa-check"></i> Save
+                        </button>
+                    </div>
+
+                    <!-- Top bar (row 3: company goal) -->
+                    <div class="corp-workspace-bar" id="corp-goal-bar" style="display:none">
+                        <i class="fas fa-bullseye" style="color:var(--text-secondary);font-size:.8rem"></i>
+                        <span class="corp-topbar-label">Goal</span>
+                        <input type="text" id="corp-goal-input" class="corp-workspace-input"
+                            placeholder="Set a company goal — workers with auto-plan will pursue it continuously…">
+                        <button id="corp-goal-save-btn" class="corp-icon-btn" title="Save company goal">
+                            <i class="fas fa-check"></i> Save
+                        </button>
+                    </div>
+
+                    <!-- 3-column body -->
+                    <div class="corp-body">
+                        <!-- Left: worker cards -->
+                        <div class="corp-workers-panel" id="corp-workers-panel">
+                            <div class="corp-empty-state">
+                                <i class="fas fa-users" style="font-size:2rem;opacity:.3"></i>
+                                <div>No corp selected</div>
+                                <div style="font-size:.72rem">Create or select a corp above</div>
+                            </div>
+                        </div>
+
+                        <!-- Center: task board -->
+                        <div class="corp-taskboard" id="corp-taskboard">
+                            <div class="corp-empty-state">
+                                <i class="fas fa-clipboard-list" style="font-size:2rem;opacity:.3"></i>
+                                <div>No corp selected</div>
+                            </div>
+                        </div>
+
+                        <!-- Right: live event feed -->
+                        <div class="corp-feed" id="corp-feed">
+                            <div class="corp-feed-header">Live Activity</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Modals ── -->
+
+                <!-- Create Corp -->
+                <div class="corp-modal-overlay" id="corp-create-modal" style="display:none">
+                    <div class="corp-modal">
+                        <h3 class="corp-modal-title">Create New Corp</h3>
+                        <div class="corp-modal-field">
+                            <label class="corp-modal-label">Corp Name</label>
+                            <input type="text" id="corp-modal-name" class="corp-modal-input" placeholder="e.g. Research Team">
+                        </div>
+                        <div class="corp-modal-field">
+                            <label class="corp-modal-label">Description</label>
+                            <textarea id="corp-modal-desc" class="corp-modal-input" rows="2" placeholder="What does this corp work on?"></textarea>
+                        </div>
+                        <div class="corp-modal-field">
+                            <label class="corp-modal-label">Company Goal <span style="opacity:.5;font-weight:400">(optional — drives autonomous planning)</span></label>
+                            <textarea id="corp-modal-goal" class="corp-modal-input" rows="3" placeholder="e.g. Build a complete REST API with auth, database, and documentation…"></textarea>
+                        </div>
+                        <div class="corp-modal-footer">
+                            <button id="corp-create-cancel" class="corp-modal-btn">Cancel</button>
+                            <button id="corp-create-submit" class="corp-modal-btn primary">Create Corp</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Worker -->
+                <div class="corp-modal-overlay" id="corp-worker-modal" style="display:none">
+                    <div class="corp-modal corp-modal-wide">
+                        <h3 class="corp-modal-title">Add Worker</h3>
+                        <div class="corp-modal-grid2">
+                            <div class="corp-modal-field">
+                                <label class="corp-modal-label">Name</label>
+                                <input type="text" id="corp-wmodal-name" class="corp-modal-input" placeholder="e.g. Alex">
+                            </div>
+                            <div class="corp-modal-field">
+                                <label class="corp-modal-label">Role</label>
+                                <input type="text" id="corp-wmodal-role" class="corp-modal-input" placeholder="e.g. Lead Researcher">
+                            </div>
+                        </div>
+                        <div class="corp-modal-field">
+                            <label class="corp-modal-label">Model</label>
+                            <select id="corp-wmodal-model" class="corp-modal-input">
+                                <option value="">Loading models…</option>
+                            </select>
+                        </div>
+                        <div class="corp-modal-field">
+                            <label class="corp-modal-label">Personality &amp; Working Style</label>
+                            <textarea id="corp-wmodal-personality" class="corp-modal-input" rows="3"
+                                placeholder="Describe their work style, strengths, and traits…"></textarea>
+                        </div>
+                        <div class="corp-modal-grid2">
+                            <div class="corp-modal-field">
+                                <label class="corp-modal-label">Colour</label>
+                                <input type="color" id="corp-wmodal-color" value="#7c3aed" class="corp-color-picker">
+                            </div>
+                            <div class="corp-modal-field" style="justify-content:flex-end;padding-top:1.4rem">
+                                <label class="corp-modal-toggle-label">
+                                    <input type="checkbox" id="corp-wmodal-can-plan">
+                                    <span>Auto-plan when idle</span>
+                                </label>
+                                <div style="font-size:.68rem;color:var(--text-secondary);margin-top:.25rem">Worker creates tasks autonomously to pursue the company goal</div>
+                            </div>
+                        </div>
+                        <div class="corp-modal-field" style="display:flex;align-items:center;gap:10px">
+                            <label class="corp-modal-label" style="margin:0">Allow task creation</label>
+                            <input type="checkbox" id="corp-wmodal-can-create" style="width:16px;height:16px">
+                        </div>
+                        <div class="corp-modal-footer">
+                            <button id="corp-worker-cancel" class="corp-modal-btn">Cancel</button>
+                            <button id="corp-worker-submit" class="corp-modal-btn primary">Add Worker</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Task -->
+                <div class="corp-modal-overlay" id="corp-task-modal" style="display:none">
+                    <div class="corp-modal corp-modal-wide">
+                        <h3 class="corp-modal-title">Add Task</h3>
+                        <div class="corp-modal-field">
+                            <label class="corp-modal-label">Title</label>
+                            <input type="text" id="corp-tmodal-title" class="corp-modal-input" placeholder="Brief task title">
+                        </div>
+                        <div class="corp-modal-field">
+                            <label class="corp-modal-label">Description</label>
+                            <textarea id="corp-tmodal-desc" class="corp-modal-input" rows="4"
+                                placeholder="Full task details — what needs to be accomplished?"></textarea>
+                        </div>
+                        <div class="corp-modal-grid2">
+                            <div class="corp-modal-field">
+                                <label class="corp-modal-label">Assign To</label>
+                                <select id="corp-tmodal-assign" class="corp-modal-input">
+                                    <option value="any">Any worker</option>
+                                </select>
+                            </div>
+                            <div class="corp-modal-field">
+                                <label class="corp-modal-label">Priority</label>
+                                <select id="corp-tmodal-priority" class="corp-modal-input">
+                                    <option value="urgent">🔴 Urgent</option>
+                                    <option value="high">High</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="low">Low</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="corp-modal-footer">
+                            <button id="corp-task-cancel" class="corp-modal-btn">Cancel</button>
+                            <button id="corp-task-submit" class="corp-modal-btn primary">Add Task</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Task Detail Modal -->
+                <div class="corp-modal-overlay" id="corp-task-detail-modal" style="display:none" onclick="if(event.target===this)corpCloseTaskDetail()">
+                    <div class="corp-modal corp-modal-wide">
+                        <div class="corp-modal-title-row">
+                            <h3 class="corp-modal-title" id="corp-detail-title"></h3>
+                            <span class="corp-detail-status-badge" id="corp-detail-status"></span>
+                        </div>
+                        <div class="corp-detail-meta" id="corp-detail-meta"></div>
+                        <div class="corp-modal-field">
+                            <label class="corp-modal-label">Description</label>
+                            <div class="corp-detail-description" id="corp-detail-description"></div>
+                        </div>
+                        <div class="corp-detail-result" id="corp-detail-result-wrap" style="display:none">
+                            <label class="corp-modal-label">Result</label>
+                            <div class="corp-detail-result-body" id="corp-detail-result"></div>
+                        </div>
+                        <div class="corp-modal-footer">
+                            <button class="corp-modal-btn primary" onclick="corpCloseTaskDetail()">Close</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Company Chat Popup -->
+                <div class="corp-chat-popup" id="corp-chat-popup" style="display:none">
+                    <div class="corp-chat-header">
+                        <i class="fas fa-comments" style="color:var(--primary)"></i>
+                        <span class="corp-chat-header-title">Company Chat</span>
+                        <button class="corp-chat-close-btn" onclick="corpToggleChat()" title="Close">✕</button>
+                    </div>
+                    <div class="corp-chat-messages" id="corp-chat-messages">
+                        <div class="corp-chat-empty">No messages yet. Send a message to steer the company.</div>
+                    </div>
+                    <div class="corp-chat-input-row">
+                        <textarea id="corp-chat-input" class="corp-chat-input" rows="2"
+                            placeholder="Give the team direction…"
+                            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();corpSendChatMessage();}"></textarea>
+                        <button class="corp-chat-send-btn" onclick="corpSendChatMessage()">Send</button>
+                    </div>
+                </div>

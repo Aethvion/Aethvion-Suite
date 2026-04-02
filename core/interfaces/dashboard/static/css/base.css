@@ -1437,3 +1437,15 @@ kbd {
 .atb-apps-menu-category:first-of-type {
     margin-top: 0;
 }
+
+/* ── Partial-loading spinner (shown while a panel's HTML is being fetched) ── */
+.partial-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 200px;
+    color: var(--text-tertiary, #666);
+    font-size: 1.4rem;
+    opacity: 0.5;
+}

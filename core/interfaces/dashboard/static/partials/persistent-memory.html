@@ -1,0 +1,19 @@
+<div class="panel-header">
+                    <h2>Persistent Memory <span class="panel-ts-badge" data-panel-ts="persistent_memory"></span></h2>
+                    <div class="panel-controls">
+                        <button id="refresh-persistent-memory-btn" class="action-btn secondary" title="Refresh persistent memory">
+                            <i class="fas fa-redo"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="memory-stats-bar" id="persistent-memory-stats" style="padding: 0.8rem 1.5rem; background: rgba(0,217,255,0.05); border-bottom: 1px solid var(--border); display: flex; gap: 2rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    <div class="stat-item">Entries: <strong id="pm-stat-count">0</strong></div>
+                    <div class="stat-item">Total Size: <strong id="pm-stat-size">0 KB</strong></div>
+                    <div class="stat-item">Est. Tokens: <strong id="pm-stat-tokens">0</strong></div>
+                </div>
+                <div class="panel-content" style="padding: 1.5rem; overflow-y: auto; height: calc(100% - 110px);">
+                    <div class="memory-grid" id="persistent-memory-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;">
+                        <!-- Topic cards will be injected here -->
+                        <div class="loading-placeholder">Loading persistent memory topics...</div>
+                    </div>
+                </div>

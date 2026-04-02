@@ -1,0 +1,37 @@
+<div class="panel-header">
+                    <h2>System Memory</h2>
+                    <div class="panel-controls">
+                        <button id="refresh-memory-btn" class="action-btn secondary" title="Refresh memory">
+                            <i class="fas fa-redo"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Permanent Memory Section -->
+                <div class="memory-section" style="margin-bottom: 2rem;">
+                    <h3 style="margin-left: 1rem; color: var(--accent);">Permanent Memory (Core Insights)</h3>
+                    <div class="tools-table-container" style="overflow-x: auto;">
+                        <table class="data-table" id="permanent-memory-table"
+                            style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;">
+                            <thead>
+                                <tr style="text-align: left; border-bottom: 2px solid var(--border);">
+                                    <th style="padding: 10px;">Insight ID</th>
+                                    <th style="padding: 10px;">Summary</th>
+                                    <th style="padding: 10px;">Created</th>
+                                </tr>
+                            </thead>
+                            <tbody id="permanent-memory-body">
+                                <!-- Rows injected by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Thread Memory Section -->
+                <div class="memory-section">
+                    <h3 style="margin-left: 1rem; color: var(--accent);">Thread Memory</h3>
+                    <div id="thread-memory-container">
+                        <!-- Dynamic thread tables injected here -->
+                        <p class="placeholder-text">Loading thread memories...</p>
+                    </div>
+                </div>

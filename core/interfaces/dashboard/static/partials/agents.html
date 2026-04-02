@@ -1,0 +1,173 @@
+<div class="agents-layout">
+                    <!-- Top bar: workspace + thread selectors -->
+                    <div class="agents-topbar">
+                        <div class="agents-topbar-left">
+                            <div class="agents-selector-group">
+                                <label class="agents-selector-label">Workspace</label>
+                                <div class="agents-selector-row">
+                                    <select id="agents-workspace-select" class="agents-select">
+                                        <option value="">No workspace selected</option>
+                                    </select>
+                                    <button id="agents-add-workspace-btn" class="agents-icon-btn" title="Add Workspace">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                    <button id="agents-edit-workspace-btn" class="agents-icon-btn" title="Edit Workspace" style="display:none">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                    <button id="agents-delete-workspace-btn" class="agents-icon-btn agents-icon-btn--danger" title="Delete Workspace" style="display:none">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="agents-selector-group">
+                                <label class="agents-selector-label">Thread</label>
+                                <div class="agents-selector-row">
+                                    <select id="agents-thread-select" class="agents-select" disabled>
+                                        <option value="">Select workspace first</option>
+                                    </select>
+                                    <button id="agents-new-thread-btn" class="agents-icon-btn" title="New Thread" disabled>
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                    <button id="agents-rename-thread-btn" class="agents-icon-btn" title="Rename Thread" style="display:none">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                    <button id="agents-delete-thread-btn" class="agents-icon-btn agents-icon-btn--danger" title="Delete Thread" style="display:none">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="agents-topbar-right">
+                            <span class="agents-workspace-path" id="agents-workspace-path-display"></span>
+                        </div>
+                    </div>
+
+                    <!-- Add / Edit workspace modal overlay -->
+                    <div id="agents-add-ws-overlay" class="agents-modal-overlay" style="display:none">
+                        <div class="agents-modal">
+                            <div class="agents-modal-header">
+                                <h3 id="agents-modal-title">Add Workspace</h3>
+                                <button id="agents-modal-close" class="agents-modal-close">&times;</button>
+                            </div>
+                            <div class="agents-modal-body">
+                                <label>Directory Path</label>
+                                <div class="agents-path-input-row">
+                                    <input type="text" id="agents-ws-path-input" class="agents-modal-input agents-path-input" placeholder="C:\projects\my-project or /home/user/project" />
+                                    <button id="agents-browse-btn" class="agents-browse-btn" title="Browse folders">
+                                        <i class="fas fa-folder-open"></i>
+                                    </button>
+                                </div>
+                                <label style="margin-top:0.75rem;">Name (optional)</label>
+                                <input type="text" id="agents-ws-name-input" class="agents-modal-input" placeholder="Defaults to folder name" />
+                            </div>
+                            <div class="agents-modal-footer">
+                                <button id="agents-modal-cancel" class="btn-secondary">Cancel</button>
+                                <button id="agents-modal-confirm" class="btn-primary">Add Workspace</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard body: left panel + main area -->
+                    <div class="agents-body">
+
+                        <!-- Left panel: timeline / plan / stats -->
+                        <div class="agents-dash-left" id="agents-dash-left">
+                            <div class="agents-dash-left-empty" id="agents-dash-left-empty">
+                                <span style="font-size:1.4rem;opacity:0.4">⚡</span>
+                                <span>Run a task to<br>see activity here</span>
+                            </div>
+                            <div class="agents-dash-content" id="agents-dash-content" style="display:none">
+                                <!-- Timeline -->
+                                <div class="agents-dash-section">
+                                    <div class="agents-dash-section-label">Timeline</div>
+                                    <div class="agents-vert-timeline" id="agents-vert-timeline"></div>
+                                </div>
+                                <!-- Plan -->
+                                <div class="agents-dash-section" id="agents-plan-section" style="display:none">
+                                    <div class="agents-dash-section-label">
+                                        Plan
+                                        <span class="agents-dash-badge" id="agents-plan-badge"></span>
+                                    </div>
+                                    <div class="agents-plan-compact-list" id="agents-plan-compact-list"></div>
+                                </div>
+                                <!-- Stats -->
+                                <div class="agents-dash-section" id="agents-stats-section" style="display:none">
+                                    <div class="agents-dash-section-label">Stats</div>
+                                    <div class="agents-stats-group">
+                                        <div class="agents-stats-group-label">Run</div>
+                                        <div class="agents-stat-row"><span>⏱</span><span id="agents-stat-time">00:00</span></div>
+                                        <div class="agents-stat-row" title="Input tokens"><span>↑</span><span id="agents-stat-in-tok">—</span></div>
+                                        <div class="agents-stat-row" title="Output tokens"><span>↓</span><span id="agents-stat-out-tok">—</span></div>
+                                        <div class="agents-stat-row" title="Total tokens"><span>#</span><span id="agents-stat-total-tok">—</span></div>
+                                        <div class="agents-stat-row" title="Estimated cost"><span>$</span><span id="agents-stat-cost">—</span></div>
+                                        <div class="agents-stat-row" title="Tokens per second"><span>⚡</span><span id="agents-stat-tps">—</span></div>
+                                        <div class="agents-stat-row"><span>📄</span><span id="agents-stat-files">—</span></div>
+                                        <div class="agents-stat-row"><span>🔧</span><span id="agents-stat-cmds">—</span></div>
+                                    </div>
+                                    <div class="agents-stats-group" id="agents-stats-thread-group" style="display:none">
+                                        <div class="agents-stats-group-label">Thread</div>
+                                        <div class="agents-stat-row" title="Total tokens this thread"><span>#</span><span id="agents-stat-thread-tok">—</span></div>
+                                        <div class="agents-stat-row" title="Estimated total cost"><span>$</span><span id="agents-stat-thread-cost">—</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Main content area -->
+                        <div class="agents-dash-main">
+                            <div id="agents-messages" class="agents-messages">
+                                <div class="agents-empty-state" id="agents-empty-state">
+                                    <div class="agents-empty-icon">🤖</div>
+                                    <div class="agents-empty-title">No workspace selected</div>
+                                    <div class="agents-empty-sub">Add or select a workspace to start working with agents</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right panel: chain of thought -->
+                        <div class="agents-dash-right" id="agents-dash-right">
+                            <div class="agents-dash-right-header">
+                                <span class="agents-dash-right-title">Thoughts</span>
+                                <span class="agents-dash-badge" id="agents-thought-badge" style="display:none"></span>
+                            </div>
+                            <div class="agents-dash-right-empty" id="agents-dash-right-empty">
+                                <span style="font-size:1.4rem;opacity:0.3">🧠</span>
+                                <span>Chain of thought<br>appears here</span>
+                            </div>
+                            <div class="agents-thoughts-list" id="agents-thoughts-list" style="display:none"></div>
+                        </div>
+
+                    </div>
+
+                    <!-- Input area -->
+                    <div class="agents-input-area">
+                        <div class="agents-input-context" id="agents-input-context" style="display:none">
+                            <i class="fas fa-folder"></i>
+                            <span id="agents-input-path"></span>
+                        </div>
+                        <!-- Attached file chips strip -->
+                        <div class="agents-attach-strip" id="agents-attach-strip" style="display:none"></div>
+                        <div class="agents-input-row">
+                            <textarea id="agents-task-input" class="agents-textarea" placeholder="Describe a task for the agent..." rows="3" disabled></textarea>
+                            <div class="agents-input-actions">
+                                <!-- Hidden file input -->
+                                <input type="file" id="agents-file-input" style="display:none" multiple
+                                    accept="image/*,.txt,.md,.py,.js,.ts,.json,.csv,.log,.yaml,.yml,.toml,.html,.css,.xml,.sh,.bat">
+                                <button id="agents-attach-btn" class="agents-attach-btn" title="Attach file" disabled>
+                                    <i class="fas fa-paperclip"></i>
+                                </button>
+                                <select id="agents-model-select" class="control-select" title="Model">
+                                    <option value="auto">Auto</option>
+                                </select>
+                                <button id="agents-stop-btn" class="agents-stop-btn" style="display:none" title="Stop agent">
+                                    <i class="fas fa-stop"></i>
+                                    <span>Stop</span>
+                                </button>
+                                <button id="agents-submit-btn" class="agents-submit-btn" disabled>
+                                    <i class="fas fa-paper-plane"></i>
+                                    <span>Submit</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>

@@ -1,0 +1,127 @@
+<div class="three-column-layout">
+                    <!-- Far Left: Thread List -->
+                    <div class="column threads-column">
+                        <div class="column-header">
+                            <button id="new-thread-button" class="new-thread-button" title="New Thread (Ctrl+T)" aria-label="New thread">+</button>
+                        </div>
+                        <div class="threads-search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="threads-search" placeholder="Search threads…" autocomplete="off">
+                        </div>
+                        <div class="threads-list" id="threads-list">
+                            <!-- Threads will be populated here -->
+                        </div>
+                    </div>
+                    <!-- ... existing content ... -->
+
+                    <template id="thread-item-template">
+                        <div class="thread-item">
+                            <div class="thread-line-1">
+                                <span class="thread-title"></span>
+                                <div class="thread-actions">
+                                    <button class="thread-action-btn pin-btn" title="Pin thread" aria-label="Pin thread">
+                                        <i class="fas fa-thumbtack" aria-hidden="true"></i>
+                                    </button>
+                                    <button class="thread-action-btn edit-btn" title="Rename thread" aria-label="Rename thread">
+                                        <i class="fas fa-pencil-alt" aria-hidden="true"></i>
+                                    </button>
+                                    <button class="thread-action-btn delete-btn" title="Delete thread" aria-label="Delete thread">
+                                        <i class="fas fa-trash" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="thread-line-2">
+                                <div class="thread-preview"></div>
+                            </div>
+                        </div>
+                    </template>
+                    <!-- Resize handle: threads | chat -->
+                    <div class="col-resize-handle" id="resize-threads-chat" title="Drag to resize"></div>
+
+                    <!-- Center: Chat Interface -->
+                    <div class="column chat-column">
+                        <div class="column-header">
+                            <div style="display: flex; align-items: center; gap: 0.8rem;">
+                                <button id="toggle-threads-btn" class="icon-btn" title="Toggle Threads History" aria-label="Toggle Threads History">
+                                    <i class="fas fa-history" aria-hidden="true"></i>
+                                </button>
+                                <button id="header-new-thread-btn" class="icon-btn" title="New Chat" aria-label="New chat thread">
+                                    <i class="fas fa-plus" aria-hidden="true"></i>
+                                </button>
+                                <h2 id="active-thread-title">Main Thread</h2>
+                            </div>
+                            <div class="global-chat-controls">
+                                <!-- CTX -->
+                                <div class="control-item" title="Context Mode">
+                                    <label>CTX</label>
+                                    <select id="global-ctx-mode" class="control-select">
+                                        <option value="none">None</option>
+                                        <option value="smart" selected>Smart</option>
+                                        <option value="full">Full</option>
+                                    </select>
+                                </div>
+                                <!-- WIN -->
+                                <div class="control-item" title="Context Window">
+                                    <label>WIN</label>
+                                    <input type="number" id="global-ctx-window" class="control-select" min="1" max="50"
+                                        value="5" style="width: 45px; text-align: center;">
+                                </div>
+                                <!-- MEM -->
+                                <div class="control-item" title="Persistent Memory">
+                                    <label>MEM</label>
+                                    <select id="chat-memory-mode" class="control-select">
+                                        <option value="enabled" selected>On</option>
+                                        <option value="nomemory">Off</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="chat-messages" id="chat-messages">
+                            <div class="message system-message">
+                                <div class="message-content">
+                                    <strong>System:</strong> Chat initialized. Ask me anything.
+                                </div>
+                            </div>
+                            <!-- Typing Indicator (Inside messages for flow) -->
+                            <div id="chat-typing-indicator" class="message ai-message typing-indicator"
+                                style="display: none;">
+                                <div class="message-content">
+                                    <span class="typing-text">Working...</span>
+                                </div>
+                            </div>
+                        </div>
+
+
+
+                        <div class="chat-interface-wrapper">
+                            <textarea id="chat-input" class="chat-input" rows="1"
+                                placeholder="Ask me anything... (e.g., 'Analyze TSLA stock outlook')"
+                                autocomplete="off"></textarea>
+
+                            <div class="input-controls">
+                                <div class="controls-left">
+                                    <button class="icon-btn add-file-btn" title="Add File" aria-label="Attach file">
+                                        <i class="fas fa-plus" aria-hidden="true"></i>
+                                    </button>
+                                    <input type="file" id="chat-file-input" style="display:none;" accept="*/*">
+
+                                    <select id="model-select" class="control-select"
+                                        title="Select Chat Profile / Model">
+                                        <option value="auto">Auto</option>
+                                    </select>
+                                </div>
+
+                                <div class="controls-right">
+                                    <button id="voice-mode-toggle" class="icon-btn voice-btn" title="Voice Mode" aria-label="Toggle voice mode">
+                                        <i class="fas fa-microphone" aria-hidden="true"></i>
+                                    </button>
+                                    <button id="send-button" class="send-button" aria-label="Send message">
+                                        <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>

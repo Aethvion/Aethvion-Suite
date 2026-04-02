@@ -228,6 +228,11 @@ function initDevMode() {
 let availableWorkspaces = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Pre-fetch the two default landing panels in background so first switch is instant
+    if (window._partialLoader) {
+        window._partialLoader.preload('chat', 'suite-home');
+    }
+
     // Start polling startup status (non-blocking)
     pollStartupStatus();
 
@@ -839,6 +844,23 @@ function switchMainTab(tabName, save = true) {
 
     let actualTabName = tabName;
     if (tabName === 'agent') actualTabName = 'chat'; // Legacy mapping
+
+    // ── Lazy-load panel partial if not yet injected ──────────────────────────
+    if (window._partialLoader && !window._partialLoader.isLoaded(actualTabName)) {
+        // Show the panel (spinner state) immediately so navigation feels instant
+        document.querySelectorAll('.main-tab-panel').forEach(p => p.classList.remove('active'));
+        const _eagerPanel = document.getElementById(
+            ['output','screenshots','camera','uploads'].includes(actualTabName)
+                ? 'files-panel' : `${actualTabName}-panel`
+        );
+        if (_eagerPanel) _eagerPanel.classList.add('active');
+
+        window._partialLoader.ensure(actualTabName).then(function () {
+            switchMainTab(tabName, save);   // re-enter once HTML is ready
+        });
+        return;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     currentMainTab = actualTabName;
     if (save && typeof savePreference === 'function') {

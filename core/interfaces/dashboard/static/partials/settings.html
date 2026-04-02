@@ -1,0 +1,679 @@
+<div class="panel-header">
+                    <h2>System Settings</h2>
+                </div>
+                <div class="settings-dashboard sidebar-layout">
+                    <!-- Sidebar Navigation -->
+                    <div class="settings-sidebar">
+                        <button class="settings-nav-item active" data-settingsubtab="system">
+                            <i class="fas fa-cog"></i> Global System
+                        </button>
+                        <button class="settings-nav-item" data-settingsubtab="assistant">
+                            <i class="fas fa-robot"></i> Assistant
+                        </button>
+                        <button class="settings-nav-item" data-settingsubtab="misakacipher">
+                            <i class="fas fa-brain"></i> Misaka Cipher
+                        </button>
+                        <button class="settings-nav-item" data-settingsubtab="env">
+                            <i class="fas fa-key"></i> Environment
+                        </button>
+                        <button class="settings-nav-item" data-settingsubtab="providers">
+                            <i class="fas fa-database"></i> Model Registry
+                        </button>
+                        <button class="settings-nav-item" data-settingsubtab="profiles">
+                            <i class="fas fa-users"></i> Routing Profiles
+                        </button>
+                        <button class="settings-nav-item" data-settingsubtab="modules">
+                            <i class="fas fa-cubes"></i> Modules
+                        </button>
+                        <button class="settings-nav-item" data-settingsubtab="discord">
+                            <i class="fab fa-discord"></i> Discord Worker
+                        </button>
+                        <button class="settings-nav-item" data-settingsubtab="interface">
+                            <i class="fas fa-eye"></i> Interface
+                        </button>
+                        <button class="settings-nav-item" data-settingsubtab="notifications">
+                            <i class="fas fa-bell"></i> Notifications
+                        </button>
+                    </div>
+
+                    <!-- Settings Content Pane -->
+                    <div class="settings-content-wrapper">
+                        <!-- Panel: Assistant -->
+                        <div class="settings-panel" id="settings-panel-assistant">
+                            <div class="setting-card" id="card-assistant">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-robot"></i>
+                                        <span>Assistant Configuration</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <div class="compact-item toggle-item"
+                                        style="border-bottom: 1px solid var(--border); margin-bottom: 1rem; padding-bottom: 0.5rem;">
+                                        <div class="item-label">Assistant Enabled</div>
+                                        <label class="switch small">
+                                            <input type="checkbox" id="setting-assistant-enabled">
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Core Model</span>
+                                            <i class="fas fa-info-circle tooltip-trigger"
+                                                title="The primary LLM used for the floating assistant interface."></i>
+                                        </div>
+                                        <select id="setting-assistant-model" class="control-select">
+                                            <option value="flash">Loading models...</option>
+                                        </select>
+                                    </div>
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Typing Speed</span>
+                                            <span class="range-display"
+                                                id="setting-assistant-typing-speed-val">75</span>
+                                        </div>
+                                        <input type="range" id="setting-assistant-typing-speed" min="0" max="100"
+                                            value="75">
+                                    </div>
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Context Window</span>
+                                            <span class="range-display"
+                                                id="setting-assistant-context-limit-val">5</span>
+                                        </div>
+                                        <input type="range" id="setting-assistant-context-limit" min="1" max="20"
+                                            value="5">
+                                    </div>
+                                    <div class="compact-item toggle-item">
+                                        <div class="item-label">Dashboard Context</div>
+                                        <label class="switch small">
+                                            <input type="checkbox" id="setting-assistant-context">
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="compact-item toggle-item">
+                                        <div class="item-label">Allow Dashboard Control</div>
+                                        <label class="switch small">
+                                            <input type="checkbox" id="setting-assistant-dashboard-control">
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Panel: Misaka Cipher -->
+                        <div class="settings-panel" id="settings-panel-misakacipher">
+                            <!-- Card: Misaka Cipher (Specific) -->
+                            <div class="setting-card" id="card-misakacipher">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-brain"></i>
+                                        <span>Misaka Cipher Configuration</span>
+                                    </div>
+                                    <button class="settings-open-chat-btn" title="Go to Misaka Cipher chat"
+                                        onclick="if(typeof switchMainTab==='function') switchMainTab('misaka-cipher')">
+                                        <i class="fas fa-comment-dots"></i> Open Chat
+                                    </button>
+                                </div>
+                                <div class="card-content">
+                                    <p class="section-hint">Settings for the Misaka Cipher chat companion.</p>
+
+                                    <!-- Appearance Mode -->
+                                    <div class="compact-item toggle-item"
+                                        style="border-bottom: 1px solid var(--border); margin-bottom: 1rem; padding-bottom: 1rem;">
+                                        <div class="item-label">
+                                            <span>Hide Character</span>
+                                            <i class="fas fa-info-circle tooltip-trigger"
+                                                title="Replaces the character with an animated particle sphere. Perfect for a professional or minimal setup."></i>
+                                        </div>
+                                        <label class="switch small">
+                                            <input type="checkbox" id="setting-misakacipher-hide-character">
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Primary Model</span>
+                                            <i class="fas fa-info-circle tooltip-trigger"
+                                                title="The LLM that powers Misaka Cipher's personality and memory system."></i>
+                                        </div>
+                                        <select id="setting-misakacipher-model" class="control-select">
+                                            <option value="flash">Loading models...</option>
+                                        </select>
+                                    </div>
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Typing Speed</span>
+                                            <span class="range-display"
+                                                id="setting-misakacipher-typing-speed-val">75</span>
+                                        </div>
+                                        <input type="range" id="setting-misakacipher-typing-speed" min="0" max="100"
+                                            value="75">
+                                    </div>
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Context Window</span>
+                                            <span class="range-display"
+                                                id="setting-misakacipher-context-limit-val">6</span>
+                                        </div>
+                                        <input type="range" id="setting-misakacipher-context-limit" min="1" max="50"
+                                            value="6">
+                                    </div>
+                                    <div class="compact-item toggle-item">
+                                        <div class="item-label"
+                                            title="Allow Misaka to use tools in proactive initiation messages.">
+                                            Allow
+                                            Proactive Tools</div>
+                                        <label class="switch small">
+                                            <input type="checkbox" id="setting-misakacipher-proactive-tools">
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+
+                                    <!-- Workspace Access Sub-section -->
+                                    <div
+                                        style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                                        <div
+                                            style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 0.5rem; font-family: 'Orbitron', sans-serif;">
+                                            Workspace Access</div>
+                                        <p class="section-hint" style="margin-bottom: 0.75rem;">Directories Misaka
+                                            can
+                                            read/write within.</p>
+                                        <div id="misaka-workspace-list"
+                                            style="display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem;">
+                                            <span
+                                                style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">No
+                                                workspaces configured.</span>
+                                        </div>
+                                        <details>
+                                            <summary
+                                                style="font-size: 0.8rem; color: var(--primary); cursor: pointer; list-style: none; display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem;">
+                                                <i class="fas fa-plus"></i> Add Workspace
+                                            </summary>
+                                            <div
+                                                style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; margin-top: 0.4rem;">
+                                                <input id="ws-add-path" type="text" class="control-input"
+                                                    placeholder="Directory path (e.g. C:\Projects\MyApp)"
+                                                    style="width: 100%; box-sizing: border-box;">
+                                                <input id="ws-add-label" type="text" class="control-input"
+                                                    placeholder="Label (e.g. My Project)"
+                                                    style="width: 100%; box-sizing: border-box;">
+                                                <div
+                                                    style="display: flex; gap: 1.2rem; flex-wrap: wrap; font-size: 0.84rem; color: var(--text-primary);">
+                                                    <label><input type="checkbox" id="ws-perm-read" checked>
+                                                        Read</label>
+                                                    <label><input type="checkbox" id="ws-perm-write"> Write</label>
+                                                    <label><input type="checkbox" id="ws-perm-delete">
+                                                        Delete</label>
+                                                    <label style="margin-left: auto;"><input type="checkbox"
+                                                            id="ws-recursive" checked> Subfolders</label>
+                                                </div>
+                                                <button id="ws-add-btn" class="btn btn-primary"
+                                                    style="align-self: flex-start; font-size: 0.8rem; padding: 0.4rem 1rem;">Add
+                                                    Workspace</button>
+                                            </div>
+                                        </details>
+                                    </div>
+
+
+                                    <!-- Proactive Messages Sub-section -->
+                                    <div
+                                        style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                                        <div
+                                            style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 0.75rem; font-family: 'Orbitron', sans-serif;">
+                                            Proactive Messages</div>
+
+                                        <div class="compact-item toggle-item" style="margin-bottom: 0.5rem;">
+                                            <div class="item-label">
+                                                <span>Proactive Messages</span>
+                                                <i class="fas fa-info-circle tooltip-trigger"
+                                                    title="Allows Misaka to initiate conversations on her own."></i>
+                                            </div>
+                                            <label class="switch small">
+                                                <input type="checkbox" id="setting-misaka-proactive-enabled" checked>
+                                                <span class="slider round"></span>
+                                            </label>
+                                        </div>
+
+                                        <div class="compact-item toggle-item" style="margin-bottom: 0.5rem;">
+                                            <div class="item-label">
+                                                <span>Popup Notification</span>
+                                                <i class="fas fa-info-circle tooltip-trigger"
+                                                    title="Show a popup when Misaka sends a message while you're on a different tab."></i>
+                                            </div>
+                                            <label class="switch small">
+                                                <input type="checkbox" id="setting-misaka-proactive-popup" checked>
+                                                <span class="slider round"></span>
+                                            </label>
+                                        </div>
+
+                                        <div class="compact-item">
+                                            <div class="item-label">
+                                                <span>Startup — Min Hours Away</span>
+                                                <span class="range-display"
+                                                    id="setting-misaka-startup-hours-val">4</span>
+                                            </div>
+                                            <input type="range" id="setting-misaka-startup-hours" min="1" max="48"
+                                                value="4">
+                                        </div>
+                                        <div class="compact-item">
+                                            <div class="item-label">
+                                                <span>Startup — Chance (%)</span>
+                                                <span class="range-display"
+                                                    id="setting-misaka-startup-chance-val">75</span>
+                                            </div>
+                                            <input type="range" id="setting-misaka-startup-chance" min="10" max="100"
+                                                value="75">
+                                        </div>
+                                        <div class="compact-item">
+                                            <div class="item-label">
+                                                <span>Startup — Min Delay (s)</span>
+                                                <span class="range-display"
+                                                    id="setting-misaka-startup-delay-min-val">10</span>
+                                            </div>
+                                            <input type="range" id="setting-misaka-startup-delay-min" min="5" max="120"
+                                                value="10">
+                                        </div>
+                                        <div class="compact-item">
+                                            <div class="item-label">
+                                                <span>Startup — Max Delay (s)</span>
+                                                <span class="range-display"
+                                                    id="setting-misaka-startup-delay-max-val">45</span>
+                                            </div>
+                                            <input type="range" id="setting-misaka-startup-delay-max" min="10" max="180"
+                                                value="45">
+                                        </div>
+                                        <div class="compact-item">
+                                            <div class="item-label">
+                                                <span>Session — Min Interval (min)</span>
+                                                <span class="range-display"
+                                                    id="setting-misaka-session-interval-min-val">45</span>
+                                            </div>
+                                            <input type="range" id="setting-misaka-session-interval-min" min="1"
+                                                max="120" value="45">
+                                        </div>
+                                        <div class="compact-item">
+                                            <div class="item-label">
+                                                <span>Session — Max Interval (min)</span>
+                                                <span class="range-display"
+                                                    id="setting-misaka-session-interval-max-val">90</span>
+                                            </div>
+                                            <input type="range" id="setting-misaka-session-interval-max" min="1"
+                                                max="240" value="90">
+                                        </div>
+                                        <div class="compact-item">
+                                            <div class="item-label">
+                                                <span>Session — Chance (%)</span>
+                                                <span class="range-display"
+                                                    id="setting-misaka-session-chance-val">60</span>
+                                            </div>
+                                            <input type="range" id="setting-misaka-session-chance" min="10" max="100"
+                                                value="60">
+                                        </div>
+                                    </div>
+
+                                    <!-- Danger zone -->
+                                    <div class="misaka-reset-zone">
+                                        <div class="misaka-reset-label">Danger Zone</div>
+                                        <p class="misaka-reset-desc">Permanently deletes all of Misaka Cipher's conversation history and memory. This cannot be undone.</p>
+                                        <button id="misaka-reset-btn" class="misaka-reset-btn">
+                                            <i class="fas fa-trash-alt"></i> Reset Misaka Cipher
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Panel: Modules -->
+                        <div class="settings-panel" id="settings-panel-modules">
+                            <div class="setting-card" id="card-modules">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-cubes"></i>
+                                        <span>Nexus Modules</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="section-hint">External integrations and bridges to other software.</p>
+                                    <div id="nexus-module-list"
+                                        style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+                                        <!-- Dynamically populated -->
+                                        <span
+                                            style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">Loading
+                                            modules...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Panel: Global Settings -->
+                        <div class="settings-panel active" id="settings-panel-system">
+                            <!-- Timezone card — always at the top -->
+                            <div class="setting-card" id="card-timezone" style="margin-bottom: 18px;">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-clock"></i>
+                                        <span>Display &amp; Scheduling Timezone</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="section-hint" style="margin-bottom: 12px;">
+                                        All timestamps in the interface are shown in this timezone.
+                                        Scheduled tasks are also created in this timezone by default — the AI will use it when setting up cron times.
+                                        The system always stores times in UTC internally.
+                                    </p>
+                                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                        <select id="display-timezone-select" style="flex: 1; min-width: 220px; max-width: 380px; background: var(--surface-2, #1e1e2e); color: var(--text-primary, #e0e0e0); border: 1px solid var(--border, #333); border-radius: 8px; padding: 8px 12px; font-size: 0.875rem;">
+                                            <option value="UTC">UTC</option>
+                                            <optgroup label="Europe">
+                                                <option value="Europe/London">London (GMT/BST)</option>
+                                                <option value="Europe/Amsterdam">Amsterdam / Berlin / Paris (CET/CEST)</option>
+                                                <option value="Europe/Helsinki">Helsinki / Kyiv (EET/EEST)</option>
+                                                <option value="Europe/Moscow">Moscow (MSK)</option>
+                                            </optgroup>
+                                            <optgroup label="Americas">
+                                                <option value="America/New_York">New York (ET)</option>
+                                                <option value="America/Chicago">Chicago (CT)</option>
+                                                <option value="America/Denver">Denver (MT)</option>
+                                                <option value="America/Los_Angeles">Los Angeles (PT)</option>
+                                                <option value="America/Anchorage">Anchorage (AKT)</option>
+                                                <option value="Pacific/Honolulu">Honolulu (HST)</option>
+                                                <option value="America/Toronto">Toronto (ET)</option>
+                                                <option value="America/Sao_Paulo">São Paulo (BRT)</option>
+                                                <option value="America/Buenos_Aires">Buenos Aires (ART)</option>
+                                            </optgroup>
+                                            <optgroup label="Asia / Pacific">
+                                                <option value="Asia/Dubai">Dubai (GST)</option>
+                                                <option value="Asia/Karachi">Karachi (PKT)</option>
+                                                <option value="Asia/Kolkata">Mumbai / Kolkata (IST)</option>
+                                                <option value="Asia/Dhaka">Dhaka (BST)</option>
+                                                <option value="Asia/Bangkok">Bangkok / Jakarta (ICT/WIB)</option>
+                                                <option value="Asia/Singapore">Singapore / Kuala Lumpur (SGT)</option>
+                                                <option value="Asia/Shanghai">Beijing / Shanghai (CST)</option>
+                                                <option value="Asia/Tokyo">Tokyo (JST)</option>
+                                                <option value="Asia/Seoul">Seoul (KST)</option>
+                                                <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
+                                                <option value="Pacific/Auckland">Auckland (NZST/NZDT)</option>
+                                            </optgroup>
+                                        </select>
+                                        <button id="display-timezone-save-btn" class="action-btn xs-btn" style="white-space: nowrap;">
+                                            <i class="fas fa-save"></i> Save
+                                        </button>
+                                        <span id="display-timezone-saved" style="font-size: 0.8rem; color: var(--accent-green, #4caf50); display: none;">Saved ✓</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="setting-card" id="card-system">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-cog"></i>
+                                        <span>Global System Settings</span>
+                                    </div>
+                                </div>
+                                <div class="card-content" id="global-settings-container">
+                                    <div class="loading-placeholder">Loading settings.json...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Panel: .env -->
+                        <div class="settings-panel" id="settings-panel-env">
+                            <div class="setting-card" id="card-env">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-key"></i>
+                                        <span>Environment Variables</span>
+                                    </div>
+                                    <button class="action-btn xs-btn secondary" id="btn-toggle-dev-mode"
+                                        title="Toggle Developer Mode">
+                                        <i class="fas fa-unlock"></i>
+                                    </button>
+                                </div>
+                                <div class="card-content" id="env-status-container">
+                                    <div class="loading-placeholder">Checking .env status...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Panel: Providers -->
+                        <div class="settings-panel" id="settings-panel-providers">
+                            <div class="setting-card" id="card-providers">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-database"></i>
+                                        <span>Model Registry</span>
+                                    </div>
+                                    <div class="header-actions">
+                                        <button id="add-provider-btn" class="action-btn xs-btn"
+                                            title="Add New Provider">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                        <button id="save-provider-settings" class="action-btn xs-btn primary"
+                                            title="Save Registry">
+                                            <i class="fas fa-save"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="provider-unsaved-banner" class="unsaved-banner" style="display:none;">
+                                    ⚠ Unsaved changes
+                                </div>
+                                <div class="card-content">
+                                    <div id="inline-add-provider" class="inline-form-container"
+                                        style="display:none; margin-bottom: 1rem; padding: 0.8rem; border: 1px dashed var(--border); border-radius: 6px;">
+                                        <!-- Inline form injected by JS -->
+                                    </div>
+                                    <div id="provider-cards-container">
+                                        <div class="loading-placeholder">Loading registry...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Panel: Profiles -->
+                        <div class="settings-panel" id="settings-panel-profiles">
+                            <!-- Combined Profiles into one panel -->
+                            <!-- Card: Chat Profiles -->
+                            <div class="setting-card" id="card-chat-profiles" style="margin-bottom: 1.2rem;">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-comments"></i>
+                                        <span>Chat Routing Profiles</span>
+                                    </div>
+                                    <button id="add-chat-profile-btn" class="action-btn xs-btn"
+                                        title="Add Profile">+</button>
+                                </div>
+                                <div class="card-content">
+                                    <div id="chat-profiles-container" class="profile-list-compact">
+                                        <div class="loading-placeholder">Loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card: Agent Profiles -->
+                            <div class="setting-card" id="card-agent-profiles">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-user-tie"></i>
+                                        <span>Agent Execution Profiles</span>
+                                    </div>
+                                    <button id="add-agent-profile-btn" class="action-btn xs-btn"
+                                        title="Add Profile">+</button>
+                                </div>
+                                <div class="card-content">
+                                    <div id="agent-profiles-container" class="profile-list-compact">
+                                        <div class="loading-placeholder">Loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card: Auto Routing - Chat -->
+                            <div class="setting-card" id="card-auto-routing-chat" style="margin-top: 1.2rem;">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-random"></i>
+                                        <span>Auto Routing — Chat</span>
+                                    </div>
+                                    <button class="action-btn xs-btn"
+                                        onclick="saveAutoRoutingProfile('chat')">Save</button>
+                                </div>
+                                <div class="card-content">
+                                    <div class="compact-item" style="margin-bottom:1rem;">
+                                        <div class="item-label">
+                                            <span>Route Picker</span>
+                                            <i class="fas fa-info-circle tooltip-trigger"
+                                                title="The model used to decide which model to route to. Should be fast and cheap."></i>
+                                        </div>
+                                        <select id="auto-routing-chat-picker" class="control-select"></select>
+                                    </div>
+                                    <div class="routing-section-label">Model Pool <span class="routing-hint">Toggle
+                                            models
+                                            to include / exclude from Auto routing</span></div>
+                                    <div id="auto-routing-chat-models" class="routing-model-list">
+                                        <div class="loading-placeholder">Loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card: Auto Routing - Agent -->
+                            <div class="setting-card" id="card-auto-routing-agent" style="margin-top: 1.2rem;">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-random"></i>
+                                        <span>Auto Routing — Agent</span>
+                                    </div>
+                                    <button class="action-btn xs-btn"
+                                        onclick="saveAutoRoutingProfile('agent')">Save</button>
+                                </div>
+                                <div class="card-content">
+                                    <div class="compact-item" style="margin-bottom:1rem;">
+                                        <div class="item-label">
+                                            <span>Route Picker</span>
+                                            <i class="fas fa-info-circle tooltip-trigger"
+                                                title="The fast model used to decide which agent model to use."></i>
+                                        </div>
+                                        <select id="auto-routing-agent-picker" class="control-select"></select>
+                                    </div>
+                                    <div class="routing-section-label">Model Pool <span class="routing-hint">Toggle
+                                            models
+                                            to include / exclude from Auto routing</span></div>
+                                    <div id="auto-routing-agent-models" class="routing-model-list">
+                                        <div class="loading-placeholder">Loading...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Panel: Discord Worker -->
+                        <div class="settings-panel" id="settings-panel-discord">
+                            <div class="setting-card" id="card-discord">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fab fa-discord"></i>
+                                        <span>Discord Worker Service</span>
+                                    </div>
+                                    <div id="discord-status-badge" class="status-badge offline">
+                                        <span class="status-dot"></span>
+                                        <span class="status-text">OFFLINE</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="section-hint">Manage the persistent Discord connection for inbound and
+                                        outbound messages.</p>
+
+                                    <div class="discord-vitals-grid"
+                                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                                        <div class="vital-item"
+                                            style="padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px;">
+                                            <div
+                                                style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">
+                                                Bot Username</div>
+                                            <div id="discord-bot-user"
+                                                style="font-size: 1.1rem; font-weight: bold; margin-top: 0.2rem;">Not
+                                                Connected</div>
+                                        </div>
+                                        <div class="vital-item"
+                                            style="padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px;">
+                                            <div
+                                                style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">
+                                                Guilds Access</div>
+                                            <div id="discord-bot-guilds"
+                                                style="font-size: 1.1rem; font-weight: bold; margin-top: 0.2rem;">0
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="control-group" style="margin-bottom: 1.5rem;">
+                                        <label
+                                            style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: bold;">Bot
+                                            Token</label>
+                                        <div class="input-with-button" style="display: flex; gap: 0.5rem;">
+                                            <input type="password" id="setting-discord-token" class="control-input"
+                                                placeholder="Paste your Discord Bot Token here..." style="flex: 1;">
+                                            <button id="toggle-discord-token-visibility" class="icon-btn"
+                                                title="Toggle Visibility"><i class="fas fa-eye"></i></button>
+                                        </div>
+                                        <p class="field-hint"
+                                            style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem;">
+                                            Token is used to authenticate with the Discord API. Keep it secret.</p>
+                                    </div>
+
+                                    <div class="control-group" style="margin-bottom: 1.5rem;">
+                                        <label
+                                            style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: bold;">Main
+                                            User Discord ID</label>
+                                        <input type="text" id="setting-discord-main-user-id" class="control-input"
+                                            placeholder="e.g. 182500917604515840" style="width: 100%;">
+                                        <p class="field-hint"
+                                            style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem;">
+                                            Restricts sensitive actions (like screenshots) to this User ID only.</p>
+                                    </div>
+
+                                    <div class="discord-controls" style="display: flex; gap: 1rem;">
+                                        <button id="btn-discord-start" class="term-btn primary"
+                                            style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                                            <i class="fas fa-play"></i> START WORKER
+                                        </button>
+                                        <button id="btn-discord-stop" class="term-btn danger"
+                                            style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"
+                                            disabled>
+                                            <i class="fas fa-stop"></i> STOP WORKER
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Panel: Interface -->
+                        <div class="settings-panel" id="settings-panel-interface">
+                            <div class="setting-card">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-eye"></i>
+                                        <span>Sidebar Visibility</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="iface-desc">Toggle which categories and tabs appear in the sidebar. Settings and Version Control are always visible.</p>
+                                    <div id="iface-visibility-list" class="iface-visibility-list"></div>
+                                </div>
+                            </div>
+                            <!-- Timezone moved to Global System panel -->
+                        </div>
+                        <!-- Panel: Notifications -->
+                        <div class="settings-panel" id="settings-panel-notifications">
+                            <div class="setting-card">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-bell"></i>
+                                        <span>Active Notifications</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="iface-desc">Enable or disable active notifications for specific sources. All notifications will still be stored in the backlog.</p>
+                                    <div id="notif-visibility-list" class="iface-visibility-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div> <!-- closes settings-content-wrapper -->
+                </div> <!-- closes settings-dashboard -->

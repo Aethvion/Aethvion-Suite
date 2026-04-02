@@ -1,0 +1,68 @@
+<div class="panel-header borderless">
+                    <h2 class="status-header-title">Status</h2>
+
+                    <div class="status-meta">
+                        <span id="system-name-display" class="meta-primary">Aethvion Suite</span>
+                        <span class="status-divider">::</span>
+                        <span id="system-company-display" class="meta-primary">Aethvion</span>
+                        <span class="status-divider">::</span>
+                        <span id="system-version-display" class="meta-primary">__VERSION__</span>
+                    </div>
+                    <div class="status-meta" style="margin-top: 0.5rem;">
+                        <a href="#" id="system-contact-display" class="meta-primary"
+                            style="text-decoration: none; font-size: 0.8rem;"></a>
+                    </div>
+                </div>
+
+                <div class="status-container">
+                    <!-- Realtime Vitals Section -->
+                    <div class="section-label">REALTIME VITALS <span class="live-indicator">● LIVE</span></div>
+                    <div id="realtime-info-grid" class="status-telemetry-grid">
+                        <!-- Populated by JS (CPU, RAM, Agents, Nexus) -->
+                    </div>
+
+                    <!-- Local System Info Section -->
+                    <div class="section-header-row">
+                        <div class="section-label">LOCAL SYSTEM INFO</div>
+                        <div class="local-meta-right">
+                            <span class="last-update" style="margin-right: 1rem;">LAST SYNC: <span
+                                    id="telemetry-last-sync">--</span></span>
+                            <button id="sync-telemetry-btn" class="icon-btn xs-btn" title="Sync Local Info" aria-label="Sync local system info"
+                                onclick="syncSystemTelemetry()">
+                                <i class="fas fa-sync" aria-hidden="true"></i> Sync
+                            </button>
+                        </div>
+                    </div>
+                    <div id="local-info-grid" class="status-telemetry-grid">
+                        <!-- Populated by JS (Project Size, DB Size, Tools) -->
+                    </div>
+
+                    <!-- Extended Metadata Section -->
+                    <div class="section-header-row" style="margin-top: 2.5rem;">
+                        <div class="section-label">EXTENDED METADATA</div>
+                    </div>
+                    <div id="extended-info-grid" class="status-telemetry-grid extended">
+                        <!-- Populated by JS (Git, Python, Platform, Models) -->
+                        <div class="telemetry-card loading">
+                            <div class="t-label">GIT LATEST</div>
+                            <div class="t-value">Loading...</div>
+                        </div>
+                    </div>
+
+                    <!-- Features Checklist -->
+                    <div class="section-header-row">
+                        <div class="section-label" style="margin-bottom: 0;">ROADMAP & FEATURES</div>
+                        <div class="local-meta-right" style="display: flex; align-items: center; gap: 1rem;">
+                            <span class="last-update" style="margin-right: 0;">UPDATED: <span
+                                    id="status-last-update">--</span></span>
+                            <button id="roadmap-view-toggle" class="action-btn secondary xs-btn"
+                                onclick="toggleRoadmapView()" style="display: flex; gap: 0.4rem; align-items: center;">
+                                <i class="fas fa-list"></i> Detailed View
+                            </button>
+                        </div>
+                    </div>
+                    <div class="roadmap-tree">
+                        <!-- Roadmap items injected via JS -->
+                        <div class="loading-placeholder">Loading system status...</div>
+                    </div>
+                </div>

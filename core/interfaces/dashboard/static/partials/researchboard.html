@@ -1,0 +1,90 @@
+<div class="research-board-layout">
+                    <!-- Setup Area -->
+                    <div class="rb-setup-area">
+                        <div class="rb-config-bar">
+                            <div class="rb-setup-row">
+                                <div class="rb-input-group">
+                                    <label><i class="fas fa-gavel"></i> Strategic Objective</label>
+                                    <textarea id="rb-prompt" class="rb-prompt-input" rows="2" placeholder="Describe the complex business decision or strategy you are facing..."></textarea>
+                                </div>
+                                <div style="width: 200px;">
+                                    <label>AI Model</label>
+                                    <select id="rb-model-select" class="control-select" style="width: 100%;">
+                                        <option value="auto">Auto-Select</option>
+                                        <!-- Populated by JS -->
+                                    </select>
+                                </div>
+                                <button id="rb-start-btn" class="action-btn primary" style="height: 45px; padding: 0 1.5rem;">
+                                    <i class="fas fa-play"></i> Start Consultation
+                                </button>
+                            </div>
+
+                            <!-- Board Members Selection -->
+                            <div class="rb-members-section">
+                                <div class="rb-section-header">
+                                    <span class="rb-section-title"><i class="fas fa-users"></i> Consulting Board</span>
+                                    <button id="rb-add-member-btn" class="action-btn secondary xs-btn" title="Add Consultant">
+                                        <i class="fas fa-user-plus"></i> Add
+                                    </button>
+                                </div>
+                                <div class="rb-directors-strip" id="rb-directors-strip">
+                                    <!-- Populated by JS -->
+                                    <div class="placeholder-text" style="font-size: 0.8rem; opacity: 0.5;">Loading board members...</div>
+                                </div>
+                                <!-- Detailed Info Area -->
+                                <div id="rb-members-details" class="rb-members-details-container">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Workspace -->
+                    <div class="rb-main-content">
+                        <!-- Left: Live Transcript -->
+                        <div class="rb-transcript-area" id="rb-transcript">
+                            <div class="arena-placeholder" id="rb-placeholder">
+                                <span class="tab-icon" style="font-size:3rem;">⚖️</span>
+                                <h3>Executive Boardroom</h3>
+                                <p>Describe your strategic objective above to begin the consulting sprint.</p>
+                                <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-secondary); max-width: 500px; text-align: center;">
+                                    A team of professional consultants will analyze your objective and provide iterative feedback. You can guide the discussion after each sprint.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Final Recommendation (Hidden until synthesize) -->
+                        <div class="rb-synthesis-pane" id="rb-synthesis-pane" style="display:none;">
+                            <div class="rb-synthesis-header">
+                                <h3 style="margin: 0; font-size: 0.95rem;"><i class="fas fa-file-contract"></i> Strategic Synthesis</h3>
+                                <button class="icon-btn" onclick="document.getElementById('rb-synthesis-pane').style.display='none'" title="Hide Summary"><i class="fas fa-times"></i></button>
+                            </div>
+                            <div class="rb-synthesis-content" id="rb-synthesis-body">
+                                <!-- Populated by synthesis -->
+                            </div>
+                        </div>
+
+                        <!-- NEW: User Feedback Area (Iterative Sprint) -->
+                        <div class="rb-user-input-area" id="rb-user-input-area" style="display:none;">
+                            <textarea placeholder="Provide directive or ask follow-up questions to the board..."></textarea>
+                            <button id="rb-user-submit-btn" class="action-btn primary">
+                                <i class="fas fa-paper-plane"></i> Send Directive
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Status Bar -->
+                    <div class="rb-status-bar">
+                        <div class="rb-status-indicator" id="rb-status-text">
+                            <i class="fas fa-info-circle"></i> Ready for consultation
+                        </div>
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <button id="rb-synthesis-trigger" class="action-btn secondary xs-btn" style="display:none;">
+                                <i class="fas fa-brain"></i> Synthesize Now
+                            </button>
+                            <div id="rb-progress-info" style="font-weight: 500;">
+                                SPRINT: 0
+                            </div>
+                        </div>
+                    </div>
+                </div>

@@ -1,0 +1,91 @@
+<div class="image-studio-container">
+                    <!-- Main Viewer Area -->
+                    <div class="image-studio-viewer" id="image-viewer-container">
+                        <div class="empty-state-viewer">
+                            <i class="fas fa-image" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <h3>Photo Studio</h3>
+                            <p>Generate, Edit, or View Photos</p>
+                        </div>
+                        <!-- Loading Overlay -->
+                        <div class="image-loading-overlay" id="image-loading-overlay" style="display: none;">
+                            <div class="loading-spinner"></div>
+                            <div class="loading-text">GENERATING...</div>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Controls -->
+                    <div class="image-studio-sidebar">
+                        <div class="sidebar-header">
+                            <h3>CONTROLS</h3>
+                        </div>
+                        <div class="sidebar-content">
+                            <!-- Mode Selection -->
+                            <div class="control-group">
+                                <label>Mode</label>
+                                <div class="mode-toggles" id="image-mode-toggles">
+                                    <label class="radio-toggle"><input type="radio" name="image_mode" value="generate"
+                                            checked> Generate</label>
+                                    <label class="radio-toggle"><input type="radio" name="image_mode" value="edit">
+                                        Edit</label>
+                                    <label class="radio-toggle"><input type="radio" name="image_mode" value="upscale">
+                                        Upscale</label>
+                                    <label class="radio-toggle"><input type="radio" name="image_mode" value="expand">
+                                        Expand</label>
+                                </div>
+                            </div>
+
+                            <!-- Reference Image Upload (Hidden by default in Generate mode) -->
+                            <div class="control-group" id="image-upload-group" style="display: none; margin-top: 1rem;">
+                                <label>Reference Image</label>
+                                <div class="image-dropzone" id="image-ref-dropzone">
+                                    <span class="dropzone-text">Click or drag image here</span>
+                                    <input type="file" id="image-ref-input" accept="image/png, image/jpeg, image/webp"
+                                        style="display:none;">
+                                    <img id="image-ref-preview" src=""
+                                        style="display:none; max-width:100%; max-height:150px; object-fit:contain; margin:0 auto; border-radius:4px;">
+                                    <button type="button" class="icon-btn xs-btn" id="image-ref-clear"
+                                        style="display:none; position:absolute; top:4px; right:4px;"
+                                        title="Remove Reference"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+
+                            <!-- Mask Image Upload (Hidden by default, used for Expand/Inpainting) -->
+                            <div class="control-group" id="mask-upload-group" style="display: none; margin-top: 1rem;">
+                                <label>Mask Image (Optional)</label>
+                                <div class="image-dropzone" id="mask-ref-dropzone">
+                                    <span class="dropzone-text">Click or drag mask here</span>
+                                    <input type="file" id="mask-ref-input" accept="image/png, image/jpeg, image/webp"
+                                        style="display:none;">
+                                    <img id="mask-ref-preview" src=""
+                                        style="display:none; max-width:100%; max-height:150px; object-fit:contain; margin:0 auto; border-radius:4px;">
+                                    <button type="button" class="icon-btn xs-btn" id="mask-ref-clear"
+                                        style="display:none; position:absolute; top:4px; right:4px;"
+                                        title="Remove Mask"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+
+                            <!-- Model Selection -->
+                            <div class="control-group" style="margin-top: 1rem;">
+                                <label>Models</label>
+                                <div class="model-checklist" id="image-model-checklist">
+                                    <!-- Populated dynamically by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Dynamic Per-Model Configurations -->
+                            <div id="image-model-configs" style="margin-top: 1rem;">
+                                <!-- Populated dynamically by JS based on checked models -->
+                            </div>
+
+                            <!-- Prompt input -->
+                            <div class="control-group" style="margin-top: 1rem;">
+                                <label>Prompt</label>
+                                <textarea class="term-input" id="image-prompt-input" rows="4"
+                                    placeholder="Describe your image/edits..."></textarea>
+                            </div>
+
+                            <button class="term-btn primary" id="generate-image-btn"
+                                style="width: 100%; margin-top: 1rem;">GENERATE</button>
+                        </div>
+                    </div>
+                </div>

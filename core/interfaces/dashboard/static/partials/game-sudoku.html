@@ -1,0 +1,46 @@
+<div class="game-header">
+                    <div class="game-header-left">
+                        <span class="game-icon">🔢</span>
+                        <div class="game-title-block">
+                            <h2>Sudoku</h2>
+                            <p class="game-subtitle">Logic-based number placement</p>
+                        </div>
+                    </div>
+                    <div class="game-toolbar" style="background:transparent; border:none; margin:0; padding:0 15px;">
+                        <button id="su-undo-btn" class="action-btn secondary" title="Undo"><i
+                                class="fas fa-undo"></i></button>
+                        <button id="su-hint-btn" class="action-btn secondary" title="Hint"><i
+                                class="fas fa-lightbulb"></i></button>
+                        <select id="su-difficulty-select" class="control-select" style="margin-left: 10px;">
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                        <button id="su-restart-btn" class="action-btn secondary">New Game</button>
+                    </div>
+                </div>
+                <div class="sudoku-layout">
+                    <div class="su-main">
+                        <div class="su-board-container">
+                            <div id="su-grid" class="su-grid"></div>
+                        </div>
+                        <div class="su-keypad">
+                            <button class="su-key" data-val="1">1</button>
+                            <button class="su-key" data-val="2">2</button>
+                            <button class="su-key" data-val="3">3</button>
+                            <button class="su-key" data-val="4">4</button>
+                            <button class="su-key" data-val="5">5</button>
+                            <button class="su-key" data-val="6">6</button>
+                            <button class="su-key" data-val="7">7</button>
+                            <button class="su-key" data-val="8">8</button>
+                            <button class="su-key" data-val="9">9</button>
+                            <button class="su-key" data-val="clear" style="color: #ff4757; font-size: 1rem;"><i
+                                    class="fas fa-eraser"></i></button>
+                        </div>
+                    </div>
+                    <div id="game-overlay-sudoku" class="game-overlay" style="display:none;">
+                        <div class="overlay-title">PUZZLE SOLVED</div>
+                        <button class="game-btn" onclick="document.getElementById('su-restart-btn').click();">Next
+                            Puzzle</button>
+                    </div>
+                </div>

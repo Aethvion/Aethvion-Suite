@@ -1,0 +1,27 @@
+<div class="sched-overview-wrap">
+                    <div class="sched-overview-header">
+                        <h2 class="sched-overview-title">📅 Scheduled Tasks</h2>
+                        <button id="sched-ov-refresh-btn" class="sched-icon-btn" title="Refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div id="sched-ov-empty" class="sched-ov-empty" style="display:none">
+                        No scheduled tasks yet. Go to <strong>Workflow → Schedule</strong> to create one.
+                    </div>
+                    <div class="sched-ov-table-wrap">
+                        <table class="sched-ov-table" id="sched-ov-table">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Name</th>
+                                    <th>Schedule</th>
+                                    <th>Next Run</th>
+                                    <th>Last Run</th>
+                                    <th>Queue Max</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sched-ov-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>

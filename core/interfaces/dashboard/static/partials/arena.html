@@ -1,0 +1,50 @@
+<div class="arena-layout">
+                    <!-- Arena Controls -->
+                    <div class="arena-controls">
+                        <div class="arena-section">
+                            <h3>⚔️ Arena Models</h3>
+                            <p class="arena-hint">Select models to compete. Send a prompt and all models respond.
+                            </p>
+                            <div class="arena-model-selector">
+                                <select id="arena-model-add" class="control-select">
+                                    <option value="">+ Add Model...</option>
+                                </select>
+                                <div class="arena-model-chips" id="arena-model-chips">
+                                    <!-- model chips inserted by JS -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="arena-section">
+                            <h3>🧑‍⚖️ Evaluator (Optional)</h3>
+                            <select id="arena-evaluator" class="control-select" style="width:100%;">
+                                <option value="">No Evaluator</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Arena Chat -->
+                    <div class="arena-chat-area">
+                        <div class="arena-responses" id="arena-responses">
+                            <div class="arena-placeholder">
+                                <span class="tab-icon" style="font-size:3rem;">⚔️</span>
+                                <p>Add models and send a prompt to start a battle!</p>
+                            </div>
+                        </div>
+                        <div class="arena-input-wrapper">
+                            <textarea id="arena-input" class="chat-input" rows="1"
+                                placeholder="Enter a prompt for all models..."></textarea>
+                            <button id="arena-send" class="send-button"><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Leaderboard -->
+                    <div class="arena-leaderboard-section">
+                        <div class="arena-leaderboard-header">
+                            <h3>🏆 Leaderboard</h3>
+                            <button id="arena-clear-leaderboard" class="action-btn small danger">Clear</button>
+                        </div>
+                        <div id="arena-leaderboard-cards" class="lb-cards-container">
+                            <div class="lb-empty">No battles yet</div>
+                        </div>
+                    </div>
+                </div>
