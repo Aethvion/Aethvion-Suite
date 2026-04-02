@@ -1,4 +1,4 @@
-name: Python Checks
+name: Python & HTML Checks
 
 on:
   push:
@@ -48,8 +48,28 @@ jobs:
         ! grep -r "AIza[a-zA-Z0-9]" --include="*.py" --include="*.yaml" --exclude-dir=".git" . \
           || (echo "Potential Google API key found" && exit 1)
 
+  html-lint:
+    name: HTML Structure & Validity
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install HTMLHint
+      run: npm install -g htmlhint
+
+    - name: Validate HTML Files
+      # This checks for unclosed tags, duplicate IDs, and malformed attributes
+      run: |
+        htmlhint "**/*.html" --rules "tag-pair=true,id-unique=true,attr-no-duplication=true,tagname-lowercase=true,attr-value-double-quotes=true,spec-char-escape=false"
+
   test:
     name: Import & Structure Checks
+    needs: [lint, html-lint]
     runs-on: ubuntu-latest
 
     steps:
@@ -63,7 +83,6 @@ jobs:
     - name: Install core dependencies
       run: |
         python -m pip install --upgrade pip
-        # Install without memory extras (chromadb/sentence-transformers are heavy)
         pip install fastapi uvicorn pydantic pyyaml python-dotenv psutil rich requests
 
     - name: Verify package structure
