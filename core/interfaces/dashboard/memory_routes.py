@@ -47,10 +47,10 @@ async def get_memory_overview():
         episodic = get_episodic_memory()
         threads_memory = []
         
-        # Path to threads directory in hierarchical workspace structure
+        # Path to threads directory
         # __file__ = core/interfaces/dashboard/memory_routes.py → parent.parent.parent.parent = project root
         project_root = Path(__file__).parent.parent.parent.parent
-        workspaces_dir = project_root / "data" / "memory" / "storage" / "workspaces"
+        workspaces_dir = project_root / "data" / "workspaces" / "projects"
         
         if workspaces_dir.exists():
             # Get all thread JSON files inside hierarchical folders
@@ -82,21 +82,28 @@ async def get_memory_overview():
                                     
                                 # Create memory entry from Task Data
                                 result = task_data.get('result', {}) or {}
-                                summary = f"Task: {task_data.get('prompt', '')[:50]}..."
+                                prompt = task_data.get('prompt', '') or ''
+                                mode = task_data.get('metadata', {}).get('mode', 'task')
+
+                                # Build a meaningful summary depending on task type
                                 if result.get('tools_forged'):
                                     summary = f"Forged: {', '.join(result['tools_forged'])}"
                                 elif result.get('agents_spawned'):
                                     summary = f"Spawned: {', '.join(result['agents_spawned'])}"
-                                
+                                elif mode == 'chat_only':
+                                    summary = prompt[:80] + ('…' if len(prompt) > 80 else '')
+                                else:
+                                    summary = f"Task: {prompt[:60]}{'…' if len(prompt) > 60 else ''}"
+
                                 memory_entry = {
                                     "memory_id": task_data.get('id'),
                                     "trace_id": task_data.get('id'),
-                                    "event_type": "task_execution",
+                                    "event_type": mode if mode else "task_execution",
                                     "summary": summary,
-                                    "content": f"Prompt: {task_data.get('prompt')}\n\nResponse: {result.get('response', '')}",
+                                    "content": f"Prompt: {prompt}\n\nResponse: {result.get('response', '')}",
                                     "timestamp": task_data.get('created_at', ''),
-                                    "domain": "Task", # Could extract from metadata if available
-                                    "details": task_data # Include full JSON as requested
+                                    "domain": task_data.get('metadata', {}).get('mode', 'task').replace('_', ' ').title(),
+                                    "details": task_data
                                 }
                                 thread_memories.append(memory_entry)
                                 task_found = True
