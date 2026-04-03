@@ -136,9 +136,12 @@ async function scheduleSelectTask(taskId) {
     _schedCurrentId = taskId;
     _schedRenderTaskList();   // update active highlight
 
-    // Show task view
-    _sEl('sched-no-task').style.display  = 'none';
-    _sEl('sched-task-view').style.display = '';
+    // Show task view — guard against partial not yet loaded
+    const _noTask   = _sEl('sched-no-task');
+    const _taskView = _sEl('sched-task-view');
+    if (!_noTask || !_taskView) return;  // panel not in DOM yet
+    _noTask.style.display   = 'none';
+    _taskView.style.display = '';
 
     try {
         const resp = await fetch(`/api/schedule/tasks/${taskId}`);
@@ -676,16 +679,16 @@ window._scheduleOverviewOnActivate = function () {
     scheduleLoadOverview();
 };
 
-// ── Bootstrap on DOMContentLoaded ────────────────────────────
+// ── Bootstrap ─────────────────────────────────────────────────
+// Wire up panel-agnostic listeners immediately (sidebar buttons are always in the DOM).
+// scheduleInit() itself (which queries panel elements) is deferred until the partial loads.
 document.addEventListener('DOMContentLoaded', () => {
-    scheduleInit();
-
-    // Hook into existing tab switching logic
+    // Hook into existing tab switching logic (sidebar buttons exist in shell)
     document.addEventListener('click', e => {
         const tab = e.target.closest('[data-maintab]');
         if (!tab) return;
         const mt = tab.dataset.maintab;
-        if (mt === 'schedule')     setTimeout(window._scheduleOnActivate, 50);
+        if (mt === 'schedule')       setTimeout(window._scheduleOnActivate, 50);
         if (mt === 'sched-overview') setTimeout(window._scheduleOverviewOnActivate, 50);
     });
 
@@ -693,15 +696,20 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('notif-navigate', e => {
         const { tab, context } = e.detail;
         if (tab === 'schedule' && context) {
-            // First, call our activation hook to ensure task list is fresh
-            if (typeof window._scheduleOnActivate === 'function') {
-                window._scheduleOnActivate();
-            }
-            // Then select the specific task
+            if (typeof window._scheduleOnActivate === 'function') window._scheduleOnActivate();
             if (typeof scheduleSelectTask === 'function') {
-                // Small delay to ensure the UI has switched and list is rendering
                 setTimeout(() => scheduleSelectTask(context), 150);
             }
         }
     });
+
+    // If the schedule panel is already in the DOM (pre-loaded), init now
+    if (document.getElementById('sched-messages')) {
+        scheduleInit();
+    }
+});
+
+// Deferred init: run scheduleInit() once the schedule partial is injected
+document.addEventListener('panelLoaded', function (e) {
+    if (e.detail.panelId === 'schedule-panel') scheduleInit();
 });

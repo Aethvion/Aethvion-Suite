@@ -1948,29 +1948,31 @@ function onAgentsPanelActivated() {
 }
 
 // ── Init ──────────────────────────────────────────────────────
+let _agentsEventsDone = false;
+
+function _agentsBootstrapPanel() {
+    if (_agentsEventsDone) return;
+    const wsSelect = document.getElementById('agents-workspace-select');
+    if (!wsSelect) return; // partial not loaded yet
+    _agentsEventsDone = true;
+    agentsInitEventHandlers();
+    _agentsShowEmptyState('No workspace selected', 'Add or select a workspace to start working with agents');
+    _agentsUpdateSubmitState();
+}
+
 (function agentsInit() {
-    // Wait for DOM
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', _agentsBootstrap);
-    } else {
-        _agentsBootstrap();
-    }
-
-    function _agentsBootstrap() {
-        agentsInitEventHandlers();
-        _agentsShowEmptyState('No workspace selected', 'Add or select a workspace to start working with agents');
-        _agentsUpdateSubmitState();
-
-        // Hook into the main tab switcher event dispatched by core.js switchMainTab
-        document.addEventListener('tabChanged', (e) => {
-            if (e.detail && e.detail.tab === 'agents') {
-                onAgentsPanelActivated();
-            }
-        });
-
-        // Also support the registerTabInit API from core.js if available
-        if (typeof registerTabInit === 'function') {
-            registerTabInit('agents', onAgentsPanelActivated);
+    // Hook into the main tab switcher event dispatched by core.js switchMainTab
+    document.addEventListener('tabChanged', (e) => {
+        if (e.detail && e.detail.tab === 'agents') {
+            onAgentsPanelActivated();
         }
-    }
+    });
+
+    // Wire event handlers once partial is injected, then load data
+    document.addEventListener('panelLoaded', function (e) {
+        if (e.detail.panelId === 'agents-panel') {
+            _agentsBootstrapPanel();
+            onAgentsPanelActivated();
+        }
+    });
 })();

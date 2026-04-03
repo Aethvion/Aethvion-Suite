@@ -921,17 +921,21 @@ async function corpSaveWorkspacePath() {
 
 // ── Event handler wiring ──────────────────────────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Corp select
-    const sel = document.getElementById('corp-select');
-    if (sel) sel.addEventListener('change', () => corpOnSelect(sel.value));
+// ── Agent Corp panel init (deferred until partial is injected) ────────────────
+let _corpInitDone = false;
 
-    // Top bar buttons
-    const createBtn     = document.getElementById('corp-create-btn');
-    const addWorkerBtn  = document.getElementById('corp-add-worker-btn');
-    const addTaskBtn    = document.getElementById('corp-add-task-btn');
-    const startBtn      = document.getElementById('corp-start-btn');
-    const stopBtn       = document.getElementById('corp-stop-btn');
+function _initCorpPanel() {
+    const sel = document.getElementById('corp-select');
+    if (!sel || _corpInitDone) return;
+    _corpInitDone = true;
+
+    sel.addEventListener('change', () => corpOnSelect(sel.value));
+
+    const createBtn    = document.getElementById('corp-create-btn');
+    const addWorkerBtn = document.getElementById('corp-add-worker-btn');
+    const addTaskBtn   = document.getElementById('corp-add-task-btn');
+    const startBtn     = document.getElementById('corp-start-btn');
+    const stopBtn      = document.getElementById('corp-stop-btn');
 
     if (createBtn)    createBtn.addEventListener('click', corpShowCreateModal);
     if (addWorkerBtn) addWorkerBtn.addEventListener('click', corpShowAddWorkerModal);
@@ -942,7 +946,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatBtn2 = document.getElementById('corp-chat-btn');
     if (chatBtn2) chatBtn2.addEventListener('click', corpToggleChat);
 
-    // Create corp modal
     const createSubmit = document.getElementById('corp-create-submit');
     if (createSubmit) createSubmit.addEventListener('click', corpSubmitCreate);
     const createCancel = document.getElementById('corp-create-cancel');
@@ -950,7 +953,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('corp-create-modal').style.display = 'none';
     });
 
-    // Worker modal
     const workerSubmit = document.getElementById('corp-worker-submit');
     if (workerSubmit) workerSubmit.addEventListener('click', corpSubmitAddWorker);
     const workerCancel = document.getElementById('corp-worker-cancel');
@@ -958,7 +960,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('corp-worker-modal').style.display = 'none';
     });
 
-    // Task modal
     const taskSubmit = document.getElementById('corp-task-submit');
     if (taskSubmit) taskSubmit.addEventListener('click', corpSubmitAddTask);
     const taskCancel = document.getElementById('corp-task-cancel');
@@ -966,7 +967,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('corp-task-modal').style.display = 'none';
     });
 
-    // Workspace bar
     const wsBrowse = document.getElementById('corp-workspace-browse-btn');
     const wsSave   = document.getElementById('corp-workspace-save-btn');
     const wsInput  = document.getElementById('corp-workspace-input');
@@ -976,7 +976,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') corpSaveWorkspacePath();
     });
 
-    // Goal bar
     const goalSave  = document.getElementById('corp-goal-save-btn');
     const goalInput = document.getElementById('corp-goal-input');
     if (goalSave)  goalSave.addEventListener('click', corpSaveGoal);
@@ -984,7 +983,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') corpSaveGoal();
     });
 
-    // Close modals on overlay click
     ['corp-create-modal', 'corp-worker-modal', 'corp-task-modal'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('click', (e) => {
@@ -992,7 +990,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Enter-key submit for single-line inputs
     ['corp-modal-name', 'corp-wmodal-name'].forEach(id => {
         const inp = document.getElementById(id);
         if (inp) inp.addEventListener('keydown', (e) => {
@@ -1002,6 +999,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+}
+
+document.addEventListener('DOMContentLoaded', _initCorpPanel);
+
+document.addEventListener('panelLoaded', function (e) {
+    if (e.detail.panelId === 'agent-corp-panel') {
+        _corpInitDone = false;
+        _initCorpPanel();
+    }
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

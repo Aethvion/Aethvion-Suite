@@ -10,26 +10,37 @@ let currentSort = { key: 'name', dir: 'asc' };
 let previousSort = { key: 'name', dir: 'asc' };
 let searchDebounceTimer = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Setup event listeners for the files page
-    document.getElementById('refresh-files')?.addEventListener('click', () => loadFiles(currentCategory, true));
+// ── Files panel init (deferred until partial is injected) ────────────────────
+let _filesInitDone = false;
+
+function _initFilesPanel() {
+    const refreshBtn = document.getElementById('refresh-files');
+    if (!refreshBtn || _filesInitDone) return;
+    _filesInitDone = true;
+
+    refreshBtn.addEventListener('click', () => loadFiles(currentCategory, true));
     document.getElementById('file-search')?.addEventListener('input', handleSearchInput);
     document.getElementById('type-filter')?.addEventListener('change', renderFiles);
     document.getElementById('semantic-search-toggle')?.addEventListener('click', toggleSemanticMode);
-
-    // New Feature Listeners
     document.getElementById('exclude-folders-toggle')?.addEventListener('change', handleExcludeFoldersChange);
     document.getElementById('sort-filter')?.addEventListener('change', handleSortDropdownChange);
-
-    // View toggles
     document.getElementById('view-grid-btn')?.addEventListener('click', () => setViewMode('grid'));
     document.getElementById('view-list-btn')?.addEventListener('click', () => setViewMode('list'));
 
-    // Do not call loadFilePreferences() immediately on DOM load to avoid race conditions.
-    // It will be triggered by systemReady when all global data is hydrated.
+    // If prefs are already loaded (systemReady already fired), init now
+    if (typeof prefs !== 'undefined' && prefs) loadFilePreferences();
+}
+
+document.addEventListener('DOMContentLoaded', _initFilesPanel);
+
+document.addEventListener('panelLoaded', function (e) {
+    if (e.detail.panelId === 'files-panel') {
+        _filesInitDone = false;
+        _initFilesPanel();
+    }
 });
 
-// Rely on systemReady heavily
+// Rely on systemReady to load preferences (fires after startup hydration)
 window.addEventListener('systemReady', () => {
     loadFilePreferences();
 });

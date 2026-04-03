@@ -237,8 +237,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     pollStartupStatus();
 
     initializeWebSockets();
-    const refreshMemory = document.getElementById('refresh-memory-btn');
-    if (refreshMemory) refreshMemory.addEventListener('click', loadMemoryData);
+    // Note: refresh-memory-btn is inside the memory partial — wired in view-memory.js panelLoaded handler
 
     initializeUI();
     updateSystemInfo();
@@ -965,6 +964,15 @@ function switchMainTab(tabName, save = true) {
     else if (actualTabName === 'documentation' && typeof loadDocumentation === 'function') {
         loadDocumentation();
     }
+    else if (actualTabName === 'audio-models' && tabInitializers['audio-models']) {
+        tabInitializers['audio-models']();
+    }
+    else if (actualTabName === 'version' && typeof checkForUpdates === 'function') {
+        checkForUpdates(false);
+    }
+    else if (tabInitializers[actualTabName]) {
+        tabInitializers[actualTabName]();
+    }
 
     // Restore scroll position for the new tab
     _restoreTabScroll(actualTabName);
@@ -1165,7 +1173,7 @@ async function loadInitialData() {
     if (typeof loadHeaderStatus === 'function') await loadHeaderStatus();
     if (typeof loadSystemStatusTab === 'function') await loadSystemStatusTab();
 
-    if (typeof loadMemoryData === 'function') loadMemoryData();
+    // loadMemoryData() is deferred to the memory panelLoaded event (partial not ready yet)
     if (typeof loadChatModels === 'function') loadChatModels();
 
     if (typeof initThreadManagement === 'function') {

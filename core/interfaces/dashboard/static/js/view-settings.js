@@ -1910,10 +1910,26 @@ async function moveProfile(element, direction) {
 // Expose so other views can trigger a fresh reload of registry data + re-render
 window.loadProviderSettings = loadProviderSettings;
 
-window.addEventListener('DOMContentLoaded', () => {
+// ── Settings panel init (deferred until partial is injected) ─────────────────
+let _settingsInitDone = false;
+
+function _initSettingsPanel() {
+    // Guard: partial not loaded yet if nav items are absent
+    if (!document.querySelector('.settings-nav-item')) return;
+    if (_settingsInitDone) return;
+    _settingsInitDone = true;
     loadPreferences();
     loadProviderSettings();
     initSettingsSubNav();
+}
+
+window.addEventListener('DOMContentLoaded', _initSettingsPanel);
+
+document.addEventListener('panelLoaded', function (e) {
+    if (e.detail.panelId === 'settings-panel') {
+        _settingsInitDone = false; // allow fresh init after partial injection
+        _initSettingsPanel();
+    }
 });
 
 async function initSettingsSubNav() {
@@ -2407,13 +2423,18 @@ function runStartupUpdateCheck() {
 window.checkForUpdates = checkForUpdates;
 window.runStartupUpdateCheck = runStartupUpdateCheck;
 
-// Initialize Manual Update Button
+// Initialize Manual Update Button (delegated — works even before partial loads)
 document.addEventListener('click', (e) => {
     if (e.target && e.target.id === 'settings-check-update-btn') {
         checkForUpdates(true);
     } else if (e.target && e.target.closest('#settings-check-update-btn')) {
         checkForUpdates(true);
     }
+});
+
+// Load version data when the version partial is first injected
+document.addEventListener('panelLoaded', function (e) {
+    if (e.detail.panelId === 'version-panel') checkForUpdates(false);
 });
 
 

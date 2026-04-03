@@ -1000,13 +1000,12 @@ document.addEventListener('click', (e) => {
     if (e.target && e.target.id === 'aiconv-new-conv-btn') { if (typeof newAIConvConversation  === 'function') newAIConvConversation(); }
 });
 
-// Load history when the AI Conversations tab is first activated
-document.addEventListener('DOMContentLoaded', () => {
-    // Delay slightly so the tab system has initialised
-    setTimeout(loadAIConvHistory, 300);
+// Load history when the panel partial is first injected
+document.addEventListener('panelLoaded', function (e) {
+    if (e.detail.panelId === 'aiconv-panel') loadAIConvHistory();
 });
 
-// Also reload when the tab is switched to (for fresh lists)
+// Also reload when the tab is switched to (for fresh lists after first load)
 document.addEventListener('click', (e) => {
     if (e.target && e.target.dataset && e.target.dataset.tab === 'aiconv') {
         loadAIConvHistory();

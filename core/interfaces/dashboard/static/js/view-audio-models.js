@@ -601,5 +601,10 @@ const AudioModels = (() => {
         registerTabInit('audio-models', init);
     }
 
+    // Load when the partial is first injected
+    document.addEventListener('panelLoaded', function (e) {
+        if (e.detail.panelId === 'audio-models-panel') init();
+    });
+
     return { init, refresh, switchTab, install, load, unload, registerToRegistry, setDefault, testTTS, testSTT, cloneVoice, deleteVoice, _selectVoiceModel };
 })();

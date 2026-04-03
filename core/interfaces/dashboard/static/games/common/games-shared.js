@@ -123,6 +123,7 @@ function hideGameOverlay(gameType) {
 // ─── Registration system for games ───────────────────────────────────────────
 
 const _gameRegistry = {};
+const _gameLoaded = new Set();
 
 function registerGame(gameType, { onLoad, onTabSwitch }) {
     _gameRegistry[gameType] = { onLoad, onTabSwitch };
@@ -131,10 +132,25 @@ function registerGame(gameType, { onLoad, onTabSwitch }) {
 // Called by core.js when tab switches to a game panel
 function handleGameTabSwitch(gameType) {
     const reg = _gameRegistry[gameType];
-    if (reg && reg.onTabSwitch) {
-        reg.onTabSwitch();
+    if (!reg) return;
+    // onLoad may not have fired yet if partial hadn't loaded on first switch
+    if (reg.onLoad && !_gameLoaded.has(gameType)) {
+        _gameLoaded.add(gameType);
+        reg.onLoad();
     }
+    if (reg.onTabSwitch) reg.onTabSwitch();
 }
+
+// Call onLoad when a game partial is first injected into the DOM
+document.addEventListener('panelLoaded', function (e) {
+    const panelId = e.detail.panelId; // e.g. "game-sudoku-panel"
+    const gameType = panelId.replace('game-', '').replace('-panel', '');
+    const reg = _gameRegistry[gameType];
+    if (reg && reg.onLoad && !_gameLoaded.has(gameType)) {
+        _gameLoaded.add(gameType);
+        reg.onLoad();
+    }
+});
 
 // Expose to core.js
 window.handleGameTabSwitch = handleGameTabSwitch;

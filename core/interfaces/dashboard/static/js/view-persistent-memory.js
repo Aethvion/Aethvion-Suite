@@ -200,30 +200,16 @@ const PersistentMemory = {
     }
 };
 
-// Global hook for tab switching
-document.addEventListener('DOMContentLoaded', () => {
-    const panel = document.getElementById('persistent-memory-panel');
-    if (!panel) return;
-
-    // Listen for tab switching (class changes in core.js)
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                if (panel.classList.contains('active')) {
-                    PersistentMemory.init();
-                }
-            }
-        });
-    });
-
-    observer.observe(panel, { attributes: true });
-
-    // One-time check on load
-    if (panel.classList.contains('active')) {
-        setTimeout(() => PersistentMemory.init(), 100);
+// Load data + wire buttons when the partial is injected (partial always loads before active class is set)
+document.addEventListener('panelLoaded', function (e) {
+    if (e.detail.panelId === 'persistent-memory-panel') {
+        const refreshBtn = document.getElementById('refresh-persistent-memory-btn');
+        if (refreshBtn) refreshBtn.onclick = () => PersistentMemory.load();
+        PersistentMemory.init();
     }
+});
 
-    // Refresh button hook
-    const refreshBtn = document.getElementById('refresh-persistent-memory-btn');
-    if (refreshBtn) refreshBtn.onclick = () => PersistentMemory.load();
+// Re-load on subsequent tab visits (partial already loaded, so panelLoaded won't fire again)
+document.addEventListener('tabChanged', function (e) {
+    if (e.detail && e.detail.tab === 'persistent-memory') PersistentMemory.init();
 });

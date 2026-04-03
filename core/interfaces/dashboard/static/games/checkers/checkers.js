@@ -513,10 +513,5 @@ if (typeof registerGame === 'function') {
         onLoad: () => chkGame.init(),
         onTabSwitch: () => chkGame.onTabSwitch()
     });
-
-    // Auto-init when DOM is ready
-    document.addEventListener('DOMContentLoaded', () => {
-        chkGame.init();
-        chkGame.onLoad();
-    });
+    // Init is triggered via games-shared.js panelLoaded handler
 }

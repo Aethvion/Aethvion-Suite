@@ -9,19 +9,34 @@ let advaiconvState = 'stopped'; // 'stopped', 'running', 'paused'
 let advaiconvInterval = null;
 let currentSpeakerIndex = 0;
 
-// Elements
-const advaiconvPersonSelect = document.getElementById('advaiconv-person-add');
-const advaiconvPersonChips = document.getElementById('advaiconv-person-chips');
-const advaiconvTopicInput = document.getElementById('advaiconv-topic');
-const advaiconvSpeedInput = document.getElementById('advaiconv-speed-input');
-const advaiconvContextInput = document.getElementById('advaiconv-context-input');
-const btnAdvaiconvMain = document.getElementById('advaiconv-main-btn');
-const advaiconvMessagesContainer = document.getElementById('advaiconv-messages');
-const statusIndicator = document.getElementById('advaiconv-status-indicator');
-const btnNewPersona = document.getElementById('advaiconv-new-person-btn');
-const advaiconvThreadList = document.getElementById('advaiconv-thread-list');
-const btnAdvaiconvNewThread = document.getElementById('advaiconv-new-thread-btn');
-const titleAdvaiconvThread = document.getElementById('advaiconv-active-thread-title');
+// Elements — resolved lazily after partial is injected
+let advaiconvPersonSelect = null;
+let advaiconvPersonChips = null;
+let advaiconvTopicInput = null;
+let advaiconvSpeedInput = null;
+let advaiconvContextInput = null;
+let btnAdvaiconvMain = null;
+let advaiconvMessagesContainer = null;
+let statusIndicator = null;
+let btnNewPersona = null;
+let advaiconvThreadList = null;
+let btnAdvaiconvNewThread = null;
+let titleAdvaiconvThread = null;
+
+function _resolveAdvaiconvElements() {
+    advaiconvPersonSelect     = document.getElementById('advaiconv-person-add');
+    advaiconvPersonChips      = document.getElementById('advaiconv-person-chips');
+    advaiconvTopicInput       = document.getElementById('advaiconv-topic');
+    advaiconvSpeedInput       = document.getElementById('advaiconv-speed-input');
+    advaiconvContextInput     = document.getElementById('advaiconv-context-input');
+    btnAdvaiconvMain          = document.getElementById('advaiconv-main-btn');
+    advaiconvMessagesContainer = document.getElementById('advaiconv-messages');
+    statusIndicator           = document.getElementById('advaiconv-status-indicator');
+    btnNewPersona             = document.getElementById('advaiconv-new-person-btn');
+    advaiconvThreadList       = document.getElementById('advaiconv-thread-list');
+    btnAdvaiconvNewThread     = document.getElementById('advaiconv-new-thread-btn');
+    titleAdvaiconvThread      = document.getElementById('advaiconv-active-thread-title');
+}
 
 let allThreads = [];
 let advaiconvRegistryData = null;
@@ -820,10 +835,22 @@ window.saveNewPersona = async function () {
     }
 }
 
-// Hook into app initialization
-document.addEventListener('DOMContentLoaded', () => {
-    // Only init if we are on the page that has the panel
-    if (document.getElementById('advaiconv-panel')) {
-        setTimeout(initAdvaiconv, 500); // Give model-registry time to load
+// ── Init (deferred until partial is injected) ─────────────────────────────────
+let _advaiconvInitDone = false;
+
+function _initAdvaiconvPanel() {
+    if (_advaiconvInitDone) return;
+    _resolveAdvaiconvElements();
+    if (!advaiconvPersonSelect) return; // partial not loaded yet
+    _advaiconvInitDone = true;
+    initAdvaiconv();
+}
+
+document.addEventListener('DOMContentLoaded', _initAdvaiconvPanel);
+
+document.addEventListener('panelLoaded', function (e) {
+    if (e.detail.panelId === 'advaiconv-panel') {
+        _advaiconvInitDone = false;
+        _initAdvaiconvPanel();
     }
 });

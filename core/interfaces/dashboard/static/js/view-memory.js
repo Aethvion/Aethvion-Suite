@@ -1,6 +1,15 @@
 // Aethvion Suite - Memory View
 // Handles interacting with the Memory Database tables
 
+// Wire buttons and load data when the memory partial is injected
+document.addEventListener('panelLoaded', function (e) {
+    if (e.detail.panelId === 'memory-panel') {
+        const refreshBtn = document.getElementById('refresh-memory-btn');
+        if (refreshBtn) refreshBtn.addEventListener('click', loadMemoryData);
+        loadMemoryData();
+    }
+});
+
 async function loadMemoryData() {
     try {
         const response = await fetch('/api/memory/overview');

@@ -79,6 +79,9 @@ async function fetchRbAllPersonas() {
 }
 
 function renderDirectorPills() {
+    // Re-query in case the partial was loaded after module init
+    if (!rbDirectorsStrip) rbDirectorsStrip = document.getElementById('rb-directors-strip');
+    if (!rbDirectorsStrip) return;
     let html = '';
     
     // Sort to keep default directors first?

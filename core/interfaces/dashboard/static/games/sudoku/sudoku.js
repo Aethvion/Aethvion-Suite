@@ -388,10 +388,5 @@ if (typeof registerGame === 'function') {
         onLoad: () => suGame.init(),
         onTabSwitch: () => suGame.onTabSwitch()
     });
-
-    // Auto-init when DOM is ready
-    document.addEventListener('DOMContentLoaded', () => {
-        suGame.init();
-        suGame.onLoad();
-    });
+    // Init is triggered via games-shared.js panelLoaded handler
 }
