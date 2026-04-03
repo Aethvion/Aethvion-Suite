@@ -7,15 +7,18 @@ const LocalModels = {
     _suggestions: [],
     _registered: {},
     _ollama: { models: [], registered: new Set(), running: false },
-    _filters: { search: '', size: 'all', status: 'all' },
+    _filters: { search: '', size: 'all', status: 'all', sort: 'name-asc', group: 'none' },
 
     init() {
         console.log("[LocalModels] Initializing...");
         this.addEventListeners();
         this.initFilters();
-        // If we are already on this tab, load immediately
-        if (typeof currentMainTab !== 'undefined' && currentMainTab === 'local-models') {
-            console.log("[LocalModels] Already on tab, loading models...");
+        
+        const isAlreadyOnTab = typeof currentMainTab !== 'undefined' && currentMainTab === 'local-models';
+        const isPanelInDom = !!document.getElementById('models-filter-panel');
+
+        if (isAlreadyOnTab || isPanelInDom) {
+            console.log("[LocalModels] UI detected, loading data...");
             this.loadAll();
         }
     },
@@ -43,10 +46,11 @@ const LocalModels = {
             };
         }
 
-        ['filter-size', 'filter-status'].forEach(id => {
+        ['filter-size', 'filter-status', 'sort-models', 'group-models'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.onchange = (e) => {
-                this._filters[id.replace('filter-', '')] = e.target.value;
+                const key = id.replace('filter-', '').replace('-models', '');
+                this._filters[key] = e.target.value;
                 this.applyFilters();
             };
         });
@@ -55,16 +59,24 @@ const LocalModels = {
         if (clearBtn) {
             clearBtn.onclick = () => {
                 if (searchInput) searchInput.value = '';
-                document.getElementById('filter-size').value = 'all';
-                document.getElementById('filter-status').value = 'all';
-                this._filters = { search: '', size: 'all', status: 'all' };
+                const sizeEl = document.getElementById('filter-size');
+                const statusEl = document.getElementById('filter-status');
+                const sortEl = document.getElementById('sort-models');
+                const groupEl = document.getElementById('group-models');
+                
+                if (sizeEl) sizeEl.value = 'all';
+                if (statusEl) statusEl.value = 'all';
+                if (sortEl) sortEl.value = 'name-asc';
+                if (groupEl) groupEl.value = 'none';
+                
+                this._filters = { search: '', size: 'all', status: 'all', sort: 'name-asc', group: 'none' };
                 this.applyFilters();
             };
         }
     },
 
     initFilters() {
-        this._filters = { search: '', size: 'all', status: 'all' };
+        this._filters = { search: '', size: 'all', status: 'all', sort: 'name-asc', group: 'none' };
     },
 
     applyFilters() {
@@ -105,22 +117,44 @@ const LocalModels = {
         const tbody = document.getElementById('local-models-list');
         if (!tbody) return;
 
-        const entries = Object.entries(this._models).filter(([filename, info]) => {
-            // Filter Search
-            if (this._filters.search && !filename.toLowerCase().includes(this._filters.search)) return false;
+        let entries = Object.entries(this._models).map(([filename, info]) => {
+            return {
+                filename,
+                ...info,
+                isRegistered: !!this._registered[filename],
+                bsize: this._getBSize(filename),
+                creator: this._getCreator(filename),
+                arch: this._getArch(filename)
+            };
+        });
 
-            // Filter Size (MB)
-            const sizeGb = info.size_mb / 1024;
+        // Filter Search & Size & Status
+        entries = entries.filter(m => {
+            if (this._filters.search && !m.filename.toLowerCase().includes(this._filters.search)) return false;
+            
+            const sizeGb = m.size_mb / 1024;
             if (this._filters.size === 'small' && sizeGb >= 3) return false;
             if (this._filters.size === 'medium' && (sizeGb < 3 || sizeGb > 10)) return false;
             if (this._filters.size === 'large' && sizeGb <= 10) return false;
 
-            // Filter Status
-            const registered = !!this._registered[filename];
-            if (this._filters.status === 'registered' && !registered) return false;
-            if (this._filters.status === 'unregistered' && registered) return false;
+            if (this._filters.status === 'registered' && !m.isRegistered) return false;
+            if (this._filters.status === 'unregistered' && m.isRegistered) return false;
 
             return true;
+        });
+
+        // Sort
+        entries.sort((a, b) => {
+            let res = 0;
+            switch (this._filters.sort) {
+                case 'name-asc':   res = a.filename.localeCompare(b.filename); break;
+                case 'name-desc':  res = b.filename.localeCompare(a.filename); break;
+                case 'size-asc':   res = a.size_mb - b.size_mb; break;
+                case 'size-desc':  res = b.size_mb - a.size_mb; break;
+                case 'params-asc': res = a.bsize - b.bsize; break;
+                case 'params-desc':res = b.bsize - a.bsize; break;
+            }
+            return res;
         });
 
         if (entries.length === 0) {
@@ -128,31 +162,26 @@ const LocalModels = {
             return;
         }
 
-        tbody.innerHTML = entries.map(([filename, info]) => {
-            const isRegistered = !!this._registered[filename];
-            return `
-                <tr class="faded-in-row">
-                    <td style="font-weight: 600; color: #fff;">${filename}</td>
-                    <td style="color: var(--text-secondary);">${info.size_mb} MB</td>
-                    <td>
-                        ${isRegistered ? 
-                            '<span class="status-badge success-v12"><i class="fas fa-check-circle"></i> Registered</span>' : 
-                            '<span class="status-badge warning-v12"><i class="fas fa-exclamation-circle"></i> Unregistered</span>'
-                        }
-                    </td>
-                    <td style="display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center;">
-                        ${!isRegistered ? `
-                            <button class="action-btn sm-btn register-model-btn" data-filename="${filename}" title="Register Model">
-                                <i class="fas fa-plus"></i> Register
-                            </button>
-                        ` : ''}
-                        <button class="btn-icon sm-btn delete-model-btn" data-filename="${filename}" title="Delete Model" style="color: rgba(255, 118, 117, 0.8);">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        // Grouping
+        let html = '';
+        if (this._filters.group === 'none') {
+            html = entries.map(m => this._buildModelRow(m)).join('');
+        } else {
+            const groupKey = this._filters.group; // Usually 'arch'
+            const groups = {};
+            entries.forEach(m => {
+                const val = m[groupKey] || 'Other';
+                if (!groups[val]) groups[val] = [];
+                groups[val].push(m);
+            });
+
+            Object.keys(groups).sort().forEach(groupName => {
+                html += `<tr class="group-header-v12"><td colspan="4"><i class="fas fa-folder-open"></i> ${groupName} <span style="font-size:0.75rem; font-weight:400; opacity:0.6; margin-left:0.5rem;">(${groups[groupName].length} models)</span></td></tr>`;
+                html += groups[groupName].map(m => this._buildModelRow(m)).join('');
+            });
+        }
+
+        tbody.innerHTML = html;
 
         // Re-add events
         tbody.querySelectorAll('.delete-model-btn').forEach(btn => {
@@ -161,6 +190,36 @@ const LocalModels = {
         tbody.querySelectorAll('.register-model-btn').forEach(btn => {
             btn.onclick = () => this.registerModel(btn.dataset.filename);
         });
+    },
+
+    _buildModelRow(m) {
+        return `
+            <tr class="faded-in-row">
+                <td style="font-weight: 600; color: #fff;">
+                    <div style="display:flex; flex-direction:column;">
+                        <span>${m.filename}</span>
+                        <span style="font-size:0.7rem; font-weight:400; color:var(--text-tertiary);">${m.arch} ${m.bsize ? `• ${m.bsize}B` : ''}</span>
+                    </div>
+                </td>
+                <td style="color: var(--text-secondary);">${m.size_mb} MB</td>
+                <td>
+                    ${m.isRegistered ? 
+                        '<span class="status-badge success-v12"><i class="fas fa-check-circle"></i> Registered</span>' : 
+                        '<span class="status-badge warning-v12"><i class="fas fa-exclamation-circle"></i> Unregistered</span>'
+                    }
+                </td>
+                <td style="display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center;">
+                    ${!m.isRegistered ? `
+                        <button class="action-btn sm-btn register-model-btn" data-filename="${m.filename}" title="Register Model">
+                            <i class="fas fa-plus"></i> Register
+                        </button>
+                    ` : ''}
+                    <button class="btn-icon sm-btn delete-model-btn" data-filename="${m.filename}" title="Delete Model" style="color: rgba(255, 118, 117, 0.8);">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
     },
 
     async loadSuggestedModels() {
@@ -186,8 +245,18 @@ const LocalModels = {
         const grid = document.getElementById('suggested-models-grid');
         if (!grid) return;
 
-        const filtered = this._suggestions.filter(model => {
-            // Search
+        let filtered = this._suggestions.map(m => {
+            const bsize = parseFloat(m.size) || this._getBSize(m.name || m.repo);
+            return {
+                ...m,
+                bsize,
+                creator: m.repo.split('/')[0],
+                arch: this._getArch(m.name || m.repo)
+            };
+        });
+
+        // Filter Search & Size & Status
+        filtered = filtered.filter(model => {
             if (this._filters.search) {
                 const inTitle = model.name.toLowerCase().includes(this._filters.search);
                 const inRepo  = model.repo.toLowerCase().includes(this._filters.search);
@@ -195,7 +264,6 @@ const LocalModels = {
                 if (!inTitle && !inRepo && !inDesc) return false;
             }
 
-            // Size Filter
             const sizeMatch = (model.size || '').match(/(\d+\.?\d*)\s*GB/i);
             if (sizeMatch && this._filters.size !== 'all') {
                 const val = parseFloat(sizeMatch[1]);
@@ -204,10 +272,26 @@ const LocalModels = {
                 if (this._filters.size === 'large' && val <= 10) return false;
             }
 
-            // Status Filter
             if (this._filters.status === 'supported' && model.unsupported) return false;
-            
             return true;
+        });
+
+        // Sort
+        filtered.sort((a, b) => {
+            let res = 0;
+            switch (this._filters.sort) {
+                case 'name-asc':   res = a.name.localeCompare(b.name); break;
+                case 'name-desc':  res = b.name.localeCompare(a.name); break;
+                case 'size-asc':
+                case 'size-desc':
+                    const sA = parseFloat(a.size) || 0;
+                    const sB = parseFloat(b.size) || 0;
+                    res = this._filters.sort.endsWith('asc') ? sA - sB : sB - sA;
+                    break;
+                case 'params-asc': res = a.bsize - b.bsize; break;
+                case 'params-desc':res = b.bsize - a.bsize; break;
+            }
+            return res;
         });
 
         if (filtered.length === 0) {
@@ -215,35 +299,59 @@ const LocalModels = {
             return;
         }
 
-        grid.innerHTML = filtered.map(model => {
-            const isUnsupported = !!model.unsupported;
-            const actionHtml = isUnsupported
-                ? `<span title="${model.unsupported_reason || 'Not supported'}" style="font-size:0.75rem; color:#ff7675; display:flex; align-items:center; gap:0.3rem; cursor:help;">
-                       <i class="fas fa-triangle-exclamation"></i> Not yet compatible
-                   </span>`
-                : `<button class="action-btn sm-btn install-btn"
-                           onclick="LocalModels.installSuggestedModel('${model.id}', '${model.repo}', '${model.filename}')">
-                       <i class="fas fa-download"></i> Install
-                   </button>`;
-            
-            return `
-            <div class="suggestion-card-v12 faded-in-card" id="suggested-${model.id}" style="${isUnsupported ? 'opacity: 0.6;' : ''}">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                    <h4>${model.name}</h4>
-                    <span class="installed-badge" style="display: none; background: var(--success); color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px;">INSTALLED</span>
-                </div>
-                <p class="description">${model.description}</p>
-                <div class="tag-list">
-                    ${model.tags.map(tag => `<span class="tag-v12">${tag}</span>`).join('')}
-                </div>
-                <div class="card-footer-v12">
-                    <span class="model-size-badge">
-                        <i class="fas fa-microchip"></i> ${model.size}
-                    </span>
-                    ${actionHtml}
-                </div>
-            </div>`;
-        }).join('');
+        let html = '';
+        if (this._filters.group === 'none') {
+            html = filtered.map(m => this._buildSuggestedCard(m)).join('');
+        } else {
+            const groupKey = this._filters.group; // Usually 'arch'
+            const groups = {};
+            filtered.forEach(m => {
+                const val = m[groupKey] || 'Other';
+                if (!groups[val]) groups[val] = [];
+                groups[val].push(m);
+            });
+
+            Object.keys(groups).sort().forEach(groupName => {
+                html += `<div class="group-section-v12" style="grid-column: 1 / -1;">
+                            <h3 class="group-title-v12"><i class="fas fa-folder-open"></i> ${groupName} <span>(${groups[groupName].length})</span></h3>
+                            <div class="group-grid-container-v12">
+                                ${groups[groupName].map(m => this._buildSuggestedCard(m)).join('')}
+                            </div>
+                         </div>`;
+            });
+        }
+
+        grid.innerHTML = html;
+    },
+
+    _buildSuggestedCard(model) {
+        const isUnsupported = !!model.unsupported;
+        const actionHtml = isUnsupported
+            ? `<span title="${model.unsupported_reason || 'Not supported'}" style="font-size:0.75rem; color:#ff7675; display:flex; align-items:center; gap:0.3rem; cursor:help;">
+                    <i class="fas fa-triangle-exclamation"></i> Not yet compatible
+                </span>`
+            : `<button class="action-btn sm-btn install-btn"
+                        onclick="LocalModels.installSuggestedModel('${model.id}', '${model.repo}', '${model.filename}')">
+                    <i class="fas fa-download"></i> Install
+                </button>`;
+        
+        return `
+        <div class="suggestion-card-v12 faded-in-card" id="suggested-${model.id}" style="${isUnsupported ? 'opacity: 0.6;' : ''}">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <h4>${model.name}</h4>
+                <span class="installed-badge" style="display: none; background: var(--success); color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px;">INSTALLED</span>
+            </div>
+            <p class="description">${model.description}</p>
+            <div class="tag-list">
+                ${model.tags.map(tag => `<span class="tag-v12">${tag}</span>`).join('')}
+            </div>
+            <div class="card-footer-v12">
+                <span class="model-size-badge">
+                    <i class="fas fa-microchip"></i> ${model.size}
+                </span>
+                ${actionHtml}
+            </div>
+        </div>`;
     },
 
     updateSuggestedBadges(installedFiles) {
@@ -377,9 +485,6 @@ const LocalModels = {
             if (res.ok) {
                 showNotification(`Model ${filename} registered!`, 'success');
                 this.loadModels();
-                // Reload the Model Registry settings panel so _registryData stays fresh.
-                // Without this, a later "Save Changes" in settings would overwrite the
-                // registry file with stale data that doesn't include the newly registered model.
                 if (typeof window.loadProviderSettings === 'function') {
                     window.loadProviderSettings();
                 }
@@ -396,7 +501,6 @@ const LocalModels = {
         if (!confirm(`Are you sure you want to delete ${filename}? This cannot be undone.`)) return;
 
         try {
-            // We need a delete endpoint
             const res = await fetch(`/api/registry/local/models/delete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -415,8 +519,6 @@ const LocalModels = {
         }
     },
 
-    // ── GPU configuration ──────────────────────────────────────────────────────
-
     async loadGPUStatus() {
         const statusRow  = document.getElementById('gpu-status-row');
         const settingsEl = document.getElementById('gpu-settings-form');
@@ -430,7 +532,6 @@ const LocalModels = {
             const gpu = gpuRes.ok ? await gpuRes.json() : {};
             const cfg = cfgRes.ok ? await cfgRes.json() : { n_gpu_layers: -1, n_ctx: 4096, n_threads: -1 };
 
-            // Populate settings form values
             const slider = document.getElementById('gpu-layers-slider');
             const numIn  = document.getElementById('gpu-layers-input');
             const ctxSel = document.getElementById('gpu-ctx-select');
@@ -440,13 +541,11 @@ const LocalModels = {
             if (ctxSel) ctxSel.value = cfg.n_ctx;
             if (thrIn)  thrIn.value  = cfg.n_threads;
 
-            // Sync slider ↔ number input
             if (slider && numIn) {
                 slider.oninput = () => { numIn.value = slider.value; };
                 numIn.oninput  = () => { slider.value = numIn.value; };
             }
 
-            // Build status badges
             let html = '';
             if (gpu.cuda_available && gpu.gpu_name) {
                 html += `<span class="gpu-badge gpu-badge-ok"><i class="fas fa-check-circle"></i> ${gpu.gpu_name} · ${gpu.vram_gb} GB VRAM</span>`;
@@ -462,7 +561,6 @@ const LocalModels = {
                 html += `<button class="action-btn primary" style="margin-left:auto;" onclick="LocalModels.installCudaLlama(this)">
                     <i class="fas fa-bolt"></i> Install CUDA Build
                 </button>`;
-                // Still show settings form so n_ctx / n_threads can be configured even on CPU
                 if (settingsEl) settingsEl.style.display = '';
             }
             statusRow.innerHTML = html;
@@ -476,7 +574,6 @@ const LocalModels = {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Installing…';
 
-        // Inject log panel below the GPU status row
         const panel = document.getElementById('gpu-config-panel');
         let logEl = panel?.querySelector('.gpu-install-log');
         if (panel && !logEl) {
@@ -575,8 +672,6 @@ const LocalModels = {
         }
     },
 
-    // ── Ollama ─────────────────────────────────────────────────────────────────
-
     async loadOllamaStatus() {
         const statusRow  = document.getElementById('ollama-status-row');
         const modelsSection = document.getElementById('ollama-models-section');
@@ -621,45 +716,117 @@ const LocalModels = {
             statusRow.innerHTML = `<span class="gpu-badge gpu-badge-off">Status unavailable</span>`;
         }
     },
+
     renderOllamaModels() {
         const listEl = document.getElementById('ollama-models-list');
         if (!listEl) return;
 
         if (!this._ollama.running) return;
 
-        const filtered = this._ollama.models.filter(name => {
-            if (this._filters.search && !name.toLowerCase().includes(this._filters.search)) return false;
+        let filtered = this._ollama.models.map(name => {
+            return {
+                name,
+                isReg: this._ollama.registered.has(name),
+                bsize: this._getBSize(name),
+                creator: this._getCreator(name),
+                arch: this._getArch(name)
+            };
+        });
+
+        filtered = filtered.filter(m => {
+            if (this._filters.search && !m.name.toLowerCase().includes(this._filters.search)) return false;
             
-            const isReg = this._ollama.registered.has(name);
-            if (this._filters.status === 'registered' && !isReg) return false;
-            if (this._filters.status === 'unregistered' && isReg) return false;
+            if (this._filters.status === 'registered' && !m.isReg) return false;
+            if (this._filters.status === 'unregistered' && m.isReg) return false;
 
             return true;
         });
 
+        filtered.sort((a, b) => {
+            let res = 0;
+            switch (this._filters.sort) {
+                case 'name-asc':   res = a.name.localeCompare(b.name); break;
+                case 'name-desc':  res = b.name.localeCompare(a.name); break;
+                case 'params-asc': res = a.bsize - b.bsize; break;
+                case 'params-desc':res = b.bsize - a.bsize; break;
+            }
+            return res;
+        });
+
         if (!filtered.length) {
-            listEl.innerHTML = '<p class="placeholder-text">No Ollama models catch filters.</p>';
+            listEl.innerHTML = '<p class="placeholder-text">No Ollama models match filters.</p>';
             return;
         }
 
-        listEl.innerHTML = filtered.map(name => {
-            const isReg = this._ollama.registered.has(name);
-            return `<div class="ollama-model-card ${isReg ? 'ollama-registered' : ''}" id="ollama-card-${CSS.escape(name)}">
-                <div class="ollama-model-name">${name}</div>
-                <div class="ollama-model-btns">
-                    <button class="action-btn ${isReg ? 'success' : 'primary'} sm-btn"
-                        onclick="LocalModels.toggleOllamaModel('${name}', ${isReg})"
-                        ${isReg ? 'disabled' : ''}>
-                        <i class="fas fa-${isReg ? 'check-circle' : 'plus-circle'}"></i>
-                        ${isReg ? 'In Registry' : 'Add to Aethvion'}
-                    </button>
-                    <button class="action-btn secondary sm-btn"
-                        onclick="LocalModels.deleteOllamaModel('${name}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>`;
-        }).join('');
+        let html = '';
+        if (this._filters.group === 'none') {
+            html = filtered.map(m => this._buildOllamaCard(m)).join('');
+        } else {
+            const groupKey = this._filters.group; // Usually 'arch'
+            const groups = {};
+            filtered.forEach(m => {
+                const val = m[groupKey] || 'Other';
+                if (!groups[val]) groups[val] = [];
+                groups[val].push(m);
+            });
+
+            Object.keys(groups).sort().forEach(groupName => {
+                html += `<div class="ollama-group-header-v12" style="width: 100%; margin: 1rem 0 0.5rem 0; padding: 0.5rem; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 3px solid var(--primary); font-family: 'Outfit'; font-size: 0.9rem; font-weight: 600; color: var(--text-secondary);"><i class="fas fa-folder-open" style="margin-right:0.5rem;"></i> ${groupName} <span style="font-weight:400; opacity:0.6; font-size:0.75rem;">(${groups[groupName].length})</span></div>`;
+                html += groups[groupName].map(m => this._buildOllamaCard(m)).join('');
+            });
+        }
+
+        listEl.innerHTML = html;
+    },
+
+    _buildOllamaCard(m) {
+        return `<div class="ollama-model-card ${m.isReg ? 'ollama-registered' : ''}" id="ollama-card-${CSS.escape(m.name)}">
+            <div class="ollama-model-name">
+                ${m.name}
+                <div style="font-size:0.65rem; font-weight:400; color:var(--text-tertiary); margin-top:0.1rem;">${m.arch} ${m.bsize ? `• ${m.bsize}B` : ''}</div>
+            </div>
+            <div class="ollama-model-btns">
+                <button class="action-btn ${m.isReg ? 'success' : 'primary'} sm-btn"
+                    onclick="LocalModels.toggleOllamaModel('${m.name}', ${m.isReg})"
+                    ${m.isReg ? 'disabled' : ''}>
+                    <i class="fas fa-${m.isReg ? 'check-circle' : 'plus-circle'}"></i>
+                    ${m.isReg ? 'In Registry' : 'Add to Aethvion'}
+                </button>
+                <button class="action-btn secondary sm-btn"
+                    onclick="LocalModels.deleteOllamaModel('${m.name}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>`;
+    },
+
+    _getBSize(text) {
+        if (!text) return 0;
+        const match = text.match(/(\d+\.?\d*)\s*[Bb]/);
+        return match ? parseFloat(match[1]) : 0;
+    },
+
+    _getCreator(text) {
+        if (!text) return 'Other';
+        if (text.includes('-')) return text.split('-')[0];
+        if (text.includes('/')) return text.split('/')[0];
+        return 'Other';
+    },
+
+    _getArch(text) {
+        if (!text) return 'LLM';
+        const t = text.toLowerCase();
+        if (t.includes('llama')) return 'Llama';
+        if (t.includes('mistral')) return 'Mistral';
+        if (t.includes('mixtral')) return 'Mixtral';
+        if (t.includes('phi')) return 'Phi';
+        if (t.includes('gemma')) return 'Gemma';
+        if (t.includes('qwen')) return 'Qwen';
+        if (t.includes('deepseek')) return 'DeepSeek';
+        if (t.includes('command')) return 'Command';
+        if (t.includes('stable')) return 'StableLM';
+        if (t.includes('coder')) return 'Coder';
+        return 'General';
     },
 
     async pullOllamaModel() {
@@ -810,13 +977,6 @@ const LocalModels = {
     }
 };
 
-// Listen for tab changes from core.js
-document.addEventListener('tabChanged', (e) => {
-    if (e.detail.tab === 'local-models') {
-        LocalModels.loadAll();
-    }
-});
-
 // Polyfill showNotification if not exists
 if (typeof showNotification === 'undefined') {
     window.showNotification = (msg, type) => {
@@ -831,3 +991,14 @@ if (typeof showNotification === 'undefined') {
 
 // Initialize on script load
 LocalModels.init();
+
+// Also re-init when the panel is loaded via PartialLoader
+document.addEventListener('panelLoaded', (e) => {
+    if (e.detail && e.detail.tabName === 'local-models') {
+        console.log("[LocalModels] Panel detected via event, re-initializing...");
+        LocalModels.init();
+    }
+});
+
+// Export to window for inline onclick handlers
+window.LocalModels = LocalModels;

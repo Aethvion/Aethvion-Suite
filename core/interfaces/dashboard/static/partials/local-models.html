@@ -11,22 +11,40 @@
                     <div class="glass-panel" id="models-filter-panel" style="margin-bottom: 1.5rem; padding: 1.25rem;">
                         <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
                             <div style="flex: 1; min-width: 250px; position: relative;">
-                                <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); opacity: 0.6;"></i>
+                                <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); opacity: 0.6; pointer-events: none;"></i>
                                 <input type="text" id="model-search-input" class="setting-input" placeholder="Search models by name, filename, or description..." style="padding-left: 40px; width: 100%; border-radius: 12px; background: rgba(0,0,0,0.2);">
                             </div>
                             <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
                                 <div class="filter-group" style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-sort-amount-down" style="color: var(--text-tertiary); font-size: 0.85rem;" title="Sort By"></i>
+                                    <select id="sort-models" class="setting-select" style="width: 160px; border-radius: 8px;">
+                                        <option value="name-asc">Name (A-Z)</option>
+                                        <option value="name-desc">Name (Z-A)</option>
+                                        <option value="size-desc">File Size (Largest)</option>
+                                        <option value="size-asc">File Size (Smallest)</option>
+                                        <option value="params-desc">Params (Largest)</option>
+                                        <option value="params-asc">Params (Smallest)</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group" style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-layer-group" style="color: var(--text-tertiary); font-size: 0.85rem;" title="Group By"></i>
+                                    <select id="group-models" class="setting-select" style="width: 140px; border-radius: 8px;">
+                                        <option value="none">No Grouping</option>
+                                        <option value="arch">By Arch</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group" style="display: flex; align-items: center; gap: 0.4rem; border-left: 1px solid var(--border); padding-left: 0.75rem; margin-left: 0.25rem;">
                                     <i class="fas fa-weight-hanging" style="color: var(--text-tertiary); font-size: 0.85rem;" title="Size Filter"></i>
-                                    <select id="filter-size" class="setting-select" style="width: 140px; border-radius: 8px;">
+                                    <select id="filter-size" class="setting-select" style="width: 120px; border-radius: 8px;">
                                         <option value="all">Any Size</option>
                                         <option value="small">Small (< 3GB)</option>
                                         <option value="medium">Medium (3-10GB)</option>
                                         <option value="large">Large (> 10GB)</option>
                                     </select>
                                 </div>
-                                <div class="filter-group" style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div class="filter-group" style="display: flex; align-items: center; gap: 0.4rem;">
                                     <i class="fas fa-filter" style="color: var(--text-tertiary); font-size: 0.85rem;" title="Status Filter"></i>
-                                    <select id="filter-status" class="setting-select" style="width: 140px; border-radius: 8px;">
+                                    <select id="filter-status" class="setting-select" style="width: 130px; border-radius: 8px;">
                                         <option value="all">Any Status</option>
                                         <option value="registered">Registered</option>
                                         <option value="unregistered">Unregistered</option>
