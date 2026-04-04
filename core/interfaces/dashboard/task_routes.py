@@ -9,9 +9,10 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from core.orchestrator.task_queue import get_task_queue_manager, cancel_agent_task
 from core.orchestrator.agent_events import get_snapshot
+from core.utils import utcnow_iso
 from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -222,7 +223,7 @@ async def update_thread_mode(thread_id: str, request: Dict[str, str]):
             raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found")
             
         thread.mode = mode
-        thread.updated_at = datetime.now()
+        thread.updated_at = datetime.now(timezone.utc)
         task_manager._save_thread(thread_id)
         
         return {"status": "success", "mode": mode}
@@ -290,7 +291,7 @@ async def toggle_thread_pin(thread_id: str, request: Dict[str, bool]):
             raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found")
             
         thread.is_pinned = is_pinned
-        thread.updated_at = datetime.now()
+        thread.updated_at = datetime.now(timezone.utc)
         task_manager._save_thread(thread_id)
         
         return {"status": "success", "is_pinned": is_pinned}
@@ -343,6 +344,111 @@ async def cancel_task(task_id: str):
     """Signal a running agent task to stop after its current iteration."""
     cancel_agent_task(task_id)
     return {"ok": True, "task_id": task_id}
+
+
+# ── Folder endpoints ──────────────────────────────────────────────────────────
+
+class FolderCreateRequest(BaseModel):
+    folder_id: str
+    title: str
+    color: Optional[str] = "#6366f1"
+    context_extra: Optional[str] = ""
+    shared_memory: Optional[str] = ""
+    settings: Optional[Dict[str, Any]] = None
+
+
+class FolderUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    color: Optional[str] = None
+    context_extra: Optional[str] = None
+    shared_memory: Optional[str] = None
+    settings: Optional[Dict[str, Any]] = None
+
+
+@router.get("/folders")
+async def list_folders():
+    """List all chat folders."""
+    try:
+        task_manager = get_task_queue_manager()
+        folders = [f.to_dict() for f in task_manager.folders.values()]
+        # Attach thread count to each folder
+        for fd in folders:
+            fd['thread_count'] = sum(
+                1 for t in task_manager.threads.values()
+                if getattr(t, 'folder_id', None) == fd['id']
+            )
+        return {"folders": folders}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/folders")
+async def create_folder(request: FolderCreateRequest):
+    """Create a new chat folder."""
+    try:
+        task_manager = get_task_queue_manager()
+        success = task_manager.create_folder(
+            folder_id=request.folder_id,
+            title=request.title,
+            color=request.color or "#6366f1",
+            context_extra=request.context_extra or "",
+            shared_memory=request.shared_memory or "",
+            settings=request.settings or {},
+        )
+        if not success:
+            return {"status": "exists", "message": f"Folder {request.folder_id} already exists"}
+        return {"status": "success", "folder": task_manager.folders[request.folder_id].to_dict()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/folders/{folder_id}")
+async def update_folder(folder_id: str, request: FolderUpdateRequest):
+    """Update a chat folder's settings / context."""
+    try:
+        task_manager = get_task_queue_manager()
+        kwargs = {k: v for k, v in request.model_dump().items() if v is not None}
+        success = task_manager.update_folder(folder_id, **kwargs)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Folder {folder_id} not found")
+        return {"status": "success", "folder": task_manager.folders[folder_id].to_dict()}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/folders/{folder_id}")
+async def delete_folder(folder_id: str):
+    """Delete a folder (threads are kept, just un-assigned)."""
+    try:
+        task_manager = get_task_queue_manager()
+        success = task_manager.delete_folder(folder_id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Folder {folder_id} not found")
+        return {"status": "success", "message": f"Folder {folder_id} deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/thread/{thread_id}/folder")
+async def set_thread_folder(thread_id: str, request: Dict[str, Any]):
+    """Assign a thread to a folder, or remove it from its folder (folder_id=null)."""
+    try:
+        folder_id = request.get("folder_id")  # None removes from folder
+        task_manager = get_task_queue_manager()
+        success = task_manager.move_thread_to_folder(thread_id, folder_id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Thread or folder not found")
+        return {"status": "success", "thread_id": thread_id, "folder_id": folder_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ── End Folder endpoints ───────────────────────────────────────────────────────
 
 
 @router.get("/{task_id}/events")

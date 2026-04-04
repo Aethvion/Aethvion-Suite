@@ -114,10 +114,42 @@ class Task:
 
 
 @dataclass
+class ChatFolder:
+    """
+    A folder for grouping chat threads.
+
+    Folders carry optional shared context and shared memory that are
+    automatically injected into every chat within the folder, as well as
+    default setting overrides.
+    """
+    id: str
+    title: str
+    color: str = "#6366f1"                     # Accent color shown in the sidebar
+    created_at: datetime = field(default_factory=_utcnow)
+    updated_at: datetime = field(default_factory=_utcnow)
+    context_extra: str = ""                    # Extra context prepended to every chat
+    shared_memory: str = ""                    # Shared facts injected into every chat
+    settings: Dict[str, Any] = field(default_factory=dict)  # Default settings override
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            'id': self.id,
+            'title': self.title,
+            'color': self.color,
+            'created_at': _fmt_dt(self.created_at) if self.created_at else None,
+            'updated_at': _fmt_dt(self.updated_at) if self.updated_at else None,
+            'context_extra': self.context_extra,
+            'shared_memory': self.shared_memory,
+            'settings': _sanitize_for_json(self.settings),
+        }
+
+
+@dataclass
 class ChatThread:
     """
     Represents a conversation thread.
-    
+
     Each thread can have multiple tasks running independently.
     """
     id: str
@@ -130,7 +162,8 @@ class ChatThread:
     settings: Dict[str, Any] = field(default_factory=lambda: {"context_mode": "none", "context_window": 5})
     is_deleted: bool = False
     is_pinned: bool = False
-    
+    folder_id: Optional[str] = None            # Folder this thread belongs to (None = unfoldered)
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -138,12 +171,13 @@ class ChatThread:
             'title': self.title,
             'created_at': _fmt_dt(self.created_at) if self.created_at else None,
             'updated_at': _fmt_dt(self.updated_at) if self.updated_at else None,
-            'task_ids': list(self.task_ids), # Ensure list copy
+            'task_ids': list(self.task_ids),
             'metadata': _sanitize_for_json(self.metadata),
             'mode': self.mode,
             'settings': _sanitize_for_json(self.settings),
             'is_deleted': self.is_deleted,
-            'is_pinned': self.is_pinned
+            'is_pinned': self.is_pinned,
+            'folder_id': self.folder_id,
         }
 
 

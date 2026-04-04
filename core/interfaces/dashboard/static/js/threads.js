@@ -97,11 +97,16 @@ function initThreadManagement() {
 
 
     // Set up thread list click delegation
+    // Note: _buildThreadItem (used when folders are present) attaches its own click
+    // listeners per item. This delegation acts as the fallback for un-foldered threads
+    // rendered by the original renderThreadList path (no folders). Guard against
+    // action-button clicks to avoid double handling.
     document.getElementById('threads-list').addEventListener('click', (e) => {
+        if (e.target.closest('.thread-actions') || e.target.closest('.folder-header') || e.target.closest('.folder-actions')) return;
         const threadItem = e.target.closest('.thread-item');
-        if (threadItem) {
+        if (threadItem && !threadItem._folderListenerAttached) {
             const threadId = threadItem.dataset.threadId;
-            switchThread(threadId);
+            if (threadId) switchThread(threadId);
         }
     });
 
@@ -1319,3 +1324,555 @@ async function saveThreadSettings(threadId) {
         console.error("Failed to save thread settings:", e);
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FOLDER MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════
+
+window.folders = {};  // { folderId: folderObject }
+let _folderCollapsed = {};  // { folderId: bool }  — persisted in localStorage
+let _folderModalEditId = null;  // null = create, string = edit existing
+let _folderPickerCleanup = null;  // teardown for open picker
+
+const FOLDER_COLLAPSED_KEY = 'ae_folder_collapsed';
+
+function _saveFolderCollapseState() {
+    try { localStorage.setItem(FOLDER_COLLAPSED_KEY, JSON.stringify(_folderCollapsed)); } catch(e) {}
+}
+function _loadFolderCollapseState() {
+    try {
+        const s = localStorage.getItem(FOLDER_COLLAPSED_KEY);
+        if (s) _folderCollapsed = JSON.parse(s);
+    } catch(e) { _folderCollapsed = {}; }
+}
+
+// ── Load folders from API ─────────────────────────────────────────────────
+async function loadFolders() {
+    try {
+        const res = await fetch('/api/tasks/folders');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && Array.isArray(data.folders)) {
+            folders = {};
+            data.folders.forEach(f => { folders[f.id] = f; });
+        }
+    } catch(e) {
+        console.error('Failed to load folders:', e);
+    }
+}
+
+// ── Create a new folder ───────────────────────────────────────────────────
+async function createFolder() {
+    _folderModalEditId = null;
+    _openFolderModal(null);
+}
+
+// ── Open the folder settings modal ───────────────────────────────────────
+function _openFolderModal(folderId) {
+    const modal = document.getElementById('folder-settings-modal');
+    if (!modal) return;
+
+    const folder = folderId ? folders[folderId] : null;
+    _folderModalEditId = folderId || null;
+
+    // Populate fields
+    document.getElementById('folder-modal-name').value    = folder ? folder.title        : '';
+    document.getElementById('folder-modal-context').value = folder ? (folder.context_extra  || '') : '';
+    document.getElementById('folder-modal-memory').value  = folder ? (folder.shared_memory  || '') : '';
+
+    // Settings dropdowns
+    const settings = folder ? (folder.settings || {}) : {};
+    document.getElementById('folder-modal-ctx').value = settings.context_mode || '';
+    document.getElementById('folder-modal-win').value = settings.context_window || '';
+    document.getElementById('folder-modal-mem').value = settings.memory_mode  || '';
+
+    // Color swatches
+    const currentColor = (folder && folder.color) ? folder.color : '#6366f1';
+    document.querySelectorAll('#folder-settings-modal .color-swatch').forEach(sw => {
+        sw.classList.toggle('selected', sw.dataset.color === currentColor);
+    });
+
+    document.getElementById('folder-modal-title').innerHTML =
+        `<i class="fas fa-folder${folderId ? '-open' : '-plus'}" aria-hidden="true"></i> ` +
+        (folderId ? 'Edit Folder' : 'New Folder');
+
+    modal.style.display = 'flex';
+    document.getElementById('folder-modal-name').focus();
+}
+
+function _closeFolderModal() {
+    const modal = document.getElementById('folder-settings-modal');
+    if (modal) modal.style.display = 'none';
+    _folderModalEditId = null;
+}
+
+function _getSelectedFolderColor() {
+    const sel = document.querySelector('#folder-settings-modal .color-swatch.selected');
+    return sel ? sel.dataset.color : '#6366f1';
+}
+
+// Save / update folder from modal
+async function _saveFolderModal() {
+    const name = document.getElementById('folder-modal-name').value.trim();
+    if (!name) { showToast('Folder name is required.', 'warn'); return; }
+
+    const contextExtra  = document.getElementById('folder-modal-context').value.trim();
+    const sharedMemory  = document.getElementById('folder-modal-memory').value.trim();
+    const color         = _getSelectedFolderColor();
+    const ctxMode       = document.getElementById('folder-modal-ctx').value;
+    const ctxWin        = document.getElementById('folder-modal-win').value;
+    const memMode       = document.getElementById('folder-modal-mem').value;
+
+    const settings = {};
+    if (ctxMode) settings.context_mode   = ctxMode;
+    if (ctxWin)  settings.context_window = parseInt(ctxWin);
+    if (memMode) settings.memory_mode    = memMode;
+
+    if (_folderModalEditId) {
+        // Update existing
+        try {
+            const res = await fetch(`/api/tasks/folders/${_folderModalEditId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: name, color, context_extra: contextExtra, shared_memory: sharedMemory, settings })
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            folders[_folderModalEditId] = data.folder;
+            showToast(`Folder "${name}" updated.`, 'success');
+            _closeFolderModal();
+            renderThreadList();
+        } catch(e) {
+            console.error('Failed to update folder:', e);
+            showToast('Failed to save folder.', 'error');
+        }
+    } else {
+        // Create new
+        const folderId = 'folder-' + Date.now();
+        try {
+            const res = await fetch('/api/tasks/folders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ folder_id: folderId, title: name, color, context_extra: contextExtra, shared_memory: sharedMemory, settings })
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            folders[folderId] = data.folder || { id: folderId, title: name, color, context_extra: contextExtra, shared_memory: sharedMemory, settings, thread_count: 0 };
+            showToast(`Folder "${name}" created.`, 'success');
+            _closeFolderModal();
+            renderThreadList();
+        } catch(e) {
+            console.error('Failed to create folder:', e);
+            showToast('Failed to create folder.', 'error');
+        }
+    }
+}
+
+// Delete a folder
+async function deleteFolderById(folderId) {
+    const folder = folders[folderId];
+    if (!folder) return;
+
+    // Un-assign threads locally
+    Object.values(threads).forEach(t => {
+        if (t.folder_id === folderId) t.folder_id = null;
+    });
+    delete folders[folderId];
+    renderThreadList();
+
+    try {
+        await fetch(`/api/tasks/folders/${folderId}`, { method: 'DELETE' });
+        showToast(`Folder "${folder.title}" deleted. Threads are still accessible.`, 'info', 4000);
+    } catch(e) {
+        console.error('Failed to delete folder on server:', e);
+        showToast('Folder delete failed on server.', 'error');
+    }
+}
+
+// ── Move thread to a folder ───────────────────────────────────────────────
+async function moveThreadToFolder(threadId, folderId) {
+    if (threads[threadId]) threads[threadId].folder_id = folderId || null;
+    renderThreadList();
+    try {
+        await fetch(`/api/tasks/thread/${threadId}/folder`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder_id: folderId || null })
+        });
+    } catch(e) {
+        console.error('Failed to move thread to folder:', e);
+        showToast('Failed to assign folder.', 'error');
+    }
+}
+
+// ── Folder picker popup (shown when clicking the folder icon on a thread) ─
+function _showFolderPicker(threadId, anchorEl) {
+    // Dismiss existing picker
+    _dismissFolderPicker();
+
+    const popup = document.createElement('div');
+    popup.className = 'folder-picker-popup';
+
+    const folderList = Object.values(folders);
+    const thread = threads[threadId];
+    const currentFolderId = thread ? thread.folder_id : null;
+
+    if (folderList.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'folder-picker-item';
+        empty.style.opacity = '0.5';
+        empty.textContent = 'No folders yet';
+        popup.appendChild(empty);
+    } else {
+        folderList.forEach(folder => {
+            const item = document.createElement('div');
+            item.className = 'folder-picker-item' + (folder.id === currentFolderId ? ' selected' : '');
+            item.innerHTML = `<span class="folder-picker-dot" style="background:${folder.color};"></span>${folder.id === currentFolderId ? '✓ ' : ''}${folder.title}`;
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _dismissFolderPicker();
+                moveThreadToFolder(threadId, folder.id === currentFolderId ? null : folder.id);
+            });
+            popup.appendChild(item);
+        });
+    }
+
+    if (currentFolderId) {
+        const sep = document.createElement('div');
+        sep.style.cssText = 'height:1px;background:rgba(255,255,255,0.07);margin:2px 0;';
+        popup.appendChild(sep);
+
+        const removeItem = document.createElement('div');
+        removeItem.className = 'folder-picker-item remove-from-folder';
+        removeItem.innerHTML = '<i class="fas fa-folder-minus" style="font-size:0.75rem;"></i> Remove from folder';
+        removeItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+            _dismissFolderPicker();
+            moveThreadToFolder(threadId, null);
+        });
+        popup.appendChild(removeItem);
+    }
+
+    // Position near the anchor button
+    document.body.appendChild(popup);
+    const rect = anchorEl.getBoundingClientRect();
+    const pickerHeight = popup.offsetHeight || 200;
+    const spaceBelow   = window.innerHeight - rect.bottom;
+    popup.style.position = 'fixed';
+    popup.style.left = `${Math.min(rect.left, window.innerWidth - 230)}px`;
+    popup.style.top  = spaceBelow > pickerHeight
+        ? `${rect.bottom + 4}px`
+        : `${rect.top - pickerHeight - 4}px`;
+
+    _folderPickerCleanup = () => { if (popup.parentNode) popup.remove(); };
+
+    // Close on outside click
+    const outside = (e) => {
+        if (!popup.contains(e.target)) {
+            _dismissFolderPicker();
+            document.removeEventListener('mousedown', outside, true);
+        }
+    };
+    setTimeout(() => document.addEventListener('mousedown', outside, true), 10);
+}
+
+function _dismissFolderPicker() {
+    if (_folderPickerCleanup) { _folderPickerCleanup(); _folderPickerCleanup = null; }
+}
+
+// ── Wire up folder modal buttons (called once from initThreadManagement) ──
+function _initFolderModal() {
+    _loadFolderCollapseState();
+
+    // New folder button
+    const newFolderBtn = document.getElementById('new-folder-button');
+    if (newFolderBtn) newFolderBtn.addEventListener('click', createFolder);
+
+    // Modal close / cancel
+    document.getElementById('folder-modal-close')?.addEventListener('click', _closeFolderModal);
+    document.getElementById('folder-modal-cancel')?.addEventListener('click', _closeFolderModal);
+
+    // Close on backdrop click
+    document.getElementById('folder-settings-modal')?.addEventListener('click', (e) => {
+        if (e.target === document.getElementById('folder-settings-modal')) _closeFolderModal();
+    });
+
+    // Save
+    document.getElementById('folder-modal-save')?.addEventListener('click', _saveFolderModal);
+
+    // Color swatches
+    document.querySelectorAll('#folder-settings-modal .color-swatch').forEach(sw => {
+        sw.addEventListener('click', () => {
+            document.querySelectorAll('#folder-settings-modal .color-swatch').forEach(s => s.classList.remove('selected'));
+            sw.classList.add('selected');
+        });
+    });
+}
+
+// ── Updated renderThreadList — folders first, then unfoldered ────────────
+// (replaces the existing renderThreadList declared earlier in this file)
+const _origRenderThreadList = renderThreadList;
+renderThreadList = function() {
+    const threadsList = document.getElementById('threads-list');
+    if (!threadsList) return;
+    threadsList.innerHTML = '';
+    const template = document.getElementById('thread-item-template');
+
+    const hasFolders = Object.keys(folders).length > 0;
+
+    // ── 1. Render folders ───────────────────────────────────────────────
+    if (hasFolders) {
+        const folderTemplate = document.getElementById('folder-group-template');
+        const sortedFolders = Object.values(folders).sort((a, b) => a.title.localeCompare(b.title));
+
+        sortedFolders.forEach(folder => {
+            const folderThreads = Object.values(threads).filter(t =>
+                t.folder_id === folder.id && !t.id.startsWith('agents-')
+            ).sort((a, b) =>
+                new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
+            );
+
+            const clone = folderTemplate.content.cloneNode(true);
+            const group = clone.querySelector('.folder-group');
+            group.dataset.folderId = folder.id;
+
+            // CSS variable for thread left-border color
+            group.style.setProperty('--folder-color', folder.color + '60');
+
+            if (_folderCollapsed[folder.id]) group.classList.add('collapsed');
+
+            // Populate header
+            clone.querySelector('.folder-color-dot').style.background = folder.color;
+            clone.querySelector('.folder-name').textContent = folder.title;
+            const count = folderThreads.length;
+            clone.querySelector('.folder-thread-count').textContent = count;
+
+            // Toggle collapse
+            clone.querySelector('.folder-toggle-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                const g = e.target.closest('.folder-group');
+                g.classList.toggle('collapsed');
+                _folderCollapsed[folder.id] = g.classList.contains('collapsed');
+                _saveFolderCollapseState();
+            });
+            clone.querySelector('.folder-header').addEventListener('click', (e) => {
+                if (e.target.closest('.folder-actions')) return;
+                const g = e.target.closest('.folder-group');
+                g.classList.toggle('collapsed');
+                _folderCollapsed[folder.id] = g.classList.contains('collapsed');
+                _saveFolderCollapseState();
+            });
+
+            // Settings button
+            clone.querySelector('.folder-settings-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                _openFolderModal(folder.id);
+            });
+
+            // Delete button
+            clone.querySelector('.folder-delete-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                showConfirm(
+                    'Delete Folder',
+                    `Delete folder "${folder.title}"? All chats will be kept but un-grouped.`,
+                    () => deleteFolderById(folder.id),
+                    { confirmLabel: 'Delete', icon: 'fa-folder' }
+                );
+            });
+
+            // Render threads inside folder
+            const folderThreadsContainer = clone.querySelector('.folder-threads');
+            folderThreads.forEach(thread => {
+                const threadClone = _buildThreadItem(template, thread, folder);
+                folderThreadsContainer.appendChild(threadClone);
+            });
+
+            threadsList.appendChild(clone);
+        });
+    }
+
+    // ── 2. Render unfoldered threads (sorted: pinned → date) ──────────
+    const unfolderedThreads = Object.values(threads).filter(t =>
+        !t.id.startsWith('agents-') && (!t.folder_id || !folders[t.folder_id])
+    ).sort((a, b) => {
+        if (a.is_pinned && !b.is_pinned) return -1;
+        if (!a.is_pinned && b.is_pinned) return 1;
+        return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at);
+    });
+
+    if (hasFolders && unfolderedThreads.length > 0) {
+        const divider = document.createElement('div');
+        divider.className = 'thread-group-header';
+        divider.textContent = 'Other Chats';
+        threadsList.appendChild(divider);
+    }
+
+    let lastGroupName = '';
+    unfolderedThreads.forEach(thread => {
+        if (!thread.is_pinned) {
+            const groupName = getThreadGroupName(thread.updated_at || thread.created_at);
+            if (groupName !== lastGroupName && !hasFolders) {
+                const divider = document.createElement('div');
+                divider.className = 'thread-group-header';
+                divider.textContent = groupName;
+                threadsList.appendChild(divider);
+                lastGroupName = groupName;
+            }
+        } else {
+            if (lastGroupName !== 'Pinned') {
+                const divider = document.createElement('div');
+                divider.className = 'thread-group-header';
+                divider.innerHTML = '<i class="fas fa-thumbtack"></i> Pinned';
+                threadsList.appendChild(divider);
+                lastGroupName = 'Pinned';
+            }
+        }
+        threadsList.appendChild(_buildThreadItem(template, thread, null));
+    });
+};
+
+// ── Build a single thread DOM element ────────────────────────────────────
+function _buildThreadItem(template, thread, folder) {
+    const clone = template.content.cloneNode(true);
+    const threadItem = clone.querySelector('.thread-item');
+
+    threadItem.dataset.threadId = thread.id;
+    if (thread.id === currentThreadId) threadItem.classList.add('active');
+
+    if (folder) {
+        threadItem.classList.add('in-folder');
+        threadItem.style.setProperty('--folder-color', folder.color + '60');
+    }
+
+    // Populate title + preview
+    const titleEl = clone.querySelector('.thread-title');
+    titleEl.textContent = thread.title;
+    titleEl.title = thread.title;
+
+    const msgs = threadMessages[thread.id] || [];
+    const lastMsg = [...msgs].reverse().find(m => m.role === 'user' || m.role === 'assistant');
+    const previewEl = clone.querySelector('.thread-preview');
+    if (previewEl) {
+        const rawText = lastMsg ? lastMsg.content : (thread.last_message || 'No messages yet');
+        const previewText = rawText.replace(/<[^>]+>/g, '').slice(0, 80);
+        previewEl.textContent = previewText;
+        previewEl.title = previewText;
+    }
+
+    // Pin state
+    if (thread.is_pinned) {
+        threadItem.classList.add('pinned');
+        const pinBtn = clone.querySelector('.pin-btn');
+        if (pinBtn) pinBtn.classList.add('active');
+    }
+
+    // Click to switch thread (guard action buttons)
+    threadItem._folderListenerAttached = true;
+    threadItem.addEventListener('click', (e) => {
+        if (e.target.closest('.thread-actions')) return;
+        switchThread(thread.id);
+    });
+
+    // Folder move button
+    const folderMoveBtn = clone.querySelector('.folder-move-btn');
+    if (folderMoveBtn) {
+        if (thread.folder_id && folders[thread.folder_id]) {
+            folderMoveBtn.style.color = folders[thread.folder_id].color;
+        }
+        folderMoveBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            _showFolderPicker(thread.id, folderMoveBtn);
+        });
+    }
+
+    // Pin button
+    const pinBtn = clone.querySelector('.pin-btn');
+    if (pinBtn) {
+        pinBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const newState = !thread.is_pinned;
+            thread.is_pinned = newState;
+            threadItem.classList.toggle('pinned', newState);
+            pinBtn.classList.toggle('active', newState);
+            renderThreadList();
+            try {
+                await fetch(`/api/tasks/thread/${thread.id}/pin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_pinned: newState })
+                });
+            } catch(err) {
+                console.error('Failed to toggle pin state:', err);
+                showToast('Failed to pin thread.', 'error');
+            }
+        });
+    }
+
+    // Edit (rename) button
+    const editBtn = clone.querySelector('.edit-btn');
+    if (editBtn) {
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const tEl = threadItem.querySelector('.thread-title');
+            if (!tEl) return;
+            tEl.contentEditable = 'true';
+            tEl.focus();
+            const range = document.createRange();
+            range.selectNodeContents(tEl);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            const commit = () => {
+                tEl.contentEditable = 'false';
+                const newTitle = tEl.textContent.trim();
+                if (newTitle && newTitle !== thread.title) {
+                    editThreadTitle(thread.id, newTitle);
+                    showToast('Thread renamed', 'success');
+                } else {
+                    tEl.textContent = thread.title;
+                }
+            };
+            tEl.addEventListener('blur', commit, { once: true });
+            tEl.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Enter')  { ev.preventDefault(); tEl.blur(); }
+                if (ev.key === 'Escape') { tEl.textContent = thread.title; tEl.blur(); }
+            });
+        });
+    }
+
+    // Delete button
+    const deleteBtn = clone.querySelector('.delete-btn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showConfirm(
+                'Delete Thread',
+                `Delete "${thread.title}" and all its messages? This cannot be undone.`,
+                () => deleteThread(thread.id),
+                { confirmLabel: 'Delete', icon: 'fa-trash' }
+            );
+        });
+    }
+
+    return clone;
+}
+
+// ── Hook into initThreadManagement ────────────────────────────────────────
+// Patch loadThreads to also fetch folders and init modal wiring.
+const _origLoadThreads = loadThreads;
+loadThreads = async function() {
+    await Promise.all([_origLoadThreads(), loadFolders()]);
+    // Re-render after both resolve (loadThreads already calls renderThreadList, but folders may not be ready)
+    renderThreadList();
+};
+
+// Wire folder modal after panel loads
+document.addEventListener('panelLoaded', function(e) {
+    if (e.detail && e.detail.panelId === 'chat-panel') {
+        _initFolderModal();
+    }
+});
+// Also wire on DOMContentLoaded as fallback (in case panel is the default active panel)
+window.addEventListener('DOMContentLoaded', function() {
+    // Delay slightly so the partial may already be injected
+    setTimeout(_initFolderModal, 200);
+});

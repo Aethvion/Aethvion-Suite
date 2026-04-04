@@ -227,6 +227,225 @@
     transform: translateY(-1px);
 }
 
+/* New Folder button */
+.new-folder-button {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px dashed var(--border);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.new-folder-button:hover {
+    color: var(--warning);
+    border-color: var(--warning);
+    background: rgba(245, 158, 11, 0.1);
+    transform: translateY(-1px);
+}
+
+/* ── Folder Groups ─────────────────────────────────────────────────────────── */
+
+.folder-group {
+    margin-bottom: 0.2rem;
+}
+
+.folder-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.5rem 0.55rem 0.3rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.15s;
+    user-select: none;
+}
+
+.folder-header:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.folder-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 2px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    flex-shrink: 0;
+    transition: transform 0.2s, color 0.15s;
+}
+
+.folder-group.collapsed .folder-toggle-btn {
+    transform: rotate(-90deg);
+}
+
+.folder-toggle-btn:hover { color: var(--text-primary); }
+
+.folder-color-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 4px currentColor;
+}
+
+.folder-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--text-secondary);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+}
+
+.folder-thread-count {
+    font-size: 0.68rem;
+    color: var(--text-tertiary);
+    background: rgba(255,255,255,0.07);
+    padding: 1px 5px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.folder-actions {
+    display: flex;
+    gap: 0.15rem;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+}
+
+.folder-header:hover .folder-actions {
+    opacity: 1;
+}
+
+.folder-action-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 3px;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    transition: all 0.15s;
+}
+
+.folder-action-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.1); }
+.folder-action-btn.folder-delete-btn:hover { color: var(--error); background: rgba(239,68,68,0.15); }
+
+/* Threads nested inside a folder */
+.folder-threads {
+    padding-left: 1rem;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.folder-group.collapsed .folder-threads {
+    display: none;
+}
+
+/* Threads inside a folder have a subtle left border tinted with the folder color */
+.thread-item.in-folder {
+    border-left: 2px solid var(--folder-color, rgba(99,102,241,0.35));
+    padding-left: 0.4rem;
+}
+
+/* Move-to-folder button on thread items */
+.thread-action-btn.folder-move-btn:hover {
+    color: var(--warning);
+    background: rgba(245, 158, 11, 0.15);
+}
+
+/* Folder picker popup */
+.folder-picker-popup {
+    position: absolute;
+    z-index: 500;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    min-width: 160px;
+    max-width: 220px;
+    overflow: hidden;
+    animation: fadeInDown 0.15s ease;
+}
+
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.folder-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.8rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    transition: background 0.1s, color 0.1s;
+}
+
+.folder-picker-item:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+.folder-picker-item.remove-from-folder { color: var(--text-tertiary); }
+.folder-picker-item.remove-from-folder:hover { color: var(--error); background: rgba(239,68,68,0.1); }
+
+.folder-picker-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Folder settings modal helpers */
+.folder-color-swatches {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-top: 0.3rem;
+}
+
+.color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+}
+
+.color-swatch:hover { transform: scale(1.2); }
+.color-swatch.selected { border-color: white; transform: scale(1.15); }
+
+.form-hint {
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+    margin: 0.25rem 0 0.5rem;
+    line-height: 1.4;
+}
+
 /* Chat Column */
 .chat-column {
     display: flex;

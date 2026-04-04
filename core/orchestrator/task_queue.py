@@ -18,7 +18,7 @@ def _parse_dt(ts: str) -> datetime:
     return datetime.fromisoformat(ts)
 from core.tools.standard.file_ops import WORKSPACE_ROOT
 from core.utils.paths import WS_PROJECTS, HISTORY_AGENTS
-from .task_models import Task, TaskStatus, ChatThread
+from .task_models import Task, TaskStatus, ChatThread, ChatFolder
 
 logger = get_logger(__name__)
 
@@ -171,6 +171,27 @@ class TaskWorker:
                             
                             logger.info(f"[{task.id}] Prepared persistent memory system prompt")
                         # ── End Persistent Memory Preparation ──────────────────────────
+
+                    # ── Folder Context Injection ───────────────────────────────────
+                    # Folder shared memory and extra context are stored in task
+                    # metadata at submit time so workers don't need a live ref to
+                    # the folders dict.
+                    _folder_extra  = task.metadata.get('folder_context_extra', '')
+                    _folder_memory = task.metadata.get('folder_shared_memory', '')
+                    _folder_title  = task.metadata.get('folder_title', 'Folder')
+                    if _folder_extra or _folder_memory:
+                        _folder_parts = []
+                        if _folder_memory:
+                            _folder_parts.append(
+                                f"[FOLDER SHARED MEMORY — {_folder_title}]\n{_folder_memory}"
+                            )
+                        if _folder_extra:
+                            _folder_parts.append(
+                                f"[FOLDER CONTEXT — {_folder_title}]\n{_folder_extra}"
+                            )
+                        context_prompt = "\n\n".join(_folder_parts) + "\n\n" + context_prompt
+                        logger.info(f"[{task.id}] Injected folder context from '{_folder_title}'")
+                    # ── End Folder Context Injection ───────────────────────────────
 
                     # ── Agent workspace routing ────────────────────────────────────
                     # Note: context_prompt is NOT used for the agent path (AgentRunner
@@ -428,13 +449,19 @@ class TaskQueueManager:
         self.queue: asyncio.Queue = asyncio.Queue()
         self.tasks: Dict[str, Task] = {}
         self.threads: Dict[str, ChatThread] = {}
+        self.folders: Dict[str, ChatFolder] = {}
         self.workers: List[TaskWorker] = []
         self.running = False
-        
-        # Persistence: data/workspaces/projects
+
+        # Persistence: data/workspaces/projects  (threads/tasks)
         self.workspaces_dir = WS_PROJECTS
         self.workspaces_dir.mkdir(parents=True, exist_ok=True)
-        
+
+        # Persistence: data/workspaces/folders
+        self.folders_dir = WS_PROJECTS.parent / "folders"
+        self.folders_dir.mkdir(parents=True, exist_ok=True)
+
+        self._load_folders()
         self._load_threads()
         self._load_tasks()
         
@@ -606,6 +633,25 @@ class TaskQueueManager:
         if agent_thread_id:
             task.metadata['agent_thread_id'] = agent_thread_id
 
+        # ── Inject folder context into task metadata ───────────────────────
+        # Workers read context from metadata so they don't need a live folders ref.
+        _folder_id = getattr(self.threads[thread_id], 'folder_id', None)
+        if _folder_id and _folder_id in self.folders:
+            _folder = self.folders[_folder_id]
+            task.metadata['folder_id'] = _folder_id
+            task.metadata['folder_title'] = _folder.title
+            if _folder.context_extra:
+                task.metadata['folder_context_extra'] = _folder.context_extra
+            if _folder.shared_memory:
+                task.metadata['folder_shared_memory'] = _folder.shared_memory
+            # Merge folder settings as fallback defaults (thread settings take priority)
+            if _folder.settings:
+                thread_settings = self.threads[thread_id].settings or {}
+                for _k, _v in _folder.settings.items():
+                    if _k not in thread_settings:
+                        task.metadata.setdefault('settings', {})[_k] = _v
+        # ── End folder context injection ───────────────────────────────────
+
         # Save thread state
         self._save_thread(thread_id)
         
@@ -775,7 +821,8 @@ class TaskQueueManager:
                                     mode=data.get('mode', 'auto'),
                                     settings=data.get('settings', {"context_mode": "none", "context_window": 5}),
                                     is_deleted=data.get('is_deleted', False),
-                                    is_pinned=data.get('is_pinned', False)
+                                    is_pinned=data.get('is_pinned', False),
+                                    folder_id=data.get('folder_id', None),
                                 )
                                 
                                 if not thread.is_deleted:
@@ -866,9 +913,116 @@ class TaskQueueManager:
                                     logger.error(f"Failed to load task from {file_path}: {e}")
             
             logger.info(f"Loaded {count} tasks from disk")
-            
+
         except Exception as e:
             logger.error(f"Error loading tasks: {e}")
+
+    # ── Folder management ──────────────────────────────────────────────────────
+
+    def create_folder(self, folder_id: str, title: str, color: str = "#6366f1",
+                      context_extra: str = "", shared_memory: str = "",
+                      settings: dict = None) -> bool:
+        """Create a new chat folder. Returns False if the ID already exists."""
+        if folder_id in self.folders:
+            return False
+        self.folders[folder_id] = ChatFolder(
+            id=folder_id,
+            title=title,
+            color=color,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            context_extra=context_extra,
+            shared_memory=shared_memory,
+            settings=settings or {},
+        )
+        self._save_folder(folder_id)
+        logger.info(f"Created folder: {folder_id} ({title})")
+        return True
+
+    def get_folder(self, folder_id: str):
+        """Return a ChatFolder by ID, or None."""
+        return self.folders.get(folder_id)
+
+    def update_folder(self, folder_id: str, **kwargs) -> bool:
+        """Update folder fields. Returns False if the folder is not found."""
+        if folder_id not in self.folders:
+            return False
+        folder = self.folders[folder_id]
+        for key, value in kwargs.items():
+            if hasattr(folder, key):
+                setattr(folder, key, value)
+        folder.updated_at = datetime.now(timezone.utc)
+        self._save_folder(folder_id)
+        return True
+
+    def delete_folder(self, folder_id: str) -> bool:
+        """Delete a folder and un-assign all its threads. Returns False if not found."""
+        if folder_id not in self.folders:
+            return False
+        # Detach all threads that were in this folder
+        for thread in self.threads.values():
+            if getattr(thread, 'folder_id', None) == folder_id:
+                thread.folder_id = None
+                self._save_thread(thread.id)
+        del self.folders[folder_id]
+        folder_file = self.folders_dir / f"{folder_id}.json"
+        if folder_file.exists():
+            folder_file.unlink()
+        logger.info(f"Deleted folder: {folder_id}")
+        return True
+
+    def move_thread_to_folder(self, thread_id: str, folder_id) -> bool:
+        """Assign a thread to a folder (folder_id=None removes it from any folder)."""
+        thread = self.threads.get(thread_id)
+        if not thread:
+            return False
+        if folder_id is not None and folder_id not in self.folders:
+            return False
+        thread.folder_id = folder_id
+        thread.updated_at = datetime.now(timezone.utc)
+        self._save_thread(thread_id)
+        return True
+
+    def _save_folder(self, folder_id: str):
+        """Persist a folder to disk."""
+        if folder_id not in self.folders:
+            return
+        try:
+            folder = self.folders[folder_id]
+            file_path = self.folders_dir / f"{folder_id}.json"
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(folder.to_dict(), f, indent=2)
+        except Exception as e:
+            logger.error(f"Failed to save folder {folder_id}: {e}", exc_info=True)
+
+    def _load_folders(self):
+        """Load all folders from disk."""
+        try:
+            count = 0
+            if self.folders_dir.exists():
+                for file_path in self.folders_dir.glob("*.json"):
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                        folder = ChatFolder(
+                            id=data['id'],
+                            title=data.get('title', 'Untitled Folder'),
+                            color=data.get('color', '#6366f1'),
+                            created_at=_parse_dt(data['created_at']),
+                            updated_at=_parse_dt(data['updated_at']),
+                            context_extra=data.get('context_extra', ''),
+                            shared_memory=data.get('shared_memory', ''),
+                            settings=data.get('settings', {}),
+                        )
+                        self.folders[folder.id] = folder
+                        count += 1
+                    except Exception as e:
+                        logger.error(f"Failed to load folder from {file_path}: {e}")
+            logger.info(f"Loaded {count} folders from disk")
+        except Exception as e:
+            logger.error(f"Error loading folders: {e}")
+
+    # ── End Folder management ──────────────────────────────────────────────────
 
 
 # Singleton instance
