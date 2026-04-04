@@ -6,7 +6,7 @@ Tracks user relationships and interactions
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from core.utils import get_logger
+from core.utils import get_logger, utcnow_iso
 from core.utils.paths import KNOWLEDGE_SOCIAL
 
 logger = get_logger(__name__)
@@ -95,9 +95,7 @@ class SocialRegistry:
             "last_seen": Path(__file__).stat().st_mtime # Placeholder for timestamp
         }
         
-        # In a real system, we'd use datetime.now().isoformat()
-        import datetime
-        profile["last_seen"] = datetime.datetime.now().isoformat()
+        profile["last_seen"] = utcnow_iso()
         
         self.registry[key] = profile
         self._save()

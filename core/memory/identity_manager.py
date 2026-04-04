@@ -9,6 +9,7 @@ import datetime
 import re
 from pathlib import Path
 from typing import Dict, Any, List, Optional
+from core.utils import utcnow_iso
 from core.utils.paths import PERSONA_MISAKA
 
 logger = logging.getLogger(__name__)
@@ -81,7 +82,7 @@ class IdentityManager:
                         curr_obs.extend(obs)
                         memory["recent_observations"] = curr_obs[-20:] # Keep last 20
                 
-                memory["last_updated"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                memory["last_updated"] = utcnow_iso()
                 with open(MEMORY_PATH, "w", encoding="utf-8") as f:
                     json.dump(memory, f, indent=4)
                 logger.info("IdentityManager: Updated memory.json")

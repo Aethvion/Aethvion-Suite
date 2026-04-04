@@ -6,6 +6,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 from core.utils.logger import get_logger
+from core.utils import utcnow_iso
 
 logger = get_logger(__name__)
 
@@ -31,7 +32,7 @@ class AgentWorkspaceManager:
     def _touch_workspace(self, workspace_id: str):
         ws = self.get_workspace(workspace_id)
         if ws:
-            ws["last_active"] = datetime.now().isoformat()
+            ws["last_active"] = utcnow_iso()
             self._ws_file(workspace_id).write_text(json.dumps(ws, indent=2))
 
     # --- Workspace CRUD ---
@@ -52,7 +53,7 @@ class AgentWorkspaceManager:
     def create_workspace(self, path: str, name: str = None) -> dict:
         workspace_id = str(uuid.uuid4())
         name = name or Path(path).name or path
-        now = datetime.now().isoformat()
+        now = utcnow_iso()
         self._ws_dir(workspace_id).mkdir(parents=True, exist_ok=True)
         self._threads_dir(workspace_id).mkdir(exist_ok=True)
         (self._ws_dir(workspace_id) / "uploads").mkdir(exist_ok=True)
@@ -78,7 +79,7 @@ class AgentWorkspaceManager:
             ws["name"] = name
         if path is not None:
             ws["path"] = path
-        ws["last_active"] = datetime.now().isoformat()
+        ws["last_active"] = utcnow_iso()
         self._ws_file(workspace_id).write_text(json.dumps(ws, indent=2))
         return ws
 
@@ -114,7 +115,7 @@ class AgentWorkspaceManager:
         if not self.get_workspace(workspace_id):
             return None
         thread_id = str(uuid.uuid4())
-        now = datetime.now().isoformat()
+        now = utcnow_iso()
         if not name:
             count = len(self.list_threads(workspace_id))
             name = datetime.now().strftime("%B %d, %Y")
@@ -156,7 +157,7 @@ class AgentWorkspaceManager:
         if not thread:
             return False
         thread["messages"].extend(messages)
-        thread["last_active"] = datetime.now().isoformat()
+        thread["last_active"] = utcnow_iso()
         self._thread_file(workspace_id, thread_id).write_text(json.dumps(thread, indent=2))
         self._touch_workspace(workspace_id)
         return True

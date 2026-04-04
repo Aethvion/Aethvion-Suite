@@ -20,7 +20,7 @@ import platform
 from datetime import datetime
 
 from core.version import VERSION
-from core.utils import get_logger, fastapi_utils
+from core.utils import get_logger, fastapi_utils, utcnow_iso
 from core.config.settings_manager import get_settings_manager
 from core.utils.paths import WS_OUTPUTS, WS_MEDIA, WS_UPLOADS
 import psutil
@@ -174,9 +174,9 @@ class WebSocketLogHandler(logging.Handler):
                 "level": record.levelname,
                 "message": msg,
                 "source": record.name,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": utcnow_iso()
             }
-            
+
             if main_event_loop and main_event_loop.is_running():
                 asyncio.run_coroutine_threadsafe(
                     manager.broadcast(log_entry, "logs"),
@@ -496,7 +496,7 @@ async def health_check():
     """Health check endpoint."""
     return {
         "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": utcnow_iso(),
         "components": {
             "orchestrator": orchestrator is not None,
             "nexus": nexus is not None and nexus._initialized,
@@ -1015,7 +1015,7 @@ async def _perform_telemetry_sync() -> Dict[str, Any]:
         "system": {
             "project_size_bytes": project_size,
             "db_size_bytes": db_size,
-            "last_sync": datetime.now().isoformat(),
+            "last_sync": utcnow_iso(),
             "git_commit": git_commit,
             "model_count": model_count,
             "python_version": sys.version.split()[0],
@@ -1058,7 +1058,7 @@ async def search_memory(request: MemorySearchRequest):
                 "memory_id": getattr(r, 'memory_id', str(r)),
                 "summary": getattr(r, 'summary', str(r)),
                 "domain": getattr(r, 'domain', "unknown"),
-                "timestamp": getattr(r, 'timestamp', datetime.now().isoformat()),
+                "timestamp": getattr(r, 'timestamp', utcnow_iso()),
                 "event_type": getattr(r, 'event_type', "unknown")
             })
         return {"count": len(serialized_results), "results": serialized_results}
@@ -1569,7 +1569,7 @@ async def websocket_logs(websocket: WebSocket):
     try:
         while True:
             await asyncio.sleep(10)
-            await websocket.send_json({"type": "heartbeat", "timestamp": datetime.now().isoformat()})
+            await websocket.send_json({"type": "heartbeat", "timestamp": utcnow_iso()})
     except (WebSocketDisconnect, RuntimeError):
         pass # Client disconnected or connection closed
     except Exception as e:
@@ -1583,7 +1583,7 @@ async def websocket_agents(websocket: WebSocket):
     try:
         while True:
             agents = factory.registry.get_all_agents()
-            await websocket.send_json({"type": "agents_update", "count": len(agents), "agents": agents, "timestamp": datetime.now().isoformat()})
+            await websocket.send_json({"type": "agents_update", "count": len(agents), "agents": agents, "timestamp": utcnow_iso()})
             await asyncio.sleep(2)
     except (WebSocketDisconnect, RuntimeError):
         pass # Client disconnected or connection closed
@@ -1593,4 +1593,4 @@ async def websocket_agents(websocket: WebSocket):
         manager.disconnect(websocket, "agents")
 
 async def broadcast_log(message: str, level: str = "info"):
-    await manager.broadcast({"type": "log", "level": level, "message": message, "timestamp": datetime.now().isoformat()}, "logs")
+    await manager.broadcast({"type": "log", "level": level, "message": message, "timestamp": utcnow_iso()}, "logs")

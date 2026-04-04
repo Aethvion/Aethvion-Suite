@@ -10,7 +10,7 @@ import importlib.util
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
-from core.utils import get_logger
+from core.utils import get_logger, utcnow_iso
 from core.utils.paths import APP_GAMES
 
 # Helper to load modules from static folder
@@ -62,7 +62,7 @@ class AIGameSession:
             content = self.game.get_opening_prompt()
             
         # Add entropy to ensure AI variety
-        entropy = f"\n(Session: {self.session_id[:8]}, Time: {datetime.now().isoformat()}, Seed: {random.randint(1000, 9999)})"
+        entropy = f"\n(Session: {self.session_id[:8]}, Time: {utcnow_iso()}, Seed: {random.randint(1000, 9999)})"
         content += entropy
             
         return {
@@ -99,7 +99,7 @@ class AIGameSession:
                 "score": self.score,
                 "result": self.result,
                 "history": self.history,
-                "updated_at": datetime.now().isoformat()
+                "updated_at": utcnow_iso()
             }
 
             # Update existing or append

@@ -8,7 +8,7 @@ from threading import Lock
 from datetime import datetime
 
 from .base_agent import BaseAgent
-from core.utils import get_logger
+from core.utils import get_logger, utcnow_iso
 
 logger = get_logger(__name__)
 
@@ -41,7 +41,7 @@ class AgentRegistry:
                 'trace_id': agent.trace_id,
                 'spec': agent.spec.to_dict(),
                 'status': 'spawning',
-                'registered_at': datetime.now().isoformat()
+                'registered_at': utcnow_iso()
             }
             
             logger.info(f"[{agent.trace_id}] Registered agent: {agent.name}")
@@ -57,7 +57,7 @@ class AgentRegistry:
         with self._lock:
             if trace_id in self._agents:
                 self._agents[trace_id]['status'] = status
-                self._agents[trace_id]['updated_at'] = datetime.now().isoformat()
+                self._agents[trace_id]['updated_at'] = utcnow_iso()
                 
                 logger.debug(f"[{trace_id}] Agent status updated: {status}")
     

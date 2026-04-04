@@ -5,7 +5,7 @@ Defines agent tasks using Aethvion Standard: [Domain]_[Action]_[Object]
 
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from core.utils import utcnow_iso
 
 
 @dataclass
@@ -38,7 +38,7 @@ class AgentSpec:
     max_tokens: Optional[int] = None
     
     description: Optional[str] = None
-    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = field(default_factory=utcnow_iso)
     images: Optional[List[Dict[str, Any]]] = None
     
     def __post_init__(self):

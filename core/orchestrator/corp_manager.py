@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from core.utils.logger import get_logger
+from core.utils import utcnow_iso
 from core.utils.paths import CORP_ROOT, MODEL_REGISTRY
 
 logger = get_logger(__name__)
@@ -239,7 +240,7 @@ class CorpManager:
             "description":    description,
             "workspace_path": workspace_path,
             "goal":           goal,
-            "created_at":     datetime.utcnow().isoformat(),
+            "created_at":     utcnow_iso(),
             "status":         "stopped",
             "workers":        [],
         }
@@ -367,7 +368,7 @@ class CorpManager:
             "priority":     priority,
             "status":       "pending",
             "created_by":   created_by,
-            "created_at":   datetime.utcnow().isoformat(),
+            "created_at":   utcnow_iso(),
             "started_at":   None,
             "completed_at": None,
             "worker_id":    None,
@@ -419,7 +420,7 @@ class CorpManager:
 
     def post_to_log(self, corp_id: str, worker_id: str,
                     worker_name: str, message: str, to: str = "All") -> None:
-        ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+        ts = utcnow_iso()
         line = f"[{ts}] [{worker_name} → {to}] {message}\n"
         log_path = self._log_path(corp_id)
         with open(log_path, "a", encoding="utf-8") as f:
@@ -445,7 +446,7 @@ class CorpManager:
 
     def send_user_message(self, corp_id: str, message: str) -> None:
         """Broadcast a steering message from the operator to the whole company."""
-        ts   = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+        ts   = utcnow_iso()
         line = f"[{ts}] [Operator → All] {message}\n"
         log_path = self._log_path(corp_id)
         try:
@@ -508,7 +509,7 @@ class CorpManager:
         data[key] = {
             "content": content,
             "author":  worker_name,
-            "ts":      datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+            "ts":      utcnow_iso(),
         }
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -885,7 +886,7 @@ class CorpManager:
                 self.update_task(corp_id, task["task_id"],
                                  status="in_progress",
                                  worker_id=worker_id,
-                                 started_at=datetime.utcnow().isoformat())
+                                 started_at=utcnow_iso())
                 stats.status = "running"
                 self.emit(corp_id, {
                     "type":        "task_update",
@@ -998,7 +999,7 @@ class CorpManager:
                 # ── Mark task done ─────────────────────────────────────────
                 self.update_task(corp_id, task["task_id"],
                                  status=task_status,
-                                 completed_at=datetime.utcnow().isoformat(),
+                                 completed_at=utcnow_iso(),
                                  result_summary=(summary or "")[:500])
 
                 # Auto-snapshot: write a compact completed task entry to shared

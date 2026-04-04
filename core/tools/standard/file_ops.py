@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional, Union, Any, Dict
 from datetime import datetime
 from core.utils.paths import WS_OUTPUTS
+from core.utils import utcnow_iso
 
 # Define workspace root - Use environment variable or default to WS_OUTPUTS
 WORKSPACE_ROOT = Path(os.environ.get("AETHVION_WORKSPACE", str(WS_OUTPUTS)))
@@ -85,7 +86,7 @@ def data_save_file(content: Any, filename: str, domain: str = "General") -> Dict
             "success": True,
             "path": str(file_path),
             "size": file_stats.st_size,
-            "created_at": datetime.now().isoformat(),
+            "created_at": utcnow_iso(),
             "domain": clean_domain,
             "filename": clean_filename
         }

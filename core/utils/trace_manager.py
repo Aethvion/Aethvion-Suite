@@ -5,7 +5,7 @@ Generates and manages unique Trace_IDs for all transactions
 
 import secrets
 import string
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional
 from contextvars import ContextVar
 
@@ -30,7 +30,7 @@ class TraceManager:
     
     def generate_trace_id(self) -> str:
         """Generate a new unique Trace_ID."""
-        timestamp = datetime.now().strftime(self.TIMESTAMP_FORMAT)
+        timestamp = datetime.now(timezone.utc).strftime(self.TIMESTAMP_FORMAT)
         random_part = ''.join(
             secrets.choice(string.ascii_uppercase + string.digits)
             for _ in range(self.RANDOM_LENGTH)
@@ -53,7 +53,7 @@ class TraceManager:
         # Store trace metadata
         self._active_traces[trace_id] = {
             'trace_id': trace_id,
-            'started_at': datetime.now().isoformat(),
+            'started_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f') + 'Z',
             'metadata': metadata or {},
             'status': 'active'
         }
@@ -79,7 +79,7 @@ class TraceManager:
         if trace_id in self._active_traces:
             self._active_traces[trace_id].update({
                 'status': status,
-                'ended_at': datetime.now().isoformat(),
+                'ended_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f') + 'Z',
                 'result': result
             })
         

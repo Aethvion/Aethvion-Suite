@@ -17,7 +17,7 @@ WORKSPACE_ROOT = Path(__file__).parent.parent.parent
 sys.path.append(str(WORKSPACE_ROOT))
 from core.utils.port_manager import PortManager
 
-from core.utils import get_logger, fastapi_utils
+from core.utils import get_logger, fastapi_utils, utcnow_iso
 
 logger = get_logger("AethvionPhoto")
 
@@ -73,7 +73,7 @@ async def get_status():
     return {
         "status": "online",
         "version": "1.0.0",
-        "uptime": datetime.now().isoformat(),
+        "uptime": utcnow_iso(),
         "directories": {
             "projects": PROJECTS_DIR.exists(),
             "uploads": UPLOADS_DIR.exists()

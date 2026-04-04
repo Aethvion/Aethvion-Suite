@@ -22,7 +22,7 @@ import requests
 WORKSPACE_ROOT = Path(__file__).parent.parent.parent
 sys.path.append(str(WORKSPACE_ROOT))
 from core.utils.port_manager import PortManager
-from core.utils import get_logger, fastapi_utils
+from core.utils import get_logger, fastapi_utils, utcnow_iso
 
 logger = get_logger("AethvionFinance")
 
@@ -78,7 +78,7 @@ if VIEWER_DIR.exists():
 # In-memory state
 # ---------------------------------------------------------------------------
 def _now_iso() -> str:
-    return datetime.utcnow().isoformat()
+    return utcnow_iso()
 
 def _make_default_state() -> dict:
     return {

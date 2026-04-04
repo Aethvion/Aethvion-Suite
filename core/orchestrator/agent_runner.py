@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Callable, Optional, List, Dict, Any
 
 from core.utils.logger import get_logger
+from core.utils import utcnow_iso
 from core.orchestrator.task_queue import is_agent_task_cancelled
 
 logger = get_logger(__name__)
@@ -300,7 +301,7 @@ class AgentState:
     def cache_file(self, path: str, size: int) -> None:
         self.file_cache[path] = {
             "size": size,
-            "cached_at": datetime.utcnow().isoformat(),
+            "cached_at": utcnow_iso(),
         }
         if path not in self.workspace_map:
             self.workspace_map.append(path)
@@ -366,7 +367,7 @@ class AgentState:
             "i": iteration,
             "type": action_type,
             "detail": detail,
-            "at": datetime.utcnow().isoformat(),
+            "at": utcnow_iso(),
         })
         if len(self.action_log) > self._MAX_LOG:
             self.action_log = self.action_log[-self._MAX_LOG:]

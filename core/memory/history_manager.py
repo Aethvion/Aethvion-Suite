@@ -11,6 +11,7 @@ from typing import List, Dict, Any, Optional
 
 from core.utils.logger import get_logger
 from core.utils.paths import HISTORY_CHAT
+from core.utils import utcnow_iso
 
 logger = get_logger(__name__)
 
@@ -56,9 +57,9 @@ class HistoryManager:
         Returns:
             The logged message entry.
         """
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(datetime.timezone.utc)
         if not timestamp:
-            timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+            timestamp = utcnow_iso()
 
         entry = {
             "role": role,
@@ -112,7 +113,7 @@ class HistoryManager:
             List of daily history objects: [{"date": "...", "messages": [...]}, ...]
         """
         results = []
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(datetime.timezone.utc)
         
         for i in range(offset_days, offset_days + limit_days):
             dt = now - datetime.timedelta(days=i)
@@ -140,7 +141,7 @@ class HistoryManager:
     @staticmethod
     def get_total_message_count() -> int:
         """Get total message count for the current day (for synthesis triggering)."""
-        day_file = HistoryManager._get_history_file(datetime.datetime.now())
+        day_file = HistoryManager._get_history_file(datetime.datetime.now(datetime.timezone.utc))
         if not day_file.exists():
             return 0
         try:
@@ -157,7 +158,7 @@ class HistoryManager:
         Used for providing context to new interactions.
         """
         all_messages = []
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(datetime.timezone.utc)
         
         # Look back up to 7 days
         for i in range(7):

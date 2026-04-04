@@ -12,7 +12,7 @@ from .memory_spec import CoreInsight, generate_insight_id
 from .episodic_memory import EpisodicMemoryStore, get_episodic_memory
 from .knowledge_graph import KnowledgeGraph, get_knowledge_graph
 from core.nexus_core import NexusCore, Request
-from core.utils import get_logger
+from core.utils import get_logger, utcnow_iso
 from core.utils.paths import KNOWLEDGE_INSIGHTS
 
 logger = get_logger(__name__)
@@ -158,7 +158,7 @@ class Heartbeat:
         
         insight = CoreInsight(
             insight_id=generate_insight_id(session_number),
-            timestamp=datetime.now().isoformat(),
+            timestamp=utcnow_iso(),
             time_window_start=time_window_start.isoformat(),
             time_window_end=time_window_end.isoformat(),
             summary=summary,

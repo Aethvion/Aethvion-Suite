@@ -6,7 +6,7 @@ Manages user-facing output files in outputfiles
 from pathlib import Path
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import shutil
 import json
 
@@ -173,7 +173,7 @@ class WorkspaceManager:
                         filename=file_path.name,
                         domain=domain,
                         size_bytes=stat.st_size if not is_dir else 0,
-                        created_at=datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                        created_at=datetime.fromtimestamp(stat.st_ctime, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f') + 'Z',
                         file_type=file_type,
                         is_dir=is_dir
                     )
@@ -252,7 +252,7 @@ class WorkspaceManager:
                 filename=file_path.name,
                 domain=domain,
                 size_bytes=stat.st_size,
-                created_at=datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                created_at=datetime.fromtimestamp(stat.st_ctime, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f') + 'Z',
                 file_type=file_path.suffix.lstrip('.')
             )
         except Exception as e:

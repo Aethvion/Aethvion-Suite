@@ -11,7 +11,7 @@ import uuid
 import asyncio
 from datetime import datetime
 
-from core.utils import get_logger
+from core.utils import get_logger, utcnow_iso
 from core.utils.paths import HISTORY_ADVANCED
 
 logger = get_logger("web.research_board_routes")
@@ -122,8 +122,8 @@ async def start_board(req: BoardStartRequest):
         "participants": active_pids,
         "round_count": req.round_count,
         "is_board": True,
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat()
+        "created_at": utcnow_iso(),
+        "updated_at": utcnow_iso()
     }
     with open(s_dir / "meta.json", "w", encoding='utf-8') as f:
         json.dump(meta, f, indent=4)
@@ -221,12 +221,12 @@ Output a strictly valid JSON object:
             "person_id": req.person_id,
             "name": person['name'],
             "content": spoken,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": utcnow_iso()
         }
         messages.append(new_msg)
         with open(msg_file, 'w', encoding='utf-8') as f:
             json.dump(messages, f, indent=4)
-            
+
         return {"message": new_msg, "updated_person": person}
     except Exception as e:
         logger.error(f"Board generate failed: {e}")
@@ -276,7 +276,7 @@ Provide a professional, structured markdown recommendation to the CEO based on t
             "role": "system",
             "content": f"### FINAL BOARD RECOMMENDATION\n\n{response.content}",
             "is_synthesis": True,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": utcnow_iso()
         }
         messages.append(new_msg)
         with open(s_dir / "messages.json", 'w', encoding='utf-8') as f:

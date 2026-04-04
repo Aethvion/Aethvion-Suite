@@ -8,7 +8,7 @@ import os
 import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from core.utils import get_logger
+from core.utils import get_logger, utcnow_iso
 from core.utils.paths import VAULT_SEARCH
 
 logger = get_logger(__name__)
@@ -74,7 +74,7 @@ class FileVectorStore:
             # Prepare metadata for ChromaDB (flatten lists/dicts)
             flattened_meta = {
                 "path": rel_path,
-                "indexed_at": datetime.now().isoformat()
+                "indexed_at": utcnow_iso()
             }
             if metadata:
                 for k, v in metadata.items():

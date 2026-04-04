@@ -5,8 +5,17 @@ Data models for async task management
 
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _fmt_dt(dt: datetime) -> str:
+    """Format a datetime as ISO 8601 with Z suffix."""
+    return dt.strftime('%Y-%m-%dT%H:%M:%S.%f') + 'Z'
 
 
 class TaskStatus(Enum):
@@ -30,7 +39,7 @@ class Task:
     thread_id: str  # Chat thread ID
     prompt: str
     status: TaskStatus = TaskStatus.QUEUED
-    created_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=_utcnow)
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     worker_id: Optional[str] = None
@@ -47,7 +56,7 @@ def _sanitize_for_json(data: Any) -> Any:
     elif isinstance(data, (set, tuple)):
         return [_sanitize_for_json(i) for i in list(data)]
     elif isinstance(data, datetime):
-        return data.isoformat()
+        return _fmt_dt(data)
     elif hasattr(data, 'to_dict') and callable(data.to_dict):
         return data.to_dict()
     elif hasattr(data, 'value') and hasattr(data, '__class__') and issubclass(data.__class__, Enum):
@@ -72,7 +81,7 @@ class Task:
     thread_id: str  # Chat thread ID
     prompt: str
     status: TaskStatus = TaskStatus.QUEUED
-    created_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=_utcnow)
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     worker_id: Optional[str] = None
@@ -87,9 +96,9 @@ class Task:
             'thread_id': self.thread_id,
             'prompt': self.prompt,
             'status': self.status.value,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'started_at': self.started_at.isoformat() if self.started_at else None,
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'created_at': _fmt_dt(self.created_at) if self.created_at else None,
+            'started_at': _fmt_dt(self.started_at) if self.started_at else None,
+            'completed_at': _fmt_dt(self.completed_at) if self.completed_at else None,
             'worker_id': self.worker_id,
             'result': _sanitize_for_json(self.result),
             'error': self.error,
@@ -113,8 +122,8 @@ class ChatThread:
     """
     id: str
     title: str
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=_utcnow)
+    updated_at: datetime = field(default_factory=_utcnow)
     task_ids: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
     mode: str = "auto"  # "auto" or "chat_only"
@@ -127,8 +136,8 @@ class ChatThread:
         return {
             'id': self.id,
             'title': self.title,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'created_at': _fmt_dt(self.created_at) if self.created_at else None,
+            'updated_at': _fmt_dt(self.updated_at) if self.updated_at else None,
             'task_ids': list(self.task_ids), # Ensure list copy
             'metadata': _sanitize_for_json(self.metadata),
             'mode': self.mode,
@@ -148,7 +157,7 @@ class Message:
     role: str  # 'user', 'assistant', 'system'
     content: str
     task_id: Optional[str] = None  # Link to task if message triggered one
-    created_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=_utcnow)
     metadata: Dict[str, Any] = field(default_factory=dict)
     
     
@@ -160,6 +169,6 @@ class Message:
             'role': self.role,
             'content': self.content,
             'task_id': self.task_id,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': _fmt_dt(self.created_at) if self.created_at else None,
             'metadata': _sanitize_for_json(self.metadata)
         }

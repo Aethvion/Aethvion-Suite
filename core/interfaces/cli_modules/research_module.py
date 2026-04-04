@@ -15,6 +15,7 @@ import asyncio
 import time
 import uuid
 from datetime import datetime
+from core.utils import utcnow_iso
 import json
 from pathlib import Path
 from core.utils.paths import HISTORY_ADVANCED
@@ -78,7 +79,7 @@ def create_persona():
         "original_memory": "",
         "message_count": 0,
         "model": model,
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": utcnow_iso()
     }
     
     with open(PEOPLE_DIR / f"{pid}.json", 'w', encoding='utf-8') as f:
@@ -155,7 +156,7 @@ def run_simulation(nexus, thread_id: str):
                     "id": uuid.uuid4().hex[:8],
                     "role": "system",
                     "content": sys_event,
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": utcnow_iso()
                 })
                 with open(t_dir / "messages.json", 'w') as f:
                     json.dump(messages, f, indent=4)
@@ -261,7 +262,7 @@ CRITICAL: You MUST reply in the exact JSON format below. Do not wrap in markdown
                     "id": msg_id, "role": "person", "person_id": speaker_id,
                     "name": speaker['name'], "content": parsed.get("spoken_response", ""),
                     "tldr": parsed.get("trait_changes_tldr", ""),
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": utcnow_iso()
                 }
                 messages.append(new_msg)
                 
@@ -320,8 +321,8 @@ def create_thread(nexus):
     t_dir.mkdir(parents=True, exist_ok=True)
     
     meta = {
-        "id": thread_id, "name": name, "topic": topic, "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(), "active_person_ids": active_ids
+        "id": thread_id, "name": name, "topic": topic, "created_at": utcnow_iso(),
+        "updated_at": utcnow_iso(), "active_person_ids": active_ids
     }
     with open(t_dir / "meta.json", 'w') as f: json.dump(meta, f, indent=4)
     with open(t_dir / "messages.json", 'w') as f: json.dump([], f)

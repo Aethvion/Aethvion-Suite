@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional, Set
 from datetime import datetime
 
-from core.utils import get_logger
+from core.utils import get_logger, utcnow_iso
 from core.utils.paths import KNOWLEDGE_GRAPH
 
 logger = get_logger(__name__)
@@ -64,7 +64,7 @@ class KnowledgeGraph:
             self.graph.add_node(
                 domain,
                 node_type='domain',
-                created=datetime.now().isoformat(),
+                created=utcnow_iso(),
                 **(metadata or {})
             )
             logger.debug(f"Added domain: {domain}")
@@ -91,7 +91,7 @@ class KnowledgeGraph:
                 tool_name,
                 node_type='tool',
                 domain=domain,
-                created=datetime.now().isoformat(),
+                created=utcnow_iso(),
                 **safe_metadata
             )
             logger.debug(f"Added tool: {tool_name}")
@@ -121,7 +121,7 @@ class KnowledgeGraph:
                 agent_name,
                 node_type='agent',
                 domain=domain,
-                created=datetime.now().isoformat(),
+                created=utcnow_iso(),
                 **safe_metadata
             )
             logger.debug(f"Added agent: {agent_name}")
@@ -143,7 +143,7 @@ class KnowledgeGraph:
                 trace_id,
                 node_type='trace_id',
                 event_type=event_type,
-                created=datetime.now().isoformat(),
+                created=utcnow_iso(),
                 **(metadata or {})
             )
             logger.debug(f"Added Trace_ID: {trace_id}")
@@ -186,7 +186,7 @@ class KnowledgeGraph:
                 domain=domain,
                 path=file_path,
                 trace_id=trace_id,
-                created=datetime.now().isoformat(),
+                created=utcnow_iso(),
                 **safe_metadata
             )
             logger.debug(f"Added file node: {file_id}")
@@ -211,7 +211,7 @@ class KnowledgeGraph:
             self.graph.add_node(
                 insight_id,
                 node_type='core_insight',
-                created=datetime.now().isoformat(),
+                created=utcnow_iso(),
                 **(metadata or {})
             )
             logger.debug(f"Added Core Insight: {insight_id}")

@@ -7,9 +7,8 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 from threading import Lock
-from datetime import datetime
 
-from core.utils import get_logger
+from core.utils import get_logger, utcnow_iso
 from core.utils.paths import WS_TOOLS
 
 logger = get_logger(__name__)
@@ -84,7 +83,7 @@ class ToolRegistry:
             tool_name = tool_info['name']
             
             # Add registration metadata
-            tool_info['registered_at'] = datetime.now().isoformat()
+            tool_info['registered_at'] = utcnow_iso()
             tool_info['version'] = tool_info.get('version', '1.0.0')
             if 'usage_count' not in tool_info:
                 tool_info['usage_count'] = 0
@@ -211,7 +210,7 @@ class ToolRegistry:
                 tool = self._tools[name]
                 count = tool.get('usage_count', 0) + 1
                 tool['usage_count'] = count
-                tool['last_used_at'] = datetime.now().isoformat()
+                tool['last_used_at'] = utcnow_iso()
                 self._save_registry()
                 return count
             return 0

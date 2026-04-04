@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
-from core.utils import get_logger
+from core.utils import get_logger, utcnow_iso
 
 logger = get_logger(__name__)
 
@@ -63,7 +63,7 @@ class PersistentMemory:
         """Update or add a topic to memory."""
         self.memory[topic] = {
             "content": content,
-            "updated_at": datetime.now().isoformat()
+            "updated_at": utcnow_iso()
         }
         self._save()
         logger.info(f"Updated persistent memory topic: {topic}")

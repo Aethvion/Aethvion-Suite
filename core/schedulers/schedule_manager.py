@@ -20,6 +20,7 @@ except ImportError:
 _UTC = ZoneInfo('UTC')
 
 from core.utils.logger import get_logger
+from core.utils import utcnow_iso
 
 logger = get_logger(__name__)
 
@@ -81,7 +82,7 @@ def cron_matches(cron_expr: str, dt: datetime) -> bool:
 
 def _utcnow_iso() -> str:
     """Return current UTC time as an ISO-8601 string with 'Z' suffix."""
-    return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f') + 'Z'
+    return utcnow_iso()
 
 
 def next_run_after(cron_expr: str, after: datetime = None, tz_name: str = 'UTC') -> Optional[datetime]:

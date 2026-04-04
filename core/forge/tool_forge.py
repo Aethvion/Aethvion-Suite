@@ -13,7 +13,7 @@ from .tool_registry import get_tool_registry
 from .code_generator import CodeGenerator
 from .tool_validator import ToolValidator, ValidationResult
 from core.nexus_core import NexusCore, Request
-from core.utils import get_logger, get_trace_manager
+from core.utils import get_logger, get_trace_manager, utcnow_iso
 from core.utils.paths import MODEL_REGISTRY, WS_TOOLS
 
 logger = get_logger(__name__)
@@ -680,13 +680,12 @@ Do NOT include the function definition line.
                 EpisodicMemory,
                 generate_memory_id
             )
-            from datetime import datetime
-            
+
             # Create episodic memory
             memory = EpisodicMemory(
                 memory_id=generate_memory_id(),
                 trace_id=trace_id,
-                timestamp=datetime.now().isoformat(),
+                timestamp=utcnow_iso(),
                 event_type='tool_forge',
                 domain=spec.domain,
                 summary=f"Generated {spec.name} tool",

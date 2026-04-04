@@ -5,7 +5,7 @@ Defines tool requirements for The Forge
 
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from core.utils import utcnow_iso
 
 
 @dataclass
@@ -65,7 +65,7 @@ class ToolSpec:
     imports: List[str] = field(default_factory=list)
     
     # Metadata
-    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = field(default_factory=utcnow_iso)
     trace_id: Optional[str] = None
     reasoning: str = ""
     

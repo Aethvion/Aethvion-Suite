@@ -12,7 +12,7 @@ import time
 import asyncio
 from datetime import datetime
 
-from core.utils import get_logger
+from core.utils import get_logger, utcnow_iso
 from core.utils.paths import HISTORY_ADVANCED
 
 logger = get_logger("web.advanced_aiconv_routes")
@@ -133,8 +133,8 @@ async def create_thread(req: ThreadCreate):
         "name": req.name,
         "topic": req.topic,
         "participants": req.participants,
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat()
+        "created_at": utcnow_iso(),
+        "updated_at": utcnow_iso()
     }
     with open(t_dir / "meta.json", "w", encoding='utf-8') as f:
         json.dump(meta, f, indent=4)
@@ -197,11 +197,11 @@ async def update_thread_name(thread_id: str, req: ThreadNameUpdate):
         meta = json.load(f)
         
     meta['name'] = req.name
-    meta['updated_at'] = datetime.utcnow().isoformat()
-    
+    meta['updated_at'] = utcnow_iso()
+
     with open(meta_file, 'w', encoding='utf-8') as f:
         json.dump(meta, f, indent=4)
-        
+
     return meta
 
 @router.post("/threads/{thread_id}/system_message")
@@ -218,13 +218,13 @@ async def add_system_message(thread_id: str, req: SystemMessage):
         "id": uuid.uuid4().hex[:8],
         "role": "system",
         "content": req.message,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": utcnow_iso()
     }
     messages.append(new_msg)
-    
+
     with open(msg_file, 'w', encoding='utf-8') as f:
         json.dump(messages, f, indent=4)
-        
+
     # Update updated_at
     meta_file = t_dir / "meta.json"
     with open(meta_file, 'r', encoding='utf-8') as f:
@@ -246,11 +246,11 @@ async def update_participants(thread_id: str, participants: List[str]):
         meta = json.load(f)
         
     meta['participants'] = participants
-    meta['updated_at'] = datetime.utcnow().isoformat()
-    
+    meta['updated_at'] = utcnow_iso()
+
     with open(meta_file, 'w', encoding='utf-8') as f:
         json.dump(meta, f, indent=4)
-        
+
     return meta
 
 @router.post("/threads/{thread_id}/generate")
@@ -360,7 +360,7 @@ Format exactly like this:
             "name": person['name'],
             "content": spoken,
             "tldr": tldr,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": utcnow_iso()
         }
         messages.append(new_msg)
         with open(msg_file, 'w', encoding='utf-8') as f:

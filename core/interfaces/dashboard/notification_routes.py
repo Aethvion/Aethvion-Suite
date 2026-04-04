@@ -14,7 +14,7 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from core.utils import get_logger
+from core.utils import get_logger, utcnow_iso
 from core.utils.paths import LOGS_NOTIFICATIONS
 
 logger = get_logger(__name__)
@@ -152,7 +152,7 @@ def notify(
 
     notification: Dict[str, Any] = {
         "id":        notif_id,
-        "timestamp": now.isoformat() + "Z",
+        "timestamp": utcnow_iso(),
         "title":     title,
         "message":   message,
         "source":    source,
@@ -184,7 +184,7 @@ async def push_notification(req: PushNotificationRequest):
 
     notification = {
         "id": notif_id,
-        "timestamp": now.isoformat() + "Z",
+        "timestamp": utcnow_iso(),
         "title": req.title,
         "message": req.message,
         "source": req.source,
@@ -226,7 +226,7 @@ async def dismiss_notification(notification_id: str):
         raise HTTPException(status_code=404, detail="Notification not found")
 
     notif["seen"] = True
-    notif["dismissed_at"] = datetime.utcnow().isoformat() + "Z"
+    notif["dismissed_at"] = utcnow_iso()
     _update_in_day(notification_id, {"seen": True, "dismissed_at": notif["dismissed_at"]})
 
     return {"status": "dismissed", "id": notification_id}
@@ -265,7 +265,7 @@ async def get_notification_history(
 async def clear_all_active():
     """Dismiss all active notifications at once."""
     _ensure_loaded()
-    now_str = datetime.utcnow().isoformat() + "Z"
+    now_str = utcnow_iso()
     with _lock:
         ids_to_clear = list(_active.keys())
         _active.clear()

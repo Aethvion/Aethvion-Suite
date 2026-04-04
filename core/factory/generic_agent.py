@@ -14,6 +14,7 @@ from contextlib import redirect_stdout, redirect_stderr
 
 from .base_agent import BaseAgent
 from .agent_result import AgentResult
+from core.utils import utcnow_iso
 
 from core.tools.standard.file_ops import WORKSPACE_ROOT
 
@@ -40,7 +41,7 @@ class GenericAgent(BaseAgent):
         Returns:
             AgentResult with response
         """
-        started_at = datetime.now().isoformat()
+        started_at = utcnow_iso()
         
         # Get prompt from context
         prompt = self.spec.context.get('prompt')

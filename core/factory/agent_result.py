@@ -5,7 +5,7 @@ Result object returned by agent execution
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
-from datetime import datetime
+from core.utils import utcnow_iso
 
 
 @dataclass
@@ -23,7 +23,7 @@ class AgentResult:
     
     # Execution metadata
     started_at: str
-    completed_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    completed_at: str = field(default_factory=utcnow_iso)
     duration_seconds: Optional[float] = None
     
     # Additional data

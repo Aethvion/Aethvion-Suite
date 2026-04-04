@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from collections import defaultdict
 
-from core.utils import get_logger
+from core.utils import get_logger, utcnow_iso
 from core.utils.paths import LOGS_USAGE, MODEL_REGISTRY
 
 logger = get_logger(__name__)
@@ -126,7 +126,7 @@ class UsageTracker:
         estimated_cost = input_cost + output_cost
 
         entry = {
-            "timestamp": now.isoformat() + "Z",
+            "timestamp": utcnow_iso(),
             "provider": provider,
             "model": model,
             "prompt_tokens": prompt_tokens,

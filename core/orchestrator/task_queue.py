@@ -5,10 +5,17 @@ Manages async task execution with worker pool
 
 import asyncio
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from pathlib import Path
-from core.utils import get_logger, generate_trace_id
+from core.utils import get_logger, generate_trace_id, utcnow_iso
+
+
+def _parse_dt(ts: str) -> datetime:
+    """Parse an ISO 8601 timestamp, handling both Z-suffix and bare naive strings."""
+    if ts.endswith('Z'):
+        ts = ts[:-1] + '+00:00'
+    return datetime.fromisoformat(ts)
 from core.tools.standard.file_ops import WORKSPACE_ROOT
 from core.utils.paths import WS_PROJECTS, HISTORY_AGENTS
 from .task_models import Task, TaskStatus, ChatThread
@@ -73,7 +80,7 @@ class TaskWorker:
                 
                 # Update task status
                 task.status = TaskStatus.RUNNING
-                task.started_at = datetime.now()
+                task.started_at = datetime.now(timezone.utc)
                 task.worker_id = self.worker_id
                 
                 # Save task state (started)
@@ -315,7 +322,7 @@ class TaskWorker:
                     # Record actual model used — keep separate from selected_model to avoid duplication
                     if result.model_id:
                         task.metadata['actual_model'] = result.model_id
-                    task.completed_at = datetime.now()
+                    task.completed_at = datetime.now(timezone.utc)
 
                     # ── Save messages to agent thread ──────────────────────────────
                     _ws_id2 = task.metadata.get('workspace_id')
@@ -324,7 +331,7 @@ class TaskWorker:
                         try:
                             from core.interfaces.dashboard.agent_workspace_routes import workspace_manager as _agent_ws_mgr2
                             from core.orchestrator.agent_events import get_snapshot
-                            _now_iso = datetime.now().isoformat()
+                            _now_iso = utcnow_iso()
                             # Collect agent step events for history
                             _snap = get_snapshot(task.id)
                             _events = _snap["events"] if _snap else []
@@ -366,7 +373,7 @@ class TaskWorker:
                     # Task failed
                     task.status = TaskStatus.FAILED
                     task.error = str(e)
-                    task.completed_at = datetime.now()
+                    task.completed_at = datetime.now(timezone.utc)
                     
                     logger.error(
                         f"Worker {self.worker_id} failed task {task.id}: {e}"
@@ -489,7 +496,7 @@ class TaskQueueManager:
             id=thread_id,
             title=title if title else f"Thread {thread_id}",
             mode=mode,
-            created_at=datetime.now()
+            created_at=datetime.now(timezone.utc)
         )
         self._save_thread(thread_id)
         logger.info(f"Created new thread: {thread_id} ({title})")
@@ -514,8 +521,8 @@ class TaskQueueManager:
             self.threads[thread_id].settings = {}
             
         self.threads[thread_id].settings.update(settings)
-        self.threads[thread_id].updated_at = datetime.now()
-        
+        self.threads[thread_id].updated_at = datetime.now(timezone.utc)
+
         self._save_thread(thread_id)
         logger.info(f"Updated settings for thread {thread_id}: {settings}")
         return True
@@ -548,7 +555,7 @@ class TaskQueueManager:
             thread_id=thread_id,
             prompt=prompt,
             status=TaskStatus.QUEUED,
-            created_at=datetime.now()
+            created_at=datetime.now(timezone.utc)
         )
         
         # Store task
@@ -559,7 +566,7 @@ class TaskQueueManager:
             self.threads[thread_id] = ChatThread(
                 id=thread_id,
                 title=thread_title if thread_title else f"Thread {thread_id}",
-                created_at=datetime.now()
+                created_at=datetime.now(timezone.utc)
             )
         else:
             # Update title if provided and meaningful (not just default)
@@ -574,7 +581,7 @@ class TaskQueueManager:
             self.threads[thread_id].settings.update(settings)
 
         self.threads[thread_id].task_ids.append(task.id)
-        self.threads[thread_id].updated_at = datetime.now()
+        self.threads[thread_id].updated_at = datetime.now(timezone.utc)
         
         # Propagate thread mode to task metadata (for worker/orchestrator to see)
         task.metadata['mode'] = self.threads[thread_id].mode
@@ -714,9 +721,9 @@ class TaskQueueManager:
             return False
             
         self.threads[thread_id].mode = mode
-        self.threads[thread_id].updated_at = datetime.now()
+        self.threads[thread_id].updated_at = datetime.now(timezone.utc)
         self._save_thread(thread_id)
-        
+
         logger.info(f"Set thread {thread_id} mode to {mode}")
         return True
 
@@ -738,7 +745,7 @@ class TaskQueueManager:
             return False
             
         self.threads[thread_id].title = title.strip()
-        self.threads[thread_id].updated_at = datetime.now()
+        self.threads[thread_id].updated_at = datetime.now(timezone.utc)
         self._save_thread(thread_id)
         
         logger.info(f"Updated thread {thread_id} title to: {title}")
@@ -761,8 +768,8 @@ class TaskQueueManager:
                                 thread = ChatThread(
                                     id=data['id'],
                                     title=data.get('title', 'Untitled'),
-                                    created_at=datetime.fromisoformat(data['created_at']),
-                                    updated_at=datetime.fromisoformat(data['updated_at']),
+                                    created_at=_parse_dt(data['created_at']),
+                                    updated_at=_parse_dt(data['updated_at']),
                                     task_ids=data.get('task_ids', []),
                                     metadata=data.get('metadata', {}),
                                     mode=data.get('mode', 'auto'),
@@ -843,9 +850,9 @@ class TaskQueueManager:
                                         thread_id=data['thread_id'],
                                         prompt=data['prompt'],
                                         status=TaskStatus(data['status']),
-                                        created_at=datetime.fromisoformat(data['created_at']),
-                                        started_at=datetime.fromisoformat(data['started_at']) if data.get('started_at') else None,
-                                        completed_at=datetime.fromisoformat(data['completed_at']) if data.get('completed_at') else None,
+                                        created_at=_parse_dt(data['created_at']),
+                                        started_at=_parse_dt(data['started_at']) if data.get('started_at') else None,
+                                        completed_at=_parse_dt(data['completed_at']) if data.get('completed_at') else None,
                                         error=data.get('error'),
                                         result=data.get('result'),
                                         metadata=data.get('metadata', {}),

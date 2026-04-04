@@ -12,6 +12,7 @@ import os
 import shutil
 from pathlib import Path
 import datetime
+from core.utils import utcnow_iso
 import re
 import psutil
 HAS_PSUTIL = True
@@ -594,7 +595,7 @@ async def misaka_initiate(request: InitiateRequest):
     """Misaka composes a proactive message to initiate conversation."""
     try:
         now = datetime.datetime.now()
-        timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = utcnow_iso()
         day_str = now.strftime("%Y-%m-%d")
         month_str = now.strftime("%Y-%m")
 
@@ -925,7 +926,7 @@ async def misaka_chat(request: ChatRequest):
     async def chat_generator():
         try:
             now = datetime.datetime.now()
-            timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+            timestamp = utcnow_iso()
             day_str = now.strftime("%Y-%m-%d")
             month_str = now.strftime("%Y-%m")
             

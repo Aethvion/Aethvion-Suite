@@ -5,13 +5,12 @@ Abstract base class for all agents
 
 from abc import ABC, abstractmethod
 from typing import Optional
-from datetime import datetime
 import time
 
 from .agent_spec import AgentSpec
 from .agent_result import AgentResult
 from core.nexus_core import NexusCore, Request
-from core.utils import get_logger, get_trace_manager
+from core.utils import get_logger, get_trace_manager, utcnow_iso
 
 
 class BaseAgent(ABC):
@@ -231,7 +230,7 @@ class BaseAgent(ABC):
         Returns:
             AgentResult
         """
-        self.started_at = datetime.now().isoformat()
+        self.started_at = utcnow_iso()
         start_time = time.time()
         
         self.logger.info(f"[{self.trace_id}] Agent {self.name} starting execution")
@@ -276,7 +275,7 @@ class BaseAgent(ABC):
         Called automatically after execution.
         Override in subclasses if additional cleanup needed.
         """
-        self.completed_at = datetime.now().isoformat()
+        self.completed_at = utcnow_iso()
         self.logger.debug(f"[{self.trace_id}] Agent {self.name} cleanup complete")
     
     def __str__(self) -> str:
