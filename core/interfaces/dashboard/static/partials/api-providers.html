@@ -3,184 +3,244 @@
         <i class="fas fa-plug"></i>
         <h2>Engine Room: API Providers</h2>
     </div>
-    <p class="header-desc">Manage external AI and data service connections. Add or remove models directly from each provider.</p>
+    <p class="header-desc">Manage external AI service connections. Add or remove models directly from each provider.</p>
 </div>
 
-<div class="ap-view">
-    <div id="ap-provider-grid" class="ap-grid">
-        <div class="ap-loading">
-            <i class="fas fa-circle-notch fa-spin"></i>
-            <span>Loading registry...</span>
+<div class="ap-layout">
+
+    <!-- Provider selector row -->
+    <div class="ap-selector-wrap">
+        <div id="ap-selector-row" class="ap-selector-row">
+            <div class="ap-selector-loading">
+                <i class="fas fa-circle-notch fa-spin"></i>
+            </div>
         </div>
     </div>
+
+    <!-- Content panel for selected provider -->
+    <div id="ap-content-panel" class="ap-content-panel">
+        <div class="ap-content-empty">
+            <i class="fas fa-hand-pointer"></i>
+            <span>Select a provider above to manage its models.</span>
+        </div>
+    </div>
+
 </div>
 
 <style>
-/* ── Layout ─────────────────────────────────────────────── */
-.ap-view {
-    padding: 1.5rem;
+/* ── Outer layout ────────────────────────────────────────── */
+.ap-layout {
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 80px); /* account for panel-header */
+    min-height: 0;
 }
 
-.ap-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 1.25rem;
-    align-items: start;
+/* ── Selector row ────────────────────────────────────────── */
+.ap-selector-wrap {
+    padding: 1rem 1.5rem 0;
+    flex-shrink: 0;
 }
 
-.ap-loading {
-    grid-column: 1 / -1;
+.ap-selector-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.ap-selector-loading {
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+    padding: 0.5rem 0;
+}
+
+/* ── Provider tab button (registered) ───────────────────── */
+.ap-tab {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    padding: 2rem 0;
-}
-
-/* ── Provider Card ───────────────────────────────────────── */
-.ap-card {
+    gap: 0.55rem;
+    padding: 0.5rem 0.85rem;
     background: var(--surface-2);
     border: 1px solid var(--border);
-    border-radius: var(--radius-md, 10px);
-    overflow: hidden;
-    transition: border-color 0.2s ease;
-}
-
-.ap-card:hover {
-    border-color: rgba(var(--primary-rgb, 99, 179, 237), 0.45);
-}
-
-.ap-card-header {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    padding: 1rem 1.1rem;
-    cursor: pointer;
-    user-select: none;
-}
-
-.ap-card-header:hover {
-    background: var(--surface-3);
-}
-
-.ap-provider-icon {
-    width: 36px;
-    height: 36px;
     border-radius: 8px;
-    background: rgba(255,255,255,0.04);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.ap-tab:hover {
+    background: var(--surface-3);
+    border-color: rgba(var(--primary-rgb, 99, 179, 237), 0.4);
+}
+
+.ap-tab.active {
+    background: rgba(var(--primary-rgb, 99, 179, 237), 0.1);
+    border-color: rgba(var(--primary-rgb, 99, 179, 237), 0.55);
+}
+
+.ap-tab-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.05);
     border: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
+    font-size: 0.78rem;
     color: var(--primary);
     flex-shrink: 0;
 }
 
-.ap-provider-meta {
-    flex: 1;
-    min-width: 0;
+.ap-tab.active .ap-tab-icon {
+    background: rgba(var(--primary-rgb, 99, 179, 237), 0.15);
+    border-color: rgba(var(--primary-rgb, 99, 179, 237), 0.4);
 }
 
-.ap-provider-name {
-    font-size: 0.92rem;
+.ap-tab-label {
+    font-size: 0.82rem;
     font-weight: 600;
     color: var(--text-primary);
-    margin: 0 0 0.2rem 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
-.ap-provider-desc {
-    font-size: 0.78rem;
-    color: var(--text-secondary);
-    margin: 0;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.ap-card-right {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    flex-shrink: 0;
-}
-
-/* ── Status Badge ────────────────────────────────────────── */
-.ap-status {
-    font-size: 0.68rem;
+.ap-tab-badge {
+    font-size: 0.62rem;
     font-weight: 600;
-    letter-spacing: 0.5px;
-    padding: 3px 9px;
+    padding: 1px 7px;
     border-radius: 50px;
-    text-transform: uppercase;
     white-space: nowrap;
 }
 
-.ap-status-connected {
+.ap-tab-badge-connected {
     background: rgba(34, 197, 94, 0.12);
     color: #4ade80;
     border: 1px solid rgba(34, 197, 94, 0.25);
 }
 
-.ap-status-standby {
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-secondary);
+.ap-tab-badge-standby {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-tertiary);
     border: 1px solid var(--border);
 }
 
-.ap-status-inactive {
-    background: rgba(255, 255, 255, 0.03);
+.ap-tab-badge-inactive {
+    background: rgba(255,255,255,0.03);
     color: var(--text-tertiary);
     border: 1px solid rgba(255,255,255,0.06);
 }
 
-/* ── Model count badge ───────────────────────────────────── */
-.ap-model-count {
-    font-size: 0.7rem;
-    font-weight: 600;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    padding: 2px 8px;
-    border-radius: 50px;
+/* ── Divider between registered + available ─────────────── */
+.ap-tab-divider {
+    width: 1px;
+    height: 28px;
+    background: var(--border);
+    margin: 0 0.15rem;
+    flex-shrink: 0;
+}
+
+/* ── Available (not yet added) tab button ───────────────── */
+.ap-tab-avail {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.85rem;
+    background: transparent;
+    border: 1px dashed rgba(255,255,255,0.12);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
     white-space: nowrap;
 }
 
-/* ── Chevron toggle ─────────────────────────────────────── */
-.ap-chevron {
+.ap-tab-avail:hover {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(var(--primary-rgb, 99, 179, 237), 0.4);
+}
+
+.ap-tab-avail:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.ap-tab-avail-icon {
     font-size: 0.75rem;
     color: var(--text-tertiary);
-    transition: transform 0.2s ease;
 }
 
-.ap-card.expanded .ap-chevron {
-    transform: rotate(180deg);
+.ap-tab-avail-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-tertiary);
 }
 
-/* ── Expanded body ───────────────────────────────────────── */
-.ap-card-body {
-    display: none;
-    border-top: 1px solid var(--border);
-    padding: 0.9rem 1.1rem 1rem;
-    background: var(--bg-secondary);
+.ap-tab-avail-add {
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+    opacity: 0.6;
 }
 
-.ap-card.expanded .ap-card-body {
-    display: block;
+/* ── Content panel ───────────────────────────────────────── */
+.ap-content-panel {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1.5rem;
 }
 
-/* ── Model Table ─────────────────────────────────────────── */
+.ap-content-empty {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+    padding: 2.5rem 0;
+}
+
+/* ── Provider detail view ────────────────────────────────── */
+.ap-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 1.5rem;
+}
+
+.ap-detail-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 9px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: var(--primary);
+    flex-shrink: 0;
+}
+
+.ap-detail-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.2rem 0;
+}
+
+.ap-detail-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ── Model table ─────────────────────────────────────────── */
 .ap-model-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.78rem;
-    margin-bottom: 0.9rem;
+    font-size: 0.82rem;
+    margin-bottom: 1.25rem;
 }
 
 .ap-model-table th {
@@ -190,12 +250,12 @@
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.4px;
-    padding: 0 0.5rem 0.55rem 0.5rem;
+    padding: 0 0.75rem 0.6rem 0.75rem;
     border-bottom: 1px solid var(--border);
 }
 
 .ap-model-table td {
-    padding: 0.42rem 0.5rem;
+    padding: 0.55rem 0.75rem;
     color: var(--text-primary);
     border-bottom: 1px solid rgba(255,255,255,0.04);
     vertical-align: middle;
@@ -205,9 +265,13 @@
     border-bottom: none;
 }
 
+.ap-model-table tbody tr:hover td {
+    background: rgba(255,255,255,0.02);
+}
+
 .ap-model-id {
     font-family: 'Courier New', monospace;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--text-primary);
     word-break: break-all;
 }
@@ -215,6 +279,7 @@
 .ap-cost {
     color: var(--text-secondary);
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
 .ap-caps {
@@ -235,10 +300,11 @@
     letter-spacing: 0.3px;
 }
 
-.ap-empty-row td {
+.ap-empty-models {
     color: var(--text-tertiary);
     font-style: italic;
-    padding: 0.8rem 0.5rem;
+    font-size: 0.82rem;
+    padding: 1rem 0.75rem;
 }
 
 /* ── Delete button ───────────────────────────────────────── */
@@ -246,10 +312,10 @@
     background: none;
     border: none;
     cursor: pointer;
-    color: rgba(248, 113, 113, 0.5);
-    padding: 3px 5px;
-    border-radius: 4px;
-    font-size: 0.8rem;
+    color: rgba(248, 113, 113, 0.4);
+    padding: 4px 6px;
+    border-radius: 5px;
+    font-size: 0.78rem;
     transition: color 0.15s, background 0.15s;
     line-height: 1;
 }
@@ -259,23 +325,22 @@
     background: rgba(248, 113, 113, 0.1);
 }
 
-.ap-btn-delete:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
+.ap-btn-delete:disabled { opacity: 0.35; cursor: not-allowed; }
 
-/* ── Add Model Row ───────────────────────────────────────── */
-.ap-add-row {
+/* ── Add model form ──────────────────────────────────────── */
+.ap-add-form {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.6rem;
     flex-wrap: wrap;
-    padding-top: 0.55rem;
-    border-top: 1px solid var(--border);
+    padding: 0.85rem 0.75rem;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
 }
 
-.ap-add-row label {
-    font-size: 0.7rem;
+.ap-add-form label {
+    font-size: 0.72rem;
     color: var(--text-tertiary);
     white-space: nowrap;
 }
@@ -285,55 +350,39 @@
     border: 1px solid var(--border);
     border-radius: 5px;
     color: var(--text-primary);
-    font-size: 0.78rem;
-    padding: 4px 8px;
+    font-size: 0.8rem;
+    padding: 5px 9px;
     outline: none;
     transition: border-color 0.15s;
     min-width: 0;
 }
 
-.ap-add-input:focus {
-    border-color: var(--primary, #63b3ed);
-}
-
-.ap-add-input.id-input {
-    flex: 1;
-    min-width: 120px;
-}
-
-.ap-add-input.cost-input {
-    width: 70px;
-}
+.ap-add-input:focus { border-color: var(--primary, #63b3ed); }
+.ap-add-input.id-input { flex: 1; min-width: 160px; }
+.ap-add-input.cost-input { width: 80px; }
 
 .ap-btn-add {
     background: var(--primary, #63b3ed);
     color: #000;
     border: none;
-    border-radius: 5px;
-    font-size: 0.78rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
     font-weight: 600;
-    padding: 4px 13px;
+    padding: 5px 16px;
     cursor: pointer;
     transition: opacity 0.15s;
     white-space: nowrap;
     flex-shrink: 0;
 }
 
-.ap-btn-add:hover {
-    opacity: 0.85;
-}
+.ap-btn-add:hover { opacity: 0.85; }
+.ap-btn-add:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.ap-btn-add:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-/* ── Inline feedback ─────────────────────────────────────── */
 .ap-feedback {
     font-size: 0.72rem;
-    padding: 3px 0 0 0;
     flex-basis: 100%;
-    height: 0.9rem;
+    min-height: 1rem;
+    padding-top: 2px;
 }
 
 .ap-feedback.success { color: #4ade80; }
