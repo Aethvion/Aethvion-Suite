@@ -30,6 +30,14 @@
     width: 6px;
 }
 
+/* Hide scrollbar when collapsed so icons don't shift */
+.sidebar-nav.collapsed {
+    scrollbar-width: none;
+}
+.sidebar-nav.collapsed::-webkit-scrollbar {
+    display: none;
+}
+
 .sidebar-nav::-webkit-scrollbar-track {
     background: transparent;
 }
