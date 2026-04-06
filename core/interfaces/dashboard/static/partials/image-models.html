@@ -1,68 +1,51 @@
 <div class="panel-header">
     <div class="header-content">
-        <i class="fas fa-image"></i>
-        <h2>Local Image Models</h2>
+        <i class="fas fa-mountain-sun"></i>
+        <h2>Image Models</h2>
     </div>
-    <p class="header-desc">Manage your local Stable Diffusion, Flux, and other generative vision models.</p>
+    <p class="header-desc">Manage local image generation models — Stable Diffusion, SDXL, Flux, and more.</p>
 </div>
 
-<div class="image-models-view">
-    <div class="hub-empty-state">
-        <i class="fas fa-mountain-sun"></i>
-        <h3>Vision Engines Hub</h3>
-        <p>This module provides a unified interface for managing local image generation models (Stable Diffusion, SDXL, Flux, etc.).</p>
-        <div class="hub-actions">
-            <button class="btn btn-primary" onclick="alert('Scan Feature Available in v1.3+')">
-                <i class="fas fa-search"></i> Scan for Models
-            </button>
-            <button class="btn btn-secondary" onclick="window.location.href='https://civitai.com/'">
-                <i class="fas fa-download"></i> CivitAI
-            </button>
-        </div>
+<div class="im-coming-soon">
+    <div class="im-cs-inner">
+        <i class="fas fa-clock"></i>
+        <h3>Coming Soon</h3>
+        <p>Image model management is on the roadmap. Support for Stable Diffusion, SDXL, Flux, and other local vision models will be available in a future release.</p>
     </div>
-
-    <!-- Future Model list will go here -->
 </div>
 
 <style>
-.image-models-view {
-    padding: 2rem;
+.im-coming-soon {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 400px;
+    padding: 4rem 2rem;
+    min-height: 360px;
 }
 
-.hub-empty-state {
+.im-cs-inner {
     text-align: center;
-    max-width: 500px;
-    background: var(--surface-1);
-    border: 1px dashed var(--border);
-    border-radius: 20px;
-    padding: 3rem;
+    max-width: 420px;
 }
 
-.hub-empty-state i {
-    font-size: 4rem;
-    color: var(--primary-low);
-    margin-bottom: 1.5rem;
+.im-cs-inner i {
+    font-size: 2.5rem;
+    color: var(--text-tertiary);
+    margin-bottom: 1.25rem;
+    display: block;
 }
 
-.hub-empty-state h3 {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-}
-
-.hub-empty-state p {
+.im-cs-inner h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
     color: var(--text-secondary);
-    line-height: 1.6;
-    margin-bottom: 2rem;
+    margin: 0 0 0.75rem 0;
 }
 
-.hub-actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
+.im-cs-inner p {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    line-height: 1.65;
+    margin: 0;
 }
 </style>
