@@ -5,8 +5,7 @@
 **A self-hosted AI platform — chat, agents, tools, and apps, all running locally**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-experimental-orange.svg)](https://github.com/Aethvion/Aethvion-Suite)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 [📚 Documentation](/core/documentation/) · [🚀 Getting Started](/core/documentation/human/getting-started.md) · [💬 Discussions](https://github.com/Aethvion/Aethvion-Suite/discussions)
