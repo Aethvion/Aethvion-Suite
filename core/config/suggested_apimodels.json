@@ -6,7 +6,7 @@
             "capabilities": ["CHAT", "AUDIO", "VOICEINPUT", "VOICEOUTPUT"],
             "input_cost": 0.1,
             "output_cost": 0.4,
-            "description": "Free tier. Fast model for routine tasks and verification."
+            "description": "Fast, capable Gemini model for everyday tasks. Free tier available."
         },
         {
             "id": "gemini-2.0-flash-lite",
@@ -14,7 +14,15 @@
             "capabilities": ["CHAT"],
             "input_cost": 0.075,
             "output_cost": 0.3,
-            "description": "Free tier. Lightest Gemini model, best for simple chat."
+            "description": "Lightest Gemini model. Best for high-volume simple tasks."
+        },
+        {
+            "id": "gemini-2.5-flash-preview-05-20",
+            "tier": "balanced",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.15,
+            "output_cost": 0.6,
+            "description": "Gemini 2.5 Flash Preview. Fast with improved reasoning."
         },
         {
             "id": "gemini-2.5-pro-preview-05-06",
@@ -22,7 +30,7 @@
             "capabilities": ["CHAT"],
             "input_cost": 1.25,
             "output_cost": 10,
-            "description": "Latest Gemini 2.5 Pro. Complex reasoning and architecture."
+            "description": "Gemini 2.5 Pro. Best for complex reasoning and architecture tasks."
         },
         {
             "id": "gemini-3-flash-preview",
@@ -30,7 +38,7 @@
             "capabilities": ["CHAT", "AUDIO", "VOICEINPUT", "VOICEOUTPUT"],
             "input_cost": 0.5,
             "output_cost": 3,
-            "description": "Latest Gemini 3 Flash. Fast model for routine tasks and verification."
+            "description": "Gemini 3 Flash Preview. Next-gen fast multimodal model."
         },
         {
             "id": "imagen-3.0-generate-002",
@@ -38,7 +46,7 @@
             "capabilities": ["IMAGE"],
             "input_cost": 0,
             "output_cost": 0,
-            "description": "Google Imagen 3 for image generation.",
+            "description": "Google Imagen 3. High-quality photorealistic image generation.",
             "image_config": {
                 "aspect_ratios": ["1:1", "16:9", "9:16", "4:3", "3:4"],
                 "resolutions": ["1024x1024"],
@@ -56,7 +64,7 @@
             "capabilities": ["CHAT"],
             "input_cost": 0.15,
             "output_cost": 0.6,
-            "description": "Lightweight OpenAI model for simple tasks."
+            "description": "Lightweight GPT-4o. Best cost/performance for simple tasks."
         },
         {
             "id": "gpt-4o",
@@ -64,7 +72,23 @@
             "capabilities": ["CHAT"],
             "input_cost": 2.5,
             "output_cost": 10,
-            "description": "High-performance GPT-4o model."
+            "description": "Flagship GPT-4o. Multimodal, strong reasoning."
+        },
+        {
+            "id": "gpt-4.1",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 2,
+            "output_cost": 8,
+            "description": "GPT-4.1. Latest GPT-4 series with improved instruction following."
+        },
+        {
+            "id": "gpt-4.1-mini",
+            "tier": "fast",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.4,
+            "output_cost": 1.6,
+            "description": "GPT-4.1 Mini. Fast and affordable with GPT-4.1 quality."
         },
         {
             "id": "o3-mini",
@@ -72,7 +96,15 @@
             "capabilities": ["CHAT"],
             "input_cost": 1.1,
             "output_cost": 4.4,
-            "description": "OpenAI o3-mini reasoning model."
+            "description": "OpenAI o3-mini. Compact reasoning model."
+        },
+        {
+            "id": "o3",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 10,
+            "output_cost": 40,
+            "description": "OpenAI o3. Most powerful reasoning model in the o-series."
         },
         {
             "id": "dall-e-3",
@@ -80,7 +112,7 @@
             "capabilities": ["IMAGE"],
             "input_cost": 0,
             "output_cost": 0,
-            "description": "DALL-E 3 for image generation.",
+            "description": "DALL-E 3. High-quality image generation with natural language.",
             "image_config": {
                 "aspect_ratios": ["1:1", "16:9", "9:16"],
                 "resolutions": ["1024x1024", "1024x1792", "1792x1024"],
@@ -96,7 +128,7 @@
             "capabilities": ["VOICEINPUT"],
             "input_cost": 0.006,
             "output_cost": 0,
-            "description": "OpenAI Whisper for audio transcription (speech-to-text)."
+            "description": "OpenAI Whisper. State-of-the-art speech-to-text transcription."
         },
         {
             "id": "tts-1",
@@ -104,7 +136,7 @@
             "capabilities": ["VOICEOUTPUT"],
             "input_cost": 0.015,
             "output_cost": 0,
-            "description": "OpenAI TTS-1 for speech synthesis (text-to-speech).",
+            "description": "OpenAI TTS-1. Fast text-to-speech synthesis.",
             "audio_config": {
                 "voices": ["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
                 "formats": ["mp3", "opus", "aac", "flac"]
@@ -116,29 +148,11 @@
             "capabilities": ["VOICEOUTPUT"],
             "input_cost": 0.03,
             "output_cost": 0,
-            "description": "OpenAI TTS-1 HD for high-quality speech synthesis (text-to-speech).",
+            "description": "OpenAI TTS-1 HD. High-fidelity text-to-speech synthesis.",
             "audio_config": {
                 "voices": ["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
                 "formats": ["mp3", "opus", "aac", "flac"]
             }
-        }
-    ],
-    "grok": [
-        {
-            "id": "grok-3-mini-fast",
-            "tier": "fast",
-            "capabilities": ["CHAT"],
-            "input_cost": 0.3,
-            "output_cost": 0.5,
-            "description": "xAI Grok-3 Mini Fast. Cheapest and fastest Grok model."
-        },
-        {
-            "id": "grok-3",
-            "tier": "premium",
-            "capabilities": ["CHAT"],
-            "input_cost": 3,
-            "output_cost": 15,
-            "description": "Full Grok-3 model for complex tasks."
         }
     ],
     "anthropic": [
@@ -148,7 +162,15 @@
             "capabilities": ["CHAT"],
             "input_cost": 0.8,
             "output_cost": 4,
-            "description": "Fast, affordable Claude model for simple tasks."
+            "description": "Claude Haiku. Fast, affordable, great for simple tasks."
+        },
+        {
+            "id": "claude-3-5-sonnet-latest",
+            "tier": "balanced",
+            "capabilities": ["CHAT"],
+            "input_cost": 3,
+            "output_cost": 15,
+            "description": "Claude 3.5 Sonnet. Strong code, reasoning and analysis."
         },
         {
             "id": "claude-sonnet-4-20250514",
@@ -156,7 +178,15 @@
             "capabilities": ["CHAT"],
             "input_cost": 3,
             "output_cost": 15,
-            "description": "Claude Sonnet 4. Excellent for code and reasoning."
+            "description": "Claude Sonnet 4. Latest Sonnet with improved agentic capabilities."
+        },
+        {
+            "id": "claude-opus-4-20250514",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 15,
+            "output_cost": 75,
+            "description": "Claude Opus 4. Most capable Claude for the hardest tasks."
         },
         {
             "id": "claude-3-opus-latest",
@@ -164,7 +194,215 @@
             "capabilities": ["CHAT"],
             "input_cost": 15,
             "output_cost": 75,
-            "description": "Most capable Claude model for the hardest tasks."
+            "description": "Claude 3 Opus. Previous-gen flagship, deep reasoning."
+        }
+    ],
+    "grok": [
+        {
+            "id": "grok-3-mini-fast",
+            "tier": "fast",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.3,
+            "output_cost": 0.5,
+            "description": "Grok-3 Mini Fast. Cheapest and fastest Grok model."
+        },
+        {
+            "id": "grok-3-mini",
+            "tier": "balanced",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.3,
+            "output_cost": 0.5,
+            "description": "Grok-3 Mini. Compact reasoning model with extended thinking."
+        },
+        {
+            "id": "grok-3",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 3,
+            "output_cost": 15,
+            "description": "Grok-3. Full model for complex tasks with real-time knowledge."
+        },
+        {
+            "id": "grok-3-fast",
+            "tier": "balanced",
+            "capabilities": ["CHAT"],
+            "input_cost": 5,
+            "output_cost": 25,
+            "description": "Grok-3 Fast. Higher throughput variant of Grok-3."
+        }
+    ],
+    "groq": [
+        {
+            "id": "llama-3.3-70b-versatile",
+            "tier": "balanced",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.59,
+            "output_cost": 0.79,
+            "description": "Llama 3.3 70B via Groq LPU. Excellent general-purpose model at high speed."
+        },
+        {
+            "id": "llama-3.1-8b-instant",
+            "tier": "fast",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.05,
+            "output_cost": 0.08,
+            "description": "Llama 3.1 8B via Groq. Ultra-fast and cheap for simple tasks."
+        },
+        {
+            "id": "llama3-70b-8192",
+            "tier": "balanced",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.59,
+            "output_cost": 0.79,
+            "description": "Llama 3 70B via Groq LPU. Fast inference on large context."
+        },
+        {
+            "id": "mixtral-8x7b-32768",
+            "tier": "balanced",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.24,
+            "output_cost": 0.24,
+            "description": "Mixtral 8x7B via Groq. MoE architecture, great code generation."
+        },
+        {
+            "id": "gemma2-9b-it",
+            "tier": "fast",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.2,
+            "output_cost": 0.2,
+            "description": "Gemma 2 9B via Groq. Google's efficient open model, very fast."
+        },
+        {
+            "id": "deepseek-r1-distill-llama-70b",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.75,
+            "output_cost": 0.99,
+            "description": "DeepSeek R1 Distill 70B via Groq. Reasoning model at LPU speed."
+        }
+    ],
+    "mistral": [
+        {
+            "id": "mistral-small-latest",
+            "tier": "fast",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.1,
+            "output_cost": 0.3,
+            "description": "Mistral Small. Fast and cheap for simple tasks."
+        },
+        {
+            "id": "mistral-medium-latest",
+            "tier": "balanced",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.4,
+            "output_cost": 2,
+            "description": "Mistral Medium. Strong balance of performance and cost."
+        },
+        {
+            "id": "mistral-large-latest",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 2,
+            "output_cost": 6,
+            "description": "Mistral Large. Flagship model for complex reasoning and code."
+        },
+        {
+            "id": "codestral-latest",
+            "tier": "specialized",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.2,
+            "output_cost": 0.6,
+            "description": "Codestral. Specialized code generation and completion model."
+        },
+        {
+            "id": "mistral-nemo",
+            "tier": "fast",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.15,
+            "output_cost": 0.15,
+            "description": "Mistral Nemo 12B. Excellent multilingual support."
+        },
+        {
+            "id": "pixtral-large-latest",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 2,
+            "output_cost": 6,
+            "description": "Pixtral Large. Mistral's multimodal vision-language model."
+        }
+    ],
+    "openrouter": [
+        {
+            "id": "deepseek/deepseek-chat-v3-0324",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.27,
+            "output_cost": 1.1,
+            "description": "DeepSeek Chat V3. Top open-source model, competitive with GPT-4."
+        },
+        {
+            "id": "deepseek/deepseek-r1",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.55,
+            "output_cost": 2.19,
+            "description": "DeepSeek R1. Open-source reasoning model rivaling o1."
+        },
+        {
+            "id": "meta-llama/llama-4-maverick",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.2,
+            "output_cost": 0.6,
+            "description": "Llama 4 Maverick. Meta's latest multimodal MoE model."
+        },
+        {
+            "id": "meta-llama/llama-4-scout",
+            "tier": "fast",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.08,
+            "output_cost": 0.3,
+            "description": "Llama 4 Scout. Fast, efficient variant of Llama 4."
+        },
+        {
+            "id": "google/gemini-2.0-flash-001",
+            "tier": "fast",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.1,
+            "output_cost": 0.4,
+            "description": "Gemini 2.0 Flash via OpenRouter. Fast and multimodal."
+        },
+        {
+            "id": "qwen/qwen3-235b-a22b",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.13,
+            "output_cost": 0.6,
+            "description": "Qwen 3 235B MoE. Alibaba's top model with hybrid thinking."
+        },
+        {
+            "id": "qwen/qwen3-30b-a3b",
+            "tier": "fast",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.1,
+            "output_cost": 0.3,
+            "description": "Qwen 3 30B MoE. Efficient reasoning with low cost."
+        },
+        {
+            "id": "mistralai/mistral-small-3.1-24b-instruct",
+            "tier": "fast",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.1,
+            "output_cost": 0.3,
+            "description": "Mistral Small 3.1 via OpenRouter. Compact and fast."
+        },
+        {
+            "id": "nousresearch/hermes-3-llama-3.1-405b",
+            "tier": "premium",
+            "capabilities": ["CHAT"],
+            "input_cost": 0.9,
+            "output_cost": 0.9,
+            "description": "Hermes 3 405B. Top-tier open model fine-tuned for reasoning."
         }
     ]
 }

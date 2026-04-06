@@ -1,0 +1,154 @@
+"""
+Aethvion Suite - Groq Provider
+Groq LPU inference implementation (OpenAI-compatible API)
+"""
+
+import os
+import requests
+import json
+from typing import Iterator, Optional
+from .base_provider import BaseProvider, ProviderResponse, ProviderConfig
+from core.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+class GroqProvider(BaseProvider):
+    """
+    Groq provider implementation.
+    Uses Groq's OpenAI-compatible API for ultra-fast LPU inference.
+    """
+
+    def __init__(self, config: ProviderConfig):
+        super().__init__(config)
+        self.api_key = os.getenv(config.api_key, config.api_key)
+        if not self.api_key:
+            logger.warning(f"Groq API key not found in environment: {config.api_key}")
+        self.headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        logger.info(f"Initialized Groq provider with model: {config.model}")
+
+    def generate(
+        self,
+        prompt: str,
+        trace_id: str,
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
+        **kwargs,
+    ) -> ProviderResponse:
+        """Generate response using Groq."""
+        active_model = model if model else self.config.model
+        try:
+            system_prompt = kwargs.pop("system_prompt", None)
+            kwargs.pop("model", None)
+            kwargs.pop("json_mode", None)
+
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+
+            payload = {
+                "model": active_model,
+                "messages": messages,
+                "temperature": temperature,
+                **kwargs,
+            }
+            if max_tokens:
+                payload["max_tokens"] = max_tokens
+
+            response = requests.post(
+                f"{self.config.endpoint}/chat/completions",
+                headers=self.headers,
+                json=payload,
+                timeout=self.config.timeout,
+            )
+            if not response.ok:
+                logger.error(f"[{trace_id}] Groq API error {response.status_code}: {response.text[:500]}")
+            response.raise_for_status()
+            data = response.json()
+            self.record_success()
+            return ProviderResponse(
+                content=data["choices"][0]["message"]["content"],
+                model=active_model,
+                provider="groq",
+                trace_id=trace_id,
+                metadata={
+                    "model": active_model,
+                    "finish_reason": data["choices"][0].get("finish_reason"),
+                    "usage": data.get("usage", {}),
+                },
+            )
+        except requests.HTTPError as e:
+            body = e.response.text[:500] if e.response is not None else ""
+            logger.error(f"[{trace_id}] Groq HTTP error: {e} | Body: {body}")
+            self.record_failure()
+            return ProviderResponse(content="", model=active_model, provider="groq", trace_id=trace_id, error=f"{e} | {body}")
+        except Exception as e:
+            logger.error(f"[{trace_id}] Groq generation failed: {e}")
+            self.record_failure()
+            return ProviderResponse(content="", model=active_model, provider="groq", trace_id=trace_id, error=str(e))
+
+    def stream(
+        self,
+        prompt: str,
+        trace_id: str,
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> Iterator[str]:
+        """Stream response using Groq."""
+        try:
+            payload = {
+                "model": self.config.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": temperature,
+                "stream": True,
+            }
+            if max_tokens:
+                payload["max_tokens"] = max_tokens
+
+            response = requests.post(
+                f"{self.config.endpoint}/chat/completions",
+                headers=self.headers,
+                json=payload,
+                timeout=self.config.timeout,
+                stream=True,
+            )
+            response.raise_for_status()
+
+            for line in response.iter_lines():
+                if line:
+                    line = line.decode("utf-8")
+                    if line.startswith("data: "):
+                        data = line[6:]
+                        if data != "[DONE]":
+                            chunk = json.loads(data)
+                            if chunk["choices"][0]["delta"].get("content"):
+                                yield chunk["choices"][0]["delta"]["content"]
+
+            self.record_success()
+        except Exception as e:
+            logger.error(f"[{trace_id}] Groq streaming failed: {e}")
+            self.record_failure()
+            yield f"Error: {e}"
+
+    def generate_image(self, prompt, trace_id, **kwargs) -> ProviderResponse:
+        return ProviderResponse(content="", model=self.config.model, provider="groq", trace_id=trace_id, error="Groq does not support image generation")
+
+    def generate_speech(self, text, trace_id, **kwargs) -> ProviderResponse:
+        return ProviderResponse(content="", model=self.config.model, provider="groq", trace_id=trace_id, error="Groq does not support speech synthesis")
+
+    def transcribe(self, audio_bytes, trace_id, **kwargs) -> ProviderResponse:
+        return ProviderResponse(content="", model=self.config.model, provider="groq", trace_id=trace_id, error="Groq does not support audio transcription")
+
+    def validate_credentials(self) -> bool:
+        try:
+            response = requests.get(f"{self.config.endpoint}/models", headers=self.headers, timeout=10)
+            return response.status_code == 200
+        except Exception as e:
+            logger.warning(f"Groq credential validation failed: {e}")
+            return False

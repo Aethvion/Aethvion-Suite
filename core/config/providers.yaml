@@ -7,19 +7,12 @@ providers:
     api_key_env: "GOOGLE_AI_API_KEY"
     endpoint: "https://generativelanguage.googleapis.com/v1beta"
     timeout: 30
-    
+
   openai:
     enabled: true
     name: "OpenAI"
     api_key_env: "OPENAI_API_KEY"
     endpoint: "https://api.openai.com/v1"
-    timeout: 30
-    
-  grok:
-    enabled: true
-    name: "xAI Grok"
-    api_key_env: "GROK_API_KEY"
-    endpoint: "https://api.x.ai/v1"
     timeout: 30
 
   anthropic:
@@ -27,6 +20,34 @@ providers:
     name: "Anthropic"
     api_key_env: "ANTHROPIC_API_KEY"
     endpoint: "https://api.anthropic.com/v1"
+    timeout: 60
+
+  grok:
+    enabled: true
+    name: "xAI Grok"
+    api_key_env: "GROK_API_KEY"
+    endpoint: "https://api.x.ai/v1"
+    timeout: 30
+
+  groq:
+    enabled: true
+    name: "Groq"
+    api_key_env: "GROQ_API_KEY"
+    endpoint: "https://api.groq.com/openai/v1"
+    timeout: 30
+
+  mistral:
+    enabled: true
+    name: "Mistral AI"
+    api_key_env: "MISTRAL_API_KEY"
+    endpoint: "https://api.mistral.ai/v1"
+    timeout: 30
+
+  openrouter:
+    enabled: true
+    name: "OpenRouter"
+    api_key_env: "OPENROUTER_API_KEY"
+    endpoint: "https://openrouter.ai/api/v1"
     timeout: 60
 
   local:
@@ -43,9 +64,9 @@ providers:
 # Failover Configuration
 failover:
   auto_failover: true
-  health_check_interval: 60  # seconds
+  health_check_interval: 60
   max_consecutive_failures: 3
-  cooldown_period: 300  # seconds before retrying failed provider
+  cooldown_period: 300
 
 # Rate Limiting
 rate_limits:
@@ -55,9 +76,18 @@ rate_limits:
   openai:
     requests_per_minute: 90
     tokens_per_minute: 150000
-  grok:
-    requests_per_minute: 30
-    tokens_per_minute: 50000
   anthropic:
     requests_per_minute: 50
     tokens_per_minute: 100000
+  grok:
+    requests_per_minute: 30
+    tokens_per_minute: 50000
+  groq:
+    requests_per_minute: 30
+    tokens_per_minute: 131072
+  mistral:
+    requests_per_minute: 60
+    tokens_per_minute: 100000
+  openrouter:
+    requests_per_minute: 60
+    tokens_per_minute: 200000

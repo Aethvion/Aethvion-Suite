@@ -35,14 +35,26 @@ ENV_EXAMPLE_PATH = PROJECT_ROOT / ".env.example"
 
 @router.get("/env/status")
 async def get_env_status():
-    """Check if .env exists and return masked key info."""
+    """Check if .env exists and return masked key info, merged with .env.example."""
     try:
         exists = ENV_PATH.exists()
-        keys = []
+        keys_dict = {}  # name -> entry (ordered)
 
+        # Load expected keys from .env.example first (defines canonical order)
+        if ENV_EXAMPLE_PATH.exists():
+            for line in ENV_EXAMPLE_PATH.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    name, _, _ = line.partition("=")
+                    name = name.strip()
+                    if name:
+                        keys_dict[name] = {"name": name, "has_value": False, "masked_value": ""}
+
+        # Overlay actual values from .env if it exists
         if exists:
-            content = ENV_PATH.read_text(encoding="utf-8")
-            for line in content.splitlines():
+            for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
                 line = line.strip()
                 if not line or line.startswith("#"):
                     continue
@@ -50,20 +62,15 @@ async def get_env_status():
                     name, _, value = line.partition("=")
                     name = name.strip()
                     value = value.strip()
+                    if not name:
+                        continue
                     has_value = bool(value) and not value.startswith("your_")
                     masked = (value[:4] + "****") if has_value and len(value) > 4 else ("****" if has_value else "")
-                    keys.append({"name": name, "has_value": has_value, "masked_value": masked})
-        else:
-            # Show expected keys from .env.example
-            if ENV_EXAMPLE_PATH.exists():
-                content = ENV_EXAMPLE_PATH.read_text(encoding="utf-8")
-                for line in content.splitlines():
-                    line = line.strip()
-                    if not line or line.startswith("#"):
-                        continue
-                    if "=" in line:
-                        name, _, _ = line.partition("=")
-                        keys.append({"name": name.strip(), "has_value": False, "masked_value": ""})
+                    keys_dict[name] = {"name": name, "has_value": has_value, "masked_value": masked}
+
+        # Filter out non-key entries like PORT
+        skip = {"PORT"}
+        keys = [v for k, v in keys_dict.items() if k not in skip]
 
         return {"exists": exists, "keys": keys}
     except Exception as e:
@@ -245,7 +252,8 @@ async def update_registry(updates: Dict[str, Any], request: Request):
 @router.get("/available_types")
 async def get_available_types():
     """Get list of supported provider types."""
-    return ["google_ai", "openai", "anthropic", "grok", "groq", "mistral", "local"]
+    return ["google_ai", "openai", "anthropic", "grok", "groq", "mistral", "openrouter", "local"]
+
 
 
 @router.post("/providers")
@@ -256,7 +264,7 @@ async def add_provider(provider_data: Dict[str, Any], request: Request):
         if not provider_type:
             raise HTTPException(status_code=400, detail="Provider 'type' is required")
         
-        supported_types = ["google_ai", "openai", "anthropic", "grok", "groq", "mistral", "local"]
+        supported_types = ["google_ai", "openai", "anthropic", "grok", "groq", "mistral", "openrouter", "local"]
         if provider_type not in supported_types:
             raise HTTPException(status_code=400, detail=f"Unsupported provider type: {provider_type}")
             
@@ -311,6 +319,14 @@ async def add_provider(provider_data: Dict[str, Any], request: Request):
             "mistral": {
                 "name": "Mistral AI",
                 "api_key_env": "MISTRAL_API_KEY",
+                "active": True,
+                "chat_config": {"active": True, "priority": 1},
+                "agent_config": {"active": False, "priority": 1},
+                "models": {}
+            },
+            "openrouter": {
+                "name": "OpenRouter",
+                "api_key_env": "OPENROUTER_API_KEY",
                 "active": True,
                 "chat_config": {"active": True, "priority": 1},
                 "agent_config": {"active": False, "priority": 1},

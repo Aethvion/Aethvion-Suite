@@ -387,4 +387,164 @@
 
 .ap-feedback.success { color: #4ade80; }
 .ap-feedback.error   { color: #f87171; }
+
+/* ── Suggested button ────────────────────────────────────── */
+.ap-btn-suggested {
+    background: rgba(168,85,247,0.1);
+    border: 1px solid rgba(168,85,247,0.3);
+    border-radius: 6px;
+    color: #c084fc;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 5px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.ap-btn-suggested:hover {
+    background: rgba(168,85,247,0.2);
+    border-color: rgba(168,85,247,0.55);
+}
+
+/* ── Suggested panel ─────────────────────────────────────── */
+.ap-suggested-panel {
+    margin-top: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface-1);
+}
+
+.ap-sug-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.7rem 1rem;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.ap-sug-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    font-size: 0.8rem;
+    padding: 2px 5px;
+    border-radius: 4px;
+    transition: color 0.15s;
+}
+
+.ap-sug-close:hover { color: var(--text-primary); }
+
+.ap-sug-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.75rem;
+    padding: 0.9rem;
+}
+
+.ap-sug-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    transition: border-color 0.15s;
+}
+
+.ap-sug-card:hover {
+    border-color: rgba(var(--primary-rgb, 99,179,237), 0.4);
+}
+
+.ap-sug-card.added {
+    opacity: 0.5;
+}
+
+.ap-sug-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.ap-sug-model-id {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    word-break: break-all;
+    flex: 1;
+}
+
+.ap-sug-tier {
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 50px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.ap-sug-desc {
+    font-size: 0.73rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.45;
+}
+
+.ap-sug-card-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.2rem;
+    flex-wrap: wrap;
+}
+
+.ap-sug-costs {
+    display: flex;
+    gap: 0.6rem;
+    font-size: 0.68rem;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.ap-sug-add-btn {
+    margin-left: auto;
+    background: rgba(99,179,237,0.1);
+    border: 1px solid rgba(99,179,237,0.25);
+    border-radius: 5px;
+    color: var(--primary, #63b3ed);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.ap-sug-add-btn:hover {
+    background: rgba(99,179,237,0.2);
+    border-color: rgba(99,179,237,0.5);
+}
+
+.ap-sug-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.ap-sug-added-badge {
+    margin-left: auto;
+    font-size: 0.68rem;
+    color: #4ade80;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
 </style>

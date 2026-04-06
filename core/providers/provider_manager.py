@@ -11,6 +11,9 @@ from .base_provider import BaseProvider, ProviderResponse, ProviderConfig, Provi
 from .google_provider import GoogleAIProvider
 from .openai_provider import OpenAIProvider
 from .grok_provider import GrokProvider
+from .groq_provider import GroqProvider
+from .mistral_provider import MistralProvider
+from .openrouter_provider import OpenRouterProvider
 from .anthropic_provider import AnthropicProvider
 from .local_provider import LocalProvider
 from .ollama_provider import OllamaProvider
@@ -27,12 +30,15 @@ class ProviderManager:
     """
     
     PROVIDER_CLASSES = {
-        'google_ai': GoogleAIProvider,
-        'openai': OpenAIProvider,
-        'grok': GrokProvider,
-        'anthropic': AnthropicProvider,
-        'local': LocalProvider,
-        'ollama': OllamaProvider,
+        'google_ai':   GoogleAIProvider,
+        'openai':      OpenAIProvider,
+        'grok':        GrokProvider,
+        'groq':        GroqProvider,
+        'mistral':     MistralProvider,
+        'openrouter':  OpenRouterProvider,
+        'anthropic':   AnthropicProvider,
+        'local':       LocalProvider,
+        'ollama':      OllamaProvider,
     }
     
     def __init__(self, config_path: Optional[str] = None):
