@@ -1987,6 +1987,10 @@ async function switchSettingsSubTab(subTab, save = true) {
         loadDisplayTimezone();
     }
 
+    if (subTab === 'providers') {
+        loadProviderSettings();
+    }
+
     if (subTab === 'notifications') {
         loadNotificationSettings();
     }

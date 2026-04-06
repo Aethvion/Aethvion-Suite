@@ -96,18 +96,111 @@
     margin-right: 0;
 }
 
-/* Sidebar Categories & Hierarchy */
+/* ── Sidebar Section Headers (Tier 1) ─────────────────────────── */
+.sidebar-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 0.75rem 0.15rem;
+    margin-top: 0.5rem;
+    font-size: 0.6rem;
+    color: var(--text-tertiary);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    user-select: none;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.sidebar-section-header:first-of-type {
+    margin-top: 0;
+    padding-top: 0.1rem;
+}
+
+.sidebar-section-header:hover {
+    color: var(--text-secondary);
+}
+
+/* Split label: number + text */
+.section-label {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.section-num {
+    flex-shrink: 0;
+    opacity: 0.55;
+}
+
+.section-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.75;
+}
+
+.section-chevron {
+    font-size: 0.55rem;
+    opacity: 0.3;
+    flex-shrink: 0;
+    margin-left: 0.3rem;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s;
+}
+
+.sidebar-section-header:hover .section-chevron {
+    opacity: 0.65;
+}
+
+.section-is-collapsed .section-chevron {
+    transform: rotate(-90deg);
+}
+
+/* ── Collapsed sidebar: show only the number, centered ─────────── */
+.sidebar-nav.collapsed .sidebar-section-header {
+    padding: 0.6rem 0 0.1rem;
+    margin-top: 0;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.sidebar-nav.collapsed .section-text {
+    display: none;
+}
+
+.sidebar-nav.collapsed .section-chevron {
+    display: none;
+}
+
+.sidebar-nav.collapsed .section-num {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    opacity: 0.35;
+}
+
+/* Always show section bodies in collapsed icon-only mode */
+.sidebar-nav.collapsed .section-body {
+    max-height: 2000px !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* ── Sidebar Categories (Tier 2) ───────────────────────────────── */
 .sidebar-category {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.3rem 0.75rem 0.15rem;
-    font-size: 0.65rem;
-    color: var(--text-tertiary);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-top: 0.4rem;
+    padding: 0.28rem 0.75rem 0.18rem;
+    font-size: 0.73rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-top: 0.2rem;
     cursor: pointer;
     border-radius: var(--radius-sm);
     transition: color 0.15s, background 0.15s;
@@ -117,12 +210,27 @@
 }
 
 .sidebar-category:hover {
-    color: var(--text-secondary);
-    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .sidebar-category:first-of-type {
-    margin-top: 0.25rem;
+    margin-top: 0.1rem;
+}
+
+/* Tier/Section body — collapsible container */
+.section-body {
+    overflow: hidden;
+    max-height: 2000px; /* Large enough for all contents */
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.2s ease;
+    opacity: 1;
+}
+
+.section-body.section-collapsed {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* Chevron arrow */
@@ -157,10 +265,39 @@
     pointer-events: none;
 }
 
+/* --- Hierarchical Indentation --- */
+
+/* Level 1: Categories and flat Tabs inside Sections */
+.section-body .sidebar-category,
+.section-body > .main-tab {
+    padding-left: 0.75rem;
+}
+
+/* Level 2: Tabs inside Category Bodies */
+.cat-body .main-tab {
+    padding-left: 1.5rem;
+    font-size: 0.78rem;
+}
+
+/* Icon alignment for nested items */
+.section-body .tab-icon {
+    min-width: 18px;
+    margin-right: 0.35rem;
+}
+
 .sidebar-subitem {
-    font-size: 0.75rem;
-    padding: 0.3rem 0.75rem;
-    margin-bottom: 0.1rem;
+    padding: 0.25rem 0.75rem 0.25rem 1.5rem;
+    margin-bottom: 0.05rem;
+}
+
+/* Collapsed: reset all indentation so icons center properly */
+.sidebar-nav.collapsed .section-body .sidebar-category,
+.sidebar-nav.collapsed .section-body > .main-tab,
+.sidebar-nav.collapsed .cat-body .main-tab,
+.sidebar-nav.collapsed .sidebar-subitem {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    font-size: inherit;
 }
 
 .launch-module {
@@ -190,17 +327,9 @@
     display: none;
 }
 
-/* Hide categories effectively when sidebar is collapsed */
+/* Hide categories when sidebar is collapsed — no divider lines, just vanish */
 .sidebar-nav.collapsed .sidebar-category {
-    font-size: 0;
-    padding: 0;
-    margin: 0.5rem auto;
-    width: 20px;
-    height: 1px;
-    background: var(--border);
-    border-radius: 1px;
-    color: transparent;
-    cursor: default;
+    display: none;
 }
 
 .sidebar-nav.collapsed .cat-chevron {

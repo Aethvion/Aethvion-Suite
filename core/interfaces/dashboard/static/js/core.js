@@ -268,8 +268,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (layout) layout.classList.add('threads-collapsed');
             }
 
-            // Restore category collapse states
+            // Restore category/section collapse states
             initCategoryCollapse();
+            initSectionCollapse();
 
             // Apply interface visibility preferences (hidden tabs/categories)
             applyNavVisibility();
@@ -792,25 +793,84 @@ function toggleCategory(catId) {
     }
 }
 
+// ─── Sidebar Section (Tier) Collapse ─────────────────────────────
+function initSectionCollapse() {
+    document.querySelectorAll('.sidebar-section-header[data-section]').forEach(secEl => {
+        const secId = secEl.dataset.section;
+        const body  = document.querySelector(`.section-body[data-section-body="${secId}"]`);
+        if (!body) return;
+
+        // Restore saved state
+        const collapsed = typeof prefs !== 'undefined' && prefs.get(`sec_collapsed_${secId}`, false);
+        if (collapsed === true || collapsed === 'true') {
+            body.classList.add('section-collapsed');
+            secEl.classList.add('section-is-collapsed');
+        }
+
+        // Attach click listener
+        if (!secEl.dataset.secInit) {
+            secEl.dataset.secInit = '1';
+            secEl.addEventListener('click', () => toggleSection(secId));
+        }
+    });
+}
+
+function toggleSection(secId) {
+    const secEl = document.querySelector(`.sidebar-section-header[data-section="${secId}"]`);
+    const body  = document.querySelector(`.section-body[data-section-body="${secId}"]`);
+    if (!secEl || !body) return;
+
+    const isNowCollapsed = body.classList.toggle('section-collapsed');
+    secEl.classList.toggle('section-is-collapsed', isNowCollapsed);
+
+    if (typeof savePreference === 'function') {
+        savePreference(`sec_collapsed_${secId}`, isNowCollapsed);
+    }
+}
+
 function applyNavVisibility() {
     if (typeof prefs === 'undefined') return;
 
-    // Categories
-    document.querySelectorAll('.sidebar-category[data-cat]').forEach(catEl => {
-        const catId = catEl.dataset.cat;
-        const hidden = prefs.get(`nav_cat_hidden_${catId}`, false);
-        const isHidden = hidden === true || hidden === 'true';
-        const body = document.querySelector(`.cat-body[data-cat-body="${catId}"]`);
-        catEl.classList.toggle('nav-hidden', isHidden);
-        if (body) body.classList.toggle('nav-hidden', isHidden);
-    });
-
-    // Individual tabs (skip settings and version which are always visible)
+    // First hide individual tabs based on preferences
     document.querySelectorAll('.main-tab[data-maintab]').forEach(tabEl => {
         const tabId = tabEl.dataset.maintab;
         if (!tabId || tabId === 'settings' || tabId === 'version') return;
         const hidden = prefs.get(`nav_tab_hidden_${tabId}`, false);
         tabEl.classList.toggle('nav-hidden', hidden === true || hidden === 'true');
+    });
+
+    // Then hide categories if all their tabs are hidden
+    document.querySelectorAll('.sidebar-category[data-cat]').forEach(catEl => {
+        const catId = catEl.dataset.cat;
+        const body  = document.querySelector(`.cat-body[data-cat-body="${catId}"]`);
+        const catPrefHidden = prefs.get(`nav_cat_hidden_${catId}`, false);
+        
+        let allTabsHidden = false;
+        if (body) {
+            const tabs = body.querySelectorAll('.main-tab');
+            allTabsHidden = tabs.length > 0 && Array.from(tabs).every(t => 
+                t.classList.contains('nav-hidden') || t.classList.contains('mode-hidden')
+            );
+        }
+
+        const shouldHide = (catPrefHidden === true || catPrefHidden === 'true') || allTabsHidden;
+        catEl.classList.toggle('nav-hidden', shouldHide);
+        if (body) body.classList.toggle('nav-hidden', shouldHide);
+    });
+
+    // Finally hide sections if everything inside them is hidden
+    document.querySelectorAll('.sidebar-section-header[data-section]').forEach(secEl => {
+        const secId = secEl.dataset.section;
+        const body  = document.querySelector(`.section-body[data-section-body="${secId}"]`);
+        if (!body) return;
+
+        const contents = body.querySelectorAll('.main-tab, .sidebar-category');
+        const everyThingHidden = contents.length > 0 && Array.from(contents).every(el => 
+            el.classList.contains('nav-hidden') || el.classList.contains('mode-hidden')
+        );
+
+        secEl.classList.toggle('nav-hidden', everyThingHidden);
+        body.classList.toggle('nav-hidden', everyThingHidden);
     });
 }
 window.applyNavVisibility = applyNavVisibility;

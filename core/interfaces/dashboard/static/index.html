@@ -334,137 +334,136 @@
                 </button>
 
                 <!-- ── AI mode ───────────────────────────────────── -->
-                <button class="main-tab mode-ai active" data-maintab="chat" data-tooltip="Chat">
-                    <span class="tab-icon"><i class="fas fa-comments"></i></span><span class="tab-label">Chat</span>
-                </button>
-
-                <!-- Workflow -->
-                <div class="sidebar-category mode-ai" data-cat="workflow">
-                    <span class="cat-label">Workflow</span><span class="cat-chevron">▾</span>
-                </div>
-                <div class="cat-body mode-ai" data-cat-body="workflow">
-                    <button class="main-tab mode-ai" data-maintab="agents" data-tooltip="Agent Workspaces">
-                        <span class="tab-icon"><i class="fas fa-robot"></i></span><span class="tab-label">Agents</span></button>
-                    <button class="main-tab mode-ai" data-maintab="agent-corp" data-tooltip="Agent Corp">
-                        <span class="tab-icon"><i class="fas fa-building"></i></span><span class="tab-label">Agent Corp</span></button>
-                    <button class="main-tab mode-ai" data-maintab="schedule" data-tooltip="Schedule">
-                        <span class="tab-icon"><i class="fas fa-calendar-alt"></i></span><span class="tab-label">Schedule</span></button>
-                    <button class="main-tab mode-ai" data-maintab="photo" data-tooltip="Photo">
-                        <span class="tab-icon"><i class="fas fa-image"></i></span><span class="tab-label">Photo</span></button>
-                    <button class="main-tab mode-ai" data-maintab="audio" data-tooltip="Audio">
-                        <span class="tab-icon"><i class="fas fa-microphone"></i></span><span class="tab-label">Audio</span></button>
+                
+                <!-- SECTION 1: WORKSPACE -->
+                <div class="sidebar-section-header mode-ai" data-section="workspace">
+                    <span class="section-label"><span class="section-num">1</span><span class="section-text">Workspace</span></span><span class="section-chevron">▾</span>
                 </div>
 
-                <!-- Companions -->
-                <div class="sidebar-category mode-ai" data-cat="companions">
-                    <span class="cat-label">Companions</span><span class="cat-chevron">▾</span>
-                </div>
-                <div class="cat-body mode-ai" data-cat-body="companions">
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="misaka-cipher" data-tooltip="Misaka Cipher">
-                        <span class="tab-icon"><i class="fas fa-wand-magic-sparkles"></i></span><span class="tab-label">Misaka Cipher</span></button>
-                </div>
-
-                <!-- Research -->
-                <div class="sidebar-category mode-ai" data-cat="research">
-                    <span class="cat-label">Research</span><span class="cat-chevron">▾</span>
-                </div>
-                <div class="cat-body mode-ai" data-cat-body="research">
-                    <button class="main-tab mode-ai" data-maintab="advaiconv" data-tooltip="Advanced AI Conv.">
-                        <span class="tab-icon"><i class="fas fa-flask"></i></span><span class="tab-label">Advanced AI Conversation</span></button>
-                    <button class="main-tab mode-ai" data-maintab="researchboard" data-tooltip="Board of Directors">
-                        <span class="tab-icon"><i class="fas fa-balance-scale"></i></span> <span class="tab-label">Board of Directors</span>
+                <div class="section-body mode-ai active" data-section-body="workspace">
+                    <!-- Chat (Outside categories) -->
+                    <button class="main-tab mode-ai active" data-maintab="chat" data-tooltip="Chat Hub">
+                        <span class="tab-icon"><i class="fas fa-comments"></i></span><span class="tab-label">Chat</span>
                     </button>
+
+                    <!-- Workflow -->
+                    <div class="sidebar-category mode-ai" data-cat="workflow">
+                        <span class="cat-label">Workflow</span><span class="cat-chevron">▾</span>
+                    </div>
+                    <div class="cat-body mode-ai" data-cat-body="workflow">
+                        <button class="main-tab mode-ai" data-maintab="agents" data-tooltip="Agent Workspaces">
+                            <span class="tab-icon"><i class="fas fa-robot"></i></span><span class="tab-label">Agents</span></button>
+                        <button class="main-tab mode-ai" data-maintab="agent-corp" data-tooltip="Agent Corp">
+                            <span class="tab-icon"><i class="fas fa-building"></i></span><span class="tab-label">Agent Corp</span></button>
+                        <button class="main-tab mode-ai" data-maintab="schedule" data-tooltip="Schedule">
+                            <span class="tab-icon"><i class="fas fa-calendar-alt"></i></span><span class="tab-label">Schedule</span></button>
+                        <button class="main-tab mode-ai" data-maintab="photo" data-tooltip="Photo Studio">
+                            <span class="tab-icon"><i class="fas fa-image"></i></span><span class="tab-label">Photo</span></button>
+                        <button class="main-tab mode-ai" data-maintab="audio" data-tooltip="Audio Studio">
+                            <span class="tab-icon"><i class="fas fa-microphone"></i></span><span class="tab-label">Audio</span></button>
+                    </div>
+
+                    <!-- Research & Sandbox -->
+                    <div class="sidebar-category mode-ai" data-cat="research-sandbox">
+                        <span class="cat-label">Research & Sandbox</span><span class="cat-chevron">▾</span>
+                    </div>
+                    <div class="cat-body mode-ai" data-cat-body="research-sandbox">
+                        <button class="main-tab mode-ai" data-maintab="advaiconv" data-tooltip="Advanced AI Conversation">
+                            <span class="tab-icon"><i class="fas fa-flask"></i></span><span class="tab-label">Adv. AI Conv.</span></button>
+                        <button class="main-tab mode-ai" data-maintab="researchboard" data-tooltip="Board of Directors">
+                            <span class="tab-icon"><i class="fas fa-balance-scale"></i></span><span class="tab-label">Directors</span></button>
+                        <button class="main-tab mode-ai" data-maintab="arena" data-tooltip="Model Arena">
+                            <span class="tab-icon"><i class="fas fa-shield-halved"></i></span><span class="tab-label">Arena</span></button>
+                        <button class="main-tab mode-ai" data-maintab="aiconv" data-tooltip="AI Conversations Hub">
+                            <span class="tab-icon"><i class="fas fa-masks-theater"></i></span><span class="tab-label">AI Conv.</span></button>
+                    </div>
+
+                    <!-- Entertainment -->
+                    <div class="sidebar-category mode-ai" data-cat="entertainment">
+                        <span class="cat-label">Entertainment</span><span class="cat-chevron">▾</span>
+                    </div>
+                    <div class="cat-body mode-ai" data-cat-body="entertainment">
+                        <button class="main-tab mode-ai" data-maintab="misaka-cipher" data-tooltip="Misaka Cipher Companion">
+                            <span class="tab-icon"><i class="fas fa-wand-magic-sparkles"></i></span><span class="tab-label">Misaka Cipher</span></button>
+                        <button class="main-tab mode-ai" data-maintab="games-center" data-tooltip="Games Center">
+                            <span class="tab-icon"><i class="fas fa-gamepad"></i></span><span class="tab-label">Games Center</span></button>
+                    </div>
                 </div>
 
-                <!-- Sandbox -->
-                <div class="sidebar-category mode-ai" data-cat="sandbox">
-                    <span class="cat-label">Sandbox</span><span class="cat-chevron">▾</span>
-                </div>
-                <div class="cat-body mode-ai" data-cat-body="sandbox">
-                    <button class="main-tab mode-ai" data-maintab="arena" data-tooltip="Arena">
-                        <span class="tab-icon"><i class="fas fa-shield-halved"></i></span><span class="tab-label">Arena</span></button>
-                    <button class="main-tab mode-ai" data-maintab="aiconv" data-tooltip="AI Conversations">
-                        <span class="tab-icon"><i class="fas fa-masks-theater"></i></span><span class="tab-label">AI Conversations</span></button>
+                <!-- SECTION 2: KNOWLEDGE & FILES -->
+                <div class="sidebar-section-header mode-ai" data-section="files">
+                    <span class="section-label"><span class="section-num">2</span><span class="section-text">Knowledge & Files</span></span><span class="section-chevron">▾</span>
                 </div>
 
-                <!-- Games -->
-                <div class="sidebar-category mode-ai" data-cat="games">
-                    <span class="cat-label">Games</span><span class="cat-chevron">▾</span>
-                </div>
-                <div class="cat-body mode-ai" data-cat-body="games">
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-results" data-tooltip="Leaderboards">
-                        <span class="tab-icon"><i class="fas fa-trophy"></i></span><span class="tab-label">Leaderboards</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-logic-quest" data-tooltip="Logic Quest">
-                        <span class="tab-icon"><i class="fas fa-puzzle-piece"></i></span><span class="tab-label">Logic Quest</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-blackjack" data-tooltip="Blackjack">
-                        <span class="tab-icon"><i class="fas fa-diamond"></i></span><span class="tab-label">Blackjack</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-sudoku" data-tooltip="Sudoku">
-                        <span class="tab-icon"><i class="fas fa-table-cells"></i></span><span class="tab-label">Sudoku</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-word-search" data-tooltip="Word Search">
-                        <span class="tab-icon"><i class="fas fa-font"></i></span><span class="tab-label">Word Search</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-checkers" data-tooltip="Checkers">
-                        <span class="tab-icon"><i class="fas fa-circle"></i></span><span class="tab-label">Checkers (vs AI)</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-smarter-than-ai" data-tooltip="Are You Smarter Than AI?"><i class="fas fa-microphone"></i><span class="tab-label">Smarter Than AI?</span></button>
+                <div class="section-body mode-ai active" data-section-body="files">
+                    <!-- Memory -->
+                    <div class="sidebar-category mode-ai" data-cat="memory-hub">
+                        <span class="cat-label">Memory Hub</span><span class="cat-chevron">▾</span>
+                    </div>
+                    <div class="cat-body mode-ai" data-cat-body="memory-hub">
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="memory" data-tooltip="General Memory">
+                            <span class="tab-icon"><i class="fas fa-book"></i></span><span class="tab-label">Memory</span></button>
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="misaka-memory" data-tooltip="Misaka Cipher Memory">
+                            <span class="tab-icon"><i class="fas fa-dna"></i></span><span class="tab-label">Misaka Memory</span></button>
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="persistent-memory" data-tooltip="Persistent AI Context">
+                            <span class="tab-icon"><i class="fas fa-brain"></i></span><span class="tab-label">Persistent</span></button>
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="sched-overview" data-tooltip="Scheduled Tasks">
+                            <span class="tab-icon"><i class="fas fa-calendar-check"></i></span><span class="tab-label">Scheduled</span></button>
+                    </div>
+
+                    <!-- Local Storage -->
+                    <div class="sidebar-category mode-ai" data-cat="local-storage">
+                        <span class="cat-label">Local Storage</span><span class="cat-chevron">▾</span>
+                    </div>
+                    <div class="cat-body mode-ai" data-cat-body="local-storage">
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="output" data-tooltip="Output Files">
+                            <span class="tab-icon"><i class="fas fa-upload"></i></span><span class="tab-label">Output</span></button>
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="screenshots" data-tooltip="Screenshots Gallery">
+                            <span class="tab-icon"><i class="fas fa-camera-retro"></i></span><span class="tab-label">Gallery</span></button>
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="camera" data-tooltip="Live Camera Feed">
+                            <span class="tab-icon"><i class="fas fa-camera"></i></span><span class="tab-label">Camera</span></button>
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="uploads" data-tooltip="Upload Manager">
+                            <span class="tab-icon"><i class="fas fa-folder"></i></span><span class="tab-label">Uploads</span></button>
+                    </div>
                 </div>
 
-                <!-- Files -->
-                <div class="sidebar-category mode-ai" data-cat="files">
-                    <span class="cat-label">Files</span><span class="cat-chevron">▾</span>
-                </div>
-                <div class="cat-body mode-ai" data-cat-body="files">
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="output" data-tooltip="Output">
-                        <span class="tab-icon"><i class="fas fa-upload"></i></span><span class="tab-label">Output</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="screenshots" data-tooltip="Screenshots">
-                        <span class="tab-icon"><i class="fas fa-camera-retro"></i></span><span class="tab-label">Screenshots</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="camera" data-tooltip="Camera">
-                        <span class="tab-icon"><i class="fas fa-camera"></i></span><span class="tab-label">Camera</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="uploads" data-tooltip="Uploads">
-                        <span class="tab-icon"><i class="fas fa-folder"></i></span><span class="tab-label">Uploads</span></button>
+                <!-- SECTION 3: SYSTEM & ENGINE -->
+                <div class="sidebar-section-header mode-ai" data-section="system">
+                    <span class="section-label"><span class="section-num">3</span><span class="section-text">System & Engine</span></span><span class="section-chevron">▾</span>
                 </div>
 
-                <!-- Models -->
-                <div class="sidebar-category mode-ai" data-cat="models">
-                    <span class="cat-label">Models</span><span class="cat-chevron">▾</span>
-                </div>
-                <div class="cat-body mode-ai" data-cat-body="models">
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="local-models" data-tooltip="Local Models">
-                        <span class="tab-icon"><i class="fas fa-microchip"></i></span><span class="tab-label">Local Models</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="audio-models" data-tooltip="Audio Models">
-                        <span class="tab-icon"><i class="fas fa-volume-high"></i></span><span class="tab-label">Audio Models</span></button>
-                </div>
+                <div class="section-body mode-ai active" data-section-body="system">
+                    <!-- Model Hub -->
+                    <div class="sidebar-category mode-ai" data-cat="model-hub">
+                        <span class="cat-label">Model Hub</span><span class="cat-chevron">▾</span>
+                    </div>
+                    <div class="cat-body mode-ai" data-cat-body="model-hub">
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="local-models" data-tooltip="Text & Chat Models">
+                            <span class="tab-icon"><i class="fas fa-microchip"></i></span><span class="tab-label">Text & Chat</span></button>
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="image-models" data-tooltip="Local Image Visualizer">
+                            <span class="tab-icon"><i class="fas fa-mountain-sun"></i></span><span class="tab-label">Image Hub</span></button>
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="audio-models" data-tooltip="Audio & Speech Engines">
+                            <span class="tab-icon"><i class="fas fa-volume-high"></i></span><span class="tab-label">Audio & Speech</span></button>
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="api-providers" data-tooltip="External Service Hub">
+                            <span class="tab-icon"><i class="fas fa-plug"></i></span><span class="tab-label">API Providers</span></button>
+                    </div>
 
-
-
-                <!-- Knowledge -->
-                <div class="sidebar-category mode-ai" data-cat="knowledge">
-                    <span class="cat-label">Knowledge</span><span class="cat-chevron">▾</span>
-                </div>
-                <div class="cat-body mode-ai" data-cat-body="knowledge">
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="memory" data-tooltip="Memory">
-                        <span class="tab-icon"><i class="fas fa-book"></i></span><span class="tab-label">Memory</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="misaka-memory" data-tooltip="Misaka Memory">
-                        <span class="tab-icon"><i class="fas fa-dna"></i></span><span class="tab-label">Misaka Cipher Memory</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="persistent-memory" data-tooltip="Persistent Memory">
-                        <span class="tab-icon"><i class="fas fa-brain"></i></span><span class="tab-label">Persistent Memory</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="sched-overview" data-tooltip="Scheduled Tasks">
-                        <span class="tab-icon"><i class="fas fa-calendar-check"></i></span><span class="tab-label">Scheduled Tasks</span></button>
-                </div>
-
-                <!-- Diagnostics -->
-                <div class="sidebar-category mode-ai" data-cat="diagnostics">
-                    <span class="cat-label">Diagnostics</span><span class="cat-chevron">▾</span>
-                </div>
-                <div class="cat-body mode-ai" data-cat-body="diagnostics">
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="logs" data-tooltip="Logs">
-                        <span class="tab-icon"><i class="fas fa-scroll"></i></span><span class="tab-label">Logs</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="documentation" data-tooltip="Documentation">
-                        <span class="tab-icon"><i class="fas fa-book-open"></i></span><span class="tab-label">Documentation</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="usage" data-tooltip="Usage">
-                        <span class="tab-icon"><i class="fas fa-chart-bar"></i></span><span class="tab-label">Usage</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="status" data-tooltip="Status">
-                        <span class="tab-icon"><i class="fas fa-traffic-light"></i></span><span class="tab-label">Status</span></button>
-                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="ports" data-tooltip="Port Manager">
-                        <span class="tab-icon"><i class="fas fa-plug"></i></span><span class="tab-label">Port Manager</span></button>
+                    <!-- Diagnostics -->
+                    <div class="sidebar-category mode-ai" data-cat="diagnostics">
+                        <span class="cat-label">Diagnostics</span><span class="cat-chevron">▾</span>
+                    </div>
+                    <div class="cat-body mode-ai" data-cat-body="diagnostics">
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="logs" data-tooltip="System Logs">
+                            <span class="tab-icon"><i class="fas fa-scroll"></i></span><span class="tab-label">Logs</span></button>
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="documentation" data-tooltip="How-To & Guides">
+                            <span class="tab-icon"><i class="fas fa-book-open"></i></span><span class="tab-label">Docs</span></button>
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="usage" data-tooltip="Resource Usage">
+                            <span class="tab-icon"><i class="fas fa-chart-bar"></i></span><span class="tab-label">Usage</span></button>
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="status" data-tooltip="Service Status">
+                            <span class="tab-icon"><i class="fas fa-traffic-light"></i></span><span class="tab-label">Status</span></button>
+                        <button class="main-tab mode-ai sidebar-subitem" data-maintab="ports" data-tooltip="Engine Ports">
+                            <span class="tab-icon"><i class="fas fa-plug"></i></span><span class="tab-label">Ports</span></button>
+                    </div>
                 </div>
 
                 <!-- Settings — always visible -->
@@ -642,8 +641,33 @@
 
             <!-- System Status Panel -->
             <div class="main-tab-panel" id="status-panel" data-partial="status">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
+                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+
+            <!-- Model Hub: Local Models (Text & Chat) -->
+            <div class="main-tab-panel" id="local-models-panel" data-partial="local-models">
+                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+
+            <!-- Model Hub: Image Studio -->
+            <div class="main-tab-panel" id="image-models-panel" data-partial="image-models">
+                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+
+            <!-- Model Hub: Audio & Speech -->
+            <div class="main-tab-panel" id="audio-models-panel" data-partial="audio-models">
+                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+
+            <!-- Model Hub: API Providers -->
+            <div class="main-tab-panel" id="api-providers-panel" data-partial="api-providers">
+                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+
+            <!-- Games Center Hub -->
+            <div class="main-tab-panel" id="games-center-panel" data-partial="games-center">
+                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
 
             <!-- System Notifications -->
             <div id="notification-container" class="notification-container"></div>

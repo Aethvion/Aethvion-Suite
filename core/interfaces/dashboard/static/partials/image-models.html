@@ -1,0 +1,68 @@
+<div class="panel-header">
+    <div class="header-content">
+        <i class="fas fa-image"></i>
+        <h2>Local Image Models</h2>
+    </div>
+    <p class="header-desc">Manage your local Stable Diffusion, Flux, and other generative vision models.</p>
+</div>
+
+<div class="image-models-view">
+    <div class="hub-empty-state">
+        <i class="fas fa-mountain-sun"></i>
+        <h3>Vision Engines Hub</h3>
+        <p>This module provides a unified interface for managing local image generation models (Stable Diffusion, SDXL, Flux, etc.).</p>
+        <div class="hub-actions">
+            <button class="btn btn-primary" onclick="alert('Scan Feature Available in v1.3+')">
+                <i class="fas fa-search"></i> Scan for Models
+            </button>
+            <button class="btn btn-secondary" onclick="window.location.href='https://civitai.com/'">
+                <i class="fas fa-download"></i> CivitAI
+            </button>
+        </div>
+    </div>
+
+    <!-- Future Model list will go here -->
+</div>
+
+<style>
+.image-models-view {
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}
+
+.hub-empty-state {
+    text-align: center;
+    max-width: 500px;
+    background: var(--surface-1);
+    border: 1px dashed var(--border);
+    border-radius: 20px;
+    padding: 3rem;
+}
+
+.hub-empty-state i {
+    font-size: 4rem;
+    color: var(--primary-low);
+    margin-bottom: 1.5rem;
+}
+
+.hub-empty-state h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.hub-empty-state p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.hub-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+</style>
