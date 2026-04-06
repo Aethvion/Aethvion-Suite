@@ -413,6 +413,29 @@
                                     <div class="loading-placeholder">Loading settings.json...</div>
                                 </div>
                             </div>
+                            <!-- Tools & AI Features Card -->
+                            <div class="setting-card" id="card-tools-ai" style="margin-top: 18px;">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-wand-magic-sparkles"></i>
+                                        <span>Tools &amp; AI Features</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="section-hint" style="margin-bottom: 12px;">
+                                        These models are used for AI-powered features throughout Aethvion Suite — model compatibility queries, inline explanations, and more features as they are added.
+                                    </p>
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Info Assistant</span>
+                                            <i class="fas fa-info-circle tooltip-trigger" title="The AI model used when you click the Info button on local model cards. Also used for other AI-powered info features across the suite."></i>
+                                        </div>
+                                        <select id="setting-info-model" class="control-select">
+                                            <option value="flash">Loading models...</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Panel: .env -->

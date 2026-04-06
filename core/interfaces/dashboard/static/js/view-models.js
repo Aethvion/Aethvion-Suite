@@ -10,6 +10,7 @@ const LocalModels = {
     _ollama: { models: [], registered: new Set(), running: false },
     _filters: { search: '', sort: 'name-asc', group: 'none' },
     _systemSpecs: null,
+    _infoCache: {},
 
     init() {
         console.log("[LocalModels] Initializing...");
@@ -134,7 +135,8 @@ const LocalModels = {
                 isRegistered: !!this._registered[filename],
                 bsize: this._getBSize(filename),
                 creator: this._getCreator(filename),
-                arch: this._getArch(filename)
+                arch: this._getArch(filename),
+                company: this._getCompany(filename)
             };
         });
 
@@ -282,7 +284,8 @@ const LocalModels = {
                 ...m,
                 bsize,
                 creator: m.repo.split('/')[0],
-                arch: this._getArch(m.name || m.repo)
+                arch: this._getArch(m.name || m.repo),
+                company: this._getCompany(m.name || m.repo)
             };
         });
 
@@ -362,7 +365,12 @@ const LocalModels = {
         <div class="suggestion-card-v12 faded-in-card" id="suggested-${model.id}" style="${isUnsupported ? 'opacity: 0.6;' : ''}">
             <div style="display: flex; justify-content: space-between; align-items: start;">
                 <h4>${model.name}</h4>
-                <span class="installed-badge" style="display: none; background: var(--success); color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px;">INSTALLED</span>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <button class="sug-info-btn" onclick="LocalModels.toggleModelInfo('${model.id}', this)" title="Ask AI if this model is compatible with your PC">
+                        <i class="fas fa-circle-question"></i> Info
+                    </button>
+                    <span class="installed-badge" style="display: none; background: var(--success); color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px;">INSTALLED</span>
+                </div>
             </div>
             <p class="description">${model.description}</p>
             <div class="tag-list">
@@ -375,6 +383,7 @@ const LocalModels = {
                 ${compatBadge}
                 ${actionHtml}
             </div>
+            <div class="sug-info-panel" id="sug-info-${model.id}" style="display:none;"></div>
         </div>`;
     },
 
@@ -846,7 +855,8 @@ const LocalModels = {
                 isReg: this._ollama.registered.has(name),
                 bsize: this._getBSize(name),
                 creator: this._getCreator(name),
-                arch: this._getArch(name)
+                arch: this._getArch(name),
+                company: this._getCompany(name)
             };
         });
 
@@ -940,6 +950,94 @@ const LocalModels = {
         if (t.includes('stable')) return 'StableLM';
         if (t.includes('coder')) return 'Coder';
         return 'General';
+    },
+
+    _getCompany(text) {
+        if (!text) return 'Other';
+        const t = text.toLowerCase();
+        // NVIDIA-specific variants first
+        if (t.includes('nv-') || t.includes('nvembed') || t.includes('nvidia')) return 'NVIDIA';
+        // Google
+        if (t.includes('gemma') || t.includes('codegemma') || t.includes('gemini') || t.includes('recurrentgemma')) return 'Google';
+        // Meta
+        if (t.includes('llama') || t.includes('codellama') || t.includes('meta-llama')) return 'Meta';
+        // Microsoft
+        if (t.includes('phi-') || t.startsWith('phi') || t.includes('wizardlm') || t.includes('orca')) return 'Microsoft';
+        // Mistral AI
+        if (t.includes('mistral') || t.includes('mixtral') || t.includes('mathstral') || t.includes('devstral') || t.includes('codestral')) return 'Mistral AI';
+        // Alibaba
+        if (t.includes('qwen') || t.includes('qwq') || t.includes('marco')) return 'Alibaba';
+        // DeepSeek
+        if (t.includes('deepseek')) return 'DeepSeek';
+        // 01.AI
+        if (t.includes('yi-') || t.includes('yi1.') || t.includes('/yi')) return '01.AI';
+        // TII
+        if (t.includes('falcon')) return 'TII';
+        // Cohere
+        if (t.includes('command') || t.includes('aya')) return 'Cohere';
+        // xAI
+        if (t.includes('grok')) return 'xAI';
+        // Stability AI
+        if (t.includes('stable') || t.includes('stablelm')) return 'Stability AI';
+        // HuggingFace / SmolLM
+        if (t.includes('smollm') || t.includes('zephyr') || t.includes('idefics')) return 'HuggingFace';
+        // Nous Research
+        if (t.includes('nous') || t.includes('hermes') || t.includes('capybara') || t.includes('solar')) return 'Nous Research';
+        return 'Other';
+    },
+
+    async toggleModelInfo(modelId, btn) {
+        const panel = document.getElementById(`sug-info-${modelId}`);
+        if (!panel) return;
+
+        // Toggle if already showing
+        if (panel.style.display !== 'none' && panel.dataset.loaded === 'true') {
+            panel.style.display = 'none';
+            btn.classList.remove('active');
+            return;
+        }
+
+        // Show panel
+        panel.style.display = 'block';
+        btn.classList.add('active');
+
+        // Use cached response if available
+        if (this._infoCache[modelId]) {
+            panel.innerHTML = `<div class="sug-info-content">${this._infoCache[modelId]}</div>`;
+            panel.dataset.loaded = 'true';
+            return;
+        }
+
+        // Find model data
+        const model = this._suggestions.find(m => m.id === modelId);
+        if (!model) { panel.innerHTML = '<div class="sug-info-content">Model not found.</div>'; return; }
+
+        panel.innerHTML = `<div class="sug-info-content sug-info-loading"><i class="fas fa-spinner fa-spin"></i> Asking AI about compatibility with your hardware…</div>`;
+
+        try {
+            const res = await fetch('/api/registry/local/model-info-query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model_name: model.name,
+                    model_size: model.size || '',
+                    model_description: model.description || '',
+                    model_tags: model.tags || [],
+                    specs: this._systemSpecs || {}
+                })
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || `Server error ${res.status}`);
+            }
+            const data = await res.json();
+            const escaped = data.response.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+            this._infoCache[modelId] = escaped;
+            panel.innerHTML = `<div class="sug-info-content">${escaped}</div>`;
+            panel.dataset.loaded = 'true';
+        } catch (e) {
+            panel.innerHTML = `<div class="sug-info-content sug-info-error"><i class="fas fa-triangle-exclamation"></i> ${e.message || 'Could not fetch compatibility info.'}</div>`;
+        }
     },
 
     async pullOllamaModel() {

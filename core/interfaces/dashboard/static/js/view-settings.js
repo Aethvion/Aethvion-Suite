@@ -86,6 +86,13 @@ async function loadPreferences() {
         };
     }
 
+    const infoModel = document.getElementById('setting-info-model');
+    if (infoModel) {
+        infoModel.onchange = async (e) => {
+            await savePreference('system.info_model', e.target.value);
+        };
+    }
+
     const misakaTypingSpeed = document.getElementById('setting-misakacipher-typing-speed');
     const misakaTypingVal = document.getElementById('setting-misakacipher-typing-speed-val');
     if (misakaTypingSpeed && misakaTypingVal) {
@@ -1068,7 +1075,8 @@ async function loadChatModels() {
         document.getElementById('arena-model-add'),
         document.getElementById('aiconv-model-add'),
         document.getElementById('advaiconv-person-add'),
-        document.getElementById('setting-misakacipher-model')
+        document.getElementById('setting-misakacipher-model'),
+        document.getElementById('setting-info-model')
     ].filter(Boolean);
 
     if (selects.length === 0) return;
@@ -1103,6 +1111,11 @@ async function loadChatModels() {
                 }
             } else if (sel.id === 'setting-misakacipher-model') {
                 const prefModel = prefs.get('misakacipher.model', 'gemini-1.5-flash');
+                if (sel.querySelector(`option[value="${prefModel}"]`)) {
+                    sel.value = prefModel;
+                }
+            } else if (sel.id === 'setting-info-model') {
+                const prefModel = prefs.get('system.info_model', 'flash');
                 if (sel.querySelector(`option[value="${prefModel}"]`)) {
                     sel.value = prefModel;
                 }

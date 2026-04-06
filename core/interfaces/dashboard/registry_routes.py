@@ -1070,6 +1070,83 @@ async def get_system_specs():
     return specs
 
 
+class ModelInfoQuery:
+    def __init__(self, **data):
+        self.model_name        = data.get('model_name', '')
+        self.model_size        = data.get('model_size', '')
+        self.model_description = data.get('model_description', '')
+        self.model_tags        = data.get('model_tags', [])
+        self.specs             = data.get('specs', {})
+
+
+@router.post("/local/model-info-query")
+async def query_model_info(request: Request):
+    """Ask the configured Info Assistant AI if a model is compatible with user's hardware."""
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    model_name  = body.get('model_name', 'Unknown')
+    model_size  = body.get('model_size', '')
+    model_desc  = body.get('model_description', '')
+    model_tags  = body.get('model_tags', [])
+    specs       = body.get('specs', {})
+
+    vram    = specs.get('vram_gb', 0)
+    ram     = specs.get('ram_total_gb', 0)
+    gpu     = specs.get('gpu_name') or 'No CUDA GPU detected'
+    cpu     = specs.get('cpu_name', 'Unknown CPU')
+    cores   = specs.get('cpu_cores', 0)
+
+    # Read configured info model from preferences
+    try:
+        from core.workspace.preferences_manager import get_preferences_manager
+        prefs = get_preferences_manager()
+        info_model = prefs.get('system.info_model', 'flash')
+    except Exception:
+        info_model = 'flash'
+
+    tags_str = ', '.join(model_tags) if model_tags else 'general'
+    specs_block = f"""- CPU: {cpu} ({cores} cores)
+- GPU: {gpu}
+- VRAM: {vram} GB
+- System RAM: {ram} GB"""
+
+    prompt = f"""You are a concise AI hardware compatibility advisor. The user wants to know if they can run a specific AI model.
+
+User's Hardware:
+{specs_block}
+
+Model to evaluate:
+- Name: {model_name}
+- File size: {model_size}
+- Description: {model_desc}
+- Tags: {tags_str}
+
+In 3-5 sentences: Can this user run this model? Will it run on GPU or CPU? Estimate VRAM usage. Mention any caveats. Be direct and practical."""
+
+    try:
+        from core.providers.provider_manager import ProviderManager
+        import uuid
+        pm = ProviderManager()
+        response = pm.call_with_failover(
+            prompt=prompt,
+            trace_id=f"model-info-{uuid.uuid4().hex[:8]}",
+            temperature=0.3,
+            model=info_model,
+            request_type="generation",
+            source="model_info",
+        )
+        if not response.success:
+            raise HTTPException(status_code=500, detail=response.error or "Info query failed")
+        return {"response": response.content}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/local/install-cuda-llama")
 async def install_cuda_llama():
     """Reinstall llama-cpp-python with CUDA support, streaming pip output as SSE."""
