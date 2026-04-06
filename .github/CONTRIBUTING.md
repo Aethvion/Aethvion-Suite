@@ -165,7 +165,7 @@ When contributing to Nexus Core:
 
 ## License
 
-By contributing to Aethvion Suite, you agree that your contributions will be licensed under the MIT License.
+By contributing to Aethvion Suite, you agree to the [Contributor License Agreement (CLA)](../LICENSE) defined in the main LICENSE file.
 
 ---
 
