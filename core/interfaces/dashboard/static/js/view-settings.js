@@ -2864,10 +2864,11 @@ async function loadOverlaySettings() {
 }
 
 function _overlayApplyStatus(status) {
-    const badge   = document.getElementById('overlay-status-badge');
-    const textEl  = badge?.querySelector('.overlay-status-text');
-    const launchBtn = document.getElementById('overlay-launch-btn');
-    const stopBtn   = document.getElementById('overlay-stop-btn');
+    const badge      = document.getElementById('overlay-status-badge');
+    const textEl     = badge?.querySelector('.overlay-status-text');
+    const launchBtn  = document.getElementById('overlay-launch-btn');
+    const stopBtn    = document.getElementById('overlay-stop-btn');
+    const installBtn = document.getElementById('overlay-install-btn');
 
     const running = status?.running ?? false;
 
@@ -2876,23 +2877,25 @@ function _overlayApplyStatus(status) {
     }
     if (textEl) textEl.textContent = running ? 'Running' : 'Not running';
 
-    if (launchBtn) launchBtn.style.display = running ? 'none'  : '';
-    if (stopBtn)   stopBtn.style.display   = running ? ''      : 'none';
+    if (launchBtn) launchBtn.style.display = running ? 'none' : '';
+    if (stopBtn)   stopBtn.style.display   = running ? ''     : 'none';
 
     // Dependencies
-    const deps     = status?.deps ?? {};
-    const depsEl   = document.getElementById('overlay-deps-list');
-    const pipHint  = document.getElementById('overlay-pip-hint');
+    const deps   = status?.deps ?? {};
+    const depsEl = document.getElementById('overlay-deps-list');
     if (depsEl) {
-        const pkgs   = ['PyQt6', 'pystray', 'Pillow', 'mss', 'keyboard'];
+        const pkgs    = ['PyQt6', 'pystray', 'Pillow', 'mss', 'keyboard'];
         const missing = pkgs.filter(p => deps[p] === false);
+
         depsEl.innerHTML = pkgs.map(pkg => {
             const ok = deps[pkg] !== false;
             return `<div class="overlay-dep-chip overlay-dep-chip--${ok ? 'ok' : 'missing'}">
                         <i class="fas fa-${ok ? 'check' : 'xmark'}"></i> ${_escHtml(pkg)}
                     </div>`;
         }).join('');
-        if (pipHint) pipHint.style.display = missing.length ? '' : 'none';
+
+        // Show install button only when something is missing
+        if (installBtn) installBtn.style.display = missing.length ? '' : 'none';
     }
 
     if (!status?.script_exists) {
@@ -2978,8 +2981,56 @@ function _overlayToast(msg, isError = false) {
     }
 }
 
-window.overlayLaunch         = overlayLaunch;
-window.overlayStop           = overlayStop;
-window.overlayRefreshStatus  = overlayRefreshStatus;
-window.overlaySaveConfig     = overlaySaveConfig;
+async function overlayInstallDeps() {
+    const btn     = document.getElementById('overlay-install-btn');
+    const logWrap = document.getElementById('overlay-install-log-wrap');
+    const logEl   = document.getElementById('overlay-install-log');
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Installing…';
+    }
+    if (logWrap) logWrap.style.display = '';
+    if (logEl)   logEl.textContent = 'Running pip install…\n';
+
+    try {
+        const res  = await fetch('/api/overlay/install-deps', { method: 'POST' });
+        const data = res.ok ? await res.json() : { success: false, output: await res.text() };
+
+        if (logEl) logEl.textContent = data.output ?? '(no output)';
+
+        if (data.success) {
+            _overlayToast('Packages installed successfully.');
+            // Re-apply deps chips from the fresh check returned by the endpoint
+            if (data.deps) _overlayApplyStatus({ deps: data.deps, running: false, script_exists: true });
+        } else {
+            _overlayToast('Some packages may not have installed — check the log below.', true);
+        }
+    } catch (e) {
+        if (logEl) logEl.textContent += `\nError: ${e.message}`;
+        _overlayToast(`Install failed: ${e.message}`, true);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-download"></i> Install Missing';
+        }
+        // Refresh status so chips update
+        setTimeout(overlayRefreshStatus, 500);
+    }
+}
+
+function overlayInstallLogCopy() {
+    const logEl = document.getElementById('overlay-install-log');
+    if (!logEl) return;
+    navigator.clipboard.writeText(logEl.textContent).then(() => {
+        _overlayToast('Log copied to clipboard.');
+    }).catch(() => {});
+}
+
+window.overlayLaunch            = overlayLaunch;
+window.overlayStop              = overlayStop;
+window.overlayRefreshStatus     = overlayRefreshStatus;
+window.overlaySaveConfig        = overlaySaveConfig;
+window.overlayInstallDeps       = overlayInstallDeps;
+window.overlayInstallLogCopy    = overlayInstallLogCopy;
 

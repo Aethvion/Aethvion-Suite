@@ -892,17 +892,29 @@ console.log(response.choices[0].message.content);</pre>
                                         <i class="fas fa-box-open"></i>
                                         <span>Required Packages</span>
                                     </div>
+                                    <button class="action-btn primary xs-btn" id="overlay-install-btn"
+                                            onclick="overlayInstallDeps()" style="display:none;">
+                                        <i class="fas fa-download"></i> Install Missing
+                                    </button>
                                 </div>
                                 <div class="card-content">
                                     <p class="section-hint" style="margin-bottom: 0.75rem;">
-                                        The overlay sidecar needs these Python packages.
-                                        Install any missing ones, then click <strong>Launch Overlay</strong>.
+                                        The overlay sidecar needs these Python packages inside Aethvion's
+                                        <code style="font-size:0.75rem;">.venv</code>.
+                                        Click <strong>Install Missing</strong> to install them automatically.
                                     </p>
                                     <div id="overlay-deps-list" class="overlay-deps-grid">
                                         <!-- populated by JS -->
                                     </div>
-                                    <div id="overlay-pip-hint" style="display:none; margin-top: 0.75rem;">
-                                        <pre class="extapi-code-block" style="font-size:0.75rem;">pip install PyQt6 pystray Pillow mss keyboard</pre>
+                                    <!-- pip log output, shown during / after install -->
+                                    <div id="overlay-install-log-wrap" style="display:none; margin-top: 0.85rem;">
+                                        <div class="overlay-install-log-header">
+                                            <span><i class="fas fa-terminal"></i> pip output</span>
+                                            <button class="extapi-copy-btn" onclick="overlayInstallLogCopy()" title="Copy log">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </div>
+                                        <pre id="overlay-install-log" class="overlay-install-log"></pre>
                                     </div>
                                 </div>
                             </div>
