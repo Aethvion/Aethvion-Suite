@@ -13,6 +13,7 @@ from core.interfaces.cli_modules.nexus_module import nexus_core_module
 from core.interfaces.cli_modules.factory_module import factory_module
 from core.interfaces.cli_modules.forge_module import forge_module
 from core.interfaces.cli_modules.memory_module import memory_module
+from core.interfaces.cli_modules.companions_module import companions_module
 
 from core.nexus_core import NexusCore
 from core.factory import AgentFactory
@@ -82,6 +83,16 @@ class MisakaCLI:
             except Exception:
                 console.print(" [yellow]–[/yellow] [dim](status unavailable)[/dim]")
 
+            # Companions registry check (informational only)
+            console.print("  • Companions...", end="")
+            try:
+                from core.companions.registry import COMPANIONS
+                names = [c.name for c in COMPANIONS.values()]
+                console.print(f" [bold green]✓[/bold green] [dim]({len(names)} registered: {', '.join(names)})[/dim]")
+            except Exception as e:
+                console.print(f" [yellow]⚠ unavailable[/yellow]")
+                logger.warning(f"Companion registry not available: {e}")
+
             console.print("\n[bold green]All systems operational[/bold green]\n")
             return True
 
@@ -106,6 +117,7 @@ class MisakaCLI:
             "LLM Arena           — Model vs Model Battles",
             "Settings            — Configuration & Providers",
             "System Status       — Diagnostics",
+            "Companions          — Registry, Memory & Identity",
         ]
 
         print_menu("Main Menu", options)
@@ -166,6 +178,10 @@ class MisakaCLI:
             elif choice == 9:
                 from core.interfaces.cli_modules.system_module import show_system_status
                 show_system_status(self.nexus, self.factory, self.forge)
+
+            elif choice == 10:
+                from core.interfaces.cli_modules.companions_module import companions_module
+                companions_module()
 
 
 def _try_read_env_token() -> str:

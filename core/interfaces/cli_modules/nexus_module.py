@@ -1,5 +1,5 @@
 ﻿"""
-Misaka Cipher - Nexus Core Module
+Aethvion Suite - Nexus Core Module
 Direct AI interaction through Nexus Core
 """
 
@@ -79,13 +79,13 @@ def nexus_core_module(nexus: NexusCore):
         with show_progress("Sending request to Nexus Core...") as progress:
             progress.add_task("processing", total=None)
             
-            # Use route_hints if a specific model was selected to override the default Nexus router
+            # Pass model directly; Request.model overrides Nexus router default
             request = Request(
                 prompt=prompt,
                 request_type="generation",
                 temperature=temperature,
                 max_tokens=max_tokens,
-                route_hints={"model": selected_model} if selected_model else {}
+                model=selected_model if selected_model else None,
             )
             
             response = nexus.route_request(request)

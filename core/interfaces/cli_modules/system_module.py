@@ -1,5 +1,5 @@
 """
-Misaka Cipher - System Status Module
+Aethvion Suite - System Status Module
 Displays system diagnostics and health information
 """
 
@@ -30,7 +30,7 @@ def show_system_status(nexus: NexusCore, factory: AgentFactory, forge: ToolForge
         forge: ToolForge instance
     """
     clear_screen()
-    print_header("System Status", "Misaka Cipher — Comprehensive Diagnostics")
+    print_header("System Status", "Aethvion Suite — Comprehensive Diagnostics")
 
     issues = []  # Track any problems for the health summary
 
@@ -184,6 +184,27 @@ def show_system_status(nexus: NexusCore, factory: AgentFactory, forge: ToolForge
 
     except Exception as e:
         print_warning(f"Discord status check failed: {str(e)}")
+
+    # ── Companions ───────────────────────────────────────────────────────────
+    console.print("\n[bold cyan]═══ Companions ═══[/bold cyan]")
+    try:
+        from core.companions.registry import COMPANIONS
+        if not COMPANIONS:
+            console.print("[dim]No companions registered.[/dim]")
+        else:
+            for cid, cfg in COMPANIONS.items():
+                data_ok    = "[green]✓[/green]" if cfg.data_dir.exists()    else "[red]✗[/red]"
+                history_ok = "[green]✓[/green]" if cfg.history_dir.exists() else "[red]✗[/red]"
+                console.print(
+                    f"  [bold yellow]{cfg.name}[/bold yellow]  "
+                    f"[dim]{cfg.route_prefix}[/dim]  "
+                    f"data:{data_ok}  history:{history_ok}  "
+                    f"[dim]{len(cfg.expressions)} expressions[/dim]"
+                )
+            print_success(f"{len(COMPANIONS)} companion(s) registered")
+    except Exception as e:
+        print_warning(f"Companion registry unavailable: {str(e)}")
+        issues.append(f"Companions: {str(e)}")
 
     # ── Overall Health ────────────────────────────────────────────────────────
     console.print("\n" + "═" * 50)

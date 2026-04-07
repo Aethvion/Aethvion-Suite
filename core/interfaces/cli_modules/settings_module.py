@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Settings Module
+Aethvion Suite - Settings Module
 CLI module for managing providers, identity, and social registry
 """
 
@@ -89,10 +89,10 @@ def show_providers_menu():
 
 
 def show_identity_menu():
-    """View Misaka's base identity and dynamic memory."""
+    """View companion identity files (base_info + dynamic memory)."""
     while True:
         clear_screen()
-        print_header("Identity Profile", "Misaka's Persistent Identity Files")
+        print_header("Identity Profile", "Companion Persistent Identity Files")
 
         options = [
             "View Base Info    — Personality, name, traits",

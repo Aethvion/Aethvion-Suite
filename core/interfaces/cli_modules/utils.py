@@ -1,5 +1,5 @@
 """
-Misaka Cipher - CLI Utilities
+Aethvion Suite - CLI Utilities
 Shared utilities for CLI modules using rich library
 """
 
@@ -41,23 +41,25 @@ def print_header(title: str, subtitle: Optional[str] = None):
 
 
 def print_banner():
-    """Print the Misaka Cipher banner."""
-    banner = """
-███╗   ███╗██╗███████╗ █████╗ ██╗  ██╗ █████╗ 
-████╗ ████║██║██╔════╝██╔══██╗██║ ██╔╝██╔══██╗
-██╔████╔██║██║███████╗███████║█████╔╝ ███████║
-██║╚██╔╝██║██║╚════██║██╔══██║██╔═██╗ ██╔══██║
-██║ ╚═╝ ██║██║███████║██║  ██║██║  ██╗██║  ██║
-╚═╝     ╚═╝╚═╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝
-    """
-    
-    console.print(banner, style="bold blue")
+    """Print the Aethvion Suite banner."""
+    from rich.align import Align
+    from rich.text import Text as RichText
+
+    title = RichText(justify="center")
+    title.append(" █████╗ ███████╗████████╗██╗  ██╗██╗   ██╗██╗ ██████╗ ███╗   ██╗\n", style="bold bright_cyan")
+    title.append("██╔══██╗██╔════╝╚══██╔══╝██║  ██║██║   ██║██║██╔═══██╗████╗  ██║\n", style="bold bright_cyan")
+    title.append("███████║█████╗     ██║   ███████║██║   ██║██║██║   ██║██╔██╗ ██║\n", style="bold bright_cyan")
+    title.append("██╔══██║██╔══╝     ██║   ██╔══██║╚██╗ ██╔╝██║██║   ██║██║╚██╗██║\n", style="bold bright_cyan")
+    title.append("██║  ██║███████╗   ██║   ██║  ██║ ╚████╔╝ ██║╚██████╔╝██║ ╚████║\n", style="bold bright_cyan")
+    title.append("╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝  ╚═══╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝", style="bold bright_cyan")
+
+    console.print(title)
     console.print(
-        "Multitask Intelligence & Strategic Analysis Kernel Architecture",
+        "Local AI Dashboard & Agentic Center",
         style="italic dim",
         justify="center"
     )
-    console.print("Aethvion Agentic Center\n", style="bold cyan", justify="center")
+    console.print("Command Line Interface\n", style="bold cyan", justify="center")
 
 
 def print_menu(title: str, options: List[str], include_exit: bool = True):
