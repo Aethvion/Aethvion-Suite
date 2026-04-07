@@ -12,6 +12,7 @@ from typing import Callable, Optional, List, Dict, Any
 from core.utils.logger import get_logger
 from core.utils import utcnow_iso
 from core.orchestrator.task_queue import is_agent_task_cancelled
+from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
 
@@ -661,7 +662,7 @@ class AgentRunner:
                 temperature=0.2,
                 model=self.model_id,
                 request_type="generation",
-                source="agent",
+                source=CallSource.AGENT,
                 max_tokens=8192,
                 images=call_images,
             ):

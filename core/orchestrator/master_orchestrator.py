@@ -23,6 +23,7 @@ from .intent_analyzer import IntentAnalyzer, IntentAnalysis, IntentType
 from core.memory.identity_manager import IdentityManager
 from core.memory.history_manager import HistoryManager
 from core.orchestrator.persona_manager import PersonaManager
+from core.ai.call_contexts import CallSource, PERSONA_SOURCES
 
 logger = get_logger(__name__)
 
@@ -141,8 +142,10 @@ class MasterOrchestrator:
              })
         
         try:
-            # IDENTIFY PERSONA SOURCE (usually everything but specialized tool-only requests)
-            use_persona = (source in ["discord", "misakacipher"])
+            # IDENTIFY PERSONA SOURCE — only sources listed in PERSONA_SOURCES get the
+            # full Misaka persona via PersonaManager.  See core/ai/call_contexts.py for
+            # the canonical list.  Never add source strings here directly.
+            use_persona = (source in PERSONA_SOURCES)
             
             if use_persona:
                 logger.info(f"[{trace_id}] Routing directly to PersonaManager (source={source})")

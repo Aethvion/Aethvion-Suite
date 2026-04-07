@@ -21,6 +21,7 @@ _UTC = ZoneInfo('UTC')
 
 from core.utils.logger import get_logger
 from core.utils import utcnow_iso
+from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
 
@@ -420,7 +421,7 @@ class ScheduleManager:
                         _notify(
                             title=f"✓ {task_name} — Done",
                             message=preview or "Task completed with no output.",
-                            source="schedule",
+                            source=CallSource.SCHEDULE,
                             level="success",
                             target=nav_target,
                         )
@@ -428,7 +429,7 @@ class ScheduleManager:
                         _notify(
                             title=f"✗ {task_name} — Failed",
                             message=preview or "Task encountered an error.",
-                            source="schedule",
+                            source=CallSource.SCHEDULE,
                             level="error",
                             target=nav_target,
                         )

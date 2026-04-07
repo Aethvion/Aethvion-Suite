@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from core.utils import get_logger, utcnow_iso
 from core.utils.paths import LOGS_NOTIFICATIONS
+from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
 
@@ -136,7 +137,7 @@ def notify(
         notify(
             title="Task Done",
             message="MyTask completed successfully.",
-            source="schedule",
+            source=CallSource.SCHEDULE,
             level="success",
             target={"tab": "schedule"},
         )

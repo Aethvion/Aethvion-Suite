@@ -19,6 +19,7 @@ from core.utils import utcnow_iso
 import json
 from pathlib import Path
 from core.utils.paths import HISTORY_ADVANCED
+from core.ai.call_contexts import CallSource
 
 PEOPLE_DIR = HISTORY_ADVANCED / "people"
 THREADS_DIR = HISTORY_ADVANCED / "threads"
@@ -230,7 +231,7 @@ CRITICAL: You MUST reply in the exact JSON format below. Do not wrap in markdown
                     return await asyncio.to_thread(
                         nexus.provider_manager.call_with_failover,
                         prompt=prompt, system_prompt=system_prompt, trace_id=trace_id, 
-                        model=model_clean, source="research", json_mode=True
+                        model=model_clean, source=CallSource.RESEARCH, json_mode=True
                     )
                 
                 resp = loop.run_until_complete(fetch())

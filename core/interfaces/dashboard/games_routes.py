@@ -13,6 +13,7 @@ from typing import List, Dict, Any, Optional
 
 from .games_logic import get_ai_game_manager, AIGameSession
 from core.utils import get_logger
+from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/games", tags=["games"])
@@ -76,7 +77,7 @@ async def _call_ai(session: AIGameSession, user_message: str, expected_action: O
                     max_tokens=1024,
                     model=session.model,
                     json_mode=use_json_mode,   
-                    source="game"
+                    source=CallSource.GAME
                 )
             )
 
@@ -547,7 +548,7 @@ async def generate_word_search(req: WordSearchGenerateRequest):
                 max_tokens=2048,
                 model=req.model,
                 json_mode=False,
-                source="game"
+                source=CallSource.GAME
             )
         )
 

@@ -17,6 +17,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from core.utils.logger import get_logger
+from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
 
@@ -162,7 +163,7 @@ async def chat_completions(
             max_tokens=req.max_tokens,
             model=req.model,
             request_type="generation",
-            source="external_api",
+            source=CallSource.EXTERNAL_API,
         )
         if not resp.success:
             raise HTTPException(status_code=500, detail=resp.error or "Provider call failed")
@@ -202,7 +203,7 @@ async def _stream_chunks(req: ChatCompletionRequest, prompt: str, system_prompt:
             temperature=req.temperature or 0.7,
             max_tokens=req.max_tokens,
             model=req.model,
-            source="external_api",
+            source=CallSource.EXTERNAL_API,
         ):
             data = json.dumps({
                 "id": cid, "object": "chat.completion.chunk",

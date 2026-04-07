@@ -13,6 +13,7 @@ from datetime import datetime
 
 from core.utils import get_logger, utcnow_iso
 from core.utils.paths import HISTORY_ADVANCED
+from core.ai.call_contexts import CallSource
 
 logger = get_logger("web.research_board_routes")
 
@@ -195,7 +196,7 @@ Output a strictly valid JSON object:
             system_prompt=system_prompt,
             model=req.model_id,
             trace_id=uuid.uuid4().hex,
-            source="research_board",
+            source=CallSource.RESEARCH,
             json_mode=True
         )
         if not response.success: raise Exception(response.error)
@@ -267,7 +268,7 @@ Provide a professional, structured markdown recommendation to the CEO based on t
             system_prompt=system_prompt,
             model=req.model_id,
             trace_id=uuid.uuid4().hex,
-            source="research_board"
+            source=CallSource.RESEARCH
         )
         if not response.success: raise Exception(response.error)
         

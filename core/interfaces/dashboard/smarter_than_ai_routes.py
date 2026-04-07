@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.utils import get_logger
+from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/smarter-than-ai", tags=["smarter-than-ai"])
@@ -207,7 +208,7 @@ async def _llm_call(model: str, prompt: str, trace_id: str, temperature: float =
             temperature=temperature,
             max_tokens=512,
             model=model,
-            source="game"
+            source=CallSource.GAME
         )
         if response and response.success:
             return response.content

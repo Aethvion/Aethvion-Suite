@@ -21,6 +21,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.utils.logger import get_logger
+from core.ai.call_contexts import CallSource, build_overlay_prompt, validate_call_context
 
 logger = get_logger(__name__)
 
@@ -115,15 +116,19 @@ async def overlay_ask(req: AskRequest):
             except Exception as decode_err:
                 raise ValueError(f"Could not decode screenshot: {decode_err}") from decode_err
 
+        system_prompt = build_overlay_prompt()
+        validate_call_context(CallSource.OVERLAY, system_prompt, trace_id)
+
         # call_with_failover is synchronous — run in a thread to avoid blocking the event loop
         response = await asyncio.get_event_loop().run_in_executor(
             None,
             lambda: pm.call_with_failover(
                 prompt=req.question,
                 trace_id=trace_id,
+                system_prompt=system_prompt,
                 model=model_id,
                 max_tokens=1024,
-                source="overlay",
+                source=CallSource.OVERLAY,
                 **extra_kwargs,
             ),
         )

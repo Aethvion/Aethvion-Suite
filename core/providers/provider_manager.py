@@ -269,6 +269,14 @@ class ProviderManager:
         model_order = []
         is_agent = request_type == "agent_call" or "agent" in request_type
 
+        # Soft context-isolation check — logs warnings, never blocks execution.
+        # Add new call modes to core/ai/call_contexts.py, not here.
+        try:
+            from core.ai.call_contexts import validate_call_context, CallSource
+            validate_call_context(source, system_prompt, trace_id)
+        except Exception:
+            pass  # validation must never break a real call
+
         # Extract auto-routing metadata placeholder (set later if AUTO mode runs)
         auto_routing_meta: dict = {}
 
@@ -346,7 +354,7 @@ class ProviderManager:
                                 temperature=0.0,
                                 model=route_picker,
                                 request_type="generation",
-                                source="auto_router",
+                                source=CallSource.AUTO_ROUTER,
                                 images=kwargs.get('images')
                             )
                             if routing_response.success:

@@ -14,6 +14,7 @@ from datetime import datetime
 
 from core.utils import get_logger, utcnow_iso
 from core.utils.paths import HISTORY_ADVANCED
+from core.ai.call_contexts import CallSource
 
 logger = get_logger("web.advanced_aiconv_routes")
 
@@ -323,7 +324,7 @@ Format exactly like this:
             system_prompt=system_prompt,
             model=req.model_id,
             trace_id=uuid.uuid4().hex,
-            source="research",
+            source=CallSource.RESEARCH,
             json_mode=True # Hint if supported by pm
         )
         if not response.success:

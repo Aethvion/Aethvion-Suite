@@ -17,6 +17,7 @@ from core.security import IntelligenceFirewall, RoutingDecision
 from core.memory.history_manager import HistoryManager
 import mimetypes
 import os
+from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
 
@@ -159,7 +160,7 @@ class DiscordWorker(commands.Bot):
             result = await self.orchestrator.process_message(
                 full_prompt, 
                 trace_id=trace_id,
-                source="discord",
+                source=CallSource.DISCORD,
                 security_context=security_context,
                 allow_tools=allow_tools
             )

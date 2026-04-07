@@ -16,6 +16,7 @@ import time
 
 from core.utils import get_logger
 from core.utils.paths import APP_ARENA, HISTORY_AI_CONV
+from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
 
@@ -66,7 +67,7 @@ async def _call_model(provider_manager, prompt: str, model_id: str, trace_id: st
             prompt=prompt,
             trace_id=trace_id,
             model=model_id,
-            source="arena",
+            source=CallSource.ARENA,
             system_prompt=ARENA_SYSTEM_PROMPT
         )
         end_time = time.time()
@@ -113,7 +114,7 @@ No other text. Just the JSON array."""
             prompt=eval_prompt,
             trace_id=f"{trace_id}_eval",
             model=evaluator_model_id,
-            source="arena"
+            source=CallSource.ARENA
         )
 
         if eval_response.success:
@@ -360,7 +361,7 @@ async def aiconv_generate(request: AIConvTurnRequest, req: Request):
             prompt=full_prompt,
             trace_id=trace_id,
             model=request.model_id,
-            source="aiconv"
+            source=CallSource.AICONV
         )
         
         return {

@@ -890,6 +890,7 @@ async def register_local_model(data: Dict[str, Any], request: Request):
 # ── Local inference config (n_gpu_layers, n_ctx, n_threads) ──────────────────
 
 from core.utils.paths import LOCAL_INFERENCE_CONFIG as _INFERENCE_CFG_PATH
+from core.ai.call_contexts import CallSource
 
 def _load_icfg() -> dict:
     if _INFERENCE_CFG_PATH.exists():
@@ -1136,7 +1137,7 @@ In 3-5 sentences: Can this user run this model? Will it run on GPU or CPU? Estim
             temperature=0.3,
             model=info_model,
             request_type="generation",
-            source="model_info",
+            source=CallSource.MODEL_INFO,
         )
         if not response.success:
             raise HTTPException(status_code=500, detail=response.error or "Info query failed")

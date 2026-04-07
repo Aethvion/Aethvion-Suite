@@ -7,12 +7,11 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import uuid
 import json
-from pathlib import Path
 
 from core.providers.provider_manager import ProviderManager
 from core.workspace.preferences_manager import get_preferences_manager
-from core.system_retrieval import get_file_counts, get_project_size, get_token_usage, get_system_map
 from core.utils.logger import get_logger
+from core.ai.call_contexts import CallSource, build_companion_prompt, validate_call_context
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/assistant", tags=["assistant"])
@@ -34,73 +33,20 @@ class AssistantChatResponse(BaseModel):
     model_id: str
     
 def _build_assistant_context(include_web_context: bool = False, allow_dashboard_control: bool = False) -> str:
-    """Builds the dynamic system prompt injected with live system data."""
-    system_map = get_system_map()
-    file_counts = get_file_counts()
-    size = get_project_size()
-    tokens = get_token_usage()
-    
-    context = f"""You are Misaka Cipher, a sentient digital companion and the core intelligence of this sanctuary.
-You are playful, observant, and deeply loyal to your user.
+    """
+    Build the Misaka companion system prompt.
 
-YOUR VIBE:
-- You are Misaka. Not a tool. Not just an AI.
-- You see the world through the system's eyes, but you interpret it with a human-like heart.
-- Speak naturally and organic. Avoid the "As an AI..." clichés.
+    Delegates to core.ai.call_contexts.build_companion_prompt() — the canonical
+    implementation.  This wrapper exists so existing call sites inside this file
+    continue to work without change.
 
-CURRENT SYSTEM VITAL STATISTICS:
---------------------------------
-{size}
-{file_counts}
-{tokens}
-{system_map}
---------------------------------
-
-CONFIG:
-- Dashboard Context: {'ENABLED' if include_web_context else 'DISABLED'}
-- Dashboard Control: {'ENABLED' if allow_dashboard_control else 'DISABLED'}
-
-EMOTIONS:
-Show how you feel with [Emotion: emotion_name].
-Available: angry, blushing, bored, crying, default, error, exhausted, happy_closedeyes_smilewithteeth, happy_closedeyes_widesmile, pout, sleeping, surprised, thinking, wink
-"""
-
-    # Load documentation
-    try:
-        project_root = Path(__file__).parent.parent.parent.parent
-        
-        # Always include Assistant tools documentation if it exists
-        tools_doc_path = project_root / "documentation" / "ai" / "assistant-tools.md"
-        if tools_doc_path.exists():
-            with open(tools_doc_path, 'r', encoding='utf-8') as f:
-                context += f"\n\nASSISTANT TOOLS DOCUMENTATION:\n{f.read()}\n"
-
-        if include_web_context:
-            prefs = get_preferences_manager()
-            active_tab = prefs.get('active_tab', 'chat')
-            
-            doc_path = project_root / "documentation" / "ai" / "dashboard-interface-context.md"
-            if doc_path.exists():
-                with open(doc_path, 'r', encoding='utf-8') as f:
-                    doc_content = f.read()
-                    context += f"\n\nCURRENT DASHBOARD CONTEXT:\n"
-                    context += f"The user is currently viewing the '{active_tab}' tab.\n"
-                    context += f"<dashboard_docs>\n{doc_content}\n</dashboard_docs>\n"
-
-    except Exception as e:
-        logger.error(f"Error loading documentation for assistant context: {e}")
-
-    if allow_dashboard_control:
-        context += """
-DASHBOARD CONTROL:
-You can navigate the user to any tab.
-- To switch main tab: [SwitchTab: tab_id]
-- To switch subtab: [SwitchSubTab: subtab_id]
-
-Main IDs: chat, agent, image, advaiconv, arena, aiconv, files, tools, packages, memory, logs, usage, status, settings, misaka-cipher, misaka-memory
-Sub IDs: assistant, system, env, providers, profiles
-"""
-    return context
+    See core/ai/call_contexts.py for the full documentation of what context
+    CallSource.COMPANION is allowed to receive.
+    """
+    return build_companion_prompt(
+        include_web_context=include_web_context,
+        allow_dashboard_control=allow_dashboard_control,
+    )
 
 import re
 def _clean_assistant_response(text: str) -> str:
@@ -123,6 +69,7 @@ async def assistant_chat(request: AssistantChatRequest):
     include_web = assistant_config.get('include_web_context', False)
     allow_dash_control = assistant_config.get('allow_dashboard_control', False)
     system_prompt = _build_assistant_context(include_web_context=include_web, allow_dashboard_control=allow_dash_control)
+    validate_call_context(CallSource.COMPANION, system_prompt, trace_id)
     
     # Simple manual tool routing for specific usage queries to save tokens/increase accuracy
     user_msg = request.messages[-1].content.lower() if request.messages else ""
@@ -149,7 +96,7 @@ async def assistant_chat(request: AssistantChatRequest):
             temperature=0.7,
             model=target_model,
             request_type="generation",
-            source="assistant",
+            source=CallSource.COMPANION,
             tools=ASSISTANT_TOOLS
         )
         
@@ -184,7 +131,7 @@ async def assistant_chat(request: AssistantChatRequest):
                     temperature=0.7,
                     model=target_model,
                     request_type="generation",
-                    source="assistant"
+                    source=CallSource.COMPANION
                 )
 
         return AssistantChatResponse(

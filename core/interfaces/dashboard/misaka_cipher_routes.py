@@ -26,6 +26,7 @@ from core.providers.provider_manager import ProviderManager
 from core.workspace.preferences_manager import get_preferences_manager
 from core.utils.logger import get_logger
 from core.utils.paths import PERSONA_MISAKA, WORKSPACES, HISTORY_CHAT, WS_UPLOADS
+from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/misakacipher", tags=["misakacipher"])
@@ -1103,7 +1104,7 @@ CRITICAL: Never output raw JSON or technical jargon unless specifically requeste
                 temperature=0.8,
                 model=model,
                 request_type="generation",
-                source="misakacipher",
+                source=CallSource.MISAKA_CIPHER,
                 images=original_images
             ):
                 full_content += chunk

@@ -19,6 +19,7 @@ def _parse_dt(ts: str) -> datetime:
 from core.tools.standard.file_ops import WORKSPACE_ROOT
 from core.utils.paths import WS_PROJECTS, HISTORY_AGENTS
 from .task_models import Task, TaskStatus, ChatThread, ChatFolder
+from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
 
@@ -281,7 +282,7 @@ class TaskWorker:
                             trace_id=task.id,
                             model_id=model_id, 
                             images=images, 
-                            source="chat",
+                            source=CallSource.CHAT,
                             internet_search=settings.get('internet_search', False)
                         )
                     

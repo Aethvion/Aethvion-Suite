@@ -17,6 +17,7 @@ import asyncio
 import time
 import uuid
 from core.utils.paths import APP_ARENA
+from core.ai.call_contexts import CallSource
 
 _LEADERBOARD_FILE = APP_ARENA / "leaderboard.json"
 
@@ -66,7 +67,7 @@ def run_battle(nexus, prompt: str, model1: str, model2: str):
             t1 = time.time()
             res1 = await asyncio.to_thread(
                 nexus.provider_manager.call_with_failover,
-                prompt=prompt, trace_id=trace_id+"_1", model=m1_clean, source="arena"
+                prompt=prompt, trace_id=trace_id+"_1", model=m1_clean, source=CallSource.ARENA
             )
             return time.time() - t1
             
@@ -75,7 +76,7 @@ def run_battle(nexus, prompt: str, model1: str, model2: str):
             t2 = time.time()
             res2 = await asyncio.to_thread(
                 nexus.provider_manager.call_with_failover,
-                prompt=prompt, trace_id=trace_id+"_2", model=m2_clean, source="arena"
+                prompt=prompt, trace_id=trace_id+"_2", model=m2_clean, source=CallSource.ARENA
             )
             return time.time() - t2
             
