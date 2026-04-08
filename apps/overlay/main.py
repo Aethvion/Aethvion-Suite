@@ -52,7 +52,7 @@ DASHBOARD_URL = f"http://localhost:{_find_dashboard_port()}"
 try:
     from PyQt6.QtWidgets import (
         QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-        QTextEdit, QLineEdit, QPushButton, QLabel, QFrame,
+        QTextEdit, QLineEdit, QPushButton, QLabel, QFrame, QComboBox,
     )
     from PyQt6.QtCore import Qt, QThread, pyqtSignal, QObject, QPoint
     from PyQt6.QtGui import QFont
@@ -63,16 +63,43 @@ except ImportError:
 
 # ── Screenshot helper ─────────────────────────────────────────────────────────
 
-def take_screenshot_b64() -> Optional[str]:
-    """Capture the primary monitor and return a base64-encoded PNG string."""
+def list_monitors() -> list[dict]:
+    """Return a list of available monitors as dicts {index, label, width, height}."""
     try:
         import mss
         with mss.mss() as sct:
-            # monitors[0] = all combined, monitors[1] = primary
-            monitor = sct.monitors[1] if len(sct.monitors) > 1 else sct.monitors[0]
+            result = []
+            # monitors[0] = virtual combined screen, monitors[1..n] = real displays
+            for i, m in enumerate(sct.monitors):
+                if i == 0:
+                    label = "All Screens Combined"
+                else:
+                    label = f"Screen {i}  ({m['width']}×{m['height']})"
+                result.append({"index": i, "label": label, "width": m["width"], "height": m["height"]})
+            return result
+    except Exception:
+        return [{"index": 1, "label": "Primary Screen", "width": 0, "height": 0}]
+
+
+def take_screenshot_b64(monitor_index: int = 1) -> Optional[str]:
+    """
+    Capture the specified monitor and return a base64-encoded PNG string.
+
+    Args:
+        monitor_index: Index into mss.monitors list.
+                       0 = all screens combined, 1 = primary (default), 2+ = secondary.
+    """
+    try:
+        import mss
+        with mss.mss() as sct:
+            monitors = sct.monitors
+            # Clamp index to valid range
+            idx = max(0, min(monitor_index, len(monitors) - 1))
+            if not monitors:
+                return None
+            monitor = monitors[idx]
             sct_img = sct.grab(monitor)
 
-        # Convert to PNG via Pillow
         from PIL import Image
         img = Image.frombytes("RGB", sct_img.size, sct_img.rgb)
         buf = io.BytesIO()
@@ -151,6 +178,7 @@ class OverlayWindow(QWidget):
         self._drag_pos: Optional[QPoint]    = None
         self._worker_thread: Optional[QThread] = None
         self._worker: Optional[AskWorker]       = None
+        self._selected_monitor: int = 1  # default = primary
 
         self._build_ui()
 
@@ -229,6 +257,56 @@ class OverlayWindow(QWidget):
         title_row.addWidget(self._hotkey_lbl)
         title_row.addWidget(close_btn)
         layout.addLayout(title_row)
+
+        # ── Screen selector row ───────────────────────────────────────────────
+        screen_row = QHBoxLayout()
+        screen_row.setSpacing(6)
+
+        screen_lbl = QLabel("Screen:")
+        screen_lbl.setStyleSheet("color: rgba(140,140,170,200); font-size: 11px;")
+
+        self._screen_combo = QComboBox()
+        self._screen_combo.setFixedHeight(26)
+        self._screen_combo.setStyleSheet("""
+            QComboBox {
+                background: rgba(18,18,32,210);
+                color: rgba(200,200,224,220);
+                border: 1px solid rgba(99,102,241,80);
+                border-radius: 6px;
+                padding: 2px 8px;
+                font-size: 11px;
+            }
+            QComboBox::drop-down { border: none; width: 18px; }
+            QComboBox QAbstractItemView {
+                background: rgba(12,12,22,240);
+                color: rgba(200,200,224,220);
+                selection-background-color: rgba(99,102,241,180);
+                border: 1px solid rgba(99,102,241,100);
+            }
+        """)
+        self._populate_screen_combo()
+        self._screen_combo.currentIndexChanged.connect(self._on_screen_changed)
+
+        self._new_scr_btn = QPushButton("📷 New Screenshot")
+        self._new_scr_btn.setFixedHeight(26)
+        self._new_scr_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(99,102,241,120);
+                color: rgba(220,220,245,255);
+                border: none;
+                border-radius: 6px;
+                padding: 2px 10px;
+                font-size: 11px;
+            }
+            QPushButton:hover   { background: rgba(99,102,241,200); }
+            QPushButton:pressed { background: rgba(79,82,221,255); }
+        """)
+        self._new_scr_btn.clicked.connect(self._take_new_screenshot)
+
+        screen_row.addWidget(screen_lbl)
+        screen_row.addWidget(self._screen_combo, 1)
+        screen_row.addWidget(self._new_scr_btn)
+        layout.addLayout(screen_row)
 
         # Separator
         sep = QFrame()
@@ -321,6 +399,43 @@ class OverlayWindow(QWidget):
                 sg.center().y() - self.height() // 2,
             )
 
+    # ── Screen selector helpers ───────────────────────────────────────────────
+
+    def _populate_screen_combo(self) -> None:
+        """Fill the screen combo with available monitors."""
+        self._screen_combo.blockSignals(True)
+        self._screen_combo.clear()
+        monitors = list_monitors()
+        for m in monitors:
+            self._screen_combo.addItem(m["label"], userData=m["index"])
+        # Default to primary (index 1 if available, else 0)
+        default_pos = 1 if len(monitors) > 1 else 0
+        self._screen_combo.setCurrentIndex(default_pos)
+        self._selected_monitor = monitors[default_pos]["index"]
+        self._screen_combo.blockSignals(False)
+
+    def _on_screen_changed(self, combo_idx: int) -> None:
+        monitor_index = self._screen_combo.itemData(combo_idx)
+        if monitor_index is not None:
+            self._selected_monitor = monitor_index
+
+    def _take_new_screenshot(self) -> None:
+        """Grab a fresh screenshot of the selected screen."""
+        self._new_scr_btn.setEnabled(False)
+        self._new_scr_btn.setText("Capturing…")
+        self.hide()   # hide overlay so it doesn't appear in the screenshot
+
+        import threading
+
+        def _grab() -> None:
+            import time
+            time.sleep(0.15)   # short delay so window fully hides first
+            scr = take_screenshot_b64(self._selected_monitor)
+            # Re-show on main thread via signal
+            self.show_overlay.emit(scr or "")
+
+        threading.Thread(target=_grab, daemon=True).start()
+
     # ── Slot: activated by hotkey / tray ─────────────────────────────────────
 
     def _on_show_overlay(self, screenshot_b64: str) -> None:
@@ -328,6 +443,10 @@ class OverlayWindow(QWidget):
         self._response.clear()
         self._input.clear()
         self._send_btn.setEnabled(True)
+        self._new_scr_btn.setEnabled(True)
+        self._new_scr_btn.setText("📷 New Screenshot")
+        # Refresh monitor list each time the overlay opens (monitors may have changed)
+        self._populate_screen_combo()
         hint = "Screenshot captured." if screenshot_b64 else "No screenshot available."
         self._status.setText(f"{hint}  Type your question and press Enter.")
         self.show()
@@ -397,8 +516,8 @@ def start_hotkey_listener(window: OverlayWindow) -> None:
             import keyboard as kb
 
             def _trigger() -> None:
-                # Capture screen BEFORE the overlay appears
-                scr = take_screenshot_b64()
+                # Capture the selected screen BEFORE the overlay appears
+                scr = take_screenshot_b64(window._selected_monitor)
                 window.show_overlay.emit(scr or "")
 
             kb.add_hotkey("ctrl+shift+space", _trigger, suppress=False)
@@ -441,7 +560,7 @@ def start_tray(window: OverlayWindow, qt_app: QApplication) -> None:
             img = _make_tray_image()
 
             def _on_ask(icon, item) -> None:
-                scr = take_screenshot_b64()
+                scr = take_screenshot_b64(window._selected_monitor)
                 window.show_overlay.emit(scr or "")
 
             def _on_dashboard(icon, item) -> None:
