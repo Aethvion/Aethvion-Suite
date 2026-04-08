@@ -28,7 +28,10 @@ class ProviderManager:
     """
     Manages multiple LLM providers with profile-based routing.
     """
-    
+
+    # Providers considered "local" for privacy mode
+    LOCAL_PROVIDER_NAMES: frozenset = frozenset({"local", "ollama"})
+
     PROVIDER_CLASSES = {
         'google_ai':   GoogleAIProvider,
         'openai':      OpenAIProvider,
@@ -44,7 +47,7 @@ class ProviderManager:
     def __init__(self, config_path: Optional[str] = None):
         """
         Initialize provider manager.
-        
+
         Args:
             config_path: Path to providers.yaml
         """
@@ -55,6 +58,7 @@ class ProviderManager:
         self.model_descriptor_map: Dict[str, Dict] = {}
         self.auto_routing_config: Dict = {}
         self.registry: Dict = {}
+        self._privacy_mode: bool = False   # set via set_privacy_mode()
         
         # Load configuration
         if config_path is None:
@@ -241,15 +245,43 @@ class ProviderManager:
     def get_provider(self, name: str) -> Optional[BaseProvider]:
         """
         Get a specific provider by name.
-        
+
         Args:
             name: Provider name (google_ai, openai, grok)
-            
+
         Returns:
             Provider instance or None if not found
         """
         return self.providers.get(name)
-    
+
+    # ── Privacy Mode ──────────────────────────────────────────────────────────
+
+    def is_privacy_mode(self) -> bool:
+        """
+        Return True when privacy mode is active (local-only routing).
+        Reads the persisted setting so every ProviderManager instance stays in sync.
+        """
+        try:
+            from core.config.settings_manager import get_settings_manager
+            return bool(get_settings_manager().settings.get("privacy_mode", False))
+        except Exception:
+            return self._privacy_mode
+
+    def set_privacy_mode(self, enabled: bool) -> None:
+        """
+        Enable or disable privacy mode.
+        When enabled, all LLM calls are restricted to local/ollama providers.
+        Persists to settings.json so it survives restarts and is shared across instances.
+        """
+        self._privacy_mode = bool(enabled)
+        try:
+            from core.config.settings_manager import get_settings_manager
+            get_settings_manager().set("privacy_mode", self._privacy_mode)
+        except Exception:
+            pass
+        state = "ENABLED" if self._privacy_mode else "DISABLED"
+        logger.info(f"Privacy Mode {state}")
+
     def call_with_failover(
         self,
         prompt: str,
@@ -471,9 +503,29 @@ class ProviderManager:
         if not model_order:
              logger.error(f"[{trace_id}] CRITICAL: No model routing order could be established.")
              return ProviderResponse(
-                 content="", model="none", provider="none", trace_id=trace_id, 
+                 content="", model="none", provider="none", trace_id=trace_id,
                  error="No model routing configured."
              )
+
+        # ── Privacy Mode: restrict to local providers only ────────────────────
+        if self.is_privacy_mode():
+            original_order = model_order[:]
+            model_order = [
+                m for m in model_order
+                if self.model_to_provider_map.get(m) in self.LOCAL_PROVIDER_NAMES
+            ]
+            if not model_order:
+                logger.warning(
+                    f"[{trace_id}] Privacy mode active but no local models available. "
+                    f"Original order was: {original_order}. "
+                    "Add a local/ollama model in Settings to use Privacy Mode."
+                )
+                return ProviderResponse(
+                    content="", model="none", provider="none", trace_id=trace_id,
+                    error="Privacy Mode is active but no local models are configured. "
+                          "Add an Ollama or local model in Settings → Model Hub."
+                )
+            logger.info(f"[{trace_id}] Privacy mode: restricted to local models {model_order}")
 
         last_error = None
         

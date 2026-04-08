@@ -353,6 +353,35 @@
 
                         <!-- Panel: Global Settings -->
                         <div class="settings-panel active" id="settings-panel-system">
+
+                            <!-- Privacy Mode card -->
+                            <div class="setting-card" id="card-privacy" style="margin-bottom: 18px; border-color: rgba(99,102,241,0.3);">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-shield-halved"></i>
+                                        <span>Privacy Mode</span>
+                                    </div>
+                                    <span id="privacy-mode-badge" class="privacy-badge privacy-badge-off">🌐 Cloud OK</span>
+                                </div>
+                                <div class="card-content">
+                                    <p class="section-hint" style="margin-bottom: 1rem;">
+                                        When enabled, <strong>all</strong> LLM requests are routed exclusively to local
+                                        models (Ollama / llama.cpp). No data leaves your machine.
+                                        Requires at least one local model to be configured in Model Hub.
+                                    </p>
+                                    <label class="settings-toggle-row">
+                                        <div>
+                                            <div class="toggle-label">Local-Only Mode</div>
+                                            <div class="toggle-sublabel">Block all cloud AI providers</div>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="privacy-mode-toggle">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </label>
+                                </div>
+                            </div>
+
                             <!-- Timezone card — always at the top -->
                             <div class="setting-card" id="card-timezone" style="margin-bottom: 18px;">
                                 <div class="card-header">

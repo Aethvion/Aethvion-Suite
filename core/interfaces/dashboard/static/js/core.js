@@ -1036,6 +1036,15 @@ function switchMainTab(tabName, save = true) {
     else if (actualTabName === 'misaka-cipher' && typeof initializeMisakaCipher === 'function') {
         initializeMisakaCipher();
     }
+    else if (actualTabName === 'axiom' && typeof initializeAxiom === 'function') {
+        initializeAxiom();
+    }
+    else if (actualTabName === 'lyra' && typeof initializeLyra === 'function') {
+        initializeLyra();
+    }
+    else if (actualTabName === 'companion-creator' && typeof initializeCompanionCreator === 'function') {
+        initializeCompanionCreator();
+    }
     else if (actualTabName === 'misaka-memory' && typeof refreshMisakaMemory === 'function') {
         refreshMisakaMemory();
     }
@@ -1276,6 +1285,12 @@ async function loadInitialData() {
 
     if (currentMainTab === 'misaka-cipher' && typeof initializeMisakaCipher === 'function') {
         initializeMisakaCipher();
+    }
+    if (currentMainTab === 'axiom' && typeof initializeAxiom === 'function') {
+        initializeAxiom();
+    }
+    if (currentMainTab === 'lyra' && typeof initializeLyra === 'function') {
+        initializeLyra();
     }
 
     if (typeof loadSystemStatus === 'function') setInterval(loadSystemStatus, 5000);
@@ -1712,3 +1727,91 @@ window.prefs = {
         }
     }
 };
+
+// ─── Sidebar Search ───────────────────────────────────────────────────────────
+(function initSidebarSearch() {
+    function run() {
+        const input     = document.getElementById('sidebar-search-input');
+        const clearBtn  = document.getElementById('sidebar-search-clear');
+        if (!input) return;
+
+        // One empty-state message element, injected once
+        let emptyMsg = document.querySelector('.sidebar-search-empty');
+        if (!emptyMsg) {
+            emptyMsg = document.createElement('div');
+            emptyMsg.className = 'sidebar-search-empty';
+            emptyMsg.textContent = 'No results';
+            input.closest('.sidebar-search-wrap').after(emptyMsg);
+        }
+
+        function applyFilter(term) {
+            const q = term.trim().toLowerCase();
+
+            // Toggle clear button
+            clearBtn.classList.toggle('visible', q.length > 0);
+
+            // All AI-mode nav buttons
+            const tabs = document.querySelectorAll('.main-tab.mode-ai[data-maintab]');
+
+            if (!q) {
+                // Reset — restore everything
+                tabs.forEach(btn => btn.classList.remove('search-hidden'));
+                document.querySelectorAll('.sidebar-category[data-cat]').forEach(cat => {
+                    cat.classList.remove('search-hidden');
+                    const body = document.querySelector(`.cat-body[data-cat-body="${cat.dataset.cat}"]`);
+                    if (body) body.classList.remove('search-hidden');
+                });
+                document.querySelectorAll('.sidebar-section-header[data-section]').forEach(sec => {
+                    sec.classList.remove('search-hidden');
+                    const body = document.querySelector(`.section-body[data-section-body="${sec.dataset.section}"]`);
+                    if (body) body.classList.remove('search-hidden');
+                });
+                emptyMsg.classList.remove('visible');
+                return;
+            }
+
+            // Filter buttons
+            let anyVisible = false;
+            tabs.forEach(btn => {
+                const label = (btn.querySelector('.tab-label')?.textContent || '').toLowerCase();
+                const tooltip = (btn.dataset.tooltip || '').toLowerCase();
+                const match = label.includes(q) || tooltip.includes(q);
+                btn.classList.toggle('search-hidden', !match);
+                if (match) anyVisible = true;
+            });
+
+            // Expand all sections & categories so matches are visible
+            document.querySelectorAll('.section-body[data-section-body]').forEach(body => {
+                body.classList.remove('search-hidden');
+            });
+            document.querySelectorAll('.sidebar-section-header[data-section]').forEach(sec => {
+                sec.classList.remove('search-hidden');
+            });
+
+            // Hide categories that have zero visible children
+            document.querySelectorAll('.sidebar-category[data-cat]').forEach(cat => {
+                const body = document.querySelector(`.cat-body[data-cat-body="${cat.dataset.cat}"]`);
+                if (!body) return;
+                const hasVisible = body.querySelectorAll('.main-tab.mode-ai:not(.search-hidden)').length > 0;
+                cat.classList.toggle('search-hidden', !hasVisible);
+                body.classList.toggle('search-hidden', !hasVisible);
+            });
+
+            emptyMsg.classList.toggle('visible', !anyVisible);
+        }
+
+        input.addEventListener('input', () => applyFilter(input.value));
+        clearBtn.addEventListener('click', () => { input.value = ''; applyFilter(''); input.focus(); });
+
+        // Make .search-hidden respect the filter alongside .mode-hidden
+        const style = document.createElement('style');
+        style.textContent = '.search-hidden { display: none !important; }';
+        document.head.appendChild(style);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', run);
+    } else {
+        run();
+    }
+})();

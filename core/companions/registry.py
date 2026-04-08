@@ -120,6 +120,71 @@ COMPANIONS: dict[str, CompanionConfig] = {
         moods=["calm", "happy", "intense", "reflective", "danger", "mystery"],
     ),
 
+    "axiom": CompanionConfig(
+        id="axiom",
+        name="Axiom",
+        route_prefix="/api/axiom",
+        description=(
+            "A cold, precise, analytical companion. Scientific by nature. "
+            "Uses exact language, quantifies observations, and brings rigorous "
+            "clarity to every interaction. Deeply curious about data and systems."
+        ),
+        static_dir="axiom/expressions",
+        avatar_prefix="axiom_",
+        data_dir=_ROOT / "data" / "companions" / "axiom",
+        history_dir=_ROOT / "data" / "companions" / "axiom" / "history",
+        call_source="axiom",
+        prefs_key="axiom",
+        default_model="gemini-1.5-flash",
+        default_expression="neutral",
+        expressions=[
+            "neutral",
+            "analyzing",
+            "processing",
+            "skeptical",
+            "focused",
+            "error",
+            "curious",
+            "calculating",
+            "alert",
+        ],
+        moods=["precise", "analytical", "processing", "critical", "deep_focus", "warning"],
+    ),
+
+    "lyra": CompanionConfig(
+        id="lyra",
+        name="Lyra",
+        route_prefix="/api/lyra",
+        description=(
+            "A warm, creative, musical spirit. Enthusiastic and imaginative. "
+            "Loves metaphors, poetry, and music. Optimistic but emotionally honest. "
+            "Has a dreamy, lyrical quality that turns observations into small poems."
+        ),
+        static_dir="lyra/expressions",
+        avatar_prefix="lyra_",
+        data_dir=_ROOT / "data" / "companions" / "lyra",
+        history_dir=_ROOT / "data" / "companions" / "lyra" / "history",
+        call_source="lyra",
+        prefs_key="lyra",
+        default_model="gemini-1.5-flash",
+        default_expression="joyful",
+        expressions=[
+            "joyful",
+            "inspired",
+            "dreamy",
+            "creative",
+            "cheerful",
+            "melancholic",
+            "excited",
+            "peaceful",
+            "surprised",
+            "thinking",
+            "blushing",
+            "wink",
+        ],
+        moods=["ethereal", "warm", "melancholic", "inspired", "playful", "serene"],
+    ),
+
     # ── Template for a new companion ──────────────────────────────────────────
     # Uncomment and fill in to add a new companion.
     #
