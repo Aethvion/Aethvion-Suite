@@ -56,7 +56,7 @@ try:
         QTextBrowser,
     )
     from PyQt6.QtCore import Qt, QThread, pyqtSignal, QObject, QPoint
-    from PyQt6.QtGui import QFont
+    from PyQt6.QtGui import QFont, QTextCursor
 
     HAS_QT = True
 except ImportError:
@@ -145,8 +145,7 @@ class AskWorker(QObject):
             with urllib.request.urlopen(req, timeout=90) as resp:
                 data   = json.loads(resp.read().decode("utf-8"))
                 answer = data.get("answer", "(no response)")
-                model  = data.get("model_used", "")
-                self.finished.emit(f"{answer}\n\n*— model: {model}*" if model else answer)
+                self.finished.emit(answer)
         except urllib.error.HTTPError as e:
             # Extract the FastAPI detail message from the JSON body
             try:
@@ -172,7 +171,7 @@ class ChatInput(QTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setPlaceholderText("What do you want to know about this screen?")
-        self.setFont(QFont("Segoe UI", 12))
+        self.setFont(QFont("Segoe UI", 11))
         self.setAcceptRichText(False)
         self.setFixedHeight(50)
         self.setStyleSheet("""
@@ -181,7 +180,7 @@ class ChatInput(QTextEdit):
                 color: rgba(220,220,245,255);
                 border: 1px solid rgba(99,102,241,100);
                 border-radius: 9px;
-                padding: 4px 8px;
+                padding: 3px 6px;
             }
             QTextEdit:focus {
                 border-color: rgba(99,102,241,210);
@@ -359,14 +358,14 @@ class OverlayWindow(QWidget):
         self._response.setReadOnly(True)
         self._response.setMinimumHeight(150)
         self._response.setPlaceholderText("Response will appear here…")
-        self._response.setFont(QFont("Segoe UI", 12))
+        self._response.setFont(QFont("Segoe UI", 11))
         self._response.setStyleSheet("""
             QTextBrowser {
                 background: rgba(8, 8, 18, 190);
                 color: rgba(210,210,235,245);
                 border: 1px solid rgba(99,102,241,55);
                 border-radius: 9px;
-                padding: 10px;
+                padding: 6px;
             }
             QScrollBar:vertical {
                 background: rgba(20,20,35,180);
@@ -381,7 +380,7 @@ class OverlayWindow(QWidget):
 
         # Better markdown styling via default document stylesheet
         self._response.document().setDefaultStyleSheet("""
-            h1, h2, h3, h4 { color: #818cf8; margin-top: 10px; margin-bottom: 5px; font-weight: bold; }
+            h1, h2, h3, h4 { color: #818cf8; margin-top: 6px; margin-bottom: 2px; font-weight: bold; }
             code { 
                 background-color: rgba(99, 102, 241, 40); 
                 color: #e2e8f0; 
@@ -520,12 +519,16 @@ class OverlayWindow(QWidget):
         self._send_btn.setEnabled(False)
         self._status.setText("Thinking…")
 
-        # Append user message and thinking indicator
-        separator = "\n\n---\n\n" if self._response.toPlainText().strip() else ""
-        self._response.appendHtml(
-            f"{separator}<div style='color: #818cf8; font-weight: bold;'>Me:</div> {question}<br>"
-            f"<div style='color: #6366f1; font-style: italic;' id='thinking_marker'>Thinking...</div>"
-        )
+        # Add separator if history exists
+        if self._response.toPlainText().strip():
+            self._response.append("<hr style='border: 1px solid rgba(99, 102, 241, 40);'>")
+
+        # Append user message
+        self._response.append(f"<div style='color: #818cf8; font-weight: bold;'>Me:</div> {question}")
+        
+        # Append thinking indicator as a new block we can find later
+        self._response.append("<div style='color: #6366f1; font-style: italic;'>Thinking...</div>")
+        
         # Auto-scroll to bottom
         self._response.verticalScrollBar().setValue(self._response.verticalScrollBar().maximum())
 
@@ -547,17 +550,18 @@ class OverlayWindow(QWidget):
         self._worker_thread.start()
 
     def _replace_thinking(self, content_markdown: str) -> None:
-        """Replace the 'Thinking...' marker with actual content."""
-        html = self._response.toHtml()
-        # Simple string replacement for our specific marker div
-        old_tag = "<div style='color: #6366f1; font-style: italic;' id='thinking_marker'>Thinking...</div>"
+        """Replace the last block (our 'Thinking...' indicator) with actual content."""
+        cursor = QTextCursor(self._response.document())
+        cursor.movePosition(QTextCursor.MoveOperation.End)
         
-        # We handle markdown conversion here briefly or just use append
-        # To keep it simple and clean, we'll remove the marker and then append markdown
-        new_html = html.replace(old_tag, "")
-        self._response.setHtml(new_html)
-        self._response.appendMarkdown(content_markdown)
+        # Move to the start of the current block (the indicator) and select it
+        cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock, QTextCursor.MoveMode.KeepAnchor)
+        cursor.removeSelectedText()
         
+        # Insert the response
+        cursor.insertMarkdown(content_markdown)
+        
+        # Ensure scroll follows
         self._response.verticalScrollBar().setValue(self._response.verticalScrollBar().maximum())
 
     def _on_response(self, text: str) -> None:
