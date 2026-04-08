@@ -242,16 +242,6 @@ async function loadPreferences() {
         8,
         (val) => window.dispatchEvent(new CustomEvent('axiomSettingsUpdated', { detail: { context_limit: val } }))
     );
-    _bindRangeWithDisplay(
-        'setting-axiom-typing-speed',
-        'setting-axiom-typing-speed-val',
-        'axiom.typing_speed',
-        75,
-        (val) => window.dispatchEvent(new CustomEvent('axiomSettingsUpdated', { detail: { typing_speed: val } }))
-    );
-    _bindToggle('setting-axiom-proactive-enabled', 'axiom.proactive_enabled', false,
-        (val) => window.dispatchEvent(new CustomEvent('axiomSettingsUpdated', { detail: { proactive_enabled: val } }))
-    );
 
     const axiomModelEl = document.getElementById('setting-axiom-model');
     if (axiomModelEl) {
@@ -259,6 +249,49 @@ async function loadPreferences() {
             await savePreference('axiom.model', e.target.value);
             window.dispatchEvent(new CustomEvent('axiomSettingsUpdated', { detail: { model: e.target.value } }));
         };
+    }
+
+    // Axiom proactive settings
+    for (const item of [
+        { id: 'setting-axiom-proactive-enabled',    pref: 'axiom.proactive_enabled',     type: 'toggle', default: false },
+        { id: 'setting-axiom-proactive-popup',       pref: 'axiom.proactive_popup',       type: 'toggle', default: true  },
+        { id: 'setting-axiom-startup-hours',         pref: 'axiom.startup_trigger_hours', type: 'range',  default: 4,  valId: 'setting-axiom-startup-hours-val' },
+        { id: 'setting-axiom-startup-chance',        pref: 'axiom.startup_chance',        type: 'range',  default: 75, valId: 'setting-axiom-startup-chance-val' },
+        { id: 'setting-axiom-startup-delay-min',     pref: 'axiom.startup_delay_min',     type: 'range',  default: 10, valId: 'setting-axiom-startup-delay-min-val' },
+        { id: 'setting-axiom-startup-delay-max',     pref: 'axiom.startup_delay_max',     type: 'range',  default: 45, valId: 'setting-axiom-startup-delay-max-val' },
+        { id: 'setting-axiom-session-interval-min',  pref: 'axiom.session_interval_min',  type: 'range',  default: 45, valId: 'setting-axiom-session-interval-min-val' },
+        { id: 'setting-axiom-session-interval-max',  pref: 'axiom.session_interval_max',  type: 'range',  default: 90, valId: 'setting-axiom-session-interval-max-val' },
+        { id: 'setting-axiom-session-chance',        pref: 'axiom.session_chance',        type: 'range',  default: 60, valId: 'setting-axiom-session-chance-val' },
+    ]) {
+        if (item.type === 'toggle') {
+            _bindToggle(item.id, item.pref, item.default,
+                (val) => window.dispatchEvent(new CustomEvent('axiomSettingsUpdated', { detail: { [item.pref.split('.').pop()]: val } }))
+            );
+        } else {
+            _bindRangeWithDisplay(item.id, item.valId, item.pref, item.default,
+                (val) => window.dispatchEvent(new CustomEvent('axiomSettingsUpdated', { detail: { [item.pref.split('.').pop()]: val } }))
+            );
+        }
+    }
+
+    // Axiom reset button
+    const axiomResetBtn = document.getElementById('axiom-reset-btn');
+    if (axiomResetBtn) {
+        axiomResetBtn.addEventListener('click', async () => {
+            if (!confirm('This will permanently delete all of Axiom\'s conversation history and memory.\n\nAre you sure?')) return;
+            try {
+                axiomResetBtn.disabled = true;
+                axiomResetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+                const res = await fetch('/api/axiom/reset', { method: 'POST' });
+                if (!res.ok) throw new Error((await res.json()).detail || 'Reset failed');
+                axiomResetBtn.innerHTML = '<i class="fas fa-check"></i> Reset Complete';
+                setTimeout(() => { axiomResetBtn.disabled = false; axiomResetBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Axiom'; }, 3000);
+            } catch (e) {
+                console.error('[Axiom Reset]', e);
+                axiomResetBtn.disabled = false;
+                axiomResetBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Axiom';
+            }
+        });
     }
 
     // ── Lyra Settings ─────────────────────────────────────────────────────────
@@ -269,16 +302,6 @@ async function loadPreferences() {
         8,
         (val) => window.dispatchEvent(new CustomEvent('lyraSettingsUpdated', { detail: { context_limit: val } }))
     );
-    _bindRangeWithDisplay(
-        'setting-lyra-typing-speed',
-        'setting-lyra-typing-speed-val',
-        'lyra.typing_speed',
-        75,
-        (val) => window.dispatchEvent(new CustomEvent('lyraSettingsUpdated', { detail: { typing_speed: val } }))
-    );
-    _bindToggle('setting-lyra-proactive-enabled', 'lyra.proactive_enabled', false,
-        (val) => window.dispatchEvent(new CustomEvent('lyraSettingsUpdated', { detail: { proactive_enabled: val } }))
-    );
 
     const lyraModelEl = document.getElementById('setting-lyra-model');
     if (lyraModelEl) {
@@ -286,6 +309,49 @@ async function loadPreferences() {
             await savePreference('lyra.model', e.target.value);
             window.dispatchEvent(new CustomEvent('lyraSettingsUpdated', { detail: { model: e.target.value } }));
         };
+    }
+
+    // Lyra proactive settings
+    for (const item of [
+        { id: 'setting-lyra-proactive-enabled',    pref: 'lyra.proactive_enabled',     type: 'toggle', default: false },
+        { id: 'setting-lyra-proactive-popup',       pref: 'lyra.proactive_popup',       type: 'toggle', default: true  },
+        { id: 'setting-lyra-startup-hours',         pref: 'lyra.startup_trigger_hours', type: 'range',  default: 4,  valId: 'setting-lyra-startup-hours-val' },
+        { id: 'setting-lyra-startup-chance',        pref: 'lyra.startup_chance',        type: 'range',  default: 75, valId: 'setting-lyra-startup-chance-val' },
+        { id: 'setting-lyra-startup-delay-min',     pref: 'lyra.startup_delay_min',     type: 'range',  default: 10, valId: 'setting-lyra-startup-delay-min-val' },
+        { id: 'setting-lyra-startup-delay-max',     pref: 'lyra.startup_delay_max',     type: 'range',  default: 45, valId: 'setting-lyra-startup-delay-max-val' },
+        { id: 'setting-lyra-session-interval-min',  pref: 'lyra.session_interval_min',  type: 'range',  default: 45, valId: 'setting-lyra-session-interval-min-val' },
+        { id: 'setting-lyra-session-interval-max',  pref: 'lyra.session_interval_max',  type: 'range',  default: 90, valId: 'setting-lyra-session-interval-max-val' },
+        { id: 'setting-lyra-session-chance',        pref: 'lyra.session_chance',        type: 'range',  default: 60, valId: 'setting-lyra-session-chance-val' },
+    ]) {
+        if (item.type === 'toggle') {
+            _bindToggle(item.id, item.pref, item.default,
+                (val) => window.dispatchEvent(new CustomEvent('lyraSettingsUpdated', { detail: { [item.pref.split('.').pop()]: val } }))
+            );
+        } else {
+            _bindRangeWithDisplay(item.id, item.valId, item.pref, item.default,
+                (val) => window.dispatchEvent(new CustomEvent('lyraSettingsUpdated', { detail: { [item.pref.split('.').pop()]: val } }))
+            );
+        }
+    }
+
+    // Lyra reset button
+    const lyraResetBtn = document.getElementById('lyra-reset-btn');
+    if (lyraResetBtn) {
+        lyraResetBtn.addEventListener('click', async () => {
+            if (!confirm('This will permanently delete all of Lyra\'s conversation history and memory.\n\nAre you sure?')) return;
+            try {
+                lyraResetBtn.disabled = true;
+                lyraResetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+                const res = await fetch('/api/lyra/reset', { method: 'POST' });
+                if (!res.ok) throw new Error((await res.json()).detail || 'Reset failed');
+                lyraResetBtn.innerHTML = '<i class="fas fa-check"></i> Reset Complete';
+                setTimeout(() => { lyraResetBtn.disabled = false; lyraResetBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Lyra'; }, 3000);
+            } catch (e) {
+                console.error('[Lyra Reset]', e);
+                lyraResetBtn.disabled = false;
+                lyraResetBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Lyra';
+            }
+        });
     }
 
     // Initialize Other Sections
@@ -336,6 +402,26 @@ function _bindToggle(checkboxId, prefKey, defaultVal, onChange) {
 async function savePreference(key, value) {
     await prefs.set(key, value);
 }
+// Expose globally for dynamic companion loader
+window.savePreference = savePreference;
+
+// Populate a <select> with chat model options and restore a saved value
+window._populateModelSelect = function(sel, prefModel) {
+    if (!sel) return;
+    // If generateCategorizedModelOptions is available (models already loaded), use cached HTML
+    if (window._cachedChatModelOptions) {
+        sel.innerHTML = window._cachedChatModelOptions;
+    } else {
+        const opt = document.createElement('option');
+        opt.value = prefModel;
+        opt.textContent = prefModel;
+        sel.innerHTML = '';
+        sel.appendChild(opt);
+    }
+    if (prefModel && sel.querySelector(`option[value="${prefModel}"]`)) {
+        sel.value = prefModel;
+    }
+};
 
 // ===== Nexus Module Management =====
 
@@ -1208,6 +1294,7 @@ async function loadChatModels() {
 
         const chatOptions = generateCategorizedModelOptions(data, 'chat');
         const agentOptions = generateCategorizedModelOptions(data, 'agent');
+        window._cachedChatModelOptions = chatOptions; // cache for dynamic selects
 
         selects.forEach(sel => {
             const currentVal = sel.value;

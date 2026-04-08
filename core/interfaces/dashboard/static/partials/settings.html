@@ -448,22 +448,67 @@
                                         </div>
                                         <input type="range" id="setting-lyra-context-limit" min="1" max="50" value="8">
                                     </div>
-                                    <div class="compact-item">
-                                        <div class="item-label">
-                                            <span>Typing Speed</span>
-                                            <span class="range-display" id="setting-lyra-typing-speed-val">75</span>
+
+                                    <!-- Proactive Messages -->
+                                    <div style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                                        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 0.75rem; font-family: 'Orbitron', sans-serif;">Proactive Messages</div>
+                                        <div class="compact-item toggle-item" style="margin-bottom: 0.5rem;">
+                                            <div class="item-label">
+                                                <span>Proactive Messages</span>
+                                                <i class="fas fa-info-circle tooltip-trigger" title="Allows Lyra to initiate conversations on her own."></i>
+                                            </div>
+                                            <label class="switch small">
+                                                <input type="checkbox" id="setting-lyra-proactive-enabled">
+                                                <span class="slider round"></span>
+                                            </label>
                                         </div>
-                                        <input type="range" id="setting-lyra-typing-speed" min="0" max="100" value="75">
+                                        <div class="compact-item toggle-item" style="margin-bottom: 0.5rem;">
+                                            <div class="item-label">
+                                                <span>Popup Notification</span>
+                                                <i class="fas fa-info-circle tooltip-trigger" title="Show a popup when Lyra sends a message while you're on a different tab."></i>
+                                            </div>
+                                            <label class="switch small">
+                                                <input type="checkbox" id="setting-lyra-proactive-popup" checked>
+                                                <span class="slider round"></span>
+                                            </label>
+                                        </div>
+                                        <div class="compact-item">
+                                            <div class="item-label"><span>Startup — Min Hours Away</span><span class="range-display" id="setting-lyra-startup-hours-val">4</span></div>
+                                            <input type="range" id="setting-lyra-startup-hours" min="1" max="48" value="4">
+                                        </div>
+                                        <div class="compact-item">
+                                            <div class="item-label"><span>Startup — Chance (%)</span><span class="range-display" id="setting-lyra-startup-chance-val">75</span></div>
+                                            <input type="range" id="setting-lyra-startup-chance" min="10" max="100" value="75">
+                                        </div>
+                                        <div class="compact-item">
+                                            <div class="item-label"><span>Startup — Min Delay (s)</span><span class="range-display" id="setting-lyra-startup-delay-min-val">10</span></div>
+                                            <input type="range" id="setting-lyra-startup-delay-min" min="5" max="120" value="10">
+                                        </div>
+                                        <div class="compact-item">
+                                            <div class="item-label"><span>Startup — Max Delay (s)</span><span class="range-display" id="setting-lyra-startup-delay-max-val">45</span></div>
+                                            <input type="range" id="setting-lyra-startup-delay-max" min="10" max="180" value="45">
+                                        </div>
+                                        <div class="compact-item">
+                                            <div class="item-label"><span>Session — Min Interval (min)</span><span class="range-display" id="setting-lyra-session-interval-min-val">45</span></div>
+                                            <input type="range" id="setting-lyra-session-interval-min" min="1" max="120" value="45">
+                                        </div>
+                                        <div class="compact-item">
+                                            <div class="item-label"><span>Session — Max Interval (min)</span><span class="range-display" id="setting-lyra-session-interval-max-val">90</span></div>
+                                            <input type="range" id="setting-lyra-session-interval-max" min="1" max="240" value="90">
+                                        </div>
+                                        <div class="compact-item">
+                                            <div class="item-label"><span>Session — Chance (%)</span><span class="range-display" id="setting-lyra-session-chance-val">60</span></div>
+                                            <input type="range" id="setting-lyra-session-chance" min="10" max="100" value="60">
+                                        </div>
                                     </div>
-                                    <div class="compact-item toggle-item">
-                                        <div class="item-label">
-                                            <span>Proactive Messages</span>
-                                            <i class="fas fa-info-circle tooltip-trigger" title="Allow Lyra to initiate conversations on her own."></i>
-                                        </div>
-                                        <label class="switch small">
-                                            <input type="checkbox" id="setting-lyra-proactive-enabled">
-                                            <span class="slider round"></span>
-                                        </label>
+
+                                    <!-- Danger Zone -->
+                                    <div class="misaka-reset-zone">
+                                        <div class="misaka-reset-label">Danger Zone</div>
+                                        <p class="misaka-reset-desc">Permanently deletes all of Lyra's conversation history and memory. This cannot be undone.</p>
+                                        <button id="lyra-reset-btn" class="misaka-reset-btn">
+                                            <i class="fas fa-trash-alt"></i> Reset Lyra
+                                        </button>
                                     </div>
                                 </div>
                             </div>

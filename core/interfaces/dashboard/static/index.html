@@ -401,6 +401,8 @@
                             <span class="tab-icon"><i class="fas fa-atom"></i></span><span class="tab-label">Axiom</span></button>
                         <button class="main-tab mode-ai" data-maintab="lyra" data-tooltip="Lyra — Creative Companion">
                             <span class="tab-icon"><i class="fas fa-music"></i></span><span class="tab-label">Lyra</span></button>
+                        <!-- Custom companions injected dynamically by loadCustomCompanionsSidebar() -->
+                        <div id="custom-companions-sidebar"></div>
                         <button class="main-tab mode-ai" data-maintab="companion-creator" data-tooltip="Create a Custom Companion">
                             <span class="tab-icon"><i class="fas fa-plus-circle"></i></span><span class="tab-label">Create Companion</span></button>
                     </div>
@@ -890,6 +892,116 @@
             });
         }
     });
+</script>
+
+<script>
+// ── Custom Companions: Sidebar + Settings Dynamic Loader ──────────────────────
+async function loadCustomCompanionsSidebar() {
+    try {
+        const res = await fetch('/api/companion-creator/list');
+        if (!res.ok) return;
+        const data = await res.json();
+        const companions = data.companions || [];
+
+        // ── Sidebar ──────────────────────────────────────────────────────────
+        const sidebarContainer = document.getElementById('custom-companions-sidebar');
+        if (sidebarContainer) {
+            sidebarContainer.innerHTML = '';
+            companions.forEach(c => {
+                const btn = document.createElement('button');
+                btn.className = 'main-tab mode-ai';
+                btn.setAttribute('data-maintab', `custom-companion-${c.id}`);
+                btn.setAttribute('data-tooltip', c.description || c.name);
+                btn.innerHTML = `<span class="tab-icon" style="color:${c.accent_color || '#6366f1'}">${c.avatar_symbol || '✦'}</span><span class="tab-label">${c.name}</span>`;
+                sidebarContainer.appendChild(btn);
+            });
+        }
+
+        // ── Settings panel: inject custom companion accordions ────────────────
+        const settingsPanel = document.getElementById('settings-panel-companions');
+        if (settingsPanel) {
+            // Remove stale custom accordion cards
+            settingsPanel.querySelectorAll('.custom-companion-card').forEach(el => el.remove());
+
+            companions.forEach(c => {
+                const card = document.createElement('div');
+                card.className = 'setting-card companions-accordion custom-companion-card';
+                card.id = `card-companion-custom-${c.id}`;
+                const color = c.accent_color || '#6366f1';
+                card.innerHTML = `
+<div class="card-header companions-accordion-header" onclick="toggleCompanionAccordion('custom-${c.id}')">
+    <div class="header-title">
+        <span class="companion-avatar-mini" style="background:${color};color:#fff;">${c.avatar_symbol || '✦'}</span>
+        <span>${c.name}</span>
+        <span class="companion-tag">custom</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+        <i class="fas fa-chevron-down companions-accordion-chevron" id="chevron-custom-${c.id}"></i>
+    </div>
+</div>
+<div class="card-content companions-accordion-body" id="accordion-body-custom-${c.id}" style="display:none;">
+    <p class="section-hint" style="margin-bottom:0.75rem;">${c.description || ''}</p>
+    <div class="compact-item">
+        <div class="item-label"><span>Primary Model</span></div>
+        <select id="setting-custom-${c.id}-model" class="control-select"></select>
+    </div>
+    <div class="misaka-reset-zone" style="margin-top:1rem;">
+        <div class="misaka-reset-label">Manage</div>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem;">
+            <button class="settings-open-chat-btn"
+                onclick="if(typeof switchMainTab==='function') switchMainTab('companion-creator')">
+                <i class="fas fa-pencil-alt"></i> Edit in Creator
+            </button>
+            <button class="misaka-reset-btn"
+                onclick="_deleteCustomCompanion('${c.id}','${c.name.replace(/'/g,"\\'")}')">
+                <i class="fas fa-trash-alt"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>`;
+                settingsPanel.insertBefore(card, settingsPanel.querySelector('.custom-companion-card') || null);
+
+                // Populate model select
+                const modelSel = card.querySelector(`#setting-custom-${c.id}-model`);
+                if (modelSel && window.prefs) {
+                    const prefModel = window.prefs.get(`custom_companion.${c.id}.model`, c.default_model || 'gemini-1.5-flash');
+                    // populate from registry if available
+                    if (window._populateModelSelect) {
+                        window._populateModelSelect(modelSel, prefModel);
+                    } else {
+                        const opt = document.createElement('option');
+                        opt.value = prefModel;
+                        opt.textContent = prefModel;
+                        modelSel.appendChild(opt);
+                    }
+                    modelSel.onchange = async (e) => {
+                        if (window.savePreference) await window.savePreference(`custom_companion.${c.id}.model`, e.target.value);
+                    };
+                }
+            });
+        }
+    } catch (e) {
+        console.warn('[CustomCompanions] Could not load:', e);
+    }
+}
+
+async function _deleteCustomCompanion(id, name) {
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    try {
+        const res = await fetch(`/api/companion-creator/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error((await res.json()).detail || 'Delete failed');
+        await loadCustomCompanionsSidebar();
+    } catch (e) {
+        alert(`Could not delete "${name}": ${e.message}`);
+    }
+}
+
+// Load on DOMContentLoaded and also after systemReady
+document.addEventListener('DOMContentLoaded', loadCustomCompanionsSidebar);
+document.addEventListener('systemReady', loadCustomCompanionsSidebar);
+// Refresh after companion-creator tab operations
+window.addEventListener('customCompanionCreated', loadCustomCompanionsSidebar);
+window.addEventListener('customCompanionDeleted', loadCustomCompanionsSidebar);
 </script>
 
 </body>

@@ -389,6 +389,28 @@ async def clear_history():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/reset")
+async def reset_lyra():
+    """Permanently reset Lyra — clears all history and reinitialises memory."""
+    try:
+        import shutil
+        # Clear history
+        if HISTORY_DIR.exists():
+            shutil.rmtree(HISTORY_DIR)
+        HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+        # Reset memory files
+        for fname in ("base_info.json", "memory.json"):
+            fp = MEMORY_DIR / fname
+            if fp.exists():
+                fp.unlink()
+        _initialize_memory()
+        logger.info("Lyra: Full reset completed.")
+        return {"status": "reset", "message": "Lyra has been fully reset."}
+    except Exception as e:
+        logger.error(f"Lyra: Reset failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/initiate", response_model=ChatResponse)
 async def lyra_initiate(request: InitiateRequest):
     """Lyra composes a proactive opening message."""

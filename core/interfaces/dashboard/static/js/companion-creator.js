@@ -261,6 +261,7 @@ const CompanionCreator = (() => {
             if (!_editingId) _editingId = data.id;
             await _loadList();
             if (typeof showToast === 'function') showToast(data.message, 'success');
+            window.dispatchEvent(new CustomEvent('customCompanionCreated', { detail: { id: _editingId } }));
         } catch (err) {
             _setMsg(`Error: ${err.message}`, true);
         } finally {
@@ -281,6 +282,7 @@ const CompanionCreator = (() => {
             document.getElementById('cc-empty-state').style.display = '';
             await _loadList();
             if (typeof showToast === 'function') showToast(data.message, 'success');
+            window.dispatchEvent(new CustomEvent('customCompanionDeleted'));
         } catch (err) {
             if (typeof showToast === 'function') showToast(`Delete failed: ${err.message}`, 'error');
         }
