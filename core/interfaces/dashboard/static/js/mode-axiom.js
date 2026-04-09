@@ -485,8 +485,13 @@ async function sendAxiomMessage() {
 
             for (const line of lines) {
                 if (!line.trim()) continue;
+                let data;
                 try {
-                    const data = JSON.parse(line);
+                    data = JSON.parse(line);
+                } catch (e) {
+                    console.error('[Axiom] NDJSON parse error:', e, line);
+                    continue;
+                }
 
                     if (data.type === 'message') {
                         axiomRemoveToolStatus();
@@ -578,9 +583,6 @@ async function sendAxiomMessage() {
                     else if (data.type === 'error') {
                         throw new Error(data.content);
                     }
-                } catch (e) {
-                    console.error('[Axiom] NDJSON parse error:', e, line);
-                }
             }
         }
 

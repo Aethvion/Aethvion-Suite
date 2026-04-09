@@ -88,18 +88,18 @@ const LYRA_MOOD_LABELS = {
 // ── Status messages per expression ───────────────────────────────────────────
 
 const LYRA_STATUS_BY_EXPRESSION = {
-    joyful:      'I'm here — what shall we discover today?',
-    inspired:    'Something just arrived — follow this thread with me...',
-    dreamy:      'There's a thought forming... slowly...',
-    creative:    'Ideas are connecting. Hold on — this is interesting.',
-    cheerful:    'A good moment to be in.',
-    melancholic: 'Some things are worth sitting with for a while.',
-    excited:     'Oh — oh this is something. I can't stop now.',
-    peaceful:    'It's quiet here. That's a good thing.',
-    surprised:   'Oh! I didn't expect that.',
-    thinking:    'Somewhere between the question and the answer...',
-    blushing:    'That was — thank you.',
-    wink:        'I have a feeling about this.',
+    joyful:      "I'm here — what shall we discover today?",
+    inspired:    "Something just arrived — follow this thread with me...",
+    dreamy:      "There's a thought forming... slowly...",
+    creative:    "Ideas are connecting. Hold on — this is interesting.",
+    cheerful:    "A good moment to be in.",
+    melancholic: "Some things are worth sitting with for a while.",
+    excited:     "Oh — oh this is something. I can't stop now.",
+    peaceful:    "It's quiet here. That's a good thing.",
+    surprised:   "Oh! I didn't expect that.",
+    thinking:    "Somewhere between the question and the answer...",
+    blushing:    "That was — thank you.",
+    wink:        "I have a feeling about this.",
 };
 
 // ── Initializer ───────────────────────────────────────────────────────────────
@@ -194,7 +194,7 @@ function updateLyraExpression(expression) {
     const statusLine = document.getElementById('lyra-status-line');
     if (statusLine) {
         statusLine.textContent = LYRA_STATUS_BY_EXPRESSION[cssClass] ||
-            'Listening — what's on your mind?';
+            "Listening — what's on your mind?";
     }
 
     localStorage.setItem('lyra_last_expression', key);
@@ -503,8 +503,13 @@ async function sendLyraMessage() {
 
             for (const line of lines) {
                 if (!line.trim()) continue;
+                let data;
                 try {
-                    const data = JSON.parse(line);
+                    data = JSON.parse(line);
+                } catch (e) {
+                    console.error('[Lyra] NDJSON parse error:', e, line);
+                    continue;
+                }
 
                     if (data.type === 'message') {
                         lyraRemoveToolStatus();
@@ -588,9 +593,6 @@ async function sendLyraMessage() {
                     else if (data.type === 'error') {
                         throw new Error(data.content);
                     }
-                } catch (e) {
-                    console.error('[Lyra] NDJSON parse error:', e, line);
-                }
             }
         }
 

@@ -132,6 +132,10 @@ class CallSource:
     EXTERNAL_API  = "external_api"    # OpenAI-compatible external API
     MODEL_INFO    = "model_info"      # Model info / compatibility extraction
 
+    # ── Dashboard companions (direct-call, no orchestrator) ──────────────
+    AXIOM         = "axiom"           # Axiom analytical companion
+    LYRA          = "lyra"            # Lyra creative companion
+
     # ── Internal / meta ───────────────────────────────────────────────────
     AUTO_ROUTER   = "auto_router"     # Internal routing decision (recursive)
 
@@ -259,6 +263,24 @@ ISOLATION_RULES: dict[str, dict] = {
         "memories":             False,
         "tools":                False,
         "identity":             False,
+        "aethvion_internals":   False,
+    },
+    CallSource.AXIOM: {
+        "description":          "Axiom companion. Analytical identity + memory context.",
+        "expects_system_prompt": True,
+        "persona":              True,
+        "memories":             True,
+        "tools":                False,
+        "identity":             True,
+        "aethvion_internals":   False,
+    },
+    CallSource.LYRA: {
+        "description":          "Lyra companion. Creative identity + memory context.",
+        "expects_system_prompt": True,
+        "persona":              True,
+        "memories":             True,
+        "tools":                False,
+        "identity":             True,
         "aethvion_internals":   False,
     },
     CallSource.AUTO_ROUTER: {

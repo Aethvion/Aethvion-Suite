@@ -903,17 +903,49 @@ async function loadCustomCompanionsSidebar() {
         const data = await res.json();
         const companions = data.companions || [];
 
-        // ── Sidebar ──────────────────────────────────────────────────────────
+        // ── Sidebar + panels ──────────────────────────────────────────────
         const sidebarContainer = document.getElementById('custom-companions-sidebar');
         if (sidebarContainer) {
+            // Remove buttons for companions that no longer exist
             sidebarContainer.innerHTML = '';
+
+            // Remove stale panels
+            document.querySelectorAll('.custom-companion-panel').forEach(el => el.remove());
+
             companions.forEach(c => {
+                const tabId = `custom-companion-${c.id}`;
+                const color = c.accent_color || '#6366f1';
+
+                // Sidebar button
                 const btn = document.createElement('button');
                 btn.className = 'main-tab mode-ai';
-                btn.setAttribute('data-maintab', `custom-companion-${c.id}`);
+                btn.setAttribute('data-maintab', tabId);
                 btn.setAttribute('data-tooltip', c.description || c.name);
-                btn.innerHTML = `<span class="tab-icon" style="color:${c.accent_color || '#6366f1'}">${c.avatar_symbol || '✦'}</span><span class="tab-label">${c.name}</span>`;
+                btn.innerHTML = `<span class="tab-icon" style="color:${color}">${c.avatar_symbol || '✦'}</span><span class="tab-label">${c.name}</span>`;
                 sidebarContainer.appendChild(btn);
+
+                // Panel (required by switchMainTab)
+                if (!document.getElementById(`${tabId}-panel`)) {
+                    const panel = document.createElement('div');
+                    panel.id = `${tabId}-panel`;
+                    panel.className = 'main-panel custom-companion-panel';
+                    panel.style.display = 'none';
+                    panel.innerHTML = `
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:1.5rem;padding:2rem;text-align:center;">
+    <div style="font-size:3.5rem;line-height:1;">${c.avatar_symbol || '✦'}</div>
+    <div style="font-size:1.4rem;font-weight:600;color:${color};">${c.name}</div>
+    <div style="color:var(--text-secondary);max-width:480px;">${c.description || ''}</div>
+    <div style="color:var(--text-tertiary);font-size:0.85rem;border:1px solid var(--border);border-radius:8px;padding:0.75rem 1.25rem;">
+        Custom companion chat requires a server restart after creation.
+    </div>
+    <button class="settings-open-chat-btn" onclick="if(typeof switchMainTab==='function') switchMainTab('companion-creator')" style="margin-top:0.5rem;">
+        <i class="fas fa-pencil-alt"></i> Edit in Companion Creator
+    </button>
+</div>`;
+                    // Append after the main content area panels
+                    const mainContent = document.querySelector('.main-content') || document.body;
+                    mainContent.appendChild(panel);
+                }
             });
         }
 
@@ -995,6 +1027,13 @@ async function _deleteCustomCompanion(id, name) {
         alert(`Could not delete "${name}": ${e.message}`);
     }
 }
+
+// Re-run settings-panel injection when the settings partial is lazy-loaded
+document.addEventListener('panelLoaded', (e) => {
+    if (e.detail && e.detail.tabName === 'settings') {
+        loadCustomCompanionsSidebar();
+    }
+});
 
 // Load on DOMContentLoaded and also after systemReady
 document.addEventListener('DOMContentLoaded', loadCustomCompanionsSidebar);
