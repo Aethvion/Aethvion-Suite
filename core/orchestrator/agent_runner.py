@@ -299,13 +299,32 @@ class AgentState:
     def is_cached(self, path: str) -> bool:
         return path in self.file_cache
 
-    def cache_file(self, path: str, size: int) -> None:
+    def cache_file(self, path: str, size: int, turn: int = 0) -> None:
         self.file_cache[path] = {
             "size": size,
             "cached_at": utcnow_iso(),
+            "turn": turn,
         }
         if path not in self.workspace_map:
             self.workspace_map.append(path)
+
+    def evict_stale_cache(self, current_turn: int, max_idle_turns: int = 2) -> List[str]:
+        """Remove files from file_cache that haven't been accessed in max_idle_turns.
+
+        The file remains in workspace_map (agent still knows it exists) and
+        file_digests (structural knowledge is preserved). Only the '(cached)'
+        marker in the Files: context line is removed, signalling the agent it
+        should re-read if it needs the current content again.
+
+        Returns the list of evicted paths for logging.
+        """
+        evicted = []
+        for path in list(self.file_cache.keys()):
+            idle = current_turn - self.file_cache[path].get("turn", 0)
+            if idle > max_idle_turns:
+                del self.file_cache[path]
+                evicted.append(path)
+        return evicted
 
     def update_workspace_map(self, entries: List[str]) -> None:
         """Replace workspace_map with entries from list_dir, evicting stale cache."""
@@ -609,7 +628,57 @@ class AgentRunner:
 
     # ── LLM call ──────────────────────────────────────────────────
 
-    def _build_prompt(self) -> str:
+    def _render_conv_entry(self, entry: Any, current_turn: int) -> str:
+        """Render one conversation entry, evicting stale large read_file payloads.
+
+        Entries added by run() are dicts:
+          {"role": "assistant", "text": "...", "turn": N}
+          {"role": "user",      "results": ["action(p): ...", ...], "turn": N}
+
+        Plain strings (pushback messages, legacy) are returned as-is.
+
+        Eviction rule: read_file results older than _EVICT_AFTER turns AND larger
+        than _EVICT_MIN_SIZE chars are replaced with a one-line stub.  The
+        Knowledge block already has the file's structure; the model can re-read
+        with an offset if it needs the raw content again.
+        """
+        _EVICT_AFTER    = 2    # rounds before evicting a stale read result
+        _EVICT_MIN_SIZE = 400  # only evict results larger than this (chars)
+
+        if isinstance(entry, str):
+            return entry  # plain-string pushback / legacy format
+
+        role = entry.get("role", "")
+        if role == "assistant":
+            return f"Assistant: {entry['text']}"
+
+        # "user" results entry
+        age = current_turn - entry.get("turn", 0)
+        rendered: List[str] = []
+        for r in entry.get("results", []):
+            sep = r.find(": ")
+            if sep == -1:
+                rendered.append(r)
+                continue
+            action  = r[:sep]
+            content = r[sep + 2:]
+            if (
+                action.startswith("read_file(")
+                and age >= _EVICT_AFTER
+                and len(content) > _EVICT_MIN_SIZE
+            ):
+                rendered.append(
+                    f"{action}: [evicted — {len(content):,} chars; "
+                    f"Knowledge block has structure, re-read with offset if content needed]"
+                )
+            else:
+                rendered.append(r)
+
+        header = entry.get("header", "User: Results:")
+        suffix = entry.get("suffix", "\nKeep going until the task is fully complete.")
+        return header + "\n" + "\n".join(rendered) + suffix
+
+    def _build_prompt(self, current_turn: int = 0) -> str:
         """Mirror the exact format used by the working Code IDE (_messages_to_prompt):
         system + double-newline-separated 'User:' / 'Assistant:' blocks."""
         system = self._get_system_prompt()
@@ -630,7 +699,8 @@ class AgentRunner:
         # Configurable conversation window — subclasses (e.g. CorpWorkerRunner)
         # can reduce this to cut token cost for focused single-file tasks.
         recent = self.conversation[-self._conv_window:]
-        parts.extend(recent)
+        # Eviction-aware rendering: old read_file results are replaced with stubs
+        parts.extend(self._render_conv_entry(e, current_turn) for e in recent)
 
         return "\n\n".join(parts)
 
@@ -643,7 +713,7 @@ class AgentRunner:
 
     def _call_llm(self, iteration: int = 0) -> str:
         """Use streaming — same path as the working Code IDE — for reliability."""
-        prompt = self._build_prompt()
+        prompt = self._build_prompt(current_turn=iteration)
         logger.info(f"[AgentRunner iter={iteration}] prompt_chars={len(prompt)}")
 
         # Pass images only on the first LLM call so vision context is available
@@ -808,7 +878,7 @@ class AgentRunner:
             path = action.get("path", "")
             content = action.get("content", "")
             result = self._write_file(path, content)
-            self.state.cache_file(path, len(content.encode()))
+            self.state.cache_file(path, len(content.encode()), turn=iteration)
             self.state.log_action(iteration, "write_file", path)
             # File was written — clear its read-dedup entries.
             self._invalidate_read_cache(path)
@@ -849,7 +919,7 @@ class AgentRunner:
             result = self._read_file(path, offset=offset, limit=limit)
             # Cache with actual byte size of result if successful
             if not result.startswith("Error:") and not result.startswith("Not found:"):
-                self.state.cache_file(path, len(result.encode()))
+                self.state.cache_file(path, len(result.encode()), turn=iteration)
                 # Generate / refresh semantic digest on a full read (offset=0).
                 # This populates the Knowledge block so subsequent iterations don't
                 # need to re-read just to find out what functions are in the file.
@@ -1269,6 +1339,17 @@ class AgentRunner:
         self._emit({"type": "start", "title": "Starting task", "detail": self.task})
 
         for iteration in range(MAX_ITERATIONS):
+            # Evict file_cache entries that haven't been accessed in the last 2 turns.
+            # Files stay in workspace_map and file_digests — only the '(cached)' marker
+            # is dropped, so the agent knows to re-read if it needs fresh content.
+            if iteration > 0:
+                evicted = self.state.evict_stale_cache(current_turn=iteration)
+                if evicted:
+                    logger.debug(
+                        f"[AgentRunner iter={iteration}] Cache-evicted {len(evicted)} idle file(s): "
+                        + ", ".join(evicted)
+                    )
+
             # Check for user-requested stop (sent via POST /api/tasks/{id}/cancel)
             if self.trace_id and is_agent_task_cancelled(self.trace_id):
                 summary = "Task stopped by user."
@@ -1296,7 +1377,9 @@ class AgentRunner:
                 # of as an ACTION). Push back rather than auto-completing.
                 incomplete = [s["text"] for s in self.state.plan if not s.get("done")]
                 if incomplete:
-                    self.conversation.append(f"Assistant: {thinking or '(no actions)'}")
+                    self.conversation.append(
+                        f"Assistant: {thinking or '(no actions)'}"
+                    )
                     self.conversation.append(
                         "User: Your plan still has incomplete steps: "
                         + "; ".join(incomplete)
@@ -1361,16 +1444,22 @@ class AgentRunner:
                 self.state.save()
                 return done_summary
 
-            # Store as "Assistant:" / "User:" to match Code IDE _messages_to_prompt format
+            # Store as structured dicts so _render_conv_entry can evict stale
+            # read_file payloads when building prompts in later iterations.
             agent_line = thinking or "(working)"
             if compact_actions:
                 agent_line += "\nDid: " + ", ".join(compact_actions)
-            self.conversation.append(f"Assistant: {agent_line}")
+            self.conversation.append(
+                {"role": "assistant", "text": agent_line, "turn": iteration}
+            )
             if results:
-                self.conversation.append(
-                    "User: Results:\n" + "\n".join(results) +
-                    "\nKeep going until the task is fully complete."
-                )
+                self.conversation.append({
+                    "role":    "user",
+                    "results": results,   # List[str] — each "action(path): content"
+                    "turn":    iteration,
+                    "header":  "User: Results:",
+                    "suffix":  "\nKeep going until the task is fully complete.",
+                })
             # Keep conversation bounded to last 8 entries (4 round-trips)
             if len(self.conversation) > 8:
                 self.conversation = self.conversation[-8:]
