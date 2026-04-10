@@ -141,6 +141,7 @@
                 if (!res.ok) return;
                 const data = await res.json();
                 
+                // Append new log entries
                 if (data.logs && data.logs.length > lastLogCount) {
                     for (let i = lastLogCount; i < data.logs.length; i++) {
                         appendLog(data.logs[i]);
@@ -148,6 +149,7 @@
                     lastLogCount = data.logs.length;
                 }
 
+                // Refresh iframe whenever there is new HTML (intermediate or final)
                 if (data.html && (data.html !== exLastHtml)) {
                     refreshIframe();
                     exLastHtml = data.html;
@@ -156,16 +158,17 @@
                 if (data.status === 'completed') {
                     clearInterval(interval);
                     updateStatus('Completed!', 100);
-                    refreshIframe(true); 
+                    refreshIframe();
                     setLoading(false);
-                    // Add to history with the generated title
-                    addToHistory(data.display_title || data.topic, data.thread_id);
+                    // Use AI-generated title if available, otherwise fall back to prompt
+                    const title = data.display_title || exPrompt.value.trim();
+                    addToHistory(title, exCurrentThreadId);
                 } else if (data.status === 'failed') {
                     clearInterval(interval);
                     setLoading(false);
-                    if (window.showToast) window.showToast('Generation failed: ' + data.error, 'error');
+                    if (window.showToast) window.showToast('Generation failed: ' + (data.error || 'Unknown error'), 'error');
                 } else {
-                    updateStatus(data.step || 'Building immersion...', null);
+                    updateStatus(data.step || 'Working...', null);
                 }
             } catch (e) {
                 console.error("Poll error", e);
