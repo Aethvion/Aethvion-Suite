@@ -282,6 +282,7 @@ async def initialize_system_background():
         from .notification_routes import router as notification_router
         from .external_api_routes import router as ext_api_router, mgmt_router as ext_api_mgmt_router
         from .overlay_routes import router as overlay_router
+        from .explained_routes import router as explained_router
 
         # Immediate Router Inclusion (Sync but fast)
         app.include_router(task_router)
@@ -312,6 +313,7 @@ async def initialize_system_background():
         app.include_router(ext_api_router)
         app.include_router(ext_api_mgmt_router)
         app.include_router(overlay_router)
+        app.include_router(explained_router)
 
         # Layer 2–4 routing tools
         from core.tools.openapi_ingestion import router as openapi_router

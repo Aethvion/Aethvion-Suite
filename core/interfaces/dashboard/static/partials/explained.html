@@ -1,0 +1,78 @@
+<div id="explained-container" class="explained-container">
+    <!-- Prompt Sidebar (Collapsible) -->
+    <aside id="explained-sidebar" class="explained-sidebar">
+        <div class="es-header">
+            <h3><i class="fas fa-magic"></i> AI Explainer</h3>
+            <button id="explained-collapse-btn" class="icon-btn xs-btn" title="Collapse Prompt Bar">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
+        
+        <div class="es-content">
+            <div class="es-field">
+                <label>What should I explain?</label>
+                <textarea id="explained-prompt" placeholder="e.g. The lore of Elden Ring, how quantum computing works, or the history of the internet..."></textarea>
+            </div>
+            
+            <div class="es-field">
+                <label>Style Preset</label>
+                <select id="explained-style">
+                    <option value="modern">Modern & Sleek</option>
+                    <option value="cyber">Cyberpunk / Neon</option>
+                    <option value="minimal">Minimalist / Clean</option>
+                    <option value="classic">Classic / Professional</option>
+                </select>
+            </div>
+
+            <div class="es-field">
+                <label>Model</label>
+                <select id="explained-model-select">
+                    <!-- Populated via JS -->
+                    <option value="auto">Auto Select</option>
+                </select>
+            </div>
+            
+            <button id="explained-generate-btn" class="primary-btn wide-btn">
+                <i class="fas fa-wand-sparkles"></i> Build Page
+            </button>
+
+            <div id="explained-status-area" class="es-status" style="display: none;">
+                <div class="es-loader">
+                    <div class="es-spinner"></div>
+                    <span id="explained-status-text">Thinking...</span>
+                </div>
+                <div class="es-progress-bar">
+                    <div id="explained-progress-fill" class="es-progress-fill"></div>
+                </div>
+            </div>
+
+            <div class="es-history">
+                <label>Past Explanations</label>
+                <div id="explained-history-list" class="es-list">
+                    <!-- Populated via JS -->
+                    <div class="es-empty">No history yet</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Expanding Toggle (visible when sidebar is collapsed) -->
+    <button id="explained-expand-btn" class="explained-expand-btn hidden" title="Expand Prompt Bar">
+        <i class="fas fa-chevron-right"></i>
+    </button>
+
+    <!-- Main Output View -->
+    <main class="explained-main">
+        <div id="explained-output-wrapper" class="explained-output-wrapper">
+            <!-- Iframe or Div for the generated content -->
+            <div id="explained-placeholder" class="explained-placeholder">
+                <div class="ep-content">
+                    <div class="ep-icon"><i class="fas fa-lightbulb"></i></div>
+                    <h2>Visionary Explanations</h2>
+                    <p>Enter a topic on the left to generate an immersive, visual explanation page.</p>
+                </div>
+            </div>
+            <iframe id="explained-frame" class="explained-frame hidden" frameborder="0"></iframe>
+        </div>
+    </main>
+</div>

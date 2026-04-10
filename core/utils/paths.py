@@ -29,6 +29,8 @@ LOGS        = DATA / "logs"
 SYSTEM      = DATA / "system"
 VAULT       = DATA / "vault"
 WORKSPACES  = DATA / "workspaces"
+EXPLANATIONS = DATA / "explanations"
+
 
 # ── Apps ──────────────────────────────────────────────────────────────────────
 APP_ARENA     = APPS / "arena"
@@ -53,6 +55,8 @@ HISTORY_CHAT     = HISTORY / "chat"             # Standard Misaka chat sessions
 HISTORY_AI_CONV  = HISTORY / "ai_conversations" # AI Conversations feature saves
 HISTORY_ADVANCED = HISTORY / "advanced"         # Advanced AI Conversations
 HISTORY_AGENTS   = HISTORY / "agents"           # Agent Workspace threads
+# HISTORY_EXPLAINED moved to EXPLANATIONS
+
 
 # ── Scheduled Tasks ───────────────────────────────────────────────────────────
 SCHEDULED_TASKS  = DATA / "scheduled_tasks"     # Recurring AI task definitions
@@ -117,6 +121,7 @@ def ensure_all() -> None:
         APP_GAMES, APP_HARDWARE, APP_NEXUS, APP_PHOTO, APP_TRACKING, APP_VTUBER,
         CONFIG,
         HISTORY, HISTORY_CHAT, HISTORY_AI_CONV, HISTORY_ADVANCED, HISTORY_AGENTS,
+        EXPLANATIONS,
         LOGS, LOGS_USAGE, LOGS_SYSTEM, LOGS_NOTIFICATIONS,
         SYSTEM,
         COMPANIONS, COMPANIONS_MISAKA, COMPANIONS_MISAKA / "history",

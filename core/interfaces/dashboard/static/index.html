@@ -49,6 +49,7 @@
     <link rel="stylesheet" href="/static/css/adv_aiconv.css">
     <link rel="stylesheet" href="/static/css/mode-photo.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/research-board.css?v=__VNUM__">
+    <link rel="stylesheet" href="/static/css/explained.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/audio-models.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/assistant.css">
     <link rel="stylesheet" href="/static/css/audio_studio.css">
@@ -388,6 +389,8 @@
                             <span class="tab-icon"><i class="fas fa-shield-halved"></i></span><span class="tab-label">Arena</span></button>
                         <button class="main-tab mode-ai" data-maintab="aiconv" data-tooltip="AI Conversations Hub">
                             <span class="tab-icon"><i class="fas fa-masks-theater"></i></span><span class="tab-label">AI Conv.</span></button>
+                        <button class="main-tab mode-ai" data-maintab="explained" data-tooltip="AI Explained - Visual Explanations">
+                            <span class="tab-icon"><i class="fas fa-lightbulb"></i></span><span class="tab-label">Explained</span></button>
                     </div>
 
                     <!-- Companions -->
@@ -563,6 +566,11 @@
             
             <!-- Research Board (Board of Directors) Tab -->
             <div class="main-tab-panel" id="researchboard-panel" data-partial="researchboard">
+      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+    </div>
+
+            <!-- Explained Tab -->
+            <div class="main-tab-panel" id="explained-panel" data-partial="explained">
       <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
     </div>
 
@@ -786,6 +794,7 @@
             <script src="/static/js/companion-creator.js?v=1"></script>
             <script src="/static/js/companion-memory.js?v=1"></script>
             <script src="/static/js/mode-research-board.js?v=6"></script>
+            <script src="/static/js/mode-explained.js?v=__VNUM__"></script>
             <script src="/static/js/assistant.js?v=5"></script>
             <!-- Notification System -->
             <script src="/static/js/notifications.js?v=6"></script>
