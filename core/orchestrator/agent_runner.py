@@ -195,6 +195,7 @@ ACTION: {{"type": "set_plan", "steps": ["step 1", "step 2", "step 3"]}}
 ACTION: {{"type": "mark_done", "step": "exact step text"}}  ← call this AFTER the real action succeeds, never instead of it
 ACTION: {{"type": "add_note", "note": "important context to remember"}}
 ACTION: {{"type": "evict_file", "path": "relative/file.txt"}}          ← drop a file from active context the moment you no longer need its raw content
+ACTION: {{"type": "distill_file_context", "path": "relative/file.txt", "summary": "key functions, patterns, configs I extracted"}}  ← store compact notes then auto-evict (preferred over plain evict_file for large reference reads)
 ACTION: {{"type": "observe", "content": "I see a screenshot showing X, Y, Z. The error is on line N."}}  ← describe images or key findings
 ACTION: {{"type": "done", "summary": "brief summary of what was accomplished"}}
 
@@ -218,7 +219,7 @@ EFFICIENCY RULES:
 15. KNOWLEDGE BLOCK: The Context section contains a "Knowledge" block listing every file you have ever read or modified, with function names and their exact line numbers (e.g. handleMouseMove@L145). Use this to jump directly to the right section: read_file with offset=145 to see that function. Check the Knowledge block before deciding to read a file at all — you may already know what you need.
 16. FILE READING: read_file returns up to 50,000 chars per call — enough for most files in one shot. If a result ends with [TRUNCATED], use the exact offset shown to continue. If you see a [NOTE] about reading a section multiple times, check the Knowledge block — it has the function locations. Use offset-based reads to jump directly to the function you need.
 17. PATCH FAILURES: If patch_file returns "FAILED: exact 'old' string not found", the file was likely changed since you last read it. Re-read the file (or the relevant section using offset) to get the current exact content, then retry. If you see a [NOTE] about repeated attempts, switch to append_file for new functions or write_file for a full replacement.
-18. SMART CONTEXT EVICTION: When you finish exploring a reference or template file (reading another app to understand a pattern, inspecting a config, etc.) call evict_file on it immediately after extracting what you need — one pass is enough, never carry those files into the execution phase. For large files like core.js: read → note the function names and line numbers you need → evict, then use offset reads to jump back if required. Only carry files you are actively writing to. When you call set_plan to begin execution after an exploration phase, all read-only files are automatically evicted. Be strategic: prefer targeted offset reads and append_file over full-file reads.
+18. SMART CONTEXT EVICTION: When you finish reading a reference or template file, call distill_file_context immediately — write a compact summary of key functions/patterns you learned, and it will be stored in the Knowledge block while the raw content is evicted automatically. For very large files: read → note function names + line numbers → distill_file_context (one pass is enough, never carry raw reference content into the execution phase). Only keep files you are actively writing to in context. When you call set_plan to start execution after exploration, all read-only files are automatically evicted anyway — distill first so you don't lose your notes. If you see a ⚠ Eviction nudge in Context, act on it immediately.
 19. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without data, switch to fetch_url or proceed with what you have.
 20. For fetching a specific URL or API use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
 21. Write ALL deliverable files BEFORE writing or running verification/test scripts.
@@ -425,7 +426,7 @@ class AgentState:
 
     # ── context builder ───────────────────────────────────────────
 
-    def build_context(self) -> str:
+    def build_context(self, current_turn: int = 0) -> str:
         """Return a compact context string injected into every prompt."""
         parts: List[str] = []
 
@@ -494,6 +495,25 @@ class AgentState:
             shown.sort(key=lambda e: e.get("i", 0))
             tokens = [f"{e['type']}({e['detail']})" for e in shown]
             parts.append("Recent: " + ", ".join(tokens))
+
+        # Eviction nudge — gently remind the agent when read-only files have been
+        # idle for several turns.  Fires only from turn 3 onward so it never appears
+        # during the first exploration pass (where the agent is still reading).
+        _NUDGE_AFTER = 3
+        if current_turn >= _NUDGE_AFTER:
+            stale_reads = [
+                path for path, info in self.file_cache.items()
+                if not info.get("modified", False)
+                and (current_turn - info.get("turn", 0)) >= _NUDGE_AFTER
+            ]
+            if stale_reads:
+                names  = ", ".join(stale_reads[:4])
+                extra  = f" (+{len(stale_reads) - 4} more)" if len(stale_reads) > 4 else ""
+                parts.append(
+                    f"⚠ Eviction nudge: {len(stale_reads)} read-only file(s) idle ≥{_NUDGE_AFTER} turns — "
+                    f"call distill_file_context (or evict_file) if you no longer need the raw content: "
+                    f"{names}{extra}"
+                )
 
         return "\n".join(parts)
 
@@ -715,7 +735,7 @@ class AgentRunner:
         system = self._get_system_prompt()
         parts = [system]
 
-        ctx = self.state.build_context()
+        ctx = self.state.build_context(current_turn=current_turn)
         if ctx:
             parts.append(f"Context:\n{ctx}")
 
@@ -864,6 +884,28 @@ class AgentRunner:
                 if success
                 else f"{path} was not in active context (already absent or never read)."
             )
+
+        if t == "distill_file_context":
+            path    = action.get("path", "")
+            summary = action.get("summary", "").strip()
+            if not path:
+                return "[distill_file_context] 'path' is required."
+            if not summary:
+                return "[distill_file_context] 'summary' is required — write compact notes about what you extracted."
+            # Store the agent-authored summary in file_digests so it shows up in
+            # the Knowledge block on every subsequent turn.  This replaces any
+            # auto-generated digest for that file (agent notes are more precise).
+            digest_entry = f"{path} [distilled]: {summary}"
+            self.state.update_file_digest(path, digest_entry)
+            was_cached = self.state.evict_file(path)
+            self.state.log_action(iteration, "distill_file_context", path)
+            self._emit({
+                "type": "thinking",
+                "title": f"Distilled {path}",
+                "detail": summary[:120] + ("…" if len(summary) > 120 else ""),
+            })
+            evict_note = " Raw content evicted." if was_cached else " (was not in active context)"
+            return f"Distilled {path} → stored in Knowledge block.{evict_note}"
 
         if t == "add_note":
             note = action.get("note", "")
