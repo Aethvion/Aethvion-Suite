@@ -1114,10 +1114,20 @@ console.log(response.choices[0].message.content);</pre>
                                 <div class="card-content">
                                     <div class="compact-item">
                                         <div class="item-label">
-                                            <span>Transparency</span>
-                                            <span class="range-display" id="overlay-opacity-val">90%</span>
+                                            <span>Background Opacity</span>
+                                            <i class="fas fa-info-circle tooltip-trigger" title="How opaque the window background is. Lower = more see-through."></i>
+                                            <span class="range-display" id="overlay-bg-opacity-val">93%</span>
                                         </div>
-                                        <input type="range" id="overlay-opacity" min="20" max="100" value="90"
+                                        <input type="range" id="overlay-bg-opacity" min="10" max="100" value="93"
+                                               oninput="overlayUpdatePreview()">
+                                    </div>
+                                    <div class="compact-item" style="margin-top: 0.75rem;">
+                                        <div class="item-label">
+                                            <span>Text Opacity</span>
+                                            <i class="fas fa-info-circle tooltip-trigger" title="How visible the text is. Keep this high (80–100%) even with a very transparent background."></i>
+                                            <span class="range-display" id="overlay-text-opacity-val">100%</span>
+                                        </div>
+                                        <input type="range" id="overlay-text-opacity" min="30" max="100" value="100"
                                                oninput="overlayUpdatePreview()">
                                     </div>
                                     <div class="compact-item" style="margin-top: 0.75rem;">
@@ -1132,34 +1142,42 @@ console.log(response.choices[0].message.content);</pre>
                                     <!-- Live Preview -->
                                     <div style="margin-top: 1.25rem;">
                                         <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:1px;">Live Preview</div>
+                                        <!-- Outer wrapper gives the "window" a checkered hint so transparent backgrounds are visible -->
+                                        <div style="background: repeating-conic-gradient(#2a2a3a 0% 25%, #1a1a28 0% 50%) 0 0/16px 16px; border-radius:12px; padding:2px;">
                                         <div id="overlay-preview" style="
                                             background: rgba(12,12,22,0.93);
-                                            border: 1px solid rgba(99,102,241,0.5);
-                                            border-radius: 12px;
+                                            border: 1px solid rgba(99,102,241,0.45);
+                                            border-radius: 11px;
                                             padding: 12px 14px;
-                                            opacity: 0.9;
-                                            transition: opacity 0.15s;
                                         ">
-                                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid rgba(99,102,241,0.22);">
+                                            <!-- Title bar mock -->
+                                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid rgba(99,102,241,0.2);">
                                                 <span style="color:rgba(99,102,241,1);font-size:14px;">◈</span>
-                                                <span style="color:rgba(200,200,224,0.86);font-weight:600;font-size:13px;">Ask about screen</span>
-                                                <span style="margin-left:auto;color:rgba(120,120,150,0.7);font-size:10px;">Ctrl+Shift+Space</span>
+                                                <span style="color:rgba(200,200,224,0.86);font-weight:600;font-size:12px;">Ask about screen</span>
+                                                <span style="margin-left:auto;color:rgba(120,120,150,0.65);font-size:10px;">Ctrl+Shift+Space</span>
                                             </div>
+                                            <!-- Content area with independent text opacity -->
                                             <div id="overlay-preview-body" style="font-size:11px;">
-                                                <div style="color:rgba(99,102,241,0.85);font-weight:600;margin-bottom:2px;">◈ Me</div>
-                                                <div style="color:rgba(220,220,245,0.8);margin-bottom:5px;">What does this error mean?</div>
-                                                <div style="display:flex;align-items:center;gap:6px;margin:4px 0 6px;">
-                                                    <div style="flex:1;border-top:1px solid rgba(99,102,241,0.3);"></div>
-                                                    <span style="color:rgba(99,102,241,0.5);font-size:10px;">▸ Response</span>
-                                                    <div style="flex:1;border-top:1px solid rgba(99,102,241,0.3);"></div>
+                                                <!-- Screenshot placeholder -->
+                                                <div style="width:80px;height:45px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);border-radius:5px;margin-bottom:6px;display:flex;align-items:center;justify-content:center;">
+                                                    <span style="font-size:16px;opacity:0.4;">🖥</span>
                                                 </div>
-                                                <div style="color:rgba(210,210,235,0.9);">This is a <code style="background:rgba(99,102,241,0.15);border-radius:3px;padding:1px 3px;font-size:0.9em;">NullPointerException</code> — the object was not initialized before use.</div>
+                                                <div style="color:rgba(99,102,241,0.9);font-weight:600;margin-bottom:2px;">◈ Me</div>
+                                                <div style="color:rgba(220,220,245,0.85);margin-bottom:5px;">What does this error mean?</div>
+                                                <div style="display:flex;align-items:center;gap:6px;margin:4px 0 6px;">
+                                                    <div style="flex:1;border-top:1px solid rgba(99,102,241,0.28);"></div>
+                                                    <span style="color:rgba(99,102,241,0.45);font-size:10px;">▸ Response</span>
+                                                    <div style="flex:1;border-top:1px solid rgba(99,102,241,0.28);"></div>
+                                                </div>
+                                                <div style="color:rgba(210,210,235,0.92);">This is a <code style="background:rgba(99,102,241,0.15);border-radius:3px;padding:1px 3px;font-size:0.85em;">NullPointerException</code> — object not initialized.</div>
                                             </div>
+                                        </div>
                                         </div>
                                     </div>
 
                                     <p class="section-hint" style="margin-top: 0.75rem; font-size: 0.75rem;">
-                                        Transparency and font size take effect the next time the overlay opens.
+                                        Background opacity makes the window see-through. Text opacity stays independent so you can always read the response even on a fully transparent background.
+                                        Changes take effect the next time the overlay opens.
                                     </p>
                                 </div>
                             </div>

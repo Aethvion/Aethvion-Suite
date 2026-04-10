@@ -38,7 +38,8 @@ _DEFAULT_CONFIG = {
     "hotkey":  "ctrl+shift+space",
     "model":   None,        # None = use system.info_model
     "launch_with_suite": False,
-    "opacity":   0.9,       # window opacity (0.3 – 1.0)
+    "bg_opacity":   0.93,   # container background opacity (0.1 – 1.0)
+    "text_opacity": 1.0,    # text / content opacity (0.3 – 1.0)
     "font_size": 11,        # response/input font size in pt
 }
 
@@ -82,7 +83,8 @@ class OverlayConfigIn(BaseModel):
     hotkey:             Optional[str]   = None
     model:              Optional[str]   = None
     launch_with_suite:  Optional[bool]  = None
-    opacity:            Optional[float] = None   # 0.3 – 1.0
+    bg_opacity:         Optional[float] = None   # 0.1 – 1.0  background opacity
+    text_opacity:       Optional[float] = None   # 0.3 – 1.0  text opacity
     font_size:          Optional[int]   = None   # 8 – 18
 
 
@@ -157,8 +159,14 @@ async def overlay_save_config(body: OverlayConfigIn):
     if body.hotkey             is not None: cfg["hotkey"]             = body.hotkey.strip()
     if body.model              is not None: cfg["model"]              = body.model or None
     if body.launch_with_suite  is not None: cfg["launch_with_suite"]  = body.launch_with_suite
-    if body.opacity            is not None: cfg["opacity"]            = max(0.2, min(1.0, body.opacity))
+    if body.bg_opacity         is not None: cfg["bg_opacity"]         = max(0.1, min(1.0, body.bg_opacity))
+    if body.text_opacity       is not None: cfg["text_opacity"]       = max(0.3, min(1.0, body.text_opacity))
     if body.font_size          is not None: cfg["font_size"]          = max(8, min(18, body.font_size))
+    # Back-compat: migrate legacy "opacity" key to "bg_opacity"
+    if "opacity" in cfg and "bg_opacity" not in cfg:
+        cfg["bg_opacity"] = cfg.pop("opacity")
+    elif "opacity" in cfg:
+        del cfg["opacity"]
     _save_config(cfg)
     return cfg
 

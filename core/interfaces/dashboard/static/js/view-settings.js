@@ -3062,10 +3062,13 @@ async function loadOverlaySettings() {
         }
 
         // Populate appearance sliders
-        const opacityEl  = document.getElementById('overlay-opacity');
-        const fontSizeEl = document.getElementById('overlay-font-size');
-        if (opacityEl)  opacityEl.value  = Math.round((cfg.opacity   ?? 0.9) * 100);
-        if (fontSizeEl) fontSizeEl.value = cfg.font_size ?? 11;
+        const bgOpEl   = document.getElementById('overlay-bg-opacity');
+        const txtOpEl  = document.getElementById('overlay-text-opacity');
+        const fontSzEl = document.getElementById('overlay-font-size');
+        // Back-compat: fall back to legacy "opacity" key if bg_opacity absent
+        if (bgOpEl)   bgOpEl.value   = Math.round((cfg.bg_opacity   ?? cfg.opacity ?? 0.93) * 100);
+        if (txtOpEl)  txtOpEl.value  = Math.round((cfg.text_opacity ?? 1.0) * 100);
+        if (fontSzEl) fontSzEl.value = cfg.font_size ?? 11;
         overlayUpdatePreview();
 
         // Save autostart immediately on toggle
@@ -3131,37 +3134,49 @@ async function overlayRefreshStatus() {
 }
 
 function overlayUpdatePreview() {
-    const opacityEl      = document.getElementById('overlay-opacity');
-    const fontSizeEl     = document.getElementById('overlay-font-size');
-    const preview        = document.getElementById('overlay-preview');
-    const previewBody    = document.getElementById('overlay-preview-body');
-    const opacityValEl   = document.getElementById('overlay-opacity-val');
-    const fontSizeValEl  = document.getElementById('overlay-font-size-val');
+    const bgOpEl       = document.getElementById('overlay-bg-opacity');
+    const txtOpEl      = document.getElementById('overlay-text-opacity');
+    const fontSizeEl   = document.getElementById('overlay-font-size');
+    const preview      = document.getElementById('overlay-preview');
+    const previewBody  = document.getElementById('overlay-preview-body');
+    const bgOpValEl    = document.getElementById('overlay-bg-opacity-val');
+    const txtOpValEl   = document.getElementById('overlay-text-opacity-val');
+    const fontSzValEl  = document.getElementById('overlay-font-size-val');
 
-    if (!opacityEl || !fontSizeEl) return;
+    const bgOp   = bgOpEl   ? parseInt(bgOpEl.value)   / 100 : 0.93;
+    const txtOp  = txtOpEl  ? parseInt(txtOpEl.value)  / 100 : 1.0;
+    const fSize  = fontSizeEl ? parseInt(fontSizeEl.value)    : 11;
 
-    const opacity  = parseInt(opacityEl.value) / 100;
-    const fontSize = parseInt(fontSizeEl.value);
+    if (bgOpValEl)   bgOpValEl.textContent   = `${bgOpEl?.value   ?? 93}%`;
+    if (txtOpValEl)  txtOpValEl.textContent  = `${txtOpEl?.value  ?? 100}%`;
+    if (fontSzValEl) fontSzValEl.textContent = `${fSize}px`;
 
-    if (opacityValEl)  opacityValEl.textContent  = `${opacityEl.value}%`;
-    if (fontSizeValEl) fontSizeValEl.textContent = `${fontSize}px`;
-    if (preview)       preview.style.opacity     = opacity;
-    if (previewBody)   previewBody.style.fontSize = `${fontSize}px`;
+    // Background opacity → container background rgba
+    if (preview) {
+        preview.style.background = `rgba(12,12,22,${bgOp})`;
+    }
+    // Text opacity → content body opacity (independent of background)
+    if (previewBody) {
+        previewBody.style.opacity  = txtOp;
+        previewBody.style.fontSize = `${fSize}px`;
+    }
 }
 
 async function overlaySaveConfig() {
     const hotkeyEl    = document.getElementById('overlay-hotkey');
     const autostartEl = document.getElementById('overlay-autostart');
     const modelEl     = document.getElementById('overlay-model');
-    const opacityEl   = document.getElementById('overlay-opacity');
+    const bgOpEl      = document.getElementById('overlay-bg-opacity');
+    const txtOpEl     = document.getElementById('overlay-text-opacity');
     const fontSizeEl  = document.getElementById('overlay-font-size');
 
     const body = {
-        hotkey:            hotkeyEl?.value?.trim()                      || 'ctrl+shift+space',
-        launch_with_suite: autostartEl?.checked                         ?? false,
-        model:             modelEl?.value                               || null,
-        opacity:           opacityEl  ? parseInt(opacityEl.value) / 100 : 0.9,
-        font_size:         fontSizeEl ? parseInt(fontSizeEl.value)       : 11,
+        hotkey:            hotkeyEl?.value?.trim()                        || 'ctrl+shift+space',
+        launch_with_suite: autostartEl?.checked                           ?? false,
+        model:             modelEl?.value                                 || null,
+        bg_opacity:        bgOpEl   ? parseInt(bgOpEl.value)   / 100     : 0.93,
+        text_opacity:      txtOpEl  ? parseInt(txtOpEl.value)  / 100     : 1.0,
+        font_size:         fontSizeEl ? parseInt(fontSizeEl.value)        : 11,
     };
 
     try {
