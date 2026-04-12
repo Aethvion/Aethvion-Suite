@@ -1,199 +1,199 @@
 <div class="audio-studio-container" style="display: flex; height: 100%; overflow: hidden;">
-                    <!-- Main Viewer Area -->
-                    <div class="audio-studio-viewer"
-                        style="flex: 1; padding: 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg-secondary); position: relative;">
-                        <div class="empty-state-viewer" style="text-align: center;">
-                            <i class="fas fa-microphone"
-                                style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; color: var(--primary);"></i>
-                            <h3>Audio Studio</h3>
-                            <p style="color: var(--text-secondary);">Generate, Edit, or Analyze Audio Files</p>
-                        </div>
+    <!-- Sidebar Controls -->
+    <div class="audio-studio-sidebar"
+        style="width: 320px; background: var(--bg-tertiary); border-right: 1px solid var(--border); display: flex; flex-direction: column;">
+        <div class="sidebar-header" style="padding: 1.25rem; border-bottom: 1px solid var(--border);">
+            <h3 style="margin: 0; font-size: 0.9rem; letter-spacing: 1px; color: var(--primary);">
+                CONTROLS
+            </h3>
+        </div>
+        <div class="sidebar-content" style="padding: 1.25rem; overflow-y: auto; flex: 1;">
+            <!-- Mode Selection -->
+            <div class="control-group">
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem; text-transform: uppercase; font-weight: bold;">Mode</label>
+                <div class="mode-toggles" id="audio-mode-toggles"
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                    <label class="radio-toggle" style="cursor: pointer;"><input type="radio"
+                            name="audio_mode" value="tts" checked style="display: none;"> <span
+                            style="display: block; padding: 8px; text-align: center; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem;">Speech</span></label>
+                    <label class="radio-toggle" style="cursor: pointer;"><input type="radio"
+                            name="audio_mode" value="stt" style="display: none;"> <span
+                            style="display: block; padding: 8px; text-align: center; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem;">Transcript</span></label>
+                    <label class="radio-toggle" style="cursor: pointer;"><input type="radio"
+                            name="audio_mode" value="edit" style="display: none;"> <span
+                            style="display: block; padding: 8px; text-align: center; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem;">Edit</span></label>
+                    <label class="radio-toggle" style="cursor: pointer;"><input type="radio"
+                            name="audio_mode" value="music" style="display: none;"> <span
+                            style="display: block; padding: 8px; text-align: center; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem;">Music</span></label>
+                </div>
+            </div>
 
-                        <!-- Loading Overlay -->
-                        <div class="audio-loading-overlay" id="audio-loading-overlay"
-                            style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 10; flex-direction: column; align-items: center; justify-content: center;">
-                            <div class="loading-spinner"></div>
-                            <div class="loading-text" style="margin-top: 1rem; font-weight: bold; letter-spacing: 2px;">
-                                PROCESSING...</div>
-                        </div>
-
-                        <!-- Result Area: Premium Audio Player -->
-                        <div id="audio-result-area"
-                            style="width: 100%; display: none; flex-direction: column; align-items: center; gap: 2rem;">
-                            <!-- Transcription Display (New) -->
-                            <div id="audio-transcription-display" class="audio-transcription-container"
-                                style="display: none;">
-                                <div class="transcription-header">
-                                    <i class="fas fa-quote-left"></i>
-                                    <span>TRANSCRIPTION</span>
-                                </div>
-                                <div id="audio-transcription-text" class="audio-transcription-text"></div>
-                            </div>
-
-                            <div class="audio-player-container">
-                                <!-- Source Switcher -->
-                                <div class="audio-source-tabs">
-                                    <button class="audio-source-tab" id="audio-tab-input">Input</button>
-                                    <button class="audio-source-tab active" id="audio-tab-output">Result</button>
-                                </div>
-
-                                <!-- Visualization -->
-                                <div class="audio-visual-area">
-                                    <div class="audio-bars" id="audio-visualizer">
-                                        <div class="audio-bar active" style="animation-delay: 0.1s;"></div>
-                                        <div class="audio-bar active" style="animation-delay: 0.3s;"></div>
-                                        <div class="audio-bar active" style="animation-delay: 0.2s;"></div>
-                                        <div class="audio-bar active" style="animation-delay: 0.5s;"></div>
-                                        <div class="audio-bar active" style="animation-delay: 0.1s;"></div>
-                                        <div class="audio-bar active" style="animation-delay: 0.4s;"></div>
-                                        <div class="audio-bar active" style="animation-delay: 0.2s;"></div>
-                                        <div class="audio-bar active" style="animation-delay: 0.6s;"></div>
-                                        <div class="audio-bar active" style="animation-delay: 0.3s;"></div>
-                                        <div class="audio-bar active" style="animation-delay: 0.5s;"></div>
-                                        <div class="audio-bar active" style="animation-delay: 0.1s;"></div>
-                                        <div class="audio-bar active" style="animation-delay: 0.4s;"></div>
-                                        <div class="audio-bar active" style="animation-delay: 0.2s;"></div>
-                                        <div class="audio-bar active" style="animation-delay: 0.6s;"></div>
-                                    </div>
-                                </div>
-
-                                <!-- Metadata -->
-                                <div class="audio-info-row">
-                                    <div class="audio-meta-left">
-                                        <div id="audio-result-title" class="audio-now-playing">GENERATED SPEECH
-                                        </div>
-                                        <div id="audio-result-info" class="audio-source-info">OpenAI: tts-1 | MP3
-                                        </div>
-                                    </div>
-                                    <div class="audio-meta-right">
-                                        <div id="audio-time-display" class="audio-time-display">00:00 / 00:00</div>
-                                    </div>
-                                </div>
-
-                                <!-- Progress -->
-                                <div class="audio-progress-container">
-                                    <div class="audio-progress-bar-wrap" id="audio-progress-bar">
-                                        <div class="audio-progress-fill" id="audio-progress-fill">
-                                            <div class="audio-progress-handle"></div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Main Controls -->
-                                <div class="audio-controls-main">
-                                    <button class="audio-btn" id="audio-rewind" title="Rewind 10s"><i
-                                            class="fas fa-undo"></i></button>
-                                    <button class="audio-btn play-pause" id="audio-play-pause"><i
-                                            class="fas fa-play"></i></button>
-                                    <button class="audio-btn" id="audio-fastforward" title="Forward 10s"><i
-                                            class="fas fa-redo"></i></button>
-                                </div>
-
-                                <!-- Footer / Volume -->
-                                <div class="audio-footer-row">
-                                    <div class="audio-volume-control">
-                                        <i class="fas fa-volume-up"
-                                            style="color: var(--text-secondary); width: 20px;"></i>
-                                        <input type="range" class="volume-slider" id="audio-volume" min="0" max="1"
-                                            step="0.1" value="0.8">
-                                    </div>
-                                    <div class="audio-actions">
-                                        <button class="icon-btn xs-btn" id="audio-download" title="Download Audio" aria-label="Download audio"><i
-                                                class="fas fa-download" aria-hidden="true"></i></button>
-                                        <button class="icon-btn xs-btn" id="audio-copy-link" title="Copy Audio URL" aria-label="Copy audio URL"><i
-                                                class="fas fa-link" aria-hidden="true"></i></button>
-                                    </div>
-                                </div>
-
-                                <!-- Hidden Core Element -->
-                                <audio id="audio-core-player" style="display: none;"></audio>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Sidebar Controls -->
-                    <div class="audio-studio-sidebar"
-                        style="width: 320px; background: var(--bg-tertiary); border-left: 1px solid var(--border); display: flex; flex-direction: column;">
-                        <div class="sidebar-header" style="padding: 1.25rem; border-bottom: 1px solid var(--border);">
-                            <h3 style="margin: 0; font-size: 0.9rem; letter-spacing: 1px; color: var(--primary);">
-                                CONTROLS
-                            </h3>
-                        </div>
-                        <div class="sidebar-content" style="padding: 1.25rem; overflow-y: auto; flex: 1;">
-                            <!-- Mode Selection -->
-                            <div class="control-group">
-                                <label
-                                    style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem; text-transform: uppercase; font-weight: bold;">Mode</label>
-                                <div class="mode-toggles" id="audio-mode-toggles"
-                                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-                                    <label class="radio-toggle" style="cursor: pointer;"><input type="radio"
-                                            name="audio_mode" value="tts" checked style="display: none;"> <span
-                                            style="display: block; padding: 8px; text-align: center; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem;">Speech</span></label>
-                                    <label class="radio-toggle" style="cursor: pointer;"><input type="radio"
-                                            name="audio_mode" value="stt" style="display: none;"> <span
-                                            style="display: block; padding: 8px; text-align: center; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem;">Transcript</span></label>
-                                    <label class="radio-toggle" style="cursor: pointer;"><input type="radio"
-                                            name="audio_mode" value="edit" style="display: none;"> <span
-                                            style="display: block; padding: 8px; text-align: center; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem;">Edit</span></label>
-                                    <label class="radio-toggle" style="cursor: pointer;"><input type="radio"
-                                            name="audio_mode" value="music" style="display: none;"> <span
-                                            style="display: block; padding: 8px; text-align: center; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem;">Music</span></label>
-                                </div>
-                            </div>
-
-                            <!-- Audio Upload -->
-                            <div class="control-group" id="audio-upload-group"
-                                style="display: none; margin-top: 1.5rem;">
-                                <label
-                                    style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem; text-transform: uppercase; font-weight: bold;">Input
-                                    Audio</label>
-                                <div class="image-dropzone" id="audio-input-dropzone"
-                                    style="height: 100px; border: 2px dashed var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; background: var(--bg-primary);">
-                                    <span class="dropzone-text"
-                                        style="font-size: 0.85rem; color: var(--text-secondary);">Drop audio or
-                                        click</span>
-                                    <input type="file" id="audio-input-file" accept="audio/*" style="display:none;">
-                                    <div id="audio-input-preview" style="display:none; text-align: center;">
-                                        <i class="fas fa-file-audio"
-                                            style="font-size: 1.5rem; color: var(--primary);"></i>
-                                        <div id="audio-input-filename"
-                                            style="font-size: 0.75rem; margin-top: 0.5rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Model Selection -->
-                            <div class="control-group" style="margin-top: 1.5rem;">
-                                <label
-                                    style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem; text-transform: uppercase; font-weight: bold;">Audio
-                                    Model</label>
-                                <div class="model-checklist" id="audio-model-checklist"
-                                    style="max-height: 150px; overflow-y: auto; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 5px;">
-                                    <!-- Populated dynamically by JS -->
-                                </div>
-                            </div>
-
-                            <!-- Voice Selection (shown for local TTS / API TTS models) -->
-                            <div class="control-group" id="audio-voice-group" style="margin-top: 1.5rem; display: none;">
-                                <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem; text-transform: uppercase; font-weight: bold;">Voice</label>
-                                <select id="audio-voice-select" style="width: 100%; padding: 8px 10px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; outline: none;">
-                                    <option value="">Default</option>
-                                </select>
-                            </div>
-
-                            <!-- Prompt input -->
-                            <div class="control-group" style="margin-top: 1.5rem;">
-                                <label
-                                    style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem; text-transform: uppercase; font-weight: bold;">Prompt
-                                    / Text</label>
-                                <textarea class="term-input" id="audio-prompt-input" rows="4"
-                                    style="width: 100%; padding: 10px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; font-family: inherit; resize: none; outline: none; transition: border-color 0.2s;"
-                                    placeholder="Enter text to speak or prompt..."></textarea>
-                            </div>
-
-                            <button class="term-btn primary" id="process-audio-btn"
-                                style="width: 100%; margin-top: 1.5rem; padding: 12px; font-weight: bold; letter-spacing: 1px;">PROCESS</button>
+            <!-- Audio Upload -->
+            <div class="control-group" id="audio-upload-group"
+                style="display: none; margin-top: 1.5rem;">
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem; text-transform: uppercase; font-weight: bold;">Input
+                    Audio</label>
+                <div class="image-dropzone" id="audio-input-dropzone"
+                    style="height: 100px; border: 2px dashed var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; background: var(--bg-primary);">
+                    <span class="dropzone-text"
+                        style="font-size: 0.85rem; color: var(--text-secondary);">Drop audio or
+                        click</span>
+                    <input type="file" id="audio-input-file" accept="audio/*" style="display:none;">
+                    <div id="audio-input-preview" style="display:none; text-align: center;">
+                        <i class="fas fa-file-audio"
+                            style="font-size: 1.5rem; color: var(--primary);"></i>
+                        <div id="audio-input-filename"
+                            style="font-size: 0.75rem; margin-top: 0.5rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Model Selection -->
+            <div class="control-group" style="margin-top: 1.5rem;">
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem; text-transform: uppercase; font-weight: bold;">Audio
+                    Model</label>
+                <div class="model-checklist" id="audio-model-checklist"
+                    style="max-height: 150px; overflow-y: auto; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 5px;">
+                    <!-- Populated dynamically by JS -->
+                </div>
+            </div>
+
+            <!-- Voice Selection (shown for local TTS / API TTS models) -->
+            <div class="control-group" id="audio-voice-group" style="margin-top: 1.5rem; display: none;">
+                <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem; text-transform: uppercase; font-weight: bold;">Voice</label>
+                <select id="audio-voice-select" style="width: 100%; padding: 8px 10px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; outline: none;">
+                    <option value="">Default</option>
+                </select>
+            </div>
+
+            <!-- Prompt input -->
+            <div class="control-group" style="margin-top: 1.5rem;">
+                <label
+                    style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.8rem; text-transform: uppercase; font-weight: bold;">Prompt
+                    / Text</label>
+                <textarea class="term-input" id="audio-prompt-input" rows="4"
+                    style="width: 100%; padding: 10px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; font-family: inherit; resize: none; outline: none; transition: border-color 0.2s;"
+                    placeholder="Enter text to speak or prompt..."></textarea>
+            </div>
+
+            <button class="term-btn primary" id="process-audio-btn"
+                style="width: 100%; margin-top: 1.5rem; padding: 12px; font-weight: bold; letter-spacing: 1px;">PROCESS</button>
+        </div>
+    </div>
+
+    <!-- Main Viewer Area -->
+    <div class="audio-studio-viewer"
+        style="flex: 1; padding: 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg-secondary); position: relative;">
+        <div class="empty-state-viewer" style="text-align: center;">
+            <i class="fas fa-microphone"
+                style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; color: var(--primary);"></i>
+            <h3>Audio Studio</h3>
+            <p style="color: var(--text-secondary);">Generate, Edit, or Analyze Audio Files</p>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="audio-loading-overlay" id="audio-loading-overlay"
+            style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 10; flex-direction: column; align-items: center; justify-content: center;">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" style="margin-top: 1rem; font-weight: bold; letter-spacing: 2px;">
+                PROCESSING...</div>
+        </div>
+
+        <!-- Result Area: Premium Audio Player -->
+        <div id="audio-result-area"
+            style="width: 100%; display: none; flex-direction: column; align-items: center; gap: 2rem;">
+            <!-- Transcription Display (New) -->
+            <div id="audio-transcription-display" class="audio-transcription-container"
+                style="display: none;">
+                <div class="transcription-header">
+                    <i class="fas fa-quote-left"></i>
+                    <span>TRANSCRIPTION</span>
+                </div>
+                <div id="audio-transcription-text" class="audio-transcription-text"></div>
+            </div>
+
+            <div class="audio-player-container">
+                <!-- Source Switcher -->
+                <div class="audio-source-tabs">
+                    <button class="audio-source-tab" id="audio-tab-input">Input</button>
+                    <button class="audio-source-tab active" id="audio-tab-output">Result</button>
+                </div>
+
+                <!-- Visualization -->
+                <div class="audio-visual-area">
+                    <div class="audio-bars" id="audio-visualizer">
+                        <div class="audio-bar active" style="animation-delay: 0.1s;"></div>
+                        <div class="audio-bar active" style="animation-delay: 0.3s;"></div>
+                        <div class="audio-bar active" style="animation-delay: 0.2s;"></div>
+                        <div class="audio-bar active" style="animation-delay: 0.5s;"></div>
+                        <div class="audio-bar active" style="animation-delay: 0.1s;"></div>
+                        <div class="audio-bar active" style="animation-delay: 0.4s;"></div>
+                        <div class="audio-bar active" style="animation-delay: 0.2s;"></div>
+                        <div class="audio-bar active" style="animation-delay: 0.6s;"></div>
+                        <div class="audio-bar active" style="animation-delay: 0.3s;"></div>
+                        <div class="audio-bar active" style="animation-delay: 0.5s;"></div>
+                        <div class="audio-bar active" style="animation-delay: 0.1s;"></div>
+                        <div class="audio-bar active" style="animation-delay: 0.4s;"></div>
+                        <div class="audio-bar active" style="animation-delay: 0.2s;"></div>
+                        <div class="audio-bar active" style="animation-delay: 0.6s;"></div>
+                    </div>
+                </div>
+
+                <!-- Metadata -->
+                <div class="audio-info-row">
+                    <div class="audio-meta-left">
+                        <div id="audio-result-title" class="audio-now-playing">GENERATED SPEECH
+                        </div>
+                        <div id="audio-result-info" class="audio-source-info">OpenAI: tts-1 | MP3
+                        </div>
+                    </div>
+                    <div class="audio-meta-right">
+                        <div id="audio-time-display" class="audio-time-display">00:00 / 00:00</div>
+                    </div>
+                </div>
+
+                <!-- Progress -->
+                <div class="audio-progress-container">
+                    <div class="audio-progress-bar-wrap" id="audio-progress-bar">
+                        <div class="audio-progress-fill" id="audio-progress-fill">
+                            <div class="audio-progress-handle"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Controls -->
+                <div class="audio-controls-main">
+                    <button class="audio-btn" id="audio-rewind" title="Rewind 10s"><i
+                            class="fas fa-undo"></i></button>
+                    <button class="audio-btn play-pause" id="audio-play-pause"><i
+                            class="fas fa-play"></i></button>
+                    <button class="audio-btn" id="audio-fastforward" title="Forward 10s"><i
+                            class="fas fa-redo"></i></button>
+                </div>
+
+                <!-- Footer / Volume -->
+                <div class="audio-footer-row">
+                    <div class="audio-volume-control">
+                        <i class="fas fa-volume-up"
+                            style="color: var(--text-secondary); width: 20px;"></i>
+                        <input type="range" class="volume-slider" id="audio-volume" min="0" max="1"
+                            step="0.1" value="0.8">
+                    </div>
+                    <div class="audio-actions">
+                        <button class="icon-btn xs-btn" id="audio-download" title="Download Audio" aria-label="Download audio"><i
+                                class="fas fa-download" aria-hidden="true"></i></button>
+                        <button class="icon-btn xs-btn" id="audio-copy-link" title="Copy Audio URL" aria-label="Copy audio URL"><i
+                                class="fas fa-link" aria-hidden="true"></i></button>
+                    </div>
+                </div>
+
+                <!-- Hidden Core Element -->
+                <audio id="audio-core-player" style="display: none;"></audio>
+            </div>
+        </div>
+    </div>
+</div>
