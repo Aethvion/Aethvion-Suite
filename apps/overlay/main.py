@@ -699,12 +699,13 @@ class OverlayWindow(QWidget):
 
     def _on_history_toggled(self, checked: bool) -> None:
         self._show_history        = checked
-        self._hist_detail_session = None
-        self._input_row_widget.setVisible(not checked)
         if checked:
+            self._hist_detail_session = None
+            self._input_row_widget.setVisible(False)
             self._hist_page = 0
             self._load_and_render_history_list()
         else:
+            self._input_row_widget.setVisible(True)
             # Return to current session view
             if self._current_entry:
                 self._render_session(self._current_entry)
@@ -882,8 +883,9 @@ class OverlayWindow(QWidget):
             else:
                 full = load_session_full(sid)
             if full:
+                self._current_entry = full
                 self._hist_detail_session = full
-                self._input_row_widget.setVisible(False)
+                self._input_row_widget.setVisible(True)
                 self._response.clear()
                 # Back button
                 self._response.append(
@@ -894,7 +896,7 @@ class OverlayWindow(QWidget):
                 )
                 self._render_session(full)
                 self._status.setText(
-                    f"Session {full.get('date','')} {full.get('time','')} — "
+                    f"Continuing session from {full.get('date','')} — "
                     f"{len(full.get('pairs',[]))} Q/A(s)"
                 )
             else:
