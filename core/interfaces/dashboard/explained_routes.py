@@ -31,6 +31,71 @@ class ExplainedRequest(BaseModel):
     topic: str
     model_id: str = "auto"
     thread_id: Optional[str] = None  # Our internal "explanation ID"
+    deep_dive: bool = False           # When True: multi-page structure
+
+
+# --------------------------------------------------------------------------- #
+# Prompts
+# --------------------------------------------------------------------------- #
+
+_NORMAL_NEW_PROMPT = """\
+Create a stunning, thematic, single-file HTML visual explanation for: {topic}
+
+Design Guidelines:
+- Choose a visual theme that perfectly matches the topic (e.g. dark fantasy for Elden Ring, blocky for Minecraft, sci-fi for quantum computing).
+- Use Google Fonts, glassmorphism, smooth CSS animations, and FontAwesome icons.
+- Organize content: Hero section, Key Concepts, Deep Dive, Summary.
+- Make it LONG and DETAILED with deep researched content (use search_web).
+- Embed ALL CSS and JS inside the single HTML file — no external files.
+- NO footers, NO copyright notices, NO social links, NO 'built by' credits.
+- The file MUST be saved as 'index.html'.
+
+Provide a short punchy TITLE (max 4 words) at the very end prefixed with 'TITLE: '.\
+"""
+
+_NORMAL_UPDATE_PROMPT = """\
+Project: {topic}
+New instruction: {instruction}
+
+Apply this instruction surgically to the existing index.html.
+Read the file first if needed, then patch only what was asked.
+Do NOT rewrite the entire file unless explicitly told to.\
+"""
+
+_DEEP_DIVE_NEW_PROMPT = """\
+Create an immersive, multi-page deep-dive visual explanation for: {topic}
+
+You MUST produce the following files in the workspace — no more, no fewer:
+
+1. index.html       — The hub/home page. Hero section, topic overview (≈300 words), and navigation cards linking to each section page.
+2. overview.html    — Background, history and context. In-depth (~600 words).
+3. core.html        — Core concepts, mechanics or principles. Richly detailed (~700 words) with diagrams or tables where appropriate.
+4. deepdive.html    — Advanced nuances, edge cases, controversies or deep analysis (~700 words).
+5. summary.html     — Key takeaways, timeline if applicable, further reading list.
+6. style.css        — Shared stylesheet used by all pages. No inline styles in the HTML files.
+7. script.js        — Shared JS used by all pages (smooth scroll, animations, active nav, etc.).
+
+Design Rules (apply to every page):
+- Visual theme must perfectly match the topic.
+- All pages share style.css and script.js via <link> / <script src="...">.
+- Each page has a consistent top nav bar with links to all other pages.
+- Use Google Fonts, glassmorphism cards, smooth CSS animations, FontAwesome icons.
+- Make content LONG and DETAILED — use search_web to research thoroughly.
+- NO footers, NO copyright, NO social links, NO 'built by' credits.
+- Reference style.css as: <link rel="stylesheet" href="style.css">
+- Reference script.js as: <script src="script.js"></script>
+
+Provide a short punchy TITLE (max 4 words) at the very end prefixed with 'TITLE: '.\
+"""
+
+_DEEP_DIVE_UPDATE_PROMPT = """\
+Project: {topic} (Deep Dive multi-page)
+New instruction: {instruction}
+
+The workspace contains: index.html, overview.html, core.html, deepdive.html, summary.html, style.css, script.js.
+Apply this instruction surgically — read the relevant files first, patch only what was asked.
+Maintain the shared style.css / script.js pattern. Do NOT collapse files into one.\
+"""
 
 
 # --------------------------------------------------------------------------- #
@@ -56,6 +121,7 @@ async def generate_explanation(req: ExplainedRequest, request: Request):
     ws_id: Optional[str] = None
     ag_tid: Optional[str] = None
     original_topic: Optional[str] = None
+    stored_deep_dive: Optional[bool] = None
 
     if req.thread_id:
         # UPDATE: reload stored workspace/thread IDs from meta
@@ -66,13 +132,16 @@ async def generate_explanation(req: ExplainedRequest, request: Request):
                 ws_id = meta.get("ws_id")
                 ag_tid = meta.get("ag_tid")
                 original_topic = meta.get("topic")
+                stored_deep_dive = meta.get("deep_dive", False)
             except Exception:
                 pass
 
     is_new = not (ws_id and ag_tid)
     explanation_id = req.thread_id or f"expl-{uuid.uuid4().hex[:8]}"
     original_topic = original_topic or req.topic
-    
+    # Use the mode that was set when the thread was created (can't switch mid-thread)
+    deep_dive = stored_deep_dive if not is_new and stored_deep_dive is not None else req.deep_dive
+
     expl_dir = EXPLANATIONS / explanation_id
     expl_dir.mkdir(parents=True, exist_ok=True)
     meta_path = expl_dir / "meta.json"
@@ -96,6 +165,7 @@ async def generate_explanation(req: ExplainedRequest, request: Request):
             "created_at": utcnow_iso(),
             "updated_at": utcnow_iso(),
             "model_id": req.model_id,
+            "deep_dive": deep_dive,
             "display_title": original_topic[:25] + ("..." if len(original_topic) > 25 else ""),
             "display_id": _next_display_id(),
         }
@@ -111,26 +181,19 @@ async def generate_explanation(req: ExplainedRequest, request: Request):
 
     # ── Build the prompt for the agent ───────────────────────────────────── #
     if is_new:
-        prompt = (
-            f"Create a stunning, thematic, single-file HTML visual explanation for: {req.topic}\n\n"
-            "Design Guidelines:\n"
-            "- Choose a visual theme that perfectly matches the topic (e.g. dark fantasy for Elden Ring, blocky for Minecraft, sci-fi for quantum computing).\n"
-            "- Use Google Fonts, glassmorphism, smooth CSS animations, and FontAwesome icons.\n"
-            "- Organize content: Hero section, Key Concepts, Deep Dive, Summary.\n"
-            "- Make it LONG and DETAILED with deep researched content (use search_web).\n"
-            "- Embed all CSS and JS inside the HTML file.\n"
-            "- NO footers, NO copyright notices, NO social links, NO 'built by' credits.\n"
-            "- The file MUST be saved as 'index.html'.\n\n"
-            "Provide a short punchy TITLE (max 4 words) at the very end prefixed with 'TITLE: '."
-        )
+        if deep_dive:
+            prompt = _DEEP_DIVE_NEW_PROMPT.format(topic=req.topic)
+        else:
+            prompt = _NORMAL_NEW_PROMPT.format(topic=req.topic)
     else:
-        prompt = (
-            f"Project: {original_topic}\n"
-            f"New instruction: {req.topic}\n\n"
-            "Apply this instruction surgically to the existing index.html. "
-            "Read the file first if needed, then patch only what was asked. "
-            "Do NOT rewrite the entire file unless explicitly told to."
-        )
+        if deep_dive:
+            prompt = _DEEP_DIVE_UPDATE_PROMPT.format(
+                topic=original_topic, instruction=req.topic
+            )
+        else:
+            prompt = _NORMAL_UPDATE_PROMPT.format(
+                topic=original_topic, instruction=req.topic
+            )
 
     # ── Submit to the real task queue (identical to Agents tab) ──────────── #
     task_id = await task_manager.submit_task(
@@ -148,6 +211,7 @@ async def generate_explanation(req: ExplainedRequest, request: Request):
         "thread_id": explanation_id,
         "ws_id": ws_id,
         "ag_tid": ag_tid,
+        "deep_dive": deep_dive,
     }
 
 
@@ -182,13 +246,20 @@ async def get_task_status(task_id: str):
         ws_info = _aws_mgr.get_workspace(ws_id)
         if ws_info:
             ws_path = Path(ws_info["path"])
-            # Find any .html file — agent picks the name, don't force index.html
-            html_files = sorted(ws_path.glob("*.html"), key=lambda p: p.stat().st_mtime, reverse=True)
-            if html_files:
+            # Find index.html first, then any other html file
+            index_file = ws_path / "index.html"
+            if index_file.exists():
                 try:
-                    html_content = html_files[0].read_text(encoding="utf-8")
+                    html_content = index_file.read_text(encoding="utf-8")
                 except Exception:
                     pass
+            if not html_content:
+                html_files = sorted(ws_path.glob("*.html"), key=lambda p: p.stat().st_mtime, reverse=True)
+                if html_files:
+                    try:
+                        html_content = html_files[0].read_text(encoding="utf-8")
+                    except Exception:
+                        pass
 
     # Extract logs from agent events
     logs = []
@@ -247,19 +318,26 @@ async def get_thread_result(thread_id: str):
         except Exception:
             pass
 
-    # Find latest HTML in the agent workspace
+    # Find latest HTML in the agent workspace (prefer index.html)
     ws_id = meta.get("ws_id")
     html_content = None
     if ws_id:
         ws_info = _aws_mgr.get_workspace(ws_id)
         if ws_info:
             ws_path = Path(ws_info["path"])
-            html_files = sorted(ws_path.glob("*.html"), key=lambda p: p.stat().st_mtime, reverse=True)
-            if html_files:
+            index_file = ws_path / "index.html"
+            if index_file.exists():
                 try:
-                    html_content = html_files[0].read_text(encoding="utf-8")
+                    html_content = index_file.read_text(encoding="utf-8")
                 except Exception:
                     pass
+            if not html_content:
+                html_files = sorted(ws_path.glob("*.html"), key=lambda p: p.stat().st_mtime, reverse=True)
+                if html_files:
+                    try:
+                        html_content = html_files[0].read_text(encoding="utf-8")
+                    except Exception:
+                        pass
 
     if not html_content:
         raise HTTPException(404, "No HTML result found yet")
@@ -269,12 +347,64 @@ async def get_thread_result(thread_id: str):
         "thread_id": thread_id,
         "display_title": meta.get("display_title", thread_id),
         "topic": meta.get("topic", ""),
+        "deep_dive": meta.get("deep_dive", False),
     }
+
+
+@router.get("/thread/{thread_id}/pages")
+async def get_thread_pages(thread_id: str):
+    """
+    For Deep Dive threads: return a list of available page filenames
+    (HTML files in the workspace, excluding the shared assets).
+    """
+    expl_dir = EXPLANATIONS / thread_id
+    meta_path = expl_dir / "meta.json"
+
+    if not expl_dir.exists():
+        raise HTTPException(404, "Explanation not found")
+
+    meta = {}
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    ws_id = meta.get("ws_id")
+    if not ws_id:
+        return {"pages": []}
+
+    ws_info = _aws_mgr.get_workspace(ws_id)
+    if not ws_info:
+        return {"pages": []}
+
+    ws_path = Path(ws_info["path"])
+
+    # Preferred order for Deep Dive pages
+    _ORDER = ["index.html", "overview.html", "core.html", "deepdive.html", "summary.html"]
+    _LABELS = {
+        "index.html":    "🏠 Home",
+        "overview.html": "📖 Overview",
+        "core.html":     "⚙️ Core",
+        "deepdive.html": "🔬 Deep Dive",
+        "summary.html":  "📋 Summary",
+    }
+
+    found = [f.name for f in ws_path.glob("*.html") if f.is_file()]
+    ordered = [f for f in _ORDER if f in found]
+    # Append any extra HTML files not in the preferred order
+    ordered += sorted(f for f in found if f not in _ORDER)
+
+    pages = [
+        {"filename": fn, "label": _LABELS.get(fn, fn.replace(".html", "").capitalize())}
+        for fn in ordered
+    ]
+    return {"pages": pages, "deep_dive": meta.get("deep_dive", False)}
 
 
 @router.get("/thread/{thread_id}/raw")
 async def get_thread_raw_html(thread_id: str):
-    """Serve latest HTML directly so iframes can load it cleanly."""
+    """Serve index.html directly so iframes can load it cleanly."""
     expl_dir = EXPLANATIONS / thread_id
     meta_path = expl_dir / "meta.json"
 
@@ -290,6 +420,13 @@ async def get_thread_raw_html(thread_id: str):
         ws_info = _aws_mgr.get_workspace(ws_id)
         if ws_info:
             ws_path = Path(ws_info["path"])
+            index_file = ws_path / "index.html"
+            if index_file.exists():
+                try:
+                    return HTMLResponse(content=index_file.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
+            # Fallback to newest HTML file
             html_files = sorted(ws_path.glob("*.html"), key=lambda p: p.stat().st_mtime, reverse=True)
             if html_files:
                 try:
@@ -298,6 +435,73 @@ async def get_thread_raw_html(thread_id: str):
                     pass
 
     return HTMLResponse("<html><body><p>Preparing immersion…</p></body></html>")
+
+
+@router.get("/thread/{thread_id}/page/{filename}")
+async def get_thread_page(thread_id: str, filename: str):
+    """
+    Serve a specific page from a Deep Dive workspace.
+    Cross-page hrefs in the output HTML use relative paths (e.g. overview.html)
+    which won't resolve through this API — the frontend navigates explicitly
+    using this endpoint via the page navigator tabs.
+    """
+    # Security: only allow safe filenames
+    if not filename.endswith(".html") or "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(400, "Invalid filename")
+
+    expl_dir = EXPLANATIONS / thread_id
+    meta_path = expl_dir / "meta.json"
+
+    meta = {}
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    ws_id = meta.get("ws_id")
+    if not ws_id:
+        raise HTTPException(404, "Workspace not found")
+
+    ws_info = _aws_mgr.get_workspace(ws_id)
+    if not ws_info:
+        raise HTTPException(404, "Workspace not found")
+
+    page_path = Path(ws_info["path"]) / filename
+    if not page_path.exists():
+        raise HTTPException(404, f"Page '{filename}' not found")
+
+    try:
+        content = page_path.read_text(encoding="utf-8")
+        # Inline the shared style.css and script.js into each served page so
+        # the iframe works without a running file server resolving relative paths.
+        ws_path = Path(ws_info["path"])
+        css_path = ws_path / "style.css"
+        js_path  = ws_path / "script.js"
+
+        if css_path.exists():
+            css_text = css_path.read_text(encoding="utf-8")
+            content = content.replace(
+                '<link rel="stylesheet" href="style.css">',
+                f'<style>{css_text}</style>'
+            ).replace(
+                "<link rel='stylesheet' href='style.css'>",
+                f'<style>{css_text}</style>'
+            )
+
+        if js_path.exists():
+            js_text = js_path.read_text(encoding="utf-8")
+            content = content.replace(
+                '<script src="script.js"></script>',
+                f'<script>{js_text}</script>'
+            ).replace(
+                "<script src='script.js'></script>",
+                f'<script>{js_text}</script>'
+            )
+
+        return HTMLResponse(content=content)
+    except Exception as e:
+        raise HTTPException(500, f"Could not read page: {e}")
 
 
 @router.delete("/thread/{thread_id}")

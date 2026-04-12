@@ -784,7 +784,7 @@ class AgentRunner:
                 model=self.model_id,
                 request_type="generation",
                 source=CallSource.AGENT,
-                max_tokens=8192,
+                max_tokens=32768,
                 images=call_images,
             ):
                 chunks.append(chunk)

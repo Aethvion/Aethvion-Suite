@@ -4,44 +4,59 @@
 
 (function() {
     let exSidebar, exCollapseBtn, exExpandBtn, exNewBtn;
-    let exPrompt, exModel, exGenerateBtn;
+    let exPrompt, exModel, exGenerateBtn, exDeepDiveToggle;
     let exStatusArea, exStatusText, exProgressFill, exLogs;
     let exPlaceholder, exFrame;
     let exHistoryList;
+    let exPageNav, exPageTabs;
 
     let exIsGenerating = false;
     let exCurrentThreadId = null;
     let exLastHtml = null;
+    let exCurrentDeepDive = false;   // mode used when thread was created
+    let exCurrentPage = 'index.html';
 
     async function initExplained() {
         // Capture Elements
-        exSidebar = document.getElementById('explained-sidebar');
+        exSidebar    = document.getElementById('explained-sidebar');
         exCollapseBtn = document.getElementById('explained-collapse-btn');
-        exExpandBtn = document.getElementById('explained-expand-btn');
-        exNewBtn = document.getElementById('explained-new-btn');
+        exExpandBtn  = document.getElementById('explained-expand-btn');
+        exNewBtn     = document.getElementById('explained-new-btn');
         
-        exPrompt = document.getElementById('explained-prompt');
-        exModel = document.getElementById('explained-model-select');
+        exPrompt     = document.getElementById('explained-prompt');
+        exModel      = document.getElementById('explained-model-select');
         exGenerateBtn = document.getElementById('explained-generate-btn');
+        exDeepDiveToggle = document.getElementById('explained-deep-dive-toggle');
         
         exStatusArea = document.getElementById('explained-status-area');
         exStatusText = document.getElementById('explained-status-text');
         exProgressFill = document.getElementById('explained-progress-fill');
-        exLogs = document.getElementById('explained-logs');
+        exLogs       = document.getElementById('explained-logs');
         
         exPlaceholder = document.getElementById('explained-placeholder');
-        exFrame = document.getElementById('explained-frame');
+        exFrame       = document.getElementById('explained-frame');
         exHistoryList = document.getElementById('explained-history-list');
+        exPageNav     = document.getElementById('explained-page-nav');
+        exPageTabs    = document.getElementById('explained-page-tabs');
 
         // Event Listeners
         if (exCollapseBtn) exCollapseBtn.addEventListener('click', toggleSidebar);
-        if (exExpandBtn) exExpandBtn.addEventListener('click', toggleSidebar);
-        if (exNewBtn) exNewBtn.addEventListener('click', resetSession);
+        if (exExpandBtn)   exExpandBtn.addEventListener('click', toggleSidebar);
+        if (exNewBtn)      exNewBtn.addEventListener('click', resetSession);
         if (exGenerateBtn) exGenerateBtn.addEventListener('click', startGeneration);
 
         if (exModel) {
             exModel.addEventListener('change', () => {
                 localStorage.setItem('explained_last_model', exModel.value);
+            });
+        }
+
+        if (exDeepDiveToggle) {
+            // Restore last state
+            const saved = localStorage.getItem('explained_deep_dive') === 'true';
+            exDeepDiveToggle.checked = saved;
+            exDeepDiveToggle.addEventListener('change', () => {
+                localStorage.setItem('explained_deep_dive', exDeepDiveToggle.checked);
             });
         }
 
@@ -53,11 +68,14 @@
     function resetSession() {
         exCurrentThreadId = null;
         exLastHtml = null;
+        exCurrentDeepDive = false;
+        exCurrentPage = 'index.html';
         exPrompt.value = '';
         exPlaceholder.classList.remove('hidden');
         exFrame.classList.add('hidden');
         exFrame.src = 'about:blank';
         exGenerateBtn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Build Page';
+        hidePageNav();
         if (exSidebar.classList.contains('collapsed')) toggleSidebar();
         if (window.showToast) window.showToast('Ready for a new topic.', 'info');
     }
@@ -104,7 +122,9 @@
             return;
         }
 
-        const modelId = exModel.value;
+        const modelId  = exModel.value;
+        // Deep Dive mode is locked to the thread's creation mode; for new threads use the toggle
+        const deepDive = exCurrentThreadId ? exCurrentDeepDive : (exDeepDiveToggle ? exDeepDiveToggle.checked : false);
 
         setLoading(true);
         if (exLogs) exLogs.innerHTML = ''; 
@@ -115,9 +135,10 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    topic: topic,
-                    model_id: modelId,
-                    thread_id: exCurrentThreadId
+                    topic:     topic,
+                    model_id:  modelId,
+                    thread_id: exCurrentThreadId,
+                    deep_dive: deepDive,
                 })
             });
 
@@ -127,7 +148,9 @@
             }
 
             const data = await res.json();
-            exCurrentThreadId = data.thread_id;
+            exCurrentThreadId  = data.thread_id;
+            exCurrentDeepDive  = data.deep_dive || false;
+            exCurrentPage      = 'index.html';
             
             if (data.task_id) {
                 pollTask(data.task_id);
@@ -167,10 +190,11 @@
                     clearInterval(interval);
                     updateStatus('Completed!', 100);
                     refreshIframe();
+                    if (exCurrentDeepDive) await refreshPageNav();
                     setLoading(false);
                     // Use AI-generated title if available, otherwise fall back to prompt
                     const title = data.display_title || exPrompt.value.trim();
-                    addToHistory(title, exCurrentThreadId);
+                    addToHistory(title, exCurrentThreadId, exCurrentDeepDive);
                 } else if (data.status === 'failed') {
                     clearInterval(interval);
                     setLoading(false);
@@ -193,15 +217,75 @@
         exLogs.scrollTop = exLogs.scrollHeight;
     }
 
-    function refreshIframe(final = false) {
+    function refreshIframe() {
         if (!exCurrentThreadId) return;
         
         exPlaceholder.classList.add('hidden');
         exFrame.classList.remove('hidden');
         exGenerateBtn.innerHTML = '<i class="fas fa-sync"></i> Update Page';
-        
-        exFrame.src = `/api/explained/thread/${exCurrentThreadId}/raw?t=${Date.now()}`;
+
+        if (exCurrentDeepDive) {
+            exFrame.src = `/api/explained/thread/${exCurrentThreadId}/page/${exCurrentPage}?t=${Date.now()}`;
+        } else {
+            exFrame.src = `/api/explained/thread/${exCurrentThreadId}/raw?t=${Date.now()}`;
+        }
     }
+
+    // ── Page Navigator (Deep Dive mode) ──────────────────────────────────────
+
+    async function refreshPageNav() {
+        if (!exCurrentThreadId || !exCurrentDeepDive) {
+            hidePageNav();
+            return;
+        }
+        try {
+            const res = await fetch(`/api/explained/thread/${exCurrentThreadId}/pages`);
+            if (!res.ok) return;
+            const data = await res.json();
+            renderPageNav(data.pages || []);
+        } catch (e) {
+            console.error('Failed to load page list', e);
+        }
+    }
+
+    function renderPageNav(pages) {
+        if (!exPageTabs || !exPageNav) return;
+        if (!pages.length) { hidePageNav(); return; }
+
+        exPageTabs.innerHTML = '';
+        for (const p of pages) {
+            const btn = document.createElement('button');
+            btn.className = 'epn-tab' + (p.filename === exCurrentPage ? ' active' : '');
+            btn.textContent = p.label;
+            btn.dataset.filename = p.filename;
+            btn.addEventListener('click', () => navigateToPage(p.filename));
+            exPageTabs.appendChild(btn);
+        }
+
+        exPageNav.classList.remove('hidden');
+    }
+
+    function navigateToPage(filename) {
+        exCurrentPage = filename;
+        // Update active state on tabs
+        if (exPageTabs) {
+            exPageTabs.querySelectorAll('.epn-tab').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filename === filename);
+            });
+        }
+        if (exCurrentThreadId) {
+            exPlaceholder.classList.add('hidden');
+            exFrame.classList.remove('hidden');
+            exFrame.src = `/api/explained/thread/${exCurrentThreadId}/page/${filename}?t=${Date.now()}`;
+        }
+    }
+
+    function hidePageNav() {
+        if (exPageNav) exPageNav.classList.add('hidden');
+        if (exPageTabs) exPageTabs.innerHTML = '';
+    }
+
+    // ── Utility ───────────────────────────────────────────────────────────────
 
     function setLoading(loading) {
         exIsGenerating = loading;
@@ -220,7 +304,7 @@
         }
     }
 
-    function addToHistory(title, threadId) {
+    function addToHistory(title, threadId, deepDive) {
         let history = JSON.parse(localStorage.getItem('explained_history_v2') || '[]');
         history = history.filter(h => h.threadId !== threadId);
         
@@ -230,7 +314,7 @@
             displayId = Math.max(...history.map(h => h.displayId || 0)) + 1;
         }
 
-        history.unshift({ title, threadId, displayId, timestamp: Date.now() });
+        history.unshift({ title, threadId, displayId, deepDive: !!deepDive, timestamp: Date.now() });
         if (history.length > 30) history = history.slice(0, 30);
         localStorage.setItem('explained_history_v2', JSON.stringify(history));
         loadHistory();
@@ -248,12 +332,16 @@
         let html = '';
         for (const item of history) {
             const displayTitle = item.title || 'Untitled';
-            const displayId = item.displayId !== undefined ? `#${item.displayId}` : '';
+            const displayId    = item.displayId !== undefined ? `#${item.displayId}` : '';
+            const badge        = item.deepDive
+                ? `<span class="es-deep-badge" title="Deep Dive">⬡</span>`
+                : '';
             
             html += `
                 <div class="es-item" data-id="${item.threadId}">
                     <div class="es-item-main" onclick="loadExplanation('${item.threadId}')">
                         <span class="es-item-id">${displayId}</span>
+                        ${badge}
                         <span class="es-item-text" title="${displayTitle}">${displayTitle}</span>
                     </div>
                     <button class="es-item-delete" onclick="deleteExplanation('${item.threadId}', event)" title="Delete Creation">
@@ -274,9 +362,21 @@
             const data = await res.json();
             
             exCurrentThreadId = threadId;
-            exLastHtml = data.html;
-            exPrompt.value = data.topic || '';
+            exLastHtml        = data.html;
+            exCurrentDeepDive = data.deep_dive || false;
+            exCurrentPage     = 'index.html';
+            exPrompt.value    = data.topic || '';
+
+            // Sync the Deep Dive toggle to reflect this thread's mode (read-only info)
+            if (exDeepDiveToggle) exDeepDiveToggle.checked = exCurrentDeepDive;
+
             refreshIframe(true);
+
+            if (exCurrentDeepDive) {
+                await refreshPageNav();
+            } else {
+                hidePageNav();
+            }
         } catch (e) {
             if (window.showToast) window.showToast('Error loading: ' + e.message, 'error');
         } finally {

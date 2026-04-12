@@ -26,6 +26,19 @@
                     <option value="auto">Auto Select</option>
                 </select>
             </div>
+
+            <div class="es-field">
+                <div class="es-toggle-row">
+                    <div class="es-toggle-info">
+                        <label>Deep Dive Mode</label>
+                        <span class="es-toggle-hint">Multi-page structure for large topics</span>
+                    </div>
+                    <label class="es-toggle-switch" title="Enable Deep Dive multi-page mode">
+                        <input type="checkbox" id="explained-deep-dive-toggle">
+                        <span class="es-toggle-knob"></span>
+                    </label>
+                </div>
+            </div>
             
             <button id="explained-generate-btn" class="primary-btn wide-btn">
                 <i class="fas fa-wand-sparkles"></i> Build Page
@@ -61,6 +74,12 @@
 
     <!-- Main Output View -->
     <main class="explained-main">
+        <!-- Multi-page navigator (Deep Dive mode only) -->
+        <nav id="explained-page-nav" class="explained-page-nav hidden">
+            <span class="epn-label"><i class="fas fa-sitemap"></i> Pages</span>
+            <div id="explained-page-tabs" class="epn-tabs"></div>
+        </nav>
+
         <div id="explained-output-wrapper" class="explained-output-wrapper">
             <!-- Iframe or Div for the generated content -->
             <div id="explained-placeholder" class="explained-placeholder">
