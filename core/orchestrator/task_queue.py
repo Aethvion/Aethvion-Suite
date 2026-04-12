@@ -199,6 +199,8 @@ class TaskWorker:
                     # uses task.prompt directly and builds its own rolling history).
                     ws_id = task.metadata.get('workspace_id')
                     ag_tid = task.metadata.get('agent_thread_id')
+                    storage_root = task.metadata.get('storage_root')
+                    storage_path = Path(storage_root) if storage_root else HISTORY_AGENTS
 
                     model_id = task.metadata.get('selected_model')
                     # Normalize 'auto' → None so provider manager uses its default routing
@@ -228,9 +230,16 @@ class TaskWorker:
                         from core.orchestrator.agent_events import create_task_store, push_event, mark_task_done
 
                         ws_info = None
+                        ws_info = None
+                        current_mgr = None
                         try:
-                            from core.interfaces.dashboard.agent_workspace_routes import workspace_manager as _aws_mgr
-                            ws_info = _aws_mgr.get_workspace(ws_id)
+                            if storage_root:
+                                from core.memory.agent_workspace_manager import AgentWorkspaceManager
+                                current_mgr = AgentWorkspaceManager(storage_path)
+                            else:
+                                from core.interfaces.dashboard.agent_workspace_routes import workspace_manager as _aws_mgr
+                                current_mgr = _aws_mgr
+                            ws_info = current_mgr.get_workspace(ws_id)
                         except Exception:
                             pass
 
@@ -242,7 +251,7 @@ class TaskWorker:
 
                         state_path = None
                         if ws_id and ag_tid:
-                            state_path = HISTORY_AGENTS / ws_id / "threads" / f"{ag_tid}_state.json"
+                            state_path = storage_path / ws_id / "threads" / f"{ag_tid}_state.json"
 
                         runner = AgentRunner(
                             task=task.prompt,
@@ -254,8 +263,8 @@ class TaskWorker:
                             state_path=state_path,
                             images=images or None,
                         )
-                        # Store blueprint cache in the agent data dir, not in the user's project
-                        _bp_dir = HISTORY_AGENTS / ws_id
+                        # Store blueprint cache in the agent data dir
+                        _bp_dir = storage_path / ws_id
                         _bp_dir.mkdir(parents=True, exist_ok=True)
                         runner._blueprint_cache_path = _bp_dir / "_blueprint.txt"
                         summary = await loop.run_in_executor(None, runner.run)
@@ -350,7 +359,15 @@ class TaskWorker:
                     _ag_tid2 = task.metadata.get('agent_thread_id')
                     if _ws_id2 and _ag_tid2:
                         try:
-                            from core.interfaces.dashboard.agent_workspace_routes import workspace_manager as _agent_ws_mgr2
+                            # Re-fetch local manager for saving
+                            if not current_mgr:
+                                if storage_root:
+                                    from core.memory.agent_workspace_manager import AgentWorkspaceManager
+                                    current_mgr = AgentWorkspaceManager(storage_path)
+                                else:
+                                    from core.interfaces.dashboard.agent_workspace_routes import workspace_manager as _aws_mgr
+                                    current_mgr = _aws_mgr
+                            
                             from core.orchestrator.agent_events import get_snapshot
                             _now_iso = utcnow_iso()
                             # Collect agent step events for history
@@ -376,7 +393,7 @@ class TaskWorker:
                                     "model": result.model_id or task.metadata.get('actual_model', ''),
                                 },
                             ]
-                            _agent_ws_mgr2.append_messages(_ws_id2, _ag_tid2, _messages_to_save)
+                            current_mgr.append_messages(_ws_id2, _ag_tid2, _messages_to_save)
                         except Exception as _ag_save_err:
                             logger.debug(f"[{task.id}] Agent thread save failed (non-critical): {_ag_save_err}")
                     # ── End save messages to agent thread ──────────────────────────
@@ -558,7 +575,8 @@ class TaskQueueManager:
                     model_id: Optional[str] = None, attached_files: Optional[List[Dict[str, Any]]] = None,
                     mode: Optional[str] = None, settings: Optional[Dict[str, Any]] = None,
                     task_type: Optional[str] = None, channel_id: Optional[str] = None,
-                    workspace_id: Optional[str] = None, agent_thread_id: Optional[str] = None) -> str:
+                    workspace_id: Optional[str] = None, agent_thread_id: Optional[str] = None,
+                    storage_root: Optional[str] = None) -> str:
         """
         Submit a task to the queue.
         
@@ -632,6 +650,8 @@ class TaskQueueManager:
             task.metadata['workspace_id'] = workspace_id
         if agent_thread_id:
             task.metadata['agent_thread_id'] = agent_thread_id
+        if storage_root:
+            task.metadata['storage_root'] = storage_root
 
         # ── Inject folder context into task metadata ───────────────────────
         # Workers read context from metadata so they don't need a live folders ref.

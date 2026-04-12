@@ -156,9 +156,8 @@ async def list_threads():
         threads = []
         for thread in list(task_manager.threads.values()):
             try:
-                # Skip agent workspace threads — they belong to the Agents tab only
                 thread_id = getattr(thread, 'id', '') or ''
-                if thread_id.startswith('agents-'):
+                if thread_id.startswith('agents-') or thread_id.startswith('explained-'):
                     continue
                 
                 thread_data = thread.to_dict()

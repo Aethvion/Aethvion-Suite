@@ -15,13 +15,14 @@ import shutil
 from pathlib import Path
 
 from core.utils import get_logger, utcnow_iso
-from core.utils.paths import EXPLANATIONS, HISTORY_AGENTS
+from core.utils.paths import EXPLAINED, HISTORY_AGENTS
+from core.memory.agent_workspace_manager import AgentWorkspaceManager
 
 logger = get_logger("web.explained_routes")
 router = APIRouter(prefix="/api/explained", tags=["explained"])
 
-# Reuse the same workspace manager used by the Agents tab
-from core.interfaces.dashboard.agent_workspace_routes import workspace_manager as _aws_mgr
+# Private workspace manager for Explained - keeps threads out of the main Agents tab
+explained_manager = AgentWorkspaceManager(EXPLAINED)
 
 # --------------------------------------------------------------------------- #
 # Request models
@@ -121,7 +122,7 @@ async def generate_explanation(req: ExplainedRequest, request: Request):
 
     if req.thread_id:
         # UPDATE: reload stored workspace/thread IDs from meta
-        meta_path = EXPLANATIONS / req.thread_id / "meta.json"
+        meta_path = EXPLAINED / req.thread_id / "meta.json"
         if meta_path.exists():
             try:
                 meta = json.loads(meta_path.read_text(encoding="utf-8"))
@@ -138,19 +139,20 @@ async def generate_explanation(req: ExplainedRequest, request: Request):
     # Use the mode that was set when the thread was created (can't switch mid-thread)
     deep_dive = stored_deep_dive if not is_new and stored_deep_dive is not None else req.deep_dive
 
-    expl_dir = EXPLANATIONS / explanation_id
+    expl_dir = EXPLAINED / explanation_id
     expl_dir.mkdir(parents=True, exist_ok=True)
     meta_path = expl_dir / "meta.json"
 
     if is_new:
         # Create an Agent workspace pointing at the explanation directory
-        ws = _aws_mgr.create_workspace(
+        ws = explained_manager.create_workspace(
             path=str(expl_dir),
-            name=f"Explained: {original_topic[:40]}"
+            name=f"Explained: {original_topic[:40]}",
+            workspace_id=explanation_id
         )
         ws_id = ws["id"]
         # Create a thread inside it
-        thread = _aws_mgr.create_thread(ws_id, name=original_topic[:60])
+        thread = explained_manager.create_thread(ws_id, name=original_topic[:60])
         ag_tid = thread["id"]
 
         # Persist metadata
@@ -200,6 +202,7 @@ async def generate_explanation(req: ExplainedRequest, request: Request):
         mode="auto",
         workspace_id=ws_id,
         agent_thread_id=ag_tid,
+        storage_root=str(EXPLAINED)
     )
 
     return {
@@ -239,7 +242,7 @@ async def get_task_status(task_id: str):
     ws_id = task_dict.get("metadata", {}).get("workspace_id")
     html_content = None
     if ws_id:
-        ws_info = _aws_mgr.get_workspace(ws_id)
+        ws_info = explained_manager.get_workspace(ws_id)
         if ws_info:
             ws_path = Path(ws_info["path"])
             # Find index.html first, then any other html file
@@ -301,7 +304,7 @@ async def get_task_status(task_id: str):
 @router.get("/thread/{thread_id}")
 async def get_thread_result(thread_id: str):
     """Return stored HTML + meta for a past explanation."""
-    expl_dir = EXPLANATIONS / thread_id
+    expl_dir = EXPLAINED / thread_id
     meta_path = expl_dir / "meta.json"
 
     if not expl_dir.exists():
@@ -318,7 +321,7 @@ async def get_thread_result(thread_id: str):
     ws_id = meta.get("ws_id")
     html_content = None
     if ws_id:
-        ws_info = _aws_mgr.get_workspace(ws_id)
+        ws_info = explained_manager.get_workspace(ws_id)
         if ws_info:
             ws_path = Path(ws_info["path"])
             index_file = ws_path / "index.html"
@@ -350,7 +353,7 @@ async def get_thread_result(thread_id: str):
 @router.get("/thread/{thread_id}/folder-path")
 async def get_thread_folder_path(thread_id: str):
     """Return the absolute workspace folder path for the given explanation thread."""
-    expl_dir = EXPLANATIONS / thread_id
+    expl_dir = EXPLAINED / thread_id
     meta_path = expl_dir / "meta.json"
 
     if not expl_dir.exists():
@@ -366,7 +369,7 @@ async def get_thread_folder_path(thread_id: str):
     ws_id = meta.get("ws_id")
     folder_path = None
     if ws_id:
-        ws_info = _aws_mgr.get_workspace(ws_id)
+        ws_info = explained_manager.get_workspace(ws_id)
         if ws_info:
             folder_path = ws_info.get("path")
 
@@ -383,7 +386,7 @@ async def get_thread_pages(thread_id: str):
     For Deep Dive threads: return a list of available page filenames
     (HTML files in the workspace, excluding the shared assets).
     """
-    expl_dir = EXPLANATIONS / thread_id
+    expl_dir = EXPLAINED / thread_id
     meta_path = expl_dir / "meta.json"
 
     if not expl_dir.exists():
@@ -400,7 +403,7 @@ async def get_thread_pages(thread_id: str):
     if not ws_id:
         return {"pages": []}
 
-    ws_info = _aws_mgr.get_workspace(ws_id)
+    ws_info = explained_manager.get_workspace(ws_id)
     if not ws_info:
         return {"pages": []}
 
@@ -431,7 +434,7 @@ async def get_thread_pages(thread_id: str):
 @router.get("/thread/{thread_id}/raw")
 async def get_thread_raw_html(thread_id: str):
     """Serve index.html directly so iframes can load it cleanly."""
-    expl_dir = EXPLANATIONS / thread_id
+    expl_dir = EXPLAINED / thread_id
     meta_path = expl_dir / "meta.json"
 
     meta = {}
@@ -443,7 +446,7 @@ async def get_thread_raw_html(thread_id: str):
 
     ws_id = meta.get("ws_id")
     if ws_id:
-        ws_info = _aws_mgr.get_workspace(ws_id)
+        ws_info = explained_manager.get_workspace(ws_id)
         if ws_info:
             ws_path = Path(ws_info["path"])
             index_file = ws_path / "index.html"
@@ -475,7 +478,7 @@ async def get_thread_page(thread_id: str, filename: str):
     if not filename.endswith(".html") or "/" in filename or "\\" in filename or ".." in filename:
         raise HTTPException(400, "Invalid filename")
 
-    expl_dir = EXPLANATIONS / thread_id
+    expl_dir = EXPLAINED / thread_id
     meta_path = expl_dir / "meta.json"
 
     meta = {}
@@ -489,7 +492,7 @@ async def get_thread_page(thread_id: str, filename: str):
     if not ws_id:
         raise HTTPException(404, "Workspace not found")
 
-    ws_info = _aws_mgr.get_workspace(ws_id)
+    ws_info = explained_manager.get_workspace(ws_id)
     if not ws_info:
         raise HTTPException(404, "Workspace not found")
 
@@ -533,7 +536,7 @@ async def get_thread_page(thread_id: str, filename: str):
 @router.delete("/thread/{thread_id}")
 async def delete_thread(thread_id: str):
     """Delete explanation data and its agent workspace."""
-    expl_dir = EXPLANATIONS / thread_id
+    expl_dir = EXPLAINED / thread_id
     meta_path = expl_dir / "meta.json"
 
     ws_id = None
@@ -547,7 +550,7 @@ async def delete_thread(thread_id: str):
     # Remove agent workspace
     if ws_id:
         try:
-            _aws_mgr.delete_workspace(ws_id)
+            explained_manager.delete_workspace(ws_id)
         except Exception as e:
             logger.warning(f"Could not delete agent workspace {ws_id}: {e}")
 
@@ -572,6 +575,6 @@ def _write_meta(path: Path, meta: dict):
 
 def _next_display_id() -> int:
     try:
-        return len([d for d in EXPLANATIONS.iterdir() if d.is_dir()])
+        return len([d for d in EXPLAINED.iterdir() if d.is_dir()])
     except Exception:
         return 1

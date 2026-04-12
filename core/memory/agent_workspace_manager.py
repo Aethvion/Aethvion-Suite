@@ -50,8 +50,8 @@ class AgentWorkspaceManager:
                         logger.error(f"Failed to read workspace {ws_dir.name}: {e}")
         return sorted(result, key=lambda w: w.get("last_active", ""), reverse=True)
 
-    def create_workspace(self, path: str, name: str = None) -> dict:
-        workspace_id = str(uuid.uuid4())
+    def create_workspace(self, path: str, name: str = None, workspace_id: str = None) -> dict:
+        workspace_id = workspace_id or str(uuid.uuid4())
         name = name or Path(path).name or path
         now = utcnow_iso()
         self._ws_dir(workspace_id).mkdir(parents=True, exist_ok=True)
