@@ -12,7 +12,7 @@
 
 *Connect cloud providers or run local GGUF models. Control everything from a 25+ tab dashboard, an AI-powered code IDE, or a terminal CLI — your platform, your rules.*
 
-**Current version: v12**
+**Current version: v13**
 
 </div>
 

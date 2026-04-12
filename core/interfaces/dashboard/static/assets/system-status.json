@@ -2,11 +2,37 @@
     "system": {
         "name": "Aethvion Suite",
         "company": "Aethvion",
-        "version": "12",
-        "last_sync": "2026-04-01",
-        "last_update_commit": "a1b2c3d",
+        "version": "13",
+        "last_sync": "2026-04-12",
+        "last_update_commit": "78bf290",
         "contact": "contact@aethvion.com",
         "changelog": [
+            {
+                "version": "13",
+                "date": "2026-04-12",
+                "added": [
+                    "Explained Information Explorer: A new visual workflow for generating deeply researched, thematic HTML explanations; features 'Deep Dive' mode, 'Open Folder' options, and auto-theme support",
+                    "Aethvion Overlay v2: Major overhaul with persistent chat history, session continuation, markdown/code rendering, and screenshot integration",
+                    "Dashboard Performance: Modularized all main panels into separate partials, dramatically increasing performance and improving code maintainability",
+                    "Aethvion Kanban: Professional Kanban board integration with draggable columns and task persistence",
+                    "Companion System: Added default companions, custom companion mode, and specific fixes for 'Axiom' and 'Lyra'",
+                    "Chat Enhancements: Integrated web search capabilities and Chat Thread Folders for better organization",
+                    "Model Management: Improved registry flow with 'Parent Categories' and reordering/filtering for local models",
+                    "System Standardization: Moved timestamps to ISO 8601 and standardized internal workflows to 'Checks'"
+                ],
+                "improved": [
+                    "Sidemenu: Added tooltips to the collapsed menu, UX improvements, and a search function",
+                    "Agent Logic: Implemented 'smart context eviction' and decreased prompt token usage for better efficiency",
+                    "Finance Hub: Updated layouts and added visual gain/loss cards",
+                    "Media Tabs: Refined layouts for Games (added back buttons) and Image Models pages",
+                    "Dashboard UI: Fixed various HTML issues, including stray divs and duplicate inputs",
+                    "CLI & Docs: Updated the Command Line Interface and licensing clarifications"
+                ],
+                "fixed": [
+                    "Bug Fixes: Resolved issues with JS loading, game page loading, 'magic strings', and overlay cut-off bugs",
+                    "System Utilities: Removed unnecessary bloat from local model logic and smoothed out provider settings"
+                ]
+            },
             {
                 "version": "12",
                 "date": "2026-04-01",
@@ -955,6 +981,31 @@
                     "desc": "Automation for repetitive image editing tasks."
                 }
             ]
+        },
+        {
+            "id": "explained",
+            "name": "Aethvion Explained",
+            "desc": "Thematic information explorer that builds immersive, well-structured visual explanations for any topic.",
+            "features": [
+                {
+                    "name": "Deep Dive Mode",
+                    "desc": "Generates comprehensive multi-page research documents with shared styling and structured navigation."
+                },
+                {
+                    "name": "Open Folder",
+                    "desc": "Direct access to the generated workspace files from the dashboard UI."
+                }
+            ]
+        },
+        {
+            "id": "kanban",
+            "name": "Aethvion Kanban",
+            "desc": "Professional task management board for tracking project milestones and agent tasks."
+        },
+        {
+            "id": "overlay",
+            "name": "Aethvion Overlay",
+            "desc": "Persistent desktop companion for quick communication, screenshot capture, and markdown-rendered chat."
         }
     ]
 }
