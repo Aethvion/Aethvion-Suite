@@ -1,10 +1,11 @@
 /**
- * Aethvion Suite — Sidebar Manager (Profiles Edition)
+ * Aethvion Suite — Sidebar Manager (Profiles + Onboarding Edition)
  *
- * Adds named sidebar profiles on top of the folder system.
- * Each profile is a fully independent config (hidden tabs, folders, order).
- * The user can create, rename, delete and switch profiles at any time.
- * Customize mode still works identically — it just writes to the active profile.
+ * Adds:
+ *  - Named sidebar profiles (fully independent configs)
+ *  - 5 premade preset layouts + Custom (blank) option
+ *  - Profile onboarding modal (auto-shown on first launch)
+ *  - Suite-home profiles widget (chip row + Add Layout button)
  *
  * Storage key: 'sidebar_profiles_v1'
  * Migrates old 'sidebar_v2' format automatically.
@@ -56,6 +57,88 @@
 
     const TAB_MAP = Object.fromEntries(TABS.map(t => [t.id, t]));
 
+    // ── Preset Layouts ────────────────────────────────────────────────────────
+    const PRESETS = [
+        {
+            id: 'professional',
+            name: 'Professional',
+            icon: 'fas fa-briefcase',
+            accent: '#6366f1',
+            description: 'Productivity workspace with agents, scheduling, and system management.',
+            highlights: ['Chat & Agents', 'Schedule', 'Model Hub', 'System'],
+            folders: [
+                { name: 'Workspace', expanded: true,  tabs: ['chat', 'agents', 'agent-corp', 'schedule'] },
+                { name: 'Models',    expanded: false, tabs: ['local-models', 'api-providers'] },
+                { name: 'System',    expanded: false, tabs: ['logs', 'status', 'ports'] },
+            ],
+            enabled: new Set(['suite-home', 'chat', 'agents', 'agent-corp', 'schedule',
+                              'local-models', 'api-providers', 'logs', 'status', 'ports']),
+        },
+        {
+            id: 'creative',
+            name: 'Creative Studio',
+            icon: 'fas fa-palette',
+            accent: '#ec4899',
+            description: 'Photo, audio, and AI tools built for artists and content creators.',
+            highlights: ['Photo Studio', 'Audio', 'AI Conversations', 'Output'],
+            folders: [
+                { name: 'Studio',   expanded: true,  tabs: ['photo', 'audio', 'output', 'screenshots'] },
+                { name: 'AI Tools', expanded: false, tabs: ['chat', 'explained', 'advaiconv'] },
+            ],
+            enabled: new Set(['suite-home', 'chat', 'photo', 'audio', 'explained',
+                              'advaiconv', 'output', 'screenshots']),
+        },
+        {
+            id: 'researcher',
+            name: 'Researcher',
+            icon: 'fas fa-microscope',
+            accent: '#10b981',
+            description: 'Deep analysis, model comparisons, and knowledge management for advanced research.',
+            highlights: ['Directors', 'Arena', 'AI Conv.', 'Explained', 'Persistent Memory'],
+            folders: [
+                { name: 'Research',  expanded: true,  tabs: ['advaiconv', 'researchboard', 'arena', 'aiconv', 'explained'] },
+                { name: 'Knowledge', expanded: false, tabs: ['chat', 'persistent-memory', 'documentation'] },
+            ],
+            enabled: new Set(['suite-home', 'chat', 'advaiconv', 'researchboard', 'arena',
+                              'aiconv', 'explained', 'persistent-memory', 'documentation']),
+        },
+        {
+            id: 'companion',
+            name: 'Companion Hub',
+            icon: 'fas fa-heart',
+            accent: '#a855f7',
+            description: 'Personal AI companions, entertainment, and memory in one focused layout.',
+            highlights: ['Misaka Cipher', 'Axiom', 'Lyra', 'Games', 'Memory'],
+            folders: [
+                { name: 'Companions',    expanded: true,  tabs: ['misaka-cipher', 'axiom', 'lyra', 'companion-creator'] },
+                { name: 'Entertainment', expanded: false, tabs: ['games-center', 'chat'] },
+                { name: 'Memory',        expanded: false, tabs: ['memory', 'companion-memory'] },
+            ],
+            enabled: new Set(['suite-home', 'chat', 'misaka-cipher', 'axiom', 'lyra',
+                              'companion-creator', 'games-center', 'memory', 'companion-memory']),
+        },
+        {
+            id: 'full',
+            name: 'Full Suite',
+            icon: 'fas fa-layer-group',
+            accent: '#f59e0b',
+            description: 'Everything enabled with the complete default folder layout. Nothing hidden.',
+            highlights: ['All Tabs', 'All Folders', 'Full Access'],
+            folders: null, // uses default
+            enabled: null, // all enabled
+        },
+        {
+            id: 'custom',
+            name: 'Custom',
+            icon: 'fas fa-sliders',
+            accent: '#6b7280',
+            description: 'Start blank — every tab disabled. Build your perfect sidebar from scratch.',
+            highlights: ['Start fresh', 'Full control', 'Your layout'],
+            folders: [],   // no folders
+            enabled: new Set(['suite-home']), // only home tab visible
+        },
+    ];
+
     // ── Default profile data ──────────────────────────────────────────────────
     function defaultProfileData(name = 'Default') {
         return {
@@ -85,31 +168,70 @@
         };
     }
 
+    /** Build a profile config from a preset definition. */
+    function buildPresetConfig(preset, name) {
+        if (preset.id === 'full') return defaultProfileData(name);
+
+        const d = defaultProfileData(name);
+
+        if (preset.id === 'custom') {
+            // Hide everything except suite-home
+            TABS.forEach(t => { if (t.id !== 'suite-home') d.hidden[t.id] = true; });
+            d.folders = {};
+            d.order   = [{ type: 'tab', id: 'suite-home' }];
+            return d;
+        }
+
+        // Hide tabs not in this preset's enabled set
+        TABS.forEach(t => {
+            if (!preset.enabled.has(t.id)) d.hidden[t.id] = true;
+        });
+
+        // Build folder structure from preset definition
+        d.folders = {};
+        d.order   = [{ type: 'tab', id: 'suite-home' }];
+        preset.folders.forEach((def, i) => {
+            const fid = `f-preset-${i}`;
+            d.folders[fid] = { name: def.name, expanded: def.expanded };
+            d.order.push({ type: 'folder', id: fid, children: def.tabs });
+        });
+
+        return d;
+    }
+
     // ── Storage ───────────────────────────────────────────────────────────────
+    let isFirstTime = false;
+
     function storeLoad() {
         try {
-            // Try new format
-            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-            if (saved?.profiles) {
-                // Surface any new tabs into all profiles
-                Object.values(saved.profiles).forEach(p => surfaceNewTabs(p));
-                return saved;
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                const saved = JSON.parse(raw);
+                if (saved?.profiles) {
+                    Object.values(saved.profiles).forEach(surfaceNewTabs);
+                    return saved;
+                }
             }
 
             // Migrate old single-config format
-            const old = JSON.parse(localStorage.getItem(OLD_KEY));
-            const store = {
-                activeProfile: 'default',
-                profiles: {
-                    default: old
-                        ? { ...old, name: 'Default' }
-                        : defaultProfileData('Default'),
-                },
-            };
-            localStorage.removeItem(OLD_KEY);
-            return store;
+            const old = localStorage.getItem(OLD_KEY);
+            if (old) {
+                const parsed = JSON.parse(old);
+                localStorage.removeItem(OLD_KEY);
+                return {
+                    activeProfile: 'default',
+                    profiles: { default: { ...parsed, name: 'Default' } },
+                };
+            }
 
+            // Brand new user
+            isFirstTime = true;
+            return {
+                activeProfile: 'default',
+                profiles: { default: defaultProfileData('Default') },
+            };
         } catch (_) {
+            isFirstTime = true;
             return {
                 activeProfile: 'default',
                 profiles: { default: defaultProfileData('Default') },
@@ -117,13 +239,12 @@
         }
     }
 
-    /** Ensure any freshly added tabs appear in the profile (at root level). */
     function surfaceNewTabs(profile) {
         if (!profile?.order) return;
         const placed = new Set();
-        for (const entry of profile.order) {
-            if (entry.type === 'tab') placed.add(entry.id);
-            else if (entry.type === 'folder') (entry.children || []).forEach(id => placed.add(id));
+        for (const e of profile.order) {
+            if (e.type === 'tab')    placed.add(e.id);
+            else if (e.type === 'folder') (e.children || []).forEach(id => placed.add(id));
         }
         TABS.forEach(t => { if (!placed.has(t.id)) profile.order.push({ type: 'tab', id: t.id }); });
     }
@@ -133,21 +254,19 @@
     }
 
     // ── State ─────────────────────────────────────────────────────────────────
-    let store    = null;   // full store object
-    let config   = null;   // alias → store.profiles[store.activeProfile]
-    let editMode = false;
-    let dropdownOpen = false;
+    let store           = null;
+    let config          = null;  // alias → store.profiles[store.activeProfile]
+    let editMode        = false;
+    let dropdownOpen    = false;
+    let selectedPreset  = null;  // id of the preset currently highlighted in the modal
 
     // Drag state
     let dragging    = null;
     let dropCurrent = null;
 
-    /* Sync config alias to the current active profile */
-    function syncConfig() {
-        config = store.profiles[store.activeProfile];
-    }
+    function syncConfig() { config = store.profiles[store.activeProfile]; }
 
-    // ── Mode detection ────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
     function getCurrentMode() {
         if (document.body.classList.contains('theme-ai'))   return 'ai';
         if (document.body.classList.contains('theme-home')) return 'home';
@@ -161,7 +280,6 @@
     }
 
     // ── Profile operations ────────────────────────────────────────────────────
-
     function switchProfile(profileId) {
         if (!store.profiles[profileId]) return;
         store.activeProfile = profileId;
@@ -170,26 +288,41 @@
         closeProfileDropdown();
         render();
         updateProfileSwitcherBtn();
+        refreshHomeWidget();
+    }
+
+    function createFromPreset(presetId, profileName) {
+        const preset = PRESETS.find(p => p.id === presetId);
+        if (!preset) return;
+        const id  = 'p-' + Date.now();
+        const cfg = buildPresetConfig(preset, profileName || preset.name);
+        store.profiles[id] = cfg;
+        store.activeProfile = id;
+        syncConfig();
+        storeSave();
+        hideOnboardingModal();
+        render();
+        updateProfileSwitcherBtn();
+        refreshHomeWidget();
     }
 
     function createProfile() {
-        const id   = 'p-' + Date.now();
-        const name = 'New Profile';
-        store.profiles[id] = defaultProfileData(name);
+        const id = 'p-' + Date.now();
+        store.profiles[id] = defaultProfileData('New Profile');
         store.activeProfile = id;
         syncConfig();
         storeSave();
         closeProfileDropdown();
         render();
         updateProfileSwitcherBtn();
-        // Trigger inline rename
+        refreshHomeWidget();
         setTimeout(() => startProfileRename(id), 50);
     }
 
     function duplicateProfile(srcId) {
-        const src  = store.profiles[srcId];
+        const src = store.profiles[srcId];
         if (!src) return;
-        const id   = 'p-' + Date.now();
+        const id = 'p-' + Date.now();
         store.profiles[id] = JSON.parse(JSON.stringify(src));
         store.profiles[id].name = src.name + ' (copy)';
         store.activeProfile = id;
@@ -198,15 +331,12 @@
         closeProfileDropdown();
         render();
         updateProfileSwitcherBtn();
+        refreshHomeWidget();
     }
 
     function deleteProfile(profileId) {
-        const ids = Object.keys(store.profiles);
-        if (ids.length <= 1) return; // can't delete the last profile
-
+        if (Object.keys(store.profiles).length <= 1) return;
         delete store.profiles[profileId];
-
-        // If we deleted the active one, switch to the first remaining
         if (store.activeProfile === profileId) {
             store.activeProfile = Object.keys(store.profiles)[0];
             syncConfig();
@@ -214,39 +344,151 @@
         storeSave();
         renderProfileDropdown();
         updateProfileSwitcherBtn();
+        refreshHomeWidget();
     }
 
     function startProfileRename(profileId) {
         const item = document.querySelector(`.profile-item[data-profile-id="${profileId}"] .profile-item-name`);
         if (!item) return;
-
         const current = store.profiles[profileId]?.name || '';
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'profile-rename-input';
         input.value = current;
-
         item.replaceWith(input);
-        input.focus();
-        input.select();
-
+        input.focus(); input.select();
         function commit() {
             const newName = input.value.trim() || current;
             if (store.profiles[profileId]) store.profiles[profileId].name = newName;
-            storeSave();
-            renderProfileDropdown();
-            updateProfileSwitcherBtn();
+            storeSave(); renderProfileDropdown(); updateProfileSwitcherBtn(); refreshHomeWidget();
         }
-
         input.addEventListener('blur', commit);
-        input.addEventListener('keydown', (e) => {
+        input.addEventListener('keydown', e => {
             if (e.key === 'Enter')  input.blur();
             if (e.key === 'Escape') { input.value = current; input.blur(); }
         });
     }
 
-    // ── Profile Switcher UI ───────────────────────────────────────────────────
+    // ── Onboarding modal ──────────────────────────────────────────────────────
+    function showOnboardingModal() {
+        selectedPreset = null;
+        const overlay = document.getElementById('profile-onboarding-overlay');
+        if (!overlay) return;
 
+        // Render preset cards
+        const grid = document.getElementById('pon-preset-grid');
+        if (grid) {
+            grid.innerHTML = '';
+            PRESETS.forEach(preset => {
+                const card = document.createElement('div');
+                card.className = 'pon-preset-card';
+                card.dataset.presetId = preset.id;
+                card.style.setProperty('--preset-accent', preset.accent);
+                card.innerHTML = `
+                    <div class="pon-card-icon"><i class="${preset.icon}"></i></div>
+                    <div class="pon-card-name">${esc(preset.name)}</div>
+                    <div class="pon-card-desc">${esc(preset.description)}</div>
+                    <div class="pon-card-tags">${preset.highlights.map(h => `<span class="pon-tag">${esc(h)}</span>`).join('')}</div>
+                `;
+                card.addEventListener('click', () => selectPreset(preset.id, preset.name));
+                grid.appendChild(card);
+            });
+        }
+
+        // Name input default
+        const nameInput = document.getElementById('pon-name-input');
+        if (nameInput) nameInput.value = '';
+
+        // Wire footer buttons
+        const skipBtn   = document.getElementById('pon-skip-btn');
+        const createBtn = document.getElementById('pon-create-btn');
+        if (skipBtn)   skipBtn.onclick   = hideOnboardingModal;
+        if (createBtn) createBtn.onclick = handleOnboardingCreate;
+
+        // Show
+        overlay.classList.add('visible');
+        overlay.setAttribute('aria-hidden', 'false');
+        overlay.addEventListener('click', e => { if (e.target === overlay) hideOnboardingModal(); }, { once: true });
+    }
+
+    function hideOnboardingModal() {
+        const overlay = document.getElementById('profile-onboarding-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('visible');
+        overlay.setAttribute('aria-hidden', 'true');
+        selectedPreset = null;
+    }
+
+    function selectPreset(presetId, presetName) {
+        selectedPreset = presetId;
+        // Highlight selected card
+        document.querySelectorAll('.pon-preset-card').forEach(c => {
+            c.classList.toggle('selected', c.dataset.presetId === presetId);
+        });
+        // Pre-fill name input if it's empty or has the previous preset's name
+        const nameInput = document.getElementById('pon-name-input');
+        if (nameInput && (!nameInput.value.trim() || PRESETS.some(p => p.name === nameInput.value.trim()))) {
+            nameInput.value = presetName;
+        }
+    }
+
+    function handleOnboardingCreate() {
+        if (!selectedPreset) {
+            // Wiggle the grid to indicate selection needed
+            const grid = document.getElementById('pon-preset-grid');
+            if (grid) { grid.classList.add('pon-shake'); setTimeout(() => grid.classList.remove('pon-shake'), 400); }
+            return;
+        }
+        const nameInput = document.getElementById('pon-name-input');
+        const name = nameInput?.value.trim() || PRESETS.find(p => p.id === selectedPreset)?.name || 'My Profile';
+        createFromPreset(selectedPreset, name);
+    }
+
+    // ── Suite-home profiles widget ─────────────────────────────────────────────
+    function refreshHomeWidget() {
+        const chips = document.getElementById('spw-chips');
+        if (!chips) return;
+
+        chips.innerHTML = '';
+
+        Object.entries(store.profiles).forEach(([id, profile]) => {
+            const isActive = id === store.activeProfile;
+            const chip = document.createElement('button');
+            chip.className = `spw-chip${isActive ? ' active' : ''}`;
+            chip.title = `Switch to ${profile.name}`;
+            chip.innerHTML = `
+                <span class="spw-chip-dot${isActive ? ' active' : ''}"></span>
+                <span class="spw-chip-name">${esc(profile.name)}</span>
+            `;
+            chip.addEventListener('click', () => {
+                if (id !== store.activeProfile) switchProfile(id);
+            });
+            chips.appendChild(chip);
+        });
+
+        // Wire "Add Layout" button
+        const addBtn = document.getElementById('spw-add-btn');
+        if (addBtn) {
+            addBtn.onclick = showOnboardingModal;
+        }
+    }
+
+    function watchSuiteHomePanel() {
+        const panel = document.getElementById('suite-home-panel');
+        if (!panel) return;
+
+        function check() {
+            if (panel.classList.contains('active') && !panel.querySelector('.partial-loading')) {
+                refreshHomeWidget();
+            }
+        }
+
+        const obs = new MutationObserver(check);
+        obs.observe(panel, { attributes: true, attributeFilter: ['class'], childList: true });
+        check();
+    }
+
+    // ── Profile Switcher (sidebar bottom) ─────────────────────────────────────
     function buildProfileSwitcher() {
         const wrapper = document.createElement('div');
         wrapper.id        = 'profile-switcher';
@@ -256,10 +498,7 @@
         btn.id        = 'profile-btn';
         btn.className = 'profile-btn';
         updateProfileBtnContent(btn);
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleProfileDropdown(wrapper);
-        });
+        btn.addEventListener('click', e => { e.stopPropagation(); toggleProfileDropdown(wrapper); });
 
         wrapper.appendChild(btn);
         return wrapper;
@@ -271,7 +510,7 @@
     }
 
     function updateProfileBtnContent(btn) {
-        const name = store.profiles[store.activeProfile]?.name || 'Default';
+        const name  = store.profiles[store.activeProfile]?.name || 'Default';
         const count = Object.keys(store.profiles).length;
         btn.innerHTML = `
             <span class="profile-dot"></span>
@@ -285,8 +524,6 @@
         if (dropdownOpen) { closeProfileDropdown(); return; }
         dropdownOpen = true;
         renderProfileDropdown(wrapper);
-
-        // Close on outside click
         setTimeout(() => {
             document.addEventListener('click', outsideDropdownClose, { capture: true, once: true });
         }, 30);
@@ -303,16 +540,12 @@
         if (dropdown && !dropdown.contains(e.target) && btn && !btn.contains(e.target)) {
             closeProfileDropdown();
         } else if (dropdownOpen) {
-            setTimeout(() => {
-                document.addEventListener('click', outsideDropdownClose, { capture: true, once: true });
-            }, 30);
+            setTimeout(() => document.addEventListener('click', outsideDropdownClose, { capture: true, once: true }), 30);
         }
     }
 
     function renderProfileDropdown(wrapper) {
-        // Remove existing
         document.getElementById('profile-dropdown')?.remove();
-
         const target = wrapper || document.getElementById('profile-switcher');
         if (!target) return;
 
@@ -330,52 +563,44 @@
             item.className = `profile-item${isActive ? ' active' : ''}`;
             item.dataset.profileId = id;
 
-            // Active dot
             const dot = document.createElement('span');
-            dot.className = isActive ? 'profile-item-dot active' : 'profile-item-dot';
+            dot.className = `profile-item-dot${isActive ? ' active' : ''}`;
             item.appendChild(dot);
 
-            // Name
             const nameSpan = document.createElement('span');
             nameSpan.className = 'profile-item-name';
             nameSpan.textContent = profile.name;
             item.appendChild(nameSpan);
 
-            // Action buttons
             const actions = document.createElement('span');
             actions.className = 'profile-item-actions';
 
-            // Duplicate button (always visible)
             const dupBtn = document.createElement('button');
             dupBtn.className = 'profile-action-btn';
-            dupBtn.title = 'Duplicate profile';
+            dupBtn.title = 'Duplicate';
             dupBtn.innerHTML = '<i class="fas fa-copy"></i>';
-            dupBtn.addEventListener('click', (e) => { e.stopPropagation(); duplicateProfile(id); });
+            dupBtn.addEventListener('click', e => { e.stopPropagation(); duplicateProfile(id); });
             actions.appendChild(dupBtn);
 
-            // Rename button (edit mode only)
             if (editMode) {
                 const renBtn = document.createElement('button');
                 renBtn.className = 'profile-action-btn';
                 renBtn.title = 'Rename';
                 renBtn.innerHTML = '<i class="fas fa-pen"></i>';
-                renBtn.addEventListener('click', (e) => { e.stopPropagation(); startProfileRename(id); });
+                renBtn.addEventListener('click', e => { e.stopPropagation(); startProfileRename(id); });
                 actions.appendChild(renBtn);
 
-                // Delete button (edit mode + more than 1 profile)
                 if (profileIds.length > 1) {
                     const delBtn = document.createElement('button');
                     delBtn.className = 'profile-action-btn danger';
-                    delBtn.title = 'Delete profile';
+                    delBtn.title = 'Delete';
                     delBtn.innerHTML = '<i class="fas fa-trash"></i>';
-                    delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteProfile(id); });
+                    delBtn.addEventListener('click', e => { e.stopPropagation(); deleteProfile(id); });
                     actions.appendChild(delBtn);
                 }
             }
 
             item.appendChild(actions);
-
-            // Click item to switch (unless it's already active)
             item.addEventListener('click', () => {
                 if (id !== store.activeProfile) switchProfile(id);
                 else closeProfileDropdown();
@@ -384,28 +609,26 @@
             dropdown.appendChild(item);
         });
 
-        // Divider + Add new profile
-        const divider = document.createElement('div');
-        divider.className = 'profile-dropdown-divider';
-        dropdown.appendChild(divider);
+        // Divider + New Profile
+        const div = document.createElement('div');
+        div.className = 'profile-dropdown-divider';
+        dropdown.appendChild(div);
 
         const addBtn = document.createElement('button');
         addBtn.className = 'profile-add-btn';
         addBtn.innerHTML = '<i class="fas fa-plus"></i><span>New Profile</span>';
-        addBtn.addEventListener('click', (e) => { e.stopPropagation(); createProfile(); });
+        addBtn.addEventListener('click', e => { e.stopPropagation(); showOnboardingModal(); closeProfileDropdown(); });
         dropdown.appendChild(addBtn);
 
         target.appendChild(dropdown);
     }
 
     // ── Tab list render ───────────────────────────────────────────────────────
-
     let dropIndicator = null;
 
     function render() {
         const container = document.getElementById('sidebar-tab-list');
         if (!container) return;
-
         clearDropHighlights();
         container.innerHTML = '';
 
@@ -430,19 +653,16 @@
         }
 
         applyMode(mode);
-
         if (editMode) setupDragDrop(container);
     }
 
     function renderTab(tabId, folderId, mode) {
         const tab = TAB_MAP[tabId];
         if (!tab) return null;
-
         const isHidden = config.hidden[tabId] === true;
         if (!editMode && isHidden) return null;
 
         const modeClasses = tab.mode.map(m => `mode-${m}`).join(' ');
-
         const btn = document.createElement('button');
         btn.className = `main-tab ${modeClasses}`;
         btn.dataset.maintab = tabId;
@@ -453,7 +673,6 @@
         if (editMode) {
             const grip = document.createElement('span');
             grip.className = 'drag-grip';
-            grip.title = 'Drag to reorder';
             grip.draggable = true;
             grip.innerHTML = '<i class="fas fa-grip-vertical"></i>';
             btn.appendChild(grip);
@@ -472,17 +691,13 @@
         if (editMode) {
             const eye = document.createElement('button');
             eye.className = 'vis-toggle';
-            eye.dataset.tabid = tabId;
             eye.title = isHidden ? 'Enable' : 'Disable';
             eye.innerHTML = `<i class="fas ${isHidden ? 'fa-eye-slash' : 'fa-eye'}"></i>`;
-            eye.addEventListener('click', (e) => {
-                e.stopPropagation();
-                toggleTabVisibility(tabId);
-            });
+            eye.addEventListener('click', e => { e.stopPropagation(); toggleTabVisibility(tabId); });
             btn.appendChild(eye);
         }
 
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', e => {
             if (e.target.closest('.drag-grip') || e.target.closest('.vis-toggle')) return;
             if (dragging) return;
             if (typeof switchMainTab === 'function') switchMainTab(tabId);
@@ -494,7 +709,6 @@
     function renderFolder(entry, mode) {
         const folder = config.folders[entry.id];
         if (!folder) return null;
-
         const children = entry.children || [];
 
         if (!editMode) {
@@ -517,7 +731,6 @@
         if (editMode) {
             const grip = document.createElement('span');
             grip.className = 'drag-grip folder-drag-grip';
-            grip.title = 'Drag to reorder';
             grip.innerHTML = '<i class="fas fa-grip-vertical"></i>';
             header.appendChild(grip);
         }
@@ -538,21 +751,17 @@
                 <button class="folder-rename-btn" title="Rename"><i class="fas fa-pen"></i></button>
                 <button class="folder-delete-btn" title="Delete"><i class="fas fa-trash"></i></button>
             `;
-            actions.querySelector('.folder-rename-btn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                startFolderRename(entry.id, nameSpan);
+            actions.querySelector('.folder-rename-btn').addEventListener('click', e => {
+                e.stopPropagation(); startFolderRename(entry.id, nameSpan);
             });
-            actions.querySelector('.folder-delete-btn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                deleteFolder(entry.id);
+            actions.querySelector('.folder-delete-btn').addEventListener('click', e => {
+                e.stopPropagation(); deleteFolder(entry.id);
             });
             header.appendChild(actions);
         }
 
-        header.addEventListener('click', (e) => {
-            if (e.target.closest('.folder-actions')) return;
-            if (e.target.closest('.drag-grip')) return;
-            if (dragging) return;
+        header.addEventListener('click', e => {
+            if (e.target.closest('.folder-actions') || e.target.closest('.drag-grip') || dragging) return;
             toggleFolder(entry.id);
         });
 
@@ -586,44 +795,33 @@
     }
 
     // ── Folder operations ─────────────────────────────────────────────────────
-    function toggleFolder(folderId) {
-        if (!config.folders[folderId]) return;
-        config.folders[folderId].expanded = !config.folders[folderId].expanded;
-        storeSave();
-        render();
+    function toggleFolder(id) {
+        if (!config.folders[id]) return;
+        config.folders[id].expanded = !config.folders[id].expanded;
+        storeSave(); render();
     }
 
     function addFolder() {
         const id = 'f-' + Date.now();
         config.folders[id] = { name: 'New Folder', expanded: true };
         config.order.push({ type: 'folder', id, children: [] });
-        storeSave();
-        render();
-        const wrapper = document.querySelector(`.sidebar-folder[data-folder-id="${id}"]`);
-        const nameSpan = wrapper?.querySelector('.folder-name');
+        storeSave(); render();
+        const nameSpan = document.querySelector(`.sidebar-folder[data-folder-id="${id}"] .folder-name`);
         if (nameSpan) startFolderRename(id, nameSpan);
     }
 
     function startFolderRename(folderId, nameSpan) {
         const current = config.folders[folderId]?.name || '';
         const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'folder-rename-input';
-        input.value = current;
-
+        input.type = 'text'; input.className = 'folder-rename-input'; input.value = current;
         nameSpan.replaceWith(input);
-        input.focus();
-        input.select();
-
+        input.focus(); input.select();
         function commit() {
-            const newName = input.value.trim() || current;
-            if (config.folders[folderId]) config.folders[folderId].name = newName;
-            storeSave();
-            render();
+            if (config.folders[folderId]) config.folders[folderId].name = input.value.trim() || current;
+            storeSave(); render();
         }
-
         input.addEventListener('blur', commit);
-        input.addEventListener('keydown', (e) => {
+        input.addEventListener('keydown', e => {
             if (e.key === 'Enter')  input.blur();
             if (e.key === 'Escape') { input.value = current; input.blur(); }
         });
@@ -636,14 +834,12 @@
         const orphans = (entry.children || []).map(id => ({ type: 'tab', id }));
         config.order.splice(idx, 1, ...orphans);
         delete config.folders[folderId];
-        storeSave();
-        render();
+        storeSave(); render();
     }
 
     function toggleTabVisibility(tabId) {
         config.hidden[tabId] = !config.hidden[tabId];
-        storeSave();
-        render();
+        storeSave(); render();
     }
 
     // ── Drag and drop ─────────────────────────────────────────────────────────
@@ -652,9 +848,7 @@
         dropIndicator.className = 'drop-indicator';
         dropIndicator.style.display = 'none';
         document.body.appendChild(dropIndicator);
-
         container.addEventListener('dragstart', onDragStart, true);
-        container.addEventListener('drag',      () => {},    true);
         container.addEventListener('dragend',   onDragEnd,   true);
         container.addEventListener('dragover',  onDragOver,  true);
         container.addEventListener('drop',      onDrop,      true);
@@ -663,20 +857,15 @@
     function onDragStart(e) {
         const grip = e.target.closest('.drag-grip');
         if (!grip) { e.preventDefault(); return; }
-
-        const tab          = grip.closest('.main-tab');
-        const folderHeader = grip.closest('.folder-header');
-
+        const tab    = grip.closest('.main-tab');
+        const fhdr   = grip.closest('.folder-header');
         if (tab) {
             dragging = { type: 'tab', id: tab.dataset.maintab, srcFolderId: tab.dataset.folderId || null };
             tab.classList.add('is-dragging');
-        } else if (folderHeader && grip.classList.contains('folder-drag-grip')) {
-            dragging = { type: 'folder', id: folderHeader.dataset.folderId };
-            folderHeader.closest('.sidebar-folder')?.classList.add('is-dragging');
-        } else {
-            e.preventDefault(); return;
-        }
-
+        } else if (fhdr && grip.classList.contains('folder-drag-grip')) {
+            dragging = { type: 'folder', id: fhdr.dataset.folderId };
+            fhdr.closest('.sidebar-folder')?.classList.add('is-dragging');
+        } else { e.preventDefault(); return; }
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', '');
     }
@@ -684,71 +873,69 @@
     function onDragEnd() {
         clearDropHighlights();
         if (dropIndicator) { dropIndicator.remove(); dropIndicator = null; }
-        dragging = null;
-        dropCurrent = null;
+        dragging = null; dropCurrent = null;
     }
 
     function onDragOver(e) {
         e.preventDefault();
         if (!dragging) return;
-
         clearDropHighlights();
         if (!dropIndicator) return;
 
-        const tab          = e.target.closest('.main-tab:not(.is-dragging)');
-        const folderHeader = e.target.closest('.folder-header');
-        const folderBody   = e.target.closest('.folder-body');
-        const container    = document.getElementById('sidebar-tab-list');
+        const tab    = e.target.closest('.main-tab:not(.is-dragging)');
+        const fhdr   = e.target.closest('.folder-header');
+        const fbody  = e.target.closest('.folder-body');
+        const cont   = document.getElementById('sidebar-tab-list');
 
         if (dragging.type === 'tab') {
-            if (folderHeader && !tab) {
-                folderHeader.classList.add('drop-target-folder');
-                dropCurrent = { type: 'into-folder', folderId: folderHeader.dataset.folderId };
+            if (fhdr && !tab) {
+                fhdr.classList.add('drop-target-folder');
+                dropCurrent = { type: 'into-folder', folderId: fhdr.dataset.folderId };
                 dropIndicator.style.display = 'none';
             } else if (tab) {
-                const after = e.clientY > tab.getBoundingClientRect().top + tab.getBoundingClientRect().height / 2;
+                const r = tab.getBoundingClientRect();
+                const after = e.clientY > r.top + r.height / 2;
                 positionIndicator(tab, after);
                 dropCurrent = { type: after ? 'after-tab' : 'before-tab', tabId: tab.dataset.maintab, folderId: tab.dataset.folderId || null };
-            } else if (folderBody && !tab) {
-                folderBody.classList.add('drop-target-folder');
-                dropCurrent = { type: 'into-folder', folderId: folderBody.dataset.folderId };
+            } else if (fbody && !tab) {
+                fbody.classList.add('drop-target-folder');
+                dropCurrent = { type: 'into-folder', folderId: fbody.dataset.folderId };
                 dropIndicator.style.display = 'none';
-            } else if (container) {
-                positionAtRoot(e.clientY, container);
+            } else if (cont) {
+                positionAtRoot(e.clientY, cont);
             }
         } else if (dragging.type === 'folder') {
-            const targetFolder = e.target.closest('.sidebar-folder:not(.is-dragging)');
-            if (targetFolder) {
-                const rect  = targetFolder.getBoundingClientRect();
-                const after = e.clientY > rect.top + rect.height / 2;
-                positionIndicator(targetFolder, after);
-                dropCurrent = { type: after ? 'after-folder' : 'before-folder', folderId: targetFolder.dataset.folderId };
+            const tf = e.target.closest('.sidebar-folder:not(.is-dragging)');
+            if (tf) {
+                const r = tf.getBoundingClientRect();
+                const after = e.clientY > r.top + r.height / 2;
+                positionIndicator(tf, after);
+                dropCurrent = { type: after ? 'after-folder' : 'before-folder', folderId: tf.dataset.folderId };
             }
         }
     }
 
     function positionIndicator(el, after) {
         if (!dropIndicator) return;
-        const rect = el.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
         dropIndicator.style.display  = 'block';
         dropIndicator.style.position = 'fixed';
-        dropIndicator.style.left     = rect.left + 'px';
-        dropIndicator.style.width    = rect.width + 'px';
-        dropIndicator.style.top      = (after ? rect.bottom - 1 : rect.top) + 'px';
+        dropIndicator.style.left     = r.left + 'px';
+        dropIndicator.style.width    = r.width + 'px';
+        dropIndicator.style.top      = (after ? r.bottom - 1 : r.top) + 'px';
     }
 
     function positionAtRoot(clientY, container) {
         const children = [...container.children].filter(el =>
-            !el.classList.contains('drop-indicator') &&
-            !el.classList.contains('sidebar-add-folder-btn')
+            !el.classList.contains('drop-indicator') && !el.classList.contains('sidebar-add-folder-btn')
         );
-        let insertBefore = null;
+        let before = null;
         for (const child of children) {
             const r = child.getBoundingClientRect();
-            if (clientY < r.top + r.height / 2) { insertBefore = child; break; }
+            if (clientY < r.top + r.height / 2) { before = child; break; }
         }
-        const ref = insertBefore || children[children.length - 1];
-        if (ref) positionIndicator(ref, !insertBefore);
+        const ref = before || children[children.length - 1];
+        if (ref) positionIndicator(ref, !before);
         dropCurrent = { type: 'root' };
     }
 
@@ -761,69 +948,59 @@
     function onDrop(e) {
         e.preventDefault();
         if (!dragging || !dropCurrent) { onDragEnd(); return; }
-
         if (dragging.type === 'tab') {
-            const { id: tabId, srcFolderId } = dragging;
+            const { id, srcFolderId } = dragging;
             const dc = dropCurrent;
-
-            removeTabFromConfig(tabId, srcFolderId);
-
+            removeTabFromConfig(id, srcFolderId);
             if (dc.type === 'into-folder') {
                 const fe = config.order.find(e => e.type === 'folder' && e.id === dc.folderId);
-                if (fe) { fe.children.push(tabId); if (config.folders[dc.folderId]) config.folders[dc.folderId].expanded = true; }
+                if (fe) { fe.children.push(id); if (config.folders[dc.folderId]) config.folders[dc.folderId].expanded = true; }
             } else if (dc.type === 'before-tab' || dc.type === 'after-tab') {
-                insertTabNearTab(tabId, dc.tabId, dc.folderId, dc.type === 'after-tab');
+                insertTabNearTab(id, dc.tabId, dc.folderId, dc.type === 'after-tab');
             } else {
-                config.order.push({ type: 'tab', id: tabId });
+                config.order.push({ type: 'tab', id });
             }
         } else if (dragging.type === 'folder') {
             const dc = dropCurrent;
             if (dc.type === 'before-folder' || dc.type === 'after-folder') {
-                const srcEntry = config.order.find(e => e.type === 'folder' && e.id === dragging.id);
-                const tgtEntry = config.order.find(e => e.type === 'folder' && e.id === dc.folderId);
-                if (srcEntry && tgtEntry) {
-                    config.order.splice(config.order.indexOf(srcEntry), 1);
-                    const ti = config.order.indexOf(tgtEntry);
-                    config.order.splice(dc.type === 'after-folder' ? ti + 1 : ti, 0, srcEntry);
+                const src = config.order.find(e => e.type === 'folder' && e.id === dragging.id);
+                const tgt = config.order.find(e => e.type === 'folder' && e.id === dc.folderId);
+                if (src && tgt) {
+                    config.order.splice(config.order.indexOf(src), 1);
+                    const ti = config.order.indexOf(tgt);
+                    config.order.splice(dc.type === 'after-folder' ? ti + 1 : ti, 0, src);
                 }
             }
         }
-
-        storeSave();
-        onDragEnd();
-        render();
+        storeSave(); onDragEnd(); render();
     }
 
     function removeTabFromConfig(tabId, srcFolderId) {
         if (srcFolderId) {
-            const entry = config.order.find(e => e.type === 'folder' && e.id === srcFolderId);
-            if (entry) entry.children = entry.children.filter(id => id !== tabId);
+            const e = config.order.find(e => e.type === 'folder' && e.id === srcFolderId);
+            if (e) e.children = e.children.filter(id => id !== tabId);
         } else {
-            const idx = config.order.findIndex(e => e.type === 'tab' && e.id === tabId);
-            if (idx >= 0) config.order.splice(idx, 1);
+            const i = config.order.findIndex(e => e.type === 'tab' && e.id === tabId);
+            if (i >= 0) config.order.splice(i, 1);
         }
     }
 
-    function insertTabNearTab(tabId, nearTabId, nearFolderId, after) {
+    function insertTabNearTab(tabId, nearId, nearFolderId, after) {
         if (nearFolderId) {
-            const entry = config.order.find(e => e.type === 'folder' && e.id === nearFolderId);
-            if (entry) {
-                const idx = entry.children.indexOf(nearTabId);
-                entry.children.splice(after ? idx + 1 : idx, 0, tabId);
-            }
+            const e = config.order.find(e => e.type === 'folder' && e.id === nearFolderId);
+            if (e) { const i = e.children.indexOf(nearId); e.children.splice(after ? i + 1 : i, 0, tabId); }
         } else {
-            const idx = config.order.findIndex(e => e.type === 'tab' && e.id === nearTabId);
-            if (idx >= 0) config.order.splice(after ? idx + 1 : idx, 0, { type: 'tab', id: tabId });
+            const i = config.order.findIndex(e => e.type === 'tab' && e.id === nearId);
+            if (i >= 0) config.order.splice(after ? i + 1 : i, 0, { type: 'tab', id: tabId });
             else config.order.push({ type: 'tab', id: tabId });
         }
     }
 
-    // ── Edit mode toggle ──────────────────────────────────────────────────────
+    // ── Edit mode ─────────────────────────────────────────────────────────────
     function enterEditMode() {
         editMode = true;
         document.querySelector('.sidebar-nav')?.classList.add('sidebar-edit-mode');
         updateToggleBtn();
-        // Re-render dropdown to show edit controls
         if (dropdownOpen) renderProfileDropdown();
         render();
     }
@@ -839,9 +1016,7 @@
     // ── Customize button ──────────────────────────────────────────────────────
     function buildToggleBtn() {
         const btn = document.createElement('button');
-        btn.id        = 'cust-toggle';
-        btn.className = 'cust-toggle-btn';
-        btn.title     = 'Customize sidebar';
+        btn.id = 'cust-toggle'; btn.className = 'cust-toggle-btn'; btn.title = 'Customize sidebar';
         updateToggleBtnContent(btn);
         btn.addEventListener('click', () => editMode ? exitEditMode() : enterEditMode());
         return btn;
@@ -849,26 +1024,19 @@
 
     function updateToggleBtnContent(btn) {
         if (!btn) return;
-        if (editMode) {
-            btn.innerHTML = '<i class="fas fa-check"></i><span>Done</span>';
-            btn.classList.add('edit-active');
-        } else {
-            btn.innerHTML = '<i class="fas fa-sliders"></i><span>Customize</span>';
-            btn.classList.remove('edit-active');
-        }
+        if (editMode) { btn.innerHTML = '<i class="fas fa-check"></i><span>Done</span>'; btn.classList.add('edit-active'); }
+        else          { btn.innerHTML = '<i class="fas fa-sliders"></i><span>Customize</span>'; btn.classList.remove('edit-active'); }
     }
 
-    function updateToggleBtn() {
-        updateToggleBtnContent(document.getElementById('cust-toggle'));
-    }
+    function updateToggleBtn() { updateToggleBtnContent(document.getElementById('cust-toggle')); }
 
-    // ── Watch body class changes for mode switching ───────────────────────────
+    // ── Mode watcher ──────────────────────────────────────────────────────────
     function watchMode() {
-        const observer = new MutationObserver(() => {
+        const obs = new MutationObserver(() => {
             applyMode(getCurrentMode());
             if (!editMode) render();
         });
-        observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+        obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     }
 
     // ── Init ──────────────────────────────────────────────────────────────────
@@ -879,15 +1047,15 @@
         store = storeLoad();
         syncConfig();
 
-        // Build controls — profile switcher + customize button
-        const customizeBtn   = buildToggleBtn();
-        const profileSwitcher = buildProfileSwitcher();
-
-        sidebarBottom.prepend(customizeBtn);
-        sidebarBottom.prepend(profileSwitcher);
+        sidebarBottom.prepend(buildToggleBtn());
+        sidebarBottom.prepend(buildProfileSwitcher());
 
         watchMode();
+        watchSuiteHomePanel();
         render();
+
+        // Auto-show onboarding for first-time users
+        if (isFirstTime) setTimeout(showOnboardingModal, 500);
     }
 
     if (document.readyState === 'loading') {

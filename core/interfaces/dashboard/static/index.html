@@ -1004,6 +1004,35 @@ window.addEventListener('customCompanionCreated', loadCustomCompanionsSidebar);
 window.addEventListener('customCompanionDeleted', loadCustomCompanionsSidebar);
 </script>
 
+
+<!-- ── Profile Onboarding Modal ───────────────────────────────── -->
+<div id="profile-onboarding-overlay" class="profile-onboarding-overlay" aria-hidden="true">
+    <div class="profile-onboarding-modal" role="dialog" aria-modal="true" aria-label="Create a sidebar layout">
+        <div class="pon-header">
+            <div class="pon-badge"><i class="fas fa-layer-group"></i></div>
+            <h2 class="pon-title">Choose a Sidebar Layout</h2>
+            <p class="pon-sub">Pick a preset that matches how you work — or start from scratch. You can always change it later.</p>
+        </div>
+
+        <!-- Preset grid — populated by JS -->
+        <div class="pon-grid" id="pon-preset-grid"></div>
+
+        <div class="pon-footer">
+            <div class="pon-name-row">
+                <label class="pon-name-label" for="pon-name-input">Profile name</label>
+                <input type="text" id="pon-name-input" class="pon-name-input" placeholder="e.g. Work, Leisure, Research…" maxlength="32" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="pon-actions">
+                <button class="pon-btn-secondary" id="pon-skip-btn">Skip for now</button>
+                <button class="pon-btn-primary" id="pon-create-btn">
+                    <i class="fas fa-check"></i> Create Profile
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 </body>
+
 
 </html>
