@@ -385,3 +385,226 @@
     z-index: 9999;
     box-shadow: 0 0 6px rgba(99,102,241,0.5);
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   SIDEBAR PROFILES — Switcher
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Profile switcher wrapper ───────────────────────────────────── */
+.profile-switcher {
+    position: relative;
+    margin: 0.05rem 0.3rem;
+    width: calc(100% - 0.6rem);
+}
+
+/* ── Profile button (always visible) ───────────────────────────── */
+.profile-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.38rem 0.7rem;
+    width: 100%;
+    background: rgba(99,102,241,0.06);
+    border: 1px solid rgba(99,102,241,0.14);
+    border-radius: var(--radius-md, 8px);
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-align: left;
+}
+.profile-btn:hover {
+    background: rgba(99,102,241,0.1);
+    border-color: rgba(99,102,241,0.25);
+    color: var(--text-primary);
+}
+
+/* Active dot */
+.profile-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary, #6366f1);
+    flex-shrink: 0;
+    box-shadow: 0 0 5px rgba(99,102,241,0.55);
+}
+
+.profile-btn-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--primary, #6366f1);
+    font-weight: 600;
+}
+
+/* Profile count badge */
+.profile-count {
+    font-size: 0.64rem;
+    font-weight: 600;
+    padding: 0.05rem 0.35rem;
+    background: rgba(99,102,241,0.12);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 999px;
+    color: var(--primary, #6366f1);
+    flex-shrink: 0;
+    line-height: 1.4;
+}
+
+/* Chevron */
+.profile-chevron {
+    font-size: 0.6rem;
+    opacity: 0.5;
+    flex-shrink: 0;
+    transition: transform 0.18s, opacity 0.15s;
+}
+.profile-btn:hover .profile-chevron { opacity: 0.9; }
+
+/* Collapsed sidebar — icon only */
+.sidebar-nav.collapsed .profile-btn {
+    justify-content: center;
+    width: 36px;
+    padding: 0.5rem;
+    border-radius: var(--radius-full, 999px);
+    margin: 0 auto;
+}
+.sidebar-nav.collapsed .profile-btn-name,
+.sidebar-nav.collapsed .profile-count,
+.sidebar-nav.collapsed .profile-chevron { display: none; }
+
+/* ── Profile dropdown ───────────────────────────────────────────── */
+.profile-dropdown {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: var(--bg-elevated, #1a1a2e);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: var(--radius-md, 10px);
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.04);
+    padding: 0.3rem 0;
+    z-index: 1000;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    animation: profileDropIn 0.14s ease;
+}
+
+@keyframes profileDropIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Profile item ───────────────────────────────────────────────── */
+.profile-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.38rem 0.65rem;
+    cursor: pointer;
+    transition: background 0.12s;
+    border-radius: 0;
+    min-width: 0;
+    user-select: none;
+}
+.profile-item:hover { background: rgba(255,255,255,0.05); }
+.profile-item.active { background: rgba(99,102,241,0.07); }
+
+/* Per-item dot */
+.profile-item-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    flex-shrink: 0;
+    transition: background 0.12s;
+}
+.profile-item-dot.active {
+    background: var(--primary, #6366f1);
+    box-shadow: 0 0 4px rgba(99,102,241,0.5);
+}
+
+.profile-item-name {
+    flex: 1;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+.profile-item.active .profile-item-name {
+    color: var(--primary, #6366f1);
+    font-weight: 600;
+}
+
+/* Rename input (inline in item) */
+.profile-rename-input {
+    flex: 1;
+    min-width: 0;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(99,102,241,0.4);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 0.12rem 0.4rem;
+    outline: none;
+    font-family: inherit;
+}
+
+/* ── Per-item action buttons ────────────────────────────────────── */
+.profile-item-actions {
+    display: flex;
+    gap: 0.1rem;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.12s;
+}
+.profile-item:hover .profile-item-actions { opacity: 1; }
+
+.profile-action-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 0.2rem 0.28rem;
+    border-radius: 4px;
+    font-size: 0.62rem;
+    line-height: 1;
+    transition: background 0.12s, color 0.12s;
+}
+.profile-action-btn:hover { background: rgba(99,102,241,0.15); color: var(--primary, #6366f1); }
+.profile-action-btn.danger:hover { background: rgba(255,80,80,0.12); color: #f87070; }
+
+/* ── Dropdown divider + add button ─────────────────────────────── */
+.profile-dropdown-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 0.25rem 0.5rem;
+}
+
+.profile-add-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.65rem;
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+    text-align: left;
+}
+.profile-add-btn:hover {
+    background: rgba(99,102,241,0.07);
+    color: var(--primary, #6366f1);
+}
+.profile-add-btn i { font-size: 0.7rem; opacity: 0.7; }
+
