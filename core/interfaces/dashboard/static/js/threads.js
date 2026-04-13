@@ -309,6 +309,110 @@ function renderThreadMessages() {
             messageDiv.dataset.taskId = msg.taskId;
         }
         messageDiv.innerHTML = msg.html;
+
+        // ── Syntax highlighting ──────────────────────────────────────────────
+        if (typeof hljs !== 'undefined') {
+            messageDiv.querySelectorAll('pre code').forEach(block => {
+                hljs.highlightElement(block);
+            });
+        }
+
+        // ── Code copy buttons ────────────────────────────────────────────────
+        messageDiv.querySelectorAll('pre').forEach(pre => {
+            if (pre.querySelector('.code-copy-btn')) return; // already injected
+            const btn = document.createElement('button');
+            btn.className = 'code-copy-btn';
+            btn.title = 'Copy code';
+            btn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                const code = pre.querySelector('code')?.innerText ?? pre.innerText;
+                navigator.clipboard.writeText(code).then(() => {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Copied';
+                    btn.classList.add('code-copied');
+                    setTimeout(() => {
+                        btn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                        btn.classList.remove('code-copied');
+                    }, 1800);
+                });
+            });
+            pre.style.position = 'relative';
+            pre.appendChild(btn);
+        });
+
+        // ── Message hover action bar ─────────────────────────────────────────
+        if (msg.role === 'user' || msg.role === 'assistant') {
+            const actions = document.createElement('div');
+            actions.className = 'msg-actions';
+
+            // Copy full message
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'msg-action-btn';
+            copyBtn.title = 'Copy message';
+            copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+            copyBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                const msgContent = messageDiv.querySelector('.message-content');
+                const text = (msgContent?.innerText ?? messageDiv.innerText).trim();
+                navigator.clipboard.writeText(text).then(() => {
+                    copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+                    copyBtn.classList.add('msg-copied');
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+                        copyBtn.classList.remove('msg-copied');
+                    }, 1800);
+                });
+            });
+            actions.appendChild(copyBtn);
+
+            if (msg.role === 'user') {
+                // Resend / edit
+                const resendBtn = document.createElement('button');
+                resendBtn.className = 'msg-action-btn';
+                resendBtn.title = 'Resend message';
+                resendBtn.innerHTML = '<i class="fas fa-rotate-right"></i>';
+                resendBtn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const input = document.getElementById('chat-input');
+                    if (input) {
+                        input.value = msg.content;
+                        input.focus();
+                        input.style.height = 'auto';
+                        input.style.height = input.scrollHeight + 'px';
+                    }
+                });
+                actions.appendChild(resendBtn);
+            }
+
+            if (msg.role === 'assistant') {
+                // Regenerate last assistant response
+                const regenBtn = document.createElement('button');
+                regenBtn.className = 'msg-action-btn';
+                regenBtn.title = 'Regenerate response';
+                regenBtn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i>';
+                regenBtn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    // Find the preceding user message content
+                    const msgs = threadMessages[currentThreadId] || [];
+                    const myIdx = msgs.findIndex(m => m === msg);
+                    const prev = myIdx > 0 ? msgs[myIdx - 1] : null;
+                    if (prev && prev.role === 'user' && typeof sendMessage === 'function') {
+                        const input = document.getElementById('chat-input');
+                        if (input) {
+                            input.value = prev.content;
+                            // Remove last assistant message first
+                            msgs.splice(myIdx, 1);
+                            renderThreadMessages();
+                            sendMessage();
+                        }
+                    }
+                });
+                actions.appendChild(regenBtn);
+            }
+
+            messageDiv.appendChild(actions);
+        }
+
         chatMessages.appendChild(messageDiv);
     });
 
@@ -1802,6 +1906,52 @@ function _buildThreadItem(template, thread, folder) {
         const previewText = rawText.replace(/<[^>]+>/g, '').slice(0, 80);
         previewEl.textContent = previewText;
         previewEl.title = previewText;
+    }
+
+    // ── Thread metadata row ──────────────────────────────────────────────────
+    const msgCount = msgs.filter(m => m.role === 'user' || m.role === 'assistant').length;
+    const metaCountEl = clone.querySelector('.thread-meta-count');
+    const metaTimeEl  = clone.querySelector('.thread-meta-time');
+    const metaModelEl = clone.querySelector('.thread-meta-model');
+    const metaSepEl   = clone.querySelector('.thread-meta-sep');
+
+    if (metaCountEl) {
+        metaCountEl.textContent = msgCount > 0 ? `${msgCount} msg${msgCount !== 1 ? 's' : ''}` : '';
+    }
+
+    if (metaTimeEl) {
+        const ts = thread.updated_at || thread.created_at;
+        if (ts) {
+            const diff = Date.now() - new Date(ts).getTime();
+            const m = Math.floor(diff / 60000);
+            let label = '';
+            if (m < 1)       label = 'just now';
+            else if (m < 60) label = `${m}m ago`;
+            else {
+                const h = Math.floor(m / 60);
+                if (h < 24)  label = `${h}h ago`;
+                else {
+                    const d = Math.floor(h / 24);
+                    label = d < 7 ? `${d}d ago` : new Date(ts).toLocaleDateString();
+                }
+            }
+            metaTimeEl.textContent = label;
+        } else {
+            metaTimeEl.textContent = '';
+            if (metaSepEl) metaSepEl.style.display = 'none';
+        }
+    }
+
+    if (metaModelEl) {
+        // Find last assistant message with a model label
+        const lastAst = [...msgs].reverse().find(m => m.role === 'assistant' && m.taskData);
+        const model = lastAst?.taskData?.metadata?.actual_model
+                   || lastAst?.taskData?.result?.model_id
+                   || '';
+        // Shorten: strip provider prefixes like "google/", "openai/"
+        const shortModel = model.split('/').pop().replace(/-\d{4,}.*$/, '');
+        metaModelEl.textContent = shortModel;
+        metaModelEl.title = model;
     }
 
     // Pin state
