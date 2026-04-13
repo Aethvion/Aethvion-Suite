@@ -2,23 +2,40 @@
 
 # Aethvion Suite
 
-**A self-hosted AI platform — chat, agents, tools, and apps, all running locally**
+**Your private AI super-app — chat, agents, creative tools & more, all self-hosted**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-[Documentation](/core/documentation/) · [Getting Started](/core/documentation/human/getting-started.md) · [Discussions](https://github.com/Aethvion/Aethvion-Suite/discussions)
-
-*Connect cloud providers or run local GGUF models. Control everything from a 25+ tab dashboard, an AI-powered code IDE, or a terminal CLI — your platform, your rules.*
-
-**Current version: v13**
+[Documentation](https://github.com/Aethvion/Aethvion-Suite/tree/main/core/documentation) · [Quick Start Guide](https://github.com/Aethvion/Aethvion-Suite/blob/main/core/documentation/human/getting-started.md) · [Discussions](https://github.com/Aethvion/Aethvion-Suite/discussions)
 
 </div>
 
+<br>
+
+**Aethvion Suite** is a powerful, self-hosted AI platform that lets you combine the best cloud models (Grok, Claude, GPT-4o, Gemini) with fast local GGUF models — all in one beautiful, privacy-first dashboard.
+
+Run intelligent agents that can actually work on your code repositories, create and edit images or audio, talk to lively AI companions, monitor your system, play games, and much more. Everything runs on **your machine**, under **your control**.
+
+Whether you're a developer, creator, researcher, or just want a powerful personal AI setup, Aethvion Suite gives you a unified workspace that adapts to how *you* want to use it.
+
+### ✨ Key Highlights
+
+- **Hybrid Intelligence** — Seamlessly mix cloud APIs and local models with smart auto-routing
+- **Powerful Agents** — Multi-step AI agents with knowledge graphs that can read, edit, and build entire projects
+- **Creative Studio** — Professional Photo & Audio tools with AI generation and editing
+- **AI Companions** — Personal characters with memory, tools and voice,
+- **Full AI Code IDE** — Monaco-based editor with built-in copilot, file operations, and execution
+- **Fully Customizable** — Dynamic sidebar with user profiles (Companion Hub, Professional, Creative Studio, etc.)
+- **Privacy First** — Intelligence Firewall scans and blocks sensitive data before it leaves your machine
+- **One-Click Windows Launchers** — Start the entire suite with a simple `.bat` file
+- **Self-Updating** — Easy updates directly from the dashboard
+
+**Current version: v13** (v14 coming soon with major UI & onboarding improvements)
+
 ---
 
-## Showcase
+## Screenshots
 
 <div align="center">
 <img src="assets/showcase/AethvionSuite_HomeScreen.png" alt="Aethvion Suite Home Screen" width="100%">
