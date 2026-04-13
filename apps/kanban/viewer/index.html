@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aethvion Kanban</title>
+    <title>Aethvion Kanban | Operations Control</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -12,21 +12,25 @@
 
 <header class="kb-header">
     <div class="kb-logo">
-        <i class="fas fa-chalkboard"></i>
+        <i class="fas fa-chalkboard-user"></i>
         <span>AETHVION KANBAN</span>
     </div>
     <div class="kb-actions">
         <button id="btn-add-column" class="kb-btn">
-            <i class="fas fa-plus-square"></i> Add Column
+            <i class="fas fa-columns"></i> New Column
         </button>
         <button id="btn-save" class="kb-btn kb-btn-primary">
-            <i class="fas fa-save"></i> Save Board
+            <i class="fas fa-cloud-arrow-up"></i> Sync Board
         </button>
     </div>
 </header>
 
 <main class="kb-board" id="kb-board">
     <!-- Columns will be injected here -->
+    <div class="kb-board-loading">
+        <i class="fas fa-spinner fa-spin"></i>
+        <span>Loading neural board...</span>
+    </div>
 </main>
 
 <!-- Task Modal -->
@@ -34,7 +38,9 @@
     <div class="kb-modal-content">
         <div class="kb-modal-header">
             <h2 id="modal-title">Edit Task</h2>
-            <button id="btn-close-modal" class="kb-close-btn">&times;</button>
+            <button id="btn-close-modal" class="kb-close-btn">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
         <div class="kb-modal-body">
             <div class="kb-form-group">
@@ -43,23 +49,30 @@
             </div>
             <div class="kb-form-group">
                 <label for="task-desc">Description</label>
-                <textarea id="task-desc" rows="4" placeholder="Add more details..."></textarea>
+                <textarea id="task-desc" rows="4" placeholder="Add more details and context..."></textarea>
             </div>
             <div class="kb-form-group">
-                <label for="task-priority">Priority</label>
+                <label for="task-priority">Priority Level</label>
                 <select id="task-priority">
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
+                    <option value="low">Low Priority</option>
+                    <option value="medium">Medium Priority</option>
+                    <option value="high">High Priority</option>
                 </select>
             </div>
         </div>
         <div class="kb-modal-footer">
-            <button id="btn-delete-task" class="kb-btn kb-btn-danger">Delete Task</button>
-            <button id="btn-save-task" class="kb-btn kb-btn-primary">Save Changes</button>
+            <button id="btn-delete-task" class="kb-btn kb-btn-danger">
+                <i class="fas fa-trash-can"></i> Remove
+            </button>
+            <div style="display: flex; gap: 0.75rem;">
+                <button id="btn-cancel-modal" class="kb-btn">Cancel</button>
+                <button id="btn-save-task" class="kb-btn kb-btn-primary">Save Task</button>
+            </div>
         </div>
     </div>
 </div>
+
+<div id="kb-toaster" class="kb-toaster"></div>
 
 <script src="app.js"></script>
 </body>
