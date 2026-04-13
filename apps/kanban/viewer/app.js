@@ -13,7 +13,6 @@ let currentEditingColumnId = null;
 // --- DOM Elements ---
 const boardEl = document.getElementById('kb-board');
 const btnAddColumn = document.getElementById('btn-add-column');
-const btnSaveBoard = document.getElementById('btn-save');
 const taskModal = document.getElementById('task-modal');
 const btnCloseModal = document.getElementById('btn-close-modal');
 const btnCancelModal = document.getElementById('btn-cancel-modal');
@@ -286,7 +285,6 @@ function deleteColumn(colId) {
 
 function setupEventListeners() {
     btnAddColumn.addEventListener('click', addColumn);
-    btnSaveBoard.addEventListener('click', () => saveBoard(false));
     btnCloseModal.addEventListener('click', closeTaskModal);
     btnCancelModal.addEventListener('click', closeTaskModal);
     btnSaveTask.addEventListener('click', saveTask);

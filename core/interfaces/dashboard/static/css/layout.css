@@ -608,6 +608,98 @@
     line-height: 1.6;
     font-size: 0.95rem;
     color: var(--text-primary);
+    position: relative; /* needed for .msg-actions positioning */
+}
+
+/* ── v14: Message Hover Action Bar ──────────────────────────────────────── */
+.msg-actions {
+    position: absolute;
+    top: -15px;
+    right: 10px;
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.14s ease;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px 3px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    z-index: 20;
+}
+
+.message:hover > .msg-actions {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.msg-action-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    transition: background 0.12s, color 0.12s;
+    line-height: 1;
+}
+
+.msg-action-btn:hover {
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--primary);
+}
+
+.msg-action-btn.msg-copied { color: var(--success); }
+.msg-action-btn.msg-copied:hover { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+
+/* ── v14: Code Block Copy Button ─────────────────────────────────────────── */
+.message-content pre {
+    position: relative; /* anchor for copy button */
+}
+
+.code-copy-btn {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    background: rgba(15, 15, 22, 0.88);
+    border: 1px solid rgba(99, 102, 241, 0.22);
+    color: var(--text-secondary);
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: 0.7rem;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.13s, background 0.13s, color 0.13s, border-color 0.13s;
+    pointer-events: none;
+    white-space: nowrap;
+    line-height: 1.5;
+}
+
+pre:hover .code-copy-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.code-copy-btn:hover {
+    background: rgba(99, 102, 241, 0.18);
+    color: var(--text-primary);
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+.code-copy-btn.code-copied {
+    color: var(--success);
+    border-color: rgba(16, 185, 129, 0.35);
+    background: rgba(16, 185, 129, 0.08);
 }
 
 .message.user-message {
