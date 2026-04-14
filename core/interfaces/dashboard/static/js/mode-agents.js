@@ -679,6 +679,8 @@ function _agInitRender(isReplay = false) {
         readCards: {},   // path → { item, row, countEl, count } — dedup read rows
         fileCount: 0,
         cmdCount: 0,
+        cmdSuccess: 0,
+        cmdFail: 0,
         searchCount: 0,
         tokensIn: 0,
         tokensOut: 0,
@@ -733,6 +735,10 @@ function _agRenderTimeline() {
 // State for the live streaming thought card
 let _agLiveTokenCard = null;
 let _agLiveTokenText = '';
+
+// State for the live command streaming card (run_command_line events)
+let _agCmdStreamCard = null;
+let _agCmdStreamLines = [];
 
 /**
  * Append a raw token to the live streaming card in the Thoughts panel.
@@ -789,6 +795,58 @@ function _agFinalizeLiveToken() {
         _agLiveTokenCard.remove();
         _agLiveTokenCard = null;
         _agLiveTokenText = '';
+    }
+}
+
+/**
+ * Called for each `run_command_line` SSE event — streams shell output into
+ * a live card in the Thoughts panel while the command is still running.
+ */
+function _agHandleCmdLine(event) {
+    const thoughtsList = _agEl('agents-thoughts-list');
+    const rightEmpty   = _agEl('agents-dash-right-empty');
+    if (!thoughtsList) return;
+
+    if (rightEmpty) rightEmpty.style.display = 'none';
+    thoughtsList.style.display = 'flex';
+
+    if (!_agCmdStreamCard) {
+        _agCmdStreamLines = [];
+        _agCmdStreamCard = document.createElement('div');
+        _agCmdStreamCard.className = 'agent-thought-msg agent-thought-streaming';
+
+        const tag = document.createElement('span');
+        tag.className = 'agent-thought-tag agent-thought-streaming-tag';
+        tag.innerHTML = '<i class="fas fa-terminal" style="font-size:0.62rem;margin-right:4px;"></i>Running…';
+        _agCmdStreamCard.appendChild(tag);
+
+        const body = document.createElement('div');
+        body.className = 'agent-thought-body agent-thought-live-body';
+        _agCmdStreamCard.appendChild(body);
+
+        thoughtsList.appendChild(_agCmdStreamCard);
+    }
+
+    const line = event.line || '';
+    _agCmdStreamLines.push(line);
+
+    const body = _agCmdStreamCard.querySelector('.agent-thought-live-body');
+    if (body) {
+        // Show last 40 lines to keep the card compact
+        const display = _agCmdStreamLines.slice(-40).join('\n');
+        body.textContent = display;
+        body.scrollTop = body.scrollHeight;
+    }
+}
+
+/**
+ * Remove the live command streaming card once the final run_command event arrives.
+ */
+function _agFinalizeCmdStream() {
+    if (_agCmdStreamCard) {
+        _agCmdStreamCard.remove();
+        _agCmdStreamCard = null;
+        _agCmdStreamLines = [];
     }
 }
 
@@ -914,10 +972,14 @@ function _agUpdateStats() {
     if (!s) return;
 
     // Files / cmds
-    const filesEl = _agEl('agents-stat-files');
-    const cmdsEl  = _agEl('agents-stat-cmds');
-    if (filesEl) filesEl.textContent = `${s.fileCount} file${s.fileCount !== 1 ? 's' : ''}`;
-    if (cmdsEl)  cmdsEl.textContent  = `${s.cmdCount} cmd${s.cmdCount !== 1 ? 's' : ''}`;
+    const filesEl   = _agEl('agents-stat-files');
+    const cmdsEl    = _agEl('agents-stat-cmds');
+    const cmdOkEl   = _agEl('agents-stat-cmd-ok');
+    const cmdFailEl = _agEl('agents-stat-cmd-fail');
+    if (filesEl)   filesEl.textContent   = `${s.fileCount} file${s.fileCount !== 1 ? 's' : ''}`;
+    if (cmdsEl)    cmdsEl.textContent    = `${s.cmdCount} cmd${s.cmdCount !== 1 ? 's' : ''}`;
+    if (cmdOkEl)   cmdOkEl.textContent   = s.cmdSuccess > 0 ? `${s.cmdSuccess} ok`   : '—';
+    if (cmdFailEl) cmdFailEl.textContent = s.cmdFail    > 0 ? `${s.cmdFail} failed` : '—';
 
     // Tokens
     const totalTok = s.tokensIn + s.tokensOut;
@@ -1115,11 +1177,24 @@ function _agHandleWriteFile(event) {
         const sizeEl  = document.createElement('span');
         sizeEl.className = 'agent-act-size';
         sizeEl.textContent = sizeStr;
+        row.appendChild(sizeEl);
+
+        // Undo button — only if a backup exists for this file
+        if (event.has_backup) {
+            const undoBtn = document.createElement('button');
+            undoBtn.className = 'agent-act-undo-btn';
+            undoBtn.title = 'Restore previous version';
+            undoBtn.textContent = '↩';
+            undoBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _agRestoreFile(path, undoBtn);
+            });
+            row.appendChild(undoBtn);
+        }
+
         const chevron = document.createElement('span');
         chevron.className = 'agent-act-chevron';
         chevron.textContent = '▸';
-
-        row.appendChild(sizeEl);
         row.appendChild(chevron);
 
         const expand = document.createElement('div');
@@ -1171,14 +1246,16 @@ function _agHandleWriteFile(event) {
 function _agHandleCommand(event) {
     const s = _agentsRenderState;
     if (!s) return;
+    _agFinalizeCmdStream();  // close any streaming preview card in Thoughts
     s.cmdCount++;
+    const result  = event.result || '';
+    const failed  = result.trimStart().startsWith('(exit ');
+    if (failed) s.cmdFail++; else s.cmdSuccess++;
     _agPhaseAdd('commands', '⚡', `Commands · ${s.cmdCount}`);
     _agUpdateStats();
 
     const cmd     = (event.command || event.title || '').replace(/^\$\s*/, '');
-    const result  = event.result || '';
     const detail  = event.detail || '';
-    const failed  = result.trimStart().startsWith('(exit ');
     const hasBody = !!(result || detail);
 
     const item = document.createElement('div');
@@ -1500,6 +1577,60 @@ function _agHandleCreateDir(event) {
     s.activity.appendChild(item);
 }
 
+// ── Restore file (undo) ────────────────────────────────────────
+
+/**
+ * Called when the user clicks the ↩ undo button on a file card.
+ * POSTs to the restore endpoint then flashes feedback on the button.
+ */
+async function _agRestoreFile(path, btnEl) {
+    const wsId = _agentsCurrentWorkspace && _agentsCurrentWorkspace.id;
+    if (!wsId) return;
+    btnEl.disabled = true;
+    btnEl.textContent = '…';
+    try {
+        const res = await fetch(`/api/agents/workspaces/${wsId}/restore`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path }),
+        });
+        if (res.ok) {
+            btnEl.textContent = '✓';
+            btnEl.style.color = 'var(--success, #22c55e)';
+            setTimeout(() => { btnEl.textContent = '↩'; btnEl.style.color = ''; btnEl.disabled = false; }, 2000);
+        } else {
+            const err = await res.json().catch(() => ({ detail: 'Error' }));
+            btnEl.textContent = '✗';
+            btnEl.style.color = 'var(--error, #ef4444)';
+            btnEl.title = err.detail || 'Restore failed';
+            setTimeout(() => { btnEl.textContent = '↩'; btnEl.style.color = ''; btnEl.disabled = false; }, 3000);
+        }
+    } catch (e) {
+        btnEl.textContent = '✗';
+        setTimeout(() => { btnEl.textContent = '↩'; btnEl.disabled = false; }, 2000);
+    }
+}
+
+/** Show a compact "Restored path" row in the activity panel. */
+function _agHandleRestoreFile(event) {
+    const s = _agentsRenderState;
+    if (!s) return;
+    const path = event.path || '';
+    const filename = path.replace(/\\/g, '/').split('/').pop() || path;
+
+    const item = document.createElement('div');
+    item.className = 'agent-act-item';
+    const row = document.createElement('div');
+    row.className = 'agent-act-row agent-act--read';
+    row.innerHTML = `<span class="agent-act-icon">↩</span><span class="agent-act-name">${_htmlEscape(filename)}</span>`;
+    const verbEl = document.createElement('span');
+    verbEl.className = 'agent-act-verb';
+    verbEl.textContent = 'Restored';
+    row.appendChild(verbEl);
+    item.appendChild(row);
+    s.activity.appendChild(item);
+}
+
 // ── Completion ─────────────────────────────────────────────────
 function _agFinishRender(event) {
     const s = _agentsRenderState;
@@ -1578,27 +1709,30 @@ function renderAgentStep(event, isReplay = false) {
         const ti = s.activity.querySelector('.agent-typing-indicator');
         if (ti) ti.remove();
         _agentsHideTyping();
-        _agFinalizeLiveToken(); // close any open streaming card
+        _agFinalizeLiveToken();  // close any open LLM streaming card
+        _agFinalizeCmdStream();  // close any open command streaming card
         _agFinishRender(event);
         container.scrollTop = container.scrollHeight;
         return;
     }
 
     switch (event.type) {
-        case 'llm_token':        _agHandleLLMToken(event);    break;
-        case 'thinking':         _agHandleThinking(event);   break;
-        case 'observe':          _agHandleObserve(event);    break;
-        case 'write_file':       _agHandleWriteFile(event);  break;
-        case 'delete_file':      _agHandleDeleteFile(event); break;
-        case 'read_file':        _agHandleReadFile(event);   break;
-        case 'list_dir':         _agHandleListDir(event);    break;
-        case 'run_command':      _agHandleCommand(event);    break;
-        case 'search_web':       _agHandleSearch(event);     break;
-        case 'fetch_url':        _agHandleFetch(event);      break;
-        case 'glob':             _agHandleGlob(event);       break;
-        case 'move_file':        _agHandleMoveFile(event);   break;
-        case 'create_directory': _agHandleCreateDir(event);  break;
-        case 'usage':            _agFinalizeLiveToken(); _agHandleUsage(event); break;
+        case 'llm_token':        _agHandleLLMToken(event);                            break;
+        case 'run_command_line': _agHandleCmdLine(event);                             break;
+        case 'thinking':         _agHandleThinking(event);                            break;
+        case 'observe':          _agHandleObserve(event);                             break;
+        case 'write_file':       _agHandleWriteFile(event);                           break;
+        case 'delete_file':      _agHandleDeleteFile(event);                          break;
+        case 'read_file':        _agHandleReadFile(event);                            break;
+        case 'list_dir':         _agHandleListDir(event);                             break;
+        case 'run_command':      _agHandleCommand(event);                             break;
+        case 'search_web':       _agHandleSearch(event);                              break;
+        case 'fetch_url':        _agHandleFetch(event);                               break;
+        case 'glob':             _agHandleGlob(event);                                break;
+        case 'move_file':        _agHandleMoveFile(event);                            break;
+        case 'create_directory': _agHandleCreateDir(event);                           break;
+        case 'restore_file':     _agHandleRestoreFile(event);                         break;
+        case 'usage':            _agFinalizeLiveToken(); _agHandleUsage(event);       break;
     }
 
     const ti = s.activity.querySelector('.agent-typing-indicator');

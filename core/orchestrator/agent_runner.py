@@ -3,8 +3,10 @@ Aethvion Suite - Agent Runner
 Multi-step ReAct-style execution loop with persistent state.
 """
 import json
+import queue
 import re
 import subprocess
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional, List, Dict, Any
@@ -192,6 +194,8 @@ ACTION: {{"type": "list_dir", "path": ""}}
 ACTION: {{"type": "move_file", "src": "old/path.ts", "dst": "new/path.ts"}}                  ← rename or relocate; handles workspace_map + digest transfer
 ACTION: {{"type": "create_directory", "path": "src/components/ui"}}                          ← mkdir -p; safe to call even if dir already exists
 ACTION: {{"type": "run_command", "command": "npm install"}}
+ACTION: {{"type": "run_command", "command": "pytest --timeout=60", "timeout": 90}}   ← override default 120s timeout
+ACTION: {{"type": "restore_file", "path": "relative/file.txt"}}                     ← undo last write/patch/delete (restores from .aethvion_backup/)
 ACTION: {{"type": "search_web", "query": "your search query", "max_results": 6}}
 ACTION: {{"type": "fetch_url", "url": "https://api.github.com/repos/owner/repo"}}
 ACTION: {{"type": "set_plan", "steps": ["step 1", "step 2", "step 3"]}}
@@ -939,6 +943,7 @@ class AgentRunner:
             self._action_repeats[repeat_key] = self._action_repeats.get(repeat_key, 0) + 1
             attempt = self._action_repeats[repeat_key]
 
+            had_backup = self._backup_file(path)
             result = self._patch_file(path, old, new)
             self.state.log_action(iteration, "patch_file", path)
 
@@ -969,10 +974,11 @@ class AgentRunner:
                 ))
                 _diff_str = "".join(_diff_lines)[:2500]
                 self._emit({
-                    "type":   "write_file",
-                    "path":   path,
-                    "detail": f"patch: {len(old):,}→{len(new):,} chars",
-                    "diff":   _diff_str,
+                    "type":       "write_file",
+                    "path":       path,
+                    "detail":     f"patch: {len(old):,}→{len(new):,} chars",
+                    "diff":       _diff_str,
+                    "has_backup": had_backup,
                 })
                 # Successful patch — reset the repeat counter and clear read dedup
                 self._action_repeats.pop(repeat_key, None)
@@ -1014,6 +1020,7 @@ class AgentRunner:
         if t == "write_file":
             path = action.get("path", "")
             content = action.get("content", "")
+            self._backup_file(path)
             result = self._write_file(path, content)
             self.state.cache_file(path, len(content.encode()), turn=iteration, modified=True)
             self.state.log_action(iteration, "write_file", path)
@@ -1030,6 +1037,7 @@ class AgentRunner:
 
         if t == "delete_file":
             path = action.get("path", "")
+            self._backup_file(path)
             result = self._delete_file(path)
             # Remove from state caches on success
             if not result.startswith("Error:") and not result.startswith("Not found:"):
@@ -1093,9 +1101,20 @@ class AgentRunner:
             self.state.log_action(iteration, "list_dir", path or ".")
             return result
 
+        if t == "restore_file":
+            path = action.get("path", "")
+            if not path:
+                return "[restore_file] 'path' is required."
+            result = self._restore_file(path)
+            self.state.log_action(iteration, "restore_file", path)
+            if not result.startswith("Error:") and not result.startswith("No backup"):
+                self._invalidate_read_cache(path)
+            return result
+
         if t == "run_command":
-            cmd = action.get("command", "")
-            result = self._run_command(cmd)
+            cmd     = action.get("command", "")
+            timeout = int(action.get("timeout", 120))
+            result  = self._run_command(cmd, timeout=timeout)
             short_cmd = cmd[:40] if len(cmd) > 40 else cmd
             self.state.log_action(iteration, "run_command", short_cmd)
             return result
@@ -1526,25 +1545,137 @@ class AgentRunner:
             return ""
 
     def _fetch_url(self, url: str) -> str:
+        """Fetch a URL with smart HTML extraction (trafilatura → html.parser → raw)."""
+        import urllib.request
+        import urllib.error
+        _CAP = 12_000
         try:
-            import urllib.request
-            import urllib.error
             headers = {
-                "User-Agent": "Mozilla/5.0",
-                "Accept": "application/json, text/plain, */*",
+                "User-Agent": "Mozilla/5.0 (compatible; AethvionAgent/1.0)",
+                "Accept": "application/json, text/html, text/plain, */*",
             }
             req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=20) as resp:
                 status = resp.status
-                body = resp.read().decode("utf-8", errors="replace")
-            if len(body) > 6000:
-                body = body[:6000] + "\n...(truncated)"
+                content_type = resp.headers.get("Content-Type", "")
+                raw_bytes = resp.read()
+
+            body = raw_bytes.decode("utf-8", errors="replace")
+
+            # JSON / plain text — return raw, no extraction needed
+            if "application/json" in content_type or "text/plain" in content_type:
+                if len(body) > _CAP:
+                    body = body[:_CAP] + "\n...(truncated)"
+                return f"HTTP {status}\n{body}"
+
+            # HTML — try smart extraction strategies
+            is_html = "text/html" in content_type or body.lstrip()[:15].lower().startswith("<!doctype")
+            if is_html:
+                # Strategy 1: trafilatura — best for articles, docs, blog posts
+                try:
+                    import trafilatura  # type: ignore
+                    extracted = trafilatura.extract(
+                        body, include_comments=False, include_tables=True,
+                        no_fallback=False,
+                    )
+                    if extracted and len(extracted) > 150:
+                        if len(extracted) > _CAP:
+                            extracted = extracted[:_CAP] + "\n...(truncated)"
+                        return f"HTTP {status} [extracted]\n{extracted}"
+                except ImportError:
+                    pass
+                except Exception:
+                    pass
+
+                # Strategy 2: html.parser semantic extraction
+                try:
+                    from html.parser import HTMLParser
+
+                    class _SE(HTMLParser):
+                        _SKIP = {"script", "style", "nav", "footer", "header",
+                                 "aside", "noscript", "svg", "form"}
+                        _BLOCK = {"p", "h1", "h2", "h3", "h4", "h5", "li",
+                                  "pre", "code", "blockquote", "td", "th", "dt", "dd"}
+
+                        def __init__(self):
+                            super().__init__()
+                            self._depth = 0
+                            self.parts: list[str] = []
+
+                        def handle_starttag(self, tag, attrs):
+                            if tag in self._SKIP:
+                                self._depth += 1
+
+                        def handle_endtag(self, tag):
+                            if tag in self._SKIP and self._depth:
+                                self._depth -= 1
+                            if tag in self._BLOCK and self.parts and self.parts[-1] != "\n":
+                                self.parts.append("\n")
+
+                        def handle_data(self, data):
+                            if self._depth:
+                                return
+                            t = data.strip()
+                            if t:
+                                self.parts.append(t + " ")
+
+                    p = _SE()
+                    p.feed(body)
+                    text = "".join(p.parts).strip()
+                    # Collapse noisy whitespace
+                    text = re.sub(r" {3,}", "  ", text)
+                    text = re.sub(r"\n{3,}", "\n\n", text)
+                    if text and len(text) > 100:
+                        if len(text) > _CAP:
+                            text = text[:_CAP] + "\n...(truncated)"
+                        return f"HTTP {status} [html]\n{text}"
+                except Exception:
+                    pass
+
+            # Fallback: raw with increased cap
+            if len(body) > _CAP:
+                body = body[:_CAP] + "\n...(truncated)"
             return f"HTTP {status}\n{body}"
+
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", errors="replace")[:500]
             return f"HTTP {e.code} {e.reason}: {body}"
         except Exception as e:
             return f"Fetch error: {e}"
+
+    # ── file backup / restore ──────────────────────────────────────
+
+    def _backup_file(self, path: str) -> bool:
+        """Copy the current file to .aethvion_backup/<path> before overwriting.
+
+        Returns True if a backup was saved, False if the file didn't exist
+        (nothing to back up — new file creation).
+        """
+        try:
+            import shutil
+            fp = self.workspace / path
+            if not fp.exists() or not fp.is_file():
+                return False
+            bak = self.workspace / ".aethvion_backup" / path
+            bak.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(fp), str(bak))
+            return True
+        except Exception:
+            return False
+
+    def _restore_file(self, path: str) -> str:
+        """Restore a file from .aethvion_backup/<path>."""
+        try:
+            import shutil
+            bak = self.workspace / ".aethvion_backup" / path
+            if not bak.exists():
+                return f"No backup found for {path}"
+            fp = self.workspace / path
+            fp.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(bak), str(fp))
+            return f"Restored {path} from backup"
+        except Exception as e:
+            return f"Error: {e}"
 
     def _search_web(self, query: str, max_results: int = 6) -> str:
         try:
@@ -1562,25 +1693,74 @@ class AgentRunner:
         except Exception as e:
             return f"Search error: {e}"
 
-    def _run_command(self, command: str) -> str:
+    def _run_command(self, command: str, timeout: int = 120) -> str:
+        """Run a shell command, streaming output line-by-line via run_command_line events."""
+        import time
         try:
-            res = subprocess.run(
+            proc = subprocess.Popen(
                 command, shell=True, cwd=str(self.workspace),
-                capture_output=True, text=True, timeout=60,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, bufsize=1,
             )
-            out = ((res.stdout or "") + (res.stderr or "")).strip()
-            # Increase cap from 3k → 5k; use rolling tail so errors at the end
-            # (the most relevant part of test/build output) are never truncated.
+
+            output_lines: list[str] = []
+            line_q: queue.Queue = queue.Queue()
+
+            def _reader():
+                try:
+                    assert proc.stdout is not None
+                    for line in proc.stdout:
+                        line_q.put(line)
+                except Exception:
+                    pass
+                finally:
+                    line_q.put(None)  # sentinel
+
+            reader = threading.Thread(target=_reader, daemon=True)
+            reader.start()
+
+            start = time.time()
+            timed_out = False
+
+            while True:
+                try:
+                    line = line_q.get(timeout=0.15)
+                except queue.Empty:
+                    if time.time() - start > timeout:
+                        proc.kill()
+                        timed_out = True
+                        break
+                    continue
+
+                if line is None:
+                    break  # reader finished
+                output_lines.append(line)
+                self._emit({"type": "run_command_line", "line": line.rstrip("\n")})
+
+                if time.time() - start > timeout:
+                    proc.kill()
+                    timed_out = True
+                    break
+
+            reader.join(timeout=3)
+            try:
+                proc.wait(timeout=5)
+            except Exception:
+                pass
+
+            if timed_out:
+                output_lines.append(f"\n(timeout: {timeout}s — process killed)\n")
+
+            out = "".join(output_lines).strip()
+            # Rolling tail cap so errors at the end are never truncated
             if len(out) > 5000:
                 out = out[:2000] + f"\n...[{len(out):,} chars — middle truncated]...\n" + out[-2500:]
-            rc = res.returncode
-            # Always prefix exit code on failure so the LLM knows the command failed
-            # even when it produces stdout/stderr output (previously it would not).
+
+            rc = proc.returncode if proc.returncode is not None else (124 if timed_out else 0)
             if rc != 0:
                 return f"(exit {rc})\n{out}" if out else f"(exit {rc})"
             return out or "(exit 0)"
-        except subprocess.TimeoutExpired:
-            return "(exit timeout: 60s — command took too long)"
+
         except Exception as e:
             return f"Error: {e}"
 
@@ -1612,14 +1792,20 @@ class AgentRunner:
             return {"type": "observe", "title": "Observation", "detail": obs_content}
 
         if t == "write_file":
-            preview  = content[:400] + ("\u2026" if len(content) > 400 else "")
-            diff_str = self._compute_write_diff(path, content)
+            fp_exists = (self.workspace / path).is_file()
+            preview   = content[:400] + ("\u2026" if len(content) > 400 else "")
+            diff_str  = self._compute_write_diff(path, content)
             return {"type": t, "title": f"Writing {path}", "path": path,
                     "detail": preview, "bytes": len(content.encode()),
-                    "diff": diff_str}
+                    "diff": diff_str, "has_backup": fp_exists}
 
         if t == "delete_file":
-            return {"type": "delete_file", "title": f"Deleting {path}", "path": path, "detail": ""}
+            fp_exists = (self.workspace / path).is_file()
+            return {"type": "delete_file", "title": f"Deleting {path}", "path": path,
+                    "detail": "", "has_backup": fp_exists}
+
+        if t == "restore_file":
+            return {"type": "restore_file", "title": f"Restoring {path}", "path": path, "detail": ""}
 
         if t == "read_file":
             return {"type": t, "title": f"Reading {path}", "path": path, "detail": ""}

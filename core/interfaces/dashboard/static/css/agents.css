@@ -1483,6 +1483,32 @@
     white-space: nowrap;
 }
 
+/* ── Undo / restore button on file cards ────────────────────── */
+.agent-act-undo-btn {
+    flex-shrink: 0;
+    background: none;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 4px;
+    color: rgba(165, 180, 252, 0.7);
+    font-size: 0.72rem;
+    padding: 1px 5px;
+    cursor: pointer;
+    line-height: 1.4;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.agent-act-undo-btn:hover {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.5);
+    color: rgba(165, 180, 252, 1);
+}
+
+.agent-act-undo-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
 .agent-act-chevron {
     flex-shrink: 0;
     font-size: 0.7rem;

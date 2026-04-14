@@ -18,6 +18,7 @@
                 "improved": [
                     "Home - complete overhaul for better onboarding and system overview",
                     "Chat - model stays persistent after refresh/load",
+                    "Chat - threads showing more info on hover",
                     "Audio - moved control menu to the left side for consistency",
                     "Sidemenu - now fully dynamic and visually improved",
                     "App Kanban - improved looks and functionality",

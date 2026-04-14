@@ -9,6 +9,7 @@ from typing import Optional
 import asyncio
 import mimetypes
 import os
+import shutil
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -43,6 +44,10 @@ class ThreadCreateRequest(BaseModel):
 
 class ThreadRenameRequest(BaseModel):
     name: str
+
+
+class RestoreFileRequest(BaseModel):
+    path: str  # workspace-relative path to restore from .aethvion_backup/
 
 
 # ── Workspace endpoints ────────────────────────────────────────────────────────
@@ -225,6 +230,32 @@ async def get_thread_history(workspace_id: str, thread_id: str, limit: int = 20)
     if limit > 0:
         messages = messages[-limit:]
     return {"messages": messages, "total": len(thread.get("messages", []))}
+
+
+# ── File restore (undo) ───────────────────────────────────────────────────────
+
+@router.post("/workspaces/{workspace_id}/restore")
+async def restore_workspace_file(workspace_id: str, request: RestoreFileRequest):
+    """Restore a file from its .aethvion_backup/ snapshot (created before every write/patch/delete)."""
+    ws = workspace_manager.get_workspace(workspace_id)
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    ws_path = Path(ws["path"])
+    rel = request.path.lstrip("/\\")
+    bak = ws_path / ".aethvion_backup" / rel
+    if not bak.exists() or not bak.is_file():
+        raise HTTPException(status_code=404, detail=f"No backup found for '{rel}'")
+
+    fp = ws_path / rel
+    try:
+        fp.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(str(bak), str(fp))
+    except Exception as e:
+        logger.error(f"restore_workspace_file error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {"status": "restored", "path": rel}
 
 
 # ── File upload ─────────────────────────────────────────────────────────────
