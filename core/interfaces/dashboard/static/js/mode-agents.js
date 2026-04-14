@@ -1131,10 +1131,28 @@ function _agHandleWriteFile(event) {
             res.textContent = event.result;
             expand.appendChild(res);
         }
-        const contentEl = document.createElement('pre');
-        contentEl.className = 'agent-act-content';
-        contentEl.textContent = truncated;
-        expand.appendChild(contentEl);
+        // ── Inline diff view ──────────────────────────────────────
+        if (event.diff) {
+            const diffWrap = document.createElement('div');
+            diffWrap.className = 'agent-act-diff';
+            event.diff.split('\n').forEach(line => {
+                const span = document.createElement('div');
+                span.className = 'ag-diff-line';
+                if      (line.startsWith('+') && !line.startsWith('+++')) span.classList.add('ag-diff-add');
+                else if (line.startsWith('-') && !line.startsWith('---')) span.classList.add('ag-diff-del');
+                else if (line.startsWith('@@'))                           span.classList.add('ag-diff-hunk');
+                else if (line.startsWith('---') || line.startsWith('+++')) span.classList.add('ag-diff-header');
+                span.textContent = line;
+                diffWrap.appendChild(span);
+            });
+            expand.appendChild(diffWrap);
+        } else {
+            // No diff (new file) — show raw content preview
+            const contentEl = document.createElement('pre');
+            contentEl.className = 'agent-act-content';
+            contentEl.textContent = truncated;
+            expand.appendChild(contentEl);
+        }
 
         item.appendChild(row);
         item.appendChild(expand);
@@ -1144,7 +1162,7 @@ function _agHandleWriteFile(event) {
             chevron.textContent = open ? '▸' : '▾';
         });
 
-        s.fileCards[path] = { row, expand, sizeEl, contentEl, writeCount: 1 };
+        s.fileCards[path] = { row, expand, sizeEl, writeCount: 1 };
         s.activity.appendChild(item);
     }
 }
@@ -1157,27 +1175,28 @@ function _agHandleCommand(event) {
     _agPhaseAdd('commands', '⚡', `Commands · ${s.cmdCount}`);
     _agUpdateStats();
 
-    const cmd    = (event.command || event.title || '').replace(/^\$\s*/, '');
-    const result = event.result || '';
-    const detail = event.detail || '';
+    const cmd     = (event.command || event.title || '').replace(/^\$\s*/, '');
+    const result  = event.result || '';
+    const detail  = event.detail || '';
+    const failed  = result.trimStart().startsWith('(exit ');
     const hasBody = !!(result || detail);
 
     const item = document.createElement('div');
     item.className = 'agent-act-item';
     const row = document.createElement('div');
-    row.className = 'agent-act-row agent-act--cmd';
-    row.innerHTML = `<span class="agent-act-icon">⚡</span><span class="agent-act-name agent-act-name--mono">$ ${_htmlEscape(cmd)}</span>`;
+    row.className = `agent-act-row agent-act--cmd${failed ? ' agent-act--cmd-fail' : ''}`;
+    row.innerHTML = `<span class="agent-act-icon">${failed ? '✗' : '⚡'}</span><span class="agent-act-name agent-act-name--mono">$ ${_htmlEscape(cmd)}</span>`;
 
     if (hasBody) {
         const chevron = document.createElement('span');
         chevron.className = 'agent-act-chevron';
-        chevron.textContent = '▸';
+        chevron.textContent = failed ? '▾' : '▸'; // auto-expand failures
         row.appendChild(chevron);
         const expand = document.createElement('div');
         expand.className = 'agent-act-expand';
-        expand.style.display = 'none';
-        if (result) { const r = document.createElement('div'); r.className = 'agent-act-result'; r.textContent = result; expand.appendChild(r); }
-        if (detail) { const pre = document.createElement('pre'); pre.className = 'agent-act-content'; pre.textContent = detail.length > 3000 ? detail.slice(0, 3000) + '\n…' : detail; expand.appendChild(pre); }
+        expand.style.display = failed ? 'block' : 'none'; // show failures immediately
+        if (result) { const r = document.createElement('div'); r.className = `agent-act-result${failed ? ' agent-act-result--fail' : ''}`; r.textContent = result; expand.appendChild(r); }
+        if (detail) { const pre = document.createElement('pre'); pre.className = 'agent-act-content'; pre.textContent = detail.length > 5000 ? detail.slice(0, 5000) + '\n…' : detail; expand.appendChild(pre); }
         item.appendChild(row);
         item.appendChild(expand);
         row.addEventListener('click', () => { const open = expand.style.display !== 'none'; expand.style.display = open ? 'none' : 'block'; chevron.textContent = open ? '▸' : '▾'; });
@@ -1378,6 +1397,109 @@ function _agHandleFetch(event) {
     s.activity.appendChild(item);
 }
 
+// ── Glob / move_file / create_directory ──────────────────────
+function _agHandleGlob(event) {
+    const s = _agentsRenderState;
+    if (!s) return;
+    const pattern = event.pattern || event.title || '';
+    const result  = event.result  || '';
+
+    const item = document.createElement('div');
+    item.className = 'agent-act-item';
+    const row = document.createElement('div');
+    row.className = 'agent-act-row agent-act--search';
+    row.innerHTML = `<span class="agent-act-icon">🔍</span><span class="agent-act-name agent-act-name--mono">${_htmlEscape(pattern)}</span>`;
+
+    const verbEl = document.createElement('span');
+    verbEl.className = 'agent-act-verb';
+    verbEl.textContent = 'glob';
+    row.appendChild(verbEl);
+
+    if (result) {
+        const count = result.split('\n').filter(Boolean).length;
+        const badge = document.createElement('span');
+        badge.className = 'agent-act-size';
+        badge.textContent = `${count} file${count !== 1 ? 's' : ''}`;
+        const chevron = document.createElement('span');
+        chevron.className = 'agent-act-chevron';
+        chevron.textContent = '▸';
+        row.appendChild(badge);
+        row.appendChild(chevron);
+        const expand = document.createElement('div');
+        expand.className = 'agent-act-expand';
+        expand.style.display = 'none';
+        const pre = document.createElement('pre');
+        pre.className = 'agent-act-content';
+        pre.textContent = result.length > 2000 ? result.slice(0, 2000) + '\n…' : result;
+        expand.appendChild(pre);
+        item.appendChild(row);
+        item.appendChild(expand);
+        row.addEventListener('click', () => {
+            const open = expand.style.display !== 'none';
+            expand.style.display = open ? 'none' : 'block';
+            chevron.textContent = open ? '▸' : '▾';
+        });
+    } else {
+        item.appendChild(row);
+    }
+    s.activity.appendChild(item);
+}
+
+function _agHandleMoveFile(event) {
+    const s = _agentsRenderState;
+    if (!s) return;
+    s.fileCount++;
+    _agPhaseAdd('files', '📄', `Files · ${s.fileCount}`);
+    _agUpdateStats();
+
+    const src = event.src || '';
+    const dst = event.dst || '';
+    const dstFilename = dst.replace(/\\/g, '/').split('/').pop() || dst;
+
+    const item = document.createElement('div');
+    item.className = 'agent-act-item';
+    const row = document.createElement('div');
+    row.className = 'agent-act-row agent-act--file';
+    row.innerHTML = `<span class="agent-act-icon">📄</span><span class="agent-act-name">${_htmlEscape(dstFilename)}</span>`;
+
+    const verbEl = document.createElement('span');
+    verbEl.className = 'agent-act-verb agent-act-verb--write';
+    verbEl.textContent = 'Moved';
+    row.appendChild(verbEl);
+
+    const pathSpan = document.createElement('span');
+    pathSpan.className = 'agent-act-path';
+    pathSpan.textContent = `${src} → ${dst}`;
+    row.appendChild(pathSpan);
+
+    if (event.result) {
+        const res = document.createElement('span');
+        res.className = 'agent-act-size';
+        res.textContent = event.result.startsWith('Error') ? '✗' : '✓';
+        row.appendChild(res);
+    }
+    item.appendChild(row);
+    s.activity.appendChild(item);
+}
+
+function _agHandleCreateDir(event) {
+    const s = _agentsRenderState;
+    if (!s) return;
+    const path = event.path || '';
+
+    const item = document.createElement('div');
+    item.className = 'agent-act-item';
+    const row = document.createElement('div');
+    row.className = 'agent-act-row agent-act--search';
+    row.innerHTML = `<span class="agent-act-icon">📁</span><span class="agent-act-name">${_htmlEscape(path)}</span>`;
+    const verbEl = document.createElement('span');
+    verbEl.className = 'agent-act-verb';
+    verbEl.textContent = 'mkdir';
+    row.appendChild(verbEl);
+    item.appendChild(row);
+    s.activity.appendChild(item);
+}
+
 // ── Completion ─────────────────────────────────────────────────
 function _agFinishRender(event) {
     const s = _agentsRenderState;
@@ -1463,17 +1585,20 @@ function renderAgentStep(event, isReplay = false) {
     }
 
     switch (event.type) {
-        case 'llm_token':    _agHandleLLMToken(event);   break;
-        case 'thinking':     _agHandleThinking(event);   break;
-        case 'observe':      _agHandleObserve(event);    break;
-        case 'write_file':   _agHandleWriteFile(event);  break;
-        case 'delete_file':  _agHandleDeleteFile(event); break;
-        case 'read_file':    _agHandleReadFile(event);   break;
-        case 'list_dir':     _agHandleListDir(event);    break;
-        case 'run_command':  _agHandleCommand(event);    break;
-        case 'search_web':   _agHandleSearch(event);     break;
-        case 'fetch_url':    _agHandleFetch(event);      break;
-        case 'usage':        _agFinalizeLiveToken(); _agHandleUsage(event); break;
+        case 'llm_token':        _agHandleLLMToken(event);    break;
+        case 'thinking':         _agHandleThinking(event);   break;
+        case 'observe':          _agHandleObserve(event);    break;
+        case 'write_file':       _agHandleWriteFile(event);  break;
+        case 'delete_file':      _agHandleDeleteFile(event); break;
+        case 'read_file':        _agHandleReadFile(event);   break;
+        case 'list_dir':         _agHandleListDir(event);    break;
+        case 'run_command':      _agHandleCommand(event);    break;
+        case 'search_web':       _agHandleSearch(event);     break;
+        case 'fetch_url':        _agHandleFetch(event);      break;
+        case 'glob':             _agHandleGlob(event);       break;
+        case 'move_file':        _agHandleMoveFile(event);   break;
+        case 'create_directory': _agHandleCreateDir(event);  break;
+        case 'usage':            _agFinalizeLiveToken(); _agHandleUsage(event); break;
     }
 
     const ti = s.activity.querySelector('.agent-typing-indicator');

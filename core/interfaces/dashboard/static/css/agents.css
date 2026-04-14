@@ -1520,6 +1520,32 @@
     border-radius: 0 4px 4px 0;
 }
 
+/* ── Inline diff viewer ──────────────────────────────────────── */
+.agent-act-diff {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    border-left: 2px solid var(--border);
+    margin: 0 0 0.2rem 0.6rem;
+    padding: 0.3rem 0;
+    max-height: 320px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: 0 4px 4px 0;
+}
+
+.ag-diff-line {
+    padding: 0 0.5rem;
+    white-space: pre;
+    overflow-x: auto;
+    color: var(--text-tertiary);
+}
+
+.ag-diff-add    { background: rgba(16, 185, 129, 0.10); color: #6ee7b7; }
+.ag-diff-del    { background: rgba(239, 68,  68,  0.10); color: #fca5a5; }
+.ag-diff-hunk   { color: rgba(99, 102, 241, 0.8); background: rgba(99, 102, 241, 0.05); }
+.ag-diff-header { color: var(--text-tertiary); opacity: 0.6; }
+
 /* ── Row type variants ───────────────────────────────────────── */
 .agent-act--file .agent-act-icon {
     color: #6ee7b7;
@@ -1538,6 +1564,14 @@
     font-family: 'Fira Code', monospace;
     font-size: 0.77rem;
     max-width: 100%;
+}
+
+/* ── Command failure state ───────────────────────────────────── */
+.agent-act--cmd-fail .agent-act-icon { color: var(--error) !important; }
+.agent-act--cmd-fail .agent-act-name { color: var(--error) !important; opacity: 0.85; }
+.agent-act-result--fail {
+    color: var(--error) !important;
+    border-left-color: rgba(239, 68, 68, 0.4) !important;
 }
 
 .agent-act--read {

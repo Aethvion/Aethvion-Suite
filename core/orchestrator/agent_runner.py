@@ -187,7 +187,10 @@ ACTION: {{"type": "read_file", "path": "relative/file.txt", "offset": 300, "limi
 ACTION: {{"type": "get_project_blueprint"}}                                                    ← full workspace tree, zero reads needed
 ACTION: {{"type": "get_project_blueprint", "path": "subdir"}}                                 ← expanded view of one subdirectory
 ACTION: {{"type": "search_codebase", "query": "text or regex", "path": "dir/or/file.html"}}  ← find text without reading whole files; add "context": 2 for extra lines
+ACTION: {{"type": "glob", "pattern": "src/**/*.ts"}}                                         ← fast file-pattern search; add "path": "subdir" to restrict root
 ACTION: {{"type": "list_dir", "path": ""}}
+ACTION: {{"type": "move_file", "src": "old/path.ts", "dst": "new/path.ts"}}                  ← rename or relocate; handles workspace_map + digest transfer
+ACTION: {{"type": "create_directory", "path": "src/components/ui"}}                          ← mkdir -p; safe to call even if dir already exists
 ACTION: {{"type": "run_command", "command": "npm install"}}
 ACTION: {{"type": "search_web", "query": "your search query", "max_results": 6}}
 ACTION: {{"type": "fetch_url", "url": "https://api.github.com/repos/owner/repo"}}
@@ -541,7 +544,7 @@ class AgentRunner:
         # Subclasses override these to control per-prompt cost without touching run():
         #   _conv_window  — recent conversation entries to keep in each prompt
         #   _task_short   — compact reminder used for iterations 1+ (None = repeat full task)
-        self._conv_window: int = 8
+        self._conv_window: int = 16
         self._task_short: Optional[str] = None
         # Corp workers set this to their corp data dir so _blueprint.txt is written
         # there instead of into the user's project workspace.
@@ -570,6 +573,9 @@ class AgentRunner:
         # Repetition guard: track consecutive failed/no-progress actions per path.
         # Key = "type:path", value = consecutive count.  Reset on success.
         self._action_repeats: Dict[str, int] = {}
+        # Dynamic replanning: count consecutive iterations that produced failures.
+        # When this hits ≥ 2, inject a replanning suggestion.
+        self._consecutive_failures: int = 0
 
     # ── cache helpers ─────────────────────────────────────────────
 
@@ -955,7 +961,19 @@ class AgentRunner:
                         f"Or use write_file / append_file as an alternative.]"
                     )
             else:
-                self._emit({"type": "write_file", "path": path, "detail": f"patch: {len(old)}→{len(new)} chars"})
+                import difflib as _dl
+                _diff_lines = list(_dl.unified_diff(
+                    old.splitlines(keepends=True),
+                    new.splitlines(keepends=True),
+                    fromfile=f"a/{path}", tofile=f"b/{path}", n=2,
+                ))
+                _diff_str = "".join(_diff_lines)[:2500]
+                self._emit({
+                    "type":   "write_file",
+                    "path":   path,
+                    "detail": f"patch: {len(old):,}→{len(new):,} chars",
+                    "diff":   _diff_str,
+                })
                 # Successful patch — reset the repeat counter and clear read dedup
                 self._action_repeats.pop(repeat_key, None)
                 self._invalidate_read_cache(path)
@@ -1080,6 +1098,26 @@ class AgentRunner:
             result = self._run_command(cmd)
             short_cmd = cmd[:40] if len(cmd) > 40 else cmd
             self.state.log_action(iteration, "run_command", short_cmd)
+            return result
+
+        if t == "glob":
+            pattern  = action.get("pattern", "**/*")
+            sub_path = action.get("path", "")
+            result = self._glob(pattern, sub_path)
+            self.state.log_action(iteration, "glob", pattern)
+            return result
+
+        if t == "move_file":
+            src = action.get("src", "")
+            dst = action.get("dst", "")
+            result = self._move_file(src, dst)
+            self.state.log_action(iteration, "move_file", f"{src}→{dst}")
+            return result
+
+        if t == "create_directory":
+            path = action.get("path", "")
+            result = self._create_directory(path)
+            self.state.log_action(iteration, "create_directory", path)
             return result
 
         if t == "search_web":
@@ -1406,6 +1444,87 @@ class AgentRunner:
         except Exception as e:
             return f"Error: {e}"
 
+    def _glob(self, pattern: str, sub_path: str = "") -> str:
+        """Find files matching a glob pattern. Returns workspace-relative paths."""
+        try:
+            root = self.workspace / sub_path if sub_path else self.workspace
+            if not root.exists():
+                return f"Error: path '{sub_path}' not found."
+            matches = sorted(root.glob(pattern))
+            if not matches:
+                return f"No files matching '{pattern}'"
+            rel = [
+                str(m.relative_to(self.workspace)).replace("\\", "/")
+                for m in matches
+                if not m.name.endswith("_blueprint.txt")
+            ]
+            total = len(rel)
+            if total > 200:
+                rel = rel[:200]
+                rel.append(f"... {total} total — showing first 200")
+            return "\n".join(rel)
+        except Exception as e:
+            return f"Error: {e}"
+
+    def _move_file(self, src: str, dst: str) -> str:
+        """Move or rename a file/directory within the workspace."""
+        import shutil
+        try:
+            if not src or not dst:
+                return "Error: move_file requires non-empty 'src' and 'dst'."
+            src_fp = self.workspace / src
+            dst_fp = self.workspace / dst
+            if not src_fp.exists():
+                return f"Error: {src} not found."
+            dst_fp.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(src_fp), str(dst_fp))
+            # Transfer state caches from old path to new path
+            self.state.file_cache.pop(src, None)
+            if src in self.state.workspace_map:
+                self.state.workspace_map.remove(src)
+                self.state.workspace_map.append(dst)
+            if src in self.state.file_digests:
+                self.state.file_digests[dst] = self.state.file_digests.pop(src)
+            return f"Moved {src} → {dst}"
+        except Exception as e:
+            return f"Error: {e}"
+
+    def _create_directory(self, path: str) -> str:
+        """Create a directory (and all parents) within the workspace."""
+        try:
+            if not path:
+                return "Error: create_directory requires a non-empty 'path'."
+            dp = self.workspace / path
+            dp.mkdir(parents=True, exist_ok=True)
+            return f"Created directory: {path}"
+        except Exception as e:
+            return f"Error: {e}"
+
+    def _compute_write_diff(self, path: str, new_content: str) -> str:
+        """Compute a unified diff of the existing file vs new_content.
+        Returns an empty string if the file doesn't exist (new file) or is identical."""
+        import difflib
+        try:
+            fp = self.workspace / path
+            if not fp.exists():
+                return ""
+            old = fp.read_text(encoding="utf-8", errors="replace")
+            if old == new_content:
+                return ""
+            diff = list(difflib.unified_diff(
+                old.splitlines(keepends=True),
+                new_content.splitlines(keepends=True),
+                fromfile=f"a/{path}",
+                tofile=f"b/{path}",
+                n=3,
+            ))
+            result = "".join(diff)
+            if len(result) > 3000:
+                result = result[:2800] + "\n...[diff truncated]"
+            return result
+        except Exception:
+            return ""
+
     def _fetch_url(self, url: str) -> str:
         try:
             import urllib.request
@@ -1493,9 +1612,11 @@ class AgentRunner:
             return {"type": "observe", "title": "Observation", "detail": obs_content}
 
         if t == "write_file":
-            preview = content[:400] + ("\u2026" if len(content) > 400 else "")
+            preview  = content[:400] + ("\u2026" if len(content) > 400 else "")
+            diff_str = self._compute_write_diff(path, content)
             return {"type": t, "title": f"Writing {path}", "path": path,
-                    "detail": preview, "bytes": len(content.encode())}
+                    "detail": preview, "bytes": len(content.encode()),
+                    "diff": diff_str}
 
         if t == "delete_file":
             return {"type": "delete_file", "title": f"Deleting {path}", "path": path, "detail": ""}
@@ -1508,6 +1629,19 @@ class AgentRunner:
 
         if t == "run_command":
             return {"type": t, "title": f"$ {cmd[:80]}", "command": cmd, "detail": ""}
+
+        if t == "glob":
+            pattern = action.get("pattern", "")
+            return {"type": t, "title": f"Glob: {pattern}", "pattern": pattern,
+                    "path": path, "detail": ""}
+
+        if t == "move_file":
+            src = action.get("src", "")
+            dst = action.get("dst", "")
+            return {"type": t, "title": f"Move: {src} → {dst}", "src": src, "dst": dst, "detail": ""}
+
+        if t == "create_directory":
+            return {"type": t, "title": f"mkdir: {path}", "path": path, "detail": ""}
 
         if t == "search_web":
             query = action.get("query", "")
@@ -1572,8 +1706,8 @@ class AgentRunner:
                         + ". Do NOT call done yet. Read the file if you need the current content, "
                         "then execute the remaining patches as ACTION: lines."
                     )
-                    if len(self.conversation) > 8:
-                        self.conversation = self.conversation[-8:]
+                    if len(self.conversation) > 16:
+                        self.conversation = self.conversation[-16:]
                     continue
                 self._emit({"type": "done", "title": "Complete", "detail": thinking or response})
                 self.state.save()
@@ -1684,9 +1818,35 @@ class AgentRunner:
                     "header":  "User: Results:",
                     "suffix":  suffix,
                 })
-            # Keep conversation bounded to last 8 entries (4 round-trips)
-            if len(self.conversation) > 8:
-                self.conversation = self.conversation[-8:]
+            # ── Dynamic replanning ─────────────────────────────────────
+            if has_failure:
+                self._consecutive_failures += 1
+                if self._consecutive_failures >= 2:
+                    incomplete = [s["text"] for s in self.state.plan if not s.get("done")]
+                    if incomplete:
+                        self.conversation.append(
+                            f"User: [Auto-recovery note] {self._consecutive_failures} consecutive "
+                            f"failure rounds. If the current approach isn't working, call set_plan "
+                            f"to revise your strategy — the plan may need a different approach."
+                        )
+                        self._emit({
+                            "type":   "thinking",
+                            "title":  "⚠ Dynamic replan suggested",
+                            "detail": f"{self._consecutive_failures} consecutive failures — agent nudged to reconsider plan.",
+                        })
+            else:
+                self._consecutive_failures = 0
+
+            # Keep conversation bounded to last 16 entries (8 round-trips).
+            # When trimming, prepend a context note so the model knows history
+            # was pruned — the Knowledge block and plan carry full task state.
+            if len(self.conversation) > 16:
+                n_pruned = len(self.conversation) - 14
+                self.conversation = self.conversation[-14:]
+                self.conversation.insert(0,
+                    f"[System: {n_pruned} earlier conversation turn(s) trimmed. "
+                    f"The Knowledge block and plan above preserve all task state.]"
+                )
 
         summary = f"Reached {MAX_ITERATIONS} action limit."
         self._emit({"type": "done", "title": "Stopped (limit)", "detail": summary})
