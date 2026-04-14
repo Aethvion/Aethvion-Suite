@@ -1458,6 +1458,7 @@ class AgentRunner:
             entries = [
                 ("\U0001f4c1 " if e.is_dir() else "\U0001f4c4 ") + e.name
                 for e in sorted(target.iterdir())
+                if e.name != ".aethvion_backup"
             ]
             return "\n".join(entries) if entries else "(empty)"
         except Exception as e:
@@ -1476,6 +1477,7 @@ class AgentRunner:
                 str(m.relative_to(self.workspace)).replace("\\", "/")
                 for m in matches
                 if not m.name.endswith("_blueprint.txt")
+                and ".aethvion_backup" not in m.parts
             ]
             total = len(rel)
             if total > 200:
@@ -1836,6 +1838,17 @@ class AgentRunner:
         if t == "fetch_url":
             url = action.get("url", "")
             return {"type": "fetch_url", "title": f"Fetch: {url}", "url": url, "detail": ""}
+
+        if t == "get_project_blueprint":
+            sub = action.get("path", "")
+            label = f"Blueprint: {sub}/" if sub else "Blueprint scan"
+            return {"type": t, "title": label, "path": sub, "detail": ""}
+
+        if t == "search_codebase":
+            query = action.get("query", "")
+            spath = action.get("path", "")
+            label = f"Search: {query}" + (f" in {spath}" if spath else "")
+            return {"type": t, "title": label, "query": query, "path": spath, "detail": ""}
 
         return {"type": t, "title": t, "detail": str(action)}
 

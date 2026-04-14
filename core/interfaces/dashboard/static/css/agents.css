@@ -1366,41 +1366,87 @@
     overflow-y: auto;
 }
 
-/* ── Done summary markdown fix ───────────────────────────────── */
-.agent-done-summary {
-    padding: 0.55rem 0.75rem;
-    font-size: 0.78rem;
-    color: var(--text-secondary);
-    line-height: 1.55;
+/* ── Completion summary card ─────────────────────────────────── */
+.agent-done-card {
+    margin-top: 0.85rem;
+    border-radius: 8px;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-left: 3px solid rgba(99, 102, 241, 0.55);
+    background: rgba(99, 102, 241, 0.04);
 }
 
-.agent-done-summary p {
-    margin: 0 0 0.35rem;
+.agent-done-card--err {
+    border-color: rgba(239, 68, 68, 0.2);
+    border-left-color: rgba(239, 68, 68, 0.55);
+    background: rgba(239, 68, 68, 0.04);
 }
 
-.agent-done-summary p:last-child {
+.agent-done-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 0.85rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.agent-done-card-icon {
+    font-size: 0.82rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.agent-done-card-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: rgba(165, 180, 252, 0.85);
+}
+
+.agent-done-card--err .agent-done-card-label {
+    color: rgba(252, 165, 165, 0.85);
+}
+
+.agent-done-card-body {
+    padding: 0.7rem 0.85rem 0.8rem;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.agent-done-card-body p {
+    margin: 0 0 0.45rem;
+}
+
+.agent-done-card-body p:last-child {
     margin-bottom: 0;
 }
 
-.agent-done-summary ul,
-.agent-done-summary ol {
-    margin: 0.2rem 0 0.35rem 1.2rem;
+.agent-done-card-body ul,
+.agent-done-card-body ol {
+    margin: 0.3rem 0 0.4rem 1.3rem;
     padding: 0;
 }
 
-.agent-done-summary li {
-    margin-bottom: 0.2rem;
+.agent-done-card-body li {
+    margin-bottom: 0.28rem;
+    color: var(--text-secondary);
 }
 
-.agent-done-summary code {
+.agent-done-card-body li strong {
+    color: var(--text-primary);
+}
+
+.agent-done-card-body strong {
+    color: var(--text-primary);
+}
+
+.agent-done-card-body code {
     background: rgba(255, 255, 255, 0.07);
-    padding: 0.1em 0.3em;
+    padding: 0.1em 0.35em;
     border-radius: 3px;
     font-size: 0.85em;
-}
-
-.agent-done-summary strong {
-    color: var(--text-primary);
+    font-family: 'Fira Code', monospace;
 }
 
 /* ── Agent run wrapper ───────────────────────────────────────── */
@@ -1667,15 +1713,6 @@
 
 .agent-act--error .agent-act-name {
     color: rgba(239, 68, 68, 0.9);
-}
-
-.agent-act--summary {
-    border-top: 1px solid var(--border);
-    margin-top: 0.35rem;
-    padding-top: 0.45rem;
-    font-size: 0.79rem;
-    color: var(--text-secondary);
-    font-style: italic;
 }
 
 /* ── Search row ──────────────────────────────────────────────── */

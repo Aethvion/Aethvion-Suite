@@ -283,17 +283,71 @@ class TaskWorker:
                         )
                     else:
                         # ── Regular chat task → orchestrator ───────────────────────
-                        # 2. Process via Master Orchestrator
-                        result = await self.orchestrator.process_message(
-                            context_prompt, 
-                            system_prompt=pm_system_prompt,
-                            mode=mode, 
-                            trace_id=task.id,
-                            model_id=model_id, 
-                            images=images, 
-                            source=CallSource.CHAT,
-                            internet_search=settings.get('internet_search', False)
-                        )
+                        internet_search = settings.get('internet_search', False)
+                        _can_stream = (mode == 'chat_only' and not internet_search and not images)
+
+                        if _can_stream:
+                            # ── Token-streaming path (chat_only, no search, no images) ──
+                            from core.orchestrator.chat_token_store import create_token_queue
+                            from core.providers.provider_manager import ProviderManager
+                            from core.memory.identity_manager import IdentityManager
+                            from core.orchestrator.master_orchestrator import ExecutionResult
+
+                            _tok_queue = create_token_queue(task.id)
+                            _response_parts: list = []
+
+                            def _run_stream():
+                                try:
+                                    _pm = ProviderManager()
+                                    for _chunk in _pm.call_with_failover_stream(
+                                        prompt=context_prompt,
+                                        trace_id=task.id,
+                                        system_prompt=pm_system_prompt,
+                                        temperature=0.7,
+                                        model=model_id,
+                                        source=CallSource.CHAT,
+                                    ):
+                                        _response_parts.append(_chunk)
+                                        loop.call_soon_threadsafe(
+                                            _tok_queue.put_nowait,
+                                            {"type": "token", "token": _chunk}
+                                        )
+                                except Exception as _se:
+                                    logger.error(f"[{task.id}] Stream error: {_se}")
+                                finally:
+                                    loop.call_soon_threadsafe(
+                                        _tok_queue.put_nowait,
+                                        {"type": "done"}
+                                    )
+
+                            await loop.run_in_executor(None, _run_stream)
+
+                            _full_resp = "".join(_response_parts)
+                            _full_resp = IdentityManager.extract_and_update(_full_resp)
+
+                            result = ExecutionResult(
+                                trace_id=task.id,
+                                response=_full_resp,
+                                actions_taken=["direct_response"],
+                                tools_forged=[],
+                                agents_spawned=[],
+                                memories_queried=0,
+                                execution_time=0.0,
+                                success=bool(_full_resp),
+                                model_id=model_id,
+                            )
+                        else:
+                            # ── Standard blocking path (agents/search/images) ──────────
+                            result = await self.orchestrator.process_message(
+                                context_prompt,
+                                system_prompt=pm_system_prompt,
+                                mode=mode,
+                                trace_id=task.id,
+                                model_id=model_id,
+                                images=images,
+                                source=CallSource.CHAT,
+                                internet_search=internet_search,
+                            )
                     
                     # Convert ExecutionResult to dict
                     result_dict = {

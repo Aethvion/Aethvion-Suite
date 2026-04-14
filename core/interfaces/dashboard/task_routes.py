@@ -479,3 +479,44 @@ async def stream_task_events(task_id: str):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/{task_id}/stream-tokens")
+async def stream_chat_tokens(task_id: str):
+    """SSE stream of raw chat tokens for live token-by-token streaming."""
+    from core.orchestrator.chat_token_store import get_token_queue, cleanup_token_queue
+
+    async def generate():
+        # Wait up to 15 s for the worker to create the queue
+        max_wait = 15.0
+        waited = 0.0
+        q = None
+        while waited < max_wait:
+            q = get_token_queue(task_id)
+            if q is not None:
+                break
+            await asyncio.sleep(0.05)
+            waited += 0.05
+
+        if q is None:
+            # Task not streamable (agent mode, search, etc.) — signal immediately
+            yield f'data: {_json.dumps({"type": "not_streamable"})}\n\n'
+            return
+
+        try:
+            while True:
+                try:
+                    event = await asyncio.wait_for(q.get(), timeout=60.0)
+                    yield f"data: {_json.dumps(event)}\n\n"
+                    if event.get("type") == "done":
+                        break
+                except asyncio.TimeoutError:
+                    yield 'data: {"type":"heartbeat"}\n\n'
+        finally:
+            cleanup_token_queue(task_id)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

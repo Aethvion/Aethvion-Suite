@@ -241,6 +241,9 @@ function _agentsRenderMessages(messages) {
     const container = _agEl('agents-messages');
     if (!container) return;
 
+    // Reset the replay-dedup flag so switching threads can't carry stale state
+    _agLastMsgWasAgentSteps = false;
+
     // Reset dashboard left panel and stop any running timer
     _agResetDashboard();
 
@@ -268,18 +271,34 @@ function _agentsRenderMessages(messages) {
     container.scrollTop = container.scrollHeight;
 }
 
+// Tracks whether the previous message was agent_steps — if so the `assistant`
+// message that immediately follows is the same summary already shown in the
+// done card, so we skip it to avoid a duplicate.
+let _agLastMsgWasAgentSteps = false;
+
 function _agentsAppendMessage(msg, scroll = true) {
     const container = _agEl('agents-messages');
     if (!container) return;
 
     // Agent step history — replay through the dashboard renderer
     if (msg.role === 'agent_steps') {
+        _agLastMsgWasAgentSteps = true;
         for (const event of (msg.events || [])) {
             renderAgentStep(event, true); // isReplay = true
         }
         if (scroll) container.scrollTop = container.scrollHeight;
         return;
     }
+
+    // The `assistant` message saved after an agent run is the same text already
+    // displayed by the done card from agent_steps replay — skip it.
+    if (msg.role === 'assistant' && _agLastMsgWasAgentSteps) {
+        _agLastMsgWasAgentSteps = false;
+        return;
+    }
+
+    // Reset flag for any other role (user, error, etc.)
+    if (msg.role !== 'assistant') _agLastMsgWasAgentSteps = false;
 
     const emptyState = container.querySelector('.agents-empty-state');
     if (emptyState) emptyState.remove();
@@ -418,6 +437,22 @@ async function agentsStopTask() {
     _agentsUpdateSubmitState();
 }
 
+// ── Auto-rename thread after first task ──────────────────────
+async function _agAutoRenameThread(wsId, threadId, name) {
+    try {
+        const res = await fetch(`/api/agents/workspaces/${wsId}/threads/${threadId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
+        });
+        if (res.ok && _agentsCurrentThread && _agentsCurrentThread.id === threadId) {
+            _agentsCurrentThread.name = name;
+        }
+    } catch (e) {
+        console.debug('[Agents] Auto-rename failed:', e);
+    }
+}
+
 // ── Task submission & polling ─────────────────────────────────
 async function agentsSubmitTask() {
     if (_agentsIsPolling) return;
@@ -483,8 +518,14 @@ async function agentsSubmitTask() {
                     _agentsIsPolling = false;
                     _agentsCurrentTaskId = null;
                     _agentsUpdateSubmitState();
-                    // Refresh thread metadata (message count updated by backend)
+                    // Auto-rename thread from task prompt if it still has the default date name
                     if (_agentsCurrentWorkspace && _agentsCurrentThread) {
+                        const curName = _agentsCurrentThread.name || '';
+                        if (/^[A-Z][a-z]+ \d{1,2}, \d{4}( #\d+)?$/.test(curName)) {
+                            const slug = prompt.replace(/\s+/g, ' ').trim();
+                            const newName = slug.length > 52 ? slug.slice(0, 52) + '…' : slug;
+                            _agAutoRenameThread(_agentsCurrentWorkspace.id, _agentsCurrentThread.id, newName);
+                        }
                         agentsLoadThreads(_agentsCurrentWorkspace.id);
                     }
                     return;
@@ -550,14 +591,8 @@ function _agentsPollTask(taskId) {
             consecutiveErrors = 0;
 
             if (data.status === 'completed') {
-                const result = data.result || {};
-                _agentsAppendMessage({
-                    role: 'assistant',
-                    content: result.response || '',
-                    timestamp: new Date().toISOString(),
-                    actions: result.actions_taken || [],
-                    model: result.model_id || '',
-                });
+                // The SSE `done` event already rendered the agent-done-card summary —
+                // do NOT call _agentsAppendMessage here or the summary appears twice.
                 finish();
                 // Refresh thread metadata (message count updated by backend)
                 if (_agentsCurrentWorkspace && _agentsCurrentThread) {
@@ -1577,6 +1612,89 @@ function _agHandleCreateDir(event) {
     s.activity.appendChild(item);
 }
 
+// ── Blueprint scan ────────────────────────────────────────────
+function _agHandleBlueprint(event) {
+    const s = _agentsRenderState;
+    if (!s) return;
+    const label = event.title || 'Blueprint scan';
+    const result = event.result || '';
+
+    const item = document.createElement('div');
+    item.className = 'agent-act-item';
+    const row = document.createElement('div');
+    row.className = 'agent-act-row agent-act--read';
+    row.innerHTML = `<span class="agent-act-icon">📐</span><span class="agent-act-name">${_htmlEscape(label)}</span>`;
+
+    const verbEl = document.createElement('span');
+    verbEl.className = 'agent-act-verb agent-act-verb--read';
+    verbEl.textContent = 'Scanned';
+    row.appendChild(verbEl);
+
+    if (result) {
+        const lineCount = result.split('\n').length;
+        const countEl = document.createElement('span');
+        countEl.className = 'agent-act-size';
+        countEl.textContent = `${lineCount} entries`;
+        row.appendChild(countEl);
+    }
+
+    item.appendChild(row);
+    s.activity.appendChild(item);
+}
+
+// ── Codebase search ───────────────────────────────────────────
+function _agHandleSearchCodebase(event) {
+    const s = _agentsRenderState;
+    if (!s) return;
+    const query  = event.query  || '';
+    const path   = event.path   || '';
+    const result = event.result || '';
+
+    const item = document.createElement('div');
+    item.className = 'agent-act-item';
+    const row = document.createElement('div');
+    row.className = 'agent-act-row agent-act--read';
+    row.innerHTML = `<span class="agent-act-icon">🔍</span><span class="agent-act-name agent-act-name--mono">${_htmlEscape(query)}</span>`;
+
+    const verbEl = document.createElement('span');
+    verbEl.className = 'agent-act-verb agent-act-verb--read';
+    verbEl.textContent = path ? `in ${path.replace(/\\/g, '/').split('/').pop() || path}` : 'codebase';
+    row.appendChild(verbEl);
+
+    if (result && !result.startsWith('Error') && !result.startsWith('No match')) {
+        const matchCount = (result.match(/^[^:]+:\d+:/gm) || []).length || result.split('\n').filter(Boolean).length;
+        const chevron = document.createElement('span');
+        chevron.className = 'agent-act-chevron';
+        chevron.textContent = '▸';
+
+        const countEl = document.createElement('span');
+        countEl.className = 'agent-act-size';
+        countEl.textContent = `${matchCount} match${matchCount !== 1 ? 'es' : ''}`;
+        row.appendChild(countEl);
+        row.appendChild(chevron);
+
+        const expand = document.createElement('div');
+        expand.className = 'agent-act-expand';
+        expand.style.display = 'none';
+        const pre = document.createElement('pre');
+        pre.className = 'agent-act-content';
+        pre.textContent = result.length > 3000 ? result.slice(0, 3000) + '\n…' : result;
+        expand.appendChild(pre);
+
+        item.appendChild(row);
+        item.appendChild(expand);
+        row.addEventListener('click', () => {
+            const open = expand.style.display !== 'none';
+            expand.style.display = open ? 'none' : 'block';
+            chevron.textContent = open ? '▸' : '▾';
+        });
+    } else {
+        item.appendChild(row);
+    }
+
+    s.activity.appendChild(item);
+}
+
 // ── Restore file (undo) ────────────────────────────────────────
 
 /**
@@ -1637,45 +1755,32 @@ function _agFinishRender(event) {
     if (!s) return;
     if (s.timerInterval) clearInterval(s.timerInterval);
 
-    const isOk = event.type === 'done';
-    s.phases.forEach(p => { p.status = 'done'; });
-    s.phases.push({ id: 'final', icon: isOk ? '✅' : '❌', label: isOk ? 'Done' : 'Error', status: isOk ? 'done' : 'error' });
-    _agRenderTimeline();
-
-    if (isOk) { s.planItems.forEach(i => { i.done = true; }); _agRenderPlanItems(); }
-
-    const item = document.createElement('div');
-    item.className = 'agent-act-item';
+    const isOk  = event.type === 'done';
     const label = event.title || (isOk ? 'Completed' : 'Error');
     const detail = (event.detail || '').trim();
 
-    const row = document.createElement('div');
-    row.className = `agent-act-row agent-act--summary ${isOk ? 'agent-act--done' : 'agent-act--error'}`;
+    s.phases.forEach(p => { p.status = 'done'; });
+    s.phases.push({ id: 'final', icon: isOk ? '✅' : '❌', label: isOk ? 'Done' : 'Error', status: isOk ? 'done' : 'error' });
+    _agRenderTimeline();
+    if (isOk) { s.planItems.forEach(i => { i.done = true; }); _agRenderPlanItems(); }
+
+    // ── Summary card ──────────────────────────────────────────────
+    const card = document.createElement('div');
+    card.className = `agent-done-card ${isOk ? 'agent-done-card--ok' : 'agent-done-card--err'}`;
+
+    const hdr = document.createElement('div');
+    hdr.className = 'agent-done-card-header';
+    hdr.innerHTML = `<span class="agent-done-card-icon">${isOk ? '✅' : '❌'}</span><span class="agent-done-card-label">${_htmlEscape(label)}</span>`;
+    card.appendChild(hdr);
 
     if (detail) {
-        const chevron = document.createElement('span');
-        chevron.className = 'agent-act-chevron';
-        chevron.textContent = '▾'; // open by default
-        row.innerHTML = `<span class="agent-act-icon">${isOk ? '✅' : '❌'}</span><span class="agent-act-name">${_htmlEscape(label)}</span>`;
-        row.appendChild(chevron);
-
-        const expand = document.createElement('div');
-        expand.className = 'agent-done-summary';
-        expand.innerHTML = _agentsRenderMarkdown(detail);
-
-        item.appendChild(row);
-        item.appendChild(expand);
-        row.style.cursor = 'pointer';
-        row.addEventListener('click', () => {
-            const open = expand.style.display !== 'none';
-            expand.style.display = open ? 'none' : 'block';
-            chevron.textContent = open ? '▸' : '▾';
-        });
-    } else {
-        row.innerHTML = `<span class="agent-act-icon">${isOk ? '✅' : '❌'}</span><span class="agent-act-name">${_htmlEscape(label)}</span>`;
-        item.appendChild(row);
+        const body = document.createElement('div');
+        body.className = 'agent-done-card-body';
+        body.innerHTML = _agentsRenderMarkdown(detail);
+        card.appendChild(body);
     }
-    s.activity.appendChild(item);
+
+    s.activity.appendChild(card);
 }
 
 // ── Main entry point (called for every SSE event) ─────────────
@@ -1728,11 +1833,18 @@ function renderAgentStep(event, isReplay = false) {
         case 'run_command':      _agHandleCommand(event);                             break;
         case 'search_web':       _agHandleSearch(event);                              break;
         case 'fetch_url':        _agHandleFetch(event);                               break;
-        case 'glob':             _agHandleGlob(event);                                break;
-        case 'move_file':        _agHandleMoveFile(event);                            break;
-        case 'create_directory': _agHandleCreateDir(event);                           break;
-        case 'restore_file':     _agHandleRestoreFile(event);                         break;
-        case 'usage':            _agFinalizeLiveToken(); _agHandleUsage(event);       break;
+        case 'glob':                  _agHandleGlob(event);                                break;
+        case 'move_file':             _agHandleMoveFile(event);                            break;
+        case 'create_directory':      _agHandleCreateDir(event);                           break;
+        case 'restore_file':          _agHandleRestoreFile(event);                         break;
+        case 'get_project_blueprint': _agHandleBlueprint(event);                           break;
+        case 'search_codebase':       _agHandleSearchCodebase(event);                      break;
+        case 'usage':                 _agFinalizeLiveToken(); _agHandleUsage(event);       break;
+        default:
+            // Unknown event type — log for diagnostics, don't crash
+            if (event.type && event.type !== 'start' && event.type !== 'stream_end') {
+                console.debug('[AgentUI] unhandled event type:', event.type, event);
+            }
     }
 
     const ti = s.activity.querySelector('.agent-typing-indicator');

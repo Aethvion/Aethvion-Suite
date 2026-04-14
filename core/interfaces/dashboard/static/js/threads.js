@@ -1205,8 +1205,13 @@ async function sendMessage() {
         // Show typing indicator instead of system message
         showTypingIndicator();
 
-        // Start polling for task completion
-        pollTaskStatus(data.task_id, messageThreadId);
+        // Use token streaming for simple chat, poll otherwise
+        const _useStream = (payload.mode === 'chat_only' && !internetSearch);
+        if (_useStream) {
+            streamChatTokens(data.task_id, messageThreadId);
+        } else {
+            pollTaskStatus(data.task_id, messageThreadId);
+        }
 
     } catch (error) {
         console.error('Failed to submit task:', error);
@@ -1221,13 +1226,158 @@ async function sendMessage() {
 
 // Active task cancel registry
 const _cancelledTasks = new Set();
+// Map of taskId → { evtSource, bubble } for active token streams
+const _activeStreams = {};
+
 function cancelTask(taskId) {
     _cancelledTasks.add(taskId);
     delete activeTasksByThread[taskId];
     hideTypingIndicator();
+    // Clean up any active SSE stream for this task
+    if (_activeStreams[taskId]) {
+        const { evtSource, bubble } = _activeStreams[taskId];
+        if (evtSource) evtSource.close();
+        if (bubble && bubble.parentNode) bubble.remove();
+        delete _activeStreams[taskId];
+    }
     showToast('Task cancelled.', 'info');
 }
 window.cancelTask = cancelTask;
+
+// ── Token streaming for chat_only tasks ──────────────────────────────────────
+
+/**
+ * Open an SSE stream for a submitted chat task and show tokens in real time.
+ * Falls back to polling if the server signals the task isn't streamable.
+ */
+function streamChatTokens(taskId, threadId) {
+    if (_cancelledTasks.has(taskId)) return;
+
+    const evtSource = new EventSource(`/api/tasks/${taskId}/stream-tokens`);
+    let accumulated = '';
+    let streamBubble = null;       // outer .message wrapper
+    let streamContent = null;      // inner div that gets updated
+    let streamCursor = null;       // blinking cursor el
+    let finalized = false;
+
+    // Create the live streaming bubble in the message list
+    function _createBubble() {
+        const messagesEl = document.getElementById('chat-messages');
+        if (!messagesEl) return;
+        // First token arrived — no longer need the typing indicator
+        hideTypingIndicator();
+        streamBubble = document.createElement('div');
+        streamBubble.className = 'message assistant-message chat-stream-bubble';
+        streamBubble.dataset.taskId = taskId;
+
+        streamContent = document.createElement('div');
+        streamContent.className = 'message-content stream-content';
+        streamContent.innerHTML = '<strong>Chat:</strong> <div class="stream-text" style="display:inline-block;width:100%;white-space:pre-wrap;"></div>';
+
+        streamCursor = document.createElement('span');
+        streamCursor.className = 'stream-cursor';
+        streamCursor.textContent = '▋';
+
+        streamBubble.appendChild(streamContent);
+        streamBubble.appendChild(streamCursor);
+        messagesEl.appendChild(streamBubble);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        // Register for cancel support
+        _activeStreams[taskId] = { evtSource, bubble: streamBubble };
+    }
+
+    // Append a raw token to the live bubble
+    function _appendToken(token) {
+        if (!streamContent) _createBubble();
+        accumulated += token;
+        const textEl = streamContent.querySelector('.stream-text');
+        if (textEl) textEl.textContent = accumulated;
+        const messagesEl = document.getElementById('chat-messages');
+        if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    // Replace the live bubble with the fully-rendered final message
+    function _finalize(taskData) {
+        if (finalized) return;
+        finalized = true;
+
+        // Remove cursor and bubble
+        if (streamBubble) streamBubble.remove();
+        streamBubble = null;
+
+        // Render via the standard addMessageToThread path (handles markdown, model label, etc.)
+        const finalContent = taskData?.result?.response ?? accumulated;
+        addMessageToThread(threadId, 'assistant', finalContent, taskId, taskData);
+
+        // Syntax highlighting
+        if (typeof hljs !== 'undefined') {
+            document.querySelectorAll('#chat-messages pre code').forEach(b => hljs.highlightElement(b));
+        }
+
+        hideTypingIndicator();
+        delete activeTasksByThread[taskId];
+        delete _activeStreams[taskId];
+        if (typeof loadFiles === 'function' && currentMainTab === 'files') loadFiles();
+    }
+
+    evtSource.onmessage = (e) => {
+        if (_cancelledTasks.has(taskId)) { evtSource.close(); return; }
+
+        let event;
+        try { event = JSON.parse(e.data); } catch { return; }
+
+        if (event.type === 'not_streamable') {
+            // Task not in streaming path — fall back to polling
+            evtSource.close();
+            pollTaskStatus(taskId, threadId);
+            return;
+        }
+
+        if (event.type === 'heartbeat') return;
+
+        if (event.type === 'token') {
+            if (!streamBubble) _createBubble();
+            _appendToken(event.token);
+            return;
+        }
+
+        if (event.type === 'done') {
+            evtSource.close();
+            // Fetch the full task result for metadata (model, usage, etc.).
+            // The worker may still be post-processing (memory extraction, usage logging)
+            // so retry a couple of times if the task isn't completed yet.
+            const _pollFinal = (retries) => {
+                fetch(`/api/tasks/status/${taskId}`)
+                    .then(r => r.ok ? r.json() : null)
+                    .then(data => {
+                        if (data && data.status === 'completed') {
+                            _finalize(data);
+                        } else if (retries > 0) {
+                            setTimeout(() => _pollFinal(retries - 1), 250);
+                        } else {
+                            _finalize(data);
+                        }
+                    })
+                    .catch(() => _finalize(null));
+            };
+            _pollFinal(6); // up to ~1.5 s of retries
+        }
+    };
+
+    evtSource.onerror = () => {
+        evtSource.close();
+        delete _activeStreams[taskId];
+        if (finalized) return;
+        if (_cancelledTasks.has(taskId)) return;
+        // If we already have some tokens, finalize with what we have
+        if (accumulated) {
+            _finalize(null);
+        } else {
+            // No tokens yet — fall back to polling
+            pollTaskStatus(taskId, threadId);
+        }
+    };
+}
 
 // Poll task status until completion — with exponential backoff, elapsed timer, and cancel support
 async function pollTaskStatus(taskId, threadId) {
