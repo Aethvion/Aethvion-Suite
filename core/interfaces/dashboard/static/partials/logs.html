@@ -1,182 +1,247 @@
-<div class="panel-header">
-    <div class="panel-header-left">
-        <div class="panel-header-icon"><i class="fas fa-scroll"></i></div>
-        <div class="panel-header-text">
-            <h2 class="panel-title">System Log Explorer</h2>
-            <p class="panel-subtitle">Dynamic monitoring & forensic analysis of suite backends</p>
+<div class="logs-page-container">
+    <!-- Sidebar: Forensic File Browser -->
+    <div class="logs-sidebar">
+        <div class="logs-sidebar-header">
+            <h3>LOGS</h3>
+            <button class="icon-btn" id="refresh-logs-btn" title="Refresh file list">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+        <div class="logs-file-list" id="logs-file-list">
+            <div class="loading-spinner"></div>
         </div>
     </div>
-    <div class="panel-header-right">
-        <button id="refresh-logs" class="lm-icon-btn" title="Refresh List">
-            <i class="fas fa-sync-alt"></i>
-        </button>
+
+    <!-- Main Content Area: Hybrid Viewer -->
+    <div class="logs-main">
+        <div class="logs-mode-selector">
+            <button class="mode-btn active" data-mode="live">
+                <i class="fas fa-bolt"></i> Live Stream
+            </button>
+            <button class="mode-btn" data-mode="forensic">
+                <i class="fas fa-search"></i> Forensic Browser
+            </button>
+        </div>
+
+        <!-- Mode 1: Live Stream (Real-time WebSockets) -->
+        <div class="log-mode-pane active" id="pane-live">
+            <div class="live-logs-wrapper">
+                <div class="live-pane-section">
+                    <div class="section-label">Suite Telemetry</div>
+                    <div class="logs-container" id="logs-container">
+                        <!-- Real-time logs stream here -->
+                    </div>
+                </div>
+                <div class="live-pane-section">
+                    <div class="section-label">Agent Terminal</div>
+                    <div class="terminal-content" id="terminal-content">
+                        <!-- Agent steps stream here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mode 2: Forensic Browser (File Reading) -->
+        <div class="log-mode-pane" id="pane-forensic">
+            <div class="forensic-header">
+                <div class="forensic-info">
+                    <span id="current-log-filename">Select a file from the sidebar...</span>
+                </div>
+                <div class="forensic-actions">
+                    <button class="icon-btn" id="scroll-to-bottom-btn" title="Scroll to bottom">
+                        <i class="fas fa-arrow-down"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="forensic-viewer" id="forensic-viewer">
+                <div class="viewer-placeholder">
+                    <i class="fas fa-folder-open"></i>
+                    <p>Select a log file on the left to inspect its contents</p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <style>
-    .logs-layout {
-        display: flex;
-        height: calc(100% - 70px);
-        overflow: hidden;
-        gap: 1.5rem;
-        padding-top: 1rem;
-    }
+.logs-page-container {
+    display: flex;
+    height: 100%;
+    background: #0d0d0d;
+    color: #e0e0e0;
+    font-family: 'Inter', sans-serif;
+}
 
-    /* Selection Sidebar */
-    .logs-sidebar {
-        width: 280px;
-        background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.05);
-        border-radius: 12px;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    }
+/* Sidebar */
+.logs-sidebar {
+    width: 260px;
+    border-right: 1px solid #222;
+    display: flex;
+    flex-direction: column;
+    background: #111;
+}
+.logs-sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid #222;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.logs-sidebar-header h3 {
+    margin: 0;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    color: #666;
+}
+.logs-file-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+.log-file-item {
+    padding: 10px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: #aaa;
+    transition: all 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.log-file-item:hover {
+    background: #222;
+    color: #fff;
+}
+.log-file-item.active {
+    background: #1a1a1a;
+    color: var(--accent, #00d2ff);
+    border-left: 2px solid var(--accent, #00d2ff);
+}
 
-    .logs-sidebar-header {
-        padding: 1rem;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
-        background: rgba(var(--primary-rgb), 0.05);
-        font-weight: 600;
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
+/* Main Area */
+.logs-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.logs-mode-selector {
+    display: flex;
+    padding: 8px 16px;
+    background: #111;
+    border-bottom: 1px solid #222;
+    gap: 8px;
+}
+.mode-btn {
+    background: none;
+    border: none;
+    color: #666;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+.mode-btn:hover {
+    color: #fff;
+    background: #222;
+}
+.mode-btn.active {
+    color: #fff;
+    background: #333;
+}
 
-    .logs-file-list {
-        flex: 1;
-        overflow-y: auto;
-        padding: 0.5rem;
-    }
+/* Pane Management */
+.log-mode-pane {
+    display: none;
+    flex: 1;
+    min-height: 0;
+}
+.log-mode-pane.active {
+    display: flex;
+    flex-direction: column;
+}
 
-    .log-file-item {
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        margin-bottom: 4px;
-        border: 1px solid transparent;
-    }
+/* Live Stream View */
+.live-logs-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 16px;
+    gap: 16px;
+}
+.live-pane-section {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+.section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #444;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+}
+.logs-container, .terminal-content {
+    flex: 1;
+    background: #050505;
+    border: 1px solid #222;
+    border-radius: 4px;
+    padding: 12px;
+    overflow-y: auto;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
 
-    .log-file-item:hover {
-        background: rgba(255,255,255,0.05);
-    }
+/* Forensic Browser Styles (Preserved) */
+.forensic-header {
+    padding: 12px 16px;
+    background: #111;
+    border-bottom: 1px solid #222;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.forensic-viewer {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    background: #050505;
+}
 
-    .log-file-item.active {
-        background: rgba(var(--primary-rgb), 0.1);
-        border-color: rgba(var(--primary-rgb), 0.2);
-    }
+/* Log Formatting */
+.log-line { margin-bottom: 2px; }
+.log-info { color: #888; }
+.log-warning { color: #f1c40f; }
+.log-error { color: #e74c3c; }
+.log-system { color: #555; font-style: italic; }
+.log-source { color: #3498db; }
+.term-time { color: #555; margin-right: 8px; }
+.term-agent { color: #9b59b6; font-weight: bold; margin-right: 8px; }
+.term-status { margin-left: 8px; }
 
-    .log-file-info {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .log-file-name {
-        font-weight: 600;
-        font-size: 0.85rem;
-        color: var(--text-primary);
-        word-break: break-all;
-    }
-
-    .log-file-meta {
-        font-size: 0.7rem;
-        color: var(--text-tertiary);
-    }
-
-    /* Content Area */
-    .logs-viewport {
-        flex: 1;
-        background: rgba(0,0,0,0.2);
-        border: 1px solid rgba(255,255,255,0.05);
-        border-radius: 12px;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        position: relative;
-    }
-
-    .logs-viewport-header {
-        padding: 0.75rem 1.25rem;
-        background: rgba(255,255,255,0.02);
-        border-bottom: 1px solid rgba(255,255,255,0.05);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .logs-viewport-title {
-        font-weight: 700;
-        font-size: 0.9rem;
-        color: var(--primary);
-    }
-
-    .logs-content {
-        flex: 1;
-        padding: 1rem;
-        overflow: auto;
-        font-family: 'JetBrains Mono', 'Fira Code', monospace;
-        font-size: 0.85rem;
-        line-height: 1.5;
-        color: #d1d5db;
-        white-space: pre-wrap;
-        background: #0d1117;
-    }
-
-    .log-empty-state {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: var(--text-tertiary);
-        gap: 1rem;
-        text-align: center;
-        opacity: 0.5;
-    }
-
-    .log-empty-state i {
-        font-size: 3rem;
-    }
-
+.viewer-placeholder {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #444;
+}
+.viewer-placeholder i { font-size: 3rem; margin-bottom: 1rem; }
 </style>
-
-<div class="logs-layout">
-    <!-- Log Sidebar (File List) -->
-    <div class="logs-sidebar">
-        <div class="logs-sidebar-header">
-            <i class="fas fa-folder-open"></i> system
-        </div>
-        <div id="log-file-list" class="logs-file-list">
-            <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-        </div>
-    </div>
-
-    <!-- Log Viewer -->
-    <div class="logs-viewport">
-        <div id="log-viewer-header" class="logs-viewport-header" style="display:none;">
-            <div id="active-log-title" class="logs-viewport-title">Select a log file...</div>
-            <div class="log-actions">
-                <button id="download-log" class="lm-icon-btn" title="Download Log" style="padding:4px 8px; font-size:0.8rem;">
-                    <i class="fas fa-download"></i>
-                </button>
-            </div>
-        </div>
-        
-        <div id="log-content-area" class="logs-content">
-            <!-- Log content loads here -->
-        </div>
-
-        <div id="log-empty-overlay" class="log-empty-state">
-            <i class="fas fa-terminal"></i>
-            <div>Select a log file from the sidebar to begin analysis.</div>
-        </div>
-    </div>
-</div>
