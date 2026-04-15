@@ -49,6 +49,7 @@
         { id: 'audio-models',      label: 'Audio & Speech',   icon: 'fas fa-volume-high',        mode: ['ai']   },
         { id: 'api-providers',     label: 'API Providers',    icon: 'fas fa-plug',               mode: ['ai']   },
         { id: '3d-models',         label: '3D Models',        icon: 'fas fa-cube',               mode: ['ai']   },
+        { id: '3d-gen',            label: '3D Workspace',     icon: 'fas fa-vector-square',      mode: ['ai']   },
         { id: 'logs',              label: 'Logs',             icon: 'fas fa-scroll',             mode: ['ai']   },
         { id: 'documentation',     label: 'Docs',             icon: 'fas fa-book-open',          mode: ['ai']   },
         { id: 'usage',             label: 'Usage',            icon: 'fas fa-chart-bar',          mode: ['ai']   },
@@ -163,7 +164,7 @@
                 { type: 'folder', id: 'f-fun',        children: ['games-center'] },
                 { type: 'folder', id: 'f-memory',     children: ['memory','companion-memory','persistent-memory','sched-overview'] },
                 { type: 'folder', id: 'f-storage',    children: ['output','screenshots','camera','uploads'] },
-                { type: 'folder', id: 'f-models',     children: ['local-models','image-models','audio-models','3d-models','api-providers'] },
+                { type: 'folder', id: 'f-models',     children: ['local-models','image-models','audio-models','3d-models','3d-gen','api-providers'] },
                 { type: 'folder', id: 'f-system',     children: ['logs','documentation','usage','status','ports'] },
             ],
         };

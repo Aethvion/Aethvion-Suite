@@ -1,0 +1,133 @@
+<div class="tg-workspace">
+    <!-- Left Panel: Control Box -->
+    <aside class="tg-controls">
+        <div class="tg-controls-header">
+            <h3><i class="fas fa-microchip"></i> Generation Engine</h3>
+        </div>
+        
+        <div class="tg-tabs">
+            <button class="tg-tab-btn active" data-type="i23d">Image to 3D</button>
+            <button class="tg-tab-btn" data-type="t23d">Text to 3D</button>
+        </div>
+
+        <div class="tg-form-content">
+            <!-- Image Input (i23d) -->
+            <div id="tg-group-i23d" class="tg-group">
+                <label class="tg-label">Reference Image</label>
+                <div class="tg-dropzone" id="tg-dropzone">
+                    <i class="fas fa-image tg-drop-icon"></i>
+                    <p class="tg-drop-text">Click or drag image</p>
+                    <img id="tg-preview" class="tg-drop-preview">
+                    <input type="file" id="tg-file-input" hidden accept="image/*">
+                </div>
+            </div>
+
+            <!-- Text Input (t23d) -->
+            <div id="tg-group-t23d" class="tg-group" style="display:none;">
+                <label class="tg-label">Object Description</label>
+                <textarea class="tg-textarea" id="tg-prompt" placeholder="Describe the object in detail... e.g. A cyberpunk motorcycle with neon trim, high detail metallic finish..."></textarea>
+            </div>
+
+            <!-- Common Settings -->
+            <div class="tg-group">
+                <label class="tg-label">Primary Model</label>
+                <select class="tg-select" id="tg-model-select">
+                    <option value="trellis-2">Trellis 2 (BETA)</option>
+                    <option value="triposr">TripoSR (FAST)</option>
+                    <option value="crm">CRM (High Detail)</option>
+                    <option value="hunyuan-3d">Hunyuan3D-V2</option>
+                </select>
+            </div>
+
+            <div class="tg-group">
+                <label class="tg-label">Resolution & Quality</label>
+                <select class="tg-select" id="tg-quality">
+                    <option value="512">512 - Draft</option>
+                    <option value="1024" selected>1024 - Standard</option>
+                    <option value="2048">2048 - Ultra</option>
+                </select>
+            </div>
+
+            <div class="tg-group">
+                <label class="tg-label">GLB Export Settings</label>
+                <div style="display:flex; gap:0.5rem;">
+                    <label style="font-size:0.75rem; display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                        <input type="checkbox" checked id="tg-textured"> Textured
+                    </label>
+                    <label style="font-size:0.75rem; display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                        <input type="checkbox" id="tg-pbr"> PBR Maps
+                    </label>
+                </div>
+            </div>
+            
+            <div class="tg-group">
+                <label class="tg-label">Seed</label>
+                <input type="number" class="tg-input" id="tg-seed" placeholder="Random">
+            </div>
+        </div>
+    </aside>
+
+    <!-- Center Panel: Viewer -->
+    <main class="tg-viewer">
+        <div class="tg-viewer-main">
+            <!-- Loading Overlay -->
+            <div class="tg-loading-overlay" id="tg-loading">
+                <div class="tg-loader-sphere"></div>
+                <div class="tg-loader-text">GENERATING DIMENSIONS</div>
+                <div style="font-size:0.7rem; color:var(--text-tertiary); margin-top:-1rem;">Processing meshes and topology...</div>
+            </div>
+
+            <!-- Canvas Placeholder -->
+            <div class="tg-viewer-placeholder" id="tg-placeholder">
+                <i class="fas fa-cube"></i>
+                <p>Generate or select a model to begin preview</p>
+            </div>
+            
+            <!-- Three.js Container (hidden initially) -->
+            <div id="tg-canvas-root" style="width:100%; height:100%; display:none;"></div>
+
+            <!-- Control HUD -->
+            <div class="tg-canvas-overlay">
+                <div class="tg-view-control" title="Toggle Grid"><i class="fas fa-border-all"></i></div>
+                <div class="tg-view-control" title="Auto-Rotate"><i class="fas fa-sync"></i></div>
+                <div class="tg-view-control" title="Toggle wireframe"><i class="fas fa-project-diagram"></i></div>
+            </div>
+        </div>
+
+        <div class="tg-gen-bar">
+            <button class="tg-btn-primary" id="tg-generate-btn">
+                <i class="fas fa-wand-magic-sparkles"></i>
+                GENERATE 3D ASSET
+            </button>
+        </div>
+    </main>
+
+    <!-- Right Panel: Assets -->
+    <aside class="tg-history">
+        <div class="tg-history-header">
+            <h4 class="tg-history-title">Recent Assets</h4>
+        </div>
+        <div class="tg-history-list" id="tg-history-list">
+            <!-- Asset cards will be injected here -->
+            <div class="tg-asset-card">
+                <div class="tg-asset-thumb">
+                    <img src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&q=80" alt="Cyberpunk Helmet">
+                </div>
+                <div class="tg-asset-info">
+                    <span class="tg-asset-name">Cyberpunk Helmet</span>
+                    <span class="tg-asset-meta">Trellis 2 • GLB • 4.2 MB</span>
+                </div>
+            </div>
+            
+            <div class="tg-asset-card">
+                <div class="tg-asset-thumb">
+                    <i class="fas fa-box-open" style="font-size:2rem; opacity:0.3;"></i>
+                </div>
+                <div class="tg-asset-info">
+                    <span class="tg-asset-name">Medieval Sword</span>
+                    <span class="tg-asset-meta">TripoSR • GLB • 1.8 MB</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>

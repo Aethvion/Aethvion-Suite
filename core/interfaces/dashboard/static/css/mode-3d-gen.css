@@ -1,0 +1,320 @@
+/* ═══════════════════════════════════════════════════════════════
+   Aethvion Suite — 3D Workspace (Mode)
+   ═══════════════════════════════════════════════════════════════ */
+
+.tg-workspace {
+    display: grid;
+    grid-template-columns: 340px 1fr 280px;
+    height: calc(100vh - 120px);
+    overflow: hidden;
+    background: var(--bg-dark, #0d1117);
+}
+
+/* ── Left Panel (Controls) ─────────────────────────────────── */
+.tg-controls {
+    border-right: 1px solid var(--border);
+    background: rgba(13, 17, 23, 0.4);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.tg-controls-header {
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.tg-controls-header h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.tg-tabs {
+    display: flex;
+    padding: 0.75rem 1.25rem;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.tg-tab-btn {
+    flex: 1;
+    padding: 0.5rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-tertiary);
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tg-tab-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.tg-form-content {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.tg-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.tg-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    letter-spacing: 0.5px;
+}
+
+/* Image Upload Zone */
+.tg-dropzone {
+    height: 160px;
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.02);
+    position: relative;
+    overflow: hidden;
+}
+
+.tg-dropzone:hover {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.tg-drop-icon { font-size: 1.5rem; color: var(--text-tertiary); margin-bottom: 0.5rem; }
+.tg-drop-text { font-size: 0.75rem; color: var(--text-secondary); }
+
+.tg-drop-preview {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+}
+
+/* Input Styles */
+.tg-textarea {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.8rem;
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    min-height: 100px;
+    resize: none;
+    outline: none;
+}
+
+.tg-select, .tg-input {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem;
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    outline: none;
+}
+
+/* ── Middle Panel (Viewer) ────────────────────────────────── */
+.tg-viewer {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: radial-gradient(circle at center, #1a1f2e 0%, #0d1117 100%);
+}
+
+.tg-viewer-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.tg-viewer-placeholder {
+    text-align: center;
+    color: var(--text-tertiary);
+}
+
+.tg-viewer-placeholder i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.2;
+}
+
+.tg-canvas-overlay {
+    position: absolute;
+    top: 1.5rem;
+    left: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.tg-view-control {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tg-view-control:hover { background: var(--primary); }
+
+.tg-gen-bar {
+    padding: 1.5rem;
+    background: rgba(0, 0, 0, 0.4);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tg-btn-primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.8rem 2.5rem;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    transition: all 0.3s;
+}
+
+.tg-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+.tg-btn-primary:disabled {
+    background: var(--text-tertiary);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ── Right Panel (History) ────────────────────────────────── */
+.tg-history {
+    border-left: 1px solid var(--border);
+    background: rgba(13, 17, 23, 0.4);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.tg-history-header {
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.tg-history-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin: 0;
+}
+
+.tg-history-list {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.tg-asset-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tg-asset-card:hover { border-color: var(--primary); }
+
+.tg-asset-thumb {
+    height: 120px;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tg-asset-thumb img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+
+.tg-asset-info {
+    padding: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tg-asset-name { font-size: 0.75rem; font-weight: 600; }
+.tg-asset-meta { font-size: 0.65rem; color: var(--text-tertiary); }
+
+.tg-loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(13, 17, 23, 0.8);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    gap: 1.5rem;
+}
+
+.tg-loader-sphere {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: var(--primary);
+    animation: tg-spin 1.5s linear infinite;
+}
+
+@keyframes tg-spin {
+    to { transform: rotate(360deg); }
+}
+
+.tg-loader-text {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    color: var(--primary);
+}

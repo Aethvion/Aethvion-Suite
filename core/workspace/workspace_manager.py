@@ -54,7 +54,7 @@ class WorkspaceManager:
     - Does NOT manage: Tools (tools/generated/), agent code, system files
     """
     
-    ALLOWED_DOMAINS = ['Finance', 'System', 'Data', 'Code', 'Audio', 'General']
+    ALLOWED_DOMAINS = ['Finance', 'System', 'Data', 'Code', 'Audio', 'ThreeD', 'General']
     
     def __init__(self, workspace_root: Optional[Path] = None, create_dirs: bool = True):
         """

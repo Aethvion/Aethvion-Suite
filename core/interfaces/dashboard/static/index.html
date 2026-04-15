@@ -53,6 +53,7 @@
     <link rel="stylesheet" href="/static/css/research-board.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/explained.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/audio-models.css?v=__VNUM__">
+    <link rel="stylesheet" href="/static/css/mode-3d-gen.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/assistant.css">
     <link rel="stylesheet" href="/static/css/audio_studio.css">
     <link rel="stylesheet" href="/static/games/common/games-shared.css">
@@ -580,6 +581,11 @@
                 <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
             </div>
 
+            <!-- Model Hub: 3D Workspace -->
+            <div class="main-tab-panel" id="3d-gen-panel" data-partial="3d-gen">
+                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+
             <!-- Games Center Hub -->
             <div class="main-tab-panel" id="games-center-panel" data-partial="games-center">
                 <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
@@ -648,6 +654,7 @@
 
             <!-- Modes (Active Interactive Panels) -->
             <script src="/static/js/mode-photo.js?v=5"></script>
+            <script src="/static/js/mode-3d-gen.js?v=1"></script>
             <script src="/static/js/mode-audio.js?v=5"></script>
             <script src="/static/js/mode-arena.js?v=5"></script>
             <script src="/static/js/mode-aiconv.js?v=6"></script>
