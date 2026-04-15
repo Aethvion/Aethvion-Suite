@@ -27,6 +27,7 @@
 
             const btnInstallFull = document.getElementById('btn-install-full');
             const btnRunTrellis = document.getElementById('btn-run-trellis');
+            const btnFixTrellis = document.getElementById('btn-fix-trellis');
 
             if (btnInstallFull) {
                 btnInstallFull.addEventListener('click', () => this.handleUnifiedInstall('trellis-2'));
@@ -34,6 +35,12 @@
 
             if (btnRunTrellis) {
                 btnRunTrellis.addEventListener('click', () => this.handleRunModel('trellis-2'));
+            }
+
+            if (btnFixTrellis) {
+                btnFixTrellis.addEventListener('click', () => {
+                    this.handleUnifiedInstall('trellis-2');
+                });
             }
         },
 
@@ -72,13 +79,83 @@
                 
                 // Unified check: must be fully installed with weights
                 const isFullyReady = data.installed && data.weights_installed;
+                const fixContainer = document.getElementById('trellis-fix-container');
                 
                 btnInstall.style.display = isFullyReady ? 'none' : 'block';
                 btnRun.style.display = isFullyReady ? 'block' : 'none';
+                if (fixContainer) fixContainer.style.display = isFullyReady ? 'block' : 'none';
+
+                // Start health polling if installed
+                if (isFullyReady && modelId === 'trellis-2') {
+                    this.startHealthPolling(modelId);
+                }
                 
             } catch (e) {
                 console.error(`[View3DModels] Failed to load install status for ${modelId}:`, e);
             }
+        },
+
+        pollInterval: null,
+        startHealthPolling(modelId) {
+            if (this.pollInterval) return;
+            
+            const badge = document.getElementById('trellis-health-badge');
+            const statusDot = document.querySelector('.td-status-dot');
+            const statusText = document.getElementById('td-engine-status');
+
+            const check = async () => {
+                try {
+                    const res = await fetch(`/api/3d/health/${modelId}`);
+                    const data = await res.json();
+                    
+                    if (!badge) return;
+
+                    if (data.status === 'online') {
+                        badge.innerHTML = '<i class="fas fa-check-circle" style="color:#4ade80;"></i> Trellis 2 is Ready';
+                        badge.style.borderColor = 'rgba(74, 222, 128, 0.4)';
+                        badge.style.color = '#4ade80';
+                        badge.style.animation = 'none';
+                        badge.style.boxShadow = '0 0 10px rgba(74, 222, 128, 0.2)';
+                        
+                        if (statusDot) statusDot.style.background = '#4ade80';
+                        if (statusText) statusText.textContent = 'Running';
+                    } else if (data.status === 'warming') {
+                        badge.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:#fb923c;"></i> Launching (Loading VRAM...)';
+                        badge.style.borderColor = 'rgba(251, 146, 60, 0.4)';
+                        badge.style.color = '#fb923c';
+                        badge.classList.add('pulse-amber');
+                        
+                        if (statusDot) statusDot.style.background = '#fb923c';
+                        if (statusText) statusText.textContent = 'Launching';
+                    } else {
+                        badge.innerHTML = '<i class="fas fa-power-off"></i> Offline';
+                        badge.style.borderColor = 'rgba(255,255,255,0.1)';
+                        badge.style.color = 'var(--text-tertiary)';
+                        badge.classList.remove('pulse-amber');
+                        
+                        if (statusDot) statusDot.style.background = 'gray';
+                        if (statusText) statusText.textContent = 'Idle';
+                    }
+                } catch (e) {}
+            };
+
+            // Inject pulse animation if not exists
+            if (!document.getElementById('td-hub-styles')) {
+                const style = document.createElement('style');
+                style.id = 'td-hub-styles';
+                style.innerHTML = `
+                    @keyframes pulse-amber {
+                        0% { opacity: 0.6; box-shadow: 0 0 0px rgba(251, 146, 60, 0); }
+                        50% { opacity: 1.0; box-shadow: 0 0 15px rgba(251, 146, 60, 0.3); }
+                        100% { opacity: 0.6; box-shadow: 0 0 0px rgba(251, 146, 60, 0); }
+                    }
+                    .pulse-amber { animation: pulse-amber 2s infinite ease-in-out; }
+                `;
+                document.head.appendChild(style);
+            }
+
+            check();
+            this.pollInterval = setInterval(check, 3000);
         },
 
         async handleUnifiedInstall(modelId) {
@@ -90,7 +167,7 @@
             if (btnFull) btnFull.style.display = 'none';
             if (progressContainer) progressContainer.style.display = 'block';
             if (logContainer) logContainer.style.display = 'block';
-            if (logElement) logElement.textContent = '[Foundry] Beginning Unified 3D Deployment...\n';
+            if (logElement) logElement.textContent = '[System] Initiating Core Deployment...\n';
 
             try {
                 // PHASE 1: Engine & Environment
@@ -228,13 +305,13 @@
         },
 
         handleRunModel(modelId) {
-            window.showToast(`Warming up foundation weights...`, 'info');
-            if (typeof switchMainTab === 'function') {
-                switchMainTab('3d-gen');
-            } else {
-                const sidebarTab = document.querySelector('.main-tab[data-maintab="3d-gen"]');
-                if (sidebarTab) sidebarTab.click();
-            }
+            // Trigger background launch
+            fetch(`/api/3d/launch/${modelId}`).catch(() => {});
+            this.startHealthPolling(modelId);
+            window.showToast(`Launching ${modelId == 'trellis-2' ? 'Trellis 2' : modelId}...`, 'info');
+            
+            // Stay on page, do NOT switch tabs automatically
+            // Users can choose when to go to workspace via sidebar or app menu
         },
 
         refresh() {

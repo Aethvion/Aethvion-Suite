@@ -3,7 +3,7 @@
     <header class="hub-header">
         <div class="hub-header-main">
             <h1 class="hub-title">3D Models</h1>
-            <p class="hub-subtitle">High-fidelity 3D reconstruction and generative asset foundry.</p>
+            <p class="hub-subtitle">High-fidelity 3D reconstruction and generative asset management.</p>
         </div>
     </header>
 
@@ -16,8 +16,8 @@
         </div>
         
         <div class="td-status-chip" style="background: rgba(var(--primary-rgb), 0.1); border: 1px solid rgba(var(--primary-rgb), 0.2); padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-            <span class="td-status-dot online" style="width:8px; height:8px; background:#4ade80; border-radius:50%; box-shadow:0 0 8px #4ade80;"></span>
-            <span id="td-engine-status" style="color: #fff; font-weight: 600;">3D Foundry Active</span>
+            <span class="td-status-dot online" style="width:8px; height:8px; background:gray; border-radius:50%;"></span>
+            <span id="td-engine-status" style="color: #fff; font-weight: 600;">Engine Idle</span>
         </div>
 
         <button id="refresh-3d-models" class="lm-icon-btn" title="Refresh Registry">
@@ -48,7 +48,12 @@
                     <!-- Info/Actions Side -->
                     <div style="display:flex; flex-direction:column; gap:1.25rem;">
                         <div class="hub-model-info">
-                            <h3 style="font-size: 1.8rem; margin:0;">Trellis 2</h3>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <h3 style="font-size: 1.8rem; margin:0;">Trellis 2</h3>
+                                <div id="trellis-health-badge" class="hub-status-badge" style="border-color: rgba(255,255,255,0.1); color: var(--text-tertiary); font-size: 0.75rem; padding: 0.4rem 0.8rem;">
+                                    <i class="fas fa-power-off"></i> Model Service is Offline
+                                </div>
+                            </div>
                             <p style="font-size: 1rem; color: var(--text-secondary);">The new standard for high-fidelity 3D reconstruction. Convert a single image into a high-density geometric mesh with verified topology. Optimized for consumer NVIDIA GPUs.</p>
                         </div>
 
@@ -58,15 +63,21 @@
                             <span class="hub-tag"><i class="fas fa-file-export"></i> .OBJ / .GLB</span>
                         </div>
 
-                        <div id="trellis-setup-actions" style="display:flex; gap:1rem; margin-top: auto;">
-                            <!-- Unified Action Button: Technical Neutral -->
-                            <button id="btn-install-full" class="hub-action-btn" style="display:none; flex:1; background:rgba(255,255,255,0.05); color:var(--text-secondary); border: 1px solid rgba(255,255,255,0.1); height: 50px; font-weight: 700;">
-                                <i class="fas fa-hammer"></i> Install Environment + Weights
+                        <div id="trellis-setup-actions" style="display:flex; flex-direction:column; gap:0.75rem; margin-top: auto;">
+                            <!-- Deployment Button: Setup Amber for Pending state -->
+                            <button id="btn-install-full" class="hub-action-btn" style="display:none; width:100%; background:#fb923c; color:black; height: 50px; font-weight: 800; border:none; box-shadow: 0 4px 15px rgba(251, 146, 60, 0.25);">
+                                <i class="fas fa-hammer"></i> Initialize Deployment + Weights
                             </button>
-                            <!-- Start Button: High-Refined Glow -->
-                            <button id="btn-run-trellis" class="hub-action-btn" style="display:none; flex:1; background:var(--primary); color:black; height: 50px; font-weight: 800; box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);">
-                                <i class="fas fa-play"></i> Enter Trellis 2 Workspace
+                            <!-- Execution Button: Vibrant Aethvion Primary for Ready state -->
+                            <button id="btn-run-trellis" class="hub-action-btn" style="display:none; width:100%; background:var(--primary); color:black; height: 50px; font-weight: 800; border:none; box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);">
+                                <i class="fas fa-play"></i> Launch Trellis 2
                             </button>
+                            <!-- Prominent Repair Button -->
+                            <div id="trellis-fix-container" style="display:none; text-align:center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem; margin-top: 0.25rem;">
+                                <button id="btn-fix-trellis" class="hub-tag" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-tertiary); cursor:pointer; font-size: 0.7rem; padding: 0.4rem 1rem; border-radius: 20px; transition: all 0.2s;">
+                                    <i class="fas fa-wrench" style="margin-right: 4px;"></i> Repair Engine Deployment
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Dual Progress Bars -->
@@ -89,11 +100,11 @@
                             </div>
                         </div>
 
-                        <!-- Terminal Log -->
+                        <!-- System Log Terminal -->
                         <div id="trellis-install-log-container" style="display:none; background:#000; border:1px solid rgba(255,255,255,0.1); border-radius:8px; overflow:hidden;">
                             <div style="background:rgba(255,255,255,0.05); padding:0.5rem 1rem; font-size:0.65rem; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; gap:0.5rem;">
                                 <i class="fas fa-terminal" style="color:var(--primary); font-size: 0.6rem;"></i>
-                                <span style="color:var(--text-tertiary); text-transform:uppercase; letter-spacing:1px; font-weight: 700;">Foundry Console</span>
+                                <span style="color:var(--text-tertiary); text-transform:uppercase; letter-spacing:1px; font-weight: 700;">System Logs</span>
                             </div>
                             <pre id="trellis-install-log" style="margin:0; padding:1rem; font-size:0.7rem; color:#4ade80; font-family:'Fira Code', monospace; max-height:150px; overflow-y:auto; white-space: pre-wrap; word-wrap: break-word; line-height: 1.4;"></pre>
                         </div>

@@ -259,6 +259,74 @@ from core.utils.paths import LOCAL_MODELS_3D
 # --- Installation Logic Simulation ---
 # For actual implementation, this would check if a specific directory exists
 # e.g., checkpoints/3d/trellis and return True/False
+@router.get("/active_services")
+async def get_active_services():
+    """Get a list of all currently running heavy models with their live stats."""
+    services = []
+    
+    for model_id, proc in _WORKER_PROCESS.items():
+        if proc.poll() is None:
+            # Service is alive, get its live health/vram
+            status = await get_worker_health(model_id)
+            services.append({
+                "id": model_id,
+                "name": "Trellis 2" if model_id == "trellis-2" else model_id.title(),
+                "status": status.get("status", "starting"),
+                "vram_used": status.get("vram_used", 0),
+                "vram_total": status.get("vram_total", 0),
+                "port": _WORKER_PORT.get(model_id)
+            })
+            
+    return services
+
+@router.post("/stop/{model}")
+async def stop_worker(model: str):
+    """Gracefully shutdown a model worker."""
+    if model in _WORKER_PROCESS:
+        proc = _WORKER_PROCESS[model]
+        if proc.poll() is None:
+            logger.info(f"[3D] Stopping worker {model}...")
+            proc.terminate()
+            # Wait briefly or kill if stubborn
+            try:
+                proc.wait(timeout=2)
+            except:
+                proc.kill()
+        
+        del _WORKER_PROCESS[model]
+        if model in _WORKER_PORT: del _WORKER_PORT[model]
+        return {"success": True}
+    return {"success": False, "error": "Service not running"}
+
+@router.get("/launch/{model}")
+async def launch_worker(model: str):
+    """Manually trigger worker startup for a specific model."""
+    # This will call get_or_start_worker and initiate the VRAM load
+    port, err = await get_or_start_worker(model)
+    if err:
+        return {"success": False, "error": err}
+    return {"success": True, "port": port}
+
+@router.get("/health/{model}")
+async def get_worker_health(model: str):
+    """Check the live health of a specific 3D model worker."""
+    if model not in _WORKER_PROCESS or _WORKER_PROCESS[model].poll() is not None:
+        return {"status": "offline", "message": "Worker not started"}
+        
+    port = _WORKER_PORT.get(model)
+    if not port:
+        return {"status": "starting", "message": "Allocating resources..."}
+        
+    try:
+        async with httpx.AsyncClient() as client:
+            # Short timeout, we want frequent pings
+            res = await client.get(f"http://127.0.0.1:{port}/health", timeout=0.8)
+            if res.status_code == 200:
+                return res.json()
+            return {"status": "starting", "message": "Initializing server..."}
+    except:
+        return {"status": "starting", "message": "Establishing connection..."}
+
 @router.get("/install_status/{model}")
 async def get_install_status(model: str):
     """Check if a specific 3D model/engine and its weights are installed locally."""
@@ -267,24 +335,12 @@ async def get_install_status(model: str):
     install_file = wrapper_dir / ".install_complete"
     weights_file = wrapper_dir / ".install_weights_complete"
     
-    # Check for actual torch installation in the venv to ensure integrity
-    venv_python = wrapper_dir / "venv" / "Scripts" / "python.exe" if os.name == 'nt' else wrapper_dir / "venv" / "bin" / "python"
-    has_torch = False
-    if venv_python.exists():
-        try:
-            # Quick check if torch is importable
-            # Use CREATE_NO_WINDOW to prevent flickering CMD prompts
-            creation_flags = 0x08000000 if os.name == 'nt' else 0
-            result = subprocess.run([str(venv_python), "-c", "import torch; print(torch.__version__)"], 
-                                 capture_output=True, text=True, timeout=5,
-                                 creationflags=creation_flags)
-            has_torch = result.returncode == 0
-        except:
-            pass
-
+    # Simple folder-based check (fast, no flickering)
+    is_valid = (wrapper_dir / "venv").exists()
+    
     return {
         "model": model,
-        "installed": install_file.exists() and has_torch,
+        "installed": install_file.exists() and is_valid,
         "weights_installed": weights_file.exists()
     }
 
@@ -427,13 +483,25 @@ async def install_3d_model(model: str):
                 return
                 
             # 3. Clone the repository
-            yield f"data: {json.dumps({'line': f'Cloning microsoft/TRELLIS (with submodules) into {repo_dir.relative_to(LOCAL_MODELS_3D)}...'})}\n\n"
-            proc_git = await asyncio.create_subprocess_exec(
-                "git", "clone", "--recurse-submodules", "https://github.com/microsoft/TRELLIS.git", str(repo_dir),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
-            )
+            if repo_dir.exists() and (repo_dir / ".git").exists():
+                yield f"data: {json.dumps({'line': 'Existing engine found. Syncing repository...'})}\n\n"
+                proc_git = await asyncio.create_subprocess_exec(
+                    "git", "pull",
+                    cwd=str(repo_dir),
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.STDOUT,
+                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                )
+            else:
+                if repo_dir.exists(): shutil.rmtree(repo_dir, ignore_errors=True)
+                yield f"data: {json.dumps({'line': f'Cloning microsoft/TRELLIS (with submodules) into {repo_dir.relative_to(LOCAL_MODELS_3D)}...'})}\n\n"
+                proc_git = await asyncio.create_subprocess_exec(
+                    "git", "clone", "--recurse-submodules", "https://github.com/microsoft/TRELLIS.git", str(repo_dir),
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.STDOUT,
+                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                )
+            
             async for raw in proc_git.stdout:
                 line = raw.decode("utf-8", errors="replace").rstrip()
                 if line: yield f"data: {json.dumps({'line': line})}\n\n"
@@ -444,12 +512,18 @@ async def install_3d_model(model: str):
                 return
                 
             # 4. Install Dependencies into the isolated venv
-            yield f"data: {json.dumps({'line': 'Installing core dependencies (torch, huggingface_hub, etc.)...'})}\n\n"
+            yield f"data: {json.dumps({'line': 'Installing core scientific stack (torch, rembg, etc.)...'})}\n\n"
             
             pip_exe = venv_dir / "Scripts" / "pip.exe" if sys.platform == 'win32' else venv_dir / "bin" / "pip"
             
-            # Ensure we have the basics for weight management even if requirements.txt is missing
-            core_reqs = ["torch", "torchvision", "easydict", "scipy", "tqdm", "huggingface_hub[cli]", "hf_transfer", "fastapi", "uvicorn", "httpx", "pillow"]
+            # Full dependency list from Trellis official setup script
+            core_reqs = [
+                "torch", "torchvision", "easydict", "scipy", "tqdm", 
+                "huggingface_hub[cli]", "hf_transfer", "fastapi", "uvicorn", "httpx", "pillow",
+                "imageio", "imageio-ffmpeg", "opencv-python-headless", "rembg", "onnxruntime-gpu",
+                "trimesh", "open3d", "xatlas", "pyvista", "pymeshfix", "igraph", "transformers", "ninja"
+            ]
+            
             proc_core = await asyncio.create_subprocess_exec(
                 str(pip_exe), "install", *core_reqs,
                 stdout=asyncio.subprocess.PIPE,
@@ -461,21 +535,18 @@ async def install_3d_model(model: str):
                 if line: yield f"data: {json.dumps({'line': line})}\n\n"
             await proc_core.wait()
 
-            req_file = repo_dir / "requirements.txt"
-            if req_file.exists():
-                yield f"data: {json.dumps({'line': 'Installing repository-specific requirements.txt...'})}\n\n"
-                proc_pip = await asyncio.create_subprocess_exec(
-                    str(pip_exe), "install", "-r", str(req_file),
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.STDOUT,
-                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
-                )
-                async for raw in proc_pip.stdout:
-                    line = raw.decode("utf-8", errors="replace").rstrip()
-                    if line: yield f"data: {json.dumps({'line': line})}\n\n"
-                await proc_pip.wait()
-            else:
-                yield f"data: {json.dumps({'line': 'No requirements.txt found in repository. Skipping.'})}\n\n"
+            # Install custom utils3d as required by Trellis official
+            yield f"data: {json.dumps({'line': 'Installing specialized 3D utility repository (utils3d)...'})}\n\n"
+            proc_u3d = await asyncio.create_subprocess_exec(
+                str(pip_exe), "install", "git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                creationflags=0x08000000 if os.name == 'nt' else 0
+            )
+            async for raw in proc_u3d.stdout:
+                line = raw.decode("utf-8", errors="replace").rstrip()
+                if line: yield f"data: {json.dumps({'line': line})}\n\n"
+            await proc_u3d.wait()
 
             # 5. Generate the Server Script Wrapper
             yield f"data: {json.dumps({'line': 'Generating FastAPI microservice hook (run_server.py)...'})}\n\n"

@@ -283,6 +283,24 @@
             <i class="fas fa-power-off"></i>
             <span>Quit</span>
         </button>
+
+        <!-- Dynamic Running Services Monitor -->
+        <div class="atb-services-wrapper" id="atb-services-wrapper">
+            <button class="atb-services-btn" id="atb-services-btn" title="Monitor active neural models">
+                <i class="fas fa-microchip"></i>
+                <span>Running Services</span>
+                <span id="active-services-count" class="services-badge">0</span>
+            </button>
+            <div class="atb-services-menu" id="atb-services-menu">
+                <div class="services-menu-header">
+                    <i class="fas fa-server"></i> Active Background Models
+                </div>
+                <div id="services-list-root">
+                    <div class="services-empty">No active neural models.</div>
+                </div>
+            </div>
+        </div>
+
         <div class="atb-apps-wrapper">
             <button class="atb-apps-btn" id="atb-apps-btn" title="Open an Aethvion app">
                 <i class="fas fa-th-large"></i>

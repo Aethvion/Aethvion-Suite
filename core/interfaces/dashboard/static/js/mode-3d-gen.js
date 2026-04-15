@@ -162,6 +162,11 @@
                     })
                 });
 
+                if (response.status === 503) {
+                    window.showToast('Trellis 2 is currently launching (Loading 12GB VRAM payload). Please wait...', 'info');
+                    return;
+                }
+
                 const data = await response.json();
                 if (!data.success) throw new Error(data.error || 'Generation failed');
                 

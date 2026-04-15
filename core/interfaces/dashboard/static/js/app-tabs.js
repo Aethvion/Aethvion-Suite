@@ -32,6 +32,81 @@ const ATB = (() => {
     // portKey MUST match the name passed to PortManager.bind_port() on the
     // server side.  No hardcoded port numbers — the actual port is discovered
     // at runtime via the PortManager registry.
+    // --- Running Services Logic ---
+    const ServiceMonitor = {
+        init() {
+            this.btn = document.getElementById('atb-services-btn');
+            this.wrapper = document.getElementById('atb-services-wrapper');
+            this.menu = document.getElementById('atb-services-menu');
+            this.list = document.getElementById('services-list-root');
+            this.count = document.getElementById('active-services-count');
+
+            if (!this.btn) return;
+
+            this.btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.menu.classList.toggle('open');
+                this.btn.classList.toggle('open');
+            });
+
+            document.addEventListener('click', () => {
+                this.menu.classList.remove('open');
+                this.btn.classList.remove('open');
+            });
+
+            this.startPolling();
+        },
+
+        async startPolling() {
+            const poll = async () => {
+                try {
+                    const res = await fetch('/api/3d/active_services');
+                    const services = await res.json();
+                    this.updateUI(services);
+                } catch (e) {
+                    console.error('[ServiceMonitor] Poll failed:', e);
+                }
+            };
+            poll();
+            setInterval(poll, 5000);
+        },
+
+        updateUI(services) {
+            this.wrapper.style.display = 'block';
+            
+            if (!services || services.length === 0) {
+                this.list.innerHTML = '<div class="services-empty">No active neural models.</div>';
+                this.count.textContent = '0';
+                return;
+            }
+
+            this.count.textContent = services.length;
+            this.list.innerHTML = '';
+
+            services.forEach(svc => {
+                const card = document.createElement('div');
+                card.className = 'service-card';
+                
+                const statusClass = `status-${svc.status.toLowerCase()}`;
+                const vramText = svc.vram_used ? `${svc.vram_used.toFixed(1)} GB / ${svc.vram_total.toFixed(1)} GB` : '0 GB / -- GB';
+
+                card.innerHTML = `
+                    <div class="service-row">
+                        <span class="service-name">${svc.name}</span>
+                        <span class="service-status ${statusClass}">${svc.status}</span>
+                    </div>
+                    <div class="service-row">
+                        <div class="service-telemetry">
+                            <span class="telemetry-vram"><i class="fas fa-memory"></i> ${vramText}</span>
+                        </div>
+                        <button class="service-stop-btn" onclick="ATB.stopService('${svc.id}')">Stop</button>
+                    </div>
+                `;
+                this.list.appendChild(card);
+            });
+        }
+    };
+
     const APPS = [
         { id: 'code',         label: 'Code IDE',      emoji: '💻', category: 'Professional Development', port: null, portKey: 'Aethvion Code IDE'     },
         { id: 'photo',        label: 'Photo Studio',   emoji: '🎨', category: 'Creative & Production',    port: null, portKey: 'Aethvion Photo'        },
@@ -508,13 +583,32 @@ const ATB = (() => {
         }
     }
 
+    async function stopService(modelId) {
+        try {
+            const res = await fetch(`/api/3d/stop/${modelId}`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                if (window.showToast) window.showToast(`${modelId} stopped`, 'info');
+            } else {
+                if (window.showToast) window.showToast(`Stop failed: ${data.error}`, 'error');
+            }
+        } catch (e) {
+            console.error('[ATB] Stop failed:', e);
+        }
+    }
+
     // ── Init ──────────────────────────────────────────────────────────────────
     function init() {
+        ServiceMonitor.init();
+
         document.querySelector('[data-panel="panel-nexus"]')
             ?.addEventListener('click', () => switchTo(NEXUS_PANEL));
 
         document.getElementById('atb-apps-btn')
             ?.addEventListener('click', e => { e.stopPropagation(); _toggleMenu(); });
+
+        document.getElementById('atb-quit-btn')
+            ?.addEventListener('click', e => { e.stopPropagation(); quitSystem(); });
 
         document.getElementById('nexus-refresh')
             ?.addEventListener('click', e => {
@@ -525,7 +619,10 @@ const ATB = (() => {
         document.getElementById('atb-apps-menu')
             ?.addEventListener('click', e => e.stopPropagation());
 
-        document.addEventListener('click', _closeMenu);
+        document.addEventListener('click', () => {
+            _closeMenu();
+        });
+        
         document.addEventListener('keydown', e => { if (e.key === 'Escape') _closeMenu(); });
 
         // Suite status — initial + every 5 s
@@ -533,8 +630,12 @@ const ATB = (() => {
         setInterval(_updateSuiteStatus, 5_000);
     }
 
-    return { init, openApp, switchTo, retryApp, refreshApp, refreshPorts, quitSystem };
+    const exported = { init, openApp, switchTo, retryApp, refreshApp, refreshPorts, quitSystem, stopService };
+    window.ATB = exported;
+    return exported;
 
 })();
 
-document.addEventListener('DOMContentLoaded', () => ATB.init());
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.ATB && window.ATB.init) window.ATB.init();
+});
