@@ -183,7 +183,6 @@ async def install_3d_model(model: str):
     import json
     import subprocess
     import shutil
-    import datetime
     # Define robust microservice structure for the model
     # ex: localmodels/3d/trellis2
     wrapper_name = model.replace("-", "")
@@ -199,12 +198,18 @@ async def install_3d_model(model: str):
     async def _generate():
         try:
             # 1. Clean previous attempts
-            if repo_dir.exists():
-                yield f"data: {json.dumps({'line': 'Cleaning previous codebase installation...'})}\\n\\n"
-                shutil.rmtree(repo_dir, ignore_errors=True)
+            if wrapper_dir.exists() and not install_file.exists():
+                yield f"data: {json.dumps({'line': 'Cleaning partial installation...'})}\n\n"
+                # To be safe on Windows, we try to clean but don't crash if files are locked
+                try: shutil.rmtree(wrapper_dir, ignore_errors=True)
+                except: pass
+                wrapper_dir.mkdir(parents=True, exist_ok=True)
+            
+            repo_dir.mkdir(parents=True, exist_ok=True)
+            shutil.rmtree(repo_dir, ignore_errors=True) # Ensure it's empty for git clone
                 
             # 2. Setup Virtual Environment
-            yield f"data: {json.dumps({'line': f'Creating isolated virtual environment at {venv_dir.relative_to(LOCAL_MODELS_3D)}...'})}\\n\\n"
+            yield f"data: {json.dumps({'line': f'Creating isolated virtual environment at {venv_dir.relative_to(LOCAL_MODELS_3D)}...'})}\n\n"
             proc_venv = await asyncio.create_subprocess_exec(
                 sys.executable, "-m", "venv", str(venv_dir),
                 stdout=asyncio.subprocess.PIPE,
@@ -213,15 +218,15 @@ async def install_3d_model(model: str):
             )
             async for raw in proc_venv.stdout:
                 line = raw.decode("utf-8", errors="replace").rstrip()
-                if line: yield f"data: {json.dumps({'line': line})}\\n\\n"
+                if line: yield f"data: {json.dumps({'line': line})}\n\n"
             await proc_venv.wait()
             
             if proc_venv.returncode != 0:
-                yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Venv creation failed'})}\\n\\n"
+                yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Venv creation failed'})}\n\n"
                 return
                 
             # 3. Clone the repository
-            yield f"data: {json.dumps({'line': f'Cloning microsoft/TRELLIS into {repo_dir.relative_to(LOCAL_MODELS_3D)}...'})}\\n\\n"
+            yield f"data: {json.dumps({'line': f'Cloning microsoft/TRELLIS into {repo_dir.relative_to(LOCAL_MODELS_3D)}...'})}\n\n"
             proc_git = await asyncio.create_subprocess_exec(
                 "git", "clone", "https://github.com/microsoft/TRELLIS.git", str(repo_dir),
                 stdout=asyncio.subprocess.PIPE,
@@ -230,15 +235,38 @@ async def install_3d_model(model: str):
             )
             async for raw in proc_git.stdout:
                 line = raw.decode("utf-8", errors="replace").rstrip()
-                if line: yield f"data: {json.dumps({'line': line})}\\n\\n"
+                if line: yield f"data: {json.dumps({'line': line})}\n\n"
             await proc_git.wait()
             
             if proc_git.returncode != 0:
-                yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Git clone failed'})}\\n\\n"
+                yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Git clone failed'})}\n\n"
                 return
                 
-            # 4. Generate the Server Script Wrapper
-            yield f"data: {json.dumps({'line': 'Generating FastAPI microservice hook (run_server.py)...'})}\\n\\n"
+            # 4. Install Dependencies into the isolated venv
+            yield f"data: {json.dumps({'line': 'Installing Python dependencies into isolated venv...'})}\n\n"
+            
+            pip_exe = venv_dir / "Scripts" / "pip.exe" if sys.platform == 'win32' else venv_dir / "bin" / "pip"
+            req_file = repo_dir / "requirements.txt"
+            
+            if req_file.exists():
+                proc_pip = await asyncio.create_subprocess_exec(
+                    str(pip_exe), "install", "-r", str(req_file),
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.STDOUT,
+                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+                )
+                async for raw in proc_pip.stdout:
+                    line = raw.decode("utf-8", errors="replace").rstrip()
+                    if line: yield f"data: {json.dumps({'line': line})}\n\n"
+                await proc_pip.wait()
+                
+                if proc_pip.returncode != 0:
+                    yield f"data: {json.dumps({'line': '[Warning] Pip install completed with non-zero exit code. You may need to install specific CUDA extensions manually.'})}\n\n"
+            else:
+                yield f"data: {json.dumps({'line': 'No requirements.txt found. Skipping dependecy installation.'})}\n\n"
+
+            # 5. Generate the Server Script Wrapper
+            yield f"data: {json.dumps({'line': 'Generating FastAPI microservice hook (run_server.py)...'})}\n\n"
             run_script.write_text(f'''\"\"\"
 Aethvion Suite - {model.title()} Microservice
 Standalone isolated backend hook for 3D generation.
@@ -258,16 +286,16 @@ if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=0) # Port 0 assigns random available port
 ''')
             
-            # 5. Create success lockfile
-            yield f"data: {json.dumps({'line': 'Finalizing installation...'})}\\n\\n"
+            # 6. Create success lockfile
+            yield f"data: {json.dumps({'line': 'Finalizing installation...'})}\n\n"
             with open(install_file, "w") as f:
                 f.write(f"Installed {datetime.now().isoformat()}")
                 
-            yield f"data: {json.dumps({'done': True, 'success': True})}\\n\\n"
+            yield f"data: {json.dumps({'done': True, 'success': True})}\n\n"
             
         except Exception as e:
             logger.error(f"Installation failed: {e}")
-            yield f"data: {json.dumps({'done': True, 'success': False, 'error': str(e)})}\\n\\n"
+            yield f"data: {json.dumps({'done': True, 'success': False, 'error': str(e)})}\n\n"
 
     return StreamingResponse(
         _generate(),
