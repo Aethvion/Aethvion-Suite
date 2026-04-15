@@ -48,6 +48,7 @@
         { id: 'image-models',      label: 'Image Models',     icon: 'fas fa-mountain-sun',       mode: ['ai']   },
         { id: 'audio-models',      label: 'Audio & Speech',   icon: 'fas fa-volume-high',        mode: ['ai']   },
         { id: 'api-providers',     label: 'API Providers',    icon: 'fas fa-plug',               mode: ['ai']   },
+        { id: '3d-models',         label: '3D Models',        icon: 'fas fa-cube',               mode: ['ai']   },
         { id: 'logs',              label: 'Logs',             icon: 'fas fa-scroll',             mode: ['ai']   },
         { id: 'documentation',     label: 'Docs',             icon: 'fas fa-book-open',          mode: ['ai']   },
         { id: 'usage',             label: 'Usage',            icon: 'fas fa-chart-bar',          mode: ['ai']   },
@@ -72,7 +73,7 @@
                 { name: 'System',    expanded: false, tabs: ['logs', 'status', 'ports'] },
             ],
             enabled: new Set(['suite-home', 'chat', 'agents', 'agent-corp', 'schedule',
-                              'local-models', 'api-providers', 'logs', 'status', 'ports']),
+                              'local-models', 'api-providers', '3d-models', 'logs', 'status', 'ports']),
         },
         {
             id: 'creative',
@@ -162,7 +163,7 @@
                 { type: 'folder', id: 'f-fun',        children: ['games-center'] },
                 { type: 'folder', id: 'f-memory',     children: ['memory','companion-memory','persistent-memory','sched-overview'] },
                 { type: 'folder', id: 'f-storage',    children: ['output','screenshots','camera','uploads'] },
-                { type: 'folder', id: 'f-models',     children: ['local-models','image-models','audio-models','api-providers'] },
+                { type: 'folder', id: 'f-models',     children: ['local-models','image-models','audio-models','3d-models','api-providers'] },
                 { type: 'folder', id: 'f-system',     children: ['logs','documentation','usage','status','ports'] },
             ],
         };

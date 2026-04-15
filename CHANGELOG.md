@@ -5,6 +5,11 @@ The top section contains the latest changes that are already available on the `m
 
 ## [Unreleased] / In Development
 
+### Major Feature Set Expansion (WIP)
+- **Incognito Chat Mode:** Private sessions with fully ephemeral threads that wipe all data from memory on exit, bypass persistence, and force no-context mode.
+- **Hide Sidebar:** Added a new "Full Hide" control to the sidebar header to maximize workspace layout for focused work.
+- **3D Models Hub:** A new dedicated tab in the Model Hub featuring state-of-the-art 3D generation models (Trellis 2, TripoSR, CRM) with local generation and export controls.
+
 ### Major Agent Improvements
 - Real token-level streaming with live thinking display
 - Automatic error recovery loop with intelligent repair passes
