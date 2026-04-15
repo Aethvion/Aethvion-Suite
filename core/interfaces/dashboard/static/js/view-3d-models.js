@@ -12,11 +12,11 @@
             console.log('[View3DModels] Initializing...');
             this.bindEvents();
             this.updateStatus();
-            this.loadLocalModels();
+            this.checkInstallStatus('trellis-2');
         },
 
         bindEvents() {
-            // Search filtering
+            // Search filtering (if still applicable)
             const searchInput = document.getElementById('td-model-search');
             if (searchInput) {
                 searchInput.addEventListener('input', (e) => this.filterModels(e.target.value));
@@ -30,22 +30,17 @@
                 });
             }
 
-            // Generation cards
-            document.querySelectorAll('.td-gen-card .td-btn-action').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const card = e.target.closest('.td-gen-card');
-                    const modelId = card.dataset.model;
-                    this.handleRunModel(modelId);
-                });
-            });
+            // Trellis Actions
+            const btnInstallTrellis = document.getElementById('btn-install-trellis');
+            const btnRunTrellis = document.getElementById('btn-run-trellis');
 
-            // Mini tool buttons
-            document.querySelectorAll('.td-mini-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const itemName = e.target.closest('.td-tool-item').querySelector('.td-item-name').textContent;
-                    window.showToast(`Loading ${itemName} configuration...`, 'info');
-                });
-            });
+            if (btnInstallTrellis) {
+                btnInstallTrellis.addEventListener('click', () => this.installModel('trellis-2'));
+            }
+
+            if (btnRunTrellis) {
+                btnRunTrellis.addEventListener('click', () => this.handleRunModel('trellis-2'));
+            }
         },
 
         filterModels(query) {
@@ -63,37 +58,132 @@
             if (!statusText) return;
 
             try {
-                // Placeholder for real backend check
-                // const res = await fetch('/api/system/3d/status');
-                // const data = await res.json();
-                statusText.textContent = '3D Engine Ready';
+                // Check overall 3D engine status via backend
+                const res = await fetch('/api/3d/status');
+                if (res.ok) {
+                    statusText.textContent = '3D Hub Active';
+                } else {
+                    throw new Error('Status failed');
+                }
             } catch (e) {
-                statusText.textContent = '3D Engine Offline';
+                statusText.textContent = '3D Hub Offline';
                 statusText.parentElement.querySelector('.td-status-dot').style.background = 'var(--error)';
             }
         },
-
-        async loadLocalModels() {
-            const grid = document.getElementById('td-local-grid');
-            if (!grid) return;
+        
+        async checkInstallStatus(modelId) {
+            const btnInstall = document.getElementById(`btn-install-trellis`);
+            const btnRun = document.getElementById(`btn-run-trellis`);
+            
+            if (!btnInstall || !btnRun) return;
 
             try {
-                // Placeholder for fetching local checkpoints
-                // const res = await fetch('/api/models/3d/local');
-                // const data = await res.json();
+                const res = await fetch(`/api/3d/install_status/${modelId}`);
+                if (!res.ok) throw new Error('Status check failed');
                 
-                // For now, keep the empty message or add placeholders if any are detected
+                const data = await res.json();
+                if (data.installed) {
+                    btnInstall.style.display = 'none';
+                    btnRun.style.display = 'block';
+                } else {
+                    btnRun.style.display = 'none';
+                    btnInstall.style.display = 'block';
+                }
             } catch (e) {
-                console.error('[View3DModels] Failed to load local models:', e);
+                console.error(`[View3DModels] Failed to load install status for ${modelId}:`, e);
+            }
+        },
+
+        async installModel(modelId) {
+            const btnInstall = document.getElementById(`btn-install-trellis`);
+            const btnRun = document.getElementById(`btn-run-trellis`);
+            const progress = document.getElementById('trellis-install-progress');
+            const logContainer = document.getElementById('trellis-install-log-container');
+            const logElement = document.getElementById('trellis-install-log');
+            
+            if (btnInstall && progress) {
+                btnInstall.style.display = 'none';
+                progress.style.display = 'block';
+            }
+            
+            if (logContainer && logElement) {
+                logContainer.style.display = 'block';
+                logElement.textContent = '';
+            }
+            
+            try {
+                const res = await fetch(`/api/3d/install/${modelId}`, {
+                    method: 'POST'
+                });
+                
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    const parts = buffer.split('\\n\\n');
+                    buffer = parts.pop();
+
+                    for (const part of parts) {
+                        if (!part.startsWith('data: ')) continue;
+                        let msg;
+                        try { msg = JSON.parse(part.slice(6)); } catch { continue; }
+
+                        if (msg.line !== undefined) {
+                            if (logElement) {
+                                logElement.textContent += msg.line + '\\n';
+                                logElement.scrollTop = logElement.scrollHeight;
+                            }
+                        } else if (msg.done) {
+                            if (msg.success) {
+                                window.showToast(`Successfully installed ${modelId}`, 'success');
+                                if (progress) progress.style.display = 'none';
+                                if (logContainer) logContainer.style.display = 'none';
+                                if (btnInstall) btnInstall.style.display = 'none';
+                                if (btnRun) btnRun.style.display = 'block';
+                            } else {
+                                throw new Error(msg.error || 'Installation failed');
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error(`[View3DModels] Installation failed for ${modelId}:`, e);
+                window.showToast(`Failed to install ${modelId}: ${e.message}`, 'error');
+                if (progress) progress.style.display = 'none';
+                if (btnInstall) btnInstall.style.display = 'block';
             }
         },
 
         handleRunModel(modelId) {
-            window.showToast(`Selected model: ${modelId}. Feature integration coming soon.`, 'info');
+            window.showToast(`Loading workspace for ${modelId}...`, 'info');
             
-            // Logic to switch to a generation workspace or open a modal
-            if (modelId === 'trellis-2') {
-                console.log('Trellis 2 selected');
+            // Set the model input if the workspace is already loaded
+            const select = document.getElementById('tg-model-select');
+            if (select) {
+                select.value = modelId;
+            } else {
+                // Wait for the panel to load and then set it
+                document.addEventListener('panelLoaded', function autoSelectModel(e) {
+                    if (e.detail.tabName === '3d-gen') {
+                        setTimeout(() => {
+                            const newSelect = document.getElementById('tg-model-select');
+                            if (newSelect) newSelect.value = modelId;
+                        }, 50);
+                        document.removeEventListener('panelLoaded', autoSelectModel);
+                    }
+                });
+            }
+
+            // Switch to the workspace tab
+            if (typeof switchMainTab === 'function') {
+                switchMainTab('3d-gen');
+            } else {
+                const sidebarTab = document.querySelector('.main-tab[data-maintab="3d-gen"]');
+                if (sidebarTab) sidebarTab.click();
             }
         },
 
@@ -102,10 +192,10 @@
             if (icon) icon.classList.add('fa-spin');
             
             setTimeout(() => {
-                this.loadLocalModels();
+                this.checkInstallStatus('trellis-2');
                 this.updateStatus();
                 if (icon) icon.classList.remove('fa-spin');
-                window.showToast('3D Model database updated.', 'success');
+                window.showToast('3D Hub refreshed.', 'success');
             }, 800);
         }
     };

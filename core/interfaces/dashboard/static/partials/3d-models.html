@@ -29,7 +29,7 @@
     <!-- ── Main Scroll Area ──────────────────────────────────────── -->
     <div class="td-content">
 
-        <!-- ── Feature: Image to 3D (The "Wow" Section) ─────────────── -->
+        <!-- ── Feature: Image to 3D ─────────────── -->
         <div class="td-hero-section">
             <div class="td-hero-hd">
                 <div class="td-hero-info">
@@ -42,112 +42,35 @@
                 </div>
             </div>
 
-            <div class="td-gen-grid">
+            <div class="td-gen-grid" style="grid-template-columns: 1fr;">
                 <!-- Trellis 2 Card -->
                 <div class="td-gen-card active" data-model="trellis-2">
-                    <div class="td-gen-preview">
+                    <div class="td-gen-preview" style="height:250px;">
                         <img src="/static/assets/previews/3d_trellis.webp" alt="Trellis 2 Preview" onerror="this.src='/static/assets/placeholder_3d.png'">
                         <div class="td-gen-overlay">
                             <span class="td-gen-tag">SOTA</span>
                         </div>
                     </div>
                     <div class="td-gen-body">
-                        <h4 class="td-gen-name">Trellis 2</h4>
+                        <h4 class="td-gen-name" style="font-size: 1.2rem;">Trellis 2</h4>
                         <p class="td-gen-desc">High-fidelity geometric reconstruction with structured latent flow. Best for complex organic shapes.</p>
-                        <div class="td-gen-meta">
+                        <div class="td-gen-meta" style="margin-bottom: 1rem;">
                             <span><i class="fas fa-memory"></i> 12GB VRAM</span>
                             <span><i class="fas fa-clock"></i> ~45s</span>
                         </div>
-                        <button class="td-btn-action">Configure & Run</button>
-                    </div>
-                </div>
-
-                <!-- TripoSR Card -->
-                <div class="td-gen-card" data-model="triposr">
-                    <div class="td-gen-preview">
-                        <img src="/static/assets/previews/3d_triposr.webp" alt="TripoSR Preview" onerror="this.src='/static/assets/placeholder_3d.png'">
-                    </div>
-                    <div class="td-gen-body">
-                        <h4 class="td-gen-name">TripoSR</h4>
-                        <p class="td-gen-desc">Lightning fast feed-forward generation. Delivers results in under a second for simple objects.</p>
-                        <div class="td-gen-meta">
-                            <span><i class="fas fa-memory"></i> 6GB VRAM</span>
-                            <span><i class="fas fa-bolt"></i> < 1s</span>
+                        <div id="trellis-status-container" style="display:flex; flex-direction:column; gap:0.5rem;">
+                            <button id="btn-install-trellis" class="td-btn-action" style="display:none;"><i class="fas fa-download"></i> Install Trellis 2</button>
+                            <button id="btn-run-trellis" class="td-btn-action" style="display:none; background: var(--primary); color: white;"><i class="fas fa-play"></i> Open Workspace</button>
+                            <div id="trellis-install-progress" style="display:none; font-size:0.8rem; color:var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> Installing... Please wait.</div>
+                            
+                            <!-- Installation Log Terminal -->
+                            <div id="trellis-install-log-container" style="display:none; margin-top: 0.5rem; background: #0a0a0b; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
+                                <div style="display: flex; justify-content: space-between; padding: 0.4rem 0.6rem; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 0.75rem; font-family: 'Outfit'; color: var(--text-secondary);">
+                                    <span><i class="fas fa-terminal"></i> Installation Stream</span>
+                                </div>
+                                <pre id="trellis-install-log" style="margin:0; padding: 0.6rem; font-size: 0.7rem; font-family: 'Fira Code', monospace; color: var(--text-secondary); max-height: 150px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;"></pre>
+                            </div>
                         </div>
-                        <button class="td-btn-action">Run Instant</button>
-                    </div>
-                </div>
-
-                <!-- CRM Card -->
-                <div class="td-gen-card" data-model="crm">
-                    <div class="td-gen-preview">
-                        <img src="/static/assets/previews/3d_crm.webp" alt="CRM Preview" onerror="this.src='/static/assets/placeholder_3d.png'">
-                    </div>
-                    <div class="td-gen-body">
-                        <h4 class="td-gen-name">CRM</h4>
-                        <p class="td-gen-desc">Convolutional Reconstruction Model. Excellent balance between speed and topological consistency.</p>
-                        <div class="td-gen-meta">
-                            <span><i class="fas fa-memory"></i> 8GB VRAM</span>
-                            <span><i class="fas fa-clock"></i> ~10s</span>
-                        </div>
-                        <button class="td-btn-action">Run CRM</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ── Text to 3D and Other Tools ────────────────────────── -->
-        <div class="td-tools-row">
-            <!-- Text to 3D List -->
-            <div class="td-tool-panel">
-                <div class="td-tool-hd">
-                    <i class="fas fa-font"></i>
-                    <div>
-                        <h3 class="td-tool-title">Text to 3D Models</h3>
-                        <p class="td-tool-sub">Prompt-based object generation</p>
-                    </div>
-                </div>
-                <div class="td-tool-list">
-                    <div class="td-tool-item">
-                        <div class="td-item-info">
-                            <span class="td-item-name">Shap-E</span>
-                            <span class="td-item-desc">OpenAI's latent diffusion for 3D meshes.</span>
-                        </div>
-                        <button class="td-mini-btn">Load</button>
-                    </div>
-                    <div class="td-tool-item">
-                        <div class="td-item-info">
-                            <span class="td-item-name">Point-E</span>
-                            <span class="td-item-desc">Fast point cloud generation from text.</span>
-                        </div>
-                        <button class="td-mini-btn">Load</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Asset Management -->
-            <div class="td-tool-panel">
-                <div class="td-tool-hd">
-                    <i class="fas fa-boxes-stacked"></i>
-                    <div>
-                        <h3 class="td-tool-title">Export & Format</h3>
-                        <p class="td-tool-sub">Conversion and post-processing</p>
-                    </div>
-                </div>
-                <div class="td-tool-list">
-                    <div class="td-tool-item">
-                        <div class="td-item-info">
-                            <span class="td-item-name">GLB / GLTF Export</span>
-                            <span class="td-item-desc">Web-ready formats with textures.</span>
-                        </div>
-                        <i class="fas fa-check-circle td-item-ok"></i>
-                    </div>
-                    <div class="td-tool-item">
-                        <div class="td-item-info">
-                            <span class="td-item-name">OBJ + MTL</span>
-                            <span class="td-item-desc">Legacy support for DCC apps.</span>
-                        </div>
-                        <i class="fas fa-check-circle td-item-ok"></i>
                     </div>
                 </div>
             </div>
@@ -159,7 +82,7 @@
                 <i class="fas fa-microchip"></i>
                 <div class="td-section-hd-info">
                     <h3 class="td-section-title">Installed 3D Weights</h3>
-                    <p class="td-section-sub">Models located in <code>checkpoints/3d/</code></p>
+                    <p class="td-section-sub">Models located in <code>localmodels/3d/</code></p>
                 </div>
             </div>
             <div id="td-local-grid" class="td-local-grid">

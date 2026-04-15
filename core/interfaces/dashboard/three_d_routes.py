@@ -155,3 +155,122 @@ async def get_3d_engine_status():
         },
         "vram_available": "24GB" # Simulated
     }
+
+from core.utils.paths import LOCAL_MODELS_3D
+
+# --- Installation Logic Simulation ---
+# For actual implementation, this would check if a specific directory exists
+# e.g., checkpoints/3d/trellis and return True/False
+@router.get("/install_status/{model}")
+async def get_install_status(model: str):
+    """Check if a specific 3D model/engine is installed locally."""
+    # We will simulate installation by checking if a dummy lock file exists
+    wrapper_name = model.replace("-", "")
+    install_file = LOCAL_MODELS_3D / wrapper_name / ".install_complete"
+    
+    return {
+        "model": model,
+        "installed": install_file.exists()
+    }
+
+@router.post("/install/{model}")
+async def install_3d_model(model: str):
+    """Start actual streaming installation of a 3D model/engine (Trellis)."""
+    from fastapi.responses import StreamingResponse
+    import asyncio
+    from core.utils.paths import LOCAL_MODELS_3D
+    import sys
+    import json
+    import subprocess
+    import shutil
+    import datetime
+    # Define robust microservice structure for the model
+    # ex: localmodels/3d/trellis2
+    wrapper_name = model.replace("-", "")
+    wrapper_dir = LOCAL_MODELS_3D / wrapper_name
+    
+    install_file = wrapper_dir / ".install_complete"
+    repo_dir = wrapper_dir / model         # localmodels/3d/trellis2/trellis-2
+    venv_dir = wrapper_dir / "venv"          # localmodels/3d/trellis2/venv
+    run_script = wrapper_dir / "run_server.py" # localmodels/3d/trellis2/run_server.py
+    
+    wrapper_dir.mkdir(parents=True, exist_ok=True)
+    
+    async def _generate():
+        try:
+            # 1. Clean previous attempts
+            if repo_dir.exists():
+                yield f"data: {json.dumps({'line': 'Cleaning previous codebase installation...'})}\\n\\n"
+                shutil.rmtree(repo_dir, ignore_errors=True)
+                
+            # 2. Setup Virtual Environment
+            yield f"data: {json.dumps({'line': f'Creating isolated virtual environment at {venv_dir.relative_to(LOCAL_MODELS_3D)}...'})}\\n\\n"
+            proc_venv = await asyncio.create_subprocess_exec(
+                sys.executable, "-m", "venv", str(venv_dir),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+            )
+            async for raw in proc_venv.stdout:
+                line = raw.decode("utf-8", errors="replace").rstrip()
+                if line: yield f"data: {json.dumps({'line': line})}\\n\\n"
+            await proc_venv.wait()
+            
+            if proc_venv.returncode != 0:
+                yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Venv creation failed'})}\\n\\n"
+                return
+                
+            # 3. Clone the repository
+            yield f"data: {json.dumps({'line': f'Cloning microsoft/TRELLIS into {repo_dir.relative_to(LOCAL_MODELS_3D)}...'})}\\n\\n"
+            proc_git = await asyncio.create_subprocess_exec(
+                "git", "clone", "https://github.com/microsoft/TRELLIS.git", str(repo_dir),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+            )
+            async for raw in proc_git.stdout:
+                line = raw.decode("utf-8", errors="replace").rstrip()
+                if line: yield f"data: {json.dumps({'line': line})}\\n\\n"
+            await proc_git.wait()
+            
+            if proc_git.returncode != 0:
+                yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Git clone failed'})}\\n\\n"
+                return
+                
+            # 4. Generate the Server Script Wrapper
+            yield f"data: {json.dumps({'line': 'Generating FastAPI microservice hook (run_server.py)...'})}\\n\\n"
+            run_script.write_text(f'''\"\"\"
+Aethvion Suite - {model.title()} Microservice
+Standalone isolated backend hook for 3D generation.
+\"\"\"
+from fastapi import FastAPI
+import uvicorn
+import os
+import sys
+
+app = FastAPI(title="{model.title()} Worker")
+
+@app.get("/health")
+def health():
+    return {{"status": "online", "model": "{model}"}}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1", port=0) # Port 0 assigns random available port
+''')
+            
+            # 5. Create success lockfile
+            yield f"data: {json.dumps({'line': 'Finalizing installation...'})}\\n\\n"
+            with open(install_file, "w") as f:
+                f.write(f"Installed {datetime.now().isoformat()}")
+                
+            yield f"data: {json.dumps({'done': True, 'success': True})}\\n\\n"
+            
+        except Exception as e:
+            logger.error(f"Installation failed: {e}")
+            yield f"data: {json.dumps({'done': True, 'success': False, 'error': str(e)})}\\n\\n"
+
+    return StreamingResponse(
+        _generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
