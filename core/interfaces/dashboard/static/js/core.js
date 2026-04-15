@@ -26,9 +26,32 @@ function showToast(message, type = 'info', duration = 3500, opts = {}) {
         warn:    'fa-triangle-exclamation',
         info:    'fa-circle-info',
     };
+    
+    // Auto-extend duration for errors to allow reading/copying
+    if (type === 'error' && duration === 3500) duration = 12000;
+
     const toast = document.createElement('div');
     toast.className = `ae-toast ae-toast-${type}`;
     toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${message}</span>`;
+
+    const btnContainer = document.createElement('div');
+    btnContainer.style.display = 'flex';
+    btnContainer.style.gap = '6px';
+    btnContainer.style.marginLeft = 'auto';
+
+    // Add Copy button for errors
+    if (type === 'error') {
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'ae-toast-undo-btn';
+        copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+        copyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            navigator.clipboard.writeText(message);
+            copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => { copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy'; }, 2000);
+        });
+        btnContainer.appendChild(copyBtn);
+    }
 
     if (opts.undoLabel && opts.onUndo) {
         const undoBtn = document.createElement('button');
@@ -40,7 +63,11 @@ function showToast(message, type = 'info', duration = 3500, opts = {}) {
             opts.onUndo();
             remove();
         });
-        toast.appendChild(undoBtn);
+        btnContainer.appendChild(undoBtn);
+    }
+
+    if (btnContainer.children.length > 0) {
+        toast.appendChild(btnContainer);
     }
 
     container.appendChild(toast);
