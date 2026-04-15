@@ -614,7 +614,7 @@ async def install_3d_model(model: str):
             await proc_u3d.wait()
 
             # --- Windows Compatibility Hardening ---
-            yield f"data: {json.dumps({'line': 'Hardening neural loader for Windows path normalization...'})}\n\n"
+            yield f"data: {json.dumps({'line': 'Fixing path normalization for Windows...'})}\n\n"
             try:
                 loader_file = repo_dir / "trellis" / "models" / "__init__.py"
                 if loader_file.exists():
@@ -664,9 +664,81 @@ async def install_3d_model(model: str):
                             if s_idx != -1 and e_idx != -1:
                                 patched_code = code[:s_idx] + new_body.strip() + "\n\n    " + code[e_idx:]
                                 loader_file.write_text(patched_code, encoding='utf-8')
-                                yield f"data: {json.dumps({'line': 'Neural environment calibrated.'})}\n\n"
+                                yield f"data: {json.dumps({'line': 'Path patch complete.'})}\n\n"
+
+                # --- Attention Patches ---
+                yield f"data: {json.dumps({'line': 'Patching attention modules for SDPA support...'})}\n\n"
+                full_attn_patch = """
+    elif ATTN == 'sdpa':
+        if num_all_args == 1:
+            q, k, v = qkv.unbind(dim=1)
+        elif num_all_args == 2:
+            k, v = kv.unbind(dim=1)
+        out_list = []
+        q_start, kv_start = 0, 0
+        for i in range(len(q_seqlen)):
+            qi = q[q_start:q_start+q_seqlen[i]].transpose(0, 1).unsqueeze(0)
+            ki = k[kv_start:kv_start+kv_seqlen[i]].transpose(0, 1).unsqueeze(0)
+            vi = v[kv_start:kv_start+kv_seqlen[i]].transpose(0, 1).unsqueeze(0)
+            res = torch.nn.functional.scaled_dot_product_attention(qi, ki, vi)
+            out_list.append(res.squeeze(0).transpose(0, 1))
+            q_start += q_seqlen[i]
+            kv_start += kv_seqlen[i]
+        out = torch.cat(out_list, dim=0)
+"""
+                coll_patch = """
+        elif ATTN == 'sdpa':
+            q, k, v = qkv_feats.unbind(dim=2)
+            q = q.transpose(1, 2)
+            k = k.transpose(1, 2)
+            v = v.transpose(1, 2)
+            out = torch.nn.functional.scaled_dot_product_attention(q, k, v)
+            out = out.transpose(1, 2)
+"""
+                coll_varlen_patch = """
+        elif ATTN == 'sdpa':
+            q, k, v = qkv_feats.unbind(dim=1)
+            out_list = []
+            curr = 0
+            for slen in seq_lens:
+                qi = q[curr:curr+slen].transpose(0, 1).unsqueeze(0)
+                ki = k[curr:curr+slen].transpose(0, 1).unsqueeze(0)
+                vi = v[curr:curr+slen].transpose(0, 1).unsqueeze(0)
+                res = torch.nn.functional.scaled_dot_product_attention(qi, ki, vi)
+                out_list.append(res.squeeze(0).transpose(0, 1))
+                curr += slen
+            out = torch.cat(out_list, dim=0)
+"""
+                # 1. Patch sparse/__init__.py
+                si_file = repo_dir / "trellis" / "modules" / "sparse" / "__init__.py"
+                if si_file.exists():
+                    c = si_file.read_text(encoding='utf-8')
+                    if "'sdpa'" not in c:
+                        c = c.replace("['xformers', 'flash_attn']", "['xformers', 'flash_attn', 'sdpa']")
+                        si_file.write_text(c, encoding='utf-8')
+                
+                # 2. Patch full_attn.py
+                fa_file = repo_dir / "trellis" / "modules" / "sparse" / "attention" / "full_attn.py"
+                if fa_file.exists():
+                    c = fa_file.read_text(encoding='utf-8')
+                    if "'sdpa'" not in c:
+                        c = c.replace("import flash_attn", "import flash_attn\\nelif ATTN == 'sdpa':\\n    pass")
+                        c = c.replace("    else:", full_attn_patch + "    else:")
+                        fa_file.write_text(c, encoding='utf-8')
+
+                # 3. Patch others
+                for f in ["serialized_attn.py", "windowed_attn.py"]:
+                    target = repo_dir / "trellis" / "modules" / "sparse" / "attention" / f
+                    if target.exists():
+                        c = target.read_text(encoding='utf-8')
+                        if "'sdpa'" not in c:
+                            c = c.replace("import flash_attn", "import flash_attn\\nelif ATTN == 'sdpa':\\n    pass")
+                            c = c.replace("else:\\n            raise ValueError(f\\\"Unknown attention module: {ATTN}\\\")", coll_patch + "        else:\\n            raise ValueError(f\\\"Unknown attention module: {ATTN}\\\")")
+                            c = c.replace("max(seq_lens)) # [M, H, C]", "max(seq_lens)) # [M, H, C]" + coll_varlen_patch)
+                            target.write_text(c, encoding='utf-8')
+
             except Exception as e:
-                yield f"data: {json.dumps({'line': f'Warning: Hardening failed: {e}'})}\n\n"
+                yield f"data: {json.dumps({'line': f'Warning: Attention patch failed: {e}'})}\n\n"
 
             # 6. Generate the Server Script Wrapper
             yield f"data: {json.dumps({'line': 'Generating FastAPI microservice hook (run_server.py)...'})}\n\n"
