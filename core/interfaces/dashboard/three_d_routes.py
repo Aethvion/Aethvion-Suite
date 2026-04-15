@@ -457,13 +457,16 @@ async def install_3d_model(model: str):
             # 1. Clean previous attempts
             if wrapper_dir.exists() and not install_file.exists():
                 yield f"data: {json.dumps({'line': 'Cleaning partial installation...'})}\n\n"
-                # To be safe on Windows, we try to clean but don't crash if files are locked
-                try: shutil.rmtree(wrapper_dir, ignore_errors=True)
+                # To be safe on Windows, we use rmdir /s /q which is more aggressive
+                try:
+                    subprocess.run(f'cmd /c rmdir /s /q "{repo_dir}"', shell=True)
                 except: pass
                 wrapper_dir.mkdir(parents=True, exist_ok=True)
             
-            repo_dir.mkdir(parents=True, exist_ok=True)
-            shutil.rmtree(repo_dir, ignore_errors=True) # Ensure it's empty for git clone
+            # Ensure repo_dir is clean
+            if repo_dir.exists():
+                try: subprocess.run(f'cmd /c rmdir /s /q "{repo_dir}"', shell=True)
+                except: pass
                 
             # 2. Setup Virtual Environment
             yield f"data: {json.dumps({'line': f'Creating isolated virtual environment at {venv_dir.relative_to(LOCAL_MODELS_3D)}...'})}\n\n"
@@ -573,10 +576,15 @@ sys.modules["nvdiffrast.torch"] = MagicMock()
 
 # --- Trellis Core Imports ---
 # These are added to path once everything is patched
-repo_path = os.path.join(os.path.dirname(__file__), "{model}")
-sys.path.append(repo_path)
+repo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "{model}"))
+if repo_path not in sys.path:
+    sys.path.append(repo_path)
 
 try:
+    # Verify path exists
+    if not os.path.exists(os.path.join(repo_path, "trellis")):
+        print(f"CRITICAL: Trellis package not found at {repo_path}/trellis")
+        
     from trellis.pipelines import TrellisImageTo3DPipeline
     from trellis.utils import postprocessing_utils
     LOADED = True

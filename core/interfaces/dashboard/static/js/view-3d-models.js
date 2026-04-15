@@ -25,22 +25,21 @@
                 refreshBtn.addEventListener('click', () => this.refresh());
             }
 
-            const btnInstallFull = document.getElementById('btn-install-full');
-            const btnRunTrellis = document.getElementById('btn-run-trellis');
-            const btnFixTrellis = document.getElementById('btn-fix-trellis');
+            const btnInstall = document.getElementById('btn-install-full');
+            const btnRun = document.getElementById('btn-run-trellis');
+            const btnFix = document.getElementById('btn-fix-trellis');
+            const btnFixContainer = document.getElementById('trellis-fix-container');
 
-            if (btnInstallFull) {
-                btnInstallFull.addEventListener('click', () => this.handleUnifiedInstall('trellis-2'));
+            if (btnInstall) {
+                btnInstall.addEventListener('click', () => this.handleUnifiedInstall('trellis-2'));
             }
 
-            if (btnRunTrellis) {
-                btnRunTrellis.addEventListener('click', () => this.handleRunModel('trellis-2'));
+            if (btnRun) {
+                btnRun.addEventListener('click', () => this.handleRunModel('trellis-2'));
             }
 
-            if (btnFixTrellis) {
-                btnFixTrellis.addEventListener('click', () => {
-                    this.handleUnifiedInstall('trellis-2');
-                });
+            if (btnFix) {
+                btnFix.addEventListener('click', () => this.handleRepair('trellis-2'));
             }
         },
 
@@ -67,31 +66,49 @@
         async checkInstallStatus(modelId) {
             const btnInstall = document.getElementById(`btn-install-full`);
             const btnRun = document.getElementById(`btn-run-trellis`);
+            const fixContainer = document.getElementById('trellis-fix-container');
             
             if (!btnInstall || !btnRun) return;
 
             try {
-                // Add timestamp to ensure pulse-fresh data from backend
                 const res = await fetch(`/api/3d/install_status/${modelId}?t=${Date.now()}`);
                 if (!res.ok) throw new Error('Status check failed');
                 
                 const data = await res.json();
                 
-                // Unified check: must be fully installed with weights
                 const isFullyReady = data.installed && data.weights_installed;
-                const fixContainer = document.getElementById('trellis-fix-container');
                 
                 btnInstall.style.display = isFullyReady ? 'none' : 'block';
                 btnRun.style.display = isFullyReady ? 'block' : 'none';
                 if (fixContainer) fixContainer.style.display = isFullyReady ? 'block' : 'none';
 
-                // Start health polling if installed
                 if (isFullyReady && modelId === 'trellis-2') {
                     this.startHealthPolling(modelId);
                 }
                 
             } catch (e) {
-                console.error(`[View3DModels] Failed to load install status for ${modelId}:`, e);
+                console.error(`[View3DModels] Failed to load install status:`, e);
+            }
+        },
+
+        async handleRepair(modelId) {
+            if (!confirm('This will wipe the current engine deployment and re-initialize the environment. Weights will be preserved. Proceed?')) return;
+            
+            const fixContainer = document.getElementById('trellis-fix-container');
+            if (fixContainer) fixContainer.style.display = 'none';
+
+            try {
+                // 1. Terminate any zombie workers first
+                await fetch(`/api/3d/stop/${modelId}`, { method: 'POST' });
+                
+                // 2. Trigger fresh installation flow
+                await this.handleUnifiedInstall(modelId);
+                
+                window.showToast('Repair sequence complete.', 'success');
+            } catch (e) {
+                console.error('Repair failed:', e);
+                window.showToast(`Repair failed: ${e.message}`, 'error');
+                if (fixContainer) fixContainer.style.display = 'block';
             }
         },
 
