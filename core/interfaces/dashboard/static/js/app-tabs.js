@@ -68,7 +68,9 @@ const ATB = (() => {
                 }
             };
             poll();
-            setInterval(poll, 5000);
+            setInterval(() => {
+                if (!document.hidden) poll();
+            }, 5000);
         },
 
         updateUI(services) {
@@ -627,7 +629,9 @@ const ATB = (() => {
 
         // Suite status — initial + every 5 s
         _updateSuiteStatus();
-        setInterval(_updateSuiteStatus, 5_000);
+        setInterval(() => {
+            if (!document.hidden) _updateSuiteStatus();
+        }, 5_000);
     }
 
     const exported = { init, openApp, switchTo, retryApp, refreshApp, refreshPorts, quitSystem, stopService };

@@ -525,26 +525,45 @@ async function pollStartupStatus() {
 // ===== WebSocket Management =====
 
 function initializeWebSockets() {
+    if (document.hidden) return;
+
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsHost = window.location.host;
 
-    // Chat WebSocket
-    chatWs = new WebSocket(`${wsProtocol}//${wsHost}/ws/chat`);
-    chatWs.onopen = () => updateConnectionStatus(true);
-    chatWs.onclose = () => {
-        updateConnectionStatus(false);
-        setTimeout(initializeWebSockets, 3000); // Reconnect
-    };
-    if (typeof handleChatMessage === 'function') chatWs.onmessage = handleChatMessage;
+    // Chat WebSocket (Permanent while focused)
+    if (!chatWs || chatWs.readyState === WebSocket.CLOSED) {
+        chatWs = new WebSocket(`${wsProtocol}//${wsHost}/ws/chat`);
+        chatWs.onopen = () => updateConnectionStatus(true);
+        chatWs.onclose = () => {
+            updateConnectionStatus(false);
+            if (!document.hidden) setTimeout(initializeWebSockets, 3000);
+        };
+        if (typeof handleChatMessage === 'function') chatWs.onmessage = handleChatMessage;
+    }
 
     // Logs WebSocket
-    logsWs = new WebSocket(`${wsProtocol}//${wsHost}/ws/logs`);
-    if (typeof handleLogMessage === 'function') logsWs.onmessage = handleLogMessage;
+    if (!logsWs || logsWs.readyState === WebSocket.CLOSED) {
+        logsWs = new WebSocket(`${wsProtocol}//${wsHost}/ws/logs`);
+        if (typeof handleLogMessage === 'function') logsWs.onmessage = handleLogMessage;
+    }
 
     // Agents WebSocket
-    agentsWs = new WebSocket(`${wsProtocol}//${wsHost}/ws/agents`);
-    if (typeof handleAgentsUpdate === 'function') agentsWs.onmessage = handleAgentsUpdate;
+    if (!agentsWs || agentsWs.readyState === WebSocket.CLOSED) {
+        agentsWs = new WebSocket(`${wsProtocol}//${wsHost}/ws/agents`);
+        if (typeof handleAgentsUpdate === 'function') agentsWs.onmessage = handleAgentsUpdate;
+    }
 }
+
+// Manage WebSockets based on tab visibility
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        if (chatWs) chatWs.close();
+        if (logsWs) logsWs.close();
+        if (agentsWs) agentsWs.close();
+    } else {
+        initializeWebSockets();
+    }
+});
 
 function updateConnectionStatus(connected) {
     const indicator = document.getElementById('status-indicator');
@@ -600,8 +619,10 @@ function initializeUI() {
         }
     });
     
-    // Periodically update module badges
-    setInterval(updateModuleStatusBadges, 10000);
+    // Periodically update module badges (paused when hidden)
+    setInterval(() => {
+        if (!document.hidden) updateModuleStatusBadges();
+    }, 10000);
     setTimeout(updateModuleStatusBadges, 2000);
 
     // Sidebar Toggle
@@ -1439,9 +1460,17 @@ async function loadInitialData() {
         initializeLyra();
     }
 
-    if (typeof loadSystemStatus === 'function') setInterval(loadSystemStatus, 5000);
+    if (typeof loadSystemStatus === 'function') {
+        setInterval(() => {
+            if (!document.hidden) loadSystemStatus();
+        }, 5000);
+    }
 
-    if (typeof loadHeaderStatus === 'function') setInterval(loadHeaderStatus, 15000);
+    if (typeof loadHeaderStatus === 'function') {
+        setInterval(() => {
+            if (!document.hidden) loadHeaderStatus();
+        }, 15000);
+    }
 }
 
 // ===== Common UI Utilities =====

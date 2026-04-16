@@ -120,8 +120,10 @@ function initThreadManagement() {
         }
     });
 
-    // Periodically refresh thread status
-    setInterval(refreshThreadStatus, 3000);
+    // Periodically refresh thread status (paused when hidden)
+    setInterval(() => {
+        if (!document.hidden) refreshThreadStatus();
+    }, 3000);
 
     // Wire thread search
     initThreadSearch();

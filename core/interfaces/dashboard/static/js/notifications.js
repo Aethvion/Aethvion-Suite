@@ -421,8 +421,10 @@ function _isHidden(source) {
         // Initial data load
         _fetchActive().then(() => _updateBadge());
 
-        // Poll every 30s for server-side pushes (e.g. from scheduled tasks)
-        _pollInterval = setInterval(_fetchActive, POLL_MS);
+        // Poll every 30s for server-side pushes (paused when hidden)
+        _pollInterval = setInterval(() => {
+            if (!document.hidden) _fetchActive();
+        }, POLL_MS);
 
         console.log('[Notifications] Initialized');
     }
