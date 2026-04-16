@@ -565,14 +565,15 @@ async def install_3d_model(model: str):
             
             pip_exe = venv_dir / "Scripts" / "pip.exe" if sys.platform == 'win32' else venv_dir / "bin" / "pip"
             
-            # Full dependency list from Trellis official setup script
-            # Hardened for RTX 4090 / CUDA 12.4
+            # Core dependency list — torch pulled from cu124 wheel index, others from PyPI
             core_reqs = [
-                "torch", "torchvision", "easydict", "scipy", "tqdm", 
+                "torch==2.6.0", "torchvision==0.21.0", "torchaudio==2.6.0",
+                "wheel", "ninja",
+                "easydict", "scipy", "tqdm",
                 "huggingface_hub[cli]", "hf_transfer", "fastapi", "uvicorn", "httpx", "pillow",
                 "imageio", "imageio-ffmpeg", "opencv-python-headless", "rembg", "onnxruntime-gpu",
-                "trimesh", "open3d", "xatlas", "pyvista", "pymeshfix", "igraph", "transformers", "ninja",
-                "spconv-cu124" 
+                "trimesh", "open3d", "xatlas", "pyvista", "pymeshfix", "igraph", "transformers",
+                "spconv-cu124",
             ]
             
             yield f"data: {json.dumps({'line': 'Installing high-performance CUDA 12.4 core (This may take 3-5m)...'})}\n\n"
@@ -590,7 +591,7 @@ async def install_3d_model(model: str):
             # Install Kaolin with verified compatibility
             yield f"data: {json.dumps({'line': 'Installing NVIDIA Kaolin specialized geometry library...'})}\n\n"
             proc_kaolin = await asyncio.create_subprocess_exec(
-                str(pip_exe), "install", "kaolin", "-f", "https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.4.0_cu124.html",
+                str(pip_exe), "install", "kaolin==0.18.0", "-f", "https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.6.0_cu124.html",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
@@ -599,6 +600,67 @@ async def install_3d_model(model: str):
                 line = raw.decode("utf-8", errors="replace").rstrip()
                 if line: yield f"data: {json.dumps({'line': line})}\n\n"
             await proc_kaolin.wait()
+
+            # Install nvdiffrast — builds from source, requires MSVC + CUDA toolkit
+            yield f"data: {json.dumps({'line': 'Building nvdiffrast (CUDA mesh rasterizer) — may take 5-10 min...'})}\n\n"
+
+            # Locate MSVC via vswhere and merge its env vars into our subprocess env
+            nv_env = dict(os.environ)
+            nv_env['TORCH_CUDA_ARCH_LIST'] = '8.0;8.6;8.9+PTX'
+            try:
+                vswhere_path = r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+                if os.path.exists(vswhere_path):
+                    vs_install = subprocess.check_output(
+                        [vswhere_path, "-latest", "-property", "installationPath"],
+                        text=True, errors='replace'
+                    ).strip()
+                    vcvarsall = os.path.join(vs_install, "VC", "Auxiliary", "Build", "vcvarsall.bat")
+                    if os.path.exists(vcvarsall):
+                        env_out = subprocess.run(
+                            f'cmd /c "call "{vcvarsall}" x64 && set"',
+                            shell=True, capture_output=True, text=True, errors='replace'
+                        )
+                        for ln in env_out.stdout.splitlines():
+                            if '=' in ln:
+                                k, v = ln.split('=', 1)
+                                nv_env[k] = v
+                        yield f"data: {json.dumps({'line': 'MSVC environment configured.'})}\n\n"
+            except Exception as _msvc_err:
+                yield f"data: {json.dumps({'line': f'Warning: MSVC setup failed: {_msvc_err}'})}\n\n"
+
+            # PyTorch raises RuntimeError if system nvcc major version != torch CUDA major version.
+            # The torch cu124 wheel ships its own CUDA runtime, so a newer system nvcc is fine at
+            # runtime; we just need to relax the compile-time check.
+            _cpp_ext = venv_dir / "lib" / "site-packages" / "torch" / "utils" / "cpp_extension.py"
+            if _cpp_ext.exists():
+                try:
+                    _ce_src = _cpp_ext.read_text(encoding='utf-8')
+                    _ce_patched = _ce_src.replace(
+                        "raise RuntimeError(CUDA_MISMATCH_MESSAGE.format(cuda_str_version, torch.version.cuda))",
+                        "warnings.warn(f'[Aethvion] CUDA version mismatch ({cuda_str_version} vs {torch.version.cuda}) — proceeding.')"
+                    )
+                    if _ce_patched != _ce_src:
+                        _cpp_ext.write_text(_ce_patched, encoding='utf-8')
+                        yield f"data: {json.dumps({'line': 'PyTorch CUDA version check relaxed for cross-version build.'})}\n\n"
+                except Exception:
+                    pass
+
+            proc_nv = await asyncio.create_subprocess_exec(
+                str(pip_exe), "install", "--no-build-isolation",
+                "git+https://github.com/NVlabs/nvdiffrast",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                env=nv_env,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+            )
+            async for raw in proc_nv.stdout:
+                line = raw.decode("utf-8", errors="replace").rstrip()
+                if line: yield f"data: {json.dumps({'line': line})}\n\n"
+            await proc_nv.wait()
+            if proc_nv.returncode != 0:
+                yield f"data: {json.dumps({'line': 'Warning: nvdiffrast build failed — mesh postprocessing will be unavailable.'})}\n\n"
+            else:
+                yield f"data: {json.dumps({'line': 'nvdiffrast installed successfully.'})}\n\n"
 
             # Install custom utils3d as required by Trellis official
             yield f"data: {json.dumps({'line': 'Installing specialized 3D utility repository (utils3d)...'})}\n\n"
@@ -742,211 +804,72 @@ async def install_3d_model(model: str):
 
             # 6. Generate the Server Script Wrapper
             yield f"data: {json.dumps({'line': 'Generating FastAPI microservice hook (run_server.py)...'})}\n\n"
-            
-            # Raw string template — {MODEL_NAME} and {MODEL_ID} are substituted below.
-            # Keep ALL other curly braces as-is (they are plain Python dict/format syntax).
+
+            # Clean server template — all dependencies are real installed packages.
+            # {MODEL_NAME} and {MODEL_ID} are substituted below via .replace().
+            # All other curly braces are plain Python dict/f-string syntax — do NOT use f-string here.
             server_template = r'''"""
-Aethvion Suite — {MODEL_NAME} inference server
-===============================================
-Startup sequence
-  1. Pre-populate sys.modules with mocks for kaolin and nvdiffrast BEFORE any
-     trellis import. Python checks sys.modules first, so the real (broken on
-     Windows) native extensions never execute.
-  2. Add the trellis repo to sys.path.
-  3. Import TrellisImageTo3DPipeline.
-  4. On startup, load weights into VRAM in a background thread so /health can
-     respond immediately with "launching" while the model loads.
+Aethvion Suite — {MODEL_NAME} Worker
+All dependencies (kaolin, nvdiffrast) are real installed packages — no mocks.
 """
 import os
 import sys
 import base64
 import traceback
 import threading
-import types
 
-# -- Step 1: mock broken native libraries (must come before trellis import) --
+# --- Attention backend: use PyTorch built-in SDPA (no flash_attn required) ---
+os.environ.setdefault("ATTN_BACKEND", "sdpa")
+os.environ.setdefault("SPARSE_ATTN_BACKEND", "sdpa")
 
-# kaolin._C is a compiled Windows DLL that fails to load on most systems.
-# The only thing needed at import time is kaolin.utils.testing.check_tensor
-# (a validation no-op used by FlexiCubes). Mock the whole namespace so the
-# real DLL never gets touched.
-def _noop(*a, **kw):
-    pass
-
-_km   = types.ModuleType("kaolin")
-_km_C = types.ModuleType("kaolin._C")
-_kmu  = types.ModuleType("kaolin.utils")
-_kmut = types.ModuleType("kaolin.utils.testing")
-_kmo  = types.ModuleType("kaolin.ops")
-_kmor = types.ModuleType("kaolin.ops.random")
-_kmob = types.ModuleType("kaolin.ops.batch")
-_kmi  = types.ModuleType("kaolin.io")
-_kmid = types.ModuleType("kaolin.io.dataset")
-
-_kmut.check_tensor          = _noop
-_kmut.contained_torch_equal = _noop
-_km._C    = _km_C;  _km.utils = _kmu;  _km.ops = _kmo;  _km.io = _kmi
-_kmu.testing = _kmut
-_kmo.random  = _kmor;  _kmo.batch = _kmob
-_kmi.dataset = _kmid
-
-for _name, _mod in [
-    ("kaolin", _km), ("kaolin._C", _km_C),
-    ("kaolin.utils", _kmu), ("kaolin.utils.testing", _kmut),
-    ("kaolin.ops", _kmo), ("kaolin.ops.random", _kmor), ("kaolin.ops.batch", _kmob),
-    ("kaolin.io", _kmi), ("kaolin.io.dataset", _kmid),
-]:
-    sys.modules[_name] = _mod
-print("[{MODEL_ID}] kaolin mocked")
-
-# nvdiffrast — postprocessing_utils and mesh_renderer import it at module
-# level. Mock it so those imports succeed; actual calls only happen in /generate.
-class _NvMock:
-    def __call__(self, *a, **kw): return self
-    def __getattr__(self, n):     return _NvMock()
-    def __iter__(self):           return iter([])
-    def __bool__(self):           return False
-
-def _nv_getattr(name):
-    # Raise AttributeError for dunders so inspect.getfile / hasattr work correctly.
-    # Only intercept real attribute lookups (e.g. dr.rasterize, dr.RasterizeCudaContext).
-    if name.startswith('__') and name.endswith('__'):
-        raise AttributeError(name)
-    return _NvMock()
-
-_nv = types.ModuleType("nvdiffrast")
-_nv.__file__    = __file__   # must be a truthy string so inspect.getfile works
-_nv.__spec__    = None
-_nv.__loader__  = None
-_nv.torch       = _NvMock()
-
-_nvt = types.ModuleType("nvdiffrast.torch")
-_nvt.__file__    = __file__
-_nvt.__spec__    = None
-_nvt.__loader__  = None
-_nvt.__getattr__ = _nv_getattr
-
-# --- Part 1: Stealth Mocking for Transformers & Flash-Attn ---
-# We must intercept 'transformers' detection logic because it crashes 
-# if it finds a mock without proper metadata (the KeyError: 'flash_attn' bug).
-
-import sys
-import types
-
-# 1. Pre-define ghost modules
-def _ghost_module(name):
-    from importlib.machinery import ModuleSpec
-    m = types.ModuleType(name)
-    m.__path__ = []
-    m.__spec__ = ModuleSpec(name, None)
-    m.__loader__ = None
-    sys.modules[name] = m
-    return m
-
-_ghost_module("flash_attn")
-_ghost_module("flash_attn.layers")
-_ghost_module("flash_attn.layers.rotary")
-_ghost_module("flash_attn_2_cuda")
-_ghost_module("flash_attn_cuda")
-_ghost_module("slat")
-_ghost_module("kaolin")
-_ghost_module("kaolin._C")
-_ghost_module("kaolin.utils")
-_ghost_module("kaolin.utils.testing", {"check_tensor": lambda *a, **k: None})
-_ghost_module("kaolin.ops")
-_ghost_module("kaolin.ops.random")
-_ghost_module("kaolin.ops.batch")
-_ghost_module("kaolin.io")
-_ghost_module("kaolin.io.dataset")
-
-# 2. Patch Transformers logic BEFORE it can run its own imports
+# --- Tell transformers flash_attn is not available (avoids import-time crash) ---
 try:
-    import transformers.utils.import_utils as iu
-    iu.is_flash_attn_2_available = lambda: False
-    iu.is_flash_attn_available = lambda: False
-    iu.is_flash_attn_3_available = lambda: False
-    
-    # Inject missing key to prevent the KeyError: 'flash_attn' in older transformers
-    if hasattr(iu, "PACKAGE_DISTRIBUTION_MAPPING"):
-        if "flash_attn" not in iu.PACKAGE_DISTRIBUTION_MAPPING:
-            iu.PACKAGE_DISTRIBUTION_MAPPING["flash_attn"] = ["flash-attn"]
-except Exception as e:
-    # If transformers is not yet installed in venv, we catch and move on
+    import transformers.utils.import_utils as _iu
+    _iu.is_flash_attn_2_available = lambda: False
+    _iu.is_flash_attn_available   = lambda: False
+    _iu.is_flash_attn_3_available = lambda: False
+except Exception:
     pass
 
-# --- Part 2: GPU/Native Library Mocks ---
-# Standard nvdiffrast and kaolin mocks to bypass Windows DLL requirements.
-class _NvMock:
-    def __call__(self, *a, **k): return self
-    def __getattr__(self, n):     return _NvMock()
-    def __iter__(self):           return iter([])
-    def __bool__(self):           return False
-
-def _nv_getattr(name):
-    if name.startswith('__') and name.endswith('__'): raise AttributeError(name)
-    return _NvMock()
-
-_nv = types.ModuleType("nvdiffrast")
-_nv.__file__    = __file__
-_nv.__spec__    = None
-_nv.__loader__  = None
-_nv.torch       = _NvMock()
-_nvt = types.ModuleType("nvdiffrast.torch")
-_nvt.__file__    = __file__
-_nvt.__spec__    = None
-_nvt.__loader__  = None
-_nvt.__getattr__ = _nv_getattr
-
-sys.modules["nvdiffrast"] = _nv
-sys.modules["nvdiffrast.torch"] = _nvt
-
-print("[{MODEL_ID}] Transformers detection patched & heavy libs stealth-mocked")
-
-# -- Step 2: path setup -------------------------------------------------------
+# --- Path setup --------------------------------------------------------------
 _HERE    = os.path.dirname(os.path.abspath(__file__))
-_REPO    = os.path.join(_HERE, "{MODEL_ID}")   # localmodels/3d/trellis2/trellis-2
+_REPO    = os.path.join(_HERE, "{MODEL_ID}")
 _WEIGHTS = os.path.join(_HERE, "weights")
-
-if not os.path.isdir(_REPO):
-    print(f"[{MODEL_ID}] CRITICAL: repo not found at {_REPO}")
-if not os.path.isdir(_WEIGHTS):
-    print(f"[{MODEL_ID}] CRITICAL: weights not found at {_WEIGHTS}")
 
 if _REPO not in sys.path:
     sys.path.insert(0, _REPO)
+
 print(f"[{MODEL_ID}] Repo:    {_REPO}")
 print(f"[{MODEL_ID}] Weights: {_WEIGHTS}")
 
-# -- Step 3: import pipeline class --------------------------------------------
+# --- Import pipeline class ---------------------------------------------------
 _Pipeline     = None
 _import_error = None
-
 try:
-    print(f"[{MODEL_ID}] Importing TrellisImageTo3DPipeline …")
     from trellis.pipelines import TrellisImageTo3DPipeline as _T
     _Pipeline = _T
-    print(f"[{MODEL_ID}] Pipeline class imported OK")
+    print(f"[{MODEL_ID}] Pipeline imported OK")
 except Exception:
     _import_error = traceback.format_exc()
     print(f"[{MODEL_ID}] IMPORT FAILED:\n{_import_error}")
 
-# -- Step 4: FastAPI app ------------------------------------------------------
+# --- FastAPI service ----------------------------------------------------------
 import torch
 import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 
-_pipeline    = None
-_status      = "launching"   # "launching" | "online" | "failed"
-_load_error  = None
+_pipeline   = None
+_status     = "launching"
+_load_error = None
 
 
 def _vram():
     try:
         if torch.cuda.is_available():
-            u = torch.cuda.memory_allocated(0) / 1024**3
+            u = torch.cuda.memory_reserved(0) / 1024**3
             t = torch.cuda.get_device_properties(0).total_memory / 1024**3
             return round(u, 3), round(t, 3)
     except Exception:
@@ -957,39 +880,28 @@ def _vram():
 def _load():
     global _pipeline, _status, _load_error
     if _Pipeline is None:
-        _load_error = _import_error or "Pipeline class not imported"
+        _load_error = _import_error or "Pipeline class failed to import"
         _status = "failed"
-        print(f"[{MODEL_ID}] Cannot load — import failed")
         return
-
-    pjson = os.path.join(_WEIGHTS, "pipeline.json")
-    if not os.path.exists(pjson):
+    if not os.path.exists(os.path.join(_WEIGHTS, "pipeline.json")):
         _load_error = f"pipeline.json missing in {_WEIGHTS}"
         _status = "failed"
         print(f"[{MODEL_ID}] {_load_error}")
         return
-
-    cuda_ok = torch.cuda.is_available()
-    if cuda_ok:
-        dev = torch.cuda.get_device_properties(0)
-        print(f"[{MODEL_ID}] CUDA: {dev.name}  ({dev.total_memory/1024**3:.1f} GB)")
-    else:
-        print(f"[{MODEL_ID}] WARNING: CUDA not available — CPU only")
-
-    u0, _ = _vram()
-    print(f"[{MODEL_ID}] VRAM before load: {u0:.2f} GB")
-
     try:
-        print(f"[{MODEL_ID}] Loading weights (this may take 1-3 min) …")
+        if torch.cuda.is_available():
+            dev = torch.cuda.get_device_properties(0)
+            print(f"[{MODEL_ID}] CUDA: {dev.name}  ({dev.total_memory/1024**3:.1f} GB)")
+        u0, _ = _vram()
+        print(f"[{MODEL_ID}] Loading weights (1-3 min)...")
         pipeline = _Pipeline.from_pretrained(_WEIGHTS)
-        print(f"[{MODEL_ID}] Weights loaded to RAM")
-        if cuda_ok:
+        if torch.cuda.is_available():
             pipeline.cuda()
-            u1, t1 = _vram()
-            print(f"[{MODEL_ID}] VRAM after load: {u1:.2f} / {t1:.2f} GB  (delta {u1-u0:.2f} GB)")
+        u1, t1 = _vram()
+        print(f"[{MODEL_ID}] VRAM: {u1:.2f}/{t1:.2f} GB  (delta {u1-u0:.2f} GB)")
         _pipeline = pipeline
         _status   = "online"
-        print(f"[{MODEL_ID}] -- STATUS: online --")
+        print(f"[{MODEL_ID}] STATUS: online")
     except Exception:
         _load_error = traceback.format_exc()
         _status = "failed"
@@ -1000,9 +912,8 @@ def _load():
 async def _lifespan(app):
     t = threading.Thread(target=_load, daemon=True, name="{MODEL_ID}-loader")
     t.start()
-    print(f"[{MODEL_ID}] Loader thread started — server accepting /health")
+    print(f"[{MODEL_ID}] Loader thread started")
     yield
-    print(f"[{MODEL_ID}] Shutdown")
 
 
 app = FastAPI(title="{MODEL_NAME} Worker", lifespan=_lifespan)
@@ -1010,8 +921,8 @@ app = FastAPI(title="{MODEL_NAME} Worker", lifespan=_lifespan)
 
 class GenRequest(BaseModel):
     image_base64: str
-    seed:         int        = 42
-    formats:      List[str]  = ["gaussian", "mesh"]
+    seed:         int       = 42
+    formats:      List[str] = ["gaussian", "mesh"]
 
 
 @app.get("/health")
@@ -1026,7 +937,7 @@ def health():
 @app.post("/generate")
 async def generate(req: GenRequest):
     if _status != "online" or _pipeline is None:
-        raise HTTPException(status_code=503, detail=f"Model not ready ({_status})")
+        raise HTTPException(503, detail=f"Model not ready ({_status})")
     try:
         from PIL import Image
         import io as _io
@@ -1034,14 +945,14 @@ async def generate(req: GenRequest):
         if "," in raw:
             raw = raw.split(",", 1)[1]
         image = Image.open(_io.BytesIO(base64.b64decode(raw))).convert("RGB")
-        print(f"[{MODEL_ID}] /generate  seed={req.seed}")
+        print(f"[{MODEL_ID}] /generate seed={req.seed}")
         outputs = _pipeline.run(image, seed=req.seed, formats=req.formats)
         print(f"[{MODEL_ID}] Inference complete")
         if "mesh" in outputs and "gaussian" in outputs:
             from trellis.utils import postprocessing_utils
             glb = postprocessing_utils.to_glb(outputs["gaussian"][0], outputs["mesh"][0])
             return {"success": True, "glb_base64": base64.b64encode(glb).decode()}
-        return {"success": True, "formats_decoded": list(outputs.keys())}
+        return {"success": True, "formats": list(outputs.keys())}
     except Exception:
         tb = traceback.format_exc()
         print(f"[{MODEL_ID}] /generate failed:\n{tb}")

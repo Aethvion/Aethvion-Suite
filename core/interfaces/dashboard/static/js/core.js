@@ -35,9 +35,7 @@ function showToast(message, type = 'info', duration = 3500, opts = {}) {
     toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${message}</span>`;
 
     const btnContainer = document.createElement('div');
-    btnContainer.style.display = 'flex';
-    btnContainer.style.gap = '6px';
-    btnContainer.style.marginLeft = 'auto';
+    btnContainer.className = 'ae-toast-btns';
 
     // Add Copy button for errors
     if (type === 'error') {
