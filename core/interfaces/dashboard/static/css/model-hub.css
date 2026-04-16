@@ -414,12 +414,3 @@
 }
 .gpu-slider { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); }
 .gpu-num-input { width: 60px; text-align: center; }
-
-.setting-input, .setting-select {
-    background: rgba(0,0,0,0.3);
-    border: 1px solid var(--hub-card-border);
-    border-radius: 6px;
-    padding: 0.5rem;
-    color: white;
-    font-size: 0.8rem;
-}
