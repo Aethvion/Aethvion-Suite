@@ -268,7 +268,7 @@ async def get_active_services():
             status = await get_worker_health(model_id)
             services.append({
                 "id": model_id,
-                "name": "Trellis 2 (WIP)" if model_id == "trellis-2" else model_id.title(),
+                "name": "Trellis 2 (WIP)" if model_id == "trellis-2" else "TripoSR" if model_id == "triposr" else model_id.title(),
                 "status": status.get("status", "starting"),
                 "vram_used": status.get("vram_used", 0),
                 "vram_total": status.get("vram_total", 0),
@@ -412,8 +412,12 @@ async def install_weights(model: str):
             
             # We use a subprocess to use the HuggingFace CLI or a small script to download
             # to keep the main event loop clean.
-            # Repo: microsoft/TRELLIS-image-large
-            repo_id = "microsoft/TRELLIS-image-large" if "trellis" in model else "unknown"
+            if "trellis" in model:
+                repo_id = "microsoft/TRELLIS-image-large"
+            elif model == "triposr":
+                repo_id = "stabilityai/TripoSR"
+            else:
+                repo_id = "unknown"
             
             if repo_id == "unknown":
                 yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Unknown model repository for weights'})}\n\n"
@@ -530,7 +534,289 @@ async def install_3d_model(model: str):
             if proc_venv.returncode != 0:
                 yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Venv creation failed'})}\n\n"
                 return
-                
+
+            pip_exe = venv_dir / "Scripts" / "pip.exe" if sys.platform == 'win32' else venv_dir / "bin" / "pip"
+
+            # ================================================================
+            # TripoSR install path — fast, ~6 GB VRAM, fully public weights
+            # ================================================================
+            if model == "triposr":
+                # 1. Core deps
+                triposr_reqs = [
+                    "torch==2.6.0", "torchvision==0.21.0", "torchaudio==2.6.0",
+                    "wheel", "fastapi", "uvicorn", "httpx",
+                    "pillow==10.1.0", "huggingface_hub[cli]", "hf_transfer", "tqdm",
+                    "einops==0.7.0", "omegaconf==2.3.0", "transformers==4.35.0",
+                    "trimesh==4.0.5", "rembg[gpu]", "onnxruntime-gpu",
+                    "imageio[ffmpeg]", "xatlas==0.0.9", "moderngl==5.10.0",
+                    "scipy", "numpy<2.0", "scikit-image",
+                ]
+                yield f"data: {json.dumps({'line': 'Installing TripoSR dependencies (torch 2.6 cu124, numpy < 2.0, scikit-image)...'})}\n\n"
+                proc_tr = await asyncio.create_subprocess_exec(
+                    str(pip_exe), "install", *triposr_reqs,
+                    "--index-url", "https://download.pytorch.org/whl/cu124",
+                    "--extra-index-url", "https://pypi.org/simple",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.STDOUT,
+                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                )
+                async for raw in proc_tr.stdout:
+                    line = raw.decode("utf-8", errors="replace").rstrip()
+                    if line: yield f"data: {json.dumps({'line': line})}\n\n"
+                await proc_tr.wait()
+
+                # 2. torchmcubes — CUDA marching-cubes extension (must build from source)
+                yield f"data: {json.dumps({'line': 'Building torchmcubes (marching cubes CUDA ext) — needs MSVC, may take 3-5 min...'})}\n\n"
+                mc_env = dict(os.environ)
+                mc_env['TORCH_CUDA_ARCH_LIST'] = '8.0;8.6;8.9+PTX'
+                try:
+                    vswhere_path = r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+                    if os.path.exists(vswhere_path):
+                        vs_install = subprocess.check_output(
+                            [vswhere_path, "-latest", "-property", "installationPath"],
+                            text=True, errors='replace'
+                        ).strip()
+                        vcvarsall = os.path.join(vs_install, "VC", "Auxiliary", "Build", "vcvarsall.bat")
+                        if os.path.exists(vcvarsall):
+                            env_out = subprocess.run(
+                                f'cmd /c "call "{vcvarsall}" x64 && set"',
+                                shell=True, capture_output=True, text=True, errors='replace'
+                            )
+                            for ln in env_out.stdout.splitlines():
+                                if '=' in ln:
+                                    k, v = ln.split('=', 1)
+                                    mc_env[k] = v
+                            yield f"data: {json.dumps({'line': 'MSVC environment configured for torchmcubes build.'})}\n\n"
+                except Exception as _msvc_err:
+                    yield f"data: {json.dumps({'line': f'Warning: MSVC setup failed: {_msvc_err}'})}\n\n"
+
+                # Relax PyTorch CUDA version check so system nvcc 13.x can build against torch cu124
+                _cpp_ext_tsr = venv_dir / "lib" / "site-packages" / "torch" / "utils" / "cpp_extension.py"
+                if _cpp_ext_tsr.exists():
+                    try:
+                        _ce_src = _cpp_ext_tsr.read_text(encoding='utf-8')
+                        _ce_patched = _ce_src.replace(
+                            "raise RuntimeError(CUDA_MISMATCH_MESSAGE.format(cuda_str_version, torch.version.cuda))",
+                            "warnings.warn(f'[Aethvion] CUDA version mismatch ({cuda_str_version} vs {torch.version.cuda}) — proceeding.')"
+                        )
+                        if _ce_patched != _ce_src:
+                            _cpp_ext_tsr.write_text(_ce_patched, encoding='utf-8')
+                            yield f"data: {json.dumps({'line': 'PyTorch CUDA version check relaxed for cross-version build.'})}\n\n"
+                    except Exception:
+                        pass
+
+                proc_mc = await asyncio.create_subprocess_exec(
+                    str(pip_exe), "install", "--no-build-isolation",
+                    "git+https://github.com/tatsy/torchmcubes.git",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.STDOUT,
+                    env=mc_env,
+                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                )
+                async for raw in proc_mc.stdout:
+                    line = raw.decode("utf-8", errors="replace").rstrip()
+                    if line: yield f"data: {json.dumps({'line': line})}\n\n"
+                await proc_mc.wait()
+                if proc_mc.returncode != 0:
+                    yield f"data: {json.dumps({'line': 'Warning: torchmcubes build failed — mesh extraction will be unavailable.'})}\n\n"
+                else:
+                    yield f"data: {json.dumps({'line': 'torchmcubes installed successfully.'})}\n\n"
+
+                # 3. Clone TripoSR repo (no setup.py — add to sys.path at runtime)
+                yield f"data: {json.dumps({'line': 'Cloning VAST-AI-Research/TripoSR repository...'})}\n\n"
+                if repo_dir.exists():
+                    shutil.rmtree(repo_dir, ignore_errors=True)
+                proc_git_tsr = await asyncio.create_subprocess_exec(
+                    "git", "clone", "https://github.com/VAST-AI-Research/TripoSR.git", str(repo_dir),
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.STDOUT,
+                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                )
+                async for raw in proc_git_tsr.stdout:
+                    line = raw.decode("utf-8", errors="replace").rstrip()
+                    if line: yield f"data: {json.dumps({'line': line})}\n\n"
+                await proc_git_tsr.wait()
+                if proc_git_tsr.returncode != 0:
+                    yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'TripoSR git clone failed'})}\n\n"
+                    return
+
+                # 4. Write run_server.py
+                yield f"data: {json.dumps({'line': 'Generating TripoSR FastAPI microservice hook (run_server.py)...'})}\n\n"
+                triposr_server = r'''"""
+Aethvion Suite — TripoSR Worker
+Fast single-image-to-3D (stabilityai/TripoSR, ~6 GB VRAM).
+"""
+import os
+import sys
+import base64
+import traceback
+import threading
+import io
+import datetime
+
+# Global timestamped print
+_original_print = print
+def print(*args, **kwargs):
+    ts = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+    _original_print(ts, *args, **kwargs)
+
+_HERE    = os.path.dirname(os.path.abspath(__file__))
+_REPO    = os.path.join(_HERE, "triposr")
+_WEIGHTS = os.path.join(_HERE, "weights")
+
+if _REPO not in sys.path:
+    sys.path.insert(0, _REPO)
+
+print(f"[triposr] Repo:    {_REPO}")
+print(f"[triposr] Weights: {_WEIGHTS}")
+
+_model      = None
+_status     = "launching"
+_load_error = None
+
+import torch
+import uvicorn
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+
+def _vram():
+    try:
+        if torch.cuda.is_available():
+            u = torch.cuda.memory_reserved(0) / 1024**3
+            t = torch.cuda.get_device_properties(0).total_memory / 1024**3
+            return round(u, 3), round(t, 3)
+    except Exception:
+        pass
+    return 0.0, 0.0
+
+
+def _load():
+    global _model, _status, _load_error
+    try:
+        from tsr.system import TSR
+
+        # Use local weights if already downloaded, otherwise auto-download from HuggingFace
+        if os.path.exists(os.path.join(_WEIGHTS, "config.yaml")):
+            model_src = _WEIGHTS
+            print(f"[triposr] Using local weights: {_WEIGHTS}")
+        else:
+            model_src = "stabilityai/TripoSR"
+            print("[triposr] Downloading weights from HuggingFace (1.7 GB, one-time)...")
+
+        model = TSR.from_pretrained(
+            model_src,
+            config_name="config.yaml",
+            weight_name="model.ckpt",
+        )
+        model.renderer.set_chunk_size(8192)
+
+        if torch.cuda.is_available():
+            dev = torch.cuda.get_device_properties(0)
+            print(f"[triposr] CUDA: {dev.name}  ({dev.total_memory/1024**3:.1f} GB)")
+            model = model.to("cuda")
+
+        _model  = model
+        _status = "online"
+        u, t = _vram()
+        print(f"[triposr] VRAM: {u:.2f}/{t:.2f} GB")
+        print("[triposr] STATUS: online")
+    except Exception:
+        _load_error = traceback.format_exc()
+        _status = "failed"
+        print(f"[triposr] LOAD FAILED:\n{_load_error}")
+
+
+@asynccontextmanager
+async def _lifespan(app):
+    t = threading.Thread(target=_load, daemon=True, name="triposr-loader")
+    t.start()
+    print("[triposr] Loader thread started")
+    yield
+
+
+app = FastAPI(title="TripoSR Worker", lifespan=_lifespan)
+
+
+class GenRequest(BaseModel):
+    image_base64: str
+    seed: int = 42
+    resolution: int = 256
+
+
+@app.get("/health")
+def health():
+    u, t = _vram()
+    r = {"status": _status, "vram_used": u, "vram_total": t, "model": "triposr"}
+    if _status == "failed" and _load_error:
+        r["error"] = _load_error[-2000:]
+    return r
+
+
+@app.post("/generate")
+async def generate(req: GenRequest):
+    if _status != "online" or _model is None:
+        raise HTTPException(503, detail=f"Model not ready ({_status})")
+    try:
+        from PIL import Image
+
+        raw = req.image_base64
+        if "," in raw:
+            raw = raw.split(",", 1)[1]
+        image = Image.open(io.BytesIO(base64.b64decode(raw)))
+
+        # Background removal — use rembg if available, fall back to white composite
+        try:
+            import rembg
+            session = rembg.new_session()
+            image = rembg.remove(image.convert("RGBA"), session=session)
+            print("[triposr] Background removed via rembg")
+        except Exception as rembg_err:
+            print(f"[triposr] rembg skipped ({rembg_err.__class__.__name__}): {rembg_err}")
+            image = image.convert("RGBA")
+
+        # Composite onto white background for the model
+        bg = Image.new("RGBA", image.size, (255, 255, 255, 255))
+        if image.mode == "RGBA":
+            bg.paste(image, mask=image.split()[3])
+        else:
+            bg.paste(image)
+        image_rgb = bg.convert("RGB")
+
+        print(f"[triposr] /generate resolution={req.resolution}")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        with torch.no_grad():
+            scene_codes = _model([image_rgb], device=device)
+
+        print("[triposr] Extracting mesh...")
+        meshes = _model.extract_mesh(scene_codes, has_vertex_color=True, resolution=req.resolution)
+
+        glb_bytes = meshes[0].export(file_type="glb")
+        print(f"[triposr] GLB size: {len(glb_bytes)/1024:.1f} KB")
+
+        return {"success": True, "glb_base64": base64.b64encode(glb_bytes).decode()}
+    except Exception:
+        tb = traceback.format_exc()
+        print(f"[triposr] /generate failed:\n{tb}")
+        return {"success": False, "error": tb}
+
+
+if __name__ == "__main__":
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
+    print(f"[triposr] Starting on port {port}")
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+'''
+                run_script.write_text(triposr_server, encoding="utf-8")
+
+                # 5. Lockfile
+                yield f"data: {json.dumps({'line': 'Finalizing TripoSR installation...'})}\n\n"
+                install_file.write_text(f"Installed {datetime.now().isoformat()}", encoding="utf-8")
+                yield f"data: {json.dumps({'done': True, 'success': True})}\n\n"
+                return
+            # end triposr branch — fall through to trellis-2 install
+
             # 3. Clone the repository
             if repo_dir.exists() and (repo_dir / ".git").exists():
                 yield f"data: {json.dumps({'line': 'Existing engine found. Syncing repository...'})}\n\n"

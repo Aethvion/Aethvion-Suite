@@ -163,7 +163,8 @@
                 });
 
                 if (response.status === 503) {
-                    window.showToast('Trellis 2 (WIP) is currently launching (Loading 12GB VRAM weights). Please wait...', 'info');
+                    const modelLabel = model === 'triposr' ? 'TripoSR' : 'Trellis 2';
+                    window.showToast(`${modelLabel} is currently launching (Loading model weights into VRAM). Please wait...`, 'info');
                     return;
                 }
 

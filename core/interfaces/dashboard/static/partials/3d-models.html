@@ -50,7 +50,7 @@
                         <div class="hub-model-info">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <h3 style="font-size: 1.8rem; margin:0;">Trellis 2 (WIP)</h3>
-                                <div id="trellis-health-badge" class="hub-status-badge" style="border-color: rgba(255,255,255,0.1); color: var(--text-tertiary); font-size: 0.75rem; padding: 0.4rem 0.8rem;">
+                                <div id="trellis2-health-badge" class="hub-status-badge" style="border-color: rgba(255,255,255,0.1); color: var(--text-tertiary); font-size: 0.75rem; padding: 0.4rem 0.8rem;">
                                     <i class="fas fa-power-off"></i> Model Service is Offline
                                 </div>
                             </div>
@@ -63,50 +63,129 @@
                             <span class="hub-tag"><i class="fas fa-file-export"></i> .OBJ / .GLB</span>
                         </div>
 
-                        <div id="trellis-setup-actions" style="display:flex; flex-direction:column; gap:0.75rem; margin-top: auto;">
-                            <!-- Deployment Button -->
-                            <button id="btn-install-full" class="hub-action-btn" style="display:none; width:100%; background:#fb923c; color:black; height: 50px; font-weight: 800; border:none; box-shadow: 0 4px 15px rgba(251, 146, 60, 0.25);">
+                        <div id="trellis2-setup-actions" style="display:flex; flex-direction:column; gap:0.75rem; margin-top: auto;">
+                            <button id="btn-install-full-trellis2" class="hub-action-btn" style="display:none; width:100%; background:#fb923c; color:black; height: 50px; font-weight: 800; border:none; box-shadow: 0 4px 15px rgba(251, 146, 60, 0.25);">
                                 <i class="fas fa-hammer"></i> Install Trellis 2 + Weights
                             </button>
-                            <!-- Execution Button: Vibrant Aethvion Primary for Ready state -->
-                            <button id="btn-run-trellis" class="hub-action-btn" style="display:none; width:100%; background:var(--primary); color:black; height: 50px; font-weight: 800; border:none; box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);">
+                            <button id="btn-run-trellis2" class="hub-action-btn" style="display:none; width:100%; background:var(--primary); color:black; height: 50px; font-weight: 800; border:none; box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);">
                                 <i class="fas fa-play"></i> Launch Trellis 2
                             </button>
-                            <!-- Prominent Repair Button -->
-                            <div id="trellis-fix-container" style="display:none; text-align:center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem; margin-top: 0.25rem;">
-                                <button id="btn-fix-trellis" class="hub-tag" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-tertiary); cursor:pointer; font-size: 0.7rem; padding: 0.4rem 1rem; border-radius: 20px; transition: all 0.2s;">
+                            <div id="trellis2-fix-container" style="display:none; text-align:center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem; margin-top: 0.25rem;">
+                                <button id="btn-fix-trellis2" class="hub-tag" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-tertiary); cursor:pointer; font-size: 0.7rem; padding: 0.4rem 1rem; border-radius: 20px; transition: all 0.2s;">
                                     <i class="fas fa-wrench" style="margin-right: 4px;"></i> Repair Trellis 2 Installation
                                 </button>
                             </div>
                         </div>
 
                         <!-- Dual Progress Bars -->
-                        <div id="trellis-install-progress-container" style="display:none; margin-top: 1rem; background: rgba(0,0,0,0.3); padding: 1.25rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                            <!-- Bar 1: Core Files -->
-                            <div id="progress-engine" style="margin-bottom: 1.25rem;">
+                        <div id="trellis2-install-progress-container" style="display:none; margin-top: 1rem; background: rgba(0,0,0,0.3); padding: 1.25rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                            <div id="progress-engine-trellis2" style="margin-bottom: 1.25rem;">
                                 <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size:0.75rem;">
-                                    <span id="engine-text" style="color:var(--text-tertiary);">1. Environment & Core Files</span>
-                                    <span id="engine-percent" style="color:var(--primary); font-weight: 700;">0%</span>
+                                    <span id="engine-text-trellis2" style="color:var(--text-tertiary);">1. Environment & Core Files</span>
+                                    <span id="engine-percent-trellis2" style="color:var(--primary); font-weight: 700;">0%</span>
                                 </div>
-                                <div class="model-dl-bar-wrap"><div id="engine-bar" class="model-dl-bar" style="width:0%; background:var(--primary); height: 6px;"></div></div>
+                                <div class="model-dl-bar-wrap"><div id="engine-bar-trellis2" class="model-dl-bar" style="width:0%; background:var(--primary); height: 6px;"></div></div>
                             </div>
-                            <!-- Bar 2: Weights -->
-                            <div id="progress-weights" style="opacity: 0.4; transition: opacity 0.3s ease;">
+                            <div id="progress-weights-trellis2" style="opacity: 0.4; transition: opacity 0.3s ease;">
                                 <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size:0.75rem;">
-                                    <span id="weights-text" style="color:var(--text-tertiary);">2. HuggingFace Model Weights (12GB)</span>
-                                    <span id="weights-percent" style="color:var(--primary); font-weight: 700;">0%</span>
+                                    <span id="weights-text-trellis2" style="color:var(--text-tertiary);">2. HuggingFace Model Weights (12GB)</span>
+                                    <span id="weights-percent-trellis2" style="color:var(--primary); font-weight: 700;">0%</span>
                                 </div>
-                                <div class="model-dl-bar-wrap"><div id="weights-bar" class="model-dl-bar" style="width:0%; background:var(--primary); height: 6px;"></div></div>
+                                <div class="model-dl-bar-wrap"><div id="weights-bar-trellis2" class="model-dl-bar" style="width:0%; background:var(--primary); height: 6px;"></div></div>
                             </div>
                         </div>
 
                         <!-- System Log Terminal -->
-                        <div id="trellis-install-log-container" style="display:none; background:#000; border:1px solid rgba(255,255,255,0.1); border-radius:8px; overflow:hidden;">
+                        <div id="trellis2-install-log-container" style="display:none; background:#000; border:1px solid rgba(255,255,255,0.1); border-radius:8px; overflow:hidden;">
                             <div style="background:rgba(255,255,255,0.05); padding:0.5rem 1rem; font-size:0.65rem; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; gap:0.5rem;">
                                 <i class="fas fa-terminal" style="color:var(--primary); font-size: 0.6rem;"></i>
                                 <span style="color:var(--text-tertiary); text-transform:uppercase; letter-spacing:1px; font-weight: 700;">System Logs</span>
                             </div>
-                            <pre id="trellis-install-log" style="margin:0; padding:1rem; font-size:0.7rem; color:#4ade80; font-family:'Fira Code', monospace; max-height:150px; overflow-y:auto; white-space: pre-wrap; word-wrap: break-word; line-height: 1.4;"></pre>
+                            <pre id="trellis2-install-log" style="margin:0; padding:1rem; font-size:0.7rem; color:#4ade80; font-family:'Fira Code', monospace; max-height:150px; overflow-y:auto; white-space: pre-wrap; word-wrap: break-word; line-height: 1.4;"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── TripoSR Section ──────────────────────────────────────── -->
+    <section class="hub-provider-section">
+        <div class="hub-provider-hd">
+            <div class="hub-provider-dot" style="--brand-color: #a855f7;"></div>
+            <h2 class="hub-provider-name">Stability: TripoSR</h2>
+        </div>
+
+        <div class="hub-grid" style="grid-template-columns: 1fr;">
+            <div class="hub-card" style="padding: 2rem;">
+                <div style="display:grid; grid-template-columns: 280px 1fr; gap: 2.5rem;">
+                    
+                    <!-- Preview/Icon Side -->
+                    <div style="background: rgba(0,0,0,0.3); border-radius: 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px solid var(--hub-card-border);">
+                         <i class="fas fa-cube" style="font-size: 6rem; color: #a855f7; opacity: 0.8; filter: drop-shadow(0 0 20px rgba(168, 85, 247, 0.3));"></i>
+                         <div style="margin-top: 1.5rem; display:flex; gap:0.5rem;">
+                             <span class="hub-tag" style="background:#a855f7; color:#fff;">STABLE</span>
+                             <span class="hub-tag">FEED-FORWARD RECON</span>
+                         </div>
+                    </div>
+
+                    <!-- Info/Actions Side -->
+                    <div style="display:flex; flex-direction:column; gap:1.25rem;">
+                        <div class="hub-model-info">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <h3 style="font-size: 1.8rem; margin:0;">TripoSR</h3>
+                                <div id="triposr-health-badge" class="hub-status-badge" style="border-color: rgba(255,255,255,0.1); color: var(--text-tertiary); font-size: 0.75rem; padding: 0.4rem 0.8rem;">
+                                    <i class="fas fa-power-off"></i> Model Service is Offline
+                                </div>
+                            </div>
+                            <p style="font-size: 1rem; color: var(--text-secondary);">Fast and robust 3D reconstruction from single images. Generates high-quality meshes in seconds. More reliable across varying hardware than larger flow-based models.</p>
+                        </div>
+
+                        <div class="hub-tags">
+                            <span class="hub-tag"><i class="fas fa-memory"></i> 6GB VRAM REQ</span>
+                            <span class="hub-tag"><i class="fas fa-bolt"></i> < 1s INFERENCE</span>
+                            <span class="hub-tag"><i class="fas fa-file-export"></i> .GLB</span>
+                        </div>
+
+                        <div id="triposr-setup-actions" style="display:flex; flex-direction:column; gap:0.75rem; margin-top: auto;">
+                            <button id="btn-install-full-triposr" class="hub-action-btn" style="display:none; width:100%; background:#fb923c; color:black; height: 50px; font-weight: 800; border:none; box-shadow: 0 4px 15px rgba(251, 146, 60, 0.25);">
+                                <i class="fas fa-hammer"></i> Install TripoSR + Weights
+                            </button>
+                            <button id="btn-run-triposr" class="hub-action-btn" style="display:none; width:100%; background:#a855f7; color:white; height: 50px; font-weight: 800; border:none; box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);">
+                                <i class="fas fa-play"></i> Launch TripoSR
+                            </button>
+                            <div id="triposr-fix-container" style="display:none; text-align:center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem; margin-top: 0.25rem;">
+                                <button id="btn-fix-triposr" class="hub-tag" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-tertiary); cursor:pointer; font-size: 0.7rem; padding: 0.4rem 1rem; border-radius: 20px; transition: all 0.2s;">
+                                    <i class="fas fa-wrench" style="margin-right: 4px;"></i> Repair TripoSR Installation
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Dual Progress Bars -->
+                        <div id="triposr-install-progress-container" style="display:none; margin-top: 1rem; background: rgba(0,0,0,0.3); padding: 1.25rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                            <div id="progress-engine-triposr" style="margin-bottom: 1.25rem;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size:0.75rem;">
+                                    <span id="engine-text-triposr" style="color:var(--text-tertiary);">1. Environment & Core Files</span>
+                                    <span id="engine-percent-triposr" style="color:#a855f7; font-weight: 700;">0%</span>
+                                </div>
+                                <div class="model-dl-bar-wrap"><div id="engine-bar-triposr" class="model-dl-bar" style="width:0%; background:#a855f7; height: 6px;"></div></div>
+                            </div>
+                            <div id="progress-weights-triposr" style="opacity: 0.4; transition: opacity 0.3s ease;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size:0.75rem;">
+                                    <span id="weights-text-triposr" style="color:var(--text-tertiary);">2. HuggingFace Model Weights (1.7GB)</span>
+                                    <span id="weights-percent-triposr" style="color:#a855f7; font-weight: 700;">0%</span>
+                                </div>
+                                <div class="model-dl-bar-wrap"><div id="weights-bar-triposr" class="model-dl-bar" style="width:0%; background:#a855f7; height: 6px;"></div></div>
+                            </div>
+                        </div>
+
+                        <!-- System Log Terminal -->
+                        <div id="triposr-install-log-container" style="display:none; background:#000; border:1px solid rgba(255,255,255,0.1); border-radius:8px; overflow:hidden;">
+                            <div style="background:rgba(255,255,255,0.05); padding:0.5rem 1rem; font-size:0.65rem; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fas fa-terminal" style="color:#a855f7; font-size: 0.6rem;"></i>
+                                <span style="color:var(--text-tertiary); text-transform:uppercase; letter-spacing:1px; font-weight: 700;">System Logs</span>
+                            </div>
+                            <pre id="triposr-install-log" style="margin:0; padding:1rem; font-size:0.7rem; color:#4ade80; font-family:'Fira Code', monospace; max-height:150px; overflow-y:auto; white-space: pre-wrap; word-wrap: break-word; line-height: 1.4;"></pre>
                         </div>
                     </div>
                 </div>
