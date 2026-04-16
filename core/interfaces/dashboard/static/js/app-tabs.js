@@ -49,10 +49,17 @@ const ATB = (() => {
                 this.btn.classList.toggle('open');
             });
 
-            document.addEventListener('click', () => {
-                this.menu.classList.remove('open');
-                this.btn.classList.remove('open');
-            });
+            if (window._aeRegisterClickAway) {
+                window._aeRegisterClickAway({
+                    panel: this.menu,
+                    trigger: this.btn,
+                    isOpen: () => this.menu.classList.contains('open'),
+                    onClose: () => {
+                        this.menu.classList.remove('open');
+                        this.btn.classList.remove('open');
+                    }
+                });
+            }
 
             this.startPolling();
         },

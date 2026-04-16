@@ -411,12 +411,15 @@ function _isHidden(source) {
             _loadHistory();
         });
 
-        // Close panel when clicking outside
-        document.addEventListener('click', (e) => {
-            if (_panelOpen && !panel.contains(e.target) && e.target !== bellBtn && !bellBtn.contains(e.target)) {
-                closePanel();
-            }
-        });
+        // Close panel when clicking outside (Centralized for performance)
+        if (window._aeRegisterClickAway) {
+            window._aeRegisterClickAway({
+                panel: panel,
+                trigger: bellBtn,
+                isOpen: () => _panelOpen,
+                onClose: () => closePanel()
+            });
+        }
 
         // Initial data load
         _fetchActive().then(() => _updateBadge());

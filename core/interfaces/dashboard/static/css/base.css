@@ -1620,3 +1620,10 @@ select:focus {
 .ae-tooltip {
     animation: ae-fade-in-up 0.14s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* Performance: Kill all animations for backgrounded tabs */
+body.stop-animations-global *,
+body.stop-animations-global *::before,
+body.stop-animations-global *::after {
+    animation-play-state: paused !important;
+}

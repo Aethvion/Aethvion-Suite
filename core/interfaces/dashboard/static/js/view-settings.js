@@ -1241,15 +1241,15 @@ function initCapsTd(cell) {
                 markSettingsDirty();
             });
 
-            // Close on outside click
-            setTimeout(() => {
-                document.addEventListener('click', function closeDropdown(ev) {
-                    if (!dropdown.contains(ev.target)) {
-                        dropdown.remove();
-                        document.removeEventListener('click', closeDropdown);
-                    }
+            // Close on outside click (Centralized for performance)
+            if (window._aeRegisterClickAway) {
+                window._aeRegisterClickAway({
+                    panel: dropdown,
+                    trigger: addBtn,
+                    isOpen: () => !!dropdown.parentNode,
+                    onClose: () => dropdown.remove()
                 });
-            }, 0);
+            }
             e.stopPropagation();
         }
     });

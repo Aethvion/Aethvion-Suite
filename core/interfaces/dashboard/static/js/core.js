@@ -554,13 +554,15 @@ function initializeWebSockets() {
     }
 }
 
-// Manage WebSockets based on tab visibility
+// Manage WebSockets and CSS animations based on tab visibility
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
+        document.body.classList.add('stop-animations-global');
         if (chatWs) chatWs.close();
         if (logsWs) logsWs.close();
         if (agentsWs) agentsWs.close();
     } else {
+        document.body.classList.remove('stop-animations-global');
         initializeWebSockets();
     }
 });
@@ -1418,6 +1420,32 @@ async function updateModuleStatusBadges() {
 }
 
 // ===== Common Utilities =====
+
+// Central Registry for "click outside to close" UI components (Performance Optimization)
+window._aeClickAwayManager = {
+    registrations: [],
+    isInitialized: false,
+    init() {
+        if (this.isInitialized) return;
+        this.isInitialized = true;
+        document.addEventListener('click', (e) => {
+            this.registrations.forEach(reg => {
+                const panel = typeof reg.panel === 'string' ? document.getElementById(reg.panel) : reg.panel;
+                const trigger = typeof reg.trigger === 'string' ? document.getElementById(reg.trigger) : reg.trigger;
+                
+                if (panel && reg.isOpen() && !panel.contains(e.target)) {
+                    if (trigger && (trigger === e.target || trigger.contains(e.target))) return;
+                    reg.onClose();
+                }
+            });
+        });
+    },
+    register(config) {
+        // config: { panel: el|id, trigger: el|id, isOpen: () => boolean, onClose: () => void }
+        if (!this.isInitialized) this.init();
+        this.registrations.push(config);
+    }
+};
 
 function formatNumber(n) {
     return new Intl.NumberFormat().format(n);
