@@ -330,25 +330,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeWebSockets();
     // Note: refresh-memory-btn is inside the memory partial — wired in view-memory.js panelLoaded handler
 
+    // Synchronization: Wait for sidebar-manager to render tabs before restoring mode/tab
+    // This prevents the "reset to Chat" issue on refresh
+    await new Promise(resolve => {
+        if (document.querySelector('.main-tab')) return resolve();
+        // If sidebar-ready was already fired, we might have missed it, so we check for tab buttons first
+        document.addEventListener('sidebar-ready', resolve, { once: true });
+        setTimeout(resolve, 1000); // Safety fallback
+    });
+
     initializeUI();
     updateSystemInfo();
 
-    // Apply default mode immediately so nothing looks broken on load (use hint for faster restore)
-    const modeHint = localStorage.getItem('dashboard_mode_hint') || 'home';
-    await setDashboardMode(modeHint, false);
-
     try {
-        // Load preferences safely before heavy data initialization
-        if (typeof prefs !== 'undefined' && typeof prefs.load === 'function') {
-            await prefs.load();
+        // 1. Load preferences first (server source)
+        if (window.prefs && typeof window.prefs.load === 'function') {
+            await window.prefs.load();
+            
+            // Cleanup legacy key if present in memory to prevent confusion
+            if (window.prefs.data && window.prefs.data.active_tab) {
+                delete window.prefs.data.active_tab;
+            }
+        }
 
-            // Restore dashboard mode
-            const mode = prefs.get('dashboard_mode', 'home');
-            await setDashboardMode(mode, false);
+        // 2. Identify the authoritative mode (Server pref > Local hint > Default)
+        const modeHint = localStorage.getItem('dashboard_mode_hint') || 'home';
+        const authoritativeMode = (window.prefs && typeof window.prefs.get === 'function') 
+            ? window.prefs.get('dashboard_mode', modeHint)
+            : modeHint;
 
-            // Restore sidebar state
-            const sidebarCollapsed = prefs.get('sidebar_collapsed', false);
-            const sidebarHidden = prefs.get('sidebar_hidden', false);
+        // 3. Set the mode (this will trigger tab restoration within setDashboardMode)
+        await setDashboardMode(authoritativeMode, false);
+
+        // 4. Restore other sidebar/UI states from preferences
+        if (window.prefs && typeof window.prefs.get === 'function') {
+            const sidebarCollapsed = window.prefs.get('sidebar_collapsed', false);
+            const sidebarHidden = window.prefs.get('sidebar_hidden', false);
             const sidebarNav = document.getElementById('sidebar-nav');
             if (sidebarNav) {
                 if (sidebarCollapsed === true || sidebarCollapsed === 'true') {
@@ -364,66 +381,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
             
-            // Restore threads collapsed state
-            const threadsCollapsed = prefs.get('threads_collapsed', false);
+            const threadsCollapsed = window.prefs.get('threads_collapsed', false);
             if (threadsCollapsed === true || threadsCollapsed === 'true') {
                 const layout = document.querySelector('.three-column-layout');
                 if (layout) layout.classList.add('threads-collapsed');
             }
 
-            // Restore category/section collapse states
             initCategoryCollapse();
             initSectionCollapse();
-
-            // Apply interface visibility preferences (hidden tabs/categories)
             applyNavVisibility();
-
-            // The active tab is now restored automatically by setDashboardMode
-        } else {
-            // Fallback (redundant fetch but keeping for safety if view-settings isn't loaded)
-            let fallbackMode = 'home';
-            const modeRes = await fetch('/api/preferences/get?key=dashboard_mode');
-            if (modeRes.ok) {
-                const modeData = await modeRes.json();
-                if (modeData.value) {
-                    fallbackMode = modeData.value;
-                    setDashboardMode(fallbackMode, false);
-                }
-            }
-            const tabRes = await fetch(`/api/preferences/get?key=active_tab_${fallbackMode}`);
-            if (tabRes.ok) {
-                const tabData = await tabRes.json();
-                if (tabData.value) switchMainTab(tabData.value, false);
-            }
-            const sidebarRes = await fetch('/api/preferences/get?key=sidebar_collapsed');
-            if (sidebarRes.ok) {
-                const sidebarData = await sidebarRes.json();
-                const sidebarNav = document.getElementById('sidebar-nav');
-                if (sidebarNav && (sidebarData.value === true || sidebarData.value === 'true')) {
-                    sidebarNav.classList.add('collapsed');
-                }
-            }
-            const hiddenRes = await fetch('/api/preferences/get?key=sidebar_hidden');
-            if (hiddenRes.ok) {
-                const hiddenData = await hiddenRes.json();
-                const sidebarNav = document.getElementById('sidebar-nav');
-                if (sidebarNav && (hiddenData.value === true || hiddenData.value === 'true')) {
-                    sidebarNav.classList.add('hidden');
-                    const hideBtn = document.getElementById('sidebar-hide-toggle');
-                    if (hideBtn) {
-                        hideBtn.innerHTML = '<i class="fas fa-angles-right"></i>';
-                        hideBtn.title = 'Show Sidebar';
-                    }
-                }
-            }
-            const threadsRes = await fetch('/api/preferences/get?key=threads_collapsed');
-            if (threadsRes.ok) {
-                const threadsData = await threadsRes.json();
-                if (threadsData.value === true || threadsData.value === 'true') {
-                    const layout = document.querySelector('.three-column-layout');
-                    if (layout) layout.classList.add('threads-collapsed');
-                }
-            }
         }
     } catch (e) {
         console.warn("Error restoring UI state:", e);
@@ -906,14 +872,35 @@ async function setDashboardMode(mode, save = true) {
 
     // Restore the last active tab for this mode
     let targetTab = dashboardMode === 'home' ? 'suite-home' : 'chat';
-    if (typeof prefs !== 'undefined' && typeof prefs.get === 'function') {
-        const savedTab = prefs.get(`active_tab_${dashboardMode}`);
+    
+    // 1. Try Hint for instant restore
+    const hintTab = localStorage.getItem(`active_tab_hint_${dashboardMode}`);
+    if (hintTab) targetTab = hintTab;
+
+    // 2. Try server-side Preferences for authority
+    if (window.prefs && typeof window.prefs.get === 'function') {
+        const savedTab = window.prefs.get(`active_tab_${dashboardMode}`);
         if (savedTab) targetTab = savedTab;
+        
+        // Final Purge of legacy key (if it still leaks from old caches)
+        localStorage.removeItem('active_tab'); 
     }
 
-    // Validate target tab exists and isn't hidden
-    const targetBtn = document.querySelector(`.main-tab[data-maintab="${targetTab}"]`);
+    // Validate target tab exists. 
+    // If not found yet, it might still be rendering (race condition with sidebar-manager)
+    let targetBtn = document.querySelector(`.main-tab[data-maintab="${targetTab}"]`);
+    
+    if (!targetBtn) {
+        // Patient Retry: The sidebar might be rendering precisely now
+        for (let i = 0; i < 5; i++) {
+            await new Promise(r => setTimeout(r, 150));
+            targetBtn = document.querySelector(`.main-tab[data-maintab="${targetTab}"]`);
+            if (targetBtn) break;
+        }
+    }
+
     if (!targetBtn || targetBtn.classList.contains('mode-hidden')) {
+        console.warn(`[Core] Target tab '${targetTab}' not found or hidden. Falling back.`);
         targetTab = dashboardMode === 'home' ? 'suite-home' : 'chat';
     }
 
@@ -1113,14 +1100,21 @@ async function switchMainTab(tabName, save = true) {
         if (_eagerPanel) _eagerPanel.classList.add('active');
 
         return window._partialLoader.ensure(actualTabName).then(function () {
-            return switchMainTab(tabName, save);   // re-enter once HTML is ready
+            // Re-check visibility before final switch
+            return switchMainTab(tabName, save);
         });
     }
-    // ─────────────────────────────────────────────────────────────────────────
+
+    if (currentMainTab === actualTabName && document.getElementById(`${actualTabName}-panel`)?.classList.contains('active')) {
+        return; // Avoid redundant heavy work
+    }
 
     currentMainTab = actualTabName;
-    if (save && typeof savePreference === 'function') {
-        savePreference(`active_tab_${dashboardMode}`, actualTabName);
+    if (save) {
+        localStorage.setItem(`active_tab_hint_${dashboardMode}`, actualTabName);
+        if (typeof savePreference === 'function') {
+            savePreference(`active_tab_${dashboardMode}`, actualTabName);
+        }
     }
 
     // Update tab buttons

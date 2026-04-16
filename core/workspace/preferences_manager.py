@@ -35,7 +35,9 @@ class PreferencesManager:
         """Load preferences from file."""
         if not self.prefs_file.exists():
             self.preferences = {
-                "active_tab": "chat",
+                "dashboard_mode": "home",
+                "active_tab_ai": "chat",
+                "active_tab_home": "suite-home",
                 "package_filters": {
                     "status": "all",
                     "hide_system": False,

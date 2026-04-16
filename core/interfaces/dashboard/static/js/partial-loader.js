@@ -89,6 +89,12 @@
         return Promise.all(promises);
     }
 
+    function _dispatchLoaded(tabName, panelId, el) {
+        document.dispatchEvent(new CustomEvent('panelLoaded', {
+            detail: { tabName, panelId, el }
+        }));
+    }
+
     /**
      * Fetch and inject a partial if not already loaded.
      * Returns a Promise that resolves when the panel is ready.
@@ -97,7 +103,11 @@
         const { panelId, el } = _panelFor(tabName);
 
         // Already loaded or panel has no partial attribute
-        if (!el || !el.dataset.partial || _loaded.has(panelId)) return _loadScripts(tabName);
+        if (!el || !el.dataset.partial || _loaded.has(panelId)) {
+            return _loadScripts(tabName).then(() => {
+                _dispatchLoaded(tabName, panelId, el);
+            });
+        }
 
         // Return the in-flight promise if already fetching
         if (_pending.has(panelId)) return _pending.get(panelId);
@@ -121,9 +131,7 @@
             })
             .then(function() {
                 // Let JS modules know this panel is now in the DOM and scripts are loaded
-                document.dispatchEvent(new CustomEvent('panelLoaded', {
-                    detail: { tabName: tabName, panelId: panelId, el: el }
-                }));
+                _dispatchLoaded(tabName, panelId, el);
             })
             .catch(function (err) {
                 console.error('[PartialLoader] Failed to load "' + partial + '":', err);

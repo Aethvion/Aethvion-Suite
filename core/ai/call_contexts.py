@@ -414,16 +414,21 @@ Available: angry, blushing, bored, crying, default, error, exhausted,
         try:
             from core.workspace.preferences_manager import get_preferences_manager
             prefs      = get_preferences_manager()
-            active_tab = prefs.get("active_tab", "chat")
             project_root = Path(__file__).parent.parent.parent
             doc_path   = project_root / "documentation" / "ai" / "dashboard-interface-context.md"
             if doc_path.exists():
                 doc_content = doc_path.read_text(encoding="utf-8")
-                context += (
-                    f"\n\nCURRENT DASHBOARD CONTEXT:\n"
-                    f"The user is currently viewing the '{active_tab}' tab.\n"
-                    f"<dashboard_docs>\n{doc_content}\n</dashboard_docs>\n"
-                )
+                # Identify active tab based on mode (authoritative)
+                mode = prefs.get("dashboard_mode", "home")
+                active_tab = prefs.get(f"active_tab_{mode}", "chat" if mode == "ai" else "suite-home")
+                
+                if active_tab:
+                    # Inject a context hint about what the user is currently seeing
+                    context += (
+                        f"\n\nCURRENT DASHBOARD CONTEXT:\n"
+                        f"The user is currently viewing the '{active_tab}' tab in {mode} mode.\n"
+                        f"<dashboard_docs>\n{doc_content}\n</dashboard_docs>\n"
+                    )
         except Exception as e:
             logger.warning(f"[CallContexts] Could not load dashboard context: {e}")
 

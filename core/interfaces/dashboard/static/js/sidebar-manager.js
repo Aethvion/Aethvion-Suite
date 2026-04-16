@@ -1061,10 +1061,11 @@
             enterEdit:      enterEditMode,
             switchProfile,
         };
-
         watchMode();
         watchSuiteHomePanel();
         render();
+
+        document.dispatchEvent(new CustomEvent('sidebar-ready'));
 
         // Auto-show onboarding for first-time users
         if (isFirstTime) setTimeout(showOnboardingModal, 500);
