@@ -408,8 +408,10 @@ class OverlayWindow(QWidget):
         self.setMinimumSize(420, 300)
         self.resize(560, 460)
 
+        self.setStyleSheet("background: transparent; border: none;")
+
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(8, 8, 8, 8)
+        outer.setContentsMargins(1, 1, 1, 1)
 
         self._container = QFrame(self)
         self._container.setObjectName("aovContainer")
