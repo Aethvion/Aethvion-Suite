@@ -15,6 +15,7 @@ import sys
 import platform
 import asyncio
 import psutil
+import json
 
 from core.utils import utcnow_iso
 from core.version import VERSION
