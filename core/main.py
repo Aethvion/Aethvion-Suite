@@ -23,12 +23,12 @@ os.environ["AETHVION_DEV"] = "1"
 
 # Enable C-level crash logging (Segfaults, Illegal Instructions)
 import faulthandler
-import datetime
-crashlog_dir = ROOT / "data" / "logs" / "system"
-crashlog_dir.mkdir(parents=True, exist_ok=True)
-crashlog_file = crashlog_dir / "crashlog.txt"
+from core.utils.paths import CRASH_LOG
+
+crashlog_file = CRASH_LOG
 try:
-    _fault_file = open(crashlog_file, "a")
+    crashlog_file.parent.mkdir(parents=True, exist_ok=True)
+    _fault_file = open(crashlog_file, "a", encoding="utf-8")
     _fault_file.write(f"\n\n--- Aethvion Suite Started at {datetime.datetime.now()} ---\n")
     faulthandler.enable(file=_fault_file)
 except Exception as e:

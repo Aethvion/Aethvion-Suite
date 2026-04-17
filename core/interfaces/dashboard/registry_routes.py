@@ -981,8 +981,8 @@ async def get_gpu_status():
     return result
 
 
-DATA_DIR = PROJECT_ROOT / "data"
-SYSTEM_SPECS_PATH = DATA_DIR / "system_specs.json"
+from core.utils.paths import SYSTEM_SPECS
+SYSTEM_SPECS_PATH = SYSTEM_SPECS
 
 
 @router.get("/local/system-specs")

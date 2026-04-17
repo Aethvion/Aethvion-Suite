@@ -6,8 +6,10 @@ from core.utils import get_logger, utcnow_iso
 
 logger = get_logger(__name__)
 
+from core.utils.paths import PERSISTENT_MEMORY_JSON
+
 # Default location for persistent memory
-MEMORY_PATH = Path("data/history/chat/persistent_memory.json")
+MEMORY_PATH = PERSISTENT_MEMORY_JSON
 
 class PersistentMemory:
     """

@@ -112,7 +112,7 @@
                     "Infrastructure: Registry-based model pricing — _estimate_cost in corp_manager.py reads input_cost_per_1m_tokens and output_cost_per_1m_tokens from data/config/model_registry.json via a module-level cache; supports all configured providers",
                     "License: Dual license (AGPLv3 + Commercial) replacing MIT; includes version history note, commercial trigger definitions, and CLA section",
                     "License: Asset license v1.1 — CC BY-NC-ND 4.0 with explicit Commercial Inclusion, Modification, Standalone Redistribution, and Trademark Use clauses",
-                    "Infrastructure: C-level crash logging — enabled faulthandler in core/main.py to capture segmentation faults automatically to data/logs/system/crashlog.txt",
+                    "Infrastructure: C-level crash logging — enabled faulthandler in core/main.py to capture segmentation faults automatically to data/logs/crashlog.log",
                     "Infrastructure: Unified environment setup — extracted common batch initialization logic cleanly into setup/setup_environment.bat",
                     "Aethvion LinkMap: Standalone 3D codebase visualizer app supporting Python, JavaScript, TypeScript, JSX, and TSX parsing",
                     "Aethvion LinkMap: Interactive 3D force-directed graph UI with persistent node labels via SpriteText and dynamic connection highlighting",
@@ -123,7 +123,7 @@
                     "Agent Corp: Knowledge block MRU ordering — file digests shown most-recently-used first with a 1,500-char hard cap; sessions touching 30+ files stay lean",
                     "Agent Corp: File-write focused action log — Recent: always shows all write/patch/append actions so the model always sees what was changed",
                     "Agent Corp: Operator message caching — log re-read only when line count changes, eliminating a redundant file read on every LLM call",
-                    "Agent Corp: Blueprint cache location — _blueprint.txt written to data/agent_corps/{id}/ instead of the user's project workspace",
+                    "Agent Corp: Blueprint cache location — _blueprint.txt written to data/modes/agent_corp/{id}/ instead of the user's project workspace",
                     "Agent Corp: Worker prompt token efficiency — CORP_SYSTEM_PROMPT ~60% smaller than base; iterations 1+ use 270-char _task_short saving ~6,700 chars per call",
                     "Agent Corp: t/s calculation — actual LLM streaming time (llm_elapsed_s) now used as denominator, excluding tool execution overhead",
                     "Usage Analytics: Model breakdown table — added Input Cost, Output Cost, and Avg/Call columns (6 → 9 columns)",
@@ -163,7 +163,7 @@
                     "Agents Tab: Collapsible step cards with type-specific icons and foldout detail panels showing file content previews and command output",
                     "Agents Tab: Server-side folder browser — inline directory navigator for selecting workspace paths without raw string input",
                     "Agents Tab: Full step history persistence — all agent steps saved to thread history and replayed on thread reload",
-                    "Agents Tab: Thread history saved hierarchically under data/history/agents/{workspace_id}/threads/{thread_id}.json",
+                    "Agents Tab: Thread history saved hierarchically under data/modes/agents/{workspace_id}/threads/{thread_id}.json",
                     "Infrastructure: Agent event store (agent_events.py) — thread-safe per-task SSE event store with snapshot reads",
                     "Infrastructure: AgentRunner (agent_runner.py) — autonomous execution engine with write_file, read_file, list_dir, run_command, done tools",
                     "Infrastructure: GET /api/agents/browse endpoint — server-side directory browser returning folder entries for a given path"
@@ -205,7 +205,7 @@
                     "Code IDE: Open in Explorer context menu option for files and folders",
                     "Code IDE: Model selection and auto-execute preference persisted to localStorage across restarts",
                     "Code IDE: AI continuation loop — automatically chains follow-up calls so large tasks don't get cut off mid-response",
-                    "Code IDE: Usage logging to data/ai/logs/usage/ in suite-standard format compatible with Usage Dashboard",
+                    "Code IDE: Usage logging to data/logs/usage/ in suite-standard format compatible with Usage Dashboard",
                     "Code IDE: Model dropdown now uses same provider structure and cost info as the main Aethvion dashboard",
                     "Share Page: c.html for aethvion.com — renders shared AI conversations with participant chips, message colors, personality, and token stats",
                     "Aethvion Photo: AI background removal tool now integrated directly into the workspace"
@@ -274,8 +274,8 @@
                     "Aethvion Code IDE: Resizable 3-panel layout — file tree sidebar, Monaco editor, AI chat panel",
                     "Aethvion Code IDE: File tree with context menu (open, rename, delete, new file/folder, copy path) and inline rename on double-click",
                     "Aethvion Code IDE: Tab bar with dirty state indicators (●) and per-file Monaco models with saved view states",
-                    "Aethvion Code IDE: Project persistence — open tabs and active file saved to data/code/projects/ per workspace",
-                    "Aethvion Code IDE: Workspace persistence — last opened workspace and recent workspaces list saved to data/code/settings.json",
+                    "Aethvion Code IDE: Project persistence — open tabs and active file saved to data/apps/code/projects/ per workspace",
+                    "Aethvion Code IDE: Workspace persistence — last opened workspace and recent workspaces list saved to data/apps/code/settings.json",
                     "Aethvion Code IDE: Recent workspaces modal with time-ago labels and per-entry remove buttons",
                     "Aethvion Code IDE: Native OS folder picker (tkinter) accessible via Browse button in workspace modal",
                     "Aethvion Code IDE: Project-aware AI — workspace file structure injected into every chat system prompt automatically",
@@ -355,7 +355,7 @@
                     "Aethvion Audio: Migrated from single-track editor to full multi-track architecture",
                     "Aethvion Finance: Activated 'Finance' tab in the dashboard sidebar",
                     "Aethvion Finance: Enabled 'Financial Hub' panel in the Main Dashboard",
-                    "Infrastructure: Migrated all finance projects to dedicated data/finance/projects/ directory"
+                    "Infrastructure: Migrated all finance projects to dedicated data/apps/finance/projects/ directory"
                 ]
             },
             {
@@ -797,7 +797,7 @@
                 },
                 {
                     "name": "Persistent Workspace State",
-                    "desc": "Open tabs, active file, and recent workspaces are saved to data/code/ and restored on next launch."
+                    "desc": "Open tabs, active file, and recent workspaces are saved to data/apps/code/ and restored on next launch."
                 },
                 {
                     "name": "File Tree & Context Menu",

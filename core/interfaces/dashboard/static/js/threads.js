@@ -26,8 +26,8 @@ function initThreadManagement() {
     // Start with no selected thread
     currentThreadId = null;
 
-    // Disable input initially
-    toggleChatInput(false);
+    // Enable input by default so user can start typing immediately
+    toggleChatInput(true);
 
     // Load threads from API
     loadThreads();
@@ -328,18 +328,18 @@ function switchThread(threadId) {
     }
 }
 
+
+
 function toggleChatInput(enabled) {
     const input = document.getElementById('chat-input');
     const button = document.getElementById('send-button');
 
     if (input) {
-        input.disabled = !enabled;
-        if (button) button.disabled = !enabled;
+        input.disabled = false; // Always enabled now for better UX
+        if (button) button.disabled = false;
 
-        if (!enabled) {
-            input.placeholder = "Select a thread to start chatting...";
-            input.value = '';
-            input.style.height = ''; // Reset height
+        if (!currentThreadId) {
+            input.placeholder = "Start a new conversation...";
         } else {
             input.placeholder = "Ask me anything... (e.g., 'Analyze TSLA stock outlook')";
         }
@@ -1153,6 +1153,11 @@ async function sendMessage() {
     const message = input.value.trim();
 
     // Store which thread this message belongs to
+    // NEW: If no thread is selected, create one automatically
+    if (!currentThreadId) {
+        await createNewThread();
+    }
+
     const messageThreadId = currentThreadId;
 
     let attachedFiles = null;
@@ -2266,9 +2271,17 @@ loadThreads = async function() {
 document.addEventListener('panelLoaded', function(e) {
     if (e.detail && e.detail.panelId === 'chat-panel') {
         _initFolderView();
+        if (typeof window.loadChatModels === 'function') {
+            window.loadChatModels();
+        }
     }
 });
 // Fallback: also wire on DOMContentLoaded (default active panel)
 window.addEventListener('DOMContentLoaded', function() {
-    setTimeout(_initFolderView, 200);
+    setTimeout(() => {
+        _initFolderView();
+        if (typeof window.loadChatModels === 'function' && document.getElementById('model-select')) {
+            window.loadChatModels();
+        }
+    }, 500); // Give it a bit more time for partials
 });

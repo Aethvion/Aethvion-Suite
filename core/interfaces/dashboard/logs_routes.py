@@ -6,10 +6,11 @@ from datetime import datetime
 from core.utils import get_logger
 
 logger = get_logger(__name__)
+from core.utils.paths import LOGS
 router = APIRouter(prefix="/api/logs", tags=["Logs"])
 
-# Absolute path for clarity
-LOGS_DIR = Path("c:/Aethvion/Aethvion-Suite/data/logs/system")
+# Use centralized LOGS directory
+LOGS_DIR = LOGS
 
 @router.get("/list")
 async def list_logs():

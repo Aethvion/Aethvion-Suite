@@ -3,7 +3,7 @@
 episodic_memory:
   enabled: true
   storage_backend: "chromadb"  # chromadb, sqlite
-  storage_path: "data/ai/memory/storage"
+  storage_path: "data/vault/memory/storage"
   collection_name: "aethvion_episodic"
   retention_days: 30
   max_memories: 10000
@@ -18,7 +18,7 @@ episodic_memory:
 
 knowledge_graph:
   enabled: true
-  storage_path: "data/ai/memory/storage/knowledge_graph.json"
+  storage_path: "data/vault/memory/storage/knowledge_graph.json"
   auto_update: true
   max_nodes: 5000
 
