@@ -272,8 +272,22 @@
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    padding: 1rem 0;
-    gap: 0.2rem;
+    padding: 0.5rem 0;
+    gap: 0.1rem;
+}
+
+.settings-nav-header {
+    padding: 1.2rem 1.5rem 0.4rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-secondary);
+    opacity: 0.5;
+}
+
+.settings-nav-header:first-of-type {
+    margin-top: 0.4rem;
 }
 
 .settings-nav-item {

@@ -766,7 +766,7 @@ async function populateVoiceModelSelector(voiceSettings) {
 
 async function loadEnvStatus() {
     const container = document.getElementById('env-status-container');
-    if (!container || !devModeActive) return;
+    if (!container) return;
 
     container.innerHTML = '<div class="loading-placeholder">Loading environment variables...</div>';
 
@@ -2193,6 +2193,10 @@ async function switchSettingsSubTab(subTab, save = true) {
 
     if (subTab === 'assistant' || subTab === 'misakacipher') {
         loadChatModels();
+    }
+
+    if (subTab === 'env') {
+        loadEnvStatus();
     }
 
     if (subTab === 'extapi') {

@@ -4,32 +4,37 @@
                 <div class="settings-dashboard sidebar-layout">
                     <!-- Sidebar Navigation -->
                     <div class="settings-sidebar">
+                        <div class="settings-nav-header">System</div>
                         <button class="settings-nav-item active" data-settingsubtab="system">
                             <i class="fas fa-cog"></i> Global System
                         </button>
+                        <button class="settings-nav-item" data-settingsubtab="env">
+                            <i class="fas fa-key"></i> API Keys
+                        </button>
+                        <button class="settings-nav-item" data-settingsubtab="notifications">
+                            <i class="fas fa-bell"></i> Notifications
+                        </button>
+
+                        <div class="settings-nav-header">Intelligence</div>
                         <button class="settings-nav-item" data-settingsubtab="assistant">
                             <i class="fas fa-robot"></i> Assistant
                         </button>
                         <button class="settings-nav-item" data-settingsubtab="companions">
                             <i class="fas fa-users"></i> Companions
                         </button>
-                        <button class="settings-nav-item" data-settingsubtab="env">
-                            <i class="fas fa-key"></i> Environment
-                        </button>
                         <button class="settings-nav-item" data-settingsubtab="providers">
                             <i class="fas fa-database"></i> Model Registry
                         </button>
                         <button class="settings-nav-item" data-settingsubtab="profiles">
-                            <i class="fas fa-users"></i> Routing Profiles
+                            <i class="fas fa-route"></i> Routing Profiles
                         </button>
+
+                        <div class="settings-nav-header">Connectivity</div>
                         <button class="settings-nav-item" data-settingsubtab="modules">
-                            <i class="fas fa-cubes"></i> Modules
+                            <i class="fas fa-cubes"></i> Modules Hub
                         </button>
                         <button class="settings-nav-item" data-settingsubtab="discord">
                             <i class="fab fa-discord"></i> Discord Worker
-                        </button>
-                        <button class="settings-nav-item" data-settingsubtab="notifications">
-                            <i class="fas fa-bell"></i> Notifications
                         </button>
                         <button class="settings-nav-item" data-settingsubtab="extapi">
                             <i class="fas fa-plug"></i> External API
@@ -178,7 +183,7 @@
                                         <i class="fas fa-chevron-down companions-accordion-chevron" id="chevron-misaka"></i>
                                     </div>
                                 </div>
-                                <div class="card-content companions-accordion-body" id="accordion-body-misaka">
+                                <div class="card-content companions-accordion-body" id="accordion-body-misaka" style="display:none;">
 
                                     <div class="compact-item toggle-item"
                                         style="border-bottom: 1px solid var(--border); margin-bottom: 1rem; padding-bottom: 1rem;">
@@ -665,12 +670,8 @@
                                 <div class="card-header">
                                     <div class="header-title">
                                         <i class="fas fa-key"></i>
-                                        <span>Environment Variables</span>
+                                        <span>API Keys</span>
                                     </div>
-                                    <button class="action-btn xs-btn secondary" id="btn-toggle-dev-mode"
-                                        title="Toggle Developer Mode">
-                                        <i class="fas fa-unlock"></i>
-                                    </button>
                                 </div>
                                 <div class="card-content" id="env-status-container">
                                     <div class="loading-placeholder">Checking .env status...</div>

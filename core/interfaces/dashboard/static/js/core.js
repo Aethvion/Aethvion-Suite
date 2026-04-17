@@ -227,7 +227,7 @@ let agentsWs = null;
 // Global UI State
 let currentMainTab = 'chat';
 let dashboardMode = 'home'; // 'home' or 'ai'
-let devModeActive = false;
+let devModeActive = true;
 
 // ─── Preferences API ─────────────────────────────────────────────────────────
 window.prefs = {
