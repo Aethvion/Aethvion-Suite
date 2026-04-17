@@ -129,8 +129,7 @@ async def health_check(request: Request):
         "components": {
             "orchestrator": getattr(state, 'orchestrator', None) is not None,
             "nexus": getattr(state, 'nexus', None) is not None and state.nexus._initialized,
-            "factory": getattr(state, 'factory', None) is not None,
-            "forge": getattr(state, 'forge', None) is not None
+            "factory": getattr(state, 'factory', None) is not None
         }
     }
 

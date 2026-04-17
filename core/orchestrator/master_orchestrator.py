@@ -15,7 +15,6 @@ from core.tools.standard.file_ops import WORKSPACE_ROOT
 
 from core.nexus_core import NexusCore, Request, Response
 from core.factory import AgentFactory, AgentSpec
-from core.forge import ToolForge
 from core.memory import get_episodic_memory, get_knowledge_graph
 from core.memory.memory_spec import EpisodicMemory, generate_memory_id
 from core.utils import get_logger, generate_trace_id, utcnow_iso
@@ -35,8 +34,6 @@ class ActionPlan:
     trace_id: str
     intent: IntentAnalysis
     actions: List[str]  # Sequence of actions to take
-    requires_forge: bool = False
-    forge_description: Optional[str] = None
     requires_factory: bool = False
     agent_spec: Optional[AgentSpec] = None
     requires_memory: bool = False
@@ -53,7 +50,6 @@ class ExecutionResult:
     success: bool
     response: str
     actions_taken: List[str]
-    tools_forged: List[str]
     agents_spawned: List[str]
     memories_queried: int
     execution_time: float
@@ -77,18 +73,16 @@ class MasterOrchestrator:
     requiring explicit user menu selection.
     """
     
-    def __init__(self, nexus: NexusCore, factory: AgentFactory, forge: ToolForge):
+    def __init__(self, nexus: NexusCore, factory: AgentFactory):
         """
         Initialize Master Orchestrator.
         
         Args:
             nexus: NexusCore instance for AI routing
             factory: AgentFactory for spawning agents
-            forge: ToolForge for generating tools
         """
         self.nexus = nexus
         self.factory = factory
-        self.forge = forge
         self.intent_analyzer = IntentAnalyzer(nexus)
         
         # Memory tier (lazy loaded)
@@ -236,7 +230,6 @@ class MasterOrchestrator:
                     metadata={
                         'success': result.success,
                         'execution_time': execution_time,
-                        'tools_forged': result.tools_forged,
                         'agents_spawned': result.agents_spawned,
                         'model_id': result.model_id or model_id
                     }
@@ -280,7 +273,6 @@ class MasterOrchestrator:
                 success=False,
                 response=f"Orchestrator error: {str(e)}",
                 actions_taken=["error"],
-                tools_forged=[],
                 agents_spawned=[],
                 memories_queried=0,
                 execution_time=execution_time,
@@ -374,7 +366,6 @@ class MasterOrchestrator:
                     success=True,
                     response=cleaned_content,
                     actions_taken=actions_taken,
-                    tools_forged=[],
                     agents_spawned=[],
                     memories_queried=0,
                     execution_time=0,
@@ -586,7 +577,6 @@ class MasterOrchestrator:
             success=True,
             response=final_text,
             actions_taken=actions_taken,
-            tools_forged=[],
             agents_spawned=[],
             memories_queried=0,
             execution_time=0,
@@ -633,20 +623,13 @@ class MasterOrchestrator:
             plan.memory_query = intent.prompt
         
         elif intent.intent_type == IntentType.CREATE:
-            actions.append("forge_tool")
-            plan.requires_forge = True
-            plan.forge_description = intent.prompt
+            # CREATE intent is now handled as an agent spawn request
+            actions.append("spawn_agent")
+            plan.requires_factory = True
+            plan.agent_spec = self._build_agent_spec(intent, images)
         
         elif intent.intent_type in [IntentType.ANALYZE, IntentType.EXECUTE]:
-            # Check if tool exists
-            if intent.requires_tool and intent.tool_name:
-                tool_exists = self._check_tool_exists(intent.tool_name)
-                if not tool_exists:
-                    actions.append("forge_tool")
-                    plan.requires_forge = True
-                    plan.forge_description = f"Create {intent.tool_name} for {intent.prompt}"
-            
-            # Spawn agent
+            # Always spawn agent for these intents in the new curated tool system
             actions.append("spawn_agent")
             plan.requires_factory = True
             plan.agent_spec = self._build_agent_spec(intent, images=images)
@@ -678,7 +661,6 @@ class MasterOrchestrator:
             ExecutionResult with outcomes
         """
         actions_taken = []
-        tools_forged = []
         agents_spawned = []
         memories_queried = 0
         response_parts = []
@@ -686,35 +668,9 @@ class MasterOrchestrator:
         try:
             # Execute actions in sequence
             for action in plan.actions:
-                if action == "forge_tool":
-                    if self.step_callback:
-                        self.step_callback({
-                            "type": "agent_step",
-                            "title": "Forging Tool",
-                            "content": f"Forging tool based on description: *{plan.forge_description}*",
-                            "trace_id": plan.trace_id,
-                            "status": "running"
-                        })
-                        
-                    tool_result = self.call_forge(plan.forge_description, plan.trace_id)
-                    tools_forged.append(tool_result.get('tool_name', 'unknown'))
-                    # REMOVED: response_parts.append(f"✓ Forged tool: {tool_result.get('tool_name')}")
-                    actions_taken.append("forge_tool")
-                    
-                    if self.step_callback:
-                        status = "completed" if tool_result.get('success') else "failed"
-                        content = f"Successfully created tool: **{tool_result.get('tool_name')}**" if tool_result.get('success') else "Failed to forge tool."
-                        
-                        self.step_callback({
-                            "type": "agent_step",
-                            "title": "Tool Forged",
-                            "content": content,
-                            "trace_id": plan.trace_id,
-                            "status": status
-                        })
                 
                 
-                elif action == "spawn_agent":
+                if action == "spawn_agent":
                     if self.step_callback:
                         self.step_callback({
                             "type": "agent_step",
@@ -834,8 +790,6 @@ class MasterOrchestrator:
             if not final_response.strip():
                 if agents_spawned:
                      final_response = f"**Agent Execution Completed**\n\nAgent `{agents_spawned[-1]}` completed the task but provided no text output. Please check the workspace for any generated files."
-                elif tools_forged:
-                     final_response = f"**Tool Forge Completed**\n\nTool `{tools_forged[-1]}` was successfully created."
                 else:
                      final_response = "Task execution completed, but no output was generated."
             
@@ -844,7 +798,6 @@ class MasterOrchestrator:
                 success=True,
                 response=final_response,
                 actions_taken=actions_taken,
-                tools_forged=tools_forged,
                 agents_spawned=agents_spawned,
                 memories_queried=memories_queried,
                 execution_time=0,  # Filled by process_message
@@ -858,7 +811,6 @@ class MasterOrchestrator:
                 success=False,
                 response=f"Execution failed: {str(e)}",
                 actions_taken=actions_taken,
-                tools_forged=tools_forged,
                 agents_spawned=agents_spawned,
                 memories_queried=memories_queried,
                 execution_time=0,
@@ -897,29 +849,6 @@ class MasterOrchestrator:
             if hasattr(self.factory, 'registry'):
                 self.factory.registry.unregister(agent.trace_id)
     
-    def call_forge(self, description: str, trace_id: str) -> Dict[str, Any]:
-        """
-        Generate a tool via Forge.
-        
-        Args:
-            description: Tool description
-            trace_id: Trace ID
-            
-        Returns:
-            Dictionary with tool generation results
-        """
-        logger.info(f"[{trace_id}] Forging tool from description: {description[:50]}...")
-        
-        # Generate tool
-        result = self.forge.generate_tool(description)
-        
-        return {
-            'tool_name': result['name'],
-            'domain': result['domain'],
-            'file_path': result['file_path'],
-            'trace_id': result.get('trace_id'),
-            'success': result.get('validation_status') == 'passed'
-        }
     
     def query_memory(self, query: str, trace_id: str, domain: str = None) -> List[Dict]:
         """
@@ -1014,7 +943,6 @@ class MasterOrchestrator:
 **Providers**: {providers_healthy}/{total_providers} healthy
 
 **The Factory**: {len(self.factory.registry.get_all_agents())} agents (all time)
-**The Forge**: {len(self.forge.registry.list_tools())} tools registered
 **Memory Tier**: {self.episodic_memory.collection.count() if hasattr(self.episodic_memory, 'collection') else 0} episodic memories
 
 System operational and ready."""

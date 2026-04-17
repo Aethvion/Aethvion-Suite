@@ -46,7 +46,6 @@ app.state.startup_status = {
 app.state.orchestrator = None
 app.state.nexus = None
 app.state.factory = None
-app.state.forge = None
 app.state.discord_worker = None
 app.state.main_event_loop = None
 
@@ -143,14 +142,12 @@ async def initialize_system_background():
 def perform_blocking_init():
     from core.nexus_core import NexusCore
     from core.factory import AgentFactory
-    from core.forge import ToolForge
     from core.orchestrator import MasterOrchestrator
 
     app.state.nexus = NexusCore()
     app.state.nexus.initialize()
     app.state.factory = AgentFactory(app.state.nexus)
-    app.state.forge = ToolForge(app.state.nexus)
-    app.state.orchestrator = MasterOrchestrator(app.state.nexus, app.state.factory, app.state.forge)
+    app.state.orchestrator = MasterOrchestrator(app.state.nexus, app.state.factory)
     
     app.state.orchestrator.set_step_callback(
         lambda data: asyncio.run_coroutine_threadsafe(manager.broadcast(data, "chat"), app.state.main_event_loop)

@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from core.utils import get_logger
 from core.utils.model_downloader import ModelDownloader
-from core.utils.paths import MODEL_REGISTRY, SUGGESTED_API_MODELS, SUGGESTED_LOCAL_MODELS, LOCAL_MODELS_GGUF
+from core.utils.paths import MODEL_REGISTRY, SUGGESTED_API_MODELS, SUGGESTED_LOCAL_MODELS, LOCAL_MODELS_GGUF, SYSTEM_SPECS
 
 logger = get_logger(__name__)
 
@@ -29,6 +29,7 @@ SUGGESTED_LOCAL_PATH = SUGGESTED_LOCAL_MODELS
 GGUF_DIR             = LOCAL_MODELS_GGUF
 ENV_PATH = PROJECT_ROOT / ".env"
 ENV_EXAMPLE_PATH = PROJECT_ROOT / ".env.example"
+SYSTEM_SPECS_PATH = SYSTEM_SPECS
 
 
 # ===== .env Management =====

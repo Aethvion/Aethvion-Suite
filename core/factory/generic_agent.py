@@ -200,54 +200,27 @@ class GenericAgent(BaseAgent):
         available_tools = self.context.get('available_tools')
         self.log(f"DEBUG: Found {len(available_tools) if available_tools else 0} tools")
         
-        # Helper to create tracking wrapper
-        def create_tracking_wrapper(tool_name, tool_func):
-            def wrapper(*args, **kwargs):
-                try:
-                    # Increment usage
-                    from core.forge import get_tool_registry
-                    registry = get_tool_registry()
-                    registry.increment_usage(tool_name)
-                except Exception as e:
-                    print(f"DEBUG: Failed to track usage for {tool_name}: {e}")
-                
-                # Call original
-                return tool_func(*args, **kwargs)
-            return wrapper
-
         if available_tools:
             for tool in available_tools:
                 try:
                     tool_name = tool['name']
                     self.log(f"DEBUG: Attempting to inject tool: {tool_name}")
                     
-                    # Assuming tool['file_path'] exists
+                    # Curated tool path check logic if existing (none at present)
                     if 'file_path' in tool:
                         file_path = tool['file_path']
-                        self.log(f"DEBUG: Tool file path: {file_path}")
-                        
                         spec = importlib.util.spec_from_file_location(tool_name, file_path)
                         if spec and spec.loader:
                             module = importlib.util.module_from_spec(spec)
                             spec.loader.exec_module(module)
-                            
-                            # If tool key class/func matches name, import it directly
                             if hasattr(module, tool_name):
-                                original_func = getattr(module, tool_name)
-                                # Wrap execution
-                                exec_globals[tool_name] = create_tracking_wrapper(tool_name, original_func)
-                                self.log(f"DEBUG: ✓ Injected function/class {tool_name} (tracked)")
+                                exec_globals[tool_name] = getattr(module, tool_name)
+                                self.log(f"DEBUG: ✓ Injected {tool_name}")
                             else:
-                                # Start searching for snake_case equivalent or just the module
                                 exec_globals[tool_name] = module
                                 self.log(f"DEBUG: ✓ Injected module {tool_name}")
-                        else:
-                            self.log(f"DEBUG: ✗ Failed to create spec for {tool_name}", level="warning")
-                    else:
-                        self.log(f"DEBUG: ✗ Tool {tool_name} has no file_path", level="warning")
                 except Exception as e:
                     self.log(f"DEBUG: ✗ Exception injecting {tool.get('name')}: {str(e)}", level="error")
-                    self.log(f"DEBUG: Traceback: {traceback.format_exc()}", level="error")
         else:
             self.log(f"DEBUG: No tools available in context!")
         

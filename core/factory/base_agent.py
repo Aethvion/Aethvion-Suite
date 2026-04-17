@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Base Agent
 Abstract base class for all agents
 """
@@ -92,26 +92,12 @@ class BaseAgent(ABC):
             graph = get_knowledge_graph()
             tool_names = graph.get_tools_by_domain(self.spec.domain)
             
-            # Fetch full tool details
-            # Import tool registry to get file_path
-            from core.forge import get_tool_registry
-            registry = get_tool_registry()
-            
             tools_full = []
             for name in tool_names:
                 # Get basic info from knowledge graph
                 info = graph.get_node_info(name)
                 if info:
                     info['name'] = name  # Ensure name is in dict
-                    
-                    # Get file_path and parameters from tool registry
-                    tool_spec = registry.get_tool(name)
-                    if tool_spec:
-                        if 'file_path' in tool_spec:
-                            info['file_path'] = tool_spec['file_path']
-                        if 'parameters' in tool_spec:
-                            info['parameters'] = tool_spec['parameters']
-                    
                     tools_full.append(info)
             
             # ALWAYS inject standard Data tools (for file ops)
@@ -123,15 +109,6 @@ class BaseAgent(ABC):
                         info = graph.get_node_info(name)
                         if info:
                             info['name'] = name
-                            
-                            # Get file_path and parameters from registry
-                            tool_spec = registry.get_tool(name)
-                            if tool_spec:
-                                if 'file_path' in tool_spec:
-                                    info['file_path'] = tool_spec['file_path']
-                                if 'parameters' in tool_spec:
-                                    info['parameters'] = tool_spec['parameters']
-                            
                             tools_full.append(info)
             
             context['available_tools'] = tools_full
