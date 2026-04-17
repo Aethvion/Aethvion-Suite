@@ -6,6 +6,7 @@ Unified dynamic router for all Aethvion companions.
 
 from typing import List, Optional, Any
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from core.companions.registry import CompanionRegistry
@@ -67,7 +68,10 @@ async def initiate(companion_id: str, request: InitiateRequest):
 
 @router.post("/{companion_id}/chat")
 async def chat(companion_id: str, request: ChatRequest):
-    return await CompanionEngine.chat_response(_get_cfg(companion_id), request.message, request.history)
+    return StreamingResponse(
+        CompanionEngine.chat_response(_get_cfg(companion_id), request.message, request.history),
+        media_type="application/x-ndjson"
+    )
 
 @router.post("/{companion_id}/reset")
 async def reset(companion_id: str):

@@ -15,6 +15,7 @@ from core.companions.registry import CompanionConfig
 from core.companions.engine.memory import CompanionMemory
 from core.companions.engine.history import CompanionHistory
 from core.companions.engine.streaming import clean_memory_tags, build_nexus_capabilities, get_greeting_period
+from core.companions.engine.tools import execute_tools_stream, extract_peripheral_captures
 from core.providers.provider_manager import ProviderManager
 from core.workspace.preferences_manager import get_preferences_manager
 from core.utils.logger import get_logger
@@ -111,31 +112,60 @@ class CompanionEngine:
 
         model = get_preferences_manager().get(config.id, {}).get("model", config.default_model)
         pm = ProviderManager()
-        response = pm.call_with_failover(
+        trace_id = f"{config.id}-chat-{uuid.uuid4().hex[:8]}"
+
+        full_content = ""
+        actual_model = model
+
+        # 1. Stream primary LLM response
+        async for chunk in pm.call_with_failover_stream(
             prompt=system_prompt,
             user_message=message,
-            trace_id=f"{config.id}-chat-{uuid.uuid4().hex[:8]}",
+            trace_id=trace_id,
             temperature=behavior.get("temperature", 0.8),
             model=model, source=f"{config.id}-chat"
-        )
-        if not response.success: raise HTTPException(status_code=500, detail=response.error)
-        content = response.content.strip()
-        
+        ):
+            full_content += chunk
+            yield json.dumps({"type": "message", "content": chunk}) + "\n"
+
+        # 2. Extract tools and execute
+        results = []
+        final_content = full_content
+        if capabilities.get("tools_enabled", True):
+            from core.workspace.workspace_utils import load_workspaces
+            workspaces = load_workspaces()
+            
+            async for tool_event in execute_tools_stream(full_content, workspaces):
+                if tool_event["type"] == "tool_start":
+                    yield json.dumps(tool_event) + "\n"
+                elif tool_event["type"] == "final_cleaned":
+                    final_content = tool_event["content"]
+                    results = tool_event["results"]
+
+        # 3. Handle Memory Updates (on cleaned content)
         mem_up = False
         if capabilities.get("memory_updates_enabled", True):
-            # update_from_xml returns the content with memory tags stripped, 
-            # while persisting the changes to the companion's JSON memory files.
-            cleaned_content = memory.update_from_xml(content)
-            if cleaned_content != content:
-                content = cleaned_content
+            cleaned_mem_content = memory.update_from_xml(final_content)
+            if cleaned_mem_content != final_content:
+                final_content = cleaned_mem_content
                 mem_up = True
-        
+
+        # 4. Extract peripheral attachments (screenshots etc)
+        attachments = []
+        if results:
+            _, attachments = extract_peripheral_captures(results, [])
+
+        # 5. Persist to history
         history.save_message("user", message, utcnow_iso())
-        history.save_message("assistant", content, utcnow_iso(), model=response.model)
-        return {
-            "response": content,
+        history.save_message("assistant", final_content, utcnow_iso(), 
+                             model=actual_model, attachments=attachments)
+
+        # 6. Final event
+        yield json.dumps({
+            "type": "done",
+            "content": final_content,
             "expression": behavior.get("default_expression", "default"),
             "mood": behavior.get("default_mood", "calm"),
-            "model": response.model,
-            "memory_updated": mem_up
-        }
+            "memory_updated": mem_up,
+            "attachments": attachments
+        }) + "\n"
