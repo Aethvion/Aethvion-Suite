@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 
 def format_time_diff(total_seconds: int, time_context: Dict[str, Any]) -> str:
     fmt = time_context.get("format", {})
-    rules = sorted([(m_val, text) for k, data in fmt.items() if (m_val := data.get("max")) is not None])
+    rules = sorted([(m_val, data.get("text", "")) for k, data in fmt.items() if (m_val := data.get("max")) is not None])
     
     for max_val, text in rules:
         if total_seconds < max_val:
