@@ -64,6 +64,9 @@ dependencies = [
 
     # Computer Vision & Tracking
     "mediapipe>=0.10.0",
+
+    # GUI Development
+    "customtkinter>=5.2.0",
 ]
 
 [project.optional-dependencies]

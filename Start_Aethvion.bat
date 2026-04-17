@@ -14,8 +14,11 @@ echo   AETHVION SUITE  ^|  CONSUMER MODE
 echo ============================================================
 echo.
 
-call setup\setup_environment.bat
+:: ── 1. Initialize Graphical Installer ──────────────────────────
+echo [1/5] INITIALIZING ORCHESTRATOR...
+call setup\installer\installer.bat
 if %errorlevel% neq 0 (
+    echo [ERROR] Installer failed to initialize.
     pause
     exit /b 1
 )
