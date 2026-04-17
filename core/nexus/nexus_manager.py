@@ -53,6 +53,9 @@ def call_module(module_id: str, command: str, args: dict = None) -> str:
     if not module_info:
         return f"Nexus Error: Module '{module_id}' not found in registry."
 
+    if not module_info.get("enabled", True):
+        return f"Nexus Error: Module '{module_id}' is currently disabled."
+
     module_path = module_info.get("module_path")
     if not module_path:
         return f"Nexus Error: Module '{module_id}' has no module_path defined."

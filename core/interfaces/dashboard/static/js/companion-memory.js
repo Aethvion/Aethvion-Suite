@@ -5,11 +5,9 @@
  * companions and view each one's base_info.json and memory.json.
  *
  * API contract:
- *   GET /api/misakacipher/memory  → { base_info, memory }
- *   GET /api/axiom/memory         → { base_info, memory }
- *   GET /api/lyra/memory          → { base_info, memory }
- *   GET /api/companion-creator/list → [{ id, name, ... }]
- *   GET /api/companion-creator/{id}/memory → { base_info, memory }
+ *   GET /api/companions/list          → [{ id, name, ... }]
+ *   GET /api/companions/{id}/memory   → { base_info, memory }
+ *   GET /api/companions/{id}/history  → [{ date, messages }]
  */
 
 (function () {

@@ -9,13 +9,13 @@
     "route_prefix": "/api/nova",
     "change_susceptibility": 0.8
   },
+  "default_expression": "default",
+  "moods": ["calm", "cosmic", "processing"],
+  "expressions": ["default", "stargazing", "thinking", "alert"],
   "behavior": {
     "temperature": 0.7,
     "initiate_temperature": 0.75,
-    "default_expression": "default",
     "default_mood": "calm",
-    "expressions": ["default", "stargazing", "thinking", "alert"],
-    "moods": ["calm", "cosmic", "processing"],
     "msg_break_tag": "[msg_break]",
     "emotion_tag_prefix": "[Emotion: ",
     "mood_tag_prefix": "[Mood: ",

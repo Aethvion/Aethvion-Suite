@@ -59,9 +59,6 @@ dependencies = [
     # Communication
     "discord.py>=2.3.0",
 
-    # Communication
-    "discord.py>=2.3.0",
-
     # Computer Vision & Tracking
     "mediapipe>=0.10.0",
 

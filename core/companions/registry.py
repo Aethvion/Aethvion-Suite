@@ -10,10 +10,8 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 
-# Paths
-_PROJECT_ROOT = Path(__file__).parent.parent.parent
-_CONFIG_DIR   = _PROJECT_ROOT / "core" / "companions" / "configs"
-_DATA_ROOT     = _PROJECT_ROOT / "data" / "companions"
+from core.utils.paths import COMPANIONS as _DATA_ROOT
+_CONFIG_DIR = Path(__file__).parent / "configs"
 
 @dataclass
 class CompanionConfig:
