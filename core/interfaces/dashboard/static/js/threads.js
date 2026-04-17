@@ -1967,9 +1967,10 @@ const _origRenderThreadList = renderThreadList;
 renderThreadList = function() {
     const threadsList = document.getElementById('threads-list');
     if (!threadsList) return;
-    threadsList.innerHTML = '';
+    
+    // Build everything in a fragment to avoid layout flickering
+    const fragment = document.createDocumentFragment();
     const template = document.getElementById('thread-item-template');
-
     const hasFolders = Object.keys(folders).length > 0;
 
     // ── 1. Render folders ───────────────────────────────────────────────
@@ -1987,19 +1988,13 @@ renderThreadList = function() {
             const clone = folderTemplate.content.cloneNode(true);
             const group = clone.querySelector('.folder-group');
             group.dataset.folderId = folder.id;
-
-            // CSS variable for thread left-border color
             group.style.setProperty('--folder-color', folder.color + '60');
-
             if (_folderCollapsed[folder.id]) group.classList.add('collapsed');
 
-            // Populate header
             clone.querySelector('.folder-color-dot').style.background = folder.color;
             clone.querySelector('.folder-name').textContent = folder.title;
-            const count = folderThreads.length;
-            clone.querySelector('.folder-thread-count').textContent = count;
+            clone.querySelector('.folder-thread-count').textContent = folderThreads.length;
 
-            // Toggle collapse
             clone.querySelector('.folder-toggle-btn').addEventListener('click', (e) => {
                 e.stopPropagation();
                 const g = e.target.closest('.folder-group');
@@ -2015,35 +2010,23 @@ renderThreadList = function() {
                 _saveFolderCollapseState();
             });
 
-            // Settings button
             clone.querySelector('.folder-settings-btn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                _openFolderView(folder.id);
+                e.stopPropagation(); _openFolderView(folder.id);
             });
-
-            // Delete button
             clone.querySelector('.folder-delete-btn').addEventListener('click', (e) => {
                 e.stopPropagation();
-                showConfirm(
-                    'Delete Folder',
-                    `Delete folder "${folder.title}"? All chats will be kept but un-grouped.`,
-                    () => deleteFolderById(folder.id),
-                    { confirmLabel: 'Delete', icon: 'fa-folder' }
-                );
+                showConfirm('Delete Folder', `Delete folder "${folder.title}"?`, () => deleteFolderById(folder.id), { confirmLabel: 'Delete', icon: 'fa-folder' });
             });
 
-            // Render threads inside folder
             const folderThreadsContainer = clone.querySelector('.folder-threads');
             folderThreads.forEach(thread => {
-                const threadClone = _buildThreadItem(template, thread, folder);
-                folderThreadsContainer.appendChild(threadClone);
+                folderThreadsContainer.appendChild(_buildThreadItem(template, thread, folder));
             });
-
-            threadsList.appendChild(clone);
+            fragment.appendChild(clone);
         });
     }
 
-    // ── 2. Render unfoldered threads (sorted: pinned → date) ──────────
+    // ── 2. Render unfoldered threads ──────────────────────────────────
     const unfolderedThreads = Object.values(threads).filter(t =>
         !t.id.startsWith('agents-') && (!t.folder_id || !folders[t.folder_id])
     ).sort((a, b) => {
@@ -2056,7 +2039,7 @@ renderThreadList = function() {
         const divider = document.createElement('div');
         divider.className = 'thread-group-header';
         divider.textContent = 'Other Chats';
-        threadsList.appendChild(divider);
+        fragment.appendChild(divider);
     }
 
     let lastGroupName = '';
@@ -2067,35 +2050,37 @@ renderThreadList = function() {
                 const divider = document.createElement('div');
                 divider.className = 'thread-group-header';
                 divider.textContent = groupName;
-                threadsList.appendChild(divider);
+                fragment.appendChild(divider);
                 lastGroupName = groupName;
             }
-        } else {
-            if (lastGroupName !== 'Pinned') {
-                const divider = document.createElement('div');
-                divider.className = 'thread-group-header';
-                divider.innerHTML = '<i class="fas fa-thumbtack"></i> Pinned';
-                threadsList.appendChild(divider);
-                lastGroupName = 'Pinned';
-            }
+        } else if (lastGroupName !== 'Pinned') {
+            const divider = document.createElement('div');
+            divider.className = 'thread-group-header';
+            divider.innerHTML = '<i class="fas fa-thumbtack"></i> Pinned';
+            fragment.appendChild(divider);
+            lastGroupName = 'Pinned';
         }
-        threadsList.appendChild(_buildThreadItem(template, thread, null));
+        fragment.appendChild(_buildThreadItem(template, thread, null));
     });
 
-    // ── Empty state when no threads exist ──────────────────────────────
-    const totalVisible = unfolderedThreads.length + (hasFolders ? Object.values(folders).reduce((acc, f) => {
-        return acc + Object.values(threads).filter(t => t.folder_id === f.id && !t.id.startsWith('agents-')).length;
-    }, 0) : 0);
+    // ── Empty state ──────────────────────────────────────────────────
+    const totalVisible = unfolderedThreads.length + (hasFolders ? fragment.querySelectorAll('.thread-item').length : 0);
     if (totalVisible === 0 && !hasFolders) {
+        // PERF & UI FIX: If already showing empty state, don't re-render to avoid restarting CSS animations
+        if (threadsList.querySelector('.ae-empty')) return;
+
         const empty = document.createElement('div');
         empty.className = 'ae-empty';
-        empty.style.cssText = 'min-height:180px;padding:2rem;';
+        empty.style.cssText = 'min-height:180px;padding:2rem;display:flex;flex-direction:column;align-items:center;justify-content:center;';
         empty.innerHTML = `
             <div class="ae-empty-icon"><i class="fas fa-comment-dots"></i></div>
             <div class="ae-empty-title">No conversations yet</div>
             <div class="ae-empty-desc">Start a new thread to begin chatting.</div>`;
-        threadsList.appendChild(empty);
+        fragment.appendChild(empty);
     }
+
+    // Atomic swap to prevent flickering
+    threadsList.replaceChildren(fragment);
 };
 
 // ── Build a single thread DOM element ────────────────────────────────────
