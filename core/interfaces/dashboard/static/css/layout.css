@@ -651,14 +651,14 @@
     line-height: 1.6;
     font-size: 0.95rem;
     color: var(--text-primary);
-    position: relative; /* needed for .msg-actions positioning */
+    position: relative;
 }
 
-/* ── v14: Message Hover Action Bar ──────────────────────────────────────── */
+/* ── Message action bar — floats below the bubble on hover ──────────────── */
 .msg-actions {
     position: absolute;
-    top: -15px;
-    right: 10px;
+    bottom: -22px;
+    left: 0;
     display: flex;
     gap: 2px;
     opacity: 0;
@@ -675,6 +675,12 @@
 .message:hover > .msg-actions {
     opacity: 1;
     pointer-events: auto;
+}
+
+/* User messages: anchor to the right instead of the left */
+.user-message .msg-actions {
+    left: auto;
+    right: 0;
 }
 
 .msg-action-btn {

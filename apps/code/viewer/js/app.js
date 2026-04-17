@@ -991,30 +991,46 @@ function _promptName(title, placeholder, defaultVal = '') {
 
 // ── AI Chat ───────────────────────────────────────────────────────────────────
 function addChatMessage(role, content = '', streaming = false) {
-  const wrap = document.createElement('div');
+  const wrap   = document.createElement('div');
   wrap.className = `chat-msg ${role}`;
-
-  const label = document.createElement('div');
-  label.className = 'chat-label';
-  label.textContent = role === 'user' ? 'You' : 'AI';
 
   const bubble = document.createElement('div');
   bubble.className = 'chat-bubble' + (streaming ? ' streaming-cursor' : '');
   bubble.innerHTML = role === 'assistant' ? renderMarkdown(content) : escHtml(content);
 
-  // Action bar — populated after streaming ends via _attachMessageActions
+  // Footer: label + action buttons sit below the bubble
+  const footer  = document.createElement('div');
+  footer.className = 'chat-msg-footer';
+  const label   = document.createElement('div');
+  label.className = 'chat-label';
+  label.textContent = role === 'user' ? 'You' : 'AI';
   const actions = document.createElement('div');
   actions.className = 'chat-msg-actions';
+  footer.appendChild(label);
+  footer.appendChild(actions);
 
-  wrap.appendChild(label);
   wrap.appendChild(bubble);
-  wrap.appendChild(actions);
+  wrap.appendChild(footer);
   dom.chatMessages.appendChild(wrap);
   dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
   return bubble;
 }
 
-/** Add copy + (for assistant) regenerate buttons to a finished message. */
+/** Build and append a streaming assistant message. Returns { wrap, bubble }. */
+function _mkAssistantMsg() {
+  const w = document.createElement('div'); w.className = 'chat-msg assistant';
+  const b = document.createElement('div'); b.className = 'chat-bubble streaming-cursor';
+  const f = document.createElement('div'); f.className = 'chat-msg-footer';
+  const l = document.createElement('div'); l.className = 'chat-label'; l.textContent = 'AI';
+  const a = document.createElement('div'); a.className = 'chat-msg-actions';
+  f.appendChild(l); f.appendChild(a);
+  w.appendChild(b); w.appendChild(f);
+  dom.chatMessages.appendChild(w);
+  dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
+  return { wrap: w, bubble: b };
+}
+
+/** Add copy + secondary action buttons to a finished message. */
 function _attachMessageActions(wrap, role, getFinalContent) {
   const actions = wrap.querySelector('.chat-msg-actions');
   if (!actions) return;
@@ -1030,12 +1046,16 @@ function _attachMessageActions(wrap, role, getFinalContent) {
     return b;
   };
 
-  actions.appendChild(mkBtn('fa-copy', 'Copy', () => {
+  actions.appendChild(mkBtn('fa-copy', 'Copy message', () => {
     navigator.clipboard.writeText(getFinalContent()).then(() => toast('Copied', 'success', 1200));
   }));
 
   if (role === 'assistant') {
-    actions.appendChild(mkBtn('fa-rotate-right', 'Regenerate', () => regenerateLastResponse()));
+    actions.appendChild(mkBtn('fa-rotate-right', 'Regenerate response', () => regenerateLastResponse()));
+  } else {
+    actions.appendChild(mkBtn('fa-paper-plane', 'Resend message', () => {
+      if (!state.aiStreaming) sendChat(getFinalContent());
+    }));
   }
 }
 
@@ -1481,15 +1501,11 @@ async function sendChat(text) {
   _updateChatInputState();
 
   state.chatHistory.push({ role: 'user', content: userContent });
-  const userWrap = dom.chatMessages.lastElementChild?.previousElementSibling || null;
   addChatMessage('user', text); // show original text (not the injected file blob)
-  const assistantWrap = dom.chatMessages.lastElementChild;
-  const bubble = assistantWrap?.querySelector('.chat-bubble') || addChatMessage('assistant', '', true);
-  // Ensure streaming cursor is on the right element
-  if (assistantWrap) {
-    const b = assistantWrap.querySelector('.chat-bubble');
-    if (b) b.classList.add('streaming-cursor');
-  }
+  const userMsgWrap = dom.chatMessages.lastElementChild;
+  _attachMessageActions(userMsgWrap, 'user', () => text);
+
+  const { wrap: assistantWrap, bubble } = _mkAssistantMsg();
 
   let full = '';
   let pass  = 0;
@@ -1586,11 +1602,7 @@ async function regenerateLastResponse() {
   state.aiCtrl     = new AbortController();
   _updateChatInputState();
 
-  const assistantWrap = document.createElement('div');
-  assistantWrap.className = 'chat-msg assistant';
-  assistantWrap.innerHTML = '<div class="chat-label">AI</div><div class="chat-bubble streaming-cursor"></div><div class="chat-msg-actions"></div>';
-  dom.chatMessages.appendChild(assistantWrap);
-  const bubble = assistantWrap.querySelector('.chat-bubble');
+  const { wrap: assistantWrap, bubble } = _mkAssistantMsg();
 
   let full = '';
   try {
@@ -1629,16 +1641,7 @@ async function explainSelection() {
   const prompt = `Explain this ${lang} code:\n\`\`\`${lang}\n${code}\n\`\`\``;
   state.chatHistory.push({ role: 'user', content: prompt });
   addChatMessage('user', `Explain ${sel ? 'selection' : 'current file'} (${lang})`);
-  const assistantWrap = dom.chatMessages.lastElementChild;
-  const bubble = assistantWrap?.querySelector ? (() => {
-    const b = document.createElement('div'); b.className = 'chat-bubble streaming-cursor';
-    const w = document.createElement('div'); w.className = 'chat-msg assistant';
-    const l = document.createElement('div'); l.className = 'chat-label'; l.textContent = 'AI';
-    const a = document.createElement('div'); a.className = 'chat-msg-actions';
-    w.appendChild(l); w.appendChild(b); w.appendChild(a);
-    dom.chatMessages.appendChild(w); return b;
-  })() : addChatMessage('assistant', '', true);
-  const wrap = bubble.closest('.chat-msg');
+  const { wrap, bubble } = _mkAssistantMsg();
 
   state.aiStreaming = true; state.aiCtrl = new AbortController(); _updateChatInputState();
   let full = '';
@@ -1666,13 +1669,7 @@ async function fixWithError() {
   const lang = tab?.language || 'python';
   state.chatHistory.push({ role: 'user', content: `Fix this ${lang} error:\n\`\`\`\n${error}\n\`\`\`` });
   addChatMessage('user', `Fix ${lang} error`);
-  const b = document.createElement('div'); b.className = 'chat-bubble streaming-cursor';
-  const w = document.createElement('div'); w.className = 'chat-msg assistant';
-  const l = document.createElement('div'); l.className = 'chat-label'; l.textContent = 'AI';
-  const a = document.createElement('div'); a.className = 'chat-msg-actions';
-  w.appendChild(l); w.appendChild(b); w.appendChild(a);
-  dom.chatMessages.appendChild(w);
-  const bubble = b; const wrap = w;
+  const { wrap, bubble } = _mkAssistantMsg();
 
   state.aiStreaming = true; state.aiCtrl = new AbortController(); _updateChatInputState();
   let full = '';
@@ -1752,13 +1749,7 @@ async function refactorSelection() {
   const lang = tab?.language || 'python';
   state.chatHistory.push({ role: 'user', content: `Refactor (${lang}): ${instructions}\n\`\`\`${lang}\n${code}\n\`\`\`` });
   addChatMessage('user', `Refactor (${lang}): ${instructions}`);
-  const b = document.createElement('div'); b.className = 'chat-bubble streaming-cursor';
-  const w = document.createElement('div'); w.className = 'chat-msg assistant';
-  const l = document.createElement('div'); l.className = 'chat-label'; l.textContent = 'AI';
-  const a = document.createElement('div'); a.className = 'chat-msg-actions';
-  w.appendChild(l); w.appendChild(b); w.appendChild(a);
-  dom.chatMessages.appendChild(w);
-  const bubble = b; const wrap = w;
+  const { wrap, bubble } = _mkAssistantMsg();
 
   state.aiStreaming = true; state.aiCtrl = new AbortController(); _updateChatInputState();
   let full = '';
