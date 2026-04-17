@@ -158,13 +158,13 @@
             },
             order: [
                 { type: 'tab',    id: 'suite-home' },
-                { type: 'folder', id: 'f-workspace',  children: ['chat','agents','agent-corp','schedule','photo','audio'] },
+                { type: 'folder', id: 'f-workspace',  children: ['chat','agents','agent-corp','schedule','photo','audio','3d-gen'] },
                 { type: 'folder', id: 'f-research',   children: ['advaiconv','researchboard','arena','aiconv','explained'] },
                 { type: 'folder', id: 'f-companions', children: ['misaka-cipher','axiom','lyra','companion-creator'] },
                 { type: 'folder', id: 'f-fun',        children: ['games-center'] },
                 { type: 'folder', id: 'f-memory',     children: ['memory','companion-memory','persistent-memory','sched-overview'] },
                 { type: 'folder', id: 'f-storage',    children: ['output','screenshots','camera','uploads'] },
-                { type: 'folder', id: 'f-models',     children: ['local-models','image-models','audio-models','3d-models','3d-gen','api-providers'] },
+                { type: 'folder', id: 'f-models',     children: ['local-models','image-models','audio-models','3d-models','api-providers'] },
                 { type: 'folder', id: 'f-system',     children: ['logs','documentation','usage','status','ports'] },
             ],
         };

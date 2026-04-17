@@ -11,7 +11,17 @@ import time
 import re
 import customtkinter as ctk
 from pathlib import Path
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageTk
+
+# ── Windows Taskbar Fix ────────────────────────────────────────────────────────
+# Force the taskbar to show the custom icon by registering a unique App ID.
+# This MUST happen at the absolute top of the execution lifecycle.
+if sys.platform == "win32":
+    try:
+        import ctypes
+        myappid = 'com.aethvion.suite.installer.v14.final'
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except: pass
 
 # ── Theme ──────────────────────────────────────────────────────────────────────
 BG_START    = "#0c0e14" 
@@ -103,10 +113,29 @@ class AethvionInstaller(ctk.CTk):
         self.project_root = Path(__file__).parent.parent.parent
         self.setup_dir    = self.project_root / "setup"
         self.logo_path    = self.project_root / "assets" / "aethvion" / "aethvion_logo.png"
+        self.icon_path    = self.project_root / "assets" / "aethvion" / "aethvion_logov2.ico"
 
-        # Window
+        # Window setup
         W, H = 540, 620
         self.title("Aethvion Suite Setup")
+        
+        # === Windows Taskbar & Title Bar Icon Fix ===
+        if self.icon_path.exists():
+            try:
+                icon_abs = str(self.icon_path.resolve())
+                
+                # 1. Standard iconbitmap (for title bar)
+                self.iconbitmap(icon_abs)
+                self.wm_iconbitmap(icon_abs)
+                
+                # 2. Tkinter iconphoto (Stronger hint for taskbar)
+                pil_icon = Image.open(icon_abs)
+                self.tk_icon = ImageTk.PhotoImage(pil_icon)
+                self.iconphoto(True, self.tk_icon)
+                
+            except Exception as e:
+                print(f"[Icon Fix] Warning: {e}")
+
         self._center(W, H)
         self.resizable(False, False)
         
