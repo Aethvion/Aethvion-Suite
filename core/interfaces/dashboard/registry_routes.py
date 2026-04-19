@@ -17,6 +17,13 @@ from fastapi import APIRouter, HTTPException, Request
 from core.utils import get_logger
 from core.utils.model_downloader import ModelDownloader
 from core.utils.registry_utils import ensure_registry_initialized
+from core.utils.paths import (
+    MODEL_REGISTRY, 
+    SUGGESTED_API_MODELS, 
+    SUGGESTED_LOCAL_MODELS, 
+    LOCAL_MODELS_GGUF, 
+    SYSTEM_SPECS
+)
 from core.providers.model_defaults import (
     load_suggested_models, 
     get_suggested_models_not_in_registry,

@@ -1,35 +1,28 @@
 @echo off
-SETLOCAL EnableDelayedExpansion
-:: ============================================================
-::  AETHVION SUITE - Web Launcher
-::  Standard background mode: auto-install + standard browser.
-:: ============================================================
-SET PROJECT_DIR=%~dp0
+setlocal EnableDelayedExpansion
+
+:: ── 1. Configuration ────────────────────────────────────────
+set "PROJECT_DIR=%~dp0"
 cd /d "%PROJECT_DIR%"
-TITLE Aethvion Suite - Initializing Web Mode...
+TITLE Aethvion Suite - Web Mode
 
-echo.
-echo ============================================================
-echo   AETHVION SUITE  ^|  WEB MODE
-echo ============================================================
-echo.
+:: ── 2. Installation Check ──────────────────────────────────
+set "ALREADY_INSTALLED=1"
+if not exist ".venv\Scripts\python.exe" set "ALREADY_INSTALLED=0"
+if not exist "core\launcher.py" set "ALREADY_INSTALLED=0"
 
-call setup\setup_environment.bat
-if %errorlevel% neq 0 (
-    pause
-    exit /b 1
+if "!ALREADY_INSTALLED!"=="1" (
+    ".venv\Scripts\python.exe" -c "import fastapi" >nul 2>&1
+    if !errorlevel! neq 0 set "ALREADY_INSTALLED=0"
 )
 
-
-:: ── 6. Launch via pythonw (no console window) ────────────────
-echo.
-echo [5/5] LAUNCHING CORE ENGINE...
-echo [INFO] Dashboards will open in a standard browser tab shortly.
-echo [INFO] You can close this window once the server starts.
-echo.
-
-start "" ".venv\Scripts\pythonw.exe" core\launcher.py --consumer --browser web %*
-
-:: Small delay to ensure process spawns correctly before closing BAT
-timeout /t 3 /nobreak >nul
-exit
+:: ── 3. Execution Path ──────────────────────────────────────
+if "!ALREADY_INSTALLED!"=="1" (
+    echo Starting Aethvion Web Mode...
+    start "" /b ".venv\Scripts\pythonw.exe" core\launcher.py --consumer --browser web
+    exit
+) else (
+    echo [INFO] System not fully installed. Launching installer...
+    start "" setup\installer\installer.bat
+    exit
+)

@@ -12,26 +12,25 @@ SET PROJECT_DIR=%~dp0
 cd /d "%PROJECT_DIR%"
 TITLE Aethvion Suite - Developer Portal
 
-echo.
-echo ============================================================
-echo   AETHVION SUITE  ^|  DEVELOPER MODE
-echo ============================================================
-echo.
-
-call setup\setup_environment.bat
-if %errorlevel% neq 0 (
-    goto :FAIL
+:: ── 1. Setup / Environment check ────────────────────
+if not exist .venv (
+    echo [ERROR] Virtual environment not found.
+    echo Running installer...
+    start /wait setup\installer.exe
+    if not exist .venv (
+        echo [ERROR] Installer failed to create .venv. 
+        pause & exit /b 1
+    )
 )
 
-
-:: ── 6. Launch (dev mode - visible consoles, web browser tab) ─
+:: ── 2. Launch (dev mode - visible consoles, web browser tab) ─
 echo.
-echo [5/5] LAUNCHING CORE ENGINE...
-echo [INFO] Dashboard  -^> http://localhost:8080
+echo [1/1] LAUNCHING CORE ENGINE (DEV MODE)...
+echo [INFO] Dashboard  -> http://localhost:8080
 echo [INFO] Press Ctrl+C here to stop the entire suite.
 echo.
 
-python core\launcher.py --dev --browser web %*
+.venv\Scripts\python.exe core\launcher.py --dev --browser web %*
 set MAIN_EXIT=%errorlevel%
 
 if %MAIN_EXIT% neq 0 (

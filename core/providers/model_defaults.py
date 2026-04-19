@@ -200,3 +200,69 @@ def merge_model_into_registry(registry: Dict[str, Any], provider_id: str, model_
         
     registry["providers"][provider_id]["models"][model_id] = reg_m_obj
     return True
+
+def build_full_registry() -> Dict[str, Any]:
+    """
+    Create a registry containing EVERY model found in the suggested/ files.
+    Useful for developers who want everything pre-installed.
+    """
+    suggested = load_suggested_models()
+    
+    # We can reuse build_initial_registry by passing a fake defaults dict
+    # that contains every model for every provider.
+    full_defaults = {}
+    for p_id, info in suggested.items():
+        full_defaults[p_id] = [m["id"] for m in info.get("models", [])]
+    
+    # Temporarily override load_defaults or just reimplement the loop.
+    # Reimplementing is cleaner than monkeypatching for a devtool helper.
+    registry = {
+        "providers": {},
+        "profiles": {"chat_profiles": {"default": []}, "agent_profiles": {"default": []}},
+        "auto_routing": {
+            "chat": {"route_picker": "", "models": {}},
+            "agent": {"route_picker": "", "models": {}}
+        },
+        "local": {
+            "name": "Local Models", "active": True,
+            "chat_config": {"active": True, "priority": 2},
+            "agent_config": {"active": True, "priority": 2},
+            "models": {}
+        }
+    }
+    
+    first_chat_model = ""
+    for p_id, m_ids in full_defaults.items():
+        prov_info = suggested[p_id]
+        registry["providers"][p_id] = {
+            "name": prov_info.get("name", p_id.title()),
+            "api_key_env": prov_info.get("api_key_env", ""),
+            "active": True,
+            "chat_config": {"active": True, "priority": 1},
+            "agent_config": {"active": False, "priority": 1},
+            "models": {}
+        }
+        for m_id in m_ids:
+            m_obj = next((m for m in prov_info.get("models", []) if m["id"] == m_id), None)
+            if not m_obj: continue
+            
+            reg_m_obj = {
+                "input_cost_per_1m_tokens": m_obj.get("input_cost", 0),
+                "output_cost_per_1m_tokens": m_obj.get("output_cost", 0),
+                "capabilities": m_obj.get("capabilities", ["CHAT"]),
+                "description": m_obj.get("description", "")
+            }
+            registry["providers"][p_id]["models"][m_id] = reg_m_obj
+            if not first_chat_model and "CHAT" in reg_m_obj["capabilities"]:
+                first_chat_model = m_id
+                
+    if first_chat_model:
+        registry["auto_routing"]["chat"]["route_picker"] = first_chat_model
+        registry["auto_routing"]["agent"]["route_picker"] = first_chat_model
+        for p_id, p_config in registry["providers"].items():
+            for m_id, m_config in p_config["models"].items():
+                if "CHAT" in m_config["capabilities"]:
+                    registry["auto_routing"]["chat"]["models"][m_id] = {"enabled": True}
+                    registry["auto_routing"]["agent"]["models"][m_id] = {"enabled": True}
+                    
+    return registry
