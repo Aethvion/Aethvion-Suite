@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aethvion | Model Defaults Editor</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">AETHVION DEVTLS</div>
+        </div>
+        <nav id="provider-nav">
+            <div class="nav-item active" onclick="loadPage('defaults')">
+                <i class="fas fa-cog"></i> Initial Defaults
+            </div>
+            <div style="padding: 1rem 1.5rem 0.5rem; font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;">Suggested Prodviders</div>
+            <div id="provider-list">
+                <!-- Providers populated here -->
+            </div>
+        </nav>
+    </aside>
+
+    <main class="main" id="main-content">
+        <!-- Content dynamic -->
+    </main>
+
+    <!-- Model Edit Modal -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modal-title">Edit Model</h2>
+                <button class="btn btn-secondary" onclick="closeModal('edit-modal')"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="model-form" onsubmit="saveModel(event)">
+                <input type="hidden" id="edit-index">
+                <div class="form-group">
+                    <label>Model ID (Unique Identifier)</label>
+                    <input type="text" id="model-id" required placeholder="e.g. gpt-4o">
+                </div>
+                <div class="form-group">
+                    <label>Display Name</label>
+                    <input type="text" id="model-display-name" required placeholder="e.g. GPT-4o">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Input Cost ($ / 1M)</label>
+                        <input type="number" id="model-input-cost" step="0.0001" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Output Cost ($ / 1M)</label>
+                        <input type="number" id="model-output-cost" step="0.0001" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Capabilities (comma separated)</label>
+                    <input type="text" id="model-capabilities" placeholder="CHAT, IMAGE, VOICEINPUT">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="model-description" rows="3"></textarea>
+                </div>
+                <div class="modal-actions" style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('edit-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let providers = [];
+        let currentProvider = null;
+        let currentData = null;
+        let defaultsData = {};
+
+        async function init() {
+            await loadProviders();
+            await loadDefaults();
+            loadPage('defaults');
+        }
+
+        async function loadProviders() {
+            const res = await fetch('/api/providers');
+            providers = await res.json();
+            
+            const list = document.getElementById('provider-list');
+            list.innerHTML = providers.map(p => `
+                <div class="nav-item" id="nav-${p.id}" onclick="loadProvider('${p.id}')">
+                    <i class="fas fa-server"></i> ${p.name}
+                </div>
+            `).join('');
+        }
+
+        async function loadDefaults() {
+            const res = await fetch('/api/defaults');
+            defaultsData = await res.json();
+        }
+
+        function loadPage(page) {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            if (page === 'defaults') {
+                document.querySelector('.nav-item').classList.add('active');
+                renderDefaults();
+            }
+        }
+
+        async function loadProvider(id) {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.getElementById(`nav-${id}`).classList.add('active');
+            
+            const res = await fetch(`/api/provider/${id}`);
+            currentData = await res.json();
+            currentProvider = id;
+            renderProviderModels();
+        }
+
+        function renderProviderModels() {
+            const main = document.getElementById('main-content');
+            const models = currentData[currentProvider].models || [];
+            
+            main.innerHTML = `
+                <div class="header fadeIn">
+                    <div class="title-group">
+                        <h1>${currentData[currentProvider].name}</h1>
+                        <p>Managing suggested models for ${currentProvider}. File: suggested/${currentProvider}.json</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openAddModel()">
+                        <i class="fas fa-plus"></i> Add New Model
+                    </button>
+                </div>
+                <div class="grid fadeIn">
+                    ${models.map((m, index) => `
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">${m.name}</div>
+                                <div class="card-badge">${m.id}</div>
+                            </div>
+                            <div class="card-desc">${m.description || 'No description provided.'}</div>
+                            <div class="stats">
+                                <div class="stat-item">
+                                    <div class="stat-label">In (1M)</div>
+                                    <div class="stat-value">$${m.input_cost}</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Out (1M)</div>
+                                    <div class="stat-value">$${m.output_cost}</div>
+                                </div>
+                            </div>
+                            <div class="card-actions">
+                                <button class="btn btn-secondary" onclick="editModel(${index})"><i class="fas fa-edit"></i> Edit</button>
+                                <button class="btn btn-danger" onclick="deleteModel(${index})"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div style="margin-top: 2rem; padding: 2rem; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px;" class="fadeIn">
+                    <h3>Raw Config</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 1rem;">Changes above are saved to this JSON structure.</p>
+                    <pre style="background: #000; padding: 1rem; border-radius: 8px; font-size: 0.75rem; overflow-x: auto; color: #10b981;">${JSON.stringify(currentData, null, 4)}</pre>
+                </div>
+            `;
+        }
+
+        function renderDefaults() {
+            const main = document.getElementById('main-content');
+            main.innerHTML = `
+                <div class="header fadeIn">
+                    <div class="title-group">
+                        <h1>Initialization Defaults</h1>
+                        <p>Select which models are shipped "on" by default in a new install.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveDefaults()">
+                        <i class="fas fa-save"></i> Save defaults.json
+                    </button>
+                </div>
+                <div class="defaults-list fadeIn" id="defaults-container">
+                    <!-- Populated via script -->
+                    <div style="text-align: center; padding: 4rem; color: var(--text-secondary);">
+                        <i class="fas fa-circle-notch fa-spin fa-2x"></i>
+                        <p style="margin-top: 1rem;">Loading full model list...</p>
+                    </div>
+                </div>
+            `;
+            
+            buildDefaultsList();
+        }
+
+        async function buildDefaultsList() {
+            const container = document.getElementById('defaults-container');
+            let html = '';
+            
+            // We need all suggested models to show the options
+            for (const p of providers) {
+                const res = await fetch(`/api/provider/${p.id}`);
+                const data = await res.json();
+                const providerModels = data[p.id].models || [];
+                const activeModelIds = defaultsData[p.id] || [];
+                
+                html += `
+                    <div class="default-provider">
+                        <h3>${p.name}</h3>
+                        <div class="default-models" id="defaults-${p.id}">
+                            ${providerModels.map(m => `
+                                <div class="model-tag">
+                                    <input type="checkbox" class="tag-checkbox" id="def-${p.id}-${m.id}" 
+                                           ${activeModelIds.includes(m.id) ? 'checked' : ''}
+                                           data-provider="${p.id}" data-model="${m.id}">
+                                    <label class="tag-label" for="def-${p.id}-${m.id}">
+                                        ${m.name} <span style="opacity: 0.5; font-size: 0.7rem;">${m.id}</span>
+                                    </label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        // CRUD
+        function openAddModel() {
+            document.getElementById('edit-index').value = "-1";
+            document.getElementById('modal-title').textContent = "Add New Model";
+            document.getElementById('model-form').reset();
+            openModal('edit-modal');
+        }
+
+        function editModel(index) {
+            const m = currentData[currentProvider].models[index];
+            document.getElementById('edit-index').value = index;
+            document.getElementById('modal-title').textContent = "Edit Model";
+            
+            document.getElementById('model-id').value = m.id;
+            document.getElementById('model-display-name').value = m.name;
+            document.getElementById('model-input-cost').value = m.input_cost;
+            document.getElementById('model-output-cost').value = m.output_cost;
+            document.getElementById('model-capabilities').value = (m.capabilities || []).join(', ');
+            document.getElementById('model-description').value = m.description || '';
+            
+            openModal('edit-modal');
+        }
+
+        async function saveModel(e) {
+            e.preventDefault();
+            const index = parseInt(document.getElementById('edit-index').value);
+            
+            const model = {
+                id: document.getElementById('model-id').value,
+                name: document.getElementById('model-display-name').value,
+                input_cost: parseFloat(document.getElementById('model-input-cost').value),
+                output_cost: parseFloat(document.getElementById('model-output-cost').value),
+                capabilities: document.getElementById('model-capabilities').value.split(',').map(s => s.trim()).filter(s => s),
+                description: document.getElementById('model-description').value
+            };
+            
+            if (index === -1) {
+                currentData[currentProvider].models.push(model);
+            } else {
+                currentData[currentProvider].models[index] = model;
+            }
+            
+            await fetch(`/api/provider/${currentProvider}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(currentData)
+            });
+            
+            closeModal('edit-modal');
+            renderProviderModels();
+        }
+
+        async function deleteModel(index) {
+            if (!confirm("Are you sure you want to delete this model definition?")) return;
+            currentData[currentProvider].models.splice(index, 1);
+            await fetch(`/api/provider/${currentProvider}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(currentData)
+            });
+            renderProviderModels();
+        }
+
+        async function saveDefaults() {
+            const checkboxes = document.querySelectorAll('.tag-checkbox');
+            const newDefaults = {};
+            
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    const prov = cb.dataset.provider;
+                    const model = cb.dataset.model;
+                    if (!newDefaults[prov]) newDefaults[prov] = [];
+                    newDefaults[prov].push(model);
+                }
+            });
+            
+            const res = await fetch('/api/defaults', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newDefaults)
+            });
+            
+            if (res.ok) {
+                defaultsData = newDefaults;
+                alert('defaults.json saved successfully!');
+            }
+        }
+
+        // Utils
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        init();
+    </script>
+</body>
+</html>
