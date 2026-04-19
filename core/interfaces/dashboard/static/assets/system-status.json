@@ -68,10 +68,10 @@
                     "AI Scheduler: Cron-based automated AI tasks — create recurring prompts with specific schedules (e.g. 'Every day at 9 AM'); tasks run in background and send notifications on completion",
                     "AI Scheduler: Task persistence — scheduled tasks saved to data/scheduled_tasks/ with full configuration, results, and state tracking",
                     "Notification Hub: Real-time system-wide alerts — persistent notification history accessible from the header bell icon",
-                    "Notification Hub: Granular filtering — toggle visibility for different alert sources (Agents, Schedule, System, Nexus) in the Settings > Notifications tab",
+                    "Notification Hub: Granular filtering — toggle visibility for different alert sources (Agents, Schedule, System, Core) in the Settings > Notifications tab",
                     "Notification Hub: Deep-linking navigation — clicking a notification automatically navigates to the relevant dashboard tab and selects the related item (e.g. specific task ID)",
                     "Persistent Memory: Integrated chat memory — chat sidebar now includes a 'Memory' section showing active context topics and long-term facts extracted from conversations",
-                    "Persistent Memory: Fact extraction logic — Nexus Core now automatically updates the memory graph after significant conversation milestones",
+                    "Persistent Memory: Fact extraction logic — Aethvion Core now automatically updates the memory graph after significant conversation milestones",
                     "Chat UI: Compact thread history — redesigned sidebar with smaller thread cards, date dividers (Today, Yesterday, Last Week), and last-message previews",
                     "System Debloating: Legacy 'tools/' root directory removed — standard tools consolidated into core/tools/standard/ for a leaner project structure",
                     "System Debloating: Deprecated Tool Forge — system shifted entirely to Agentic Skill execution via Workspaces, reducing overhead from static tool generation"
@@ -79,7 +79,7 @@
                 "improved": [
                     "Companion UI: Misaka Cipher reordered — moved to the 'Companions' category in the sidebar for better logical grouping",
                     "Companion UI: Chat thread history date dividers added for improved context tracking",
-                    "Infrastructure: Startup speed optimizations — reduced initialization overhead by lazy-loading non-essential Nexus modules",
+                    "Infrastructure: Startup speed optimizations — reduced initialization overhead by lazy-loading non-essential suite modules",
                     "Infrastructure: Environment setup — enhanced setup_environment.bat with better error reporting and automated venv repair"
                 ],
                 "fixed": [
@@ -156,7 +156,7 @@
                     "Infrastructure: Centralized Version Control — unified v10 single-integer versioning system across the entire suite",
                     "Infrastructure: Dynamic Frontend Inversion — dashboard server now dynamically injects version metadata into index.html",
                     "Sidebar: Dynamic tab counts for all sidebar categories (e.g. WORKFLOW (3))",
-                    "Nexus: Dedicated reload button added to the Nexus tab for quick dashboard troubleshooting",
+                    "Dashboard: Dedicated reload button added to the Home tab for quick dashboard troubleshooting",
                     "Agents Tab: Full workspace and thread management system — workspaces map to filesystem directories, each with independent threads",
                     "Agents Tab: ReAct-style agent execution loop — LLM plans and executes real file/command actions step by step until task is complete",
                     "Agents Tab: Live SSE step streaming — each agent action (write_file, read_file, list_dir, run_command, thinking, done) streams to the UI in real time",
@@ -215,7 +215,7 @@
                     "Infrastructure: Aggressive Cache-Control middleware added to all 9 internal app servers + dashboard",
                     "Infrastructure: Launcher and main entry point now automatically configure developer environment flags",
                     "Sidebar: Dynamic tab counts for all sidebar categories (e.g. Workflow (3)) for better navigation",
-                    "Nexus: Added a dedicated refresh button to the permanent Nexus tab for easy dashboard reloading",
+                    "Dashboard: Added a dedicated refresh button to the permanent Home tab for easy dashboard reloading",
                     "AI Conversation: Participant display names stored directly in message history — prevents name collisions when two participants share the same model",
                     "AI Conversation: Personality field included in share payload and rendered on the share page",
                     "Code IDE: Historical python-exec blocks render as 'Ran' instead of 'Queued' when a thread is reloaded",
@@ -646,9 +646,9 @@
     },
     "modules": [
         {
-            "id": "nexus",
-            "name": "Nexus Module",
-            "desc": "The central bridge between Aethvion and external hardware/software.",
+            "id": "core",
+            "name": "Aethvion Core",
+            "desc": "The central engine for Aethvion Suite operations.",
             "features": [
                 {
                     "name": "Media Sentinel (SMTC)",

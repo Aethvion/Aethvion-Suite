@@ -84,7 +84,7 @@ const ATB = (() => {
             this.wrapper.style.display = 'block';
             
             if (!services || services.length === 0) {
-                this.list.innerHTML = '<div class="services-empty">No active neural models.</div>';
+                this.list.innerHTML = '<div class="services-empty">No models running.</div>';
                 this.count.textContent = '0';
                 return;
             }
@@ -129,8 +129,8 @@ const ATB = (() => {
         { id: 'kanban',       label: 'Kanban',         emoji: '📋', category: 'Professional Development', port: null, portKey: 'Aethvion Kanban'       },
     ];
 
-    const NEXUS_PANEL = 'panel-nexus';
-    let _active = NEXUS_PANEL;
+    const HOME_PANEL = 'panel-home';
+    let _active = HOME_PANEL;
 
     // ── Dynamic port discovery ────────────────────────────────────────────────
     // Returns { "Aethvion Code IDE": 8083, ... } and updates APPS[].port.
@@ -619,7 +619,7 @@ const ATB = (() => {
         document.getElementById('atb-quit-btn')
             ?.addEventListener('click', e => { e.stopPropagation(); quitSystem(); });
 
-        document.getElementById('nexus-refresh')
+        document.getElementById('home-refresh')
             ?.addEventListener('click', e => {
                 e.stopPropagation();
                 window.location.reload();

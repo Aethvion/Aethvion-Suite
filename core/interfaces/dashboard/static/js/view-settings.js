@@ -434,7 +434,7 @@ function renderBridgeModules(modules) {
     const container = document.getElementById('bridge-module-list');
     if (!container) return;
     if (!modules.length) {
-        container.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">No Bridge modules available.</span>';
+        container.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">No bridges connected yet.</span>';
         return;
     }
     container.innerHTML = '';

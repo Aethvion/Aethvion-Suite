@@ -262,7 +262,7 @@ class CheckersGame {
             this.updatePlayerCards();
             this.renderBoard();
         } else {
-            this.updateStatus("Nexus AI is thinking...");
+            this.updateStatus("Aethvion AI is thinking...");
             this.updatePlayerCards();
             this.renderBoard();
             setTimeout(() => this.executeAIMove(), 100); // Async to allow UI draw

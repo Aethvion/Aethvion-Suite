@@ -274,14 +274,14 @@
 
 <!-- ── App Tab Bar ─────────────────────────────────────────────────────────── -->
 <div id="app-tab-bar">
-    <div class="atb-brand" onclick="ATB.switchTo('panel-nexus')" title="Go Home">
+    <div class="atb-brand" onclick="ATB.switchTo('panel-home')" title="Go Home">
         <span class="atb-brand-logo">✦</span>
         <span class="atb-brand-name">Aethvion</span>
     </div>
     <div class="atb-tabs" id="atb-tabs">
-        <button class="atb-tab atb-tab--active" data-panel="panel-nexus" title="Home">
+        <button class="atb-tab atb-tab--active" data-panel="panel-home" title="Home">
             <span class="atb-tab-label">Home</span>
-            <span class="atb-tab-refresh" id="nexus-refresh" title="Refresh Dashboard"><i class="fas fa-sync-alt"></i></span>
+            <span class="atb-tab-refresh" id="home-refresh" title="Refresh Dashboard"><i class="fas fa-sync-alt"></i></span>
         </button>
         <!-- App tabs are added here dynamically by app-tabs.js -->
     </div>
@@ -324,7 +324,7 @@
 <!-- ── Nexus Panel ─────────────────────────────────────────────────────────── -->
 <!-- Wraps the existing dashboard (header + content-wrapper). The app-panel CSS
      makes it position:fixed below the tab bar, matching the old body layout. -->
-<div id="panel-nexus" class="app-panel app-panel--nexus">
+<div id="panel-home" class="app-panel app-panel--home">
 
     <!-- Startup Splash Screen -->
     <div id="startup-splash" class="startup-splash">
@@ -367,7 +367,7 @@
                     <span class="status-divider">|</span>
                     <span title="Cost Today">Cost: <strong id="cost-today">$0.00</strong></span>
                 </div>
-                <div class="status-indicator" id="nexus-status-indicator">
+                <div class="status-indicator" id="home-status-indicator">
                     <span class="status-dot"></span>
                     <span class="status-text">Connecting...</span>
                 </div>

@@ -371,7 +371,7 @@ function _isHidden(source) {
         bellBtn = _buildBell();
         badge = bellBtn.querySelector('.notif-badge');
 
-        const statusIndicator = document.getElementById('nexus-status-indicator');
+        const statusIndicator = document.getElementById('home-status-indicator');
         if (statusIndicator && statusIndicator.parentNode) {
             statusIndicator.parentNode.insertBefore(bellBtn, statusIndicator);
         } else {

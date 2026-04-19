@@ -1,7 +1,7 @@
 // Handles interacting with the System Status and Roadmap data
 
 async function loadHeaderStatus() {
-    const indicator = document.getElementById('nexus-status-indicator');
+    const indicator = document.getElementById('home-status-indicator');
     const updateUI = (isOnline) => {
         if (!indicator) return;
         const dot = indicator.querySelector('.status-dot');

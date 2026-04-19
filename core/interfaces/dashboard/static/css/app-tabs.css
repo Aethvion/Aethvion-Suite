@@ -326,7 +326,7 @@ body {
 }
 
 /* Nexus panel: flex column (replaces the old body flex-column) */
-.app-panel--nexus {
+.app-panel--home {
     display: flex;
     flex-direction: column;
 }
