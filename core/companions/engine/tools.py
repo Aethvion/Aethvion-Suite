@@ -36,18 +36,7 @@ def validate_path(target: str, workspaces: list[dict], permission: str) -> tuple
     return False, f"'{target}' is not inside any workspace with '{permission}' permission."
 
 
-def load_workspaces(workspaces_file: Path) -> list[dict]:
-    if not workspaces_file.exists():
-        return []
-    try:
-        return list(json.loads(workspaces_file.read_text(encoding="utf-8")))
-    except Exception:
-        return []
 
-
-def save_workspaces(workspaces_file: Path, workspaces: list[dict]) -> None:
-    workspaces_file.parent.mkdir(parents=True, exist_ok=True)
-    workspaces_file.write_text(json.dumps(workspaces, indent=4), encoding="utf-8")
 
 
 # ── Tool tag parsing ──────────────────────────────────────────────────────────

@@ -245,7 +245,8 @@ async def websocket_chat(websocket: WebSocket):
         while True:
             data = await websocket.receive_json()
             if "message" in data:
-                result = await asyncio.to_thread(app.state.orchestrator.process_message, data["message"])
+                cid = data.get("companionId")
+                result = await app.state.orchestrator.process_message(data["message"], companion_id=cid)
                 await websocket.send_json({"type": "response", "response": result.response, "success": result.success})
     except (WebSocketDisconnect, RuntimeError): pass
     finally: manager.disconnect(websocket, "chat")

@@ -97,8 +97,6 @@ LOCK_FILE    = SYSTEM / "aethvion.lock"
 PORTS_JSON   = SYSTEM / "ports.json"
 PORTS_LOCK   = SYSTEM / "ports.lock"
 
-# ── Companions ────────────────────────────────────────────────────────────────
-COMPANIONS_MISAKA   = COMPANIONS / "misaka_cipher"
 
 # ── Companions (persistent brain) ─────────────────────────────────────────────
 COMPANIONS_PERSONAS  = COMPANIONS / "personas"
@@ -110,11 +108,12 @@ VAULT_MEMORY         = COMPANIONS_MEMORY
 VAULT_EPISODIC       = VAULT_MEMORY           # Legacy alias for memory storage
 VAULT_SEARCH         = VAULT_MEMORY           # Legacy alias for search storage
 
-# Misaka Cipher persona
-PERSONA_MISAKA         = VAULT_PERSONAS / "misakacipher"
-PERSONA_MISAKA_MEM     = PERSONA_MISAKA / "memory.json"
-PERSONA_MISAKA_BASE    = PERSONA_MISAKA / "base_info.json"
-PERSONA_MISAKA_THREADS = PERSONA_MISAKA / "threads"
+# ── Legacy Companion Shortcuts (Deprecated: Use dynamic paths) ───────────────
+COMPANIONS_MISAKA        = COMPANIONS_PERSONAS / "misakacipher"
+PERSONA_MISAKA           = COMPANIONS_MISAKA
+PERSONA_MISAKA_KNOWLEDGE = COMPANIONS_KNOWLEDGE / "misakacipher"
+PERSONA_MISAKA_EPISODIC  = COMPANIONS_MEMORY / "misakacipher"
+
 
 # Knowledge base
 KNOWLEDGE_GRAPH    = VAULT_KNOWLEDGE / "graph.json"
@@ -156,7 +155,6 @@ def ensure_all() -> None:
         # Sub-directories
         LOGS_USAGE, LOGS_NOTIFICATIONS,
         COMPANIONS_PERSONAS, COMPANIONS_KNOWLEDGE, COMPANIONS_MEMORY,
-        PERSONA_MISAKA, PERSONA_MISAKA_THREADS,
         WS_OUTPUTS, WS_TOOLS, WS_MEDIA, WS_UPLOADS, WS_PROJECTS,
         OUT_IMAGES, OUT_MODELS, OUT_DOCS,
         SCHEDULED_TASKS,

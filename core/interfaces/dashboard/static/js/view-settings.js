@@ -78,147 +78,86 @@ async function loadPreferences() {
         };
     }
 
-    // Misaka Cipher Settings
-    const misakaModel = document.getElementById('setting-misakacipher-model');
-    if (misakaModel) {
-        misakaModel.onchange = async (e) => {
-            await savePreference('misakacipher.model', e.target.value);
-        };
-    }
-
-    const infoModel = document.getElementById('setting-info-model');
-    if (infoModel) {
-        infoModel.onchange = async (e) => {
-            await savePreference('system.info_model', e.target.value);
-        };
-    }
-
-    const misakaTypingSpeed = document.getElementById('setting-misakacipher-typing-speed');
-    const misakaTypingVal = document.getElementById('setting-misakacipher-typing-speed-val');
-    if (misakaTypingSpeed && misakaTypingVal) {
-        const currentSpeed = prefs.get('misakacipher.typing_speed', 75);
-        misakaTypingSpeed.value = currentSpeed;
-        misakaTypingVal.textContent = currentSpeed;
-
-        misakaTypingSpeed.oninput = (e) => {
-            misakaTypingVal.textContent = e.target.value;
-        };
-        misakaTypingSpeed.onchange = async (e) => {
-            const val = parseInt(e.target.value, 10);
-            await savePreference('misakacipher.typing_speed', val);
-            window.dispatchEvent(new CustomEvent('misakaSettingsUpdated', {
-                detail: { typing_speed: val }
-            }));
-        };
-    }
-
-    const misakaContextLimit = document.getElementById('setting-misakacipher-context-limit');
-    const misakaContextLimitVal = document.getElementById('setting-misakacipher-context-limit-val');
-    if (misakaContextLimit && misakaContextLimitVal) {
-        const currentLimit = prefs.get('misakacipher.context_limit', 6);
-        misakaContextLimit.value = currentLimit;
-        misakaContextLimitVal.textContent = currentLimit;
-
-        misakaContextLimit.oninput = (e) => {
-            misakaContextLimitVal.textContent = e.target.value;
-        };
-        misakaContextLimit.onchange = async (e) => {
-            const val = parseInt(e.target.value, 10);
-            await savePreference('misakacipher.context_limit', val);
-            window.dispatchEvent(new CustomEvent('misakaSettingsUpdated', {
-                detail: { context_limit: val }
-            }));
-        };
-    }
-
-    // Proactive Messaging Settings
-    const proactiveSettings = [
-        { id: 'setting-misaka-proactive-enabled', pref: 'misakacipher.proactive_enabled', type: 'toggle', default: true },
-        { id: 'setting-misaka-proactive-popup', pref: 'misakacipher.proactive_popup', type: 'toggle', default: true },
-        { id: 'setting-misaka-startup-hours', pref: 'misakacipher.startup_trigger_hours', type: 'range', default: 4, valId: 'setting-misaka-startup-hours-val' },
-        { id: 'setting-misaka-startup-chance', pref: 'misakacipher.startup_chance', type: 'range', default: 75, valId: 'setting-misaka-startup-chance-val' },
-        { id: 'setting-misaka-startup-delay-min', pref: 'misakacipher.startup_delay_min', type: 'range', default: 10, valId: 'setting-misaka-startup-delay-min-val' },
-        { id: 'setting-misaka-startup-delay-max', pref: 'misakacipher.startup_delay_max', type: 'range', default: 45, valId: 'setting-misaka-startup-delay-max-val' },
-        { id: 'setting-misaka-session-interval-min', pref: 'misakacipher.session_interval_min', type: 'range', default: 45, valId: 'setting-misaka-session-interval-min-val' },
-        { id: 'setting-misaka-session-interval-max', pref: 'misakacipher.session_interval_max', type: 'range', default: 90, valId: 'setting-misaka-session-interval-max-val' },
-        { id: 'setting-misaka-session-chance', pref: 'misakacipher.session_chance', type: 'range', default: 60, valId: 'setting-misaka-session-chance-val' },
-        { id: 'setting-misakacipher-proactive-tools', pref: 'misakacipher.allow_proactive_tools', type: 'toggle', default: false },
+    // ── Companion Settings Loop ──────────────────────────────────────────────
+    const COMPANIONS = [
+        { id: 'misakacipher', prefix: 'misaka',  prefPrefix: 'misakacipher' },
+        { id: 'axiom',        prefix: 'axiom',   prefPrefix: 'axiom' },
+        { id: 'lyra',         prefix: 'lyra',    prefPrefix: 'lyra' }
     ];
 
-    for (const s of proactiveSettings) {
-        const el = document.getElementById(s.id);
-        if (!el) continue;
-        if (s.type === 'toggle') {
-            el.checked = prefs.get(s.pref, s.default);
-        } else {
-            const val = prefs.get(s.pref, s.default);
-            el.value = val;
-            const display = document.getElementById(s.valId);
-            if (display) display.textContent = val;
-            el.oninput = (e) => { if (display) display.textContent = e.target.value; };
+    for (const comp of COMPANIONS) {
+        const id = comp.id;
+        const prefix = comp.prefix;
+        const pfx = comp.prefPrefix;
+
+        // Model Selection
+        const modelEl = document.getElementById(`setting-${pfx}-model`);
+        if (modelEl) {
+            modelEl.onchange = async (e) => {
+                await savePreference(`${pfx}.model`, e.target.value);
+                window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { model: e.target.value } }));
+            };
         }
 
-        el.onchange = async (e) => {
-            const val = s.type === 'toggle' ? e.target.checked : parseFloat(e.target.value);
-            await savePreference(s.pref, val);
-            window.dispatchEvent(new CustomEvent('misakaSettingsUpdated', {
-                detail: { proactive_change: true }
-            }));
-        };
-    }
+        // Typing Speed
+        _bindRangeWithDisplay(
+            `setting-${pfx}-typing-speed`,
+            `setting-${pfx}-typing-speed-val`,
+            `${pfx}.typing_speed`,
+            75,
+            (val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { typing_speed: val } }))
+        );
 
-    // Hide Character / Particle Sphere toggle
-    const hideCharToggle = document.getElementById('setting-misakacipher-hide-character');
-    if (hideCharToggle) {
-        hideCharToggle.checked = prefs.get('misakacipher.hide_character', false);
-        hideCharToggle.onchange = async (e) => {
-            await savePreference('misakacipher.hide_character', e.target.checked);
-            window.dispatchEvent(new CustomEvent('misakaSettingsUpdated', {
-                detail: { hide_character: e.target.checked }
-            }));
-        };
-    }
+        // Memory Context Limit
+        _bindRangeWithDisplay(
+            `setting-${pfx}-context-limit`,
+            `setting-${pfx}-context-limit-val`,
+            `${pfx}.context_limit`,
+            (id === 'misakacipher' ? 6 : 8),
+            (val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { context_limit: val } }))
+        );
 
-    // Reset button
-    const resetBtn = document.getElementById('misaka-reset-btn');
-    if (resetBtn) {
-        resetBtn.addEventListener('click', async () => {
-            const confirmed = confirm(
-                'This will permanently delete all of Misaka Cipher\'s conversation history and memory.\n\nAre you sure?'
-            );
-            if (!confirmed) return;
+        // Hide Character (if exists)
+        _bindToggle(`setting-${pfx}-hide-character`, `${pfx}.hide_character`, false, 
+            (val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { hide_character: val } }))
+        );
 
-            resetBtn.disabled = true;
-            resetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting…';
+        // Proactive Settings
+        const proactiveItems = [
+            { suffix: '-proactive-enabled',    key: 'proactive_enabled',     type: 'toggle', default: (id === 'misakacipher') },
+            { suffix: '-proactive-popup',      key: 'proactive_popup',       type: 'toggle', default: true },
+            { suffix: '-startup-hours',        key: 'startup_trigger_hours', type: 'range',  default: 4,  hasVal: true },
+            { suffix: '-startup-chance',       key: 'startup_chance',        type: 'range',  default: 75, hasVal: true },
+            { suffix: '-startup-delay-min',    key: 'startup_delay_min',     type: 'range',  default: 10, hasVal: true },
+            { suffix: '-startup-delay-max',    key: 'startup_delay_max',     type: 'range',  default: 45, hasVal: true },
+            { suffix: '-session-interval-min', key: 'session_interval_min',  type: 'range',  default: 45, hasVal: true },
+            { suffix: '-session-interval-max', key: 'session_interval_max',  type: 'range',  default: 90, hasVal: true },
+            { suffix: '-session-chance',       key: 'session_chance',        type: 'range',  default: 60, hasVal: true },
+            { suffix: '-proactive-tools',      key: 'allow_proactive_tools', type: 'toggle', default: false }
+        ];
 
-            try {
-                const res = await fetch('/api/companions/misakacipher/reset', { method: 'POST' });
-                if (!res.ok) {
-                    const err = await res.json().catch(() => ({}));
-                    throw new Error(err.detail || `HTTP ${res.status}`);
-                }
-                resetBtn.innerHTML = '<i class="fas fa-check"></i> Reset complete';
-                resetBtn.style.background = 'rgba(34,197,94,0.15)';
-                resetBtn.style.borderColor = 'rgba(34,197,94,0.4)';
-                resetBtn.style.color = 'rgba(34,197,94,0.9)';
-                setTimeout(() => {
-                    resetBtn.disabled = false;
-                    resetBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Misaka Cipher';
-                    resetBtn.style.cssText = '';
-                }, 3000);
-            } catch (e) {
-                resetBtn.disabled = false;
-                resetBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Reset failed';
-                resetBtn.style.background = 'rgba(239,68,68,0.15)';
-                resetBtn.style.borderColor = 'rgba(239,68,68,0.4)';
-                resetBtn.style.color = 'rgba(239,68,68,0.9)';
-                console.error('[Misaka Reset]', e);
-                setTimeout(() => {
-                    resetBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Misaka Cipher';
-                    resetBtn.style.cssText = '';
-                }, 3000);
+        for (const item of proactiveItems) {
+            const elId = `setting-${prefix}${item.suffix}`;
+            const prefKey = `${pfx}.${item.key}`;
+            if (item.type === 'toggle') {
+                _bindToggle(elId, prefKey, item.default, 
+                    (val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { [item.key]: val } }))
+                );
+            } else {
+                _bindRangeWithDisplay(elId, `${elId}-val`, prefKey, item.default,
+                    (val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { [item.key]: val } }))
+                );
             }
-        });
+        }
+
+        // Reset Button
+        const resetBtn = document.getElementById(`${prefix}-reset-btn`);
+        if (resetBtn) {
+            resetBtn.onclick = () => resetCompanion(id, resetBtn);
+        }
+
+        // Workspaces
+        loadCompanionWorkspaces(id);
     }
 
     // ── Global Companion Settings ────────────────────────────────────────────
@@ -234,131 +173,63 @@ async function loadPreferences() {
     _bindToggle('setting-companions-global-sounds',           'companions.global.sounds',           false);
     _bindToggle('setting-companions-global-popups',           'companions.global.popups',           true);
 
-    // ── Axiom Settings ────────────────────────────────────────────────────────
-    _bindRangeWithDisplay(
-        'setting-axiom-context-limit',
-        'setting-axiom-context-limit-val',
-        'axiom.context_limit',
-        8,
-        (val) => window.dispatchEvent(new CustomEvent('axiomSettingsUpdated', { detail: { context_limit: val } }))
-    );
-
-    const axiomModelEl = document.getElementById('setting-axiom-model');
-    if (axiomModelEl) {
-        axiomModelEl.onchange = async (e) => {
-            await savePreference('axiom.model', e.target.value);
-            window.dispatchEvent(new CustomEvent('axiomSettingsUpdated', { detail: { model: e.target.value } }));
+    const infoModel = document.getElementById('setting-info-model');
+    if (infoModel) {
+        infoModel.onchange = async (e) => {
+            await savePreference('system.info_model', e.target.value);
         };
     }
 
-    // Axiom proactive settings
-    for (const item of [
-        { id: 'setting-axiom-proactive-enabled',    pref: 'axiom.proactive_enabled',     type: 'toggle', default: false },
-        { id: 'setting-axiom-proactive-popup',       pref: 'axiom.proactive_popup',       type: 'toggle', default: true  },
-        { id: 'setting-axiom-startup-hours',         pref: 'axiom.startup_trigger_hours', type: 'range',  default: 4,  valId: 'setting-axiom-startup-hours-val' },
-        { id: 'setting-axiom-startup-chance',        pref: 'axiom.startup_chance',        type: 'range',  default: 75, valId: 'setting-axiom-startup-chance-val' },
-        { id: 'setting-axiom-startup-delay-min',     pref: 'axiom.startup_delay_min',     type: 'range',  default: 10, valId: 'setting-axiom-startup-delay-min-val' },
-        { id: 'setting-axiom-startup-delay-max',     pref: 'axiom.startup_delay_max',     type: 'range',  default: 45, valId: 'setting-axiom-startup-delay-max-val' },
-        { id: 'setting-axiom-session-interval-min',  pref: 'axiom.session_interval_min',  type: 'range',  default: 45, valId: 'setting-axiom-session-interval-min-val' },
-        { id: 'setting-axiom-session-interval-max',  pref: 'axiom.session_interval_max',  type: 'range',  default: 90, valId: 'setting-axiom-session-interval-max-val' },
-        { id: 'setting-axiom-session-chance',        pref: 'axiom.session_chance',        type: 'range',  default: 60, valId: 'setting-axiom-session-chance-val' },
-    ]) {
-        if (item.type === 'toggle') {
-            _bindToggle(item.id, item.pref, item.default,
-                (val) => window.dispatchEvent(new CustomEvent('axiomSettingsUpdated', { detail: { [item.pref.split('.').pop()]: val } }))
-            );
-        } else {
-            _bindRangeWithDisplay(item.id, item.valId, item.pref, item.default,
-                (val) => window.dispatchEvent(new CustomEvent('axiomSettingsUpdated', { detail: { [item.pref.split('.').pop()]: val } }))
-            );
-        }
-    }
-
-    // Axiom reset button
-    const axiomResetBtn = document.getElementById('axiom-reset-btn');
-    if (axiomResetBtn) {
-        axiomResetBtn.addEventListener('click', async () => {
-            if (!confirm('This will permanently delete all of Axiom\'s conversation history and memory.\n\nAre you sure?')) return;
-            try {
-                axiomResetBtn.disabled = true;
-                axiomResetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
-                const res = await fetch('/api/companions/axiom/reset', { method: 'POST' });
-                if (!res.ok) throw new Error((await res.json()).detail || 'Reset failed');
-                axiomResetBtn.innerHTML = '<i class="fas fa-check"></i> Reset Complete';
-                setTimeout(() => { axiomResetBtn.disabled = false; axiomResetBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Axiom'; }, 3000);
-            } catch (e) {
-                console.error('[Axiom Reset]', e);
-                axiomResetBtn.disabled = false;
-                axiomResetBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Axiom';
-            }
-        });
-    }
-
-    // ── Lyra Settings ─────────────────────────────────────────────────────────
-    _bindRangeWithDisplay(
-        'setting-lyra-context-limit',
-        'setting-lyra-context-limit-val',
-        'lyra.context_limit',
-        8,
-        (val) => window.dispatchEvent(new CustomEvent('lyraSettingsUpdated', { detail: { context_limit: val } }))
-    );
-
-    const lyraModelEl = document.getElementById('setting-lyra-model');
-    if (lyraModelEl) {
-        lyraModelEl.onchange = async (e) => {
-            await savePreference('lyra.model', e.target.value);
-            window.dispatchEvent(new CustomEvent('lyraSettingsUpdated', { detail: { model: e.target.value } }));
-        };
-    }
-
-    // Lyra proactive settings
-    for (const item of [
-        { id: 'setting-lyra-proactive-enabled',    pref: 'lyra.proactive_enabled',     type: 'toggle', default: false },
-        { id: 'setting-lyra-proactive-popup',       pref: 'lyra.proactive_popup',       type: 'toggle', default: true  },
-        { id: 'setting-lyra-startup-hours',         pref: 'lyra.startup_trigger_hours', type: 'range',  default: 4,  valId: 'setting-lyra-startup-hours-val' },
-        { id: 'setting-lyra-startup-chance',        pref: 'lyra.startup_chance',        type: 'range',  default: 75, valId: 'setting-lyra-startup-chance-val' },
-        { id: 'setting-lyra-startup-delay-min',     pref: 'lyra.startup_delay_min',     type: 'range',  default: 10, valId: 'setting-lyra-startup-delay-min-val' },
-        { id: 'setting-lyra-startup-delay-max',     pref: 'lyra.startup_delay_max',     type: 'range',  default: 45, valId: 'setting-lyra-startup-delay-max-val' },
-        { id: 'setting-lyra-session-interval-min',  pref: 'lyra.session_interval_min',  type: 'range',  default: 45, valId: 'setting-lyra-session-interval-min-val' },
-        { id: 'setting-lyra-session-interval-max',  pref: 'lyra.session_interval_max',  type: 'range',  default: 90, valId: 'setting-lyra-session-interval-max-val' },
-        { id: 'setting-lyra-session-chance',        pref: 'lyra.session_chance',        type: 'range',  default: 60, valId: 'setting-lyra-session-chance-val' },
-    ]) {
-        if (item.type === 'toggle') {
-            _bindToggle(item.id, item.pref, item.default,
-                (val) => window.dispatchEvent(new CustomEvent('lyraSettingsUpdated', { detail: { [item.pref.split('.').pop()]: val } }))
-            );
-        } else {
-            _bindRangeWithDisplay(item.id, item.valId, item.pref, item.default,
-                (val) => window.dispatchEvent(new CustomEvent('lyraSettingsUpdated', { detail: { [item.pref.split('.').pop()]: val } }))
-            );
-        }
-    }
-
-    // Lyra reset button
-    const lyraResetBtn = document.getElementById('lyra-reset-btn');
-    if (lyraResetBtn) {
-        lyraResetBtn.addEventListener('click', async () => {
-            if (!confirm('This will permanently delete all of Lyra\'s conversation history and memory.\n\nAre you sure?')) return;
-            try {
-                lyraResetBtn.disabled = true;
-                lyraResetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
-                const res = await fetch('/api/companions/lyra/reset', { method: 'POST' });
-                if (!res.ok) throw new Error((await res.json()).detail || 'Reset failed');
-                lyraResetBtn.innerHTML = '<i class="fas fa-check"></i> Reset Complete';
-                setTimeout(() => { lyraResetBtn.disabled = false; lyraResetBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Lyra'; }, 3000);
-            } catch (e) {
-                console.error('[Lyra Reset]', e);
-                lyraResetBtn.disabled = false;
-                lyraResetBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Lyra';
-            }
-        });
+    // Bridge Companion Selector
+    const bridgeSelector = document.getElementById('bridge-companion-selector');
+    if (bridgeSelector) {
+        bridgeSelector.onchange = loadBridgeModules;
     }
 
     // Initialize Other Sections
     loadGlobalSettings();
     initDevMode();
-    loadMisakaWorkspaces();
     loadBridgeModules();
+}
+
+async function resetCompanion(companionId, btn) {
+    const displayName = companionId.charAt(0).toUpperCase() + companionId.slice(1).replace('cipher', '');
+    const confirmed = confirm(
+        `This will permanently delete all of ${displayName}'s conversation history and memory.\n\nAre you sure?`
+    );
+    if (!confirmed) return;
+
+    btn.disabled = true;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting…';
+
+    try {
+        const res = await fetch(`/api/companions/${companionId}/reset`, { method: 'POST' });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        btn.innerHTML = '<i class="fas fa-check"></i> Reset complete';
+        btn.style.background = 'rgba(34,197,94,0.15)';
+        btn.style.borderColor = 'rgba(34,197,94,0.4)';
+        btn.style.color = 'rgba(34,197,94,0.9)';
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            btn.style.cssText = '';
+        }, 3000);
+    } catch (e) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Reset failed';
+        btn.style.background = 'rgba(239,68,68,0.15)';
+        btn.style.borderColor = 'rgba(239,68,68,0.4)';
+        btn.style.color = 'rgba(239,68,68,0.9)';
+        console.error(`[${companionId} Reset]`, e);
+        setTimeout(() => {
+            btn.innerHTML = originalHtml;
+            btn.style.cssText = '';
+        }, 3000);
+    }
 }
 
 // ── Companion Accordion toggle ────────────────────────────────────────────────
@@ -419,18 +290,21 @@ window._populateModelSelect = function(sel, prefModel) {
 
 // ===== Bridge Module Management =====
 
+// ===== Bridge Module Management =====
+
 async function loadBridgeModules() {
+    const companionId = document.getElementById('bridge-companion-selector')?.value || 'misakacipher';
     try {
-        const res = await fetch('/api/companions/misakacipher/bridges/registry');
+        const res = await fetch(`/api/companions/${companionId}/bridges/registry`);
         if (!res.ok) return;
         const data = await res.json();
-        renderBridgeModules(data.modules || []);
+        renderBridgeModules(companionId, data.modules || []);
     } catch (e) {
-        console.warn('Could not load Bridge modules:', e);
+        console.warn(`Could not load Bridge modules for ${companionId}:`, e);
     }
 }
 
-function renderBridgeModules(modules) {
+function renderBridgeModules(companionId, modules) {
     const container = document.getElementById('bridge-module-list');
     if (!container) return;
     if (!modules.length) {
@@ -458,7 +332,7 @@ function renderBridgeModules(modules) {
         }
 
         const authBtn = (mod.requires_auth && !mod.is_authorized)
-            ? `<button class="btn btn-primary" style="font-size:0.75rem; margin-top:0.5rem;" onclick="authorizeBridgeModule('${mod.id}')">Connect ${mod.name}</button>`
+            ? `<button class="btn btn-primary" style="font-size:0.75rem; margin-top:0.5rem;" onclick="authorizeBridgeModule('${companionId}', '${mod.id}')">Connect ${mod.name}</button>`
             : (mod.requires_auth ? `<span style="color:#00ff88; font-size:0.75rem; margin-top:0.5rem; display:block;"><i class="fas fa-check-circle"></i> Authorized</span>` : '');
 
         card.innerHTML = `
@@ -486,7 +360,7 @@ async function saveBridgeSettings(moduleId) {
     showToast(`${moduleId} settings saved!`, 'success');
 }
 
-async function authorizeBridgeModule(moduleId) {
+async function authorizeBridgeModule(companionId, moduleId) {
     if (moduleId === 'spotify') {
         const settings = {
             client_id: prefs.get('nexus.spotify.client_id', ''),
@@ -500,7 +374,7 @@ async function authorizeBridgeModule(moduleId) {
         }
 
         try {
-            const res = await fetch('/api/companions/misakacipher/bridges/spotify/authorize', {
+            const res = await fetch(`/api/companions/${companionId}/bridges/spotify/authorize`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(settings)
@@ -514,24 +388,26 @@ async function authorizeBridgeModule(moduleId) {
     }
 }
 
-// ===== Misaka Workspace Management =====
+// ===== Companion Workspace Management =====
 
-async function loadMisakaWorkspaces() {
+async function loadCompanionWorkspaces(companionId) {
+    const prefix = (companionId === 'misakacipher') ? 'misaka' : companionId;
     try {
-        const res = await fetch('/api/companions/misakacipher/workspaces');
+        const res = await fetch(`/api/companions/${companionId}/workspaces`);
         if (!res.ok) return;
         const data = await res.json();
-        renderWorkspaces(data.workspaces || []);
+        renderWorkspaces(companionId, data.workspaces || []);
 
-        const addBtn = document.getElementById('ws-add-btn');
-        if (addBtn) addBtn.onclick = addMisakaWorkspace;
+        const addBtn = document.getElementById(`${prefix}-ws-add-btn`);
+        if (addBtn) addBtn.onclick = () => addCompanionWorkspace(companionId);
     } catch (e) {
-        console.warn('Could not load Misaka workspaces:', e);
+        console.warn(`Could not load workspaces for ${companionId}:`, e);
     }
 }
 
-function renderWorkspaces(workspaces) {
-    const container = document.getElementById('misaka-workspace-list');
+function renderWorkspaces(companionId, workspaces) {
+    const prefix = (companionId === 'misakacipher') ? 'misaka' : companionId;
+    const container = document.getElementById(`${prefix}-workspace-list`);
     if (!container) return;
     if (!workspaces.length) {
         container.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">No workspaces configured.</span>';
@@ -551,24 +427,25 @@ function renderWorkspaces(workspaces) {
             <span style="color:var(--text-secondary); font-size:0.7rem; flex-shrink:0;">${ws.recursive ? '↳ recursive' : 'folder only'}</span>
             <button data-wsid="${ws.id}" title="Remove workspace" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:0.85rem; padding:0.2rem 0.4rem; transition:color 0.2s;" onmouseover="this.style.color='#ff4444'" onmouseout="this.style.color=''">✕</button>
         `;
-        row.querySelector('button').onclick = () => deleteMisakaWorkspace(ws.id);
+        row.querySelector('button').onclick = () => deleteCompanionWorkspace(companionId, ws.id);
         container.appendChild(row);
     }
 }
 
-async function addMisakaWorkspace() {
-    const path = document.getElementById('ws-add-path')?.value?.trim();
-    const label = document.getElementById('ws-add-label')?.value?.trim() || path;
+async function addCompanionWorkspace(companionId) {
+    const prefix = (companionId === 'misakacipher') ? 'misaka' : companionId;
+    const path = document.getElementById(`${prefix}-ws-add-path`)?.value?.trim();
+    const label = document.getElementById(`${prefix}-ws-add-label`)?.value?.trim() || path;
     if (!path) return;
 
     const permissions = [];
-    if (document.getElementById('ws-perm-read')?.checked) permissions.push('read');
-    if (document.getElementById('ws-perm-write')?.checked) permissions.push('write');
-    if (document.getElementById('ws-perm-delete')?.checked) permissions.push('delete');
-    const recursive = document.getElementById('ws-recursive')?.checked ?? true;
+    if (document.getElementById(`${prefix}-ws-perm-read`)?.checked) permissions.push('read');
+    if (document.getElementById(`${prefix}-ws-perm-write`)?.checked) permissions.push('write');
+    if (document.getElementById(`${prefix}-ws-perm-delete`)?.checked) permissions.push('delete');
+    const recursive = document.getElementById(`${prefix}-ws-recursive`)?.checked ?? true;
 
     try {
-        const res = await fetch('/api/companions/misakacipher/workspaces', {
+        const res = await fetch(`/api/companions/${companionId}/workspaces`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ label, path, permissions, recursive })
@@ -578,21 +455,23 @@ async function addMisakaWorkspace() {
             showToast('Error: ' + (err.detail || 'Unknown error'), 'error');
             return;
         }
-        document.getElementById('ws-add-path').value = '';
-        document.getElementById('ws-add-label').value = '';
-        await loadMisakaWorkspaces();
+        const pathInput = document.getElementById(`${prefix}-ws-add-path`);
+        const labelInput = document.getElementById(`${prefix}-ws-add-label`);
+        if (pathInput) pathInput.value = '';
+        if (labelInput) labelInput.value = '';
+        await loadCompanionWorkspaces(companionId);
     } catch (e) {
-        console.error('Failed to add workspace:', e);
+        console.error(`Failed to add workspace for ${companionId}:`, e);
     }
 }
 
-async function deleteMisakaWorkspace(id) {
+async function deleteCompanionWorkspace(companionId, id) {
     if (!confirm('Remove this workspace?')) return;
     try {
-        await fetch(`/api/companions/misakacipher/workspaces/${id}`, { method: 'DELETE' });
-        await loadMisakaWorkspaces();
+        await fetch(`/api/companions/${companionId}/workspaces/${id}`, { method: 'DELETE' });
+        await loadCompanionWorkspaces(companionId);
     } catch (e) {
-        console.error('Failed to delete workspace:', e);
+        console.error(`Failed to delete workspace from ${companionId}:`, e);
     }
 }
 
@@ -2098,7 +1977,7 @@ async function switchSettingsSubTab(subTab, save = true) {
     }
 
     if (subTab === 'modules') {
-        loadNexusModules();
+        loadBridgeModules();
     }
 
     if (subTab === 'discord') {
@@ -2106,7 +1985,7 @@ async function switchSettingsSubTab(subTab, save = true) {
         loadDiscordStatus();
     }
 
-    if (subTab === 'assistant' || subTab === 'misakacipher') {
+    if (['assistant', 'misakacipher', 'axiom', 'lyra', 'nova'].includes(subTab)) {
         loadChatModels();
     }
 

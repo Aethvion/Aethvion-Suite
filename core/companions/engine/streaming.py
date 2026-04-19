@@ -7,29 +7,7 @@ from __future__ import annotations
 import re
 
 
-def clean_memory_tags(text: str) -> str:
-    """
-    Strip <memory_update> blocks (complete or partial) and any bare JSON memory
-    blobs the model emits without the XML wrapper.
 
-    [Emotion:] and [Mood:] tags are intentionally NOT stripped here — they must
-    reach the client so the UI can update the companion avatar / mood indicator.
-    The client-side cleanStreamingDisplay() handles removing them from visible text.
-    """
-    # Complete blocks
-    text = re.sub(
-        r"<memory_update>.*?</memory_update>", "", text, flags=re.IGNORECASE | re.DOTALL
-    )
-    # Partial/open block — discard from opening tag to end of string
-    text = re.sub(r"<memory_update>[\s\S]*$", "", text, flags=re.IGNORECASE)
-    # Bare JSON blobs (model emits without XML wrapper)
-    _keys = r'"(?:user_info|recent_observations|base_info|synthesis_notes)"'
-    text = re.sub(r"\n?\{[^{]*" + _keys + r"[\s\S]*?\}", "", text)
-    text = re.sub(r"\n\{[^{]*" + _keys + r"[\s\S]*$", "", text)
-    text = re.sub(
-        r',?\s*"(?:user_info|recent_observations|base_info|synthesis_notes)"[\s\S]*', "", text
-    )
-    return text
 
 
 def build_bridges_capabilities() -> str:
@@ -67,11 +45,4 @@ def build_bridges_capabilities() -> str:
         return ""
 
 
-def get_greeting_period(hour: int) -> str:
-    if 5 <= hour < 12:
-        return "Morning"
-    if 12 <= hour < 17:
-        return "Afternoon"
-    if 17 <= hour < 22:
-        return "Evening"
-    return "Late Night"
+

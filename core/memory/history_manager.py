@@ -10,27 +10,30 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 from core.utils.logger import get_logger
-from core.utils.paths import HISTORY_CHAT
-from core.utils import utcnow_iso
+from core.utils.paths import HISTORY_CHAT, COMPANIONS_PERSONAS
 
 logger = get_logger(__name__)
 
-# Constants
-HISTORY_DIR = HISTORY_CHAT
+def _get_history_dir(companion_id: Optional[str] = None) -> Path:
+    """Get the history directory for a specific companion."""
+    if companion_id and companion_id != "misakacipher":
+        return COMPANIONS_PERSONAS / companion_id / "threads"
+    return HISTORY_CHAT
 
 _lock = threading.Lock()
 
 class HistoryManager:
     """
-    Manages Misaka Cipher's chat history with support for multiple platforms.
+    Manages chat history with support for multiple companions.
     """
 
     @staticmethod
-    def _get_history_file(dt: datetime.datetime) -> Path:
+    def _get_history_file(dt: datetime.datetime, companion_id: Optional[str] = None) -> Path:
         """Get the path to the daily history file."""
         month_str = dt.strftime("%Y-%m")
         day_str = dt.strftime("%Y-%m-%d")
-        day_dir = HISTORY_DIR / month_str
+        history_dir = _get_history_dir(companion_id)
+        day_dir = history_dir / month_str
         day_dir.mkdir(parents=True, exist_ok=True)
         return day_dir / f"chat_{day_str}.json"
 
@@ -41,21 +44,11 @@ class HistoryManager:
         platform: str = "dashboard",
         timestamp: Optional[str] = None,
         attachments: Optional[List[Dict[str, Any]]] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
+        companion_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Log a message to the unified history.
-        
-        Args:
-            role: "user" or "assistant"
-            content: Message content
-            platform: "dashboard" or "discord"
-            timestamp: ISO format string (optional)
-            attachments: List of attachments
-            metadata: Additional metadata (mood, expression, etc.)
-            
-        Returns:
-            The logged message entry.
         """
         now = datetime.datetime.now(datetime.timezone.utc)
         if not timestamp:
@@ -72,18 +65,15 @@ class HistoryManager:
             entry["attachments"] = attachments
         
         if metadata:
-            # Flatten metadata into entry for assistant role (backwards compatibility)
             if role == "assistant":
                 if "mood" in metadata:
                     entry["mood"] = metadata["mood"]
                 if "expression" in metadata:
                     entry["expression"] = metadata["expression"]
-            
-            # Keep original metadata if complex
             entry["metadata"] = metadata
 
         # Write to file
-        day_file = HistoryManager._get_history_file(now)
+        day_file = HistoryManager._get_history_file(now, companion_id)
         
         with _lock:
             history = []
@@ -105,19 +95,16 @@ class HistoryManager:
         return entry
 
     @staticmethod
-    def get_history(offset_days: int = 0, limit_days: int = 3) -> List[Dict[str, Any]]:
+    def get_history(offset_days: int = 0, limit_days: int = 3, companion_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Load history for a range of days.
-        
-        Returns:
-            List of daily history objects: [{"date": "...", "messages": [...]}, ...]
         """
         results = []
         now = datetime.datetime.now(datetime.timezone.utc)
         
         for i in range(offset_days, offset_days + limit_days):
             dt = now - datetime.timedelta(days=i)
-            day_file = HistoryManager._get_history_file(dt)
+            day_file = HistoryManager._get_history_file(dt, companion_id)
             
             if day_file.exists():
                 try:
@@ -130,7 +117,6 @@ class HistoryManager:
                 except Exception as e:
                     logger.error(f"Failed to read history {day_file}: {e}")
             else:
-                # Still add the entry with empty messages so the frontend knows we checked
                 results.append({
                     "date": dt.strftime("%Y-%m-%d"),
                     "messages": []
@@ -139,9 +125,9 @@ class HistoryManager:
         return results
 
     @staticmethod
-    def get_total_message_count() -> int:
-        """Get total message count for the current day (for synthesis triggering)."""
-        day_file = HistoryManager._get_history_file(datetime.datetime.now(datetime.timezone.utc))
+    def get_total_message_count(companion_id: Optional[str] = None) -> int:
+        """Get total message count for the current day."""
+        day_file = HistoryManager._get_history_file(datetime.datetime.now(datetime.timezone.utc), companion_id)
         if not day_file.exists():
             return 0
         try:
@@ -152,28 +138,24 @@ class HistoryManager:
             return 0
 
     @staticmethod
-    def get_recent_history(limit: int = 15) -> List[Dict[str, Any]]:
+    def get_recent_history(limit: int = 15, companion_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Get the most recent messages across days up to the limit.
-        Used for providing context to new interactions.
         """
         all_messages = []
         now = datetime.datetime.now(datetime.timezone.utc)
         
-        # Look back up to 7 days
         for i in range(7):
             dt = now - datetime.timedelta(days=i)
-            day_file = HistoryManager._get_history_file(dt)
+            day_file = HistoryManager._get_history_file(dt, companion_id)
             if day_file.exists():
                 try:
                     with open(day_file, "r", encoding="utf-8") as f:
                         day_messages = json.load(f)
-                        # We want the MOST RECENT first for efficient limiting, 
-                        # but usually history is chronological.
                         all_messages = day_messages + all_messages
-                        if len(all_messages) > limit * 2: # Buffer for safety
+                        if len(all_messages) > limit * 2:
                             break
                 except Exception as e:
-                    logger.error(f"Error reading history for {dt}: {e}")
+                    logger.error(f"Error reading history for {dt} ({companion_id}): {e}")
         
         return all_messages[-limit:] if all_messages else []
