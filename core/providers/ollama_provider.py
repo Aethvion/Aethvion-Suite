@@ -5,7 +5,7 @@ Ollama handles GPU offload automatically and supports 100+ GGUF models.
 """
 
 import json
-from typing import Optional, Iterator
+from typing import Optional, Iterator, List, Dict, Any
 
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig
 from core.utils.logger import get_logger
@@ -39,6 +39,7 @@ class OllamaProvider(BaseProvider):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> ProviderResponse:
         import requests as _req
@@ -81,6 +82,7 @@ class OllamaProvider(BaseProvider):
         trace_id: str,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> Iterator[str]:
         import requests as _req

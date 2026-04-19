@@ -37,6 +37,7 @@ class AnthropicProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
         images: Optional[List[Dict[str, Any]]] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> ProviderResponse:
         """Generate response using Anthropic Claude."""
@@ -123,6 +124,7 @@ class AnthropicProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
         images: Optional[List[Dict[str, Any]]] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> Iterator[str]:
         """Stream response using Anthropic Claude."""

@@ -6,7 +6,7 @@ Groq LPU inference implementation (OpenAI-compatible API)
 import os
 import requests
 import json
-from typing import Iterator, Optional
+from typing import Iterator, Optional, List, Dict, Any
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig
 from core.utils.logger import get_logger
 
@@ -37,6 +37,7 @@ class GroqProvider(BaseProvider):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> ProviderResponse:
         """Generate response using Groq."""
@@ -98,6 +99,7 @@ class GroqProvider(BaseProvider):
         trace_id: str,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> Iterator[str]:
         """Stream response using Groq."""

@@ -48,6 +48,7 @@ class GoogleAIProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
         images: Optional[List[Dict[str, Any]]] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> ProviderResponse:
         """Generate response using Google AI."""
@@ -100,14 +101,31 @@ class GoogleAIProvider(BaseProvider):
             # Generate response via client
             from google.genai import types
             
+            # Build contents
+            from google.genai import types
             contents = []
-            if images:
-                for img in images:
-                    contents.append(types.Part.from_bytes(
-                        data=img['data'], 
-                        mime_type=img.get('mime_type', 'image/jpeg')
-                    ))
-            contents.append(prompt)
+            
+            if messages:
+                for m in messages:
+                    role = 'user' if m.get('role') == 'user' else 'model'
+                    contents.append(types.Content(role=role, parts=[types.Part.from_text(text=m.get('content', ''))]))
+                
+                # Append current prompt if it's the new user turn
+                if prompt and (not messages or messages[-1].get('content') != prompt):
+                     contents.append(types.Content(role='user', parts=[types.Part.from_text(text=prompt)]))
+            else:
+                user_content = prompt or kwargs.get('user_message', '')
+                if images:
+                    parts = []
+                    for img in images:
+                        parts.append(types.Part.from_bytes(
+                            data=img['data'], 
+                            mime_type=img.get('mime_type', 'image/jpeg')
+                        ))
+                    parts.append(types.Part.from_text(text=user_content))
+                    contents.append(types.Content(role='user', parts=parts))
+                else:
+                    contents.append(types.Content(role='user', parts=[types.Part.from_text(text=user_content)]))
             
             response = self.client.models.generate_content(
                 model=active_model,
@@ -184,6 +202,7 @@ class GoogleAIProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
         images: Optional[List[Dict[str, Any]]] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> Iterator[str]:
         """Stream response using Google AI."""
@@ -205,16 +224,29 @@ class GoogleAIProvider(BaseProvider):
             # Build contents — include image parts if provided
             from google.genai import types
             active_model = model if model else self.config.model
-            if images:
-                contents = []
-                for img in images:
-                    contents.append(types.Part.from_bytes(
-                        data=img['data'],
-                        mime_type=img.get('mime_type', 'image/jpeg')
-                    ))
-                contents.append(types.Part.from_text(text=prompt))
+            
+            contents = []
+            if messages:
+                for m in messages:
+                    role = 'user' if m.get('role') == 'user' else 'model'
+                    contents.append(types.Content(role=role, parts=[types.Part.from_text(text=m.get('content', ''))]))
+                
+                # Append current prompt if it's the new user turn
+                if prompt and (not messages or messages[-1].get('content') != prompt):
+                    contents.append(types.Content(role='user', parts=[types.Part.from_text(text=prompt)]))
             else:
-                contents = prompt
+                user_content = prompt or kwargs.get('user_message', '')
+                if images:
+                    parts = []
+                    for img in images:
+                        parts.append(types.Part.from_bytes(
+                            data=img['data'],
+                            mime_type=img.get('mime_type', 'image/jpeg')
+                        ))
+                    parts.append(types.Part.from_text(text=user_content))
+                    contents.append(types.Content(role='user', parts=parts))
+                else:
+                    contents = user_content
 
             response = self.client.models.generate_content_stream(
                 model=active_model,

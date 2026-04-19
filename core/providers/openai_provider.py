@@ -46,6 +46,7 @@ class OpenAIProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
         images: Optional[List[Dict[str, Any]]] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> ProviderResponse:
         """Generate response using OpenAI."""
@@ -58,23 +59,42 @@ class OpenAIProvider(BaseProvider):
             final_system_prompt = system_prompt or kwargs.pop('system_prompt', None)
             
             # Build messages
-            messages = []
-            if final_system_prompt:
-                messages.append({"role": "system", "content": final_system_prompt})
+            if messages:
+                # If messages are provided, we use them as the base.
+                # We still want to ensure system_prompt is respected if it's new.
+                final_messages = []
+                has_system = any(m.get('role') == 'system' for m in messages)
+                if final_system_prompt and not has_system:
+                    final_messages.append({"role": "system", "content": final_system_prompt})
+                final_messages.extend(messages)
                 
-            if images:
-                import base64
-                content_list = [{"type": "text", "text": prompt}]
-                for img in images:
-                    b64_data = base64.b64encode(img['data']).decode('utf-8')
-                    mime = img.get('mime_type', 'image/jpeg')
-                    content_list.append({
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{mime};base64,{b64_data}"}
-                    })
-                messages.append({"role": "user", "content": content_list})
+                # Check if the last message is from user and if it matches current prompt
+                # If current prompt is different from last user msg, append it.
+                if prompt and (not messages or messages[-1].get('content') != prompt):
+                     final_messages.append({"role": "user", "content": prompt})
+                messages = final_messages
             else:
-                messages.append({"role": "user", "content": prompt})
+                messages = []
+                if final_system_prompt:
+                    messages.append({"role": "system", "content": final_system_prompt})
+                    
+                user_content = prompt or kwargs.get('user_message', '')
+                if images:
+                    import base64
+                    content_list = [{"type": "text", "text": user_content}]
+                    for img in images:
+                        b64_data = base64.b64encode(img['data']).decode('utf-8')
+                        mime = img.get('mime_type', 'image/jpeg')
+                        content_list.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{mime};base64,{b64_data}"}
+                        })
+                    messages.append({"role": "user", "content": content_list})
+                else:
+                    messages.append({"role": "user", "content": user_content})
+            
+            # Record final messages for logging
+            logger.debug(f"[{trace_id}] Total messages: {len(messages)}")
             
             # Remove unsupported kwargs
             kwargs.pop('model', None)
@@ -141,6 +161,7 @@ class OpenAIProvider(BaseProvider):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> Iterator[str]:
         """Stream response using OpenAI."""
@@ -151,11 +172,24 @@ class OpenAIProvider(BaseProvider):
             final_system_prompt = system_prompt or kwargs.pop('system_prompt', None)
             
             # Build messages
-            messages = []
-            if final_system_prompt:
-                messages.append({"role": "system", "content": final_system_prompt})
-            
-            messages.append({"role": "user", "content": prompt})
+            if messages:
+                final_messages = []
+                has_system = any(m.get('role') == 'system' for m in messages)
+                if final_system_prompt and not has_system:
+                    final_messages.append({"role": "system", "content": final_system_prompt})
+                final_messages.extend(messages)
+                
+                # Append current prompt if it's the new user turn
+                if prompt and (not messages or messages[-1].get('content') != prompt):
+                    final_messages.append({"role": "user", "content": prompt})
+                messages = final_messages
+            else:
+                messages = []
+                if final_system_prompt:
+                    messages.append({"role": "system", "content": final_system_prompt})
+                
+                user_content = prompt or kwargs.get('user_message', '')
+                messages.append({"role": "user", "content": user_content})
             
             # Stream response
             active_model = model if model else self.config.model

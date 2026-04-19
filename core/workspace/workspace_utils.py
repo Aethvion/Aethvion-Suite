@@ -7,7 +7,7 @@ import json
 import logging
 from pathlib import Path
 from typing import List, Tuple, Optional
-from core.utils.paths import PERSONA_MISAKA
+
 
 logger = logging.getLogger(__name__)
 
@@ -62,3 +62,26 @@ def validate_path(target_path: str, workspaces: List[dict], required_permission:
         return False, f"Path '{target_path}' is not within any workspace with '{required_permission}' permission."
     except Exception as e:
         return False, f"Error validating path: {str(e)}"
+
+def build_workspace_block(workspaces: List[dict]) -> str:
+    """Format workspace metadata into instructions for the LLM."""
+    if not workspaces:
+        return "WORKSPACE ACCESS: Disabled. You do not have permissions to read/write local files."
+    
+    lines = [
+        "WORKSPACE ACCESS: Enabled. Use [tool:file action=\"...\" path=\"...\"] syntax.",
+        "You have access to the following local locations:"
+    ]
+    for ws in workspaces:
+        label = ws.get("label", "Untitled")
+        path = ws.get("path", "?")
+        perms = ", ".join(ws.get("permissions", []))
+        recursive = "(recursive)" if ws.get("recursive", True) else "(non-recursive)"
+        lines.append(f"  - {label}: {path} [{perms}] {recursive}")
+    
+    lines.extend([
+        "All file paths MUST be absolute paths using forward slashes (e.g. C:/Data/file.txt).",
+        "ACTIONS: read_file, write_file, list_dir, delete_file, make_dir",
+        "Example: [tool:file action=\"read_file\" path=\"C:/Users/Data/config.json\"]"
+    ])
+    return "\n".join(lines)

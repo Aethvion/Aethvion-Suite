@@ -6,7 +6,7 @@ Orchestrates multi-provider failover and routing
 import yaml
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Iterator
+from typing import Dict, List, Optional, Iterator, Any
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig, ProviderStatus
 from .google_provider import GoogleAIProvider
 from .openai_provider import OpenAIProvider
@@ -291,6 +291,7 @@ class ProviderManager:
         max_tokens: Optional[int] = None,
         preferred_provider: Optional[str] = None,
         model: Optional[str] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         request_type: str = "generation",
         source: str = "chat",
         **kwargs
@@ -579,6 +580,7 @@ class ProviderManager:
                     temperature=temperature,
                     max_tokens=max_tokens,
                     model=model_id, # Pass specific model
+                    messages=messages,
                     **kwargs
                 )
                 
@@ -638,6 +640,7 @@ class ProviderManager:
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         source: str = "chat",
         **kwargs
     ) -> Iterator[str]:
@@ -669,6 +672,7 @@ class ProviderManager:
                     temperature=temperature,
                     max_tokens=max_tokens,
                     model=model_id,
+                    messages=messages,
                     **kwargs
                 ):
                     success = True

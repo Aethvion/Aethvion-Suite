@@ -88,9 +88,7 @@ async def get_memory_overview():
                                 mode = task_data.get('metadata', {}).get('mode', 'task')
 
                                 # Build a meaningful summary depending on task type
-                                if result.get('tools_forged'):
-                                    summary = f"Forged: {', '.join(result['tools_forged'])}"
-                                elif result.get('agents_spawned'):
+                                if result.get('agents_spawned'):
                                     summary = f"Spawned: {', '.join(result['agents_spawned'])}"
                                 elif mode == 'chat_only':
                                     summary = prompt[:80] + ('…' if len(prompt) > 80 else '')

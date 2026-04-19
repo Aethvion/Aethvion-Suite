@@ -409,6 +409,7 @@ class LocalProvider(BaseProvider):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> ProviderResponse:
         try:
@@ -465,6 +466,7 @@ class LocalProvider(BaseProvider):
         trace_id: str,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> Iterator[str]:
         try:

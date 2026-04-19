@@ -38,8 +38,10 @@ class CompanionMemory:
         self._dir.mkdir(parents=True, exist_ok=True)
 
         if not self._base_path.exists() or self._base_path.stat().st_size == 0:
+            # Before writing, unwrap if double-nested:
+            default_to_write = self._default_base_info.get("base_info", self._default_base_info)
             self._base_path.write_text(
-                json.dumps(self._default_base_info, indent=4, ensure_ascii=False),
+                json.dumps(default_to_write, indent=4, ensure_ascii=False),
                 encoding="utf-8",
             )
             logger.info(f"{self._name}: Initialized base_info.json")
@@ -89,7 +91,17 @@ class CompanionMemory:
             content,
             re.DOTALL | re.IGNORECASE,
         )
-        if not match:
+        
+        raw = ""
+        if match:
+            raw = match.group(1).strip()
+        else:
+            # Fallback: Look for bare JSON containing memory keys
+            json_match = re.search(r'(\{\s*"(?:user_info|recent_observations|base_info)"[\s\S]*?\})', content)
+            if json_match:
+                raw = json_match.group(1).strip()
+
+        if not raw:
             return content
 
         try:

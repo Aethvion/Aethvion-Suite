@@ -5,8 +5,11 @@ Unified dynamic router for all Aethvion companions.
 """
 
 from typing import List, Optional, Any
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
+import shutil
+from pathlib import Path
+from core.utils.paths import COMPANIONS
 from pydantic import BaseModel
 
 from core.companions.registry import CompanionRegistry
@@ -82,8 +85,20 @@ async def reset(companion_id: str):
     return {"status": "reset_successful"}
 
 @router.post("/{companion_id}/upload-context")
-async def upload_context(companion_id: str, file: Any = None):
-    return {"filename": "uploaded_file.txt", "url": "/static/uploads/uploaded_file.txt", "is_image": False}
+async def upload_context(companion_id: str, file: UploadFile = File(...)):
+    _get_cfg(companion_id) # ensure it exists
+    upload_dir = COMPANIONS / companion_id / "uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    file_path = upload_dir / file.filename
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    return {
+        "filename": file.filename,
+        "path": str(file_path),
+        "is_image": file.content_type.startswith("image/")
+    }
 
 @router.get("/{companion_id}/expressions")
 async def get_expressions(companion_id: str):

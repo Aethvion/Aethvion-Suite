@@ -5,7 +5,7 @@ xAI Grok implementation (tertiary fallback provider)
 
 import os
 import requests
-from typing import Iterator, Optional
+from typing import Iterator, Optional, List, Dict, Any
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig
 from core.utils.logger import get_logger
 
@@ -43,6 +43,7 @@ class GrokProvider(BaseProvider):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> ProviderResponse:
         """Generate response using Grok."""
@@ -143,6 +144,7 @@ class GrokProvider(BaseProvider):
         trace_id: str,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> Iterator[str]:
         """Stream response using Grok."""

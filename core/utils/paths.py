@@ -39,6 +39,7 @@ MODE_AGENT_CORP   = MODES / "agent_corp"
 MODE_AI_CONV      = MODES / "ai_conversations"
 MODE_ADV_AICONV   = MODES / "advanced_ai_conversations"
 MODE_EXPLAINED    = MODES / "explained"
+EXPLAINED         = MODE_EXPLAINED
 MODE_COMPANIONS   = COMPANIONS
 MODE_WORKSPACES   = MODES / "workspaces"
 MODE_SCHEDULE     = MODES / "schedule"

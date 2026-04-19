@@ -21,7 +21,6 @@ function handleChatMessage(event) {
         addMessage('ai', data.response, {
             trace_id: data.trace_id,
             actions: data.actions,
-            tools: data.tools_forged,
             agents: data.agents_spawned
         });
 

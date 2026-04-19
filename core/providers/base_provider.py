@@ -76,6 +76,7 @@ class BaseProvider(ABC):
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
         images: Optional[List[Dict[str, Any]]] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> ProviderResponse:
         """
@@ -167,6 +168,7 @@ class BaseProvider(ABC):
         system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> Iterator[str]:
         """
