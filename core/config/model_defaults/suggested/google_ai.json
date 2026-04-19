@@ -1,0 +1,64 @@
+{
+    "google_ai": {
+        "name": "Google AI",
+        "api_key_env": "GOOGLE_AI_API_KEY",
+        "models": [
+            {
+                "id": "gemini-2.0-flash",
+                "name": "Gemini 2.0 Flash",
+                "input_cost": 0.1,
+                "output_cost": 0.4,
+                "capabilities": ["CHAT", "AUDIO", "VOICEINPUT", "VOICEOUTPUT"],
+                "description": "Fast, capable Gemini model for everyday tasks. Free tier available."
+            },
+            {
+                "id": "gemini-2.0-flash-lite",
+                "name": "Gemini 2.0 Flash Lite",
+                "input_cost": 0.075,
+                "output_cost": 0.3,
+                "capabilities": ["CHAT"],
+                "description": "Lightest Gemini model. Best for high-volume simple tasks."
+            },
+            {
+                "id": "gemini-2.5-flash-preview-05-20",
+                "name": "Gemini 2.5 Flash Preview",
+                "input_cost": 0.15,
+                "output_cost": 0.6,
+                "capabilities": ["CHAT"],
+                "description": "Gemini 2.5 Flash Preview. Fast with improved reasoning."
+            },
+            {
+                "id": "gemini-2.5-pro-preview-05-06",
+                "name": "Gemini 2.5 Pro Preview",
+                "input_cost": 1.25,
+                "output_cost": 10,
+                "capabilities": ["CHAT"],
+                "description": "Gemini 2.5 Pro. Best for complex reasoning and architecture tasks."
+            },
+            {
+                "id": "gemini-3-flash-preview",
+                "name": "Gemini 3 Flash Preview",
+                "input_cost": 0.5,
+                "output_cost": 3,
+                "capabilities": ["CHAT", "AUDIO", "VOICEINPUT", "VOICEOUTPUT"],
+                "description": "Gemini 3 Flash Preview. Next-gen fast multimodal model."
+            },
+            {
+                "id": "imagen-3.0-generate-002",
+                "name": "Imagen 3.0",
+                "input_cost": 0,
+                "output_cost": 0,
+                "capabilities": ["IMAGE"],
+                "description": "Google Imagen 3. High-quality photorealistic image generation.",
+                "image_config": {
+                    "aspect_ratios": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+                    "resolutions": ["1024x1024"],
+                    "supports_negative_prompt": true,
+                    "supports_seed": true,
+                    "steps_range": null,
+                    "quality_options": ["standard"]
+                }
+            }
+        ]
+    }
+}

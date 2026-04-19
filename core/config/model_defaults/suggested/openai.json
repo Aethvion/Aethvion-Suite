@@ -1,0 +1,104 @@
+{
+    "openai": {
+        "name": "OpenAI",
+        "api_key_env": "OPENAI_API_KEY",
+        "models": [
+            {
+                "id": "gpt-4o-mini",
+                "name": "GPT-4o Mini",
+                "input_cost": 0.15,
+                "output_cost": 0.6,
+                "capabilities": ["CHAT"],
+                "description": "Lightweight GPT-4o. Best cost/performance for simple tasks."
+            },
+            {
+                "id": "gpt-4o",
+                "name": "GPT-4o",
+                "input_cost": 2.5,
+                "output_cost": 10,
+                "capabilities": ["CHAT"],
+                "description": "Flagship GPT-4o. Multimodal, strong reasoning."
+            },
+            {
+                "id": "gpt-4.1",
+                "name": "GPT-4.1",
+                "input_cost": 2,
+                "output_cost": 8,
+                "capabilities": ["CHAT"],
+                "description": "GPT-4.1. Latest GPT-4 series with improved instruction following."
+            },
+            {
+                "id": "gpt-4.1-mini",
+                "name": "GPT-4.1 Mini",
+                "input_cost": 0.4,
+                "output_cost": 1.6,
+                "capabilities": ["CHAT"],
+                "description": "GPT-4.1 Mini. Fast and affordable with GPT-4.1 quality."
+            },
+            {
+                "id": "o3-mini",
+                "name": "o3-mini",
+                "input_cost": 1.1,
+                "output_cost": 4.4,
+                "capabilities": ["CHAT"],
+                "description": "OpenAI o3-mini. Compact reasoning model."
+            },
+            {
+                "id": "o3",
+                "name": "o3",
+                "input_cost": 10,
+                "output_cost": 40,
+                "capabilities": ["CHAT"],
+                "description": "OpenAI o3. Most powerful reasoning model in the o-series."
+            },
+            {
+                "id": "dall-e-3",
+                "name": "DALL-E 3",
+                "input_cost": 0,
+                "output_cost": 0,
+                "capabilities": ["IMAGE"],
+                "description": "DALL-E 3. High-quality image generation with natural language.",
+                "image_config": {
+                    "aspect_ratios": ["1:1", "16:9", "9:16"],
+                    "resolutions": ["1024x1024", "1024x1792", "1792x1024"],
+                    "supports_negative_prompt": false,
+                    "supports_seed": false,
+                    "steps_range": null,
+                    "quality_options": ["standard", "hd"]
+                }
+            },
+            {
+                "id": "whisper-1",
+                "name": "Whisper 1",
+                "input_cost": 0.006,
+                "output_cost": 0,
+                "capabilities": ["VOICEINPUT"],
+                "description": "OpenAI Whisper. State-of-the-art speech-to-text transcription."
+            },
+            {
+                "id": "tts-1",
+                "name": "TTS 1",
+                "input_cost": 0.015,
+                "output_cost": 0,
+                "capabilities": ["VOICEOUTPUT"],
+                "description": "OpenAI TTS-1. Fast text-to-speech synthesis.",
+                "audio_config": {
+                    "voices": ["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
+                    "formats": ["mp3", "opus", "aac", "flac"]
+                }
+            },
+            {
+                "id": "tts-1-hd",
+                "name": "TTS 1 HD",
+                "input_cost": 0.03,
+                "output_cost": 0,
+                "capabilities": ["VOICEOUTPUT"],
+                "description": "OpenAI TTS-1 HD. High-fidelity text-to-speech synthesis.",
+                "audio_config": {
+                    "voices": ["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
+                    "formats": ["mp3", "opus", "aac", "flac"]
+                }
+            }
+        ]
+    }
+}

@@ -18,6 +18,7 @@ from core.utils import (
     get_logger,
     InputValidator
 )
+from core.utils.registry_utils import ensure_registry_initialized
 
 logger = get_logger(__name__)
 
@@ -86,6 +87,10 @@ class AetherCore:
         logger.info("Initializing Aether Core components...")
 
         try:
+            # Ensure Model Registry is initialized
+            logger.info("Checking Model Registry...")
+            ensure_registry_initialized()
+
             # Initialize Provider Manager
             logger.info("Loading Provider Manager...")
             self.provider_manager = ProviderManager()

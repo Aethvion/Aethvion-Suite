@@ -1,0 +1,56 @@
+{
+    "mistral": {
+        "name": "Mistral AI",
+        "api_key_env": "MISTRAL_API_KEY",
+        "models": [
+            {
+                "id": "mistral-small-latest",
+                "name": "Mistral Small",
+                "input_cost": 0.1,
+                "output_cost": 0.3,
+                "capabilities": ["CHAT"],
+                "description": "Mistral Small. Fast and cheap for simple tasks."
+            },
+            {
+                "id": "mistral-medium-latest",
+                "name": "Mistral Medium",
+                "input_cost": 0.4,
+                "output_cost": 2,
+                "capabilities": ["CHAT"],
+                "description": "Mistral Medium. Strong balance of performance and cost."
+            },
+            {
+                "id": "mistral-large-latest",
+                "name": "Mistral Large",
+                "input_cost": 2,
+                "output_cost": 6,
+                "capabilities": ["CHAT"],
+                "description": "Mistral Large. Flagship model for complex reasoning and code."
+            },
+            {
+                "id": "codestral-latest",
+                "name": "Codestral",
+                "input_cost": 0.2,
+                "output_cost": 0.6,
+                "capabilities": ["CHAT"],
+                "description": "Codestral. Specialized code generation and completion model."
+            },
+            {
+                "id": "mistral-nemo",
+                "name": "Mistral Nemo",
+                "input_cost": 0.15,
+                "output_cost": 0.15,
+                "capabilities": ["CHAT"],
+                "description": "Mistral Nemo 12B. Excellent multilingual support."
+            },
+            {
+                "id": "pixtral-large-latest",
+                "name": "Pixtral Large",
+                "input_cost": 2,
+                "output_cost": 6,
+                "capabilities": ["CHAT"],
+                "description": "Pixtral Large. Mistral's multimodal vision-language model."
+            }
+        ]
+    }
+}

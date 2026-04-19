@@ -242,8 +242,15 @@
             return;
         }
 
-        const suggestions = _suggested[providerId] || [];
-        if (suggestions.length === 0) { panel.style.display = 'none'; return; }
+        const allSuggestions = _suggested.suggested || [];
+        const providerSuggestions = allSuggestions.filter(m => m.provider_id === providerId);
+        
+        if (providerSuggestions.length === 0) { 
+            panel.innerHTML = `<div class="ap-sug-header"><span>No new suggestions for this provider.</span></div>`;
+            panel.style.display = 'block';
+            _suggestedPanelOpen = true;
+            return;
+        }
 
         const existing = Object.keys(_registry?.providers?.[providerId]?.models || {});
 
@@ -255,29 +262,32 @@
             </button>
         </div>
         <div class="ap-sug-grid">
-            ${suggestions.map(m => {
+            ${providerSuggestions.map(m => {
                 const alreadyAdded = existing.includes(m.id);
-                const tierColor  = TIER_COLORS[m.tier]  || 'rgba(255,255,255,0.05)';
-                const tierText   = TIER_TEXT[m.tier]    || 'var(--text-tertiary)';
-                const tierLabel  = TIER_LABELS[m.tier]  || m.tier;
-                const capPills   = (m.capabilities || [])
+                // The new system uses "cost" instead of specific fields in the suggested card view
+                // but let's keep it robust
+                const inCost  = m.input_cost  || 0;
+                const outCost = m.output_cost || 0;
+                
+                const capPills = (m.capabilities || [])
                     .map(c => `<span class="ap-cap-pill">${escHtml(c)}</span>`).join('');
+                    
                 return `
                 <div class="ap-sug-card${alreadyAdded ? ' added' : ''}">
                     <div class="ap-sug-card-top">
-                        <span class="ap-sug-model-id">${escHtml(m.id)}</span>
-                        <span class="ap-sug-tier" style="background:${tierColor};color:${tierText}">${escHtml(tierLabel)}</span>
+                        <span class="ap-sug-model-id">${escHtml(m.name || m.id)}</span>
+                        <span class="ap-sug-id-tag">${escHtml(m.id)}</span>
                     </div>
                     <p class="ap-sug-desc">${escHtml(m.description || '')}</p>
                     <div class="ap-sug-card-footer">
                         <div class="ap-sug-costs">
-                            <span title="Input cost per 1M tokens">In: ${formatCost(m.input_cost)}</span>
-                            <span title="Output cost per 1M tokens">Out: ${formatCost(m.output_cost)}</span>
+                            <span title="Input cost per 1M tokens">In: ${formatCost(inCost)}</span>
+                            <span title="Output cost per 1M tokens">Out: ${formatCost(outCost)}</span>
                         </div>
                         <div class="ap-caps" style="flex:1;">${capPills}</div>
                         ${alreadyAdded
                             ? `<span class="ap-sug-added-badge"><i class="fas fa-check"></i> Added</span>`
-                            : `<button class="ap-sug-add-btn" onclick="apAddSuggested('${escAttr(providerId)}','${escAttr(m.id)}',${m.input_cost || 0},${m.output_cost || 0},${JSON.stringify(m.capabilities || [])},this)">
+                            : `<button class="ap-sug-add-btn" onclick="apAddSuggested('${escAttr(providerId)}','${escAttr(m.id)}', this)">
                                 <i class="fas fa-plus"></i> Add
                                </button>`
                         }
@@ -290,25 +300,25 @@
         _suggestedPanelOpen = true;
     };
 
-    window.apAddSuggested = async function (providerId, modelId, inCost, outCost, capabilities, btn) {
+    window.apAddSuggested = async function (providerId, modelId, btn) {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
         const fbEl = document.getElementById('ap-fb');
 
         try {
-            const registry = await fetchRegistry();
-            if (!registry.providers) registry.providers = {};
-            const prov = registry.providers[providerId] ||= { models: {} };
-            if (!prov.models) prov.models = {};
+            const r = await fetch('/api/registry/suggested/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider_id: providerId, model_id: modelId }),
+            });
+            
+            if (!r.ok) {
+                const d = await r.json().catch(() => ({}));
+                throw new Error(d.detail || `HTTP ${r.status}`);
+            }
 
-            prov.models[modelId] = {
-                capabilities: capabilities,
-                input_cost_per_1m_tokens:  inCost  || 0,
-                output_cost_per_1m_tokens: outCost || 0,
-            };
-
-            await saveRegistry(registry);
-            _registry = registry;
+            /* Refresh registry local state */
+            _registry = await fetchRegistry();
 
             /* Mark card as added */
             const card = btn.closest('.ap-sug-card');

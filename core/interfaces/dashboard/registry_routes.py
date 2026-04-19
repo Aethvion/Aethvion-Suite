@@ -16,7 +16,12 @@ from fastapi import APIRouter, HTTPException, Request
 
 from core.utils import get_logger
 from core.utils.model_downloader import ModelDownloader
-from core.utils.paths import MODEL_REGISTRY, SUGGESTED_API_MODELS, SUGGESTED_LOCAL_MODELS, LOCAL_MODELS_GGUF, SYSTEM_SPECS
+from core.utils.registry_utils import ensure_registry_initialized
+from core.providers.model_defaults import (
+    load_suggested_models, 
+    get_suggested_models_not_in_registry,
+    merge_model_into_registry
+)
 
 logger = get_logger(__name__)
 
@@ -151,19 +156,53 @@ async def update_env_key(data: Dict[str, Any]):
 
 @router.get("/suggested")
 async def get_all_suggested_models():
-    """Get all suggested models for all providers (API + local GGUF combined)."""
+    """Get all suggested models NOT currently in the registry."""
     try:
-        result = {}
-        if SUGGESTED_API_PATH.exists():
-            result = json.loads(SUGGESTED_API_PATH.read_text(encoding="utf-8"))
+        registry = _load_registry()
+        available = get_suggested_models_not_in_registry(registry)
+        
+        # We also still want local models from the legacy suggested file for now
+        local_models = []
         if SUGGESTED_LOCAL_PATH.exists():
-            local_models = json.loads(SUGGESTED_LOCAL_PATH.read_text(encoding="utf-8"))
-            # local_models is a flat list; wrap it under "local" key for the registry modal
-            result["local"] = local_models if isinstance(local_models, list) else local_models.get("local", [])
-        return result
+            data = json.loads(SUGGESTED_LOCAL_PATH.read_text(encoding="utf-8"))
+            local_models = data if isinstance(data, list) else data.get("local", [])
+            
+        return {
+            "suggested": available,
+            "local": local_models
+        }
     except Exception as e:
         logger.error(f"Error loading suggested models: {e}")
-        return {}
+        return {"suggested": [], "local": []}
+
+
+@router.post("/suggested/add")
+async def add_suggested_model(data: Dict[str, Any], request: Request):
+    """Add a specific model from the suggested list into the user's registry."""
+    try:
+        provider_id = data.get("provider_id")
+        model_id = data.get("model_id")
+        
+        if not provider_id or not model_id:
+            raise HTTPException(status_code=400, detail="provider_id and model_id are required")
+            
+        registry = _load_registry()
+        success = merge_model_into_registry(registry, provider_id, model_id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Model not found in suggested list")
+            
+        _save_registry(registry)
+        if hasattr(request.app.state, 'aether'):
+            request.app.state.aether.reload_config()
+            
+        logger.info(f"Merged suggested model '{model_id}' into registry")
+        return {"status": "success", "model_id": model_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add suggested model: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
@@ -175,15 +214,18 @@ def _load_registry() -> Dict[str, Any]:
                 data = json.load(f)
                 # Ensure basic structure
                 if "providers" not in data: data["providers"] = {}
-                if "profiles" not in data: data["profiles"] = {"chat_profiles": {}, "agent_profiles": {}}
-                if "auto_routing" not in data: 
-                    data["auto_routing"] = {
-                        "chat": {"route_picker": "gemini-3-flash-preview", "models": {}},
-                        "agent": {"route_picker": "gemini-3-flash-preview", "models": {}}
-                    }
                 return data
         
-        # Return default structure if file doesn't exist
+        # If missing OR empty, seed with defaults
+        logger.info("Initializing model registry for dashboard...")
+        ensure_registry_initialized()
+        
+        # Re-load after seeding
+        if REGISTRY_PATH.exists():
+            with open(REGISTRY_PATH, 'r') as f:
+                return json.load(f)
+
+        # Fallback if seeding failed to create file (shouldn't happen)
         return {
             "providers": {}, 
             "profiles": {

@@ -12,7 +12,9 @@ DATA = _PROJECT / "data"
 
 # ── Committed config (lives in core/config/, version-controlled) ──────────────
 _CORE_CONFIG = _PROJECT / "core" / "config"
-SUGGESTED_API_MODELS    = _CORE_CONFIG / "suggested_apimodels.json"
+MODEL_DEFAULTS_DIR       = _CORE_CONFIG / "model_defaults"
+SUGGESTED_MODELS_DIR    = MODEL_DEFAULTS_DIR / "suggested"
+SUGGESTED_API_MODELS    = _CORE_CONFIG / "suggested_apimodels.json" # Legacy
 SUGGESTED_LOCAL_MODELS  = _CORE_CONFIG / "suggested_localmodels.json"
 SUGGESTED_AUDIO_MODELS  = _CORE_CONFIG / "suggested_localaudiomodels.json"
 

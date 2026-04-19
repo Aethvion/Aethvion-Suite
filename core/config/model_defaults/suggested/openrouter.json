@@ -1,0 +1,80 @@
+{
+    "openrouter": {
+        "name": "OpenRouter",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "models": [
+            {
+                "id": "deepseek/deepseek-chat-v3-0324",
+                "name": "DeepSeek Chat V3",
+                "input_cost": 0.27,
+                "output_cost": 1.1,
+                "capabilities": ["CHAT"],
+                "description": "DeepSeek Chat V3. Top open-source model, competitive with GPT-4."
+            },
+            {
+                "id": "deepseek/deepseek-r1",
+                "name": "DeepSeek R1",
+                "input_cost": 0.55,
+                "output_cost": 2.19,
+                "capabilities": ["CHAT"],
+                "description": "DeepSeek R1. Open-source reasoning model rivaling o1."
+            },
+            {
+                "id": "meta-llama/llama-4-maverick",
+                "name": "Llama 4 Maverick",
+                "input_cost": 0.2,
+                "output_cost": 0.6,
+                "capabilities": ["CHAT"],
+                "description": "Llama 4 Maverick. Meta's latest multimodal MoE model."
+            },
+            {
+                "id": "meta-llama/llama-4-scout",
+                "name": "Llama 4 Scout",
+                "input_cost": 0.08,
+                "output_cost": 0.3,
+                "capabilities": ["CHAT"],
+                "description": "Llama 4 Scout. Fast, efficient variant of Llama 4."
+            },
+            {
+                "id": "google/gemini-2.0-flash-001",
+                "name": "Gemini 2.0 Flash (OpenRouter)",
+                "input_cost": 0.1,
+                "output_cost": 0.4,
+                "capabilities": ["CHAT"],
+                "description": "Gemini 2.0 Flash via OpenRouter. Fast and multimodal."
+            },
+            {
+                "id": "qwen/qwen3-235b-a22b",
+                "name": "Qwen 3 235B",
+                "input_cost": 0.13,
+                "output_cost": 0.6,
+                "capabilities": ["CHAT"],
+                "description": "Qwen 3 235B MoE. Alibaba's top model with hybrid thinking."
+            },
+            {
+                "id": "qwen/qwen3-30b-a3b",
+                "name": "Qwen 3 30B",
+                "input_cost": 0.1,
+                "output_cost": 0.3,
+                "capabilities": ["CHAT"],
+                "description": "Qwen 3 30B MoE. Efficient reasoning with low cost."
+            },
+            {
+                "id": "mistralai/mistral-small-3.1-24b-instruct",
+                "name": "Mistral Small 3.1",
+                "input_cost": 0.1,
+                "output_cost": 0.3,
+                "capabilities": ["CHAT"],
+                "description": "Mistral Small 3.1 via OpenRouter. Compact and fast."
+            },
+            {
+                "id": "nousresearch/hermes-3-llama-3.1-405b",
+                "name": "Hermes 3 405B",
+                "input_cost": 0.9,
+                "output_cost": 0.9,
+                "capabilities": ["CHAT"],
+                "description": "Hermes 3 405B. Top-tier open model fine-tuned for reasoning."
+            }
+        ]
+    }
+}

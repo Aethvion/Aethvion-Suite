@@ -1,0 +1,48 @@
+{
+    "anthropic": {
+        "name": "Anthropic",
+        "api_key_env": "ANTHROPIC_API_KEY",
+        "models": [
+            {
+                "id": "claude-3-5-haiku-latest",
+                "name": "Claude 3.5 Haiku",
+                "input_cost": 0.8,
+                "output_cost": 4,
+                "capabilities": ["CHAT"],
+                "description": "Claude Haiku. Fast, affordable, great for simple tasks."
+            },
+            {
+                "id": "claude-3-5-sonnet-latest",
+                "name": "Claude 3.5 Sonnet",
+                "input_cost": 3,
+                "output_cost": 15,
+                "capabilities": ["CHAT"],
+                "description": "Claude 3.5 Sonnet. Strong code, reasoning and analysis."
+            },
+            {
+                "id": "claude-sonnet-4-20250514",
+                "name": "Claude Sonnet 4",
+                "input_cost": 3,
+                "output_cost": 15,
+                "capabilities": ["CHAT"],
+                "description": "Claude Sonnet 4. Latest Sonnet with improved agentic capabilities."
+            },
+            {
+                "id": "claude-opus-4-20250514",
+                "name": "Claude Opus 4",
+                "input_cost": 15,
+                "output_cost": 75,
+                "capabilities": ["CHAT"],
+                "description": "Claude Opus 4. Most capable Claude for the hardest tasks."
+            },
+            {
+                "id": "claude-3-opus-latest",
+                "name": "Claude 3 Opus",
+                "input_cost": 15,
+                "output_cost": 75,
+                "capabilities": ["CHAT"],
+                "description": "Claude 3 Opus. Previous-gen flagship, deep reasoning."
+            }
+        ]
+    }
+}

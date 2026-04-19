@@ -1,0 +1,56 @@
+{
+    "groq": {
+        "name": "Groq",
+        "api_key_env": "GROQ_API_KEY",
+        "models": [
+            {
+                "id": "llama-3.3-70b-versatile",
+                "name": "Llama 3.3 70B",
+                "input_cost": 0.59,
+                "output_cost": 0.79,
+                "capabilities": ["CHAT"],
+                "description": "Llama 3.3 70B via Groq LPU. Excellent general-purpose model at high speed."
+            },
+            {
+                "id": "llama-3.1-8b-instant",
+                "name": "Llama 3.1 8B",
+                "input_cost": 0.05,
+                "output_cost": 0.08,
+                "capabilities": ["CHAT"],
+                "description": "Llama 3.1 8B via Groq. Ultra-fast and cheap for simple tasks."
+            },
+            {
+                "id": "llama3-70b-8192",
+                "name": "Llama 3 70B",
+                "input_cost": 0.59,
+                "output_cost": 0.79,
+                "capabilities": ["CHAT"],
+                "description": "Llama 3 70B via Groq LPU. Fast inference on large context."
+            },
+            {
+                "id": "mixtral-8x7b-32768",
+                "name": "Mixtral 8x7B",
+                "input_cost": 0.24,
+                "output_cost": 0.24,
+                "capabilities": ["CHAT"],
+                "description": "Mixtral 8x7B via Groq. MoE architecture, great code generation."
+            },
+            {
+                "id": "gemma2-9b-it",
+                "name": "Gemma 2 9B",
+                "input_cost": 0.2,
+                "output_cost": 0.2,
+                "capabilities": ["CHAT"],
+                "description": "Gemma 2 9B via Groq. Google's efficient open model, very fast."
+            },
+            {
+                "id": "deepseek-r1-distill-llama-70b",
+                "name": "DeepSeek R1 70B",
+                "input_cost": 0.75,
+                "output_cost": 0.99,
+                "capabilities": ["CHAT"],
+                "description": "DeepSeek R1 Distill 70B via Groq. Reasoning model at LPU speed."
+            }
+        ]
+    }
+}
