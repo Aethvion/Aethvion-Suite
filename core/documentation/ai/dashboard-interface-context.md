@@ -1,56 +1,87 @@
 AETHVION SUITE - DASHBOARD INTERFACE CONTEXT
-This document describes the tabs and features of the Aethvion Suite dashboard. For information about the assistant's specific tools and capabilities, refer to [assistant-tools.md](file:///c:/Aethvion/Aethvion-Suite/documentation/ai/assistant-tools.md).
+This document describes the tabs and features of the Aethvion Suite dashboard. For information about the assistant's specific tools and capabilities, refer to [assistant-tools.md](file:///c:/Aethvion/Aethvion-Suite/core/documentation/ai/assistant-tools.md).
 
 TABS (format: tab_id | display name | description)
 
-chat | Chat | Primary command interface. Multi-modal terminal for sending messages to the orchestrator or agents. Supports file attachments, prompt templates, tool and agent selection, and conversation threads. This is the main interaction hub.
+suite-home | Home | The main dashboard home panel. Shows system status, active services, quick stats, recent activity, and sidebar profile chips. Entry point for the entire suite. [SwitchTab: suite-home]
 
-misaka-cipher | Misaka Cipher | The direct chat interface with your core personality. Use this for private conversations, long-term memory updates, and managed companion interactions. [SwitchTab: misaka-cipher]
+chat | Chat | General AI chat interface. The primary command interface for multi-modal interactions with the system assistant. Supports file attachments, prompt templates, and conversation threads. [SwitchTab: chat]
 
-agent | Agent | Dedicated interface for spawning and monitoring autonomous agents. Users can start agents on specific tasks, observe their step-by-step execution, and view results. [SwitchTab: agent]
+misaka-cipher | Misaka Cipher | Direct chat interface with the Misaka Cipher companion. Private conversations, long-term memory updates, and managed companion interactions. Has full companion personality, memory profile, and tool access. [SwitchTab: misaka-cipher]
 
-image | Image Studio | AI image generation workspace. Supports multi-model generation, image editing, upscaling, and expansion. [SwitchTab: image]
+axiom | Axiom | Direct chat interface with the Axiom companion. Analytical, precise, and logic-focused companion. Has its own memory profile and personality configuration. [SwitchTab: axiom]
 
-advaiconv | Advanced AI Conversation | Structured multi-agent conversation lab. [SwitchTab: advaiconv]
+lyra | Lyra | Direct chat interface with the Lyra companion. Creative, expressive companion optimized for creative tasks and artistic discussions. Has its own memory profile and personality configuration. [SwitchTab: lyra]
 
-arena | LLM Arena | Model battle testing environment. [SwitchTab: arena]
+companion-creator | Create Companion | Companion creation wizard. Allows users to create new custom companions by defining personality, capabilities, system prompt template, and initial memory profile. [SwitchTab: companion-creator]
 
-aiconv | AI Conversation | Simplified two-party AI conversation mode. [SwitchTab: aiconv]
+agents | Agents | Dedicated interface for spawning and monitoring autonomous agents. Users can start agents on specific tasks, observe their step-by-step execution via real-time SSE streaming, and view results. ReAct-style loop: read_file / write_file / list_dir / run_command / done. [SwitchTab: agents]
 
-files | Files | Project file browser. [SwitchTab: files]
+agent-corp | Agent Corp | Multi-agent coordination hub. Manage and orchestrate multiple specialized agents working towards a shared goal. Higher-level than the individual Agents tab. [SwitchTab: agent-corp]
 
-tools | Tools | Registry of all available tools and active agents. [SwitchTab: tools]
+researchboard | Research Board | Multi-director research environment. Multiple AI "director" personas collaborating on a research question, each contributing unique perspectives. Deep analysis through structured AI debate. Also labeled "Directors" in sidebar. [SwitchTab: researchboard]
 
-packages | Packages | Package manager interface. [SwitchTab: packages]
+advaiconv | Advanced AI Conversation | Structured multi-agent conversation lab. Supports human participant mode, pause-and-inject, shareable conversation links, and persistent history. For complex, controlled AI discussions. [SwitchTab: advaiconv]
 
-memory | Memory | Archive of all system memory. [SwitchTab: memory]
+arena | LLM Arena | Model battle testing environment. Compare responses from multiple providers side-by-side with leaderboard tracking and win/loss statistics. [SwitchTab: arena]
 
-misaka-memory | Misaka Cipher Memory | Your specialized neural memory archive. Switch here when the user says "show me your memory". [SwitchTab: misaka-memory]
+aiconv | AI Conversation | Simplified two-party AI conversation mode. Two AI personas have a conversation on a user-defined topic. [SwitchTab: aiconv]
 
-logs | Logs | Live log stream panel. [SwitchTab: logs]
+explained | Explained | AI explanation mode. Produces step-by-step breakdowns of complex topics with visible reasoning chains. [SwitchTab: explained]
 
-usage | Usage | API usage analytics. [SwitchTab: usage]
+games-center | Games Center | Games hub. Access all built-in games: Checkers (vs Aethvion AI), Are You Smarter Than AI? (quiz game), Sudoku, Blackjack, Word Search, and Logic Quest. [SwitchTab: games-center]
 
-status | Status | Live system status dashboard and changelog summaries. [SwitchTab: status]
+photo | Photo | AI-powered photo and image workspace. Upload, generate, and process images. [SwitchTab: photo]
 
-finance | Finance | Personal financial tracking, portfolio, and AI market analysis. [SwitchTab: finance]
+audio | Audio | Audio generation and playback workspace. TTS generation, voice management, STT transcription interface. [SwitchTab: audio]
 
-tracking | Tracking | Motion tracking bridge with HUD, telemetry, and FPS counter. [SwitchTab: tracking]
+schedule | Schedule | Automated AI tasks with cron-based scheduling and real-time completion notifications. Create, manage, and monitor recurring AI tasks. [SwitchTab: schedule]
 
-linkmap | LinkMap | Visual representation of tool and agent relationships. [SwitchTab: linkmap]
+sched-overview | Scheduled | Overview of all scheduled tasks and their run history. Quick status panel for the scheduling system. [SwitchTab: sched-overview]
 
-code | Code IDE | AI-powered development environment with streaming execution. [SwitchTab: code]
+memory | Memory | System-wide memory archive. Browse episodic memories, core insights, knowledge graph, and social registry. [SwitchTab: memory]
 
-schedule | Schedule | Automated AI tasks with cron schedules and completion notifications. [SwitchTab: schedule]
+companion-memory | Companion Memory | Companion-specific memory viewer. Browse and manage the memory profiles (base_info.json + memory.json) of all companions. Switch here when the user says "show me your memory" or "manage companion memory". [SwitchTab: companion-memory]
 
-settings | Settings | Core configuration hub. The "Misaka Cipher" section allows for configuring the floating persona. Includes Notifications sub-tab for granular alerting control. [SwitchTab: settings]
+persistent-memory | Persistent Memory | Long-term knowledge hub. Curated facts and topics stored as JSON entries for semantic retrieval by future agents and companions. [SwitchTab: persistent-memory]
+
+output | Output | AI output file browser. Browse and manage files generated by agents and AI tools. [SwitchTab: output]
+
+screenshots | Gallery | Screenshot and image gallery. Browse captured images from screen_capture bridge and generated images. [SwitchTab: screenshots]
+
+camera | Camera | Webcam capture and live view. Access webcam_capture bridge. [SwitchTab: camera]
+
+uploads | Uploads | User upload manager. Browse and manage files uploaded by the user. [SwitchTab: uploads]
+
+local-models | Text & Chat Models | Local GGUF model management. Load, unload, and configure local chat/text models (llama.cpp). [SwitchTab: local-models]
+
+image-models | Image Models | AI image generation model management. Configure and run local or cloud image generation models. [SwitchTab: image-models]
+
+audio-models | Audio & Speech | Local audio model management. Load/unload Kokoro TTS, XTTS-v2 (voice cloning), and Whisper STT models. [SwitchTab: audio-models]
+
+api-providers | API Providers | Cloud provider configuration. Manage API keys, model selection, and provider priority for Google AI, OpenAI, xAI Grok, and Anthropic. [SwitchTab: api-providers]
+
+3d-models | 3D Models | 3D model asset library. Browse, import, and manage 3D models and assets. [SwitchTab: 3d-models]
+
+3d-gen | 3D Workspace | AI 3D generation workspace. Generate and edit 3D assets using AI models. Active services displayed in the top-bar running services widget. [SwitchTab: 3d-gen]
+
+logs | Logs | Live log stream panel. Real-time system log viewer with filtering. [SwitchTab: logs]
+
+documentation | Docs | In-dashboard documentation viewer. Browse the core/documentation/ files directly from within the suite. [SwitchTab: documentation]
+
+usage | Usage | API usage analytics. Token counts, costs, usage by provider, model, date range, and Local/API breakdown. [SwitchTab: usage]
+
+status | Status | Live system status dashboard. Provider health checks, active traces, changelog summaries, and system diagnostics. [SwitchTab: status]
+
+ports | Ports | Port manager. View and manage dynamically assigned ports for standalone app services (Code IDE, Finance, Tracking, etc.). [SwitchTab: ports]
+
+settings | Settings | Core configuration hub. Companion settings (personality, memory), system settings, environment variables, model providers, notification preferences, and bridge module configuration. [SwitchTab: settings]
 
 TAB SWITCHING
 If Dashboard Control is enabled in the assistant settings, the assistant can navigate the user to any tab.
 
-Valid main tab IDs: chat, agent, image, advaiconv, arena, aiconv, files, tools, packages, memory, logs, usage, status, settings, misaka-cipher, misaka-memory, finance, tracking, linkmap, code, schedule
+Valid main tab IDs: suite-home, chat, misaka-cipher, axiom, lyra, companion-creator, agents, agent-corp, researchboard, advaiconv, arena, aiconv, explained, games-center, photo, audio, schedule, sched-overview, memory, companion-memory, persistent-memory, output, screenshots, camera, uploads, local-models, image-models, audio-models, api-providers, 3d-models, 3d-gen, logs, documentation, usage, status, ports, settings
 
-Valid subtab IDs (inside settings): assistant (labeled 'Misaka Cipher'), system, env, providers, profiles, notifications
+Valid subtab IDs (inside settings): assistant (labeled 'Companion Settings'), system, env, providers, profiles, notifications
 
-Only use navigation when the user EXPLICITLY asks to navigate.
-o somewhere or when it would be clearly helpful (e.g. "Where do I set my API keys?" -> [SwitchSubTab: providers]).
+Only use navigation when the user EXPLICITLY asks to navigate somewhere or when it would be clearly helpful (e.g. "Where do I set my API keys?" -> [SwitchSubTab: providers]).

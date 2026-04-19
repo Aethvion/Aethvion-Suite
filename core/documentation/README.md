@@ -1,6 +1,6 @@
 # Aethvion Suite Documentation
 
-**Note: This documentation was updated on 2026-04-01 to reflect the Aethvion Suite (v12) architecture.**
+**Note: This documentation was updated on 2026-04-19 to reflect the Aethvion Suite (v1.4) architecture.**
 
 ---
 
@@ -13,14 +13,15 @@ Comprehensive, user-friendly guides for humans interacting with the system.
 
 **Files:**
 - **[readme-overview.md](./human/readme-overview.md)** - System philosophy and architecture
-  - Understanding the "vibe" of Aethvion Suite
-  - The Four Pillars (Nexus, Workspaces, Persistent Memory, Apps)
+  - Understanding what makes Aethvion Suite different
+  - The Five Pillars (AetherCore, Companions, Bridges, Workspaces, Memory)
   - Infinite session goals and agentic workflows
   - Why this architecture matters
   
 - **[getting-started.md](./human/getting-started.md)** - Practical guide for new users
   - Installation and setup instructions
   - API key configuration
+  - First session with a companion
   - Example use cases with code
   - Best practices and troubleshooting
   - Next steps for beginners to advanced users
@@ -32,9 +33,10 @@ Machine-readable specifications for AI agents operating within the system.
 - **[system-spec.md](./ai/system-spec.md)** - Complete technical specification
   - Directory structure (detailed)
   - Data flow architecture (entry point → execution)
+  - Companion system specification
+  - Bridges system specification
   - External API touchpoints
   - Model registry specification
-  - Tool and agent definitions
   - Memory system specification
   - Configuration priorities
   
@@ -43,6 +45,7 @@ Machine-readable specifications for AI agents operating within the system.
   - Core reasoning constraints
   - Cost-aware model selection
   - Security-first routing rules
+  - Companion system awareness
   - Intelligent routing decision matrix
   - Agent coordination rules
   - Explicit DO/DON'T rules
@@ -51,15 +54,17 @@ Machine-readable specifications for AI agents operating within the system.
   - List of tools available to the dashboard assistant
   - Configuration toggles (context, control)
   - Emotion system IDs
+  - Full tab navigation ID reference
   
 - **[dashboard-interface-context.md](./ai/dashboard-interface-context.md)** - UI context for AI
-  - Detailed description of all 14+ dashboard tabs
+  - Detailed description of all dashboard tabs
   - Navigation tag specifications ([SwitchTab])
-  - Subtab deep-linking IDs
+  - Companion tab descriptions
 
 - **[evolution-logic.md](./ai/evolution-logic.md)** - Self-evolution strategy
-  - Shifting from static Tool Forging to dynamic Agentic Workspaces
-  - Persistent Memory Topic creation and curation
+  - Agentic Workspaces and Persistent Memory
+  - Companion Memory growth system
+  - Tool Forge pipeline (legacy)
   - Self-improvement feedback loops
 
 ---
@@ -80,7 +85,13 @@ Machine-readable specifications for AI agents operating within the system.
 **Understand the technical architecture:**
 → Reference [system-spec.md](./ai/system-spec.md) for complete specs
 
-**Learn how tool generation works:**
+**Learn how companions work:**
+→ See the Companion System section in [system-spec.md](./ai/system-spec.md)
+
+**Learn how bridges work:**
+→ See the Bridges System section in [system-spec.md](./ai/system-spec.md)
+
+**Learn how self-evolution works:**
 → Deep dive into [evolution-logic.md](./ai/evolution-logic.md)
 
 **See the big picture:**
@@ -98,13 +109,14 @@ Machine-readable specifications for AI agents operating within the system.
 ### For Developers
 1. [readme-overview.md](./human/readme-overview.md) - High-level architecture
 2. [system-spec.md](./ai/system-spec.md) - Technical details
-3. [evolution-logic.md](./ai/evolution-logic.md) - Tool generation mechanics
+3. [evolution-logic.md](./ai/evolution-logic.md) - Tool generation and companion memory mechanics
 4. [agent-mission.md](./ai/agent-mission.md) - Implementation guidelines
 
 ### For AI Agents
 1. [agent-mission.md](./ai/agent-mission.md) - Primary directives and constraints
 2. [system-spec.md](./ai/system-spec.md) - System reference
-3. [evolution-logic.md](./ai/evolution-logic.md) - Tool creation workflow
+3. [evolution-logic.md](./ai/evolution-logic.md) - Tool creation and memory workflow
+4. [dashboard-interface-context.md](./ai/dashboard-interface-context.md) - UI navigation reference
 
 ---
 
@@ -121,12 +133,18 @@ Machine-readable specifications for AI agents operating within the system.
   - Complete human tier guides
   - Machine-readable AI tier specs
   - Root README updated as landing page
+- **2026-04-19:** Major update to v1.4 state
+  - Companions system documented (Misaka Cipher, Axiom, Lyra)
+  - Bridges system documented (6 active bridges)
+  - AetherCore replacing Nexus Core references
+  - Full tab registry updated (35+ tabs)
+  - Companion memory evolution added to evolution-logic.md
 
 ### Planned Enhancements
 - [ ] Video walkthroughs for Getting Started
 - [ ] Interactive API documentation
 - [ ] Advanced use case tutorials
-- [ ] Tool creation workshop guide
+- [ ] Companion creation guide
 - [ ] Multi-agent coordination patterns
 - [ ] Performance optimization guide
 
@@ -137,6 +155,7 @@ Machine-readable specifications for AI agents operating within the system.
 ### Human Tier (User-Facing)
 - ✅ High-level overview and philosophy
 - ✅ Installation and setup
+- ✅ Companion system overview
 - ✅ Basic to advanced examples
 - ✅ Best practices
 - ✅ Troubleshooting
@@ -146,9 +165,11 @@ Machine-readable specifications for AI agents operating within the system.
 ### AI Tier (Machine-Readable)
 - ✅ Complete system specification
 - ✅ Data flow architecture
+- ✅ Companion system specification
+- ✅ Bridges system specification
 - ✅ Reasoning constraints
 - ✅ Routing rules and decision matrices
-- ✅ Tool generation pipeline
+- ✅ Evolution pipeline
 - ✅ Quality metrics
 - ⚠️ Automated testing guides (planned)
 
@@ -172,7 +193,7 @@ Machine-readable specifications for AI agents operating within the system.
 ### Want to Add Content?
 1. Identify the appropriate tier (Human or AI)
 2. Follow the existing style and structure
-3. Include the continuity header (date stamp)
+3. Include the date stamp header
 4. Submit a pull request
 
 ### Documentation Standards
@@ -187,11 +208,12 @@ Machine-readable specifications for AI agents operating within the system.
 
 ## 🔗 External Resources
 
-### Related Documentation
-- **Aethvion Framework:** [config/aethvion.yaml](../config/aethvion.yaml)
+### Related Configuration
 - **Provider Configuration:** [config/providers.yaml](../config/providers.yaml)
-- **Model Registry:** [config/model_registry.json](../config/model_registry.json)
-- **Security Rules:** [config/security.yaml](../config/security.yaml)
+- **Model Registry:** [data/config/model_registry.json](../data/config/model_registry.json)
+- **Companion Registry:** [core/companions/registry.py](../core/companions/registry.py)
+- **Bridge Registry:** [core/bridges/registry.json](../core/bridges/registry.json)
+- **Canonical Paths:** [core/utils/paths.py](../core/utils/paths.py)
 
 ### Community
 - **GitHub Repository:** [Aethvion/Aethvion-Suite](https://github.com/Aethvion/Aethvion-Suite)
@@ -205,25 +227,24 @@ Machine-readable specifications for AI agents operating within the system.
 
 **Key Terms Referenced in Documentation:**
 
-- **Nexus Core:** Central orchestration hub, single point of entry for all requests
-- **The Factory:** Agent execution hub that manages specialized workers in Workspaces
-- **The Forge:** [Legacy] Static tool generation pipeline for permanent Python tools
-- **Workspaces:** Dedicated filesystems for agents to perform iterative ReAct loops
-- **Persistent Memory:** Curated knowledge topics (JSON) for long-term consistency
+- **AetherCore:** Central AI gateway (`core/aether_core.py`); single point of entry for all AI requests; handles routing, provider failover, Intelligence Firewall, and Trace IDs
+- **Companions:** Persistent AI personalities (Misaka Cipher, Axiom, Lyra) with per-companion memory, config, and tool access; primary user-facing AI layer
+- **Companion Engine:** `core/companions/companion_engine.py`; manages chat history, tool execution, memory updates, and prompt injection for all companions
+- **Bridges:** Registry-driven system integrations (`core/bridges/`); connects companions to Spotify, weather, system info, media, screen capture, and webcam; status injected as `{bridges_block}` into companion prompts
+- **Intelligence Firewall:** Security layer in AetherCore that scans all requests for PII and credentials before external API calls
+- **Workspaces:** Dedicated filesystems for agents to perform iterative ReAct loops (`data/modes/workspaces/`)
+- **Persistent Memory:** Curated knowledge topics (JSON) for long-term consistency; stored in `data/modes/companions/knowledge/`
+- **Companion Memory:** Per-companion dynamic profile (`memory.json`) and stable identity (`base_info.json`); synthesized via XML tag extraction from conversations
+- **Agent Corp:** Multi-agent coordination hub for complex orchestrated tasks
+- **Research Board:** Multi-director AI debate and research environment
 - **Trace ID:** Unique identifier (format: `MCTR-YYYYMMDDHHMMSS-UUID`) for request tracking
-- **Aethvion Standard:** Naming convention `[Domain]_[Action]_[Object]` for tools/agents
-- **Intelligence Firewall:** Security layer that scans for PII/credentials before external API calls
-- **Provider:** External AI service (Google AI, OpenAI, xAI Grok)
-- **Model Registry:** Configuration file defining available models and routing strategy
-- **Episodic Memory:** Vector-based storage of raw interactions (ChromaDB)
+- **Provider:** External AI service (Google AI, OpenAI, xAI Grok, Anthropic)
+- **Model Registry:** Configuration file defining available models and routing strategy (`data/config/model_registry.json`)
+- **Episodic Memory:** Vector-based storage of raw interactions (ChromaDB) per companion
 - **Knowledge Graph:** NetworkX-based relationship mapping between entities
 - **Core Insights:** High-level facts derived from episodic memory summarization
-- **Tool Registry:** JSON file tracking all generated and standard tools
-- **Agent Registry:** In-memory tracking of active agents
-- **Infinite Session:** Long-running autonomous execution mode for complex goals
-- **Self-Evolution:** System's ability to create tools and improve itself autonomously
 - **Schedule Manager:** Manages recurring AI tasks with cron-based scheduling
-- **Notification Hub:** Real-time system-wide alerting and history logic
+- **Notification Hub:** Real-time system-wide alerting and history
 
 ---
 
@@ -241,11 +262,11 @@ This documentation follows a **dual-tier approach**:
 - ✅ Include practical examples in human docs
 - ✅ Include exact file paths and data structures in AI docs
 - ✅ Document limitations and roadmap items honestly
-- ✅ Always include the continuity header with generation date
+- ✅ Always include the date stamp with generation date
 
 ---
 
-**Last Updated:** 2026-04-01
+**Last Updated:** 2026-04-19
 
 **Maintained By:** Agentic Sprint Cycles + Human Contributors
 

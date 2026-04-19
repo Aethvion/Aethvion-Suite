@@ -2,7 +2,7 @@
 
 # Aethvion Suite
 
-**Your private AI super-app — chat, agents, creative tools & more, all self-hosted**
+**Your private AI super-app — companions, agents, creative tools & more, all self-hosted**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
@@ -13,25 +13,25 @@
 
 <br>
 
-**Aethvion Suite** is a powerful, self-hosted AI platform that lets you combine the best cloud models (Grok, Claude, GPT-4o, Gemini) with fast local GGUF models — all in one beautiful, privacy-first dashboard.
+**Aethvion Suite** is a powerful, self-hosted AI platform combining the best cloud models (Gemini, GPT-4o, Claude, Grok) with fast local GGUF models — all in one unified, privacy-first dashboard.
 
-Run intelligent agents that can actually work on your code repositories, create and edit images or audio, talk to lively AI companions, monitor your system, play games, and much more. Everything runs on **your machine**, under **your control**.
+Run intelligent agents on your own code and files, chat with persistent AI companions who actually remember you, generate images and audio, research any topic with a multi-expert board, play AI-powered games, and automate recurring tasks. Everything runs on **your machine**, under **your control**.
 
 Whether you're a developer, creator, researcher, or just want a powerful personal AI setup, Aethvion Suite gives you a unified workspace that adapts to how *you* want to use it.
 
+**Current version: v15**
+
 ### ✨ Key Highlights
 
-- **Hybrid Intelligence** — Seamlessly mix cloud APIs and local models with smart auto-routing
-- **Powerful Agents** — Multi-step AI agents with knowledge graphs that can read, edit, and build entire projects
-- **Creative Studio** — Professional Photo & Audio tools with AI generation and editing
-- **AI Companions** — Personal characters with memory, tools and voice,
-- **Full AI Code IDE** — Monaco-based editor with built-in copilot, file operations, and execution
-- **Fully Customizable** — Dynamic sidebar with user profiles (Companion Hub, Professional, Creative Studio, etc.)
-- **Privacy First** — Intelligence Firewall scans and blocks sensitive data before it leaves your machine
-- **One-Click Windows Launchers** — Start the entire suite with a simple `.bat` file
-- **Self-Updating** — Easy updates directly from the dashboard
-
-**Current version: v14 (Major UI & onboarding improvements)** 
+- **AI Companions** — Persistent characters with memory, moods, tools, and workspace access; they remember who you are across every session
+- **Hybrid Intelligence** — Seamlessly mix cloud APIs (Gemini, GPT-4o, Claude, Grok) and local GGUF models with smart auto-routing and failover
+- **Powerful Agents** — Multi-step ReAct agents with file access, shell execution, and real-time streaming output
+- **Agent Corp** — Create multi-worker AI organizations with specialized roles; assign complex projects and watch them collaborate
+- **Research Board** — Generate structured expert perspectives on any topic; debate mode lets experts argue across multiple rounds
+- **Creative Studio** — Image generation (DALL-E 3, Imagen 3, Stable Diffusion), Audio (TTS/STT with voice cloning), and 3D asset generation
+- **Bridges** — Live connections between companions and your environment: Spotify, weather, system stats, screen capture, webcam, and more
+- **Privacy First** — Intelligence Firewall scans and blocks sensitive data before it leaves your machine; all data stored locally
+- **One-Click Windows Launcher** — `Start_Aethvion_Suite.bat` handles venv creation, dependency installation, and launch
 
 ---
 
@@ -50,17 +50,11 @@ Whether you're a developer, creator, researcher, or just want a powerful persona
 | <img src="assets/showcase/AethvionSuite_Agent.png" alt="Agents" width="100%"> | <img src="assets/showcase/AethvionSuite_AgentCorp.png" alt="Agent Corp" width="100%"> |
 | **Agent Workspace** · Multi-step ReAct agent runner with real-time SSE event streaming | **Agent Corp** · Manage and collaborate with multiple persistent specialized agents |
 | <img src="assets/showcase/AethvionSuite_MisakaCipher.png" alt="Misaka Cipher Chat Interface" width="100%"> | <img src="assets/showcase/AethvionSuite_Photo.png" alt="Aethvion Suite Photo App" width="100%"> |
-| **Companions** · Multi-provider AI chat with threads, auto-routing, and context modes | **Aethvion Photo** · AI image generation and precision layer-based editing system |
+| **Companions** · Persistent AI characters with memory, moods, tools, and workspace access | **Aethvion Photo** · AI image generation with DALL-E 3, Imagen 3, and local Stable Diffusion |
 | <img src="assets/showcase/AethvionSuite_Audio.png" alt="Aethvion Suite Audio App" width="100%"> | <img src="assets/showcase/AethvionSuite_Code.png" alt="Aethvion Suite Code IDE" width="100%"> |
-| **Aethvion Audio** · Professional multi-track timeline editor with live waveforms and effects | **Aethvion Code IDE** · Monaco-based IDE with AI copilot and code execution |
-| <img src="assets/showcase/AethvionSuite_LocalModels.png" alt="Aethvion Suite Local Models" width="100%"> | <img src="assets/showcase/AethvionSuite_DriveInfo.png" alt="Aethvion Suite Drive Info" width="100%"> |
-| **Direct Local Inference** · Run GGUF models (Mistral, LLaMA) directly on your hardware | **Aethvion Drive Info** · Recursive system storage analysis and visualization |
-
-<br>
-
-<img src="assets/showcase/AethvionSuite_UsagePage.png" alt="Aethvion Suite Usage Page" width="100%">
-
-**Usage & Cost Tracking** · Token usage, cost estimates, and granular per-query breakdowns
+| **Aethvion Audio** · Local TTS (Kokoro, XTTS-v2) and STT (Whisper) with voice cloning | **Aethvion Code IDE** · Monaco-based IDE with AI copilot and code execution |
+| <img src="assets/showcase/AethvionSuite_LocalModels.png" alt="Aethvion Suite Local Models" width="100%"> | <img src="assets/showcase/AethvionSuite_UsagePage.png" alt="Aethvion Suite Usage Page" width="100%"> |
+| **Local Models** · Browse, download, and run GGUF models and Ollama models locally | **Usage & Cost Tracking** · Token usage, cost estimates, and per-provider breakdowns |
 
 </div>
 
@@ -68,47 +62,49 @@ Whether you're a developer, creator, researcher, or just want a powerful persona
 
 ## What Is Aethvion Suite?
 
-Aethvion Suite is a **self-hosted AI assistant platform** that connects to cloud providers (Google Gemini, OpenAI, xAI Grok, Anthropic Claude) and local GGUF models via llama-cpp-python. It gives you a structured environment for running chat threads, generating tools, spawning agents, and interacting with a growing set of integrated apps — all from a server you own and control.
+Aethvion Suite is a **self-hosted AI platform** built around three core ideas: **local** (your data, your models, your hardware), **personal** (companions that know you, a dashboard that adapts to you), and **unified** (every AI workflow in one place, and those workflows talk to each other).
 
-There are **two main components** to the ecosystem:
-
-### 1. Aethvion Suite Core
-The central intelligence hub and management platform. It provides the dashboard, API orchestration, and foundational AI services.
-
-| Interface | Description |
-|-----------|-------------|
-| **Web Dashboard** | dynamic tabs system, build your own workspace, a couple of examples are chat, agents, tools, memory, games, etc. |
-| **Core Terminal** | CLI mode for headless use, scripting, and developer queries |
-
-### 2. Standalone Integrated Applications
-Professional-grade tools built on the Aethvion core. Each app runs as a standalone server but integrates seamlessly into the main dashboard.
-
-| App | Role | Default Port |
-|-----|------|--------------|
-| **Aethvion Code IDE** | VS Code-powered IDE with AI chat and execution | 8083 |
-| **Aethvion VTuber** | 2D character rigging and animation engine | 8081 |
-| **Aethvion Audio** | Multi-track timeline editor and effects processor | 8081* |
-| **Aethvion Photo** | Layer-based image generation and editor | 8081* |
-| **Aethvion Tracking** | AI-powered facial motion capture bridge with HUD | 8081* |
-| **Aethvion Drive Info** | Interactive disk space and storage analyzer | 8084 |
-| **Aethvion Finance** | Personal financial tracking, portfolio, and AI market analysis | 8081* |
-| **Aethvion Hardware Info** | System hardware information and monitoring | 8081* |
-
-*\* Note: Apps sharing port 8081 will automatically negotiate the next available port (8082, etc.) if multiple are running simultaneously.*
-
-The AI core features **Misaka Cipher**, backed by four subsystems:
+### Core Components
 
 | Component | Role | Status |
-|-----------|------|--------|
-| **Nexus Core** | Single entry point — routes all requests, manages trace IDs | Stable |
-| **The Factory** | Spawns transient worker agents for complex tasks | Active Development |
-| **Schedule Manager** | Manages recurring AI tasks and automation | Stable |
-| **Memory Tier** | ChromaDB episodic memory + knowledge graph | Storage stable, retrieval improving |
-| **Notification Hub** | Real-time system-wide alerting and history | New |
+|---|---|---|
+| **AetherCore** | Central AI gateway — routes all requests, manages failover, Intelligence Firewall | Stable |
+| **Companion Engine** | Persistent AI companions with memory, moods, tools, and workspace access | Stable |
+| **Agent Runner** | ReAct-style multi-step task execution with file I/O and shell commands | Stable |
+| **Bridges** | Registry-driven integrations: Spotify, weather, system stats, screen, webcam | Stable |
+| **Memory Tier** | Episodic memory (ChromaDB) + knowledge graph + persistent memory + identity | Stable |
+| **Schedule Manager** | Cron-based recurring AI task automation with notifications | Stable |
+| **Provider Manager** | Multi-provider routing with automatic failover across all AI calls | Stable |
 
-**Cloud Providers:** Google AI (Gemini) · OpenAI (GPT-4o) · xAI (Grok) · Anthropic (Claude)
-**Local Models:** GGUF via llama-cpp-python (Mistral, LLaMA, Phi, and others)
-**Intelligence Firewall:** PII/credential scanning before any external API call — blocks sensitive data from leaving.
+**Cloud Providers:** Google AI (Gemini 2.0 Flash, 1.5 Pro, Imagen 3) · OpenAI (GPT-4o, DALL-E 3) · xAI (Grok) · Anthropic (Claude)
+**Local Models:** GGUF via llama-cpp-python · Ollama integration · Kokoro TTS · XTTS-v2 (voice cloning) · Whisper STT
+**Intelligence Firewall:** PII/credential scanning before any external API call — sensitive data never leaves your machine.
+
+### Companions
+
+Four distinct AI companions, each with a unique personality, capability set, and persistent memory:
+
+| Companion | Personality | Capabilities |
+|---|---|---|
+| **Misaka Cipher** | Adaptive, curious, playful | Tools, workspace access, web search, bridges, memory |
+| **Axiom** | Analytical, precise, stoic | Tools, workspace access, bridges, memory |
+| **Lyra** | Empathetic, creative, warm | Bridges, memory |
+| **Nova** | Minimalist, calm, observant | Memory |
+
+Every companion has persistent `base_info.json` (evolving identity) and `memory.json` (dynamic observations about you). Companions learn your preferences across sessions.
+
+### Bridges
+
+Live connections between companions and your environment, called mid-conversation:
+
+| Bridge | What it does |
+|---|---|
+| `spotify_bridge` | Control Spotify — play, pause, skip, get current track |
+| `weather_bridge` | Real-time weather for any location |
+| `media_sentinel` | What's currently playing on Windows (any app) |
+| `system_bridge` | Live CPU, RAM, and disk usage |
+| `screen_capture` | Take a screenshot and share it with the companion |
+| `webcam_capture` | Capture a webcam image |
 
 ---
 
@@ -120,16 +116,16 @@ git clone https://github.com/Aethvion/Aethvion-Suite.git
 cd Aethvion-Suite
 pip install -e ".[memory]"
 
-# Configure providers
+# Configure providers (at least one required)
 copy .env.example .env
 # Edit .env — add any of: GOOGLE_AI_API_KEY / OPENAI_API_KEY / GROK_API_KEY / ANTHROPIC_API_KEY
-# Leave them blank to use only local models
+# Leave blank to use only local models
 ```
 
-**One-click (Windows):** Each application includes a dedicated launcher script. Double-click the `.bat` file to automatically create the virtual environment, install dependencies, and open the app.
+**One-click (Windows):** Double-click `Start_Aethvion_Suite.bat` — it creates the venv, installs dependencies, and opens the dashboard automatically.
 
 | Application | Launcher | Default URL |
-|-------------|----------|-------------|
+|---|---|---|
 | **Suite Dashboard** | `Start_Aethvion_Suite.bat` | http://localhost:8080 |
 | **Code IDE** | `apps/code/Start_Code.bat` | http://localhost:8083 |
 | **VTuber Engine** | `apps/vtuber/Start_VTuber.bat` | http://localhost:8081 |
@@ -137,96 +133,58 @@ copy .env.example .env
 | **Photo Editor** | `apps/photo/Start_Photo.bat` | http://localhost:8081* |
 | **Finance Hub** | `apps/finance/Start_Finance.bat` | http://localhost:8081* |
 | **Drive Info** | `apps/driveinfo/Start_DriveInfo.bat` | http://localhost:8084 |
-| **Tracking Bridge**| `apps/tracking/Start_Tracking.bat` | http://localhost:8081* |
+| **Tracking Bridge** | `apps/tracking/Start_Tracking.bat` | http://localhost:8081* |
 | **Hardware Info** | `apps/hardwareinfo/Start_HardwareInfo.bat` | http://localhost:8081* |
+
+*\* Apps sharing port 8081 auto-negotiate the next available port if multiple are running.*
 
 **Manual:**
 ```bash
-python -m core.main           # web dashboard
+python -m core.main           # web dashboard at http://localhost:8080
 python -m core.main --cli     # interactive CLI
 python -m core.main --test    # run verification tests
-python apps/code/code_server.py    # Code IDE standalone
 ```
 
 ---
 
-## What Works Right Now
+## What's In The Suite
 
-### Chat & Threads
-- Multi-provider chat (Google, OpenAI, Grok, Anthropic) with automatic failover
-- Local GGUF model inference via llama-cpp-python — no cloud required
-- Persistent conversation threads with configurable context modes (none / smart / full)
-- Per-message model selection or **auto-routing** (LLM picks the best model from your enabled pool)
-- Persistent Memory in Chat — AI can remember long-term topics across conversations
-- Compact thread history with date dividers and improved visual hierarchy
+### Companions & Chat
+- **Four companions** (Misaka Cipher, Axiom, Lyra, Nova) — each with distinct personality, memory, and capability profile
+- Per-session and long-term memory — companions remember preferences, past conversations, and observations about you
+- Bridges integration — companions can check weather, control Spotify, read system stats, and more, mid-conversation
+- Workspace access — companions can read, write, and search files in permitted directories
+- Floating overlay companion (Misaka) — accessible system-wide via hotkey (Ctrl+Shift+Space)
 
-### Agent Workspaces
-- **Agent Workspaces tab**: Create named workspaces, each with their own thread history
-- **Agent threads**: Start tasks from a workspace — the agent runner executes them step-by-step in a chosen folder
-- **ReAct-style execution loop**: Agent reads files, writes files, lists directories, and runs shell commands to complete tasks
-- **Real-time SSE streaming**: Each agent action and result streams live to the dashboard via Server-Sent Events
-- **Step history**: Previous runs are saved and re-rendered when revisiting a thread; actions and results displayed inline
-- Folder browser for selecting a workspace directory on the server filesystem
+### Research & Analysis
+- **Research Board** — simulate a board of experts; each gives a structured perspective; optional live debate mode where experts argue across multiple rounds
+- **AI Explained** — generate richly formatted HTML deep-dives on any topic, with persistent threads
+- **Model Arena** — blind benchmark: run the same prompt across multiple models simultaneously and rate results
+- **Advanced Lab** — structured multi-persona conversations with custom participant profiles
 
-### Tool Forge
-- AI can generate Python tools and register them for reuse
-- Generated tools are saved locally and available in subsequent sessions
+### Agents & Automation
+- **Agent Workspaces** — create named workspaces; agents run multi-step ReAct loops (read/write/list/run_command); each step streams live to the dashboard
+- **Agent Corp** — build multi-worker AI organizations; assign complex projects across specialized roles
+- **Task Scheduler** — cron-based recurring AI tasks; completion triggers notifications with direct links to results
+- **Task Queue** — submit, cancel, and monitor background AI tasks with persistent state
 
-### Memory
-- Episodic memory stored in ChromaDB (vector search)
-- Every conversation stored as a task JSON with model, routing, and usage metadata
-
-### Code IDE
-- Full Monaco editor (VS Code engine) with syntax highlighting for 30+ languages
-- AI copilot: chat, explain, fix, complete, refactor — all with streaming responses
-- **Chat thread system** — create, rename, switch, and delete threads per workspace; threads persist between sessions
-- **File creation from chat** — the AI uses `### FILE:` markers; files are written to disk automatically
-- **Python-exec blocks** — AI outputs Python code for file operations; executed server-side with Approve/Deny security toggle
-- Code execution: Python, Node.js, Bash/Shell — output streams live to the built-in terminal via SSE
-- **Ctrl+P fuzzy file finder palette** — quickly open any file with substring and character-sequence scoring
-- **Status bar** — shows git branch, language, cursor position, and dirty-state indicator
-- **AI Project Notes panel** — saved per-workspace and auto-injected into every AI system prompt
-- Apply/Copy buttons on AI chat code blocks; collapsed file write cards with expand-on-click
-- **AI continuation loop** — automatically chains follow-up calls so large tasks don't get cut off mid-response
-- File context menu: Move to…, Duplicate, Delete, Open in Explorer actions
-- Usage logging compatible with the dashboard Usage tab (logged under `data/ai/logs/usage/`)
-- Persistent workspace state — remembers open tabs, last workspace, and recent projects per folder
-- Project context injection — the AI receives your workspace file structure on every request
-- Native OS folder picker for workspace selection
-- Resizable 3-panel layout: file tree · Monaco editor · AI chat
-
-### Audio Interaction (Core)
-- Built-in Text-to-speech (TTS) and speech-to-text (STT) support within the dashboard and chat.
-- **Misaka TTS voice UI** — select voice profiles directly from the chat interface.
-- **Local TTS/STT routing** — routes to local audio models when loaded, falls back to browser/API.
-- Configurable voice profiles and audio processing settings.
-
-### Local Audio Models
-- **Audio Models tab** in the dashboard for managing local TTS and STT models.
-- **Kokoro** (TTS) — lightweight, fast local text-to-speech model.
-- **XTTS-v2** (Coqui TTS) — high-quality TTS with voice cloning support; cloned voice WAVs stored under `localmodels/audio/voices/`.
-- **Whisper** (faster-whisper) — accurate local speech-to-text transcription.
-- Model lifecycle management: load/unload models, generate TTS, transcribe audio, manage cloned voices, and install pip packages via the dashboard.
-- Models stored under `localmodels/audio/`; GGUF chat models under `localmodels/gguf/`.
-
-### Aethvion Audio (Standalone)
-- Full multi-track timeline editor with per-track volume, solo, and pan.
-- Professional waveform visualization with gradient rendering and real-time effects.
-- Format conversion and effects pipeline (Normalization, Gain, Pitch, Speed).
+### Creative Tools
+- **Image generation** — DALL-E 3, Imagen 3, Stable Diffusion WebUI, ComfyUI
+- **Audio Studio** — local TTS (Kokoro, XTTS-v2 with voice cloning), STT (Whisper), and a full multi-track timeline editor
+- **3D Generation** — text-to-3D and image-to-3D (Trellis 2, TripoSR)
+- **Local Model Hub** — browse, download, and manage GGUF models and audio models locally
 
 ### Games
-- Built-in games: Logic Quest, Blackjack, Sudoku, Word Search, Checkers (vs AI)
-- Leaderboard to track scores across sessions
+- Checkers, Blackjack, Sudoku, Word Search, Logic Quest — all with AI opponents or generation
+- **Are You Smarter Than AI?** — gameshow-format trivia: AI Game Master generates questions, you and an AI opponent compete, the GM judges in real time
 
-### VTuber & Tracking
-- **Aethvion VTuber:** Visualization and animation engine — rigging, real-time deformation, preview/live modes
-- **Aethvion Tracking:** Motion tracking via WebSocket at port 8082, streams parameters directly to the VTuber viewer
-- **Revamped Tracking UI** with a live HUD overlay, real-time telemetry readout, and FPS counter
-- Live mode auto-discovers the tracking server; browser connects directly with auto-reconnect
-
-### Nexus Module
-- Peripheral plugin hub — screen capture, webcam, Spotify, weather, system info
-- Registry-driven architecture for adding new integrations
+### System & Integrations
+- **External API** — OpenAI-compatible `/v1/chat/completions` endpoint; use Aethvion as a backend for other apps
+- **Discord Bot** — connect your Discord server; full bi-directional messaging with companions
+- **Usage & Cost Tracking** — token counts, cost estimates, per-provider and per-day breakdowns
+- **Persistent Memory** — long-term topic-based knowledge hub; manually curate facts that every companion and agent can retrieve
+- **Notification System** — real-time alerts with persistent history, category filtering, and deep-link navigation
+- **Port Manager, Logs Viewer, System Status** — full operational visibility
 
 ---
 
@@ -234,72 +192,103 @@ python apps/code/code_server.py    # Code IDE standalone
 
 ```
 Aethvion-Suite/
-├── Start_Aethvion_Suite.bat     # One-click install + launch (main dashboard)
-├── pyproject.toml               # All dependencies + project metadata
+├── Start_Aethvion_Suite.bat        # One-click install + launch (Windows)
+├── pyproject.toml                  # All dependencies + project metadata
 │
-├── core/                        # Shared AI core — used by all apps and the dashboard
-│   ├── main.py                  # Entry point (web / CLI / test modes)
-│   ├── nexus_core.py            # Central orchestration hub
-│   ├── config/                  # Configuration files (YAML/JSON)
-│   │   ├── suggested_apimodels.json      # Suggested cloud model configs
-│   │   ├── suggested_localmodels.json    # Suggested GGUF model configs
-│   │   └── suggested_localaudiomodels.json # Suggested local audio model configs
-│   ├── factory/                 # Agent spawning engine
-│   ├── forge/                   # Tool generation pipeline
-│   ├── memory/                  # Episodic memory + knowledge graph (ChromaDB)
-│   │   └── agent_workspace_manager.py   # Agent workspace and thread state manager
-│   ├── nexus/                   # Nexus manager (peripheral plugin system)
-│   ├── orchestrator/            # Master orchestrator + task queue
-│   │   ├── agent_events.py      # Thread-safe per-task SSE event store
-│   │   └── agent_runner.py      # ReAct-style multi-step agent execution loop
-│   ├── providers/               # Google / OpenAI / Grok / Anthropic / Local adapters
-│   ├── security/                # Intelligence Firewall
-│   ├── utils/                   # Shared utilities
-│   │   └── paths.py             # Canonical data path constants (single source of truth)
-│   ├── workers/                 # Background workers
-│   ├── workspace/               # Usage tracker, package manager
+├── core/                           # Shared AI core — used by all apps and the dashboard
+│   ├── main.py                     # Entry point (web / CLI / test modes)
+│   ├── aether_core.py              # Central AI gateway (AetherCore) — routing, failover, firewall
+│   ├── bridges/                    # Companion integration layer
+│   │   ├── bridge_manager.py       # Registry-driven module loader and dispatcher
+│   │   ├── registry.json           # Active bridge module registry
+│   │   ├── spotify_bridge.py       # Spotify playback control
+│   │   ├── weather_bridge.py       # Real-time weather data
+│   │   ├── system_bridge.py        # CPU / RAM / disk telemetry
+│   │   ├── media_sentinel.py       # Windows SMTC media info
+│   │   ├── screen_capture.py       # Screenshot capture
+│   │   └── webcam_capture.py       # Webcam image capture
+│   ├── companions/                 # Companion system
+│   │   ├── companion_engine.py     # Main chat generator — history, tools, memory, streaming
+│   │   ├── companion_routes.py     # FastAPI routes for all companion endpoints
+│   │   ├── registry.py             # Companion config loader (CompanionConfig)
+│   │   ├── configs/                # Per-companion JSON configs
+│   │   │   ├── misaka_cipher.json  # Misaka Cipher — adaptive, tool-enabled
+│   │   │   ├── axiom.json          # Axiom — analytical, precise
+│   │   │   ├── lyra.json           # Lyra — empathetic, creative
+│   │   │   └── simple_companion.json # Nova — minimalist
+│   │   └── engine/                 # Shared companion subsystems
+│   │       ├── memory.py           # base_info.json + memory.json — init, load, XML update, synthesis
+│   │       ├── history.py          # Per-companion conversation history
+│   │       ├── streaming.py        # build_bridges_capabilities() — prompt injection helper
+│   │       └── tools.py            # Tool block parsing, execution, workspace validation
+│   ├── config/                     # Configuration files (version-controlled)
+│   │   ├── providers.yaml          # Provider priority and failover config
+│   │   ├── security.yaml           # Intelligence Firewall rules
+│   │   ├── settings_manager.py     # Settings singleton
+│   │   ├── suggested_apimodels.json
+│   │   └── suggested_localmodels.json
+│   ├── factory/                    # Agent spawning engine (legacy factory pattern)
+│   ├── memory/                     # Memory tier
+│   │   ├── episodic_memory.py      # Vector-based interaction storage (ChromaDB)
+│   │   ├── identity_manager.py     # System identity and Misaka persona management
+│   │   ├── knowledge_graph.py      # Entity-relationship graph (NetworkX)
+│   │   ├── persistent_memory.py    # Long-term topic-based knowledge hub
+│   │   ├── social_registry.py      # Cross-platform user identity mapping
+│   │   ├── summarization.py        # Memory consolidation and core insights
+│   │   └── file_vector_store.py    # Semantic file indexing (FastEmbed + ChromaDB)
+│   ├── orchestrator/               # Task orchestration
+│   │   ├── agent_runner.py         # ReAct-style multi-step agent execution loop
+│   │   ├── task_queue.py           # Task submission, cancellation, state management
+│   │   ├── persona_manager.py      # System prompt building and persona routing
+│   │   └── schedule_manager.py     # Cron-based recurring task scheduler
+│   ├── providers/                  # AI provider abstraction layer
+│   │   ├── provider_manager.py     # Multi-provider routing with failover
+│   │   ├── google_provider.py      # Google AI (Gemini, Imagen)
+│   │   ├── openai_provider.py      # OpenAI (GPT-4o, DALL-E 3)
+│   │   ├── grok_provider.py        # xAI (Grok)
+│   │   └── anthropic_provider.py   # Anthropic (Claude)
+│   ├── security/                   # Intelligence Firewall
+│   │   ├── firewall.py             # Pre-flight PII/credential scanning
+│   │   └── scanner.py              # Regex-based content scanning
+│   ├── workers/                    # Background workers
+│   │   ├── discord_worker.py       # Persistent Discord bot service
+│   │   └── package_installer.py    # Async pip package installation
+│   ├── workspace/                  # Workspace utilities
+│   │   ├── workspace_utils.py      # load_workspaces(), validate_path(), build_workspace_block()
+│   │   └── preferences_manager.py  # User preference persistence
+│   ├── utils/                      # Shared utilities
+│   │   └── paths.py                # Canonical data path constants (single source of truth)
 │   └── interfaces/
-│       ├── dashboard/           # Web dashboard (FastAPI + static files)
-│       │   ├── agent_workspace_routes.py  # Agent workspace + browse API
-│       │   ├── audio_models_routes.py     # Local TTS/STT model management API
-│       │   └── task_routes.py             # Task submission + SSE streaming endpoint
-│       └── cli_modules/         # CLI module implementations
+│       ├── dashboard/              # Web dashboard (FastAPI + static files)
+│       │   ├── server.py           # FastAPI app — 32 routers registered
+│       │   └── *_routes.py         # Feature route modules (agents, arena, companions, games, …)
+│       └── cli_modules/            # CLI module implementations
 │
-├── apps/                        # Standalone apps — each has its own server + launcher
-│   ├── audio/                   # Audio processing (TTS / STT)
-│   │   ├── models/              # Local audio model adapters (Kokoro, XTTS-v2, Whisper)
-│   │   └── tts_manager.py       # TTS model lifecycle manager
-│   ├── code/                    # Code IDE — Monaco editor + AI copilot (port 8083)
-│   │   ├── Start_Code.bat       # One-click launcher
-│   │   ├── code_server.py       # FastAPI backend — FS, execution, AI, threads, usage
-│   │   └── viewer/              # Frontend: Monaco editor, file tree, AI chat
-│   ├── driveinfo/               # System storage and drive info
-│   ├── finance/                 # Finance tracking + AI market analysis
-│   ├── hardwareinfo/            # System hardware information
-│   ├── photo/                   # AI-powered photo editing
-│   ├── tracking/                # Motion tracking — WebSocket server (port 8082)
-│   └── vtuber/                  # VTuber engine — character animation (port 8081)
+├── apps/                           # Standalone apps — each has its own server + launcher
+│   ├── audio/                      # Audio processing (TTS/STT)
+│   │   ├── models/                 # Local audio model adapters (Kokoro, XTTS-v2, Whisper)
+│   │   └── tts_manager.py          # TTS/STT lifecycle manager
+│   ├── code/                       # Monaco-based Code IDE (port 8083)
+│   ├── driveinfo/                  # System storage and drive info
+│   ├── finance/                    # Finance tracking + AI market analysis
+│   ├── hardwareinfo/               # System hardware information
+│   ├── photo/                      # AI-powered photo editing
+│   ├── tracking/                   # Motion tracking WebSocket server (port 8082)
+│   └── vtuber/                     # VTuber character animation engine (port 8081)
 │
-├── data/                        # Runtime data — never committed
-│   ├── apps/                    # Per-app runtime data (arena, audio, code, finance, …)
-│   ├── config/                  # Runtime config (model_registry.json, settings.json)
-│   ├── history/                 # Persistent conversation history
-│   │   ├── chat/                # Standard Misaka chat sessions
-│   │   ├── ai_conversations/    # AI Conversations saves (JSON per conversation)
-│   │   └── agents/              # Agent workspace thread history
-│   ├── logs/                    # Usage logs (YYYY-MM/usage_YYYY-MM-DD.json) + system logs
-│   ├── system/                  # Lock file, launcher log, ports registry
-│   ├── vault/                   # Persistent brain (personas, knowledge graph, episodic)
-│   └── workspaces/              # Output files, uploads, tools, projects, preferences
+├── data/                           # Runtime data — never committed
+│   ├── companions/                 # Per-companion persistent data
+│   │   └── {companion_id}/         # base_info.json, memory.json, history/, uploads/
+│   ├── config/                     # Runtime config (model_registry.json, settings.json)
+│   ├── modes/                      # Per-mode data (workspaces, agents, schedules)
+│   ├── logs/                       # Usage logs + system logs
+│   └── workspaces/                 # Output files, uploads, media, projects
 │
-├── localmodels/                 # Model files — never committed
-│   ├── gguf/                    # GGUF chat models (llama.cpp)
-│   └── audio/                   # TTS / STT / voice models
-│       └── voices/              # Voice cloning source WAVs (XTTS-v2)
+├── localmodels/                    # Model files — never committed
+│   ├── gguf/                       # GGUF chat models (llama.cpp)
+│   └── audio/                      # TTS/STT/voice models + voice cloning WAVs
 │
-├── tools/                       # Tool registry (standard + AI-generated)
-├── tests/                       # Test suite
-└── assets/                      # Static assets (character sprites, showcase images)
+└── assets/                         # Static assets (showcase images, character sprites)
 ```
 
 ---
@@ -333,7 +322,7 @@ cp .env.example .env   # Windows: copy .env.example .env
 
 <div align="center">
 
-*An experimental AI platform — building toward something real, one sprint at a time.*
+*A local-first AI super-app — private, personal, and always yours.*
 
 [Star on GitHub](https://github.com/Aethvion/Aethvion-Suite)
 

@@ -1,12 +1,20 @@
-Core architecture is consistent; self-evolution logic shifts towards Agentic Workspaces and Persistent Memory Topics. Updated: 2026-03-31.
+Core architecture is consistent; self-evolution logic shifts towards Agentic Workspaces, Companion Memory, and Persistent Memory Topics. Updated: 2026-04-19.
 
 OVERVIEW
-Self-evolution in Aethvion Suite has transitioned from static **Tool Forging** to dynamic **Agentic Problem Solving**. While the system can still autonomously write Python code files (The Forge), modern evolution occurs through agents operating in **Workspaces**, performing iterative ReAct loops, and persisting curated knowledge as **Persistent Memory Topics**.
+Self-evolution in Aethvion Suite has transitioned from static **Tool Forging** to dynamic **Agentic Problem Solving** and **Companion Learning**. While the system can still autonomously write Python code files (The Forge), modern evolution occurs through agents operating in **Workspaces**, performing iterative ReAct loops, and persisting curated knowledge as **Persistent Memory Topics**. A parallel evolution axis is the **Companion Memory** system — companions build and refine their per-companion memory profiles over time through conversation.
 
 DYNAMIC EVOLUTION PATHS
 1. **Agentic Workspaces (Modern)**: Agents use the `AgentRunner` to perform multi-step tasks. Successful patterns and scripts are saved within the workspace and documented in **Persistent Memory**.
 2. **Persistent Memory Topics (Modern)**: Curated "Ground Truth" facts and logic stored as JSON topics, indexed for semantic retrieval by future agents.
-3. **The Forge Pipeline (Legacy/Static)**: Autonomous generation of permanent `.py` tools in `data/workspaces/tools/generated/`. Used for highly reusable, general-purpose capabilities.
+3. **Companion Memory (Modern)**: Each companion maintains `base_info.json` (stable identity) and `memory.json` (dynamic profile) at `data/modes/companions/personas/{companion_id}/`. The memory module (`core/companions/engine/memory.py`) synthesizes conversation history into evolving memory entries via XML tag extraction. Companions grow more personalized over time.
+4. **The Forge Pipeline (Legacy/Static)**: Autonomous generation of permanent `.py` tools in `data/modes/workspaces/tools/generated/`. Used for highly reusable, general-purpose capabilities.
+
+COMPANION MEMORY EVOLUTION
+Memory file: data/modes/companions/personas/{companion_id}/memory.json
+Identity file: data/modes/companions/personas/{companion_id}/base_info.json (stable; companion name, personality defaults)
+Memory module: core/companions/engine/memory.py — CompanionMemory class; loads both files, extracts <memory> XML tags from conversations, synthesizes updates, writes back
+Evolution cycle: conversation → XML tag extraction → memory synthesis → updated memory.json → future conversations get richer context
+Note: memory.json changes over time; base_info.json is stable and only updated intentionally.
 
 PHASE 2: GENERATION (forge/code_generator.py::generate_tool_code())
 Step 2.1: Select template. Standard tool template includes: description header, trace_id, timestamp, type imports, API imports, function name, parameters, return type, docstring with Args/Returns/Raises, try-except block, self-test in __main__.
@@ -22,7 +30,7 @@ Step 3.4: Functional validation (roadmap). Currently manual via __main__ self-te
 Readiness criteria: syntax valid AND security clean AND naming correct AND documentation present (docstring with Args/Returns) AND error handling present (try-except block) AND self-test passes.
 
 PHASE 4: REGISTRATION (forge/tool_registry.py::register_tool())
-Step 4.1: File persistence. Save to tools/generated/[domain]_[action]_[object].py, set executable permissions (0o755).
+Step 4.1: File persistence. Save to data/modes/workspaces/tools/generated/[domain]_[action]_[object].py, set executable permissions (0o755).
 Step 4.2: Registry update. Add entry to tools/registry.json with fields: name, path (relative to cwd), description, parameters ([{name, type, required, description}]), returns, created_at (ISO-8601), trace_id (MCTR-...), status ("active").
 Step 4.3: Knowledge graph update. Add tool node with metadata (description, parameters, created_at). Add domain node if not exists. Add belongs_to edge (Tool -> Domain:domain). Analyze implementation for tool dependencies and add uses edges.
 
@@ -57,10 +65,10 @@ Tool generation success rate: ~95% first-attempt (target >90%). Breakdown: ~3% f
 Tool reliability: ~99% execution success rate (target >95%).
 
 EVOLUTION SUMMARY
-Self-evolution now enables five integrated capabilities: **Workspace Execution** (iterative task solving), **Persistent Knowledge Hub** (curated long-term learning), **Self-Improvement** (automatic fixing of agentic scripts), **Skill Documentation** (agent-written memory topics), and **Universal Orchestration** (Nexus Core routing).
-Result: The system becomes exponentially more capable by accumulating both **Code (Tools)** and **Knowledge (Persistent Memory)**.
-Current focus: Transitioning from a "Tool-First" mindset to a "Capability-First" architecture where agents are the primary drivers of evolution.
+Self-evolution now enables six integrated capabilities: **Workspace Execution** (iterative task solving), **Companion Learning** (per-companion memory growth), **Persistent Knowledge Hub** (curated long-term learning), **Self-Improvement** (automatic fixing of agentic scripts), **Skill Documentation** (agent-written memory topics), and **Universal Orchestration** (AetherCore routing).
+Result: The system becomes exponentially more capable by accumulating both **Code (Tools)**, **Companion Knowledge (Memory)**, and **System Knowledge (Persistent Memory)**.
+Current focus: Transitioning from a "Tool-First" mindset to a "Capability-First" architecture where agents and companions are the primary drivers of evolution.
 
-LAST UPDATED: 2026-03-31
-STATUS: Active System Documentation (v11)
-NEXT EVOLUTION: Deeper Agent-Memory integration, Cross-Workspace Knowledge Transfer, Automated Persistent Memory Refinement
+LAST UPDATED: 2026-04-19
+STATUS: Active System Documentation (v15)
+NEXT EVOLUTION: Deeper Companion-Memory integration, Cross-Companion Knowledge Transfer, Automated Persistent Memory Refinement

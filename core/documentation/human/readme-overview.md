@@ -1,291 +1,227 @@
 # Aethvion Suite - System Overview
 
-**Note: This documentation was updated on 2026-04-01 to reflect the current Aethvion Suite (v12) state.**
+**Note: This documentation was updated on 2026-04-19 to reflect the current Aethvion Suite (v1.4) state.**
 
 ---
 
-## The Vibe: This Is Not Just a Chatbot
+## The Vibe: This Is Not Just an AI App
 
-Aethvion Suite (**M.I.S.A.K.A.** - Multitask Intelligence & Strategic Analysis Kernel Architecture) is fundamentally different from traditional AI assistants. Think of it less as a conversational partner and more as a **Forge for Self-Evolving Software**.
+Aethvion Suite is a self-hosted AI super-app built for people who want a deeply personal, capable AI system without paying a subscription or sending their data to someone else's cloud. It runs entirely on your machine, connects to the AI providers you choose, and grows smarter the more you use it.
 
-### What Makes Aethvion Suite Different?
+Think of it as three things at once:
+- **A companion platform** — AI personalities that remember you, your projects, and your preferences
+- **An agent engine** — autonomous AI workers that can read files, write code, run commands, and complete multi-step tasks
+- **A creative suite** — image generation, 3D models, audio, research, and more, unified in one dashboard
+
+### What Makes It Different?
+
+**🧠 Companions with Real Memory**
+Misaka Cipher, Axiom, and Lyra are not just chat modes — they are distinct AI personalities, each with their own memory profile that grows over time. They remember facts about you, adapt to your preferences, and can call on system tools and bridges mid-conversation. The more you talk with them, the more personal and useful they become.
 
 **🔄 Self-Evolution at the Core**
-- The system doesn't just execute tasks—it solves them by iteratively generating and running code in specialized **Workspaces**.
-- Dynamic agents perform multi-step ReAct loops, learning and persisting knowledge as they go.
-- The AI can spawn specialized agents, refine its own scripts, and update its memory topics autonomously.
-- **Legacy Forging**: The old, manual tool-forging system has been removed in favor of fully autonomous, workspace-specific capability generation.
+The system doesn't just execute tasks — it solves them through iterative ReAct loops. Agents can read files, write code, run commands, and document their findings as persistent knowledge that future agents and companions can access.
 
-**♾️ Infinite Session Architecture**
-- Designed for long-running, autonomous loops
-- Can work continuously until complex goals are achieved
-- Examples: "Build a fractal visualization tool" → System works until complete
-- Ambitious goals: "Design a fully functioning business" → System iterates autonomously
+**🔌 Bridges — Real-World Connections**
+Companions know what's playing on your Spotify, what the weather is like, what's happening on your system, and what your camera sees — because bridges inject live context directly into their prompts. No manual pasting required.
 
-**🧠 Hybrid Intelligence Strategy**
-- Distinguishes between "grunt work" and "reasoning"
-- **Low-Cost/High-Volume Tasks**: Reading massive file structures, processing large codebases → Routes to local models (near-zero cost)
-- **High-Intelligence/High-Cost Tasks**: Architectural decisions, complex reasoning, strategic planning → Routes to premium cloud models (Gemini Pro, GPT-4)
-- Smart cost optimization: Uses local models for data processing, cloud models for insights
-
-**🛡️ Security & Sovereignty First**
-- Intelligence Firewall pre-scans all requests for PII and credentials
-- Sensitive data automatically routes to local processing
-- Complete traceability with unique Trace IDs for every operation
+**🛡️ Privacy by Default**
+Everything runs locally. AetherCore's Intelligence Firewall scans every request before it leaves your machine. Sensitive data stays on-device. You choose which providers to trust and when.
 
 ---
 
-## Core Architecture: The Four Pillars
+## Core Architecture: The Five Pillars
 
-### 1. **Nexus Core** - The Orchestration Brain
-The absolute single point of entry for all operations. Every request, whether from a user, an agent, or a tool, flows through Nexus Core.
+### 1. **AetherCore** — The AI Gateway
+The single point of entry for every AI request in the system. Every companion message, every agent step, every image generation call routes through AetherCore.
 
 **Key Features:**
-- Unified provider abstraction (Google Gemini, OpenAI, xAI Grok, and future local models)
-- Automatic failover between providers
+- Unified provider abstraction (Google Gemini, OpenAI, xAI Grok, Anthropic, local GGUF)
+- Automatic failover between providers (Google → OpenAI → Grok)
 - Trace ID generation for complete auditability
-- Intelligence Firewall integration
-- Smart routing decisions based on task complexity and sensitivity
+- Intelligence Firewall: PII and credential scanning before any external call
+- Smart routing based on task complexity and sensitivity
 
-### 2. **The Factory & Workspaces** - Agent Execution Engine
-Creates specialized worker agents on-demand that operate within dedicated filesystem **Workspaces**. This integrates the old "Forge" logic into a more flexible, iterative execution loop.
-
-**Lifecycle:**
-1. User requests a complex goal (e.g., "Analyze this repository for security flaws")
-2. Factory analyzes requirements and selects/spawns a specialized agent
-3. Agent enters a **Workspace** (a dedicated folder with its own context and files)
-4. Agent executes a **ReAct Loop** (Reasoning + Acting: `read_file`, `write_file`, `run_command`, `done`)
-5. Results are streamed in real-time to the dashboard via SSE (Server-Sent Events)
-
-### 3. **AI Scheduler & Notifications** - Automated Execution & Alerting
-Enables recurring AI tasks and real-time status updates across the entire suite.
-
-**Key Features:**
-- **Cron-based Scheduling**: Trigger AI tasks at specific times or intervals (e.g., daily research summaries).
-- **Notification Hub**: A centralized, persistent alert system with granular source filtering.
-- **Deep-Linking**: Navigate directly from an alert to the relevant task or dashboard tab.
-
-### 4. **The Memory Tier** - Knowledge Persistence & Retrieval
-A multi-layered cognitive architecture ensuring that what the system learns today, it remembers tomorrow.
-
-**Layered Architecture:**
-- **Persistent Memory (Knowledge Hub)**: Curated, long-term topics and facts managed in the dashboard. This is the top-tier "Ground Truth", now integrated directly into the Chat sidebar.
-- **Core Insights**: Recursive summarization of interactions into high-level patterns and behavioral facts.
-- **Episodic Memory**: Raw interaction logs with semantic embeddings for vector-based search (ChromaDB).
-- **Knowledge Graph**: NetworkX-based mapping showing how domains, agents, and concepts are interlinked.
-- **File Vector Store**: Semantic indexing of workspace files for natural language searching.
+**File:** `core/aether_core.py`
 
 ---
 
-## How Users Interact: The CLI Experience
+### 2. **Companions** — Persistent AI Personalities
+The primary user-facing layer. Each companion has a distinct personality, a memory profile that grows with every conversation, and access to tools and bridges.
 
-### Launch Modes
+**Active Companions:**
+| Companion | Personality | Strengths |
+|---|---|---|
+| **Misaka Cipher** | Warm, loyal, direct | General use, memory, creativity |
+| **Axiom** | Analytical, precise | Logic, research, structured reasoning |
+| **Lyra** | Expressive, creative | Art, writing, creative projects |
 
-**Web Interface (Default):**
-```bash
-python -m core.main
-# Access dashboard at http://localhost:8080
-# API docs at http://localhost:8080/docs
-```
+**How Companion Memory Works:**
+Each conversation is analyzed for `<memory>` XML tags. These are synthesized into a dynamic memory profile (`memory.json`) stored alongside a stable identity file (`base_info.json`). The memory profile is injected into every future conversation, making companions progressively more personalized over time.
 
-**Interactive CLI:**
-```bash
-python -m core.main --cli
-```
+**Data paths:**
+- Identity: `data/modes/companions/personas/{companion_id}/base_info.json`
+- Memory: `data/modes/companions/personas/{companion_id}/memory.json`
+- Episodic: `data/modes/companions/memory/{companion_id}/`
 
-**Verification Tests:**
-```bash
-python -m core.main --test
-```
-
-### CLI Menu Structure
-
-When you launch the CLI, you'll see five main options:
-
-1. **Nexus Core** - Direct AI Interaction
-   - Send prompts directly to the AI brain
-   - Choose specific providers or use auto-routing
-   - Get real-time responses with full traceability
-
-2. **The Factory** - Spawn Agents
-   - Create specialized worker agents
-   - Define agent specifications (domain, capabilities, objective)
-   - Monitor active agents and their status
-
-3. **The Forge** - Generate Tools
-   - Describe a tool you need in natural language
-   - Watch the system generate, validate, and register it
-   - Generated tools immediately available system-wide
-
-4. **The Memory Tier** - Query Knowledge
-   - Search episodic memories semantically
-   - Query the knowledge graph
-   - Retrieve core insights
-
-5. **System Status** - Diagnostics
-   - View provider health status
-   - Check active traces and operations
-   - Monitor resource usage
+**Engine:** `core/companions/companion_engine.py`
 
 ---
 
-## The "Infinite Session" Goal
+### 3. **Bridges** — Live System Connections
+Bridges connect companions to real-world data sources. Every companion's system prompt is injected with a `{bridges_block}` showing the current state of all active bridges, so companions can reference live data naturally in conversation.
 
-Traditional AI systems handle discrete, bounded tasks. Aethvion Suite aims higher.
+**Active Bridges:**
+| Bridge | What It Provides |
+|---|---|
+| **Spotify** | Currently playing track, artist, playlist |
+| **Weather** | Current conditions, temperature, forecast |
+| **System** | CPU/GPU/RAM usage, running processes |
+| **Media Sentinel** | Active media windows and playback state |
+| **Screen Capture** | Screenshots on demand |
+| **Webcam Capture** | Webcam images on demand |
 
-### Vision: Autonomous Goal Achievement
-
-**Simple Example:**
-```
-User: "Create a fractal visualization tool"
-System:
-1. Analyzes requirements → Routes to Pro model for architecture
-2. Forges base visualization tool → Uses Flash model for code generation
-3. Tests and validates → Local execution
-4. Identifies missing dependencies → Forges installer tool
-5. Generates documentation → Uses Flash for writing
-6. Creates example fractals → Uses Imagen for images
-7. Validates complete system → Final check
-Result: Fully functional fractal tool, tested and documented
-```
-
-**Ambitious Example:**
-```
-User: "Design a fully functioning e-commerce business for handmade crafts"
-System (over days/weeks):
-1. Business analysis → Pro model for strategic planning
-2. Market research → Flash model reading competitor sites (local caching)
-3. Architecture design → Pro model for system design
-4. Code generation → Spawns multiple agents for frontend, backend, database
-5. Tool forging → Creates custom analytics, inventory management tools
-6. Testing → Spawns QA agents
-7. Documentation → Flash model for comprehensive docs
-8. Deployment → Forges deployment tools
-Result: Complete business platform, ready to launch
-```
-
-### How It Works
-
-**Continuous Loop:**
-```
-┌─────────────────────────────────────┐
-│ 1. Parse Goal into Subgoals        │
-└──────────┬──────────────────────────┘
-           │
-┌──────────▼──────────────────────────┐
-│ 2. For Each Subgoal:                │
-│    - Assess Complexity              │
-│    - Route to Appropriate Model     │
-│    - Spawn Agents if Needed         │
-│    - Forge Tools if Missing         │
-└──────────┬──────────────────────────┘
-           │
-┌──────────▼──────────────────────────┐
-│ 3. Execute & Validate               │
-│    - Store Results in Memory        │
-│    - Update Knowledge Graph         │
-└──────────┬──────────────────────────┘
-           │
-┌──────────▼──────────────────────────┐
-│ 4. Goal Complete?                   │
-│    No → Back to Step 2              │
-│    Yes → Present Final Result       │
-└─────────────────────────────────────┘
-```
+**Registry:** `core/bridges/registry.json`
+**Manager:** `core/bridges/bridge_manager.py`
 
 ---
 
-## Why This Architecture Matters
+### 4. **Agents & Workspaces** — Autonomous Execution
+Two modes of agent execution, from single tasks to complex multi-agent workflows:
 
-### 1. **Wrapper Support + Model Advancement = Exponential Progress**
+**Agent Workspaces (Agents tab)**
+- Single agents performing multi-step ReAct loops
+- Actions: `read_file`, `write_file`, `list_dir`, `run_command`, `done`
+- Real-time streaming via SSE — watch every step as it happens
+- Working directory = selected workspace folder
+- Max 20 iterations per task
 
-As AI models improve (GPT-5, Gemini 3, Claude Opus 4), Aethvion Suite automatically benefits. The wrapper provides:
-- Consistent interface regardless of underlying model
-- Automatic failover to best available model
-- Cost optimization through smart routing
-- Future-proof architecture
+**Agent Corp (Agent Corp tab)**
+- Multi-agent coordination for complex, parallel objectives
+- Higher-level orchestration than individual agent tasks
 
-### 2. **Cost-Efficient Scaling**
+**Schedule (Schedule tab)**
+- Cron-based recurring AI tasks
+- Completion notifications with deep-linking to results
+- Background execution with persistent history
 
-Traditional approach: Use expensive cloud models for everything
-```
-Read 1000 files with GPT-4 → $$$$$
-Analyze results with GPT-4 → $$$$$
-Make decisions with GPT-4 → $$$$$
-```
+**Runner:** `core/orchestrator/agent_runner.py`
 
-Aethvion Suite approach:
-```
-Read 1000 files with Local Llama → $ (near zero)
-Distill insights with Flash → $
-Strategic decisions with Pro → $$
-Total: 90% cost reduction
-```
+---
 
-### 3. **Self-Improving System**
+### 5. **Memory Tier** — Knowledge Persistence
+A multi-layered cognitive system ensuring everything the suite learns today is available tomorrow.
 
-Each tool forged expands the system's capabilities:
-- Week 1: 10 basic tools
-- Week 4: 50 tools (system forged 40 new ones)
-- Week 12: 200 tools (exponential growth)
+**Layers (fastest to slowest retrieval):**
+1. **Companion Memory** — per-companion dynamic profile (base_info.json + memory.json)
+2. **Persistent Memory** — curated long-term facts and topics (Knowledge Hub)
+3. **Core Insights** — recursive summarization of interactions into behavioral patterns
+4. **Episodic Memory** — raw interaction logs with semantic embeddings (ChromaDB)
+5. **Knowledge Graph** — NetworkX-based mapping of tools, agents, and concepts
 
-The system becomes more capable without human intervention.
+---
+
+## The Dashboard: Everything in One Place
+
+Aethvion Suite is organized into a configurable sidebar. Every tab can be shown or hidden, grouped into folders, and saved as named layout profiles — so your dashboard only shows what you actually use.
+
+**Default folder layout:**
+
+| Folder | Tabs |
+|---|---|
+| Workspace | Chat, Agents, Agent Corp, Schedule, Photo, Audio, 3D Workspace |
+| Research | Adv. AI Conv., Research Board, Arena, AI Conv., Explained |
+| Companions | Misaka Cipher, Axiom, Lyra, Create Companion |
+| Entertainment | Games Center |
+| Memory | Memory, Companion Memory, Persistent Memory, Schedule Overview |
+| Storage | Output, Gallery, Camera, Uploads |
+| Model Hub | Text & Chat Models, Image Models, Audio & Speech, 3D Models, API Providers |
+| System | Logs, Docs, Usage, Status, Ports |
+
+**Built-in games:** Checkers (vs Aethvion AI), Are You Smarter Than AI?, Sudoku, Blackjack, Word Search, Logic Quest
+
+**Creative tools:** AI image generation, 3D asset generation, AI photo studio, Kokoro TTS, XTTS-v2 voice cloning, Whisper STT
+
+**Research tools:** Research Board (multi-director AI debate), Advanced AI Conversations (structured multi-agent lab), LLM Arena (model comparison)
 
 ---
 
 ## Technical Foundation
 
 ### Stack
-- **Language**: Python 3.10+
-- **Vector DB**: ChromaDB (for memory embeddings)
-- **Graph Engine**: NetworkX (for knowledge relationships)
-- **Web Framework**: FastAPI + uvicorn (for dashboard with WebSocket support)
-- **Persistence**: JSON-based storage (centrally managed via `data/` and `core/utils/paths.py`)
+- **Language:** Python 3.10+
+- **Web Framework:** FastAPI + uvicorn (`http://localhost:8080`)
+- **Vector DB:** ChromaDB (companion episodic memory)
+- **Graph Engine:** NetworkX (knowledge relationships)
+- **Persistence:** JSON-based storage (`data/` directory via `core/utils/paths.py`)
+- **Frontend:** Vanilla JS with partial loader, sidebar profile system, SSE streaming
 
-### Provider Support
-- **Google AI**: Gemini 2.0 Flash, Gemini 1.5 Pro, Imagen 3
-- **OpenAI**: GPT-4o, GPT-4o-mini, DALL-E 3
-- **xAI**: Grok-3 Mini Fast
-- **Anthropic**: Claude (optional)
-- **Local GGUF models**: llama-cpp-python inference — place GGUF files in `localmodels/gguf/`
-- **Local Audio models**: Kokoro (TTS), XTTS-v2 (voice cloning), Whisper (STT) — place in `localmodels/audio/`
-- **Persistent Memory Hub**: Real-time management of long-term knowledge topics
-- **Local (cloud-routing replacement, roadmap)**: Ollama, vLLM
+### AI Provider Support
+| Provider | Models | Role |
+|---|---|---|
+| Google AI | Gemini 2.0 Flash, Gemini 1.5 Pro, Imagen 3 | Primary |
+| OpenAI | GPT-4o, GPT-4o-mini, DALL-E 3 | Fallback |
+| xAI | Grok-3 Mini Fast | Tertiary |
+| Anthropic | Claude | Optional |
+| Local GGUF | llama-cpp-python | Zero-cost bulk tasks |
+| Local Audio | Kokoro, XTTS-v2, Whisper | TTS/STT/voice cloning |
 
 ### Security Features
-- Pre-flight content scanning (regex-based PII detection)
-- Automatic routing of sensitive data to local processing
-- No external data leakage on flagged requests
-- Complete audit trail with Trace IDs
+- Intelligence Firewall pre-scans all requests (PII + credential regex detection)
+- Flagged data routed to local processing or user-warned before external call
+- No external data leakage on blocked requests
+- Complete audit trail with Trace IDs on every request
+
+---
+
+## The Infinite Session Goal
+
+Traditional AI handles discrete, bounded tasks. Aethvion Suite aims higher.
+
+**Simple example:**
+```
+User: "Analyze this Python project for performance bottlenecks"
+→ Agent reads all .py files
+→ AetherCore routes analysis to appropriate model
+→ Agent writes findings to workspace
+→ Companion summarizes results in chat
+→ Key findings stored in Persistent Memory for future reference
+Result: Actionable report, all steps traceable
+```
+
+**Ambitious example:**
+```
+User: "Build me a portfolio website for my photography"
+→ Lyra companion discusses aesthetic and structure
+→ Agent Corp spawns frontend + content agents in parallel
+→ Photo bridge provides sample images on demand
+→ Schedule sets up a weekly "refresh portfolio" task
+→ Persistent Memory stores project decisions for continuity
+Result: Complete website, with ongoing automation built in
+```
 
 ---
 
 ## Getting Started
 
-Ready to dive in? Check out [Getting_Started.md](./Getting_Started.md) for:
+Ready to dive in? Check out [getting-started.md](./getting-started.md) for:
 - Installation and setup
 - API key configuration
-- First session walkthrough
+- First conversation with a companion
 - Example use cases
 - Best practices
 
 ---
 
-## Philosophy: The Forge Metaphor
+## Philosophy
 
-Think of Aethvion Suite as a **digital forge** where:
-- Raw ideas are the **ore**
-- The AI is the **blacksmith**
-- Generated tools are the **forged implements**
-- Each tool makes the next creation easier
-- The forge itself becomes more capable over time
+Aethvion Suite is built on a simple idea: **your AI should work for you, not the other way around.** It runs on your hardware, stores your data locally, respects your privacy, and becomes more useful over time — not because the cloud got smarter, but because you taught it what matters to you.
 
-This is not just automation—it's **evolution**.
+The goal is not to replace human creativity or judgment. It's to remove the friction between an idea and the result.
 
 ---
 
-**Last Updated:** 2026-04-01
+**Last Updated:** 2026-04-19
 
-**Need technical details?** → [AI Documentation](/documentation/ai/)
+**Need technical details?** → [AI Documentation](/core/documentation/ai/)
 
 **Questions?** → Check the root [README.md](../../README.md) for community and support

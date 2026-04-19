@@ -1,84 +1,17 @@
 # Getting Started with Aethvion Suite
 
-**Note: This documentation was updated on 2026-04-01 to reflect the current Aethvion Suite (v12) state.**
+**Note: This documentation was updated on 2026-04-19 to reflect the current Aethvion Suite (v1.4) state.**
 
 ---
 
-## Why Aethvion Suite? The Value Proposition
+## Why Aethvion Suite?
 
-### The Problem with Traditional AI Systems
+Most AI tools give you a chat window and a subscription bill. Aethvion Suite is different:
 
-**Traditional Approach:**
-```
-User: "I need to analyze 1000 CSV files and generate insights"
-AI: "Here's some sample code you can run..."
-User: Copies code, debugs errors, manually runs on each file
-Result: Hours of manual work, inconsistent quality
-```
-
-**AI Wrapper Limitation:**
-```
-User: Same request
-AI Wrapper: Analyzes all 1000 files with GPT-4
-Result: $200 in API costs, but automatic execution
-```
-
-### The Aethvion Suite Difference
-
-**Current Approach (cloud providers + smart routing):**
-```
-User: "I need to analyze 1000 CSV files and generate insights"
-
-Aethvion Suite:
-1. Recognizes this is a data processing objective.
-2. Routes to local model or Gemini Flash for fast, cheap bulk processing.
-3. Spawns an agent in a dedicated Workspace to perform the analysis iteratively.
-4. Agent documents reusable findings as a Topic in **Persistent Memory**.
-5. Routes final strategic insights to Gemini Pro.
-
-Result: Fully automatic, model-agnostic, self-improving system.
-```
-
-**Planned Future Approach (once local model support is added):**
-```
-1. Routes file reading to local Llama model (near-zero cost)
-2. Distills raw results with Gemini Flash ($0.10)
-3. Routes strategic insights to Gemini Pro ($1.50)
-Result: ~$1.60 in API costs vs. $200 with a naive GPT-4 wrapper
-```
-
-> **Note:** Local GGUF model inference (via llama-cpp-python) is supported — place models in `localmodels/gguf/`. Local audio models (Kokoro TTS, XTTS-v2, Whisper STT) are available via the Audio Models tab. Full Ollama/vLLM integration for cloud-routing replacement is still on the roadmap.
-
-### The Exponential Advantage
-
-**Why Multi-Provider Support + Model Advancement = Compounding Progress**
-
-1. **Today's Reality:**
-    - GPT-4o excels at reasoning
-    - Gemini 2.0 Flash is incredibly fast and cheap
-    - Each model has different strengths — Misaka routes between them
-
-2. **Tomorrow's Advantage:**
-    - GPT-5 releases → Misaka automatically uses it (config change only)
-    - Gemini 3 releases → System routes high-stakes tasks there
-    - Claude Opus 4 releases → Add to failover chain
-    - Local models improve → More tasks run at zero cost (planned)
-
-3. **The Compound Effect:**
-    ```
-    Week 1: GPT-4o + Gemini Flash
-    → System is 2x better than single-model approach
-
-    Month 3: GPT-5 + Gemini 3 + Better local models
-    → System is 5x better (model improvements + system learning)
-
-    Year 1: GPT-6 + Gemini 4 + Advanced local models + 500 forged tools
-    → System is 20x better (model improvements + massive tool library + deep memory)
-    ```
-
-4. **Cost Efficiency at Scale:**
-    - Traditional: Every improvement costs more (better model = higher prices)
-    - Aethvion Suite: Cost per task decreases over time (smart routing + forged tools reduce cloud API needs)
+- **It runs on your machine.** Your conversations never leave your hardware unless you decide to use a cloud provider.
+- **It remembers you.** Companions build a memory profile over time — facts about your projects, preferences, and goals persist across sessions.
+- **It works for you.** Autonomous agents can read files, write code, run commands, and report back — no copy-pasting required.
+- **It's yours to configure.** Show only the tabs you use, activate only the bridges you need, create companions with personalities that fit you.
 
 ---
 
@@ -86,7 +19,7 @@ Result: ~$1.60 in API costs vs. $200 with a naive GPT-4 wrapper
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python 3.10 or higher (3.12+ recommended)
 - pip (Python package manager)
 - At least one API key (Google AI recommended, others optional)
 
@@ -131,272 +64,155 @@ GOOGLE_AI_API_KEY=your_google_api_key_here
 # Optional: Additional providers for failover
 OPENAI_API_KEY=your_openai_api_key_here
 GROK_API_KEY=your_grok_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
 ```
 
-### Step 4: Verify Installation (Optional)
+Alternatively, enter keys in the dashboard under **Settings → API Providers** after launch.
 
-```bash
-python -m core.main --test
-```
-
-You should see:
-```
-============================================================
-AETHVION SUITE - VERIFICATION TEST
-============================================================
-
-SYSTEM STATUS
---------------------------------------------------------------
-Initialized: True
-Active Traces: 0
-
-Firewall Status:
-  ...
-
-Provider Status:
-  google_ai:
-    Status: available
-    Model: gemini-2.0-flash
-    Healthy: True
-```
-
----
-
-## Your First Session
-
-### Option 1: Web Dashboard (Recommended)
-
-Launch the web interface:
+### Step 4: Launch
 
 ```bash
 python -m core.main
 ```
 
-Open your browser to `http://localhost:8080`
+Open your browser to `http://localhost:8080`. The suite starts on the Home panel.
 
-The dashboard includes 25+ tabs: Chat, Agent Workspaces, Image Studio, LLM Arena, AI Conversations, Audio, Audio Models, Files, Tools, Packages, Memory, Games, Logs, Usage analytics, Status, Port Manager, and Settings. See the [Dashboard Context docs](/core/documentation/ai/dashboard-interface-context.md) for full tab descriptions.
+---
 
-**Web Interface Features:**
-- Real-time chat with the Misaka Cipher persona
-- Live system logs and terminal
-- **Agent Workspaces** — multi-step AI task execution with real-time streaming
-- Memory explorer
-- Visual system status
-- LLM Arena (model comparison with enhanced leaderboard)
-- AI Image Studio
-- **AI Scheduler** — automated AI tasks with cron-based triggers and completion notifications
-- **Advanced AI Conversation lab** — human participant, pause/inject, shareable links, history persistence
-- **Local Audio Models** — Kokoro (TTS), XTTS-v2 (voice cloning), Whisper (STT)
-- **Tabbed Model Registry** — manage cloud and local models in one place
-- **Notification Center** — real-time system alerts with persistent history and deep-linking navigation
-- API usage analytics with Local/API filters
-- Package manager
+## Your First Session: Talking to a Companion
 
-### Option 2: Interactive CLI (For Power Users)
+The first thing most users do is open a companion tab. Companions are the primary AI interface — they have personalities, they remember things about you, and they have access to tools and live bridge data.
 
-Launch the command-line interface:
+### Open Misaka Cipher
 
-```bash
-python -m core.main --cli
-```
+Click **Misaka Cipher** in the sidebar (under the Companions folder, or just search for it by clicking the sidebar search).
 
-You'll see the main menu:
+Say hello. She'll introduce herself and start building context from your conversation.
 
-```
-============================================================
-         AETHVION SUITE - M.I.S.A.K.A.
-    Multitask Intelligence & Strategic Analysis
-            Kernel Architecture
-============================================================
+**What companions can do in chat:**
+- Answer questions and discuss any topic
+- Remember facts you share with them (stored in memory profile)
+- Tell you what's playing on Spotify, what the weather is, or system stats — if those bridges are active
+- List and browse your workspaces
+- Explain what tools and bridges are available
 
-1. Nexus Core         — Direct AI Interaction
-2. The Factory        — Agent Spawning & Execution (Workspaces)
-3. The Forge          — Legacy Tool Generation [Advanced]
-4. Memory             — Query Knowledge & Persistent Memory
-5. Chat History       — Browse Unified History
-6. Advanced AI Conv.  — Research Lab
-7. LLM Arena          — Model Comparison & Leaderboard
-8. Settings           — Configuration & Providers
-9. System Status      — Diagnostics
-0. Exit
+### Try the Other Companions
 
-Select option:
-```
+Each companion has a different personality suited to different tasks:
+
+- **Axiom** — Ask him a logic puzzle, a research question, or to break down a complex topic step by step
+- **Lyra** — Ask her to help with creative writing, come up with names, brainstorm ideas for a project
 
 ---
 
 ## Example Use Cases
 
-### Use Case 1: Direct AI Interaction
+### Use Case 1: Agent Task — Analyze a Folder
 
-**Scenario:** Ask a question or get help with a problem
+**Scenario:** You have a folder of Python files and want a summary of what they do.
 
-**Steps (CLI):**
-1. Select `1. Nexus Core`
-2. Choose provider (or press Enter for auto-routing)
-3. Enter your prompt: "Explain quantum computing to a 10-year-old"
-4. Get response with full traceability
+**Steps:**
+1. Open the **Agents** tab
+2. Create a new workspace or select an existing folder
+3. Enter prompt: `Read all .py files in this workspace and write a summary of what each file does and how they connect`
+4. Click Run — watch the agent work in real time
 
-**What Happens Behind the Scenes:**
-- Request receives unique Trace ID
-- Intelligence Firewall scans for PII/sensitive data
-- Router selects optimal provider (Gemini Flash for simple questions)
-- Response returns with metadata
-- Interaction stored in episodic memory
-
-### Use Case 2: Manage Persistent Memory
-
-**Scenario:** Save an important fact about a project for future agents to use.
-
-**Steps (Web Dashboard):**
-1. Select the **Persistent Memory** tab.
-2. Click **Create Topic**.
-3. Enter Topic: `Project_Alpha_Architecture`.
-4. Enter Content: `The project uses a microservices architecture with a shared Redis cache.`
-5. Click **Commit**.
-6. Future agents spawned for this project will now automatically retrieve this context.
-
-**What Happens Behind the Scenes:**
-- Topic is stored in `data/vault/knowledge/persistent_memory.json`.
-- Entry is indexed for semantic retrieval.
-- Agents injected with "Project Alpha" context will prioritize this Topic.
-
-### Use Case 3: Spawn a Specialized Agent
-
-**Scenario:** Analyze Python files in a directory
-
-**Steps (CLI):**
-1. Select `2. The Factory`
-2. Choose `1. Spawn New Agent`
-3. Enter agent details:
-   ```
-   Name: Code_Analysis_Python
-   Domain: Code
-   Objective: Analyze all Python files in 'src/' directory for complexity metrics
-   ```
-4. Agent spawns → executes → reports results → terminates
-
-**What the Agent Does:**
-- Reads all .py files in src/
-- Analyzes complexity (cyclomatic complexity, line counts, etc.)
-- Routes analysis to appropriate model (local for reading, Flash for analysis)
-- Stores findings in memory
-- Returns structured report
-
-### Use Case 4: Set up an Automated AI Task
-
-**Scenario:** Get a daily summary of a research topic every morning.
-
-**Steps (Web Dashboard):**
-1. Select the **Schedule** tab.
-2. Create a new Task: `Daily Research Summary`.
-3. Set the prompt: `Summarize the top AI news from the last 24 hours.`
-4. Configure the schedule: `Every day at 9:00 AM`.
-5. **Enable Notifications**: Ensure notifications are toggled ON in Settings.
-6. Every morning, you'll receive a notification on the dashboard when the task finishes, with a link straight to the results.
-
-**What Happens Behind the Scenes:**
-- Task is persisted in `data/scheduled_tasks/`.
-- Background scheduler polls for active tasks.
-- On trigger, a transient AI execution context is created.
-- Result is stored and a notification event is pushed to the UI.
-
-### Use Case 5: Query System Memory
-
-**Scenario:** Recall past interactions or insights
-
-**Steps (CLI):**
-1. Select `4. The Memory Tier`
-2. Choose `1. Search Episodic Memory`
-3. Enter query: "tool generation"
-4. System returns semantically similar past interactions
-
-**Memory Types:**
-- **Episodic**: "Remember when I asked you to forge a CSV tool?"
-- **Core Insights**: "User frequently requests data analysis tools"
-- **Knowledge Graph**: Relationships between concepts, tools, agents
+**What happens:**
+- Agent reads each file using `read_file`
+- Summarizes each module
+- Writes findings to a results file in the workspace
+- Reports back with a structured summary
 
 ---
 
-## Best Practices
+### Use Case 2: Persistent Memory — Save a Project Fact
 
-### 1. Start Small, Then Scale
+**Scenario:** You're working on a long-running project and want the AI to always remember its architecture.
 
-**Recommended Progression:**
-```
-Day 1: Basic interactions (Nexus Core)
-↓
-Day 2: Forge your first tool
-↓
-Day 3: Spawn your first agent
-↓
-Week 1: Combine tools + agents for complex tasks
-↓
-Week 2: Let system run autonomous multi-day projects
-```
+**Steps:**
+1. Open the **Persistent Memory** tab
+2. Click **Create Topic**
+3. Topic: `Project_Alpha_Architecture`
+4. Content: `The project uses FastAPI for the backend, React for the frontend, and PostgreSQL for storage. The main entry point is main.py.`
+5. Click **Save**
 
-### 2. Leverage Smart Routing
+Future agent tasks and companion conversations about this project will automatically receive this context.
 
-**Let the System Decide:**
-```python
-# DON'T: Force expensive model for simple tasks
-Request(prompt="Hello", preferred_provider="openai", model="gpt-4o")
+---
 
-# DO: Let router optimize
-Request(prompt="Hello")  # Auto-routes to Gemini Flash (cheaper)
-```
+### Use Case 3: Schedule — Daily Research Summary
 
-**Manual Override for Complex Tasks:**
-```python
-# Complex architectural decision
-Request(
-    prompt="Design microservices architecture for e-commerce platform",
-    preferred_provider="google_ai",
-    model="gemini-1.5-pro-latest"  # Force Pro model
-)
-```
+**Scenario:** Get a brief AI summary of a topic every morning.
 
-### 3. Use Memory Effectively
+**Steps:**
+1. Open the **Schedule** tab
+2. Create a new task: `Daily AI News Brief`
+3. Prompt: `Give me a 5-bullet summary of the most important AI developments from the last 24 hours`
+4. Schedule: `Every day at 8:00 AM`
+5. Enable notifications in **Settings → Notifications**
 
-**Store Important Insights:**
-- After forging a tool → Check memory to see if similar tools exist
-- Before starting complex project → Query memory for past similar projects
-- Periodic review → "Show me all tools forged this month"
+Every morning a notification appears with a link to the result. Click it to jump straight to the output.
 
-### 4. Monitor System Status
+---
 
-**Regular Health Checks:**
-```bash
-# Check provider status
-Select: 5. System Status → View Provider Health
+### Use Case 4: Research Board — Deep Analysis
 
-# Check active operations
-Select: 5. System Status → View Active Traces
+**Scenario:** You want multiple AI perspectives on a controversial topic.
 
-# Review recent logs
-Check: data/logs/system/aethvion.log
-```
+**Steps:**
+1. Open the **Research Board** tab
+2. Enter your research question
+3. The board assigns director personas to argue different positions
+4. Watch structured AI debate produce analysis you wouldn't get from a single prompt
 
-### 5. Incremental Tool Building
+---
 
-**Build Tools Progressively:**
-```
-Session 1: Forge basic CSV reader
-↓
-Session 2: Forge CSV analyzer (uses CSV reader)
-↓
-Session 3: Forge CSV visualizer (uses analyzer)
-↓
-Result: Complete data pipeline, each tool tested independently
-```
+### Use Case 5: Bridges — Live Context in Chat
+
+**Scenario:** You want your companion to know what you're listening to.
+
+**Steps:**
+1. Open **Settings** and find the **Bridges** section
+2. Enable the **Spotify** bridge and enter your Spotify client credentials
+3. Play a song in Spotify
+4. Ask Misaka Cipher: "What am I listening to right now?"
+
+She'll pull the live bridge data directly from the `{bridges_block}` injected into her prompt.
+
+---
+
+### Use Case 6: Local Audio Models — TTS and STT
+
+**Scenario:** You want the AI to speak responses aloud.
+
+**Steps:**
+1. Open **Audio & Speech** tab
+2. Install the Kokoro TTS model (via the Install button)
+3. Load the model
+4. Enter test text and click Generate
+5. To use TTS in companion chat, enable it in **Settings → Companion Settings**
+
+**Supported models:**
+- **Kokoro** — fast, lightweight TTS
+- **XTTS-v2** — higher quality TTS with voice cloning (upload a WAV file as your voice source)
+- **Whisper** — speech-to-text transcription
 
 ---
 
 ## Configuration & Customization
 
+### Sidebar Layout
+
+The sidebar is fully customizable. Click the **layout icon** at the top of the sidebar to:
+- Choose a preset layout (Professional, Creative, Researcher, Companion Hub, Full Suite, Custom)
+- Drag tabs into folders
+- Hide tabs you don't use
+
+Your layout saves automatically as a named profile. Switch between profiles instantly.
+
 ### Provider Priority
 
-Edit `config/providers.yaml`:
+Edit `config/providers.yaml` or use the **API Providers** tab:
 
 ```yaml
 providers:
@@ -410,34 +226,62 @@ providers:
 
 ### Model Selection Strategy
 
-Edit `config/model_registry.json`:
+Edit `data/config/model_registry.json` or use the **Settings → Model Registry**:
 
 ```json
 {
   "routing_strategy": {
-    "verification": "flash",
+    "simple_chat": "flash",
     "generation": "flash",
     "complex_architecture": "pro",
-    "image_generation": "imagen",
-    "simple_chat": "flash"
+    "image_generation": "imagen"
   }
 }
 ```
 
-### Memory Settings
+### Companion Configuration
 
-Edit `config/memory.yaml`:
+Edit `core/companions/configs/{companion_id}.json` to change:
+- System prompt template
+- Personality defaults
+- Tool access
+- Context window size
 
-```yaml
-episodic_memory:
-  enabled: true
-  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
-  max_results: 10
+---
 
-knowledge_graph:
-  enabled: true
-  auto_update: true
-```
+## Best Practices
+
+### 1. Let Companions Remember Things For You
+
+Instead of re-explaining your project every session, just tell a companion once:
+> "Remember that I'm working on a Python project called Project Alpha — it's a FastAPI backend with a React frontend."
+
+The companion extracts this into its memory profile automatically.
+
+### 2. Use Persistent Memory for Ground Truth
+
+For facts that all agents and companions should know (project names, architecture decisions, personal preferences), save them as Persistent Memory Topics. They're injected as context automatically.
+
+### 3. Match Task to Tool
+
+| Task | Best tool |
+|---|---|
+| Quick question | Companion chat |
+| Multi-file analysis | Agent (Agents tab) |
+| Recurring tasks | Schedule |
+| Deep research | Research Board |
+| Model comparison | LLM Arena |
+| Creative generation | Companion + Photo/3D/Audio |
+
+### 4. Start with the Right Companion
+
+- **Misaka Cipher** for general use, personal tasks, casual conversation
+- **Axiom** for analysis, debugging, structured research
+- **Lyra** for creative projects, writing, brainstorming
+
+### 5. Monitor Usage
+
+Check the **Usage** tab regularly. Smart routing (Flash for simple tasks, Pro for complex) keeps costs low, but it's good to see where tokens are going.
 
 ---
 
@@ -446,130 +290,90 @@ knowledge_graph:
 ### "Provider not available" Error
 
 **Check:**
-1. API key is correctly set in `.env`
+1. API key is correctly set in `.env` or Settings → API Providers
 2. API key has sufficient credits/quota
 3. Network connectivity to provider API
 
-**Fix:**
-```bash
-# Test specific provider
-python -c "from providers import ProviderManager; pm = ProviderManager(); print(pm.health_check_all())"
-```
+### Companion Doesn't Remember Past Conversations
 
-### Tool Generation Fails
+**Check:**
+1. The companion's memory file exists: `data/modes/companions/personas/{companion_id}/memory.json`
+2. Memory extraction is enabled in companion config
+3. You used `<memory>` tags or told the companion something it would store
 
-**Common Issues:**
-1. Description too vague → Be specific about inputs/outputs
-2. Complex tool requires Pro model → Retry with model override
-3. Security validation fails → Review generated code in logs
+### Bridge Not Showing Data
 
-**Fix:**
-```python
-# Force Pro model for complex tools
-forge.forge_tool(
-    description="Your description",
-    force_model="gemini-1.5-pro-latest"
-)
-```
+**Check:**
+1. Bridge is enabled in Settings → Bridges
+2. Required credentials are entered (Spotify needs client ID + secret)
+3. The bridge service is running (e.g., Spotify app must be open for the Spotify bridge)
+
+### Agent Gets Stuck in a Loop
+
+**Check:**
+1. Max iterations is 20 — the agent will stop automatically
+2. Review the step log in the Agents tab for the last action taken
+3. Rephrase the task with clearer exit criteria: "When you have written the summary file, use the done action."
 
 ### High API Costs
 
-**Optimization Steps:**
-1. Check `data/logs/system/` for routing decisions
-2. Verify simple tasks use Flash model, not Pro
-3. Use local GGUF models for data processing — place models in `localmodels/gguf/`
-4. Review `data/config/model_registry.json` routing strategy (or use the Model Registry in Settings)
+**Optimization steps:**
+1. Check the **Usage** tab for model breakdown
+2. Ensure simple tasks use Flash, not Pro
+3. Install local GGUF models in `localmodels/gguf/` for bulk file reading tasks
+4. Review the routing strategy in Settings → Model Registry
 
 ---
 
-## Next Steps
+## What's In The Suite — Quick Reference
 
-### Beginner Track
-1. - Complete installation
-2. - Run verification tests
-3. - Try 5 different prompts in Nexus Core
-4. - Forge your first tool
-5. - Spawn your first agent
-6. - Query memory to see your history
-
-### Intermediate Track
-1. - Build a tool pipeline (3+ tools working together)
-2. - Create a custom agent template
-3. - Explore knowledge graph relationships
-4. - Optimize routing strategy for your use case
-
-### Advanced Track
-1. - Design and execute a multi-day autonomous project
-2. - Integrate local model for cost reduction (when available)
-3. - Contribute custom agent types to the system
-4. - Build domain-specific tool libraries
+| Category | Features |
+|---|---|
+| **Companions** | Misaka Cipher, Axiom, Lyra, Companion Creator |
+| **Agents** | Agent Workspaces, Agent Corp, Schedule |
+| **Research** | Research Board, Advanced AI Conversations, LLM Arena, AI Conversations, Explained |
+| **Creative** | Photo Studio, Image Models, Audio, Audio & Speech (TTS/STT), 3D Workspace, 3D Models |
+| **Games** | Checkers, Are You Smarter Than AI?, Sudoku, Blackjack, Word Search, Logic Quest |
+| **Memory** | Companion Memory, Persistent Memory, Episodic Memory |
+| **Storage** | Output, Gallery, Camera, Uploads |
+| **Model Hub** | Text & Chat Models, Image Models, Audio & Speech, 3D Models, API Providers |
+| **System** | Logs, Documentation, Usage Analytics, Status, Port Manager |
 
 ---
 
-## Community & Support
+## Current State (v1.4)
 
-- **Issues**: [GitHub Issues](https://github.com/Aethvion/Aethvion-Suite/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Aethvion/Aethvion-Suite/discussions)
-- **Documentation**: [Full Docs](/core/documentation/)
+- ✅ Companion system (Misaka Cipher, Axiom, Lyra) with persistent memory
+- ✅ Bridges system (6 active bridges with live context injection)
+- ✅ AetherCore AI gateway with failover and Intelligence Firewall
+- ✅ Agent Workspaces with real-time SSE streaming
+- ✅ Agent Corp for multi-agent coordination
+- ✅ Research Board (multi-director AI debate)
+- ✅ Schedule & Notifications (cron-based with deep-link navigation)
+- ✅ Local Audio Models (Kokoro, XTTS-v2, Whisper)
+- ✅ 35+ configurable sidebar tabs with layout profiles
+- ✅ LLM Arena with leaderboard
+- ✅ Advanced AI Conversations (human participant, pause/inject, shareable links)
+- ✅ Code IDE with streaming execution
+- ✅ Finance dashboard with AI market analysis
+- ✅ Persistent Memory knowledge hub
+- ✅ Companion Creator for custom companions
 
----
-
-## The Vision: Where We're Going
-
-**Current State (v12):**
-- [done] Core orchestration (Nexus)
-- [done] Agent spawning (Factory) + **Agent Workspaces** with ReAct runner and SSE streaming
-- [done] Tool generation (Forge)
-- [done] Memory persistence
-- [done] Multi-provider support + **Tabbed Model Registry**
-- [done] Web dashboard (FastAPI) with 25+ tabs
-- [done] Package manager with safety scoring
-- [done] API usage analytics with Local/API filters
-- [done] LLM Arena with enhanced leaderboard
-- [done] AI Image Studio
-- [done] **AI Conversations** — human participant, pause/inject, shareable links, history persistence
-- [done] **Code IDE** — chat threads, streaming execution, Ctrl+P, status bar, Project Notes, python-exec, continuation loop
-- [done] **Local Audio Models** — Kokoro, XTTS-v2, Whisper
-- [done] Finance: AI market analysis and per-ticker detail panel
-- [done] Tracking: revamped UI with HUD, telemetry, FPS counter
-- [done] **AI Scheduler** — Automated cron-based AI tasks with real-time notifications
-- [done] **Notification System** — Persistent history, granular source filtering, and deep-linking navigation
-- [done] Self-update via dashboard Settings
-
-**Near-Term (Next 3 Months):**
-- [in progress] Ollama integration for local model management UI
-- [in progress] Advanced multi-agent coordination and reliability
-- [in progress] Tool forge validation improvements
-- [in progress] Enhanced memory retrieval and deeper agent integration
-
-**Long-Term Vision:**
-- [planned] True infinite sessions (weeks-long autonomous work)
-- [planned] Self-improving architecture (system refactors itself)
-- [planned] Cross-domain expertise (single system handles diverse fields)
-- [planned] Human-AI collaboration tools (pair programming at scale)
-
-**The Ultimate Goal:**
-```
-Give Aethvion Suite a goal of any complexity
-→ System breaks it down autonomously
-→ Forges necessary tools
-→ Spawns required agents
-→ Learns from execution
-→ Iterates until complete
-→ Delivers production-ready result
-
-No human intervention needed.
-```
+**Near-term roadmap:**
+- Ollama integration for local model management UI
+- Advanced multi-agent coordination reliability
+- Voice call mode (real-time audio in companion chat)
+- Suite Profiles (Work / Creative / Companion modes)
 
 ---
 
-**Ready to start?** Fire up the system and get started with v12.
+**Ready to start?** Launch the suite and open your first companion tab.
 
 ```bash
-python -m core.main --cli
+python -m core.main
 ```
 
-**Last Updated:** 2026-04-01
+**Last Updated:** 2026-04-19
 
 ---
 
