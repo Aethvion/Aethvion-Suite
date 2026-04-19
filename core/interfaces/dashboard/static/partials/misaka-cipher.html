@@ -28,6 +28,9 @@
                                         </select>
                                     </div>
                                 </div>
+                                <button id="misaka-memory-toggle" class="misaka-settings-btn" title="View Misaka's Memory" onclick="toggleMisakaMemoryMode()">
+                                    <i class="fas fa-brain"></i>
+                                </button>
                                 <button id="misaka-settings-btn" class="misaka-settings-btn" title="Misaka Cipher Settings">
                                     <i class="fas fa-cog"></i>
                                 </button>
@@ -38,6 +41,18 @@
                             <div class="chat-message assistant">
                                 <div class="message-bubble">Hello! I am Misaka Cipher. Ready to assist you.</div>
                             </div>
+                        </div>
+
+                        <!-- Integrated Memory View -->
+                        <div id="misaka-memory-view" class="companion-memory-integrated" style="display:none;">
+                            <div class="cm-integrated-header">
+                                <i class="fas fa-id-card"></i> <span>BASE_INFO.JSON</span>
+                            </div>
+                            <pre id="misaka-base-info-viewer" class="cm-integrated-viewer"></pre>
+                            <div class="cm-integrated-header">
+                                <i class="fas fa-brain"></i> <span>MEMORY.JSON</span>
+                            </div>
+                            <pre id="misaka-dynamic-memory-viewer" class="cm-integrated-viewer"></pre>
                         </div>
                         <div class="chat-input-area">
                             <div class="misaka-attach-pill" id="misaka-attach-pill" style="display:none;">

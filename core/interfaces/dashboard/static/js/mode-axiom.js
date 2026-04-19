@@ -610,11 +610,40 @@ async function refreshAxiomMemory() {
         const res = await fetch('/api/companions/axiom/memory');
         if (!res.ok) return;
         const data = await res.json();
-        console.log('[Axiom] Memory loaded:', Object.keys(data));
+        
+        const baseViewer = document.getElementById('axiom-base-info-viewer');
+        const dynamicViewer = document.getElementById('axiom-dynamic-memory-viewer');
+        
+        if (baseViewer) baseViewer.textContent = JSON.stringify(data.base_info, null, 4);
+        if (dynamicViewer) dynamicViewer.textContent = JSON.stringify(data.memory, null, 4);
     } catch (e) {
         console.warn('[Axiom] Could not load memory:', e);
     }
 }
+
+window.toggleAxiomMemoryMode = function() {
+    const chatMsgs = document.getElementById('axiom-chat-messages');
+    const memoryView = document.getElementById('axiom-memory-view');
+    const toggleBtn = document.getElementById('axiom-memory-toggle');
+    const inputArea = document.querySelector('.axiom-layout .chat-input-area');
+
+    if (!memoryView) return;
+
+    if (memoryView.style.display === 'none') {
+        chatMsgs.style.display = 'none';
+        if (inputArea) inputArea.style.display = 'none';
+        memoryView.style.display = 'flex';
+        toggleBtn.classList.add('voice-active');
+        toggleBtn.title = "Back to Chat";
+        refreshAxiomMemory();
+    } else {
+        chatMsgs.style.display = 'flex';
+        if (inputArea) inputArea.style.display = 'flex';
+        memoryView.style.display = 'none';
+        toggleBtn.classList.remove('voice-active');
+        toggleBtn.title = "View Axiom's Memory";
+    }
+};
 
 // ── Exports ───────────────────────────────────────────────────────────────────
 

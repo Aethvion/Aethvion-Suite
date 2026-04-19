@@ -28,6 +28,9 @@
             <h2>Axiom</h2>
             <div class="axiom-header-controls">
                 <span class="axiom-header-tag">Analytical Unit</span>
+                <button id="axiom-memory-toggle" class="misaka-settings-btn" title="View Axiom's Memory" onclick="toggleAxiomMemoryMode()">
+                    <i class="fas fa-brain"></i>
+                </button>
                 <button id="axiom-settings-btn" class="misaka-settings-btn" title="Axiom Settings"><i class="fas fa-cog"></i></button>
             </div>
         </div>
@@ -35,6 +38,18 @@
             <div class="chat-message assistant">
                 <div class="message-bubble">Ready. What would you like to know?</div>
             </div>
+        </div>
+
+        <!-- Integrated Memory View -->
+        <div id="axiom-memory-view" class="companion-memory-integrated" style="display:none;">
+            <div class="cm-integrated-header">
+                <i class="fas fa-id-card"></i> <span>BASE_INFO.JSON</span>
+            </div>
+            <pre id="axiom-base-info-viewer" class="cm-integrated-viewer"></pre>
+            <div class="cm-integrated-header">
+                <i class="fas fa-brain"></i> <span>MEMORY.JSON</span>
+            </div>
+            <pre id="axiom-dynamic-memory-viewer" class="cm-integrated-viewer"></pre>
         </div>
         <div class="chat-input-area axiom-input-area">
             <div class="axiom-input-row">

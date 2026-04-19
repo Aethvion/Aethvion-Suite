@@ -454,6 +454,30 @@ async function refreshMisakaMemory() {
     }
 }
 
+window.toggleMisakaMemoryMode = function() {
+    const chatMsgs = document.getElementById('misaka-chat-messages');
+    const memoryView = document.getElementById('misaka-memory-view');
+    const toggleBtn = document.getElementById('misaka-memory-toggle');
+    const inputArea = document.querySelector('#misaka-cipher-panel .chat-input-area') || document.querySelector('.companion-chat-column .chat-input-area');
+
+    if (!memoryView) return;
+
+    if (memoryView.style.display === 'none') {
+        chatMsgs.style.display = 'none';
+        if (inputArea) inputArea.style.display = 'none';
+        memoryView.style.display = 'flex';
+        toggleBtn.classList.add('voice-active');
+        toggleBtn.title = "Back to Chat";
+        refreshMisakaMemory();
+    } else {
+        chatMsgs.style.display = 'flex';
+        if (inputArea) inputArea.style.display = 'flex';
+        memoryView.style.display = 'none';
+        toggleBtn.classList.remove('voice-active');
+        toggleBtn.title = "View Misaka's Memory";
+    }
+};
+
 async function sendMisakaMessage() {
     if (isMisakaTyping) return;
 

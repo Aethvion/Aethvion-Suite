@@ -142,3 +142,50 @@
         background: var(--surface);
         font-size: 0.9rem;
     }
+    /* Integrated Companion Memory Styles */
+    .companion-memory-integrated {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        height: 100%;
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 12px;
+        margin-top: 0.5rem;
+        overflow: hidden;
+    }
+
+    .cm-integrated-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px 8px 0 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .cm-integrated-viewer {
+        flex: 1;
+        margin: 0;
+        padding: 0.75rem;
+        background: rgba(0, 0, 0, 0.3);
+        color: var(--text-primary);
+        font-family: "Fira Code", monospace;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        overflow: auto;
+        border-radius: 0 0 8px 8px;
+        border: 1px solid var(--border);
+        border-top: none;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .cm-integrated-viewer:not(:last-child) {
+        margin-bottom: 1rem;
+    }

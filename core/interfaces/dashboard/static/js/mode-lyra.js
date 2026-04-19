@@ -618,11 +618,40 @@ async function refreshLyraMemory() {
         const res = await fetch('/api/companions/lyra/memory');
         if (!res.ok) return;
         const data = await res.json();
-        console.log('[Lyra] Memory loaded:', Object.keys(data));
+        
+        const baseViewer = document.getElementById('lyra-base-info-viewer');
+        const dynamicViewer = document.getElementById('lyra-dynamic-memory-viewer');
+        
+        if (baseViewer) baseViewer.textContent = JSON.stringify(data.base_info, null, 4);
+        if (dynamicViewer) dynamicViewer.textContent = JSON.stringify(data.memory, null, 4);
     } catch (e) {
         console.warn('[Lyra] Could not load memory:', e);
     }
 }
+
+window.toggleLyraMemoryMode = function() {
+    const chatMsgs = document.getElementById('lyra-chat-messages');
+    const memoryView = document.getElementById('lyra-memory-view');
+    const toggleBtn = document.getElementById('lyra-memory-toggle');
+    const inputArea = document.querySelector('.lyra-layout .chat-input-area');
+
+    if (!memoryView) return;
+
+    if (memoryView.style.display === 'none') {
+        chatMsgs.style.display = 'none';
+        if (inputArea) inputArea.style.display = 'none';
+        memoryView.style.display = 'flex';
+        toggleBtn.classList.add('voice-active');
+        toggleBtn.title = "Back to Chat";
+        refreshLyraMemory();
+    } else {
+        chatMsgs.style.display = 'flex';
+        if (inputArea) inputArea.style.display = 'flex';
+        memoryView.style.display = 'none';
+        toggleBtn.classList.remove('voice-active');
+        toggleBtn.title = "View Lyra's Memory";
+    }
+};
 
 // ── Exports ───────────────────────────────────────────────────────────────────
 

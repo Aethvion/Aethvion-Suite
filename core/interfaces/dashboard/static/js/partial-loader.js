@@ -33,7 +33,6 @@
         'companion-creator':['/static/js/companion-creator.js'],
         'files':            ['/static/js/view-files.js'],
         'memory':           ['/static/js/view-memory.js'],
-        'companion-memory': ['/static/js/companion-memory.js'],
         'persistent-memory':['/static/js/view-persistent-memory.js'],
         'photo':            ['/static/js/mode-photo.js'],
         'audio':            ['/static/js/mode-audio.js'],

@@ -36,7 +36,6 @@
         'companion-creator': { label: 'Create Companion',  icon: 'fas fa-plus-circle' },
         'games-center':      { label: 'Games Center',      icon: 'fas fa-gamepad' },
         'memory':            { label: 'Memory',            icon: 'fas fa-book' },
-        'companion-memory':  { label: 'Companion Memory',  icon: 'fas fa-dna' },
         'persistent-memory': { label: 'Persistent',        icon: 'fas fa-brain' },
         'sched-overview':    { label: 'Scheduled',         icon: 'fas fa-calendar-check' },
         'output':            { label: 'Output',            icon: 'fas fa-upload' },
