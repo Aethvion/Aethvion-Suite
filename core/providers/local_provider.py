@@ -49,7 +49,6 @@ def _register_cuda_dll_dirs() -> None:
                 except OSError:
                     pass
 
-    # Also add any nvcc / CUDA paths already on PATH that we might have missed
     for p in os.environ.get("PATH", "").split(os.pathsep):
         if "cuda" in p.lower() and os.path.isdir(p) and p not in added:
             try:
@@ -59,7 +58,6 @@ def _register_cuda_dll_dirs() -> None:
                 pass
 
 
-# Register CUDA DLL paths at module import time so that the very first
 # `import llama_cpp` (which happens lazily inside _ensure_llama) can
 # resolve llama.dll's CUDA runtime dependencies.
 _register_cuda_dll_dirs()
@@ -85,7 +83,6 @@ def _safe_test_llama_load(model_path: str):
                 sys.stderr = old_err
     except Exception:
         # Standard exceptions are fine, they don't hard-crash the process anyway.
-        # We only care if the process exits with a non-zero crash code (e.g. 0xC000001D).
         pass
     sys.exit(0)
 
@@ -152,7 +149,6 @@ class LocalProvider(BaseProvider):
                 or self.current_n_gpu_layers != _desired_gpu):
             logger.info(f"Safely testing local model stability for {model_path}...")
             
-            # Spawn a subprocess to test if model loading triggers a fatal hardware crash
             ctx = multiprocessing.get_context("spawn")
             p = ctx.Process(target=_safe_test_llama_load, args=(str(model_path),))
             p.start()

@@ -1,4 +1,3 @@
-// Aethvion Suite - Image Studio Mode
 // Handles interactions with the Image Generation UI and APIs
 
 // Store base64 data outside

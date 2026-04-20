@@ -5,7 +5,6 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# To calculate disk usage, we need a path. We'll use the root folder or C drive.
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 def get_hardware_telemetry(args: dict) -> str:

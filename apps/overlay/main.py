@@ -807,7 +807,6 @@ class OverlayWindow(QWidget):
         acc_a = self._ta(0.8)
 
         # Initial screenshot (only if it's the very first part of the session)
-        # To avoid redundancy, we only show root thumb if the first pair isn't already a screenshot
         pairs = session.get("pairs", [])
         show_root_thumb = True
         if pairs and pairs[0].get("type") == "screenshot":

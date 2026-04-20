@@ -14,7 +14,6 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageTk
 
 # ── Windows Taskbar Fix ────────────────────────────────────────────────────────
-# Force the taskbar to show the custom icon by registering a unique App ID.
 # This MUST happen at the absolute top of the execution lifecycle.
 if sys.platform == "win32":
     try:

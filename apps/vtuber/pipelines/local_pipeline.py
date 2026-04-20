@@ -23,9 +23,7 @@ if PROJECT_ROOT not in sys.path:
 from .utils import create_part_entry, remove_background, generate_rig, extract_bounding_boxes
 
 
-# ---------------------------------------------------------------------------
 # Configuration — these can be overridden via the UI or .env
-# ---------------------------------------------------------------------------
 DEFAULT_A1111_URL = "http://127.0.0.1:7860"
 DEFAULT_COMFYUI_URL = "http://127.0.0.1:8188"
 

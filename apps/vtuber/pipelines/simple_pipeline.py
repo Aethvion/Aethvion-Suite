@@ -64,7 +64,6 @@ class SimplePipeline:
 
         print(f"Vision mapped {len(coords)} parts.")
 
-        # 2. Slice image — save raw crop. By default the active texture equals the raw slice.
         img = Image.open(image_path).convert("RGBA")
         width, height = img.size
         parts_config = []
@@ -82,7 +81,6 @@ class SimplePipeline:
 
             cropped = img.crop((left, top, right, bottom))
 
-            # _raw.png = permanent backup, .png = active texture (overwritten by BG removal later)
             raw_path = os.path.join(textures_dir, f"{name}_raw.png")
             tex_path = os.path.join(textures_dir, f"{name}.png")
             cropped.save(raw_path)

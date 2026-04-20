@@ -1,4 +1,3 @@
-// Aethvion Suite - Core
 // Handles WebSocket connections, global UI state, and initialization
 
 // ─── Toast System ─────────────────────────────────────────────────
@@ -842,9 +841,7 @@ async function updateSystemInfo() {
     }
 }
 
-// ------------------------------------------------------------------
 // Main Navigation Logic
-// ------------------------------------------------------------------
 async function setDashboardMode(mode, save = true) {
     if (mode !== 'home' && mode !== 'ai') return;
     dashboardMode = mode;

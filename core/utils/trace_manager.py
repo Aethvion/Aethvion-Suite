@@ -21,7 +21,7 @@ class TraceManager:
     Example: MCTR-20260131225500-A7B2C9D1
     """
     
-    PREFIX = "ASTR"  # Aethvion Suite Trace
+    PREFIX = "ASTR"
     TIMESTAMP_FORMAT = "%Y%m%d%H%M%S"
     RANDOM_LENGTH = 8
     

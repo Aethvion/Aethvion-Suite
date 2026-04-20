@@ -145,7 +145,6 @@ async def overlay_ask(req: AskRequest):
         system_prompt = build_overlay_prompt()
         validate_call_context(CallSource.OVERLAY, system_prompt, trace_id)
 
-        # call_with_failover is synchronous — run in a thread to avoid blocking the event loop
         response = await asyncio.get_event_loop().run_in_executor(
             None,
             lambda: pm.call_with_failover(

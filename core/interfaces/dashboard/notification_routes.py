@@ -26,7 +26,6 @@ router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 NOTIFICATIONS_DIR = LOGS_NOTIFICATIONS
 _lock = threading.Lock()
 
-# ── In-memory active (unseen) store — loaded from disk on first access ────────
 _active: Dict[str, Dict[str, Any]] = {}   # id -> notification
 _loaded_today = False
 

@@ -77,7 +77,6 @@ def _get_media_info_powershell() -> dict:
         
         # 1. Spotify Check (Precise)
         $spotifyTitle = $titles | Where-Object { $_ -match "^Spotify$" -or $_ -match " - " } | Where-Object { 
-            # If it's just "Spotify", it's not playing anything specific or is in a weird state
             # Usually Spotify titles are "Artist - Track" or just "Spotify"
             $_ -ne "Spotify" -and ($titles -contains "Spotify")
         } | Select-Object -First 1
@@ -144,7 +143,6 @@ async def _get_current_session_info():
             "source": current_session.source_app_user_model_id
         }
     except (ImportError, Exception) as e:
-        # If library missing or error, use PowerShell which handles Tiers 2 & 3
         return _get_media_info_powershell()
 
 # --- Standardized Command ---

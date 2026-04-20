@@ -39,9 +39,7 @@ from typing import Callable, Optional
 
 log = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
 # Parameter schema reference
-# ---------------------------------------------------------------------------
 
 #: Standard parameter names emitted by the Tracking Engine.
 TRACKING_PARAMS = {
@@ -71,9 +69,7 @@ DEFAULT_MAPPING: dict[str, str] = {
 }
 
 
-# ---------------------------------------------------------------------------
 # TrackingBridge
-# ---------------------------------------------------------------------------
 
 class TrackingBridge:
     """
@@ -103,9 +99,7 @@ class TrackingBridge:
         self._stop_evt = asyncio.Event()
         self._ws       = None
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
     @property
     def ws_url(self) -> str:
@@ -155,9 +149,7 @@ class TrackingBridge:
         self._running = False
         log.info("[TrackingBridge] Stopped.")
 
-    # ------------------------------------------------------------------
     # Internal
-    # ------------------------------------------------------------------
 
     async def _connect_and_listen(self) -> None:
         """Open one WebSocket connection and process messages until it closes."""
@@ -184,9 +176,7 @@ class TrackingBridge:
                     pass
             self._ws = None
 
-    # ------------------------------------------------------------------
     # Legacy helper (synchronous emit for non-async callers)
-    # ------------------------------------------------------------------
 
     def _emit(self, raw_tracking: dict) -> None:
         """
@@ -202,9 +192,7 @@ class TrackingBridge:
         self._callback(params)
 
 
-# ---------------------------------------------------------------------------
 # Convenience: synchronous one-shot snapshot fetch
-# ---------------------------------------------------------------------------
 
 def get_last_params(
     host: str = "127.0.0.1",

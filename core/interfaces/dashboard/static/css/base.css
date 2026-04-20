@@ -352,9 +352,21 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
-.control-select option {
+.control-select option,
+.term-select option {
     background-color: #121214;
     color: var(--text-primary);
+}
+
+.control-select optgroup,
+.term-select optgroup,
+select optgroup {
+    background-color: #0d0d0f;
+    color: var(--text-tertiary);
+    font-weight: 700;
+    font-style: normal;
+    text-transform: uppercase;
+    font-size: 0.7rem;
 }
 
 /* Inputs */

@@ -25,7 +25,6 @@ OSF_DIR    = MODULE_DIR / "openseeface"
 # Executable name varies by platform
 _EXE_NAME  = "facetracker.exe" if sys.platform == "win32" else "facetracker"
 
-# The zip ships a Python source stub at the root AND a full PyInstaller bundle
 # in Binary/ with all DLLs.  Always prefer the Binary/ version.
 OSF_BIN_DIR = OSF_DIR / "Binary"
 OSF_EXE     = OSF_BIN_DIR / _EXE_NAME   # primary — full bundle with DLLs
@@ -33,7 +32,6 @@ OSF_EXE_FALLBACK = OSF_DIR / _EXE_NAME  # fallback — root stub
 
 GITHUB_API_URL = "https://api.github.com/repos/emilianavt/OpenSeeFace/releases/latest"
 
-# ---------------------------------------------------------------------------
 
 class OsfManager:
 
@@ -260,7 +258,6 @@ class OsfManager:
             "-i", host,
         ]
 
-        # Run from the exe's own directory so all sibling DLLs are on the
         # Windows loader search path (exe directory is always searched first).
         env = os.environ.copy()
         env["PATH"] = str(exe_dir) + os.pathsep + env.get("PATH", "")
@@ -309,16 +306,12 @@ class OsfManager:
             return {"success": False, "error": str(exc)}
 
 
-# ---------------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------------
 
 def _sse(data: dict) -> str:
     return f"data: {json.dumps(data)}\n\n"
 
 
-# ---------------------------------------------------------------------------
 # Singleton
-# ---------------------------------------------------------------------------
 
 osf_manager = OsfManager()

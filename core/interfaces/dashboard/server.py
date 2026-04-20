@@ -130,7 +130,6 @@ async def lifespan(app: FastAPI):
     ws_handler.setLevel(logging.INFO)
     logging.getLogger().addHandler(ws_handler)
     
-    # 2. Register all routers BEFORE yielding (ensures 404s don't happen on early requests)
     await register_all_routers(app)
     
     # 3. Start AI engine initialization in background

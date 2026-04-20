@@ -152,7 +152,6 @@ class UsageTracker:
         if metadata.get("routing_reason"):
             entry["routing_reason"] = metadata["routing_reason"]
 
-        # Append to daily file (atomic write under lock for thread + crash safety)
         path = self._get_daily_log_path(now)
         try:
             with _lock:

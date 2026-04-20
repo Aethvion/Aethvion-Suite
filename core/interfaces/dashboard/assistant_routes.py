@@ -50,7 +50,6 @@ def _build_assistant_context(include_web_context: bool = False, allow_dashboard_
 
 import re
 def _clean_assistant_response(text: str) -> str:
-    # Strip any potential leak of tool or internal tags that the assistant shouldn't show
     text = re.sub(r'\[tool:.*?\]', '', text, flags=re.IGNORECASE)
     text = re.sub(r'<memory_update>.*?</memory_update>', '', text, flags=re.IGNORECASE | re.DOTALL)
     # Don't strip [Emotion] or [SwitchTab] as the frontend JS handles those

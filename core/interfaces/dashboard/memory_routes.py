@@ -110,9 +110,6 @@ async def get_memory_overview():
                             except Exception as te:
                                 logger.error(f"Failed to load task file {task_path}: {te}")
 
-                        # 2. If not found or if we want semantic info, check Episodic Store (Secondary/Fallback)
-                        # We query this regardless to see if there are *additional* related memories (like sub-steps),
-                        # but we dedup based on trace_id if we already loaded the main task.
                         memories = episodic.get_by_trace_id(task_id)
                         
                         if not task_found and not memories:

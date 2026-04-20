@@ -21,7 +21,6 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/smarter-than-ai", tags=["smarter-than-ai"])
 
 # ── Randomisation tables ───────────────────────────────────────────────────────
-# Per-category sub-topics that force the LLM into a specific corner of the topic
 # space, preventing it from always picking the most "famous" examples.
 
 _SUBTOPICS: Dict[str, List[str]] = {

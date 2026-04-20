@@ -20,7 +20,6 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from core.utils import fastapi_utils
 
-# ---------------------------------------------------------------------------
 app = FastAPI(title="Aethvion Kanban", version="1.0.0")
 fastapi_utils.add_dev_cache_control(app)
 
@@ -38,9 +37,7 @@ DATA_DIR = Path("data/kanban")
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 KANBAN_FILE = DATA_DIR / "board.json"
 
-# ---------------------------------------------------------------------------
 # Models
-# ---------------------------------------------------------------------------
 
 class Task(BaseModel):
     id: str
@@ -57,9 +54,7 @@ class Column(BaseModel):
 class Board(BaseModel):
     columns: List[Column]
 
-# ---------------------------------------------------------------------------
 # Persistence
-# ---------------------------------------------------------------------------
 
 def load_board() -> Board:
     if not KANBAN_FILE.exists():
@@ -82,9 +77,7 @@ def save_board(board: Board):
     with open(KANBAN_FILE, "w", encoding="utf-8") as f:
         json.dump(board.dict(), f, indent=2, ensure_ascii=False)
 
-# ---------------------------------------------------------------------------
 # API
-# ---------------------------------------------------------------------------
 
 @app.get("/")
 async def root():
@@ -103,9 +96,7 @@ async def update_board(board: Board):
 async def api_health():
     return {"status": "ok", "module": "kanban"}
 
-# ---------------------------------------------------------------------------
 # Entry point
-# ---------------------------------------------------------------------------
 
 def launch():
     import uvicorn

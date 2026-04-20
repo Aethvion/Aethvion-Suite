@@ -208,7 +208,6 @@ class MasterOrchestrator:
                     )
             except Exception as mem_err:
                 logger.error(f"[{trace_id}] Failed to store memory: {mem_err}")
-            # ----------------------
             
             return result
             
@@ -384,7 +383,6 @@ class MasterOrchestrator:
                     "Cite sources where helpful."
                 )
             else:
-                # Search failed — tell the model it can still try via tag syntax
                 prompt_parts.append(
                     "SEARCH: If you need real-time information use: "
                     "[tool:web_search query=\"<your query>\"]"
@@ -554,7 +552,6 @@ class MasterOrchestrator:
             # Pass model preference to agent spec/context if possible?
             # For now, agents depend on factory/provider manager config which we split.
             # If model_id is specific, we might want to override it here.
-            # But AgentSpec doesn't have a clean slot. We'll rely on global "Agent" priority for now.
             # Note: system_prompt currently does not propagate to spawned agents, 
             # they have their own internal context management.
         

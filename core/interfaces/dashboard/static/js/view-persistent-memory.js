@@ -1,4 +1,3 @@
-// Aethvion Suite - Persistent Memory View
 // Handles management of the cross-thread persistent JSON memory store.
 
 const PersistentMemory = {

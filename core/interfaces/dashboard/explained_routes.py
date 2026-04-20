@@ -21,12 +21,9 @@ from core.memory.agent_workspace_manager import AgentWorkspaceManager
 logger = get_logger("web.explained_routes")
 router = APIRouter(prefix="/api/explained", tags=["explained"])
 
-# Private workspace manager for Explained - keeps threads out of the main Agents tab
 explained_manager = AgentWorkspaceManager(EXPLAINED)
 
-# --------------------------------------------------------------------------- #
 # Request models
-# --------------------------------------------------------------------------- #
 
 class ExplainedRequest(BaseModel):
     topic: str
@@ -35,9 +32,7 @@ class ExplainedRequest(BaseModel):
     deep_dive: bool = False           # When True: multi-page structure
 
 
-# --------------------------------------------------------------------------- #
 # Prompts
-# --------------------------------------------------------------------------- #
 
 _NORMAL_NEW_PROMPT = """\
 Create a rich, visually appealing, self-contained single-file HTML explanation about: {topic}
@@ -95,9 +90,7 @@ Maintain the shared style.css / script.js pattern. Do NOT collapse files into on
 """
 
 
-# --------------------------------------------------------------------------- #
 # Public endpoints
-# --------------------------------------------------------------------------- #
 
 @router.post("/generate")
 async def generate_explanation(req: ExplainedRequest, request: Request):
@@ -136,7 +129,6 @@ async def generate_explanation(req: ExplainedRequest, request: Request):
     is_new = not (ws_id and ag_tid)
     explanation_id = req.thread_id or f"expl-{uuid.uuid4().hex[:8]}"
     original_topic = original_topic or req.topic
-    # Use the mode that was set when the thread was created (can't switch mid-thread)
     deep_dive = stored_deep_dive if not is_new and stored_deep_dive is not None else req.deep_dive
 
     expl_dir = EXPLAINED / explanation_id
@@ -193,7 +185,6 @@ async def generate_explanation(req: ExplainedRequest, request: Request):
                 topic=original_topic, instruction=req.topic
             )
 
-    # ── Submit to the real task queue (identical to Agents tab) ──────────── #
     task_id = await task_manager.submit_task(
         prompt=prompt,
         thread_id=f"explained-{explanation_id}",  # task queue thread (separate from agent thread)
@@ -564,9 +555,7 @@ async def delete_thread(thread_id: str):
     return {"status": "success"}
 
 
-# --------------------------------------------------------------------------- #
 # Helpers
-# --------------------------------------------------------------------------- #
 
 def _write_meta(path: Path, meta: dict):
     atomic_json_write(path, meta, indent=4)

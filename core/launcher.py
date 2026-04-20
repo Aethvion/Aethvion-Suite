@@ -221,7 +221,6 @@ def _install_job_object() -> None:
 
         # Assign THIS process to the job - children inherit automatically
         k32.AssignProcessToJobObject(job, k32.GetCurrentProcess())
-        # Keep the handle open for the lifetime of the process (do NOT close it)
         _install_job_object._job_handle = job  # type: ignore[attr-defined]
         print("[Launcher] Windows Job Object active - all child processes will die with the launcher.")
     except Exception as exc:
@@ -324,7 +323,6 @@ def _ensure_singleton() -> None:
     lock_file.parent.mkdir(parents=True, exist_ok=True)
     
     try:
-        # We use a simple approach: if the file exists, check if the PID is alive
         if lock_file.exists():
             try:
                 old_pid = int(lock_file.read_text().strip())
@@ -611,7 +609,6 @@ def main() -> None:
         _log(f"Dashboard launched with PID {dashboard_proc.pid}")
 
     # -- Stagger optional app launches (avoid port-registry race) --------------
-    # A brief stagger lets each server write its port before the next one reads.
     for i, app_name in enumerate(extra_names):
         if i > 0:
             time.sleep(0.5)          # 500 ms gap between launches

@@ -152,7 +152,6 @@ class ScheduleManager:
           queue_max=2  → execute twice (two back-to-back catch-up runs)
           queue_max=0  → execute once (unlimited queue, but one catch-up is enough)
         """
-        # Wait briefly so nexus can be set before we try to call the AI
         import time
         time.sleep(5)
 

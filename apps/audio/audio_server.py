@@ -19,9 +19,7 @@ for p in (MODULE_DIR, PROJECT_ROOT):
 
 from apps.audio.audio_core import session
 
-# ---------------------------------------------------------------------------
 # App
-# ---------------------------------------------------------------------------
 
 app = FastAPI(title="Aethvion Audio Editor", version="2.0.0")
 fastapi_utils.add_dev_cache_control(app)
@@ -37,9 +35,7 @@ BASE_DIR = Path(__file__).parent
 VIEWER_DIR = BASE_DIR / "viewer"
 app.mount("/viewer", StaticFiles(directory=str(VIEWER_DIR)), name="viewer")
 
-# ---------------------------------------------------------------------------
 # Status & Session
-# ---------------------------------------------------------------------------
 
 @app.get("/api/status")
 async def get_status():
@@ -60,9 +56,7 @@ async def set_workspace(body: WorkspaceUpdate):
     session.set_workspace(body.workspace_ms)
     return JSONResponse({"workspace_ms": session.workspace_ms})
 
-# ---------------------------------------------------------------------------
 # Track CRUD
-# ---------------------------------------------------------------------------
 
 @app.post("/api/tracks/upload")
 async def upload_track(
@@ -121,9 +115,7 @@ async def reorder_tracks(body: ReorderTracks):
     session.reorder_tracks(body.order)
     return JSONResponse({"success": True, "session": session.to_dict()})
 
-# ---------------------------------------------------------------------------
 # Per-track preview
-# ---------------------------------------------------------------------------
 
 @app.get("/api/tracks/{track_id}/preview")
 async def track_preview(track_id: str):
@@ -139,9 +131,7 @@ async def track_preview(track_id: str):
         headers={"Content-Disposition": f'inline; filename="{track.name}.wav"'},
     )
 
-# ---------------------------------------------------------------------------
 # Effects (non-destructive, per-track)
-# ---------------------------------------------------------------------------
 
 class EffectAdd(BaseModel):
     op: str
@@ -199,9 +189,7 @@ async def reorder_effects(track_id: str, body: ReorderEffects):
     track.reorder_effects(body.order)
     return JSONResponse({"success": True, "track": track.to_dict()})
 
-# ---------------------------------------------------------------------------
 # Mix preview & export
-# ---------------------------------------------------------------------------
 
 @app.get("/api/preview")
 async def mix_preview():
@@ -236,17 +224,13 @@ async def mix_export(format: str = "wav"):
     except Exception as e:
         raise HTTPException(500, str(e))
 
-# ---------------------------------------------------------------------------
 # Front-end
-# ---------------------------------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
     return (VIEWER_DIR / "index.html").read_text(encoding="utf-8")
 
-# ---------------------------------------------------------------------------
 # Launch
-# ---------------------------------------------------------------------------
 
 def launch():
     from core.utils.port_manager import PortManager

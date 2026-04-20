@@ -1,4 +1,3 @@
-// Aethvion Suite — Usage Analytics Dashboard (v11)
 
 let _providerChart    = null;
 let _timelineChart    = null;

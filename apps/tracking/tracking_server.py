@@ -20,9 +20,7 @@ from apps.tracking.tracking_core import tracking_core
 from apps.tracking.trackers.capture_manager import capture_manager
 from apps.tracking.osf_manager import osf_manager
 
-# ---------------------------------------------------------------------------
 # App setup
-# ---------------------------------------------------------------------------
 
 app = FastAPI(title="Aethvion Tracking Engine", version="1.0.0")
 fastapi_utils.add_dev_cache_control(app)
@@ -37,9 +35,7 @@ VIEWER_DIR = BASE_DIR / "viewer"
 
 app.mount("/viewer", StaticFiles(directory=str(VIEWER_DIR)), name="viewer")
 
-# ---------------------------------------------------------------------------
 # REST API (Control Trackers)
-# ---------------------------------------------------------------------------
 
 @app.get("/api/trackers")
 async def list_trackers():
@@ -98,9 +94,7 @@ async def stop_tracker():
         capture_manager.stop()
     return JSONResponse({"status": "success", "message": "Tracker stopped"})
 
-# ---------------------------------------------------------------------------
 # OSF Process Management
-# ---------------------------------------------------------------------------
 
 @app.get("/api/osf/status")
 async def osf_status():
@@ -203,9 +197,7 @@ async def video_feed():
             
     return StreamingResponse(frame_generator(), media_type="multipart/x-mixed-replace; boundary=frame")
 
-# ---------------------------------------------------------------------------
 # WebSocket (Stream Tracking Data)
-# ---------------------------------------------------------------------------
 
 @app.websocket("/ws/tracking")
 async def websocket_tracking_endpoint(websocket: WebSocket):
@@ -216,8 +208,6 @@ async def websocket_tracking_endpoint(websocket: WebSocket):
     
     # Callback to push data from SynapseBridge to the socket
     def on_new_data(tracking_data: dict):
-        # We must push to the asyncio event loop safely, but since we are in 
-        # a synchronous callback invoked by a thread, we use a simple queue or push sync
         # Note: FastAPI WebSockets in async usually require async handling.
         # For simplicity in this bridge, we'll poll inside the async loop.
         pass
@@ -227,7 +217,6 @@ async def websocket_tracking_endpoint(websocket: WebSocket):
     try:
         import asyncio
         while True:
-            # Instead of a complex thread-safe queue for this example, we poll the bridge 
             # at ~30 FPS limit to ensure stable streaming to the dashboard.
             data = tracking_core.bridge.get_last_frame()
             if data:
@@ -245,9 +234,7 @@ async def websocket_tracking_endpoint(websocket: WebSocket):
         tracking_core.bridge.unsubscribe(on_new_data)
 
 
-# ---------------------------------------------------------------------------
 # Front-end View
-# ---------------------------------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
@@ -255,9 +242,7 @@ async def index():
     return idx.read_text(encoding="utf-8")
 
 
-# ---------------------------------------------------------------------------
 # Launch
-# ---------------------------------------------------------------------------
 
 def launch():
     from core.utils.port_manager import PortManager

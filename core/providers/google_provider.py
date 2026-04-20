@@ -157,7 +157,6 @@ class GoogleAIProvider(BaseProvider):
 
             response_text = response.text if response.text else ""
 
-            # Log a warning when the model returns no text — this is usually a
             # safety filter or a finish_reason other than STOP.  Helps diagnose
             # "empty response" issues without breaking the call.
             if not response_text:
@@ -358,7 +357,6 @@ class GoogleAIProvider(BaseProvider):
                     number_of_images=n,
                     aspect_ratio=aspect_ratio,
                     negative_prompt=negative_prompt,
-                    # seed=seed  # removing seed as it might cause API issues on some models if None
                 )
             )
             
@@ -430,7 +428,6 @@ class GoogleAIProvider(BaseProvider):
             from google.genai import types
             
             # We use the generate_content method with a Part containing the audio bytes
-            # MIME type is hardcoded to audio/wav for now as most uploads are wrapped
             contents = [
                 types.Part.from_bytes(
                     data=audio_bytes,

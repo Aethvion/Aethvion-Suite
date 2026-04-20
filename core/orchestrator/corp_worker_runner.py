@@ -110,7 +110,6 @@ class CorpWorkerRunner(AgentRunner):
         self._worker_id = worker_id
         self._worker_name = worker_name
 
-        # Operator message cache — avoid re-reading the log file on every LLM call.
         # Refreshed lazily: when the corp log grows (new lines appended) the cached
         # line count changes and we re-filter; otherwise we reuse the cached result.
         self._op_cached_lines: list = []   # last extracted [Operator→ …] lines
@@ -129,7 +128,6 @@ class CorpWorkerRunner(AgentRunner):
         self._conv_window = 6
 
         # Compact task reminder for iterations 1+.
-        # The full context (memory, board, log) was in iteration 0 and is now
         # in conversation history.  Repeating ~7 k chars every call is wasteful.
         title = task_title or task.split("\n")[0][:80]
         self._task_short = (
@@ -208,7 +206,6 @@ class CorpWorkerRunner(AgentRunner):
             description = action.get("description", "")
             assigned_to = action.get("assigned_to", "any")
             priority    = action.get("priority", "medium")
-            # Workers may not create urgent tasks — that privilege is reserved for operators
             if priority == "urgent":
                 priority = "high"
             if not self._corp_manager:

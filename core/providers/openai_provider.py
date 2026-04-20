@@ -68,7 +68,6 @@ class OpenAIProvider(BaseProvider):
                     final_messages.append({"role": "system", "content": final_system_prompt})
                 final_messages.extend(messages)
                 
-                # Check if the last message is from user and if it matches current prompt
                 # If current prompt is different from last user msg, append it.
                 if prompt and (not messages or messages[-1].get('content') != prompt):
                      final_messages.append({"role": "user", "content": prompt})
@@ -374,7 +373,6 @@ class OpenAIProvider(BaseProvider):
             # OpenAI expects a file-like object for audio
             import io
             audio_file = io.BytesIO(audio_bytes)
-            # We need to give it a name so the SDK can infer the format/mimetype
             audio_file.name = "audio.wav" 
 
             response = self.client.audio.transcriptions.create(

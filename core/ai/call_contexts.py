@@ -141,7 +141,6 @@ class CallSource:
 
 
 # ── Isolation rules (used by validate_call_context) ──────────────────────────
-#
 # Each entry documents what a source SHOULD and SHOULD NOT have.
 # Keys: persona, memories, tools, identity, aethvion_internals
 #   True  = expected / allowed

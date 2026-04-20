@@ -149,7 +149,6 @@ class AutoRigger:
         img = Image.open(source_image).convert("RGBA")
         width, height = img.size
         
-        # Create a copy of the image to 'cut holes' into (the body/base layer)
         base_img = img.copy()
         
         parts_config = []
@@ -398,7 +397,6 @@ Return ONLY valid JSON covering the "params", "animations", and "mappings". Matc
         
         # 1. Analyze Sprite Sheet
         print(f"🔍 Analyzing Sprite Sheet: {concept_path}...")
-        # We need a new prompt to extract the sliced parts from the concept
         with open(concept_path, "rb") as f:
             image_data = f.read()
 

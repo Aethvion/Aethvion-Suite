@@ -22,16 +22,12 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 from core.utils.paths import APP_DRIVEINFO
 
-# ---------------------------------------------------------------------------
 # Constants
-# ---------------------------------------------------------------------------
 
 DATA_DIR = APP_DRIVEINFO
 EATHSCAN_VERSION = "1.0"
 
-# ---------------------------------------------------------------------------
 # Scan state (shared between background thread and API)
-# ---------------------------------------------------------------------------
 
 class ScanState:
     def __init__(self):
@@ -79,9 +75,7 @@ class ScanState:
 scan_state = ScanState()
 _scan_lock  = threading.Lock()
 
-# ---------------------------------------------------------------------------
 # Directory scanner
-# ---------------------------------------------------------------------------
 
 def _scan_node(path: Path, state: ScanState, seen_inodes: set = None) -> dict:
     """Recursively scan *path* and return a tree node dict.
@@ -186,9 +180,7 @@ def _collect_extensions(node: dict, ext_map: dict) -> None:
             _collect_extensions(child, ext_map)
 
 
-# ---------------------------------------------------------------------------
 # Background scan thread
-# ---------------------------------------------------------------------------
 
 def _run_scan(root_path: str) -> None:
     try:
@@ -274,9 +266,7 @@ def cancel_scan() -> None:
     scan_state.cancelled = True
 
 
-# ---------------------------------------------------------------------------
 # Display-optimised tree pruning
-# ---------------------------------------------------------------------------
 
 def build_display_tree(node: dict, min_bytes: int) -> Optional[dict]:
     """Return a pruned copy of *node* for browser display.
@@ -363,9 +353,7 @@ def generate_display_scan(scan_path: Path) -> Optional[Path]:
         return None
 
 
-# ---------------------------------------------------------------------------
 # .eathscan file I/O
-# ---------------------------------------------------------------------------
 
 def _ensure_data_dir() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -476,9 +464,7 @@ def delete_scan(filename: str) -> None:
         path.unlink()
 
 
-# ---------------------------------------------------------------------------
 # Drive enumeration
-# ---------------------------------------------------------------------------
 
 def list_drives() -> list:
     """Return available drives (Windows) or mount points (POSIX)."""

@@ -62,7 +62,6 @@ async def _call_ai(session: AIGameSession, user_message: str, expected_action: O
 
     for attempt in range(max_retries):
         try:
-            # Fallback: On the very last attempt, disable JSON mode in case the constraint is causing truncation
             use_json_mode = True
             if attempt == max_retries - 1:
                 use_json_mode = False
@@ -585,7 +584,6 @@ async def generate_word_search(req: WordSearchGenerateRequest):
         except Exception:
             pass
 
-        # ── Step 3: rescue truncated JSON — extract all double-quoted uppercase words ──
         # Handles responses cut off mid-array: {"words": ["NARUTO", "BLEACH", "DRAGON...
         if words is None:
             quoted = re.findall(r'"([A-Z]{4,15})"', raw)
@@ -604,7 +602,6 @@ async def generate_word_search(req: WordSearchGenerateRequest):
                 except Exception:
                     continue
 
-        # ── Step 4: last resort — extract bare uppercase words from the text ──
         # Handles responses like "Here are your words: PLANET, GALAXY, NEBULA, ..."
         if words is None:
             bare = re.findall(r'\b([A-Z]{4,15})\b', raw)

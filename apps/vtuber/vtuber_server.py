@@ -49,9 +49,7 @@ from rigging.auto_bones import suggest_bones, suggest_bone_params
 from rigging.auto_weights import assign_weights, smooth_weights, normalize_weights
 from pipelines.utils import remove_background
 
-# ---------------------------------------------------------------------------
 # App setup
-# ---------------------------------------------------------------------------
 
 app = FastAPI(title="Aethvion VTuber Engine", version="2.0.0")
 fastapi_utils.add_dev_cache_control(app)
@@ -68,9 +66,7 @@ MODELS_DIR.mkdir(parents=True, exist_ok=True)
 VTUBER_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# ---------------------------------------------------------------------------
 # Provider helpers
-# ---------------------------------------------------------------------------
 
 def _get_chat_provider(chat_model: Optional[str] = None):
     if not HAS_PROVIDERS or not pm:
@@ -92,9 +88,7 @@ def _get_image_provider(image_model: Optional[str] = None):
     return provider, model_id
 
 
-# ---------------------------------------------------------------------------
 # Provider / model info
-# ---------------------------------------------------------------------------
 
 @app.get("/api/providers")
 async def get_providers():
@@ -111,9 +105,7 @@ async def get_providers():
     return JSONResponse({"chat_models": chat, "image_models": image, "available": True})
 
 
-# ---------------------------------------------------------------------------
 # Model listing & CRUD
-# ---------------------------------------------------------------------------
 
 @app.get("/api/models")
 async def list_models():
@@ -223,9 +215,7 @@ async def delete_model(model_id: str):
     raise HTTPException(404, "Model not found.")
 
 
-# ---------------------------------------------------------------------------
 # Texture management
-# ---------------------------------------------------------------------------
 
 @app.get("/api/model/{model_id}/texture/{tex_path:path}")
 async def get_texture(model_id: str, tex_path: str):
@@ -342,9 +332,7 @@ async def restore_layer_bg(model_id: str, layer_id: str):
     return JSONResponse({"status": "success", "texture": layer["texture"]})
 
 
-# ---------------------------------------------------------------------------
 # Export / Import
-# ---------------------------------------------------------------------------
 
 @app.get("/api/model/{model_id}/export")
 async def export_model(model_id: str):
@@ -377,9 +365,7 @@ async def import_model(file: UploadFile = File(...)):
     return JSONResponse({"status": "success", "model_id": model_id, "model": model})
 
 
-# ---------------------------------------------------------------------------
 # AI Generation pipelines
-# ---------------------------------------------------------------------------
 
 class GenerateRequest(BaseModel):
     prompt: str
@@ -556,9 +542,7 @@ async def generate_from_upload(
         raise HTTPException(500, str(e))
 
 
-# ---------------------------------------------------------------------------
 # AI Rigging helpers (called from editor)
-# ---------------------------------------------------------------------------
 
 class AutoMeshRequest(BaseModel):
     model_id: str
@@ -678,9 +662,7 @@ async def auto_rig_all(req: AutoRigAllRequest):
     })
 
 
-# ---------------------------------------------------------------------------
 # Tracking integration
-# ---------------------------------------------------------------------------
 
 @app.get("/api/tracking/info")
 async def tracking_info():
@@ -708,9 +690,7 @@ async def tracking_status():
         return JSONResponse({"available": False, "port": port, "is_running": False})
 
 
-# ---------------------------------------------------------------------------
 # Legacy v1 support
-# ---------------------------------------------------------------------------
 
 @app.post("/api/legacy/upload-and-rig")
 async def legacy_upload(
@@ -737,9 +717,7 @@ async def legacy_list():
     return JSONResponse(results)
 
 
-# ---------------------------------------------------------------------------
 # Static files and root
-# ---------------------------------------------------------------------------
 
 app.mount("/viewer", StaticFiles(directory=str(VIEWER_DIR)), name="viewer")
 app.mount("/models", StaticFiles(directory=str(MODELS_DIR)), name="models")
@@ -771,9 +749,7 @@ async def tutorial_page():
     return tutorial_path.read_text(encoding="utf-8")
 
 
-# ---------------------------------------------------------------------------
 # Launch
-# ---------------------------------------------------------------------------
 
 def launch():
     from core.utils.port_manager import PortManager

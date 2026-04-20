@@ -18,9 +18,7 @@ import uvicorn
 import tkinter as tk
 from tkinter import filedialog
 
-# ---------------------------------------------------------------------------
 # Bootstrap workspace root & imports
-# ---------------------------------------------------------------------------
 WORKSPACE_ROOT = Path(__file__).parent.parent.parent
 sys.path.append(str(WORKSPACE_ROOT))
 from core.utils.port_manager import PortManager
@@ -28,9 +26,7 @@ from core.utils import get_logger, fastapi_utils
 
 logger = get_logger("AethvionLinkMap")
 
-# ---------------------------------------------------------------------------
 # App Configuration
-# ---------------------------------------------------------------------------
 app = FastAPI(
     title="Aethvion LinkMap — 3D Context Visualization",
     description="Interactive visualization of project dependencies and function calls",
@@ -46,9 +42,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------------------------------------------------------------------------
 # Directories
-# ---------------------------------------------------------------------------
 APP_DIR = Path(__file__).parent
 DATA_DIR = WORKSPACE_ROOT / "data" / "apps" / "linkmap"
 VIEWER_DIR = APP_DIR / "viewer"
@@ -56,9 +50,7 @@ VIEWER_DIR = APP_DIR / "viewer"
 for d in [DATA_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
-# ---------------------------------------------------------------------------
 # Models
-# ---------------------------------------------------------------------------
 class ScanRequest(BaseModel):
     path: Optional[str] = None
     force: bool = False
@@ -80,9 +72,7 @@ class MapData(BaseModel):
     nodes: List[Node]
     links: List[Link]
 
-# ---------------------------------------------------------------------------
 # AST Analysis
-# ---------------------------------------------------------------------------
 class ProjectAnalyzer:
     def __init__(self, root: Path):
         self.root = root
@@ -230,15 +220,11 @@ class ProjectAnalyzer:
                 if not exists:
                     self.links.append(Link(source=source_func_id, target=target_id, type="call"))
 
-# ---------------------------------------------------------------------------
 # Global State
-# ---------------------------------------------------------------------------
 analyzer = ProjectAnalyzer(WORKSPACE_ROOT)
 current_map: dict = {"nodes": [], "links": []}
 
-# ---------------------------------------------------------------------------
 # Routes
-# ---------------------------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     index_path = VIEWER_DIR / "index.html"
@@ -314,9 +300,7 @@ async def get_map():
             current_map = json.loads(save_path.read_text(encoding="utf-8"))
     return current_map
 
-# ---------------------------------------------------------------------------
 # Entrypoint
-# ---------------------------------------------------------------------------
 def launch():
     base_port = int(os.getenv("LINKMAP_PORT", "8089"))
     port = PortManager.bind_port("Aethvion LinkMap", base_port)

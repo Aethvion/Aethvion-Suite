@@ -31,7 +31,6 @@ from driveinfo_core import (
     _display_path,
 )
 
-# ---------------------------------------------------------------------------
 app = FastAPI(title="Aethvion Drive Info", version="1.0.0")
 fastapi_utils.add_dev_cache_control(app)
 
@@ -45,9 +44,7 @@ app.add_middleware(
 VIEWER_DIR = Path(__file__).parent / "viewer"
 app.mount("/viewer", StaticFiles(directory=str(VIEWER_DIR), html=True), name="viewer")
 
-# ---------------------------------------------------------------------------
 # Root
-# ---------------------------------------------------------------------------
 
 from fastapi import Request
 
@@ -56,9 +53,7 @@ async def root(request: Request):
     query = f"?{request.query_params}" if request.query_params else ""
     return RedirectResponse(url=f"/viewer/index.html{query}")
 
-# ---------------------------------------------------------------------------
 # Scan
-# ---------------------------------------------------------------------------
 
 class ScanRequest(BaseModel):
     path: str
@@ -96,9 +91,7 @@ async def api_cancel_scan():
     cancel_scan()
     return {"cancelled": True}
 
-# ---------------------------------------------------------------------------
 # Saved scans
-# ---------------------------------------------------------------------------
 
 @app.get("/api/scans")
 async def api_list_scans():
@@ -106,7 +99,6 @@ async def api_list_scans():
 
 @app.get("/api/scans/{filename}")
 def api_load_scan(filename: str):
-    # Sync endpoint → FastAPI runs it in a thread pool so blocking I/O is fine.
     path = DATA_DIR / filename
     if not path.exists():
         raise HTTPException(status_code=404, detail="Scan file not found")
@@ -132,17 +124,13 @@ async def api_delete_scan(filename: str):
     delete_scan(filename)
     return {"deleted": filename}
 
-# ---------------------------------------------------------------------------
 # Drives
-# ---------------------------------------------------------------------------
 
 @app.get("/api/drives")
 async def api_drives():
     return list_drives()
 
-# ---------------------------------------------------------------------------
 # Open in Explorer
-# ---------------------------------------------------------------------------
 
 class ExplorerRequest(BaseModel):
     path: str
@@ -174,17 +162,13 @@ async def api_open_explorer(req: ExplorerRequest):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
-# ---------------------------------------------------------------------------
 # Health
-# ---------------------------------------------------------------------------
 
 @app.get("/api/health")
 async def api_health():
     return {"status": "ok", "module": "driveinfo"}
 
-# ---------------------------------------------------------------------------
 # Entry point
-# ---------------------------------------------------------------------------
 
 def launch():
     import uvicorn

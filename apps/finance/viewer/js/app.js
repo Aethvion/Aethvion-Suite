@@ -5,9 +5,7 @@
 (function () {
   'use strict';
 
-  // ======================================================================
   // Constants
-  // ======================================================================
   const CATEGORIES = [
     'Income', 'Housing', 'Food', 'Transport', 'Utilities',
     'Healthcare', 'Entertainment', 'Shopping', 'Services',
@@ -30,9 +28,7 @@
     '#a855f7', '#f97316', '#06b6d4', '#84cc16'
   ];
 
-  // ======================================================================
   // Core state
-  // ======================================================================
   let state = { meta: {}, accounts: [], transactions: [], budgets: [], goals: [], holdings: [] };
   let activeView = 'dashboard';
   let charts = {};
@@ -51,9 +47,7 @@
   // Budget month navigator
   let budgetMonth = currentYearMonth();
 
-  // ======================================================================
   // Utility helpers
-  // ======================================================================
 
   /** Returns "YYYY-MM" for today */
   function currentYearMonth() {
@@ -186,9 +180,7 @@
     }
   }
 
-  // ======================================================================
   // State loading
-  // ======================================================================
   async function loadState() {
     try {
       state = await api('GET', '/api/state');
@@ -198,9 +190,7 @@
     }
   }
 
-  // ======================================================================
   // Navigation
-  // ======================================================================
   function switchView(name) {
     // Hide all views
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -239,9 +229,7 @@
     if (currEl) currEl.textContent = (state.meta && state.meta.currency) ? state.meta.currency : '€';
   }
 
-  // ======================================================================
   // Dashboard
-  // ======================================================================
   function renderDashboard() {
     const ym = currentYearMonth();
     const monthTx = getTxForMonth(ym);
@@ -376,9 +364,7 @@
     }).join('');
   }
 
-  // ======================================================================
   // Transactions
-  // ======================================================================
   function renderTransactions() {
     // Populate category filter
     const catSel = document.getElementById('tx-filter-category');
@@ -460,9 +446,7 @@
     }
   }
 
-  // ======================================================================
   // Accounts
-  // ======================================================================
   function renderAccounts() {
     const grid     = document.getElementById('accounts-grid');
     const totalEl  = document.getElementById('accounts-total-balance');
@@ -501,9 +485,7 @@
     }).join('');
   }
 
-  // ======================================================================
   // Budget
-  // ======================================================================
   function renderBudget() {
     setText('budget-month-label', monthLabel(budgetMonth));
 
@@ -574,9 +556,7 @@
     }
   }
 
-  // ======================================================================
   // Goals
-  // ======================================================================
   function renderGoals() {
     const grid = document.getElementById('goals-grid');
     if (!grid) return;
@@ -646,9 +626,7 @@
     }).join('');
   }
 
-  // ======================================================================
   // Analytics
-  // ======================================================================
   function renderAnalytics() {
     buildIncomeExpensesChart();
     buildCatBarChart();
@@ -810,9 +788,7 @@
     };
   }
 
-  // ======================================================================
   // Modal system
-  // ======================================================================
   function openModal(title, bodyHTML, footerHTML, onSave) {
     document.getElementById('modal-title').textContent = title;
     document.getElementById('modal-body').innerHTML    = bodyHTML;
@@ -848,9 +824,7 @@
     if (btn) btn.onclick = handler;
   }
 
-  // ======================================================================
   // Transaction modals
-  // ======================================================================
   function openAddTransaction() {
     const today = new Date().toISOString().split('T')[0];
     const accOptions = state.accounts.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('');
@@ -1003,9 +977,7 @@
     });
   }
 
-  // ======================================================================
   // Account modals
-  // ======================================================================
   function openAddAccount() {
     const body = `
       <div class="form-group">
@@ -1123,9 +1095,7 @@
       .catch(e => notify('Error: ' + e.message, 'error'));
   }
 
-  // ======================================================================
   // Budget modals
-  // ======================================================================
   function openSetBudget(preCategory) {
     const catOptions = CATEGORIES.map(c =>
       `<option value="${c}" ${c === preCategory ? 'selected' : ''}>${c}</option>`).join('');
@@ -1167,9 +1137,7 @@
       .catch(e => notify('Error: ' + e.message, 'error'));
   }
 
-  // ======================================================================
   // Goal modals
-  // ======================================================================
   function openAddGoal() {
     const body = `
       <div class="form-group">
@@ -1294,9 +1262,7 @@
       .catch(e => notify('Error: ' + e.message, 'error'));
   }
 
-  // ======================================================================
   // Project Manager
-  // ======================================================================
   async function openProjectManager() {
     document.getElementById('modal-title').textContent = 'Project Manager';
     document.getElementById('modal-body').innerHTML    = '<p class="text-muted" style="text-align:center;padding:20px;">Loading projects…</p>';
@@ -1377,9 +1343,7 @@
     }
   }
 
-  // ======================================================================
   // Save inline controls
-  // ======================================================================
   function showSaveInline() {
     const inline = document.getElementById('save-inline');
     const hdrBtns = document.querySelector('.header-actions');
@@ -1406,9 +1370,7 @@
     }
   }
 
-  // ======================================================================
   // DOM helpers
-  // ======================================================================
   function setText(id, text) {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
@@ -1429,9 +1391,7 @@
       .replace(/'/g, '&#39;');
   }
 
-  // ======================================================================
   // Event wiring
-  // ======================================================================
   function wireEvents() {
     // Nav items
     document.querySelectorAll('.nav-item[data-view]').forEach(item => {
@@ -1575,9 +1535,7 @@
     });
   }
 
-  // ======================================================================
   // Portfolio — live price refresh
-  // ======================================================================
   async function refreshPrices() {
     const btn   = document.getElementById('refresh-prices-btn');
     const label = document.getElementById('refresh-prices-label');
@@ -1627,9 +1585,7 @@
     }
   }
 
-  // ======================================================================
   // Portfolio — rendering & charts
-  // ======================================================================
   const ASSET_TYPES = ['Stock', 'ETF', 'Crypto', 'Bond', 'REIT', 'Fund', 'Cash', 'Other'];
 
   const ASSET_COLORS = {
@@ -2053,9 +2009,7 @@
   window.confirmDeleteHolding = confirmDeleteHolding;
   window.openQuickAddHolding = openQuickAddHolding;
 
-  // ======================================================================
   // Boot
-  // ======================================================================
   document.addEventListener('DOMContentLoaded', () => {
     // Set Chart.js global defaults
     Chart.defaults.color       = '#a0a0a0';
@@ -2073,9 +2027,7 @@
     setInterval(fetchMarketOverview, 60000); // 1 min refresh
   });
 
-  // ======================================================================
   // Market Ticker
-  // ======================================================================
   async function fetchMarketOverview() {
     try {
       const data = await api('GET', '/api/market/overview');
@@ -2096,9 +2048,7 @@
     }
   }
 
-  // ======================================================================
   // Detail Panel
-  // ======================================================================
   async function openDetailPanel(ticker) {
     const panel = document.getElementById('detail-panel');
     if (!panel) return;

@@ -186,7 +186,6 @@ class ProviderManager:
                         provider.config.max_retries = int(reg_config['retries_per_step'])
                         logger.debug(f"Updated {name} max_retries to {provider.config.max_retries}")
                         
-                    # We could also update specific model configs here if we tracked them per-provider
                     
             logger.info("Provider configuration reload complete")
             
@@ -219,7 +218,6 @@ class ProviderManager:
                     logger.warning(f"Unknown provider: {name}")
                     continue
                 
-                # Get the first model from registry for this provider if default is missing
                 default_model = config.get('model')
                 if not default_model and registry_path.exists():
                     # Re-read or use cached models
@@ -530,7 +528,6 @@ class ProviderManager:
 
         last_error = None
         
-        # Check if ALL mapped providers in the order are OFFLINE - if so, reset them
         # This prevents permanent lockout from temporary failures
         mapped_providers = [
             self.model_to_provider_map.get(m) for m in model_order 

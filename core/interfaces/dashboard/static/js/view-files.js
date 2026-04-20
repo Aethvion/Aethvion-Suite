@@ -1,4 +1,3 @@
-// Aethvion Suite - Files View
 // Handles interacting with the local workspace files table
 
 let currentFiles = [];

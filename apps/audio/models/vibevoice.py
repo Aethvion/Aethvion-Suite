@@ -33,7 +33,6 @@ HF_ASR      = "microsoft/VibeVoice-ASR"
 
 # ── Voice preset metadata ────────────────────────────────────────────────────
 # Presets are pre-computed speaker embeddings (.pt files).
-# They are fetched from the community mirror on first use and cached locally.
 _VOICE_PRESET_BASE = (
     "https://huggingface.co/spaces/anycoderapps/"
     "VibeVoice-Realtime-0.5B/resolve/main/demo/voices/streaming_model"

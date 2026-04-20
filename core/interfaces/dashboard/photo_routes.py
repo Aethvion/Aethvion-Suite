@@ -227,7 +227,6 @@ async def generate_image(req: ImageGenerationRequest):
                     target_provider = p
                     break
 
-            # If still not found, default to google (primary) or openai if model looks like theirs
             if not target_provider:
                 if "gpt" in req.model or "dall" in req.model:
                     target_provider = manager.providers.get("openai")
@@ -266,7 +265,6 @@ async def generate_image(req: ImageGenerationRequest):
 
         # Call generate_image
         # Note: generate_image is synchronous in our implementation (calls API blocking)
-        # We should ideally run this in a threadpool if it blocks, but for now direct call.
         response = target_provider.generate_image(
             prompt=req.prompt,
             trace_id=trace_id,
@@ -315,7 +313,6 @@ async def generate_image(req: ImageGenerationRequest):
             
             # Save to 'images/YYYY-MM-DD' domain/folder
             # WorkspaceManager takes domain. We can use "Images/{date_str}" or just "Images"
-            # Let's use "Images" domain, and filename includes date or we put it in folder.
             # WorkspaceManager structure is {root}/{domain}/{filename}
             # The user asked for "data/outputfiles".
             # workspace.get_output_path("Images", filename) -> outputfiles/Images/filename
@@ -339,7 +336,6 @@ async def generate_image(req: ImageGenerationRequest):
             # We need to ensure outputfiles is served statically.
             # Current static mount is /static -> web/static
             # We should verify if outputfiles is served.
-            # If not, we might need to add a mount in server.py or use an API to serve it.
             # For now assume /api/files/ serves it or we add one.
             
             # Let's return the absolute path and a guessed URL

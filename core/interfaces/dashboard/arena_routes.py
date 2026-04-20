@@ -338,7 +338,6 @@ async def aiconv_generate(request: AIConvTurnRequest, req: Request):
 
         trace_id = f"AICONV_{uuid.uuid4().hex[:8]}"
         
-        # Build the full prompt string or use the provider's message format if supported.
         # Since call_with_failover usually takes a single string prompt, we construct it:
         full_prompt = ""
         if request.system_prompt:

@@ -80,7 +80,6 @@ def query_usage_detailed(query: str) -> str:
         return "No usage data found to determine peak day."
         
     if "month" in query_lower:
-        # Simple extraction of YYYY-MM or similar might be needed, but for now we'll handle current/last
         now = datetime.utcnow()
         if "last month" in query_lower:
             first_of_this_month = now.replace(day=1)

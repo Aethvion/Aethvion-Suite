@@ -168,7 +168,6 @@ async def get_all_suggested_models():
         registry = _load_registry()
         available = get_suggested_models_not_in_registry(registry)
         
-        # We also still want local models from the legacy suggested file for now
         local_models = []
         if SUGGESTED_LOCAL_PATH.exists():
             data = json.loads(SUGGESTED_LOCAL_PATH.read_text(encoding="utf-8"))
@@ -454,7 +453,6 @@ async def add_model(provider_name: str, model_data: Dict[str, Any], request: Req
         if model_key in models:
             raise HTTPException(status_code=409, detail=f"Model '{model_key}' already exists")
 
-        # Build model entry (strip the key field, it's used as the dict key)
         entry = {k: v for k, v in model_data.items() if k != "key"}
         models[model_key] = entry
 
@@ -819,8 +817,6 @@ async def download_local_model(data: Dict[str, Any]):
             raise HTTPException(status_code=400, detail="repo_id and filename are required")
             
         downloader = ModelDownloader()
-        # This will be synchronous for now, might need background task if it takes too long
-        # but for a 1B model it should be okay-ish if the user waits
         path = downloader.download_model(repo_id, filename)
         
         return {

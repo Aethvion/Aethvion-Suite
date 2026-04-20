@@ -118,7 +118,6 @@ def open_app_window(
 
     if background:
         # We can't easily return the proc from a daemon thread's start
-        # but we can provide a container or just not use background if we want the proc
         t = threading.Thread(target=_launch, daemon=True)
         t.start()
         return None

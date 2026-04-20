@@ -115,7 +115,6 @@ class GenericAgent(BaseAgent):
             if execution_output:
                 self.log("Detected code block, executing...")
                 
-                # SUPPRESS FULL OUTPUT FROM USER RESPONSE - Add only result summary or error
                 
                 # Look for file creation messages
                 file_match = re.search(r"(?:saved|created|wrote).*?to.*?(C:[\\/][^\n\r]+)", execution_output, re.IGNORECASE)

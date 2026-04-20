@@ -1,4 +1,3 @@
-// Aethvion Suite - Memory View
 // Handles interacting with the Memory Database tables
 
 // Wire buttons and load data when the memory partial is injected

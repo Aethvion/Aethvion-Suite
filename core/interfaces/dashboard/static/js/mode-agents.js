@@ -1,8 +1,6 @@
-// ============================================================
 // Agent Workspaces Mode — mode-agents.js
 // Provides workspace + thread management and agent task submission
 // with the same polling pattern as threads.js pollTaskStatus.
-// ============================================================
 
 // ── Configure marked (same as mode-chat.js) ──────────────────
 if (typeof marked !== 'undefined') {

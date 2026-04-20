@@ -9,7 +9,6 @@ import os
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-# We'll import paths later if possible, but for now we can define them or use relative
 # In the final version, this should use core.utils.paths
 try:
     from core.utils.paths import MODEL_DEFAULTS_DIR, SUGGESTED_MODELS_DIR, MODEL_REGISTRY

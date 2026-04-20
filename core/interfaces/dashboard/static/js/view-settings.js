@@ -1,4 +1,3 @@
-// Aethvion Suite - Preferences & Settings View
 // Handles interacting with user preferences and provider configuration data
 
 

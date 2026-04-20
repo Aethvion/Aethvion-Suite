@@ -132,7 +132,6 @@ class WorkerStats:
         elif self._last_token_time:
             elapsed = now - self._last_token_time
             # Only use wall-clock gap when it's short enough to reflect generation
-            # speed, not idle time between tasks (gaps > 60 s are treated as pauses).
             if 0 < elapsed <= 60:
                 self.tokens_per_second = round(out_tok / elapsed, 1)
         self._last_token_time = now
@@ -659,7 +658,6 @@ class CorpManager:
         self._save_config(corp_id, cfg)
 
         # Pre-generate workspace blueprint so workers don't have to walk the tree themselves.
-        # Cache is written to the corp data dir, NOT into the user's project workspace.
         try:
             from core.orchestrator.agent_runner import build_workspace_blueprint
             ws = self._workspace_path(corp_id)
@@ -1105,7 +1103,6 @@ class CorpManager:
         if ws.exists():
             try:
                 bp = build_workspace_blueprint(ws, cache_path=self._corp_dir(corp_id) / "_blueprint.txt")
-                # Cap at 3 k chars in the prompt; workers can call get_project_blueprint for full view
                 if len(bp) > 3000:
                     bp = bp[:3000] + "\n… [truncated — call get_project_blueprint for full view]"
                 blueprint_section = f"## Workspace Blueprint\n{bp}\n\n"

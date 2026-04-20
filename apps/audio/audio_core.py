@@ -29,18 +29,14 @@ try:
 except ImportError:
     pass
 
-# ---------------------------------------------------------------------------
 # Colours assigned to tracks in order
-# ---------------------------------------------------------------------------
 
 TRACK_COLORS = [
     "#00d9ff", "#ff6b6b", "#ffd93d", "#6bcb77",
     "#4d96ff", "#ff922b", "#cc5de8", "#20c997",
 ]
 
-# ---------------------------------------------------------------------------
 # Pure effect helpers
-# ---------------------------------------------------------------------------
 
 def _uid() -> str:
     return str(uuid.uuid4())[:8]
@@ -147,9 +143,7 @@ def _load_audio(data: bytes, filename: str) -> "AudioSegment":
         )
 
 
-# ---------------------------------------------------------------------------
 # Track
-# ---------------------------------------------------------------------------
 
 class Track:
     """One audio clip in the multi-track workspace."""
@@ -219,9 +213,7 @@ class Track:
         return d
 
 
-# ---------------------------------------------------------------------------
 # MultiTrackSession
-# ---------------------------------------------------------------------------
 
 class MultiTrackSession:
     """Holds all tracks, manages workspace length, and renders the mix."""

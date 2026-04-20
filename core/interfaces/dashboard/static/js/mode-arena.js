@@ -1,4 +1,3 @@
-// Aethvion Suite - LLM Arena Mode
 // Handles interactions with the Arena battle UI and leaderboard
 
 let arenaSelectedModels = [];

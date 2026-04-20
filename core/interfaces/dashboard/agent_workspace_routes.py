@@ -150,7 +150,6 @@ async def browse_folder(path: str = Query(default="")):
         else:
             target = Path(path)
 
-        # If the path doesn't exist or isn't a directory, walk up to a valid parent
         while target != target.parent and not (target.exists() and target.is_dir()):
             target = target.parent
 

@@ -118,7 +118,6 @@ def generate_rig(parts: List[Dict[str, Any]], provider, model_id: str,
         ]
     }
 
-    # Check if provider is usable — any provider with a .client is fine
     client = getattr(provider, 'client', None) if provider else None
     if not client:
         print("No AI provider client available. Using default physics.")

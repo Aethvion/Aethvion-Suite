@@ -16,9 +16,7 @@ from pydantic import BaseModel
 import uvicorn
 import requests
 
-# ---------------------------------------------------------------------------
 # Bootstrap workspace root & imports
-# ---------------------------------------------------------------------------
 WORKSPACE_ROOT = Path(__file__).parent.parent.parent
 sys.path.append(str(WORKSPACE_ROOT))
 from core.utils.port_manager import PortManager
@@ -26,9 +24,7 @@ from core.utils import get_logger, fastapi_utils, utcnow_iso
 
 logger = get_logger("AethvionFinance")
 
-# ---------------------------------------------------------------------------
 # App
-# ---------------------------------------------------------------------------
 app = FastAPI(
     title="Aethvion Finance — Financial Hub",
     description="Professional Financial Tracking & Analysis",
@@ -44,9 +40,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------------------------------------------------------------------------
 # Directories
-# ---------------------------------------------------------------------------
 APP_DIR = Path(__file__).parent
 DATA_DIR = WORKSPACE_ROOT / "data" / "apps" / "finance"
 PROJECTS_DIR = DATA_DIR / "projects"
@@ -56,9 +50,7 @@ AUTOSAVE_PATH = DATA_DIR / "autosave.aethfinance"
 for d in [DATA_DIR, PROJECTS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
-# ---------------------------------------------------------------------------
 # Static files & HTML serving
-# ---------------------------------------------------------------------------
 VIEWER_DIR = APP_DIR / "viewer"
 
 @app.get("/", response_class=HTMLResponse)
@@ -74,9 +66,7 @@ if VIEWER_DIR.exists():
     app.mount("/js", StaticFiles(directory=str(VIEWER_DIR / "js")), name="js")
     app.mount("/css", StaticFiles(directory=str(VIEWER_DIR / "css")), name="css")
 
-# ---------------------------------------------------------------------------
 # In-memory state
-# ---------------------------------------------------------------------------
 def _now_iso() -> str:
     return utcnow_iso()
 
@@ -97,9 +87,7 @@ def _make_default_state() -> dict:
 
 state: dict = _make_default_state()
 
-# ---------------------------------------------------------------------------
 # Persistence helpers
-# ---------------------------------------------------------------------------
 def _persist(path: Path, data: dict) -> None:
     """Write state dict to a .aethfinance file (JSON). Called in background thread."""
     try:
@@ -123,9 +111,7 @@ def _load_from_path(path: Path) -> dict:
             data[key] = _make_default_state()[key]
     return data
 
-# ---------------------------------------------------------------------------
 # Startup: load autosave if it exists
-# ---------------------------------------------------------------------------
 @app.on_event("startup")
 async def startup_event():
     global state
@@ -140,9 +126,7 @@ async def startup_event():
         state = _make_default_state()
         logger.info("No autosave found; starting with empty state.")
 
-# ---------------------------------------------------------------------------
 # Pydantic request models
-# ---------------------------------------------------------------------------
 class TransactionIn(BaseModel):
     name: str
     amount: float
@@ -227,9 +211,7 @@ class FullState(BaseModel):
     goals: list
     holdings: list = []
 
-# ---------------------------------------------------------------------------
 # Health
-# ---------------------------------------------------------------------------
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
@@ -238,9 +220,7 @@ class AnalyzeRequest(BaseModel):
     model_id: str
     ticker: str
 
-# ---------------------------------------------------------------------------
 # State Management
-# ---------------------------------------------------------------------------
 @app.get("/api/state")
 async def get_state():
     return state
@@ -252,9 +232,7 @@ async def replace_state(new_state: FullState):
     _autosave()
     return state
 
-# ---------------------------------------------------------------------------
 # Transactions
-# ---------------------------------------------------------------------------
 @app.post("/api/transaction")
 async def add_transaction(tx: TransactionIn):
     new_tx = {
@@ -290,9 +268,7 @@ async def delete_transaction(tx_id: str):
     _autosave()
     return {"deleted": tx_id}
 
-# ---------------------------------------------------------------------------
 # Accounts
-# ---------------------------------------------------------------------------
 @app.post("/api/account")
 async def add_account(acc: AccountIn):
     new_acc = {
@@ -326,9 +302,7 @@ async def delete_account(acc_id: str):
     _autosave()
     return {"deleted": acc_id}
 
-# ---------------------------------------------------------------------------
 # Budgets
-# ---------------------------------------------------------------------------
 @app.post("/api/budget")
 async def upsert_budget(budget: BudgetIn):
     for b in state["budgets"]:
@@ -356,9 +330,7 @@ async def delete_budget(category: str):
     _autosave()
     return {"deleted": category}
 
-# ---------------------------------------------------------------------------
 # Goals
-# ---------------------------------------------------------------------------
 @app.post("/api/goal")
 async def add_goal(goal: GoalIn):
     new_goal = {
@@ -393,9 +365,7 @@ async def delete_goal(goal_id: str):
     _autosave()
     return {"deleted": goal_id}
 
-# ---------------------------------------------------------------------------
 # Holdings (Portfolio)
-# ---------------------------------------------------------------------------
 @app.post("/api/holding")
 async def add_holding(holding: HoldingIn):
     ticker = holding.ticker.upper()
@@ -467,9 +437,7 @@ async def delete_holding(holding_id: str):
     _autosave()
     return {"deleted": holding_id}
 
-# ---------------------------------------------------------------------------
 # Holdings price refresh (yfinance / Yahoo Finance)
-# ---------------------------------------------------------------------------
 @app.post("/api/holdings/refresh-prices")
 def refresh_holding_prices():
     """
@@ -530,7 +498,6 @@ def refresh_holding_prices():
                     prices[sym] = round(float(price), 8)
                 
                 # Metadata (if not already cached in state for a holding)
-                # We only peek at info if we need sector/industry to avoid slow calls
                 # However, for simplicity in refresh, we'll try to get basic name/sector
                 info = t.info
                 metadata[sym] = {
@@ -574,9 +541,7 @@ def refresh_holding_prices():
         "holdings": holdings,
     }
 
-# ---------------------------------------------------------------------------
 # Market Overview API
-# ---------------------------------------------------------------------------
 @app.get("/api/market/overview")
 def get_market_overview():
     """
@@ -739,7 +704,6 @@ async def analyze_holding(ticker: str, req: AnalyzeRequest):
             "model_id": req.model_id
         }
         
-        # We use the main chat endpoint but we'll try to get more direct if possible.
         # However, the orchestrator handles model routing well.
         # If we want a raw generation, we'd need another endpoint.
         # But /api/chat is easiest since it's already exposed.
@@ -755,9 +719,7 @@ async def analyze_holding(ticker: str, req: AnalyzeRequest):
         logger.error(f"AI Analysis failed for {ticker}: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
 
-# ---------------------------------------------------------------------------
 # Project save/load
-# ---------------------------------------------------------------------------
 @app.post("/api/save")
 async def save_project(req: SaveRequest):
     filename = req.name.strip().replace(" ", "_").replace("/", "_").replace("\\", "_")
@@ -807,9 +769,7 @@ async def delete_project(filename: str):
     path.unlink()
     return {"deleted": filename}
 
-# ---------------------------------------------------------------------------
 # Entrypoint
-# ---------------------------------------------------------------------------
 def launch():
     base_port = int(os.getenv("FINANCE_PORT", "8087"))
     port = PortManager.bind_port("Aethvion Finance", base_port)

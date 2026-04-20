@@ -1,8 +1,6 @@
-// ============================================================
 // Schedule Mode — mode-schedule.js
 // Recurring AI task setup via conversational AI + cron scheduler.
 // Separate from chat: own API, own data store (data/scheduled_tasks/).
-// ============================================================
 
 if (typeof marked !== 'undefined') {
     marked.setOptions({ gfm: true, breaks: true, headerIds: false, mangle: false, sanitize: false });

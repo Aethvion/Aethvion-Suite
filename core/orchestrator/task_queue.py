@@ -65,8 +65,6 @@ class TaskWorker:
                 
                 # Check if this is a specialized task for another worker (e.g. Discord)
                 if task.metadata.get('task_type') == 'DISCORD_SEND':
-                    # Put it back or just ignore it because we assume DiscordWorker is polling the same tasks dict
-                    # Actually, if it's in the queue, it WILL be picked up by a TaskWorker.
                     # We should prevent Discord tasks from entering this general queue, 
                     # OR we make this worker ignore it and the DiscordWorker pulls it.
                     # Best: DiscordWorker doesn't use the queue.put(), it just watches the tasks dict.
@@ -85,17 +83,12 @@ class TaskWorker:
                 task.worker_id = self.worker_id
                 
                 # Save task state (started)
-                # We need to access the manager to save, but worker only has orchestrator
-                # So we'll access it via the shared tasks dict which is owned by manager,
                 # but better yet, let's add a save callback or reference.
-                # For now, let's assume we can't save from here easily without a ref.
                 # Actually, the queue manager pass 'self' as well? No.
                 # Let's check init: __init__(self, worker_id: str, queue: asyncio.Queue, tasks: Dict[str, Task], orchestrator)
                 # We can't reach _save_task easily.
                 # Let's Modify TaskWorker init to accept manager or save_callback.
-                # For now, I'll update the worker logic in a separate step or just skip intermediate saving? 
                 # No, intermediate saving is good for crash recovery.
-                # I'll stick to updating the queue manager to save when it can, but worker does the work.
                 # Wait, I can pass a callback to the worker.
                 # Let's do that in a minute.
                 
@@ -127,7 +120,6 @@ class TaskWorker:
                         if context_mode in ['full', 'smart'] and thread and thread.task_ids:
                             # Fetch previous tasks
                             history_tasks = []
-                            # Get task IDs excluding current one triggers infinite loop? No, current task is not in thread.task_ids yet?
                             # Wait, submit_task appends to thread.task_ids BEFORE queueing.
                             # So we should exclude the current task ID.
                             previous_ids = [tid for tid in thread.task_ids if tid != task.id]
@@ -374,7 +366,6 @@ class TaskWorker:
                             if usage.get('routing_reason'):
                                 task.metadata['routing_reason'] = usage['routing_reason']
                             
-                            # Surface the actual model ID if it was auto-routed but result.model_id is missing/auto
                             if not result_dict.get('model_id') or result_dict.get('model_id') == 'auto':
                                 # Find the last model used if multiple, or the only one
                                 if usage.get('models_used'):
@@ -711,7 +702,6 @@ class TaskQueueManager:
             task.metadata['is_incognito'] = True
 
         # ── Inject folder context into task metadata ───────────────────────
-        # Workers read context from metadata so they don't need a live folders ref.
         _folder_id = getattr(self.threads[thread_id], 'folder_id', None)
         if _folder_id and _folder_id in self.folders:
             _folder = self.folders[_folder_id]
@@ -936,7 +926,6 @@ class TaskQueueManager:
         except Exception as e:
             logger.error(f"Failed to save thread {thread_id}: {e}", exc_info=True)
             # Try to save a backup/sanitized version if possible?
-            # For now, just logging the full stack trace is a huge improvement over silent failure
 
     def _save_task(self, task: Task):
         """Save task state to disk."""
@@ -1110,7 +1099,6 @@ _task_queue_manager = None
 
 # Set of task IDs that have been requested to stop.
 # AgentRunner checks this each iteration — no threading primitives needed because
-# the runner runs in a thread executor and reads are safe across threads.
 _cancelled_agent_task_ids: set = set()
 
 

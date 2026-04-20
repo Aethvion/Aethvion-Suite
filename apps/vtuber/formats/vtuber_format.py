@@ -12,9 +12,7 @@ from typing import Optional
 VTUBER_VERSION = "2.0.0"
 
 
-# ---------------------------------------------------------------------------
 # Default schema factories
-# ---------------------------------------------------------------------------
 
 def new_model(name: str = "Untitled") -> dict:
     return {
@@ -134,9 +132,7 @@ def new_physics_group(name: str, input_param: str, bone_ids: list) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
 # File I/O
-# ---------------------------------------------------------------------------
 
 class VTuberFormat:
     """Read and write .vtuber files (ZIP archives)."""
@@ -259,9 +255,7 @@ class VTuberFormat:
             zf.writestr(rel_path, data)
 
 
-# ---------------------------------------------------------------------------
 # Migration: v1 (avatar.vtuber.json) → v2 model dict
-# ---------------------------------------------------------------------------
 
 def _migrate_v1_to_v2(old: dict, model_name: str) -> dict:
     """Convert a v1 avatar.vtuber.json to a v2 model dict."""

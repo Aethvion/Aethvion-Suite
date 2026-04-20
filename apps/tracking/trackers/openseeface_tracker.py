@@ -30,23 +30,19 @@ from .base import BaseTracker
 
 
 # ── Per-face field sizes (little-endian) ───────────────────────────────────────
-#
 # OpenSeeFace sends 68-point landmark data plus head pose per face.
 # Two known layout variants:
-#
 #   Variant A — pose FIRST (header_size=12 or 4, face_size=1712):
 #     face_id(4) + time(4) + confidence(4) + pnp_error(4)
 #     + quaternion(16) + euler(12) + translation(12)
 #     + lm_conf(272) + lm_2d(544) + lm_3d(816)
 #     + gaze(16) + eye_open(8)  → 1712 bytes
-#
 #   Variant B — landmarks FIRST (header_size=12 or 4, face_size=1716):
 #     face_id(4) + time(4)
 #     + lm_conf(272) + lm_2d(544) + lm_3d(816)
 #     + right_gaze(8) + left_gaze(8) + right_open(4) + left_open(4)
 #     + success(4) + pnp_error(4)
 #     + quaternion(16) + euler(12) + translation(12) + confidence(4)  → 1716 bytes
-#
 # The parser tries all reasonable (header_size, face_size) combinations
 # and auto-detects the one that produces valid data.
 

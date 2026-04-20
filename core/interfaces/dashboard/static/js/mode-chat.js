@@ -1,4 +1,3 @@
-// Aethvion Suite - Chat & Terminal Mode
 // Handles chat messages, terminal logging, and agent actions
 
 // Configure Marked options

@@ -88,7 +88,6 @@ async def get_or_start_worker(model: str):
         _WORKER_PROCESS[model] = proc
         _WORKER_PORT[model] = port
         
-        # Wait for health check (Heavy ML model can take 2-3 minutes to load VRAM)
         max_retries = 120
         async with httpx.AsyncClient() as client:
             for i in range(max_retries):
@@ -243,7 +242,6 @@ async def get_3d_history(page: int = 1, limit: int = 10):
         # remove "ThreeD/"
         serve_path = rel_path[7:] if rel_path.startswith('ThreeD/') else rel_path
         
-        # Derive reference image path: it should be in the same folder as "reference.png"
         ref_image_url = None
         glp_path_obj = Path(rel_path)
         ref_path = glp_path_obj.parent / "reference.png"
@@ -460,7 +458,6 @@ async def install_weights(model: str):
         try:
             yield f"data: {json.dumps({'line': f'Initializing weight download for {model} to {weights_dir.relative_to(LOCAL_MODELS_3D)}...'})}\n\n"
             
-            # We use a subprocess to use the HuggingFace CLI or a small script to download
             # to keep the main event loop clean.
             if "trellis" in model:
                 repo_id = "microsoft/TRELLIS-image-large"
@@ -557,7 +554,6 @@ async def install_3d_model(model: str):
             # 1. Clean previous attempts
             if wrapper_dir.exists() and not install_file.exists():
                 yield f"data: {json.dumps({'line': 'Cleaning partial installation...'})}\n\n"
-                # To be safe on Windows, we use rmdir /s /q which is more aggressive
                 try:
                     subprocess.run(f'cmd /c rmdir /s /q "{repo_dir}"', shell=True)
                 except (subprocess.SubprocessError, OSError): pass
@@ -587,9 +583,7 @@ async def install_3d_model(model: str):
 
             pip_exe = venv_dir / "Scripts" / "pip.exe" if sys.platform == 'win32' else venv_dir / "bin" / "pip"
 
-            # ================================================================
             # TripoSR install path — fast, ~6 GB VRAM, fully public weights
-            # ================================================================
             if model == "triposr":
                 # 1. Core deps
                 triposr_reqs = [
@@ -640,7 +634,6 @@ async def install_3d_model(model: str):
                 except Exception as _msvc_err:
                     yield f"data: {json.dumps({'line': f'Warning: MSVC setup failed: {_msvc_err}'})}\n\n"
 
-                # Relax PyTorch CUDA version check so system nvcc 13.x can build against torch cu124
                 _cpp_ext_tsr = venv_dir / "lib" / "site-packages" / "torch" / "utils" / "cpp_extension.py"
                 if _cpp_ext_tsr.exists():
                     try:
@@ -907,7 +900,6 @@ if __name__ == "__main__":
             
             pip_exe = venv_dir / "Scripts" / "pip.exe" if sys.platform == 'win32' else venv_dir / "bin" / "pip"
             
-            # Core dependency list — torch pulled from cu124 wheel index, others from PyPI
             core_reqs = [
                 "torch==2.6.0", "torchvision==0.21.0", "torchaudio==2.6.0",
                 "wheel", "ninja",
@@ -946,7 +938,6 @@ if __name__ == "__main__":
             # Install nvdiffrast — builds from source, requires MSVC + CUDA toolkit
             yield f"data: {json.dumps({'line': 'Building nvdiffrast (CUDA mesh rasterizer) — may take 5-10 min...'})}\n\n"
 
-            # Locate MSVC via vswhere and merge its env vars into our subprocess env
             nv_env = dict(os.environ)
             nv_env['TORCH_CUDA_ARCH_LIST'] = '8.0;8.6;8.9+PTX'
             try:
@@ -970,8 +961,6 @@ if __name__ == "__main__":
             except Exception as _msvc_err:
                 yield f"data: {json.dumps({'line': f'Warning: MSVC setup failed: {_msvc_err}'})}\n\n"
 
-            # PyTorch raises RuntimeError if system nvcc major version != torch CUDA major version.
-            # The torch cu124 wheel ships its own CUDA runtime, so a newer system nvcc is fine at
             # runtime; we just need to relax the compile-time check.
             _cpp_ext = venv_dir / "lib" / "site-packages" / "torch" / "utils" / "cpp_extension.py"
             if _cpp_ext.exists():
@@ -1149,7 +1138,6 @@ if __name__ == "__main__":
 
             # Clean server template — all dependencies are real installed packages.
             # {MODEL_NAME} and {MODEL_ID} are substituted below via .replace().
-            # All other curly braces are plain Python dict/f-string syntax — do NOT use f-string here.
             server_template = r'''"""
 Aethvion Suite — {MODEL_NAME} Worker
 All dependencies (kaolin, nvdiffrast) are real installed packages — no mocks.

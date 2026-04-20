@@ -71,7 +71,6 @@ def build_workspace_blueprint(
     effective_cache = cache_path or (workspace / "_blueprint.txt")
 
     # When a custom cache_path is provided (i.e. data dir, not the workspace),
-    # evict any stale _blueprint.txt that may have been left in the workspace by
     # an older code path.  Do this once, silently.
     if cache_path is not None:
         _old_ws_bp = workspace / "_blueprint.txt"
@@ -259,7 +258,6 @@ class AgentState:
         self.action_log: List[Dict[str, Any]] = []  # [{i, type, detail, at}]
         self.prior_tasks: List[Dict[str, str]] = []  # [{task, summary}] across the thread
         # Semantic memory: compact structural digest for every file ever read/modified.
-        # Persists across iterations and tasks so the agent always knows what's in each file
         # without having to re-read raw content that long-since scrolled out of history.
         self.file_digests: Dict[str, str] = {}      # path -> digest string
 
@@ -438,7 +436,6 @@ class AgentState:
         """Return a compact context string injected into every prompt."""
         parts: List[str] = []
 
-        # Prior task history (most recent last so it's closest to the current task).
         # Capped at 3 to keep prompt overhead low in long sessions.
         if self.prior_tasks:
             history_lines = ["Thread history (previous tasks in this thread):"]
@@ -474,7 +471,6 @@ class AgentState:
         # ever read or modified; persists across all iterations in this thread.
         # Show most-recently-updated first (dict preserves insertion order; re-inserting
         # on update moves a key to the end, so reversing gives MRU-first).
-        # Hard cap at 1 500 chars so a session touching 30+ files stays lean.
         if self.file_digests:
             digest_lines = ["Knowledge (file structure — use this before re-reading):"]
             used = 0
@@ -505,7 +501,6 @@ class AgentState:
             parts.append("Recent: " + ", ".join(tokens))
 
         # Eviction nudge — gently remind the agent when read-only files have been
-        # idle for several turns.  Fires only from turn 3 onward so it never appears
         # during the first exploration pass (where the agent is still reading).
         _NUDGE_AFTER = 3
         if current_turn >= _NUDGE_AFTER:
@@ -548,15 +543,12 @@ class AgentRunner:
         self.state = AgentState(state_path)
         # Subclasses override these to control per-prompt cost without touching run():
         #   _conv_window  — recent conversation entries to keep in each prompt
-        #   _task_short   — compact reminder used for iterations 1+ (None = repeat full task)
         self._conv_window: int = 16
         self._task_short: Optional[str] = None
-        # Corp workers set this to their corp data dir so _blueprint.txt is written
         # there instead of into the user's project workspace.
         self._blueprint_cache_path: Optional[Path] = None
         # Reset only per-task planning state between tasks.
         # file_cache and workspace_map are intentionally KEPT so the agent knows
-        # what files it already created in this thread — follow-up tasks can skip
         # list_dir and re-reading files it already has in context.
         # The list_dir-first rule handles any genuinely stale workspace state.
         self.state.plan = []
@@ -751,7 +743,6 @@ class AgentRunner:
             parts.append(f"Context:\n{ctx}")
 
         # For iterations 1+ use a compact task reminder when _task_short is set.
-        # The full context was in iteration 0 which is stored in conversation history.
         # Repeating 5k+ chars of memory/board/log on every call wastes tokens.
         if self._task_short and self.conversation:
             parts.append(f"User: {self._task_short}")
@@ -778,7 +769,6 @@ class AgentRunner:
         prompt = self._build_prompt(current_turn=iteration)
         logger.info(f"[AgentRunner iter={iteration}] prompt_chars={len(prompt)}")
 
-        # Pass images only on the first LLM call so vision context is available
         # for the initial plan; subsequent iterations are text-only to save tokens
         call_images = None
         if self._images and not self._images_sent:
@@ -931,7 +921,6 @@ class AgentRunner:
 
         if t == "observe":
             # Observation action — purely informational, emitted to the UI.
-            # Return the observation text so the LLM keeps context of what it said.
             content = action.get("content", "")
             self.state.log_action(iteration, "observe", content[:60])
             return content  # returned to LLM as confirmation
@@ -1068,7 +1057,6 @@ class AgentRunner:
                 self.state.cache_file(path, len(result.encode()), turn=iteration)
                 # Generate / refresh semantic digest on a full read (offset=0).
                 # This populates the Knowledge block so subsequent iterations don't
-                # need to re-read just to find out what functions are in the file.
                 if offset == 0:
                     try:
                         fp = self.workspace / path
@@ -1337,7 +1325,6 @@ class AgentRunner:
                     )
 
             # ── Strategy 3: strip all whitespace per line (indentation-agnostic) ──
-            # Covers cases where the LLM uses 2-space indent but the file uses 4,
             # or vice-versa.  The original file's indentation is preserved — only
             # the content of those lines is replaced.
             def _strip_lines(s: str) -> str:
@@ -1407,7 +1394,6 @@ class AgentRunner:
                 return err
             fp.parent.mkdir(parents=True, exist_ok=True)
             with open(fp, "a", encoding="utf-8") as f:
-                # Ensure we start on a new line if the file already has content
                 if fp.stat().st_size > 0:
                     f.write("\n")
                 f.write(content)
@@ -1469,7 +1455,6 @@ class AgentRunner:
                     )
                 return chunk  # whole file (or final slice) — no footer needed
 
-            # Chunk itself is too large: trim to MAX_CHARS and tell agent the next offset
             trimmed = chunk[:MAX_CHARS]
             lines_returned = trimmed.count("\n")
             next_offset = offset + lines_returned
@@ -1943,7 +1928,6 @@ class AgentRunner:
         for iteration in range(MAX_ITERATIONS):
             # Evict file_cache entries that haven't been accessed in the last 2 turns.
             # Files stay in workspace_map and file_digests — only the '(cached)' marker
-            # is dropped, so the agent knows to re-read if it needs fresh content.
             if iteration > 0:
                 evicted = self.state.evict_stale_cache(current_turn=iteration)
                 if evicted:

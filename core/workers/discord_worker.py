@@ -87,7 +87,6 @@ class DiscordWorker(commands.Bot):
         is_mention = self.user.mentioned_in(message)
         
         if not (is_dm or is_mention):
-            # Still log it if it's in a server we are in? No, only log what Misaka "sees" or cares about.
             # Mirroring says "all Discord communications (both sent and received)".
             # Let's mirror what involves her.
             return
@@ -245,7 +244,6 @@ class DiscordWorker(commands.Bot):
                 if channel:
                     # Check for specialized task results (like SCREENSHOT)
                     # Screenshot tasks in nexus usually save to a path and return it.
-                    # We can check if the task prompt or result contains a path to an image.
                     
                     file_to_send = None
                     if task.metadata.get('is_multimodal') and task.metadata.get('media_path'):
@@ -307,8 +305,6 @@ class DiscordWorker(commands.Bot):
                 logger.info("Neural Pulse: Misaka considering proactive DM...")
                 
                 # Check if we have a primary user DM channel
-                # We can store the last DM channel ID in memory or search for DMs with the owner.
-                # For this demo, we'll try to find a DM channel with a known 'User' if configured.
                 
                 # TODO: Implement actual 'should I reach out?' logic via orchestrator
                 # For now, we just log the opportunity.
