@@ -457,87 +457,112 @@ textarea.term-input {
     resize: vertical;
 }
 
-/* Startup Splash Screen completely revamped to be sleek and professional */
+/* Startup Splash Screen completely overhauled for a premium, high-tech experience */
 .startup-splash {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: #09090b;
-    /* Pitch dark */
+    background: #050508;
     z-index: 9999;
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s;
+    transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1), visibility 1s;
+    overflow: hidden;
+    user-select: none;
 }
 
+/* Atmospheric elements */
 .startup-splash::before {
     content: '';
     position: absolute;
-    width: 150vw;
-    height: 150vh;
-    background: radial-gradient(circle at center, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
-    animation: rotateSlow 20s linear infinite;
+    width: 200vw;
+    height: 200vh;
+    background: 
+        radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.04) 0%, transparent 40%),
+        radial-gradient(circle at 70% 70%, rgba(45, 212, 191, 0.02) 0%, transparent 40%);
+    z-index: 1;
 }
 
-@keyframes rotateSlow {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-.startup-splash.fade-out {
-    opacity: 0;
-    visibility: hidden;
+/* Removed CRT scanline for a cleaner professional look */
+.startup-splash::after {
+    display: none;
 }
 
 .splash-content {
     display: flex;
     flex-direction: column;
     align-items: center;
-    max-width: 500px;
+    max-width: 600px;
     width: 90%;
-    text-align: center;
     position: relative;
-    z-index: 2;
+    z-index: 5;
+}
+
+/* Logo and Branding */
+.splash-logo-container {
+    position: relative;
+    width: 180px;
+    height: 180px;
+    margin-bottom: 2.5rem;
+    animation: float 4s ease-in-out infinite, fadeIn 1.2s ease-out;
+}
+
+.logo-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120%;
+    height: 120%;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, transparent 70%);
+    filter: blur(20px);
+    z-index: -1;
+    animation: pulse 3s infinite;
+}
+
+.splash-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.3));
 }
 
 .splash-logo {
-    font-family: 'Outfit', sans-serif;
-    font-size: 2.5rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, #fff, var(--primary));
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff 40%, var(--primary));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    letter-spacing: 4px;
-    margin-bottom: 3rem;
-    animation: slideUpFade 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    letter-spacing: 8px;
+    margin-bottom: 3.5rem;
+    text-transform: uppercase;
+    animation: slideUpFade 1s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Progress & Status */
 .splash-status-container {
     width: 100%;
-    max-width: 320px;
+    max-width: 400px;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    opacity: 0;
-    animation: fadeIn 1s 0.5s ease-out forwards;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+    animation: fadeIn 0.8s 0.6s ease-out both;
 }
 
 .splash-loader-bar {
     width: 100%;
-    height: 3px;
-    background: rgba(255, 255, 255, 0.05);
+    height: 4px;
+    background: rgba(255, 255, 255, 0.03);
     border-radius: var(--radius-full);
     overflow: hidden;
     position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .splash-progress {
@@ -545,77 +570,100 @@ textarea.term-input {
     width: 0%;
     background: linear-gradient(90deg, var(--primary), var(--accent));
     border-radius: var(--radius-full);
-    transition: width 0.4s ease-out;
-    box-shadow: 0 0 10px var(--primary);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 2;
+}
+
+.progress-glow {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 20px;
+    height: 100%;
+    background: white;
+    filter: blur(8px);
+    opacity: 0.6;
+    z-index: 3;
+}
+
+.splash-status-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 4px;
+}
+
+.status-left {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.status-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--primary);
+    opacity: 0.8;
+    font-family: 'Inter', sans-serif;
 }
 
 .splash-status-text {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-secondary);
     font-family: 'Inter', sans-serif;
-    letter-spacing: 1px;
-    margin: 0;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
-    font-weight: 500;
+    font-weight: 600;
 }
 
+.splash-percent {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.75rem;
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* Version Info */
 .splash-version {
-    margin-top: 4rem;
-    font-size: 0.7rem;
+    margin-top: 3rem;
+    font-size: 0.65rem;
     color: var(--text-tertiary);
+    font-family: 'Orbitron', sans-serif;
     letter-spacing: 2px;
-    font-family: 'Inter', sans-serif;
-    opacity: 0;
-    animation: fadeIn 1s 1s ease-out forwards;
+    opacity: 0.4;
+    animation: fadeIn 1s 1.2s ease-out both;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
+/* Animations */
+@keyframes rotateSlow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
-@keyframes slideUpFade {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.splash-logo-container {
-    position: relative;
-    width: 240px;
-    height: 240px;
-    margin-bottom: 2rem;
-    filter: drop-shadow(0 0 30px rgba(99, 102, 241, 0.4));
-    animation: float 4s ease-in-out infinite, fadeIn 1.2s ease-out;
-}
-
-.splash-logo-img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+@keyframes pulse {
+    0%, 100% { opacity: 0.2; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 0.4; transform: translate(-50%, -50%) scale(1.1); }
 }
 
 @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
 
-    0%,
-    100% {
-        transform: translateY(0);
-    }
+@keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
-    50% {
-        transform: translateY(-12px);
-    }
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.startup-splash.fade-out {
+    opacity: 0;
+    visibility: hidden;
 }
 
 /* Mini Toggle Switch */

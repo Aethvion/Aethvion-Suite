@@ -333,16 +333,27 @@
         <div id="startup-splash" class="startup-splash">
             <div class="splash-content">
                 <div class="splash-logo-container">
+                    <div class="logo-glow"></div>
                     <img src="/assets/aethvion/aethvion_logo.png" alt="Aethvion Suite" class="splash-logo-img">
                 </div>
-                <h1 class="splash-logo">Aethvion Suite</h1>
+                <h1 class="splash-logo">AETHVION SUITE</h1>
+
                 <div class="splash-status-container">
                     <div class="splash-loader-bar">
-                        <div id="splash-progress" class="splash-progress"></div>
+                        <div id="splash-progress" class="splash-progress">
+                            <div class="progress-glow"></div>
+                        </div>
                     </div>
-                    <p id="splash-status-text" class="splash-status-text">INITIALIZING SYSTEM...</p>
+                    <div class="splash-status-bottom">
+                        <div class="status-left">
+                            <span class="status-label">STATUS:</span>
+                            <span id="splash-status-text" class="splash-status-text">INITIALIZING SYSTEM...</span>
+                        </div>
+                        <span id="splash-percent" class="splash-percent">0%</span>
+                    </div>
                 </div>
-                <div id="splash-version" class="splash-version">v1.4</div>
+
+                <div id="splash-version" class="splash-version">BUILD v15</div>
             </div>
         </div>
 

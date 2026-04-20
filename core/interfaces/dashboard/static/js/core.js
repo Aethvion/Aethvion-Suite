@@ -431,6 +431,7 @@ async function pollStartupStatus() {
     const splash = document.getElementById('startup-splash');
     const progressBar = document.getElementById('splash-progress');
     const statusText = document.getElementById('splash-status-text');
+    const percentText = document.getElementById('splash-percent');
 
     if (!splash) return;
 
@@ -441,7 +442,7 @@ async function pollStartupStatus() {
             .then(r => r.json())
             .then(data => {
                 if (data.system) {
-                    splashVersion.textContent = `BUILD v${data.system.version}`;
+                    splashVersion.textContent = `BUILD v${data.system.version}-STABLE`;
                 }
             }).catch(e => console.warn("Could not load version for splash:", e));
     }
@@ -454,18 +455,24 @@ async function pollStartupStatus() {
                     const data = await response.json();
 
                     if (progressBar) progressBar.style.width = `${data.progress}%`;
-                    if (statusText) statusText.textContent = data.status;
+                    if (percentText) percentText.textContent = `${Math.round(data.progress)}%`;
+                    
+                    if (statusText && data.status) {
+                        statusText.textContent = data.status;
+                    }
 
                     if (data.initialized) {
-                        // All systems go!
+                        if (progressBar) progressBar.style.width = `100%`;
+                        if (percentText) percentText.textContent = `100%`;
+                        
                         setTimeout(() => {
                             splash.classList.add('fade-out');
                             setTimeout(() => {
                                 splash.style.display = 'none';
                                 window.dispatchEvent(new CustomEvent('systemReady'));
                                 resolve();
-                            }, 800);
-                        }, 500);
+                            }, 1000);
+                        }, 800);
                         return;
                     }
 
@@ -474,16 +481,14 @@ async function pollStartupStatus() {
                             statusText.textContent = `CRITICAL ERROR: ${data.error}`;
                             statusText.style.color = 'var(--error)';
                         }
-                        return; // Stop polling on hard error
+                        return;
                     }
                 }
             } catch (err) {
                 console.warn("Startup status fetch failed, retrying...", err);
             }
-            // Poll again in 500ms
             setTimeout(checkStatus, 500);
         };
-
         checkStatus();
     });
 }
