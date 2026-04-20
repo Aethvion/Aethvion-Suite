@@ -1,5 +1,4 @@
-    /* Terminal-Style Logs */
-    #logs-container {
+#logs-container {
         background-color: #0c0c0c;
         color: #e0e0e0;
         font-family: 'Fira Code', monospace;
@@ -39,7 +38,6 @@
         color: #d8dee9;
     }
 
-    /* Hide system logs when parent has class */
     .logs-container.hide-system-logs .log-system {
         display: none !important;
     }
@@ -88,7 +86,6 @@
         font-style: italic;
     }
 
-    /* Agent Step Foldouts */
     .agent-step-details {
         margin: 1rem 0;
         border: 1px solid var(--border);
@@ -142,7 +139,7 @@
         background: var(--surface);
         font-size: 0.9rem;
     }
-    /* Integrated Companion Memory Styles */
+
     .companion-memory-integrated {
         display: flex;
         flex-direction: column;

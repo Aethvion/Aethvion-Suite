@@ -105,7 +105,7 @@
     font-weight: 600;
 }
 
-/* Status Area */
+/* Status area */
 .es-status {
     background: rgba(0, 217, 255, 0.05);
     border: 1px solid rgba(0, 217, 255, 0.2);
@@ -152,7 +152,6 @@
     transition: width 0.4s ease;
 }
 
-/* Logs Area */
 .es-logs {
     margin-top: 0.5rem;
     height: 120px;
@@ -184,7 +183,6 @@
     color: #ffd700;
 }
 
-/* History */
 .es-history {
     margin-top: auto;
     padding-top: 1.5rem;
@@ -275,7 +273,6 @@
     padding: 1rem 0;
 }
 
-/* Main */
 .explained-main {
     flex: 1;
     height: 100%;
@@ -338,7 +335,7 @@
     opacity: 0.7;
 }
 
-/* Expand Button */
+/* Expand button */
 .explained-expand-btn {
     position: absolute;
     top: 50%;
@@ -364,7 +361,7 @@
     color: #000;
 }
 
-/* ── Open Folder Button ─────────────────────────────────────────────────────── */
+/* ── open folder button ─────────────────────────────────────────────────────── */
 .es-folder-btn {
     display: flex;
     align-items: center;
@@ -393,7 +390,6 @@
     font-size: 0.85rem;
 }
 
-/* ── Deep Dive Toggle ───────────────────────────────────────────────────────── */
 .es-toggle-row {
     display: flex;
     align-items: center;
@@ -468,7 +464,6 @@
     box-shadow: 0 0 6px var(--primary);
 }
 
-/* ── Multi-page Navigator (Deep Dive) ──────────────────────────────────────── */
 .explained-page-nav {
     display: flex;
     align-items: center;
@@ -525,12 +520,11 @@
     box-shadow: 0 0 8px rgba(0, 217, 255, 0.2);
 }
 
-/* Global Helpers for this mode */
 .hidden {
     display: none !important;
 }
 
-/* ── Build Page Button & Wide Variants ───────────────────── */
+/* ── build page button & wide variants ───────────────────── */
 .primary-btn {
     background: var(--primary);
     color: #000;

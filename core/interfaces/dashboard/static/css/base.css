@@ -1,33 +1,17 @@
-/* Aethvion Suite - Nexus Portal Styles */
-/* Ultra-Premium Glassmorphic Dark Mode */
-
-
 :root {
     --bg-primary: #09090b;
-    /* Zinc 950 */
     --bg-secondary: #0f0f13;
-    /* Very dark grayish blue */
     --bg-tertiary: #18181b;
-    /* Zinc 900 */
     --primary: #6366f1;
-    /* Indigo 500 */
     --primary-hover: #818cf8;
-    /* Indigo 400 */
     --accent: #2dd4bf;
-    /* Teal 400 */
     --success: #10b981;
-    /* Emerald 500 */
     --error: #ef4444;
-    /* Red 500 */
     --warning: #f59e0b;
-    /* Amber 500 */
 
     --text-primary: #f8fafc;
-    /* Slate 50 */
     --text-secondary: #a1a1aa;
-    /* Zinc 400 */
     --text-tertiary: #71717a;
-    /* Zinc 500 */
 
     --border: rgba(255, 255, 255, 0.08);
     --border-hover: rgba(255, 255, 255, 0.15);
@@ -48,24 +32,18 @@
     --radius-full: 9999px;
 }
 
-/* Home Mode Theme */
 body.theme-home {
     --primary: #00d9ff;
-    /* Cyan */
     --primary-hover: #00f2ff;
     --accent: #ff00ea;
-    /* Magenta */
     --glow: 0 0 25px rgba(0, 217, 255, 0.3);
     --glow-accent: 0 0 20px rgba(255, 0, 234, 0.2);
 }
 
-/* AI Mode Theme */
 body.theme-ai {
     --primary: #a78bfa;
-    /* Violet */
     --primary-hover: #c4b5fd;
     --accent: #34d399;
-    /* Emerald */
     --glow: 0 0 25px rgba(167, 139, 250, 0.3);
     --glow-accent: 0 0 20px rgba(52, 211, 153, 0.2);
 }
@@ -103,17 +81,11 @@ body::before {
     z-index: -1;
 }
 
-/* Utility to hide mode-specific elements */
 .mode-hidden {
     display: none !important;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', sans-serif;
     font-weight: 500;
 }
@@ -125,7 +97,6 @@ h6 {
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    overflow: visible;
     position: relative;
     z-index: 50;
     box-shadow: var(--shadow-md);
@@ -185,7 +156,6 @@ h6 {
     font-size: 0.85rem;
     font-family: 'Inter', sans-serif;
     font-weight: 500;
-    white-space: nowrap;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -194,16 +164,11 @@ h6 {
 .tab-icon {
     font-size: 1rem;
     opacity: 0.8;
-    transition: opacity 0.2s;
 }
 
 .main-tab:hover {
     color: var(--text-primary);
     background: rgba(255, 255, 255, 0.05);
-}
-
-.main-tab:hover .tab-icon {
-    opacity: 1;
 }
 
 .main-tab.active {
@@ -233,12 +198,10 @@ h6 {
 
 .compact-status strong {
     color: var(--text-primary);
-    font-weight: 600;
 }
 
 .status-divider {
     color: var(--text-tertiary);
-    font-size: 0.75rem;
 }
 
 .status-indicator {
@@ -258,7 +221,6 @@ h6 {
     height: 6px;
     background: var(--text-tertiary);
     border-radius: 50%;
-    /* animation: pulse 2s infinite; */
 }
 
 .status-text {
@@ -266,23 +228,6 @@ h6 {
     font-weight: 500;
 }
 
-/* @keyframes pulse {
-
-    0%,
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-
-    50% {
-        opacity: 0.5;
-        transform: scale(1.4);
-    }
-}
-
-/* Custom Scrollbar — consolidated below (see Scrollbar Polish block) */
-
-/* Main Container */
 .main-container {
     flex: 1;
     overflow: hidden;
@@ -308,7 +253,6 @@ h6 {
         opacity: 0;
         transform: translateY(5px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -319,7 +263,7 @@ h6 {
     overflow: hidden;
 }
 
-/* Global Action Buttons */
+/* Buttons */
 .action-btn {
     background: var(--bg-tertiary);
     color: var(--text-primary);
@@ -394,15 +338,6 @@ h6 {
     -webkit-backdrop-filter: blur(8px);
 }
 
-.control-select,
-.term-select {
-    cursor: pointer;
-}
-
-.control-input {
-    font-family: 'Inter', sans-serif;
-}
-
 .control-select:hover,
 .term-select:hover,
 .control-input:hover {
@@ -417,21 +352,12 @@ h6 {
     box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
-/* Ensure dropdown options are dark in most browsers */
-.control-select option,
-.term-select option {
+.control-select option {
     background-color: #121214;
     color: var(--text-primary);
 }
 
-.control-select optgroup,
-.term-select optgroup {
-    background-color: #0d0d0f;
-    color: var(--text-tertiary);
-    font-weight: 600;
-}
-
-/* Global Form Inputs */
+/* Inputs */
 .term-input,
 .chat-input {
     background: rgba(0, 0, 0, 0.2);
@@ -453,11 +379,6 @@ h6 {
     background: rgba(0, 0, 0, 0.3);
 }
 
-textarea.term-input {
-    resize: vertical;
-}
-
-/* Startup Splash Screen completely overhauled for a premium, high-tech experience */
 .startup-splash {
     position: fixed;
     top: 0;
@@ -474,7 +395,6 @@ textarea.term-input {
     user-select: none;
 }
 
-/* Atmospheric elements */
 .startup-splash::before {
     content: '';
     position: absolute;
@@ -486,7 +406,6 @@ textarea.term-input {
     z-index: 1;
 }
 
-/* Removed CRT scanline for a cleaner professional look */
 .startup-splash::after {
     display: none;
 }
@@ -501,7 +420,6 @@ textarea.term-input {
     z-index: 5;
 }
 
-/* Logo and Branding */
 .splash-logo-container {
     position: relative;
     width: 180px;
@@ -544,7 +462,6 @@ textarea.term-input {
     animation: slideUpFade 1s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Progress & Status */
 .splash-status-container {
     width: 100%;
     max-width: 400px;
@@ -624,7 +541,6 @@ textarea.term-input {
     font-weight: 700;
 }
 
-/* Version Info */
 .splash-version {
     margin-top: 3rem;
     font-size: 0.65rem;
@@ -666,7 +582,6 @@ textarea.term-input {
     visibility: hidden;
 }
 
-/* Mini Toggle Switch */
 .toggle-switch-mini {
     position: relative;
     width: 32px;
@@ -715,7 +630,6 @@ textarea.term-input {
     box-shadow: 0 0 8px var(--primary);
 }
 
-/* Base utility classes */
 .blur-backdrop {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -743,7 +657,6 @@ textarea.term-input {
     }
 }
 
-/* ── Toast Notifications ──────────────────────────────────────────── */
 #toast-container {
     position: fixed;
     bottom: 1.5rem;
@@ -856,7 +769,7 @@ textarea.term-input {
     }
 }
 
-/* ── Confirm Modal ────────────────────────────────────────────────── */
+/* ── confirm modal ────────────────────────────────────────────────── */
 .confirm-modal-overlay {
     position: fixed;
     inset: 0;
@@ -983,7 +896,6 @@ textarea.term-input {
     }
 }
 
-/* ── Skeleton Loader ──────────────────────────────────────────────── */
 .skeleton {
     background: linear-gradient(90deg,
             rgba(255, 255, 255, 0.04) 25%,
@@ -1029,7 +941,6 @@ textarea.term-input {
     margin-bottom: 0.6rem;
 }
 
-/* ── Keyboard Shortcuts Overlay ───────────────────────────────────── */
 .kbd-overlay {
     position: fixed;
     inset: 0;
@@ -1125,7 +1036,6 @@ kbd {
     text-align: center;
 }
 
-/* ── Panel timestamp badge ────────────────────────────────────────── */
 .panel-ts-badge {
     font-size: 0.7rem;
     font-weight: 400;
@@ -1135,7 +1045,6 @@ kbd {
     letter-spacing: 0;
 }
 
-/* ── Typing indicator extras ─────────────────────────────────────── */
 .typing-elapsed {
     font-size: 0.75rem;
     color: var(--text-tertiary);
@@ -1158,7 +1067,7 @@ kbd {
     background: rgba(239, 68, 68, 0.25);
 }
 
-/* ── Thread empty search state ───────────────────────────────────── */
+/* ── thread empty search state ───────────────────────────────────── */
 .threads-empty-state {
     display: flex;
     align-items: center;
@@ -1173,7 +1082,6 @@ kbd {
     font-size: 0.9rem;
 }
 
-/* ── Undo-delete toast ───────────────────────────────────────────── */
 .ae-toast-undo {
     display: flex;
     align-items: center;
@@ -1199,7 +1107,7 @@ kbd {
     background: rgba(99, 102, 241, 0.4);
 }
 
-/* ── Retry error state ───────────────────────────────────────────── */
+/* ── retry error state ───────────────────────────────────────────── */
 .error-retry-state {
     display: flex;
     flex-direction: column;
@@ -1236,7 +1144,6 @@ kbd {
     background: rgba(255, 255, 255, 0.1);
 }
 
-/* ── Thread Search ────────────────────────────────────────────────── */
 .threads-search-box {
     display: flex;
     align-items: center;
@@ -1271,7 +1178,6 @@ kbd {
     color: var(--text-tertiary);
 }
 
-/* ── Thread preview line ──────────────────────────────────────────── */
 .thread-preview {
     font-size: 0.74rem;
     color: var(--text-tertiary);
@@ -1282,7 +1188,7 @@ kbd {
     max-width: 160px;
 }
 
-/* ── Hub card status dot ──────────────────────────────────────────── */
+/* ── hub card status dot ──────────────────────────────────────────── */
 .entry-status-dot {
     width: 8px;
     height: 8px;
@@ -1304,7 +1210,6 @@ kbd {
     background: rgba(255, 255, 255, 0.15);
 }
 
-/* ── Resize Handle ────────────────────────────────────────────────── */
 .col-resize-handle {
     width: 4px;
     cursor: col-resize;
@@ -1331,7 +1236,7 @@ kbd {
     border-radius: 4px;
 }
 
-/* ── Table pagination controls ────────────────────────────────────── */
+/* ── table pagination controls ────────────────────────────────────── */
 .table-pagination {
     display: flex;
     align-items: center;
@@ -1348,7 +1253,7 @@ kbd {
     text-align: center;
 }
 
-/* ── Bulk-select checkboxes (packages table) ──────────────────────── */
+/* ── bulk-select checkboxes (packages table) ──────────────────────── */
 .pkg-select-col {
     width: 32px;
     text-align: center;
@@ -1382,7 +1287,7 @@ kbd {
     white-space: nowrap;
 }
 
-/* ── Responsive breakpoints ───────────────────────────────────────── */
+/* ── responsive breakpoints ───────────────────────────────────────── */
 @media (max-width: 1200px) {
     .three-column-layout:not(.threads-collapsed) {
         --col-threads: 220px;
@@ -1395,7 +1300,6 @@ kbd {
 
 @media (max-width: 960px) {
 
-    /* Auto-collapse threads on narrow viewports */
     .three-column-layout:not(.threads-collapsed) {
         --col-threads: 0px;
     }
@@ -1455,7 +1359,7 @@ kbd {
     }
 }
 
-/* ── App Suite Categorization Headers ─────────────────────────────────── */
+/* ── app suite categorization headers ─────────────────────────────────── */
 .app-suite-section {
     display: block;
     width: 100%;
@@ -1469,7 +1373,6 @@ kbd {
     margin: 1.8rem 0 0.4rem 0;
 }
 
-/* Reduce top margin for headers after the first one to keep it compact */
 .suite-app-grid .app-category-header:not(:first-child) {
     margin-top: 1rem;
 }
@@ -1489,7 +1392,6 @@ kbd {
     flex: 1;
 }
 
-/* ── Apps Menu Categorization ────────────────────────────────────────── */
 .atb-apps-menu-category {
     font-size: 0.6rem;
     text-transform: uppercase;
@@ -1507,7 +1409,6 @@ kbd {
     margin-top: 0;
 }
 
-/* ── Partial-loading spinner (shown while a panel's HTML is being fetched) ── */
 .partial-loading {
     display: flex;
     align-items: center;
@@ -1519,15 +1420,6 @@ kbd {
     opacity: 0.5;
 }
 
-/* ── v14: Empty State Component ─────────────────────────────────────────────
-   Usage:
-   <div class="ae-empty">
-     <div class="ae-empty-icon"><i class="fas fa-brain"></i></div>
-     <div class="ae-empty-title">No memories yet</div>
-     <div class="ae-empty-desc">Memories are created automatically as you chat.</div>
-     <button class="action-btn primary ae-empty-action">Get Started</button>
-   </div>
-────────────────────────────────────────────────────────────────────────────── */
 .ae-empty {
     display: flex;
     flex-direction: column;
@@ -1592,7 +1484,6 @@ kbd {
     margin-top: 0.5rem;
 }
 
-/* ── Scrollbar Polish ─────────────────────────────────────────────────────── */
 * {
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
@@ -1621,7 +1512,7 @@ kbd {
     background: transparent;
 }
 
-/* ── Micro-animations ─────────────────────────────────────────────────────── */
+/* ── micro-animations ─────────────────────────────────────────────────────── */
 
 /* Button press feedback */
 button:active:not(:disabled),
@@ -1630,7 +1521,6 @@ button:active:not(:disabled),
     transition: transform 0.08s ease;
 }
 
-/* Card / interactive surface hover lift */
 .ae-card,
 .sh-recent-row,
 .lo-tab-card,
@@ -1651,7 +1541,6 @@ select:focus {
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* Fade-slide for tooltips / dropdowns */
 @keyframes ae-fade-in-up {
     from {
         opacity: 0;
@@ -1669,7 +1558,7 @@ select:focus {
     animation: ae-fade-in-up 0.14s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Performance: Kill all animations for backgrounded tabs */
+/* Performance: kill all animations for backgrounded tabs */
 body.stop-animations-global *,
 body.stop-animations-global *::before,
 body.stop-animations-global *::after {

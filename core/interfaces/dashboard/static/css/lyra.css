@@ -1,8 +1,3 @@
-/* ============================================================
-   Lyra Companion — Purple/Lavender Musical Theme
-   CSS-based avatar with expression states
-   ============================================================ */
-
 :root {
     --lyra-primary:     #ab47bc;
     --lyra-bright:      #ce93d8;
@@ -20,7 +15,7 @@
     --lyra-user-bg:     rgba(74, 20, 110, 0.35);
 }
 
-/* ── Layout ──────────────────────────────────────────────── */
+/* ── layout ──────────────────────────────────────────────── */
 
 .lyra-layout {
     display: flex;
@@ -38,8 +33,6 @@
     pointer-events: none;
     z-index: 0;
 }
-
-/* ── Mood environments ───────────────────────────────────── */
 
 .lyra-layout.mood-ethereal {
     --lyra-glow: rgba(200, 150, 255, 0.35);
@@ -66,8 +59,6 @@
     background: linear-gradient(135deg, #090810 0%, #0c0b15 60%, #090810 100%);
 }
 
-/* ── Avatar container ────────────────────────────────────── */
-
 .lyra-avatar-container {
     display: flex;
     align-items: center;
@@ -77,8 +68,6 @@
     position: relative;
     z-index: 1;
 }
-
-/* ── Circle avatar base ──────────────────────────────────── */
 
 .lyra-avatar {
     position: relative;
@@ -114,8 +103,6 @@
     overflow: hidden;
 }
 
-/* ── Music note symbol ───────────────────────────────────── */
-
 .lyra-symbol {
     font-size: 3.4rem;
     color: var(--lyra-bright);
@@ -131,8 +118,6 @@
     0%, 100% { transform: translateY(0) rotate(-5deg); }
     50%       { transform: translateY(-6px) rotate(5deg); }
 }
-
-/* ── Pulse rings ─────────────────────────────────────────── */
 
 .lyra-pulse-ring {
     position: absolute;
@@ -151,8 +136,6 @@
     0%   { opacity: 0.5; transform: scale(1); }
     100% { opacity: 0;   transform: scale(1.6); }
 }
-
-/* ── Sparkles ────────────────────────────────────────────── */
 
 .lyra-sparkles {
     position: absolute;
@@ -181,8 +164,6 @@
     40%, 60%  { opacity: 0.8; transform: scale(1.2); }
 }
 
-/* ── Floating notes ──────────────────────────────────────── */
-
 .lyra-note-float {
     position: absolute;
     font-size: 0.75rem;
@@ -205,10 +186,9 @@
 }
 
 /* ══════════════════════════════════════════════════════════
-   EXPRESSION STATES
+   expression states
    ══════════════════════════════════════════════════════════ */
 
-/* joyful — full brightness, fast pulse */
 .lyra-expr-joyful .lyra-circle-outer {
     box-shadow: 0 0 40px rgba(171,71,188,0.55), 0 0 80px rgba(171,71,188,0.18);
 }
@@ -220,7 +200,6 @@
 .lyra-expr-joyful .lyra-pulse-ring { animation-duration: 2s; }
 .lyra-expr-joyful .lyra-spark { animation-duration: 1.5s; }
 
-/* inspired — electric purple, fast sparkles */
 .lyra-expr-inspired .lyra-circle-outer {
     background: linear-gradient(135deg, #7b1fa2, #4a148c);
     box-shadow: 0 0 55px rgba(200,100,255,0.6), 0 0 100px rgba(200,100,255,0.2);
@@ -239,7 +218,6 @@
     100% { transform: translateY(-3px) rotate(-8deg) scale(1.05); }
 }
 
-/* dreamy — soft glow, slow everything */
 .lyra-expr-dreamy .lyra-circle-outer {
     background: linear-gradient(135deg, #4a148c, #311b50);
     box-shadow: 0 0 50px rgba(120,80,180,0.4), 0 0 90px rgba(120,80,180,0.12);
@@ -253,7 +231,6 @@
 .lyra-expr-dreamy .lyra-pulse-ring { animation-duration: 5s; opacity: 0.3; border-color: #b39ddb; }
 .lyra-expr-dreamy .lyra-note-float { animation-duration: 6s; }
 
-/* creative — bright magenta, energized */
 .lyra-expr-creative .lyra-circle-outer {
     background: linear-gradient(135deg, #ad1457, #6a1b9a);
     box-shadow: 0 0 45px rgba(240,80,200,0.5), 0 0 90px rgba(240,80,200,0.15);
@@ -265,7 +242,6 @@
 }
 .lyra-expr-creative .lyra-spark { animation-duration: 1.2s; color: #f48fb1; }
 
-/* cheerful — warm lavender, balanced */
 .lyra-expr-cheerful .lyra-circle-outer {
     box-shadow: 0 0 35px rgba(171,71,188,0.45), 0 0 70px rgba(171,71,188,0.14);
 }
@@ -274,7 +250,6 @@
     animation: lyraNoteFloat 3s ease-in-out infinite;
 }
 
-/* melancholic — desaturated, slow, dim */
 .lyra-expr-melancholic .lyra-circle-outer {
     background: linear-gradient(135deg, #3d2b4a, #241a33);
     box-shadow: 0 0 25px rgba(100,70,140,0.3), 0 0 50px rgba(100,70,140,0.08);
@@ -289,7 +264,6 @@
 .lyra-expr-melancholic .lyra-spark { opacity: 0 !important; }
 .lyra-expr-melancholic .lyra-note-float { animation-duration: 8s; opacity: 0.3; }
 
-/* excited — maximum energy */
 .lyra-expr-excited .lyra-circle-outer {
     background: linear-gradient(135deg, #880e4f, #6a1b9a);
     box-shadow: 0 0 60px rgba(255,80,180,0.6), 0 0 110px rgba(255,80,180,0.2);
@@ -309,7 +283,6 @@
     50%       { box-shadow: 0 0 90px rgba(255,80,180,0.85), 0 0 140px rgba(255,80,180,0.25); }
 }
 
-/* peaceful — still, very soft */
 .lyra-expr-peaceful .lyra-circle-outer {
     background: linear-gradient(135deg, #4527a0, #2d1b6b);
     box-shadow: 0 0 30px rgba(130,100,200,0.3), 0 0 60px rgba(130,100,200,0.08);
@@ -323,7 +296,6 @@
 .lyra-expr-peaceful .lyra-pulse-ring { animation-duration: 8s; }
 .lyra-expr-peaceful .lyra-note-float { animation-duration: 9s; }
 
-/* surprised — brief flash, wide */
 .lyra-expr-surprised .lyra-circle-outer {
     box-shadow: 0 0 50px rgba(200,100,255,0.65), 0 0 90px rgba(200,100,255,0.2);
 }
@@ -341,7 +313,6 @@
     100% { transform: scale(1) rotate(0deg); }
 }
 
-/* thinking — gentle, interior */
 .lyra-expr-thinking .lyra-circle-outer {
     background: linear-gradient(135deg, #512da8, #311b92);
     box-shadow: 0 0 30px rgba(140,100,200,0.35), 0 0 60px rgba(140,100,200,0.1);
@@ -354,7 +325,6 @@
 }
 .lyra-expr-thinking .lyra-pulse-ring { animation-duration: 4s; opacity: 0.2; }
 
-/* blushing — warm rose-pink */
 .lyra-expr-blushing .lyra-circle-outer {
     background: linear-gradient(135deg, #880e4f, #4a148c);
     box-shadow: 0 0 45px rgba(255,100,150,0.5), 0 0 85px rgba(255,100,150,0.15);
@@ -365,7 +335,6 @@
 }
 .lyra-expr-blushing .lyra-spark { animation-duration: 2s; color: #f48fb1; }
 
-/* wink — playful asymmetry */
 .lyra-expr-wink .lyra-circle-outer {
     box-shadow: 0 0 40px rgba(171,71,188,0.5), 0 0 75px rgba(171,71,188,0.15);
 }
@@ -380,7 +349,7 @@
     40%           { transform: translateY(-4px) rotate(10deg) scaleX(0.85); }
 }
 
-/* ── Status line ─────────────────────────────────────────── */
+/* ── status line ─────────────────────────────────────────── */
 
 .lyra-status-line {
     font-family: Georgia, 'Times New Roman', serif;
@@ -393,8 +362,6 @@
     transition: all 0.5s ease;
     line-height: 1.4;
 }
-
-/* ── Mood badge ──────────────────────────────────────────── */
 
 .lyra-mood-badge {
     font-family: Georgia, serif;
@@ -413,7 +380,7 @@
 }
 .lyra-mood-badge.visible { opacity: 1; }
 
-/* ── Chat header ─────────────────────────────────────────── */
+/* ── chat header ─────────────────────────────────────────── */
 
 .lyra-chat-header {
     border-bottom: 1px solid var(--lyra-border) !important;
@@ -438,7 +405,7 @@
     padding: 0.1rem 0.5rem;
 }
 
-/* ── Chat bubbles ────────────────────────────────────────── */
+/* ── chat bubbles ────────────────────────────────────────── */
 
 .lyra-layout .chat-message.assistant .message-bubble {
     background: var(--lyra-bubble-bg);
@@ -459,7 +426,7 @@
     border-radius: 12px 0 12px 12px;
 }
 
-/* ── Input area ──────────────────────────────────────────── */
+/* ── input area ──────────────────────────────────────────── */
 
 .lyra-input-area {
     border-top: 1px solid var(--lyra-border) !important;
@@ -520,8 +487,6 @@
     box-shadow: 0 0 16px rgba(171,71,188,0.45);
 }
 
-/* ── Typing dots ─────────────────────────────────────────── */
-
 .lyra-layout .typing-dots span {
     background: var(--lyra-primary);
 }
@@ -534,8 +499,6 @@
     font-size: 0.8rem;
 }
 
-/* ── Scrollbar ───────────────────────────────────────────── */
-
 .lyra-layout .chat-messages::-webkit-scrollbar-thumb {
     background: var(--lyra-deep);
 }
@@ -543,7 +506,7 @@
     background: var(--lyra-secondary);
 }
 
-/* ── Load more button ────────────────────────────────────── */
+/* ── load more button ────────────────────────────────────── */
 
 .lyra-layout .load-more-btn {
     background: rgba(171,71,188,0.08);

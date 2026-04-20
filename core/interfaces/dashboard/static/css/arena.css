@@ -5,7 +5,6 @@
     padding-right: 0.5rem;
 }
 
-/* ===== Arena Panel ===== */
 .arena-layout {
     display: grid;
     grid-template-columns: 230px 1fr 350px;
@@ -13,7 +12,6 @@
     gap: 0;
 }
 
-/* AI Conv uses 2 columns instead of 3 */
 .aiconv-layout {
     grid-template-columns: 300px 1fr;
 }
@@ -78,7 +76,7 @@
     color: var(--error);
 }
 
-/* Arena Chat Area */
+/* Arena chat area */
 .arena-chat-area {
     display: flex;
     flex-direction: column;
@@ -124,7 +122,6 @@
     flex: 1;
 }
 
-/* Battle round */
 .arena-battle-round {
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -267,7 +264,6 @@
     margin-top: 0.4rem;
 }
 
-/* Arena Leaderboard */
 .arena-leaderboard-section {
     background: var(--bg-primary);
     border-left: 1px solid var(--border);
@@ -291,7 +287,6 @@
     margin: 0;
 }
 
-/* ── Leaderboard Cards ─────────────────────────────── */
 .lb-cards-container {
     padding: 0.75rem;
     display: flex;
@@ -467,7 +462,6 @@
     border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-/* ── Response Card — Fastest badge ───────────────── */
 .card-badge-speed {
     position: absolute;
     top: -8px;
@@ -483,7 +477,6 @@
     white-space: nowrap;
 }
 
-/* Improved response card top accent */
 .arena-response-card {
     border-top: 2px solid transparent;
 }
@@ -492,7 +485,6 @@
     border-top-color: var(--success);
 }
 
-/* Source badge */
 .source-badge {
     display: inline-block;
     padding: 0.1rem 0.45rem;

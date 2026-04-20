@@ -1,5 +1,3 @@
-/* Misaka Cipher Companion - Premium Aesthetics */
-
 /* Base layout */
 .companion-layout {
     display: flex;
@@ -10,9 +8,6 @@
     position: relative;
 }
 
-/* ===== MOOD ENVIRONMENTS ===== */
-
-/* Calm (default) — soft cyan-blue */
 .companion-layout.mood-calm {
     background: linear-gradient(135deg, #07070f 0%, #0a0a18 50%, #070d14 100%);
     --mood-glow: rgba(0, 217, 255, 0.25);
@@ -20,7 +15,6 @@
     --mood-particle: rgba(0, 217, 255, 0.04);
 }
 
-/* Happy — warm amber-gold */
 .companion-layout.mood-happy {
     background: linear-gradient(135deg, #0d0a04 0%, #120d02 50%, #0a0b04 100%);
     --mood-glow: rgba(255, 185, 0, 0.35);
@@ -28,7 +22,6 @@
     --mood-particle: rgba(255, 185, 0, 0.05);
 }
 
-/* Intense — electric purple-violet */
 .companion-layout.mood-intense {
     background: linear-gradient(135deg, #080610 0%, #0c0615 50%, #080510 100%);
     --mood-glow: rgba(160, 60, 255, 0.35);
@@ -36,7 +29,6 @@
     --mood-particle: rgba(160, 60, 255, 0.05);
 }
 
-/* Reflective — deep teal-indigo */
 .companion-layout.mood-reflective {
     background: linear-gradient(135deg, #040b0d 0%, #050c10 50%, #040a0b 100%);
     --mood-glow: rgba(0, 180, 150, 0.3);
@@ -44,7 +36,6 @@
     --mood-particle: rgba(0, 180, 150, 0.04);
 }
 
-/* Danger — red-orange pulsing */
 .companion-layout.mood-danger {
     background: linear-gradient(135deg, #0f0404 0%, #130404 50%, #0f0302 100%);
     --mood-glow: rgba(255, 60, 30, 0.4);
@@ -52,7 +43,6 @@
     --mood-particle: rgba(255, 60, 30, 0.06);
 }
 
-/* Mystery — dark rose-pink */
 .companion-layout.mood-mystery {
     background: linear-gradient(135deg, #0d0508 0%, #100306 50%, #0d0407 100%);
     --mood-glow: rgba(220, 60, 120, 0.35);
@@ -60,7 +50,6 @@
     --mood-particle: rgba(220, 60, 120, 0.05);
 }
 
-/* Mood-reactive avatar glow */
 .companion-layout .avatar-container {
     transition: box-shadow 1.5s ease, border-color 1.5s ease;
     box-shadow: 0 0 30px var(--mood-glow, rgba(0, 217, 255, 0.2));
@@ -104,8 +93,6 @@
     text-shadow: 0 0 10px rgba(220, 60, 120, 0.5);
 }
 
-
-/* Mood indicator badge */
 .mood-badge {
     position: absolute;
     bottom: 1rem;
@@ -132,8 +119,6 @@
     opacity: 1;
 }
 
-
-/* Avatar Column */
 .companion-avatar-view {
     width: 400px;
     display: flex;
@@ -174,7 +159,7 @@
     text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
 }
 
-/* ─── Settings Gear Button ─── */
+/* ─── settings gear button ─── */
 
 .companion-chat-column .chat-header {
     display: flex;
@@ -209,19 +194,16 @@
     to   { transform: rotate(360deg); }
 }
 
-/* ─── Particle Sphere Canvas ─── */
-
 #misaka-particle-sphere {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    display: none;       /* hidden in character mode */
+    display: none;       
     opacity: 0;
     transition: opacity 0.5s ease;
 }
 
-/* When character is hidden, show canvas and hide img */
 .avatar-container.sphere-mode #misaka-particle-sphere {
     display: block;
     opacity: 1;
@@ -236,7 +218,7 @@
     transition: opacity 0.5s ease;
 }
 
-/* Chat Column */
+/* Chat column */
 .companion-chat-column {
     flex: 1;
     display: flex;
@@ -262,13 +244,13 @@
     box-sizing: border-box;
 }
 
-/* Chat Bubbles */
+/* Chat bubbles */
 .chat-message {
     max-width: 85%;
     display: flex;
     flex-direction: column;
     min-width: 0;
-    /* Prevents flex overflow */
+
 }
 
 .chat-message.assistant {
@@ -311,7 +293,7 @@
     box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
 }
 
-/* Input Area */
+/* Input area */
 .chat-input-area {
     padding: 1rem 2rem 1.5rem 2rem;
     background: rgba(255, 255, 255, 0.02);
@@ -321,14 +303,12 @@
     gap: 0.5rem;
 }
 
-/* Horizontal row: paperclip | textarea | send */
 .misaka-input-row {
     display: flex;
     gap: 0.75rem;
     align-items: center;
 }
 
-/* Attach pill — shown above input row when a file is loaded */
 .misaka-attach-pill {
     display: flex;
     align-items: center;
@@ -362,7 +342,7 @@
     color: #ff4d4d;
 }
 
-/* File pill for the main AI chat bar */
+/* File pill for the main ai chat bar */
 .chat-file-pill {
     display: inline-flex;
     align-items: center;
@@ -449,7 +429,6 @@
     position: relative;
 }
 
-/* Removed typing cursors per user request */
 @keyframes blink {
 
     from,
@@ -462,9 +441,6 @@
     }
 }
 
-
-
-/* Neural Memory Panel */
 .neural-memory-layout {
     display: flex;
     height: 100%;
@@ -503,7 +479,6 @@
     background: #050505;
 }
 
-/* History Styling */
 .date-separator {
     display: flex;
     align-items: center;
@@ -560,7 +535,6 @@
     gap: 1.5rem;
 }
 
-/* ===== PROACTIVE NOTIFICATION POPUP ===== */
 .misaka-proactive-popup {
     position: fixed;
     bottom: 2rem;
@@ -665,7 +639,6 @@
     to   { transform: rotate(360deg); }
 }
 
-/* ─── Loading Dots Animation ─── */
 .misaka-dots {
     display: inline-flex;
     gap: 4px;
@@ -690,7 +663,6 @@
     40% { transform: scale(1.2); opacity: 1; }
 }
 
-/* Busy indicator bubble — dots only, no text */
 .misaka-busy-bubble {
     display: inline-flex;
     align-items: center;
@@ -704,7 +676,6 @@
     margin-left: 0;
 }
 
-/* ===== DISCORD MIRRORING ===== */
 .chat-message.from-discord .message-bubble {
     border-color: rgba(114, 137, 218, 0.4);
     box-shadow: 0 0 15px rgba(114, 137, 218, 0.15);
@@ -740,7 +711,6 @@
 .discord-badge i {
     font-size: 0.7rem;
 }
-/* ─── Voice Output Bar ─── */
 
 .misaka-header-controls {
     display: flex;

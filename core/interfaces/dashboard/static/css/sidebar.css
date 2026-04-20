@@ -1,8 +1,8 @@
-/* ===== Sidebar Search ===== */
+/* ===== sidebar search ===== */
 
 .sidebar-search-wrap {
     padding: 0.4rem 0.25rem 0.5rem;
-    /* Visibility handled by .mode-hidden toggled by setDashboardMode() */
+
 }
 
 .sidebar-search-inner {
@@ -56,7 +56,6 @@
 .sidebar-search-clear:hover { color: var(--text-primary, #e2e8f0); }
 .sidebar-search-clear.visible { display: block; }
 
-/* When collapsed (width < 80px), hide search */
 .sidebar-nav.collapsed .sidebar-search-wrap { display: none !important; }
 
 /* Search no-results message */
@@ -69,7 +68,7 @@
 }
 .sidebar-search-empty.visible { display: block; }
 
-/* ===== Sidebar Navigation Layout ===== */
+/* ===== sidebar navigation layout ===== */
 
 .content-wrapper {
     display: flex;
@@ -101,7 +100,6 @@
     width: 6px;
 }
 
-/* Hide scrollbar when collapsed so icons don't shift */
 .sidebar-nav.collapsed {
     scrollbar-width: none;
 }
@@ -118,13 +116,13 @@
     border-radius: 10px;
 }
 
-/* Collapsed State */
+/* Collapsed state */
 .sidebar-nav.collapsed {
     width: 65px;
     align-items: center;
 }
 
-/* Hidden State */
+/* Hidden state */
 .sidebar-nav.hidden {
     width: 0;
     padding: 0;
@@ -134,7 +132,7 @@
     pointer-events: none;
 }
 
-/* Main Tab Overrides for Vertical Layout */
+/* Main tab overrides for vertical layout */
 .sidebar-nav .main-tabs {
     flex-direction: column;
     width: 100%;
@@ -148,7 +146,7 @@
     justify-content: flex-start;
     border-radius: var(--radius-md);
     position: relative;
-    /* Ensure text wraps cleanly when collapsing */
+
     white-space: nowrap;
     overflow: hidden;
     width: 100%;
@@ -161,7 +159,6 @@
     margin-right: 0.4rem;
 }
 
-/* Hide text and arrows when collapsed */
 .sidebar-nav.collapsed .main-tab {
     padding: 0.5rem;
     justify-content: center;
@@ -177,7 +174,7 @@
     margin-right: 0;
 }
 
-/* ── Sidebar Section Headers (Tier 1) ─────────────────────────── */
+/* ── sidebar section headers (tier 1) ─────────────────────────── */
 .sidebar-section-header {
     display: flex;
     align-items: center;
@@ -206,7 +203,6 @@
     color: var(--text-secondary);
 }
 
-/* Split label: number + text */
 .section-label {
     display: flex;
     align-items: baseline;
@@ -232,8 +228,8 @@
     opacity: 0.45;
     flex-shrink: 0;
     margin-left: 0.3rem;
-    /* fa-chevron-right starts pointing right = collapsed state */
-    transform: rotate(90deg); /* default = expanded = pointing down */
+    /* Fa-chevron-right starts pointing right = collapsed state */
+    transform: rotate(90deg); 
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s, color 0.15s;
 }
 
@@ -241,13 +237,12 @@
     opacity: 0.75;
 }
 
-/* Collapsed: chevron points right */
 .section-is-collapsed .section-chevron {
     transform: rotate(0deg);
     opacity: 0.3;
 }
 
-/* ── Collapsed sidebar: show only the number, centered ─────────── */
+/* ── collapsed sidebar: show only the number, centered ─────────── */
 .sidebar-nav.collapsed .sidebar-section-header {
     padding: 0.6rem 0 0.1rem;
     margin-top: 0;
@@ -270,14 +265,13 @@
     opacity: 0.35;
 }
 
-/* Always show section bodies in collapsed icon-only mode */
 .sidebar-nav.collapsed .section-body {
     max-height: 2000px !important;
     opacity: 1 !important;
     pointer-events: auto !important;
 }
 
-/* ── Sidebar Categories (Tier 2) ───────────────────────────────── */
+/* ── sidebar categories (tier 2) ───────────────────────────────── */
 .sidebar-category {
     display: flex;
     align-items: center;
@@ -304,10 +298,9 @@
     margin-top: 0.1rem;
 }
 
-/* Tier/Section body — collapsible container */
 .section-body {
     overflow: hidden;
-    max-height: 2000px; /* Large enough for all contents */
+    max-height: 2000px; 
     transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                 opacity 0.2s ease;
     opacity: 1;
@@ -319,19 +312,17 @@
     pointer-events: none;
 }
 
-/* Chevron arrow */
 .cat-chevron {
     font-size: 0.65rem;
     color: var(--text-tertiary);
     opacity: 0.4;
     flex-shrink: 0;
     margin-left: 0.25rem;
-    /* default = expanded = pointing down */
+
     transform: rotate(90deg);
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s, color 0.15s;
 }
 
-/* Expanded: chevron gets a subtle primary tint */
 .sidebar-category:not(.cat-is-collapsed) .cat-chevron {
     color: var(--primary);
     opacity: 0.55;
@@ -341,21 +332,19 @@
     opacity: 0.9;
 }
 
-/* Collapsed: chevron points right, goes muted */
 .sidebar-category.cat-is-collapsed .cat-chevron {
     transform: rotate(0deg);
     color: var(--text-tertiary);
     opacity: 0.35;
 }
 
-/* Category body — collapsible container */
 .cat-body {
     overflow: hidden;
     max-height: 600px;
     transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
                 opacity 0.2s ease;
     opacity: 1;
-    /* Left accent track — shows which group is expanded */
+
     margin-left: 1.05rem;
     padding-left: 0.55rem;
     border-left: 1px solid rgba(255, 255, 255, 0.07);
@@ -374,21 +363,18 @@
     border-left: none;
 }
 
-/* --- Hierarchical Indentation --- */
-
-/* Level 1: Categories and flat Tabs inside Sections */
+/* Level 1: categories and flat tabs inside sections */
 .section-body .sidebar-category,
 .section-body > .main-tab {
     padding-left: 0.75rem;
 }
 
-/* Level 2: Tabs inside Category Bodies */
+/* Level 2: tabs inside category bodies */
 .cat-body .main-tab {
-    padding-left: 0.5rem;  /* cat-body already has 0.55rem padding-left + border */
+    padding-left: 0.5rem;  
     font-size: 0.78rem;
 }
 
-/* Icon alignment for nested items */
 .section-body .tab-icon {
     min-width: 18px;
     margin-right: 0.35rem;
@@ -399,7 +385,6 @@
     margin-bottom: 0.05rem;
 }
 
-/* Collapsed: reset all indentation so icons center properly */
 .sidebar-nav.collapsed .section-body .sidebar-category,
 .sidebar-nav.collapsed .section-body > .main-tab,
 .sidebar-nav.collapsed .cat-body .main-tab,
@@ -436,7 +421,6 @@
     display: none;
 }
 
-/* Hide categories when sidebar is collapsed — no divider lines, just vanish */
 .sidebar-nav.collapsed .sidebar-category {
     display: none;
 }
@@ -452,7 +436,6 @@
     pointer-events: auto !important;
 }
 
-/* Collapsed sidebar: tooltip on hover — handled via JS (#sidebar-tooltip fixed div) */
 .sidebar-nav.collapsed .main-tab {
     position: relative;
 }
@@ -473,7 +456,7 @@
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
-/* Sidebar Toggle Button */
+/* Sidebar toggle button */
 .sidebar-toggle-btn {
     background: transparent;
     border: none;
@@ -511,19 +494,14 @@
     display: block;
 }
 
-
 .nav-hidden {
     display: none !important;
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   SIDEBAR VISUAL REDESIGN
+   sidebar visual redesign
    ══════════════════════════════════════════════════════════════════ */
 
-/* ── Section Headers ──────────────────────────────────────────────
-   Tier 1: "Workspace", "Knowledge & Files", "System & Engine"
-   Rendered as a compact label with a 2px left accent bar.
-*/
 .sidebar-section-header {
     display: flex;
     align-items: center;
@@ -545,7 +523,6 @@
     position: relative;
 }
 
-/* Subtle left rule */
 .sidebar-section-header::before {
     content: '';
     display: block;
@@ -607,7 +584,6 @@
 .sidebar-nav.collapsed .section-num,
 .sidebar-nav.collapsed .section-chevron { display: none; }
 
-/* Section body collapse */
 .section-body {
     overflow: hidden;
     max-height: 2000px;
@@ -617,10 +593,6 @@
 .section-body.section-collapsed { max-height: 0; opacity: 0; pointer-events: none; }
 .sidebar-nav.collapsed .section-body { max-height: 2000px !important; opacity: 1 !important; pointer-events: auto !important; }
 
-/* ── Category Headers ─────────────────────────────────────────────
-   Tier 2: "Workflow", "Companions", "Model Hub" …
-   Rendered as a subtle grouped label with a minimal chevron.
-*/
 .sidebar-category {
     display: flex;
     align-items: center;
@@ -641,7 +613,6 @@
     position: relative;
 }
 
-/* Small left dot accent */
 .sidebar-category::before {
     content: '';
     display: block;
@@ -679,7 +650,6 @@
 .sidebar-category:hover .cat-chevron { opacity: 0.8; }
 .sidebar-category.cat-is-collapsed .cat-chevron { transform: rotate(0deg); color: var(--text-tertiary); opacity: 0.3; }
 
-/* Category body */
 .cat-body {
     overflow: hidden;
     max-height: 600px;
@@ -695,9 +665,6 @@
 .sidebar-nav.collapsed .sidebar-category { display: none; }
 .sidebar-nav.collapsed .cat-chevron { display: none; }
 
-/* ── Tab Buttons ──────────────────────────────────────────────────
-   Clean, refined buttons with a left-rail active indicator.
-*/
 .sidebar-nav .main-tabs {
     flex-direction: column;
     width: 100%;
@@ -727,7 +694,6 @@
     position: relative;
 }
 
-/* Active left indicator */
 .sidebar-nav .main-tab::before {
     content: '';
     position: absolute;
@@ -769,12 +735,10 @@
 
 .sidebar-nav .tab-label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 
-/* Hierarchical indentation */
 .section-body .sidebar-category,
 .section-body > .main-tab { padding-left: 0.75rem; }
 .cat-body .main-tab { padding-left: 0.45rem; font-size: 0.77rem; }
 
-/* Collapsed — icon only */
 .sidebar-nav.collapsed .main-tab {
     padding: 0.5rem;
     justify-content: center;
@@ -787,9 +751,8 @@
 .sidebar-nav.collapsed .tab-label { display: none; }
 .sidebar-nav.collapsed .tab-icon { margin-right: 0; }
 
-
 /* ══════════════════════════════════════════════════════════════════
-   SIDEBAR MANAGER — Inline Edit Mode
+   sidebar manager — inline edit mode
    ══════════════════════════════════════════════════════════════════ */
 
 /* Hidden tabs — truly hidden in normal mode */
@@ -803,13 +766,13 @@
     text-decoration: line-through;
     text-decoration-color: rgba(255, 255, 255, 0.2);
 }
-/* Eye button on a disabled tab uses the slash icon colour */
+
 .sidebar-nav.sidebar-edit-mode .edit-hidden .vis-toggle {
     border-color: rgba(255, 100, 100, 0.25);
     color: rgba(255, 140, 140, 0.75);
 }
 
-/* ── Customize / Done toggle button ── */
+/* ── customize / done toggle button ── */
 .cust-toggle-btn {
     display: flex;
     align-items: center;
@@ -857,10 +820,6 @@
     border-radius: var(--radius-full, 999px);
 }
 
-
-/* ── Edit mode: inline tab controls ── */
-
-/* Grip handle (prepended to tab) */
 .drag-grip {
     display: none;
     color: var(--text-muted, rgba(255,255,255,0.22));
@@ -877,7 +836,6 @@
 .sidebar-nav.sidebar-edit-mode .drag-grip { display: flex; align-items: center; }
 .sidebar-nav.sidebar-edit-mode .main-tab:hover .drag-grip { color: var(--text-tertiary); }
 
-/* Eye toggle (appended to tab) */
 .vis-toggle {
     display: none;
     background: transparent;
@@ -916,13 +874,11 @@
     background: rgba(99, 102, 241, 0.07);
 }
 
-
 /* ══════════════════════════════════════════════════════════════
-   SIDEBAR MANAGER — Dynamic Customization Layer
+   sidebar manager — dynamic customization layer
    ══════════════════════════════════════════════════════════════ */
 
 /* Hidden tabs (set by sidebar-manager.js) */
 .tab-hidden {
     display: none !important;
 }
-

@@ -1,4 +1,3 @@
-/* ── Privacy Mode Badge ── */
 .privacy-badge {
     font-size: 0.72rem; font-weight: 600;
     padding: 3px 10px; border-radius: 20px;
@@ -7,7 +6,6 @@
 .privacy-badge-on  { background: rgba(234,179,8,0.15);  color: #facc15; border: 1px solid rgba(234,179,8,0.35); }
 .privacy-badge-off { background: rgba(34,197,94,0.12);  color: #4ade80; border: 1px solid rgba(34,197,94,0.3);  }
 
-/* Settings Panel */
 .settings-container {
     padding: 2rem;
     max-width: 800px;
@@ -57,7 +55,6 @@
     line-height: 1.4;
 }
 
-/* ===== Provider Settings Cards ===== */
 .provider-cards-grid {
     display: block;
     gap: 1rem;
@@ -186,7 +183,6 @@
     opacity: 0.9;
 }
 
-/* ===== Profiles Settings Cards ===== */
 .profiles-container {
     display: flex;
     flex-direction: column;
@@ -256,7 +252,6 @@
     color: var(--error);
 }
 
-/* ===== Settings Foldouts ===== */
 .settings-foldout {
     margin-top: 1rem;
     border-top: 1px solid var(--border);
@@ -314,7 +309,6 @@
     padding: 1rem 0;
 }
 
-/* ===== Capability Tag System ===== */
 .caps-cell {
     display: flex;
     flex-wrap: wrap;
@@ -371,7 +365,7 @@
     line-height: 1;
 }
 
-/* + Add Tag Button */
+/* + add tag button */
 .add-cap-btn {
     display: inline-flex;
     align-items: center;
@@ -393,7 +387,6 @@
     color: var(--primary);
 }
 
-/* Dropdown for capability selection */
 .cap-dropdown {
     position: absolute;
     z-index: 200;
@@ -449,7 +442,6 @@ input::-webkit-inner-spin-button {
     margin: 0;
 }
 
-/* ===== Auto Routing Model Pool ===== */
 .routing-section-label {
     font-size: 0.7rem;
     font-weight: 700;
@@ -534,7 +526,6 @@ input::-webkit-inner-spin-button {
     color: var(--text-primary);
 }
 
-/* ===== Image Config Inline Expansion ===== */
 .image-config-row td {
     padding: 0 !important;
     border-bottom: 0 !important;
@@ -546,15 +537,9 @@ input::-webkit-inner-spin-button {
     margin: 0.5rem 1rem 1rem 1rem;
     padding: 1rem;
     border-radius: 0 6px 6px 0;
-    /* animation: pulse 1.5s infinite; */
+
     animation: slideDown 0.2s ease-out;
 }
-
-/* @keyframes pulse {
-    0% { transform: scale(1); opacity: 0.5; }
-    50% { transform: scale(1.05); opacity: 1; }
-    100% { transform: scale(1); opacity: 0.5; }
-} */
 
 @keyframes slideDown {
     from {
@@ -653,7 +638,7 @@ input::-webkit-inner-spin-button {
     gap: 0.4rem;
 }
 
-/* ===== Enhanced Add Model Modal ===== */
+/* ===== enhanced add model modal ===== */
 .add-model-modal {
     width: 550px !important;
     max-width: 90vw;
@@ -735,7 +720,6 @@ input::-webkit-inner-spin-button {
     color: var(--primary);
 }
 
-/* ===== Discord Worker Styles ===== */
 .status-badge {
     display: inline-flex;
     align-items: center;
@@ -756,7 +740,6 @@ input::-webkit-inner-spin-button {
     background: var(--text-secondary);
 }
 
-/* Online/Live */
 .status-badge.online {
     background: rgba(85, 239, 196, 0.1);
     border-color: rgba(85, 239, 196, 0.3);
@@ -767,7 +750,6 @@ input::-webkit-inner-spin-button {
     box-shadow: 0 0 8px #55efc4;
 }
 
-/* Offline */
 .status-badge.offline {
     background: rgba(255, 118, 117, 0.1);
     border-color: rgba(255, 118, 117, 0.3);
@@ -777,7 +759,6 @@ input::-webkit-inner-spin-button {
     background: #ff7675;
 }
 
-/* Connecting */
 .status-badge.connecting {
     background: rgba(255, 159, 67, 0.1);
     border-color: rgba(255, 159, 67, 0.3);
@@ -788,7 +769,6 @@ input::-webkit-inner-spin-button {
     animation: pulse 1.5s infinite;
 }
 
-/* Error */
 .status-badge.error {
     background: rgba(255, 159, 67, 0.2);
     border-color: #ff9f43;
@@ -821,7 +801,6 @@ input::-webkit-inner-spin-button {
     margin-top: 0.4rem;
 }
 
-/* ===== Interface Settings Panel ===== */
 .iface-desc {
     font-size: 0.8rem;
     color: var(--text-secondary);
@@ -887,7 +866,6 @@ input::-webkit-inner-spin-button {
     pointer-events: none;
 }
 
-/* ── Aethvion Suite — Danger Zone ─────────────────────────────── */
 .misaka-reset-zone {
     margin-top: 1.5rem;
     padding: 1rem 1rem 1rem;
@@ -937,11 +915,6 @@ input::-webkit-inner-spin-button {
     cursor: not-allowed;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   Companions Settings Panel
-   ═══════════════════════════════════════════════════════════════ */
-
-/* Accordion cards */
 .companions-accordion .card-header {
     cursor: pointer;
     user-select: none;
@@ -961,7 +934,6 @@ input::-webkit-inner-spin-button {
     overflow: hidden;
 }
 
-/* Per-companion avatar mini badge */
 .companion-avatar-mini {
     width: 24px;
     height: 24px;
@@ -977,7 +949,6 @@ input::-webkit-inner-spin-button {
 .axiom-mini  { background: rgba(20,184,166,0.22); color: #2dd4bf; }
 .lyra-mini   { background: rgba(168,85,247,0.22); color: #d8b4fe; }
 
-/* Companion type badge */
 .companion-tag {
     font-size: 0.62rem;
     padding: 0.1rem 0.45rem;
@@ -990,10 +961,6 @@ input::-webkit-inner-spin-button {
     text-transform: lowercase;
     margin-left: 0.25rem;
 }
-
-/* ═══════════════════════════════════════════════════════════════
-   External API Panel
-   ═══════════════════════════════════════════════════════════════ */
 
 .extapi-endpoint-list {
     display: flex;
@@ -1046,7 +1013,6 @@ input::-webkit-inner-spin-button {
 }
 .extapi-copy-btn:hover { color: var(--primary); }
 
-/* Key list */
 .extapi-key-row {
     display: flex;
     align-items: center;
@@ -1088,7 +1054,6 @@ input::-webkit-inner-spin-button {
     color: var(--text-tertiary);
 }
 
-/* New key reveal */
 .extapi-key-reveal-box {
     display: flex;
     align-items: center;
@@ -1109,7 +1074,6 @@ input::-webkit-inner-spin-button {
     word-break: break-all;
 }
 
-/* Quick start code blocks */
 .extapi-code-block {
     background: rgba(0,0,0,0.3);
     border: 1px solid var(--border);
@@ -1142,7 +1106,6 @@ input::-webkit-inner-spin-button {
 }
 .extapi-qs-tab:hover { color: var(--text-primary); border-color: var(--border); }
 .extapi-qs-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
-/* ── Desktop Overlay Settings ────────────────────────────────────────────── */
 
 /* Status badge */
 .overlay-status-badge {
@@ -1178,7 +1141,6 @@ input::-webkit-inner-spin-button {
 }
 .overlay-status--stopped .overlay-status-dot { background: rgba(140,140,160,0.6); }
 
-/* Unknown / checking */
 .overlay-status--unknown {
     background: rgba(99,102,241,0.1);
     color: rgba(165,180,252,0.8);
@@ -1194,7 +1156,6 @@ input::-webkit-inner-spin-button {
     flex-wrap: wrap;
 }
 
-/* Dependency chips grid */
 .overlay-deps-grid {
     display: flex;
     flex-wrap: wrap;
@@ -1221,7 +1182,6 @@ input::-webkit-inner-spin-button {
     border-color: rgba(248,113,113,0.25);
 }
 
-/* "How it works" grid */
 .overlay-how-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -1268,7 +1228,6 @@ input::-webkit-inner-spin-button {
     font-family: monospace;
 }
 
-/* Overlay install log */
 .overlay-install-log-header {
     display: flex;
     align-items: center;

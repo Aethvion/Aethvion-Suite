@@ -1,9 +1,4 @@
-/* ═══════════════════════════════════════════════════════
-   Agent Corp — stylesheet
-   Follows the same CSS-variable conventions as agents.css
-═══════════════════════════════════════════════════════ */
-
-/* ── Layout ─────────────────────────────────────────── */
+/* ── layout ─────────────────────────────────────────── */
 
 #agent-corp-panel {
     flex-direction: column;
@@ -17,8 +12,6 @@
     height: 100%;
     overflow: hidden;
 }
-
-/* ── Top bar ─────────────────────────────────────────── */
 
 .corp-topbar {
     display: flex;
@@ -62,7 +55,7 @@
 
 .corp-topbar-spacer { flex: 1; }
 
-/* icon button (same pattern as agents-icon-btn) */
+/* Icon button (same pattern as agents-icon-btn) */
 .corp-icon-btn {
     display: inline-flex;
     align-items: center;
@@ -83,7 +76,7 @@
     border-color: var(--primary-dim, var(--primary));
 }
 
-/* start / stop buttons */
+/* Start / stop buttons */
 .corp-start-btn {
     display: inline-flex;
     align-items: center;
@@ -116,8 +109,6 @@
 }
 .corp-stop-btn:hover { background: rgba(220, 38, 38, 0.25); }
 
-/* ── Workspace bar (row below topbar) ───────────────── */
-
 .corp-workspace-bar {
     display: flex;
     align-items: center;
@@ -148,16 +139,12 @@
     opacity: 0.5;
 }
 
-/* ── 3-column body ───────────────────────────────────── */
-
 .corp-body {
     display: grid;
     grid-template-columns: 260px 1fr 290px;
     flex: 1;
     overflow: hidden;
 }
-
-/* ── Left: worker panel ──────────────────────────────── */
 
 .corp-workers-panel {
     border-right: 1px solid var(--border);
@@ -185,7 +172,6 @@
     color: var(--text-secondary);
 }
 
-/* Worker card */
 .corp-worker-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
@@ -265,7 +251,6 @@
     opacity: 0.6;
 }
 
-/* Auto-plan toggle chip */
 .corp-worker-autoplan {
     font-size: 0.6rem;
     font-weight: 600;
@@ -314,7 +299,6 @@
     50%       { opacity: 0.55; }
 }
 
-/* Thought line */
 .corp-worker-thought {
     font-size: 0.72rem;
     color: var(--text-secondary);
@@ -349,8 +333,6 @@
     color: var(--text-primary);
     font-variant-numeric: tabular-nums;
 }
-
-/* ── Center: task board ──────────────────────────────── */
 
 .corp-taskboard {
     display: flex;
@@ -417,7 +399,6 @@
     margin-left: auto;
 }
 
-/* Column accent colors */
 .corp-kanban-col.pending   .corp-kanban-col-header { border-left: 3px solid #f59e0b; }
 .corp-kanban-col.in_progress .corp-kanban-col-header { border-left: 3px solid var(--primary); }
 .corp-kanban-col.done      .corp-kanban-col-header { border-left: 3px solid #10b981; }
@@ -521,7 +502,6 @@
     text-overflow: ellipsis;
 }
 
-/* empty column placeholder */
 .corp-kanban-empty {
     text-align: center;
     padding: 1.5rem 0.5rem;
@@ -529,8 +509,6 @@
     font-size: 0.75rem;
     opacity: 0.5;
 }
-
-/* ── Right: live feed ────────────────────────────────── */
 
 .corp-feed {
     border-left: 1px solid var(--border);
@@ -603,7 +581,7 @@
     word-break: break-word;
 }
 
-/* ── Empty states ────────────────────────────────────── */
+/* ── empty states ────────────────────────────────────── */
 
 .corp-empty-state {
     display: flex;
@@ -619,7 +597,7 @@
     padding: 2rem;
 }
 
-/* ── Modals ──────────────────────────────────────────── */
+/* ── modals ──────────────────────────────────────────── */
 
 .corp-modal-overlay {
     position: fixed;
@@ -714,7 +692,6 @@
 }
 .corp-modal-btn.primary:hover { opacity: 0.85; }
 
-/* color swatch */
 .corp-color-picker {
     width: 100%;
     height: 38px;
@@ -724,7 +701,6 @@
     padding: 0;
 }
 
-/* Running indicator dot in topbar */
 .corp-status-dot {
     width: 8px;
     height: 8px;
@@ -743,7 +719,7 @@
     50%       { box-shadow: 0 0 0 5px rgba(16,185,129,0.08); }
 }
 
-/* ── Worker paused state ──────────────────────────────────── */
+/* ── worker paused state ──────────────────────────────────── */
 .corp-worker-card.paused {
     opacity: 0.65;
     border-color: var(--border-color);
@@ -754,7 +730,6 @@
     border: 1px solid #6b728040;
 }
 
-/* ── Urgent priority ──────────────────────────────────────── */
 .corp-task-priority.urgent {
     background: #dc262620;
     color: #dc2626;
@@ -767,7 +742,6 @@
     50%       { opacity: 0.6; }
 }
 
-/* ── Rejected task ────────────────────────────────────────── */
 .corp-task-card.rejected {
     opacity: 0.45;
     border-left-color: #6b7280 !important;
@@ -791,7 +765,7 @@
 }
 .corp-task-reject-btn:hover { color: #dc2626; }
 
-/* ── Task detail modal ────────────────────────────────────── */
+/* ── task detail modal ────────────────────────────────────── */
 .corp-modal-title-row {
     display: flex;
     align-items: center;
@@ -852,14 +826,14 @@
     overflow-y: auto;
 }
 
-/* ── Stopping state ───────────────────────────────────────── */
+/* ── stopping state ───────────────────────────────────────── */
 .corp-status-dot.stopping {
     background: #f59e0b;
     box-shadow: 0 0 6px #f59e0b80;
     animation: pulse-dot 1s ease-in-out infinite;
 }
 
-/* ── Company Chat popup ───────────────────────────────────── */
+/* ── company chat popup ───────────────────────────────────── */
 .corp-chat-popup {
     position: fixed;
     bottom: 24px;
@@ -984,7 +958,7 @@
 }
 .corp-chat-toggle-btn:hover { opacity: .85; }
 
-/* ── Worker pause button ──────────────────────────────────── */
+/* ── worker pause button ──────────────────────────────────── */
 .corp-worker-pause-btn {
     background: none;
     border: 1px solid var(--border-color);

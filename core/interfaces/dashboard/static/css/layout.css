@@ -1,4 +1,4 @@
-/* ===== Modern Dashboard Layout ===== */
+/* ===== modern dashboard layout ===== */
 
 /* Columns: threads | handle | chat */
 .three-column-layout {
@@ -53,7 +53,6 @@
     font-weight: 600;
 }
 
-/* Threads Column */
 .threads-column {
     background: rgba(9, 9, 11, 0.5);
     border-left: none;
@@ -149,7 +148,6 @@
     opacity: 0.8;
 }
 
-/* ── Thread metadata row ──────────────────────────────────────────── */
 .thread-meta {
     display: flex;
     align-items: center;
@@ -271,7 +269,7 @@
     transform: translateY(-1px);
 }
 
-/* New Folder button */
+/* New folder button */
 .new-folder-button {
     background: transparent;
     color: var(--text-secondary);
@@ -294,7 +292,7 @@
     transform: translateY(-1px);
 }
 
-/* ── Folder Groups (sidebar) ───────────────────────────────────────────────── */
+/* ── folder groups (sidebar) ───────────────────────────────────────────────── */
 
 .folder-group { margin-bottom: 0.2rem; }
 
@@ -385,7 +383,6 @@
 .folder-action-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.1); }
 .folder-action-btn.folder-delete-btn:hover { color: var(--error); background: rgba(239,68,68,0.15); }
 
-/* Threads nested inside a folder */
 .folder-threads {
     padding-left: 0.9rem;
     display: flex;
@@ -404,7 +401,6 @@
     background: rgba(245, 158, 11, 0.15);
 }
 
-/* Folder picker popup */
 .folder-picker-popup {
     position: fixed;
     z-index: 900;
@@ -444,8 +440,6 @@
     flex-shrink: 0;
 }
 
-/* ── Folder Settings Inline View (folder-sv-*) ────────────────────────────── */
-
 /* Container — fills the same flex slot as #chat-messages */
 .folder-sv {
     flex: 1;
@@ -469,7 +463,6 @@
     width: 100%;
 }
 
-/* Section row */
 .folder-sv-row { display: flex; flex-direction: column; }
 .folder-sv-row--split {
     flex-direction: row;
@@ -478,14 +471,12 @@
     flex-wrap: wrap;
 }
 
-/* Field */
 .folder-sv-field {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
 }
 
-/* Label */
 .folder-sv-label {
     font-size: 0.82rem;
     font-weight: 600;
@@ -497,7 +488,6 @@
 }
 .folder-sv-label i { color: var(--text-tertiary); font-size: 0.78rem; }
 
-/* Hint */
 .folder-sv-hint {
     font-size: 0.78rem;
     color: var(--text-tertiary);
@@ -526,7 +516,6 @@
 }
 .folder-sv-input::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 
-/* Textarea */
 .folder-sv-textarea {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -550,7 +539,6 @@
 }
 .folder-sv-textarea::placeholder { color: var(--text-tertiary); opacity: 0.7; }
 
-/* Color swatches */
 .folder-sv-colors {
     display: flex;
     gap: 0.5rem;
@@ -622,7 +610,7 @@
     border-color: rgba(255,255,255,0.2);
 }
 
-/* Chat Column */
+/* Chat column */
 .chat-column {
     display: flex;
     flex-direction: column;
@@ -655,7 +643,6 @@
     position: relative;
 }
 
-/* ── Message action bar — floats below the bubble on hover ──────────────── */
 .msg-actions {
     position: absolute;
     bottom: -22px;
@@ -708,9 +695,8 @@
 .msg-action-btn.msg-copied { color: var(--success); }
 .msg-action-btn.msg-copied:hover { background: rgba(16, 185, 129, 0.1); color: var(--success); }
 
-/* ── v14: Code Block Copy Button ─────────────────────────────────────────── */
 .message-content pre {
-    position: relative; /* anchor for copy button */
+    position: relative; /* Anchor for copy button */
 }
 
 .code-copy-btn {
@@ -804,7 +790,7 @@ pre:hover .code-copy-btn {
     border-radius: var(--radius-sm);
 }
 
-/* Chat Input Area */
+/* Chat input area */
 .chat-interface-wrapper {
     margin: 1rem 1.5rem 1.5rem;
     background: rgba(24, 24, 27, 0.8);
@@ -929,23 +915,6 @@ pre:hover .code-copy-btn {
     margin-top: 2rem;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   v14 Panel Header System
-   Standard markup:
-   <div class="panel-header">
-     <div class="panel-header-left">
-       <div class="panel-header-icon"><i class="fas fa-brain"></i></div>
-       <div class="panel-header-text">
-         <h2 class="panel-title">Title</h2>
-         <p class="panel-subtitle">Optional subtitle</p>
-       </div>
-     </div>
-     <div class="panel-actions">
-       <button class="action-btn secondary">...</button>
-     </div>
-   </div>
-   Legacy: .panel-header h2 + .panel-controls still fully supported.
-═══════════════════════════════════════════════════════════════════════════ */
 .panel-header {
     display: flex;
     justify-content: space-between;
@@ -958,7 +927,6 @@ pre:hover .code-copy-btn {
     background: rgba(0, 0, 0, 0.12);
 }
 
-/* ── Left group: icon + text stack ── */
 .panel-header-left {
     display: flex;
     align-items: center;
@@ -1011,7 +979,7 @@ pre:hover .code-copy-btn {
     text-overflow: ellipsis;
 }
 
-/* ── Right group: action buttons ── */
+/* ── right group: action buttons ── */
 .panel-actions {
     display: flex;
     align-items: center;
@@ -1019,7 +987,6 @@ pre:hover .code-copy-btn {
     flex-shrink: 0;
 }
 
-/* ── Legacy compatibility ── */
 .panel-header h2 {
     font-size: 1.05rem;
     font-weight: 600;
@@ -1035,7 +1002,6 @@ pre:hover .code-copy-btn {
     flex-wrap: wrap;
 }
 
-/* ── Variants ── */
 .panel-header.borderless {
     background: transparent;
     border-bottom: none;

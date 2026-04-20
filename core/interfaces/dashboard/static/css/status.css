@@ -3,7 +3,7 @@
     color: var(--text);
 }
 
-/* ===== System Status Panel ===== */
+/* ===== system status panel ===== */
 
 .status-meta {
     display: flex;
@@ -30,7 +30,6 @@
     text-transform: uppercase;
 }
 
-/* Telemetry Grid */
 .status-telemetry-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -40,7 +39,6 @@
     border-bottom: 1px dashed var(--border);
 }
 
-/* Section Labels */
 .section-label {
     font-family: 'Fira Code', monospace;
     font-size: 0.85rem;
@@ -70,7 +68,6 @@
     font-size: 0.75rem;
     min-width: 100px;
 }
-
 
 .telemetry-card {
     background: rgba(0, 0, 0, 0.2);
@@ -116,7 +113,7 @@
     opacity: 0.7;
 }
 
-/* Status Meta Updates */
+/* Status meta updates */
 .meta-row {
     display: flex;
     align-items: center;
@@ -137,7 +134,7 @@
     font-family: 'Fira Code', monospace;
 }
 
-/* Header Status Indicator */
+/* Header status indicator */
 #home-status-indicator {
     border: 1px solid var(--border);
     padding: 0.3rem 0.8rem;
@@ -146,8 +143,6 @@
     transition: all 0.3s ease;
 }
 
-
-/* Roadmap Grid */
 .roadmap-tree {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -166,7 +161,6 @@
     }
 }
 
-/* Remove old tree line */
 .roadmap-tree::before {
     display: none;
 }
@@ -186,7 +180,6 @@
     padding-bottom: 0.5rem;
 }
 
-/* Remove old circle indicators */
 .roadmap-section h3::before {
     display: none;
 }
@@ -206,7 +199,6 @@
     color: var(--primary);
     text-shadow: 0 0 10px rgba(0, 217, 255, 0.3);
 }
-
 
 .roadmap-items {
     display: flex;
@@ -259,7 +251,6 @@
     animation: fadeIn 0.3s ease;
 }
 
-/* Custom Bullets */
 .roadmap-item::before {
     content: '';
     font-weight: bold;
@@ -285,14 +276,13 @@
     line-height: 0.8;
 }
 
-/* Remove old left borders */
 .roadmap-section.working .roadmap-item,
 .roadmap-section.wip .roadmap-item,
 .roadmap-section.planned .roadmap-item {
     border-left: none;
 }
 
-/* --- Split Button Dropdown --- */
+/* --- split button dropdown --- */
 .split-btn-group {
     display: flex;
     align-items: center;

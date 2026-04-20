@@ -1,9 +1,4 @@
-/* ══════════════════════════════════════════════════════════════
-   Aethvion Suite — Notification System Styles
-   Bell button, popup panel, notification rows, level accents
-   ══════════════════════════════════════════════════════════════ */
-
-/* ── Bell Button ─────────────────────────────────────────────── */
+/* ── bell button ─────────────────────────────────────────────── */
 .notif-bell-btn {
     position: relative;
     display: flex;
@@ -43,7 +38,6 @@
     font-size: 0.9rem;
 }
 
-/* ── Unread Badge ─────────────────────────────────────────────── */
 .notif-badge {
     position: absolute;
     top: -3px;
@@ -66,7 +60,6 @@
     display: block;
 }
 
-/* ── Panel Container ─────────────────────────────────────────── */
 .notif-panel {
     position: fixed;
     top: 52px;
@@ -96,7 +89,7 @@
     pointer-events: all;
 }
 
-/* ── Panel Header ────────────────────────────────────────────── */
+/* ── panel header ────────────────────────────────────────────── */
 .notif-panel-header {
     display: flex;
     align-items: center;
@@ -149,7 +142,6 @@
     background: rgba(0,217,255,0.06);
 }
 
-/* ── Notification List ───────────────────────────────────────── */
 .notif-list {
     overflow-y: auto;
     flex: 1;
@@ -162,7 +154,7 @@
 .notif-list::-webkit-scrollbar-track { background: transparent; }
 .notif-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
 
-/* ── Empty State ─────────────────────────────────────────────── */
+/* ── empty state ─────────────────────────────────────────────── */
 .notif-empty {
     display: flex;
     flex-direction: column;
@@ -184,7 +176,6 @@
     margin: 0;
 }
 
-/* ── Notification Row ────────────────────────────────────────── */
 .notif-row {
     display: flex;
     align-items: flex-start;
@@ -202,13 +193,11 @@
     background: rgba(255,255,255,0.05);
 }
 
-/* Level colour coding on left border */
 .notif-row[data-level="info"]    { border-left-color: var(--primary, #00d9ff); }
 .notif-row[data-level="success"] { border-left-color: #10b981; }
 .notif-row[data-level="warning"] { border-left-color: #f59e0b; }
 .notif-row[data-level="error"]   { border-left-color: #ef4444; }
 
-/* ── Source Icon ─────────────────────────────────────────────── */
 .notif-icon {
     width: 32px;
     height: 32px;
@@ -226,7 +215,6 @@
 .notif-row[data-level="warning"] .notif-icon { background: rgba(245,158,11,0.12);  color: #f59e0b; }
 .notif-row[data-level="error"]   .notif-icon { background: rgba(239,68,68,0.12);   color: #ef4444; }
 
-/* ── Text Body ───────────────────────────────────────────────── */
 .notif-body {
     flex: 1;
     min-width: 0;
@@ -309,14 +297,13 @@
     color: var(--text-secondary, rgba(255,255,255,0.3));
 }
 
-/* ── Has-target indicator ────────────────────────────────────── */
 .notif-row.has-target .notif-title::after {
     content: " →";
     opacity: 0.5;
     font-weight: 400;
 }
 
-/* ── Dismiss Button ──────────────────────────────────────────── */
+/* ── dismiss button ──────────────────────────────────────────── */
 .notif-dismiss-btn {
     width: 22px;
     height: 22px;
@@ -345,7 +332,6 @@
     color: #ef4444;
 }
 
-/* ── History Panel overlay ───────────────────────────────────── */
 .notif-history-view {
     padding: 8px;
 }
@@ -367,7 +353,7 @@
     border-left-color: rgba(255,255,255,0.1) !important;
 }
 
-/* ── Panel Footer ────────────────────────────────────────────── */
+/* ── panel footer ────────────────────────────────────────────── */
 .notif-panel-footer {
     padding: 10px 14px;
     border-top: 1px solid var(--border-color, rgba(255,255,255,0.06));

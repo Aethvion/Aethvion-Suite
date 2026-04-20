@@ -1,8 +1,3 @@
-/* ============================================================
-   Axiom Companion — Teal/Cyan Analytical Theme
-   CSS-based avatar with expression states
-   ============================================================ */
-
 :root {
     --axiom-primary:     #00bcd4;
     --axiom-secondary:   #00838f;
@@ -20,7 +15,7 @@
     --axiom-user-bg:     rgba(0, 96, 100, 0.35);
 }
 
-/* ── Layout ──────────────────────────────────────────────── */
+/* ── layout ──────────────────────────────────────────────── */
 
 .axiom-layout {
     display: flex;
@@ -44,8 +39,6 @@
     pointer-events: none;
     z-index: 0;
 }
-
-/* ── Mood environments ───────────────────────────────────── */
 
 .axiom-layout.mood-precise {
     --axiom-glow: rgba(0, 188, 212, 0.3);
@@ -77,8 +70,6 @@
     background: linear-gradient(135deg, #0f0604 0%, #140804 60%, #0f0604 100%);
 }
 
-/* ── Avatar container ────────────────────────────────────── */
-
 .axiom-avatar-container {
     display: flex;
     align-items: center;
@@ -88,8 +79,6 @@
     position: relative;
     z-index: 1;
 }
-
-/* ── Hexagon avatar base ─────────────────────────────────── */
 
 .axiom-avatar {
     position: relative;
@@ -125,8 +114,6 @@
     overflow: hidden;
 }
 
-/* ── Lambda symbol ───────────────────────────────────────── */
-
 .axiom-symbol {
     font-family: 'Courier New', monospace;
     font-size: 3.2rem;
@@ -139,8 +126,6 @@
     letter-spacing: -0.05em;
     user-select: none;
 }
-
-/* ── Scan line ───────────────────────────────────────────── */
 
 .axiom-scan-line {
     position: absolute;
@@ -159,8 +144,6 @@
     100% { top: 90%; opacity: 0; }
 }
 
-/* ── Concentric rings ────────────────────────────────────── */
-
 .axiom-ring {
     position: absolute;
     border-radius: 50%;
@@ -177,8 +160,6 @@
     0%, 100% { opacity: 0.08; transform: scale(1); }
     50%       { opacity: 0.22; transform: scale(1.04); }
 }
-
-/* ── Data dots ───────────────────────────────────────────── */
 
 .axiom-data-dots {
     position: absolute;
@@ -213,16 +194,14 @@
 }
 
 /* ══════════════════════════════════════════════════════════
-   EXPRESSION STATES
+   expression states
    ══════════════════════════════════════════════════════════ */
 
-/* neutral — default, steady blue glow */
 .axiom-expr-neutral .axiom-hex-outer {
     box-shadow: 0 0 30px var(--axiom-glow), 0 0 60px rgba(0,188,212,0.1);
 }
 .axiom-expr-neutral .axiom-symbol { color: var(--axiom-primary); }
 
-/* analyzing — brighter glow, faster scan */
 .axiom-expr-analyzing .axiom-hex-outer {
     box-shadow: 0 0 50px rgba(0,188,212,0.55), 0 0 90px rgba(0,188,212,0.2);
 }
@@ -237,7 +216,6 @@
 }
 .axiom-expr-analyzing .axiom-ring { animation-duration: 1.5s; opacity: 0.3; }
 
-/* processing — pulsing, rings accelerated */
 .axiom-expr-processing .axiom-hex-outer {
     animation: axiomHexPulse 1.8s ease-in-out infinite;
 }
@@ -249,7 +227,6 @@
     50%       { box-shadow: 0 0 60px rgba(0,188,212,0.7), 0 0 100px rgba(0,188,212,0.25); }
 }
 
-/* skeptical — dimmed, cooler tone */
 .axiom-expr-skeptical .axiom-hex-outer {
     background: linear-gradient(135deg, #004a4f, #003840);
     box-shadow: 0 0 20px rgba(0,150,170,0.25);
@@ -261,7 +238,6 @@
 .axiom-expr-skeptical .axiom-scan-line { opacity: 0.2; animation-duration: 5s; }
 .axiom-expr-skeptical .axiom-ring { opacity: 0.06; }
 
-/* focused — deep teal, rings frozen, bright symbol */
 .axiom-expr-focused .axiom-hex-outer {
     background: linear-gradient(135deg, #00838f, #005f66);
     box-shadow: 0 0 40px rgba(0,131,143,0.6), 0 0 80px rgba(0,131,143,0.2);
@@ -273,7 +249,6 @@
 }
 .axiom-expr-focused .axiom-ring { animation-play-state: paused; opacity: 0.18; }
 
-/* error — red-orange tint, warning flash */
 .axiom-expr-error .axiom-hex-outer {
     background: linear-gradient(135deg, #5f1a1a, #3d0e0e);
     box-shadow: 0 0 40px rgba(255,60,30,0.5), 0 0 80px rgba(255,60,30,0.15);
@@ -294,7 +269,6 @@
     50%       { box-shadow: 0 0 70px rgba(255,60,30,0.8), 0 0 100px rgba(255,60,30,0.3); }
 }
 
-/* curious — brighter warm-cyan, rings rotate faster */
 .axiom-expr-curious .axiom-hex-outer {
     box-shadow: 0 0 45px rgba(0,220,200,0.5), 0 0 80px rgba(0,220,200,0.15);
 }
@@ -310,7 +284,6 @@
     50%       { transform: translateY(-4px); }
 }
 
-/* calculating — rapid dots, scan at medium speed */
 .axiom-expr-calculating .axiom-hex-outer {
     box-shadow: 0 0 35px rgba(0,188,212,0.4), 0 0 70px rgba(0,188,212,0.12);
 }
@@ -326,7 +299,6 @@
     90%           { opacity: 0.4; }
 }
 
-/* alert — amber/yellow tint */
 .axiom-expr-alert .axiom-hex-outer {
     background: linear-gradient(135deg, #5f4800, #3d2f00);
     box-shadow: 0 0 45px rgba(255,195,0,0.5), 0 0 90px rgba(255,195,0,0.15);
@@ -347,7 +319,7 @@
     50%       { box-shadow: 0 0 70px rgba(255,195,0,0.7), 0 0 110px rgba(255,195,0,0.2); }
 }
 
-/* ── Status line ─────────────────────────────────────────── */
+/* ── status line ─────────────────────────────────────────── */
 
 .axiom-status-line {
     font-family: 'Courier New', monospace;
@@ -360,8 +332,6 @@
     transition: all 0.4s ease;
     text-transform: uppercase;
 }
-
-/* ── Mood badge ──────────────────────────────────────────── */
 
 .axiom-mood-badge {
     font-family: 'Courier New', monospace;
@@ -381,7 +351,7 @@
 }
 .axiom-mood-badge.visible { opacity: 1; }
 
-/* ── Chat header ─────────────────────────────────────────── */
+/* ── chat header ─────────────────────────────────────────── */
 
 .axiom-chat-header {
     border-bottom: 1px solid var(--axiom-border) !important;
@@ -407,7 +377,7 @@
     padding: 0.1rem 0.45rem;
 }
 
-/* ── Chat bubbles ────────────────────────────────────────── */
+/* ── chat bubbles ────────────────────────────────────────── */
 
 .axiom-layout .chat-message.assistant .message-bubble {
     background: var(--axiom-bubble-bg);
@@ -428,7 +398,7 @@
     border-radius: 8px 0 8px 8px;
 }
 
-/* ── Input area ──────────────────────────────────────────── */
+/* ── input area ──────────────────────────────────────────── */
 
 .axiom-input-area {
     border-top: 1px solid var(--axiom-border) !important;
@@ -489,7 +459,7 @@
     box-shadow: 0 0 15px rgba(0,188,212,0.4);
 }
 
-/* ── Tool status / typing indicator ─────────────────────── */
+/* ── tool status / typing indicator ─────────────────────── */
 
 .axiom-layout .typing-dots span {
     background: var(--axiom-primary);
@@ -502,8 +472,6 @@
     font-size: 0.75rem;
 }
 
-/* ── Scrollbar ───────────────────────────────────────────── */
-
 .axiom-layout .chat-messages::-webkit-scrollbar-thumb {
     background: var(--axiom-dim);
 }
@@ -511,7 +479,7 @@
     background: var(--axiom-secondary);
 }
 
-/* ── Load more button ────────────────────────────────────── */
+/* ── load more button ────────────────────────────────────── */
 
 .axiom-layout .load-more-btn {
     background: rgba(0,188,212,0.08);

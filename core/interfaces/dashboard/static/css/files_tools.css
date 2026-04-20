@@ -1,4 +1,3 @@
-/* Files Panel */
 #files-panel .files-grid {
     padding: 1.5rem;
 }
@@ -9,10 +8,9 @@
     padding: 0 1.5rem 1.5rem;
 }
 
-/* Memory thread scroll */
 #thread-memory-container {
     padding: 0 1rem;
-    /* max-height removed for per-thread scrolling */
+
     padding-bottom: 2rem;
 }
 
@@ -109,7 +107,7 @@
     justify-content: center;
     align-items: center;
     height: 40px;
-    /* fixed height for consistency when images are used */
+
 }
 
 .image-preview {
@@ -120,7 +118,7 @@
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-/* Sortable Table Headers */
+/* Sortable table headers */
 th.sortable {
     cursor: pointer;
     user-select: none;
@@ -131,7 +129,6 @@ th.sortable:hover {
     background-color: rgba(0, 217, 255, 0.1);
     color: var(--primary);
 }
-
 
 th.sortable i {
     margin-left: 0.3rem;
@@ -154,4 +151,4 @@ th.sortable.active-sort i {
 .file-meta {
     font-size: 0.75rem;
     color: var(--text-secondary);
-}
+}

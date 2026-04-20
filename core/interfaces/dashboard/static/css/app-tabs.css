@@ -1,19 +1,11 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   App Tab Bar — Aethvion Suite
-   Fixed chrome-style tab bar at the top of the window; persistent iframes
-   below it so switching tabs never triggers an app reload.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
 :root {
     --atb-height: 40px;
 }
 
-/* ── Global offset ───────────────────────────────────────────────────────── */
 body {
     overflow: hidden;
 }
 
-/* ── Tab bar shell ───────────────────────────────────────────────────────── */
 #app-tab-bar {
     position: fixed;
     top: 0;
@@ -28,7 +20,6 @@ body {
     user-select: none;
 }
 
-/* Brand area ─────────────────────────────────────────────────────────────── */
 .atb-brand {
     display: flex;
     align-items: center;
@@ -60,7 +51,6 @@ body {
     color: var(--text-secondary);
 }
 
-/* Scrollable tab strip ───────────────────────────────────────────────────── */
 .atb-tabs {
     display: flex;
     align-items: stretch;
@@ -73,7 +63,6 @@ body {
     display: none;
 }
 
-/* Individual tab ─────────────────────────────────────────────────────────── */
 .atb-tab {
     display: flex;
     align-items: center;
@@ -100,7 +89,6 @@ body {
     color: var(--text-primary);
 }
 
-/* Active tab ─────────────────────────────────────────────────────────────── */
 .atb-tab--active {
     background: var(--bg-tertiary);
     color: var(--text-primary);
@@ -117,7 +105,6 @@ body {
     box-shadow: 0 0 8px var(--primary);
 }
 
-/* Tab contents */
 .atb-tab-emoji {
     font-size: 0.85rem;
     line-height: 1;
@@ -178,7 +165,6 @@ body {
     color: #ef4444;
 }
 
-/* Right-side controls ────────────────────────────────────────────────────── */
 .atb-controls {
     display: flex;
     align-items: center;
@@ -231,7 +217,6 @@ body {
     transform: rotate(180deg);
 }
 
-/* Apps dropdown ──────────────────────────────────────────────────────────── */
 .atb-apps-menu {
     display: none;
     position: absolute;
@@ -314,7 +299,6 @@ body {
     flex-shrink: 0;
 }
 
-/* ── App panels ──────────────────────────────────────────────────────────── */
 .app-panel {
     position: fixed;
     top: var(--atb-height);
@@ -325,13 +309,11 @@ body {
     display: none;
 }
 
-/* Nexus panel: flex column (replaces the old body flex-column) */
 .app-panel--home {
     display: flex;
     flex-direction: column;
 }
 
-/* iframe panels */
 .app-iframe-panel {
     background: var(--bg-primary);
 }
@@ -458,7 +440,7 @@ body {
     font-size: 0.95rem;
 }
 
-/* ── Quit Button ─────────────────────────────────────────────────────────── */
+/* ── quit button ─────────────────────────────────────────────────────────── */
 .atb-quit-btn {
     display: flex;
     align-items: center;
@@ -498,7 +480,6 @@ body {
     }
 }
 
-/* ── Running Services Monitor ────────────────────────────────────────────── */
 .atb-services-wrapper {
     position: relative;
 }

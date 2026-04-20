@@ -1,4 +1,4 @@
-/* Icon Buttons specific to chat */
+/* Icon buttons specific to chat */
 .icon-btn.voice-btn {
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
@@ -30,7 +30,7 @@
     box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
 }
 
-/* Usage Chart Controls overlay */
+/* Usage chart controls overlay */
 .chart-header-row {
     display: flex;
     justify-content: space-between;
@@ -76,7 +76,6 @@
     box-shadow: var(--shadow-sm);
 }
 
-/* Agents List & Cards */
 .agents-list {
     flex: 1;
     overflow-y: auto;
@@ -169,7 +168,7 @@
     margin-top: 0.2rem;
 }
 
-/* Global Chat Controls */
+/* Global chat controls */
 .global-chat-controls {
     display: flex;
     align-items: center;
@@ -215,7 +214,6 @@
     opacity: 0.5;
 }
 
-/* Typing Indicator */
 .typing-indicator {
     display: none;
     align-items: center;
@@ -297,7 +295,7 @@
 
 .chat-date-divider span {
     background: #141419;
-    /* Slightly darker than column to pop */
+
     padding: 0.4rem 1.1rem;
     font-size: 0.72rem;
     font-weight: 700;
@@ -311,7 +309,6 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-/* ── Token streaming bubble ───────────────────────────────────────── */
 .chat-stream-bubble {
     animation: fadeInUp 0.15s ease;
 }
@@ -325,7 +322,6 @@
     font-size: 0.92rem;
 }
 
-/* Blinking cursor during streaming */
 .stream-cursor {
     display: inline-block;
     color: var(--primary, #6366f1);
@@ -341,7 +337,7 @@
     50%       { opacity: 0; }
 }
 
-/* Incognito Button */
+/* Incognito button */
 .incognito-thread-button {
     background: transparent;
     border: 1px solid var(--border);
@@ -359,7 +355,7 @@
 
 .incognito-thread-button:hover {
     background: rgba(139, 92, 246, 0.1);
-    color: #a78bfa; /* Violet 400 */
+    color: #a78bfa; 
     border-color: rgba(139, 92, 246, 0.3);
     box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
     transform: translateY(-1px);
@@ -372,7 +368,7 @@
     box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
 }
 
-/* Incognito Chat Flare */
+/* Incognito chat flare */
 .incognito-active #active-thread-title {
     color: #a78bfa;
 }
@@ -390,7 +386,7 @@
 }
 
 .incognito-thread .thread-title::before {
-    content: '\f21b'; /* fa-user-secret */
+    content: '\f21b'; 
     font-family: 'Font Awesome 5 Free';
     font-weight: 900;
     margin-right: 8px;

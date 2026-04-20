@@ -1,15 +1,9 @@
-/* ═══════════════════════════════════════════════════════════════
-   Aethvion Suite — Unified Model Hub Design System
-   Aesthetic: Premium Store / Marketplace
-   ═══════════════════════════════════════════════════════════════ */
-
 :root {
     --hub-card-bg: rgba(30, 41, 59, 0.4);
     --hub-card-border: rgba(255, 255, 255, 0.08);
     --hub-card-hover: rgba(51, 65, 85, 0.6);
     --hub-accent-glow: rgba(99, 179, 237, 0.15);
-    
-    /* Branding Colors */
+
     --brand-meta: #0668E1;
     --brand-google: #4285F4;
     --brand-mistral: #FF5E13;
@@ -18,7 +12,7 @@
     --brand-stability: #6D28D9;
 }
 
-/* ── Global Hub Layout ────────────────────────────────────── */
+/* ── global hub layout ────────────────────────────────────── */
 .hub-container {
     padding: 1.5rem 2rem;
     display: flex;
@@ -32,7 +26,7 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Premium Header ─────────────────────────────────────────── */
+/* ── premium header ─────────────────────────────────────────── */
 .hub-header {
     display: flex;
     justify-content: space-between;
@@ -80,7 +74,6 @@
     color: var(--text-tertiary);
 }
 
-/* ── Interactive Filtering ──────────────────────────────────── */
 .hub-toolbar {
     display: flex;
     align-items: center;
@@ -125,7 +118,6 @@
     outline: none;
 }
 
-/* ── Provider Section ───────────────────────────────────────── */
 .hub-provider-section {
     display: flex;
     flex-direction: column;
@@ -155,7 +147,6 @@
     color: var(--text-secondary);
 }
 
-/* ── Model Grid & Cards ─────────────────────────────────────── */
 .hub-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -316,7 +307,6 @@
     background: rgba(255,255,255,0.1);
 }
 
-/* ── Tool Panel Override ───────────────────────────────────── */
 .hub-tool-panel {
     background: rgba(15, 23, 42, 0.3);
     border: 1px solid var(--hub-card-border);
@@ -339,7 +329,6 @@
     margin-bottom: 1rem;
 }
 
-/* ── Management Utilities ────────────────────────────────── */
 .lm-filter-select {
     background: rgba(0,0,0,0.3);
     border: 1px solid var(--hub-card-border);
@@ -394,7 +383,6 @@
     letter-spacing: 0.5px;
 }
 
-/* ── GPU & Config Styling ──────────────────────────────────── */
 .gpu-setting-row {
     display: flex;
     flex-direction: column;

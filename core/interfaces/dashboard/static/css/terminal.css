@@ -2,7 +2,6 @@
     transform: rotate(90deg);
 }
 
-/* Vertical Stack Settings */
 .thread-settings-panel.terminal-stack {
     display: none;
     margin-top: 4px;
@@ -194,7 +193,7 @@
     font-size: 0.9em;
     font-family: inherit;
     margin-left: auto;
-    /* Push to right */
+
 }
 
 .term-btn:hover {
@@ -202,7 +201,6 @@
     color: #000;
 }
 
-/* Fix visibility specificity */
 .thread-item.active .thread-settings-panel.terminal-stack {
     display: none;
 }
@@ -211,7 +209,6 @@
     display: flex;
 }
 
-/* System Terminal */
 .system-terminal {
     background: #0a0e1a;
     border-top: 1px solid var(--border);
@@ -220,7 +217,7 @@
     color: #a0a0a0;
     display: flex;
     flex-direction: column;
-    /* Fixed height for ~10 lines */
+
     height: 15rem;
     transition: height 0.3s ease;
 }

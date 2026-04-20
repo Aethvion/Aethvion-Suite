@@ -1,4 +1,4 @@
-/* Global Custom Modal Overlay */
+/* Global custom modal overlay */
 #global-modal-overlay {
     display: none;
     position: fixed;
@@ -14,7 +14,7 @@
     justify-content: center;
 }
 
-/* Modal Styles */
+/* Modal styles */
 .modal {
     display: none;
     position: fixed;
@@ -93,7 +93,6 @@
     accent-color: var(--primary);
 }
 
-/* Thread Settings Foldout */
 .thread-settings-panel {
     display: none;
     background: rgba(0, 0, 0, 0.2);
@@ -159,7 +158,6 @@
     border-color: var(--primary);
 }
 
-/* Switch Toggle */
 .switch {
     position: relative;
     display: inline-block;
@@ -208,7 +206,6 @@ input:checked+.slider:before {
     background-color: #fff;
 }
 
-/* Compact Terminal Settings */
 .thread-settings-toggle {
     cursor: pointer;
     color: var(--text-secondary);

@@ -1,9 +1,8 @@
 .split-arrow-action .dropdown-arrow {
     margin-left: 0;
-    /* Center the arrow */
+
 }
 
-/* --- Image Studio Panel --- */
 .image-studio-container {
     display: flex;
     flex-direction: row-reverse;
@@ -14,7 +13,7 @@
 .image-studio-viewer {
     flex: 1;
     background: #0d0d0d;
-    /* Very dark background for image viewing */
+
     display: flex;
     align-items: center;
     justify-content: center;
@@ -64,7 +63,6 @@
     resize: vertical;
 }
 
-/* --- Dynamic Controls --- */
 .mode-toggles {
     display: flex;
     flex-wrap: wrap;
@@ -135,7 +133,6 @@
     margin-top: 1rem;
 }
 
-/* --- Image Loading Overlay --- */
 .image-loading-overlay {
     position: absolute;
     top: 0;
@@ -151,7 +148,6 @@
     backdrop-filter: blur(5px);
 }
 
-/* AI Conversations Typing Indicator */
 .disabled-typing-indicator {
     display: flex;
     align-items: center;
