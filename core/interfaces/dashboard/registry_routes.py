@@ -216,7 +216,7 @@ def _load_registry() -> Dict[str, Any]:
     """Load model registry from disk."""
     try:
         if REGISTRY_PATH.exists():
-            with open(REGISTRY_PATH, 'r') as f:
+            with open(REGISTRY_PATH, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 # Ensure basic structure
                 if "providers" not in data: data["providers"] = {}
@@ -228,7 +228,7 @@ def _load_registry() -> Dict[str, Any]:
         
         # Re-load after seeding
         if REGISTRY_PATH.exists():
-            with open(REGISTRY_PATH, 'r') as f:
+            with open(REGISTRY_PATH, 'r', encoding='utf-8') as f:
                 return json.load(f)
 
         # Fallback if seeding failed to create file (shouldn't happen)

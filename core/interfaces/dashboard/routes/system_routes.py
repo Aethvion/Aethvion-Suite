@@ -286,7 +286,7 @@ async def get_version_info():
     status_path = Path(__file__).parent.parent / "static" / "assets" / "system-status.json"
     if status_path.exists():
         try:
-            with open(status_path, 'r') as f:
+            with open(status_path, 'r', encoding='utf-8') as f:
                 data = json.load(f).get("system", {})
                 last_update_commit = data.get("last_update_commit", "Unknown")
                 changelog = data.get("changelog", [])
