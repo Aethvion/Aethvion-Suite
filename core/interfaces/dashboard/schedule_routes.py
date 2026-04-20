@@ -24,9 +24,13 @@ class ChatRequest(BaseModel):
     model_id: Optional[str] = None
 
 class UpdateSettingsRequest(BaseModel):
-    name:      Optional[str] = None
-    queue_max: Optional[int] = None
-    model_id:  Optional[str] = None
+    name:       Optional[str] = None
+    queue_max:  Optional[int] = None
+    model_id:   Optional[str] = None
+    timezone:   Optional[str] = None
+    cron:       Optional[str] = None
+    cron_human: Optional[str] = None
+    prompt:     Optional[str] = None
 
 
 # ── AI system prompt ───────────────────────────────────────────────────────────

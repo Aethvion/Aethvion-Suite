@@ -21,8 +21,7 @@ try:
     _UTC = ZoneInfo('UTC')
 except Exception:
     # Fallback for environments where ZoneInfo('UTC') might fail
-    import datetime
-    _UTC = datetime.timezone.utc
+    _UTC = timezone.utc
 
 from core.utils.logger import get_logger
 from core.utils import utcnow_iso
@@ -198,11 +197,12 @@ class ScheduleManager:
             return None
 
     def _save(self, task: dict) -> None:
+        if not task.get('id'):
+            logger.error("[ScheduleManager] Cannot save task without ID: %s", task)
+            return
         task['updated_at'] = _utcnow_iso()
-        self._path(task['id']).write_text(
-            json.dumps(task, indent=2, ensure_ascii=False),
-            encoding='utf-8',
-        )
+        from core.utils import atomic_json_write
+        atomic_json_write(self._path(task['id']), task)
 
     # ── CRUD ──────────────────────────────────────────────────────
 
