@@ -534,3 +534,509 @@
         transform: rotate(360deg);
     }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   GAUNTLET MODE
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Middle column wrapper — lets battle-area and gauntlet-area share the same slot */
+.arena-middle-col {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.arena-middle-col > .arena-chat-area {
+    flex: 1;
+    min-height: 0;
+}
+
+/* Mode switcher tabs */
+.arena-mode-switcher {
+    display: flex;
+    gap: 0.3rem;
+    margin-bottom: 1.2rem;
+    padding: 0.25rem;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+}
+
+.arena-mode-btn {
+    flex: 1;
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.arena-mode-btn.active {
+    background: var(--bg-primary);
+    color: var(--primary);
+    font-weight: 600;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.arena-mode-btn:hover:not(.active) {
+    color: var(--text-primary);
+}
+
+/* Leaderboard tab buttons */
+.arena-lb-tabs {
+    display: flex;
+    gap: 0.3rem;
+}
+
+.lb-tab {
+    padding: 0.18rem 0.55rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.lb-tab.active {
+    background: rgba(0, 217, 255, 0.1);
+    color: var(--primary);
+    border-color: rgba(0, 217, 255, 0.3);
+}
+
+.lb-tab:hover:not(.active) {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-primary);
+}
+
+/* Gauntlet start button */
+.gauntlet-start-btn {
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.6rem;
+    border-radius: 6px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border: none;
+    color: #000;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+}
+
+.gauntlet-start-btn:hover:not(:disabled) {
+    opacity: 0.88;
+    transform: translateY(-1px);
+}
+
+.gauntlet-start-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.gauntlet-start-btn:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+}
+
+/* Preset preview */
+.gauntlet-preset-preview {
+    margin-top: 0.6rem;
+    padding: 0.6rem 0.7rem;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    font-size: 0.75rem;
+}
+
+.gauntlet-preset-desc {
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+}
+
+.gauntlet-cat-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.22rem;
+}
+
+.gauntlet-cat-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--text-secondary);
+}
+
+.gauntlet-cat-list li::before {
+    content: '→';
+    color: var(--primary);
+    font-size: 0.65rem;
+    margin-right: 0.4rem;
+}
+
+.gauntlet-cat-weight {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.68rem;
+    color: var(--primary);
+    opacity: 0.7;
+}
+
+/* Gauntlet display area */
+.gauntlet-display {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 0;
+}
+
+/* Run header */
+.gauntlet-run-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.gauntlet-preset-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.gauntlet-progress-info {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.gauntlet-progress-track {
+    width: 110px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.gauntlet-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.gauntlet-progress-text {
+    font-size: 0.73rem;
+    color: var(--text-secondary);
+    font-family: 'Fira Code', monospace;
+    white-space: nowrap;
+}
+
+/* Category cards */
+.gauntlet-categories-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.gauntlet-cat-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.65rem 0.9rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.gauntlet-cat-card.running {
+    border-color: var(--primary);
+    box-shadow: 0 0 10px rgba(0, 217, 255, 0.1);
+}
+
+.gauntlet-cat-card.complete {
+    border-color: rgba(0, 255, 136, 0.2);
+}
+
+.gauntlet-cat-card.pending {
+    opacity: 0.6;
+}
+
+.gauntlet-cat-header {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.gauntlet-cat-card.complete .gauntlet-cat-header {
+    margin-bottom: 0.55rem;
+}
+
+.gauntlet-cat-status-icon {
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    width: 1.2rem;
+    text-align: center;
+}
+
+.gauntlet-cat-name {
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.gauntlet-cat-status {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+}
+
+.gauntlet-cat-card.running  .gauntlet-cat-status { color: var(--primary); }
+.gauntlet-cat-card.complete .gauntlet-cat-status { color: var(--success); }
+
+/* Per-model score bars inside a completed category */
+.gauntlet-cat-scores {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.cat-model-score-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.cat-model-name {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-family: 'Fira Code', monospace;
+    width: 130px;
+    flex-shrink: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cat-winner-name {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.cat-score-bar-track {
+    flex: 1;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.cat-score-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 3px;
+}
+
+.cat-score-val {
+    font-size: 0.7rem;
+    font-family: 'Fira Code', monospace;
+    color: var(--text-primary);
+    width: 2.6rem;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+/* Final results panel */
+.gauntlet-results {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.gauntlet-results-header {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.gauntlet-results-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 900px) {
+    .gauntlet-results-body { grid-template-columns: 1fr; }
+}
+
+.gauntlet-radar-container {
+    padding: 1rem;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.gauntlet-radar-svg {
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+}
+
+.radar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    justify-content: center;
+    max-width: 260px;
+}
+
+.radar-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.radar-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.radar-legend-label {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    font-family: 'Fira Code', monospace;
+}
+
+/* Scores table */
+.gauntlet-scores-table-container {
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+}
+
+.gauntlet-scores-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.73rem;
+}
+
+.gauntlet-scores-table th {
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-align: left;
+    padding: 0.28rem 0.45rem;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.gauntlet-scores-table td {
+    padding: 0.32rem 0.45rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+    font-family: 'Fira Code', monospace;
+}
+
+.gauntlet-scores-table tr:last-child td {
+    border-bottom: none;
+}
+
+.gauntlet-scores-table .score-cell {
+    text-align: center;
+}
+
+.gauntlet-scores-table .composite-cell {
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 0.78rem;
+}
+
+.gauntlet-scores-table tr.winner-row td {
+    color: var(--success);
+}
+
+/* Gauntlet leaderboard cards */
+.gauntlet-lb-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.7rem 0.85rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.gauntlet-lb-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    border-radius: 8px 8px 0 0;
+}
+
+.gauntlet-lb-card:hover {
+    border-color: rgba(0, 217, 255, 0.3);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.gauntlet-lb-top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.gauntlet-lb-rank {
+    font-size: 1.05rem;
+    flex-shrink: 0;
+    min-width: 1.4rem;
+    text-align: center;
+}
+
+.gauntlet-lb-model {
+    flex: 1;
+    font-size: 0.76rem;
+    font-family: 'Fira Code', monospace;
+    color: var(--text-primary);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gauntlet-lb-composite {
+    font-size: 0.85rem;
+    font-family: 'Fira Code', monospace;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.gauntlet-lb-meta {
+    font-size: 0.67rem;
+    color: var(--text-secondary);
+}

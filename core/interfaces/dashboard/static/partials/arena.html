@@ -1,50 +1,119 @@
 <div class="arena-layout">
-                    <!-- Arena Controls -->
-                    <div class="arena-controls">
-                        <div class="arena-section">
-                            <h3>⚔️ Arena Models</h3>
-                            <p class="arena-hint">Select models to compete. Send a prompt and all models respond.
-                            </p>
-                            <div class="arena-model-selector">
-                                <select id="arena-model-add" class="control-select">
-                                    <option value="">+ Add Model...</option>
-                                </select>
-                                <div class="arena-model-chips" id="arena-model-chips">
-                                    <!-- model chips inserted by JS -->
-                                </div>
-                            </div>
-                        </div>
-                        <div class="arena-section">
-                            <h3>🧑‍⚖️ Evaluator (Optional)</h3>
-                            <select id="arena-evaluator" class="control-select" style="width:100%;">
-                                <option value="">No Evaluator</option>
-                            </select>
-                        </div>
-                    </div>
 
-                    <!-- Arena Chat -->
-                    <div class="arena-chat-area">
-                        <div class="arena-responses" id="arena-responses">
-                            <div class="arena-placeholder">
-                                <span class="tab-icon" style="font-size:3rem;">⚔️</span>
-                                <p>Add models and send a prompt to start a battle!</p>
-                            </div>
-                        </div>
-                        <div class="arena-input-wrapper">
-                            <textarea id="arena-input" class="chat-input" rows="1"
-                                placeholder="Enter a prompt for all models..."></textarea>
-                            <button id="arena-send" class="send-button"><i class="fas fa-paper-plane"></i></button>
-                        </div>
-                    </div>
+    <!-- ── Left: Controls ──────────────────────────────────────────────────── -->
+    <div class="arena-controls">
 
-                    <!-- Leaderboard -->
-                    <div class="arena-leaderboard-section">
-                        <div class="arena-leaderboard-header">
-                            <h3>🏆 Leaderboard</h3>
-                            <button id="arena-clear-leaderboard" class="action-btn small danger">Clear</button>
-                        </div>
-                        <div id="arena-leaderboard-cards" class="lb-cards-container">
-                            <div class="lb-empty">No battles yet</div>
-                        </div>
+        <!-- Mode switcher -->
+        <div class="arena-mode-switcher">
+            <button class="arena-mode-btn active" data-mode="battle">⚔️ Battle</button>
+            <button class="arena-mode-btn" data-mode="gauntlet">🏅 Gauntlet</button>
+        </div>
+
+        <!-- Battle controls -->
+        <div id="battle-controls">
+            <div class="arena-section">
+                <h3>⚔️ Arena Models</h3>
+                <p class="arena-hint">Select models to compete. Send a prompt and all models respond simultaneously.</p>
+                <div class="arena-model-selector">
+                    <select id="arena-model-add" class="control-select">
+                        <option value="">+ Add Model...</option>
+                    </select>
+                    <div class="arena-model-chips" id="arena-model-chips">
+                        <!-- chips inserted by JS -->
                     </div>
                 </div>
+            </div>
+            <div class="arena-section">
+                <h3>🧑‍⚖️ Evaluator <span style="font-weight:400; color: var(--text-secondary);">(Optional)</span></h3>
+                <select id="arena-evaluator" class="control-select" style="width:100%;">
+                    <option value="">No Evaluator</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Gauntlet controls -->
+        <div id="gauntlet-controls" style="display:none;">
+            <div class="arena-section">
+                <h3>🏅 Competitors</h3>
+                <p class="arena-hint">Add at least 1 model. The gauntlet runs each model through every challenge and scores them.</p>
+                <div class="arena-model-selector">
+                    <select id="gauntlet-model-add" class="control-select">
+                        <option value="">+ Add Model...</option>
+                    </select>
+                    <div class="arena-model-chips" id="gauntlet-model-chips">
+                        <!-- chips inserted by JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="arena-section">
+                <h3>📋 Preset</h3>
+                <select id="gauntlet-preset" class="control-select" style="width:100%;">
+                    <!-- populated by JS -->
+                </select>
+                <div class="gauntlet-preset-preview" id="gauntlet-preset-preview">
+                    <!-- category list inserted by JS -->
+                </div>
+            </div>
+            <div class="arena-section">
+                <h3>🧑‍⚖️ Evaluator <span style="font-weight:400; color: var(--text-secondary);">(Required)</span></h3>
+                <select id="gauntlet-evaluator" class="control-select" style="width:100%;">
+                    <option value="">Select evaluator...</option>
+                </select>
+            </div>
+            <button id="gauntlet-start" class="gauntlet-start-btn">🚀 Start Gauntlet</button>
+        </div>
+
+    </div>
+
+    <!-- ── Middle: Battle or Gauntlet display ──────────────────────────────── -->
+    <div class="arena-middle-col">
+
+        <!-- Battle area -->
+        <div id="battle-area" class="arena-chat-area">
+            <div class="arena-responses" id="arena-responses">
+                <div class="arena-placeholder">
+                    <span class="tab-icon" style="font-size:3rem;">⚔️</span>
+                    <p>Add models and send a prompt to start a battle!</p>
+                </div>
+            </div>
+            <div class="arena-input-wrapper">
+                <textarea id="arena-input" class="chat-input" rows="1"
+                    placeholder="Enter a prompt for all models..."></textarea>
+                <button id="arena-send" class="send-button"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+
+        <!-- Gauntlet area -->
+        <div id="gauntlet-area" class="arena-chat-area" style="display:none;">
+            <div class="gauntlet-display" id="gauntlet-display">
+                <div class="arena-placeholder">
+                    <span style="font-size:3rem;">🏅</span>
+                    <p>Select competitors, a preset, and an evaluator — then start the Gauntlet!</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Right: Leaderboard ───────────────────────────────────────────────── -->
+    <div class="arena-leaderboard-section">
+        <div class="arena-leaderboard-header">
+            <div class="arena-lb-tabs">
+                <button class="lb-tab active" data-tab="battle">⚔️ Battle</button>
+                <button class="lb-tab" data-tab="gauntlet">🏅 Gauntlet</button>
+            </div>
+            <button id="arena-clear-leaderboard" class="action-btn small danger">Clear</button>
+        </div>
+
+        <!-- Battle leaderboard -->
+        <div id="arena-leaderboard-cards" class="lb-cards-container">
+            <div class="lb-empty">No battles yet</div>
+        </div>
+
+        <!-- Gauntlet leaderboard -->
+        <div id="gauntlet-leaderboard" class="lb-cards-container" style="display:none;">
+            <div class="lb-empty">No gauntlets yet</div>
+        </div>
+    </div>
+
+</div>

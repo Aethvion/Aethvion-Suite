@@ -17,6 +17,7 @@ import time
 from core.utils import get_logger, atomic_json_write
 from core.utils.paths import APP_ARENA, HISTORY_AI_CONV
 from core.ai.call_contexts import CallSource
+from core.providers.provider_manager import ProviderManager
 
 logger = get_logger(__name__)
 
@@ -141,11 +142,7 @@ async def arena_battle_stream(request: ArenaBattleRequest, req: Request):
     if len(request.model_ids) < 2:
         raise HTTPException(status_code=400, detail="Need at least 2 models for a battle")
 
-    nexus = getattr(req.app.state, 'nexus', None)
-    if not nexus:
-        raise HTTPException(status_code=503, detail="System not initialized")
-    provider_manager = nexus.provider_manager
-
+    provider_manager = ProviderManager()
     trace_id = f"ARENA_{uuid.uuid4().hex[:8]}"
 
     async def event_generator():
@@ -206,10 +203,7 @@ class ArenaEvaluateRequest(BaseModel):
 async def evaluate_battle(request: ArenaEvaluateRequest, req: Request):
     """Evaluate an existing set of arena responses."""
     try:
-        nexus = getattr(req.app.state, 'nexus', None)
-        if not nexus:
-            raise HTTPException(status_code=503, detail="System not initialized")
-        provider_manager = nexus.provider_manager
+        provider_manager = ProviderManager()
 
         responses = await _evaluate_responses(
             provider_manager, request.prompt, request.responses,
@@ -306,6 +300,436 @@ async def declare_winner(request: DeclareWinnerRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── Gauntlet Mode ─────────────────────────────────────────────────────────────
+
+GAUNTLET_PRESETS: Dict[str, Dict] = {
+    "general_intelligence": {
+        "name": "General Intelligence",
+        "description": "Broad capability sweep: reasoning, knowledge, math, code, and writing.",
+        "icon": "🧠",
+        "categories": [
+            {
+                "id": "reasoning",
+                "name": "Reasoning",
+                "weight": 1.5,
+                "prompt": (
+                    "A bat and a ball together cost $1.10. The bat costs exactly $1.00 more than the ball. "
+                    "How much does the ball cost? Show your full reasoning step by step, then identify the "
+                    "cognitive trap this problem uses."
+                ),
+            },
+            {
+                "id": "knowledge",
+                "name": "Knowledge",
+                "weight": 1.0,
+                "prompt": (
+                    "Explain the difference between mitosis and meiosis. Describe a concrete scenario where "
+                    "a meiotic error causes a specific genetic disorder, including the biological mechanism involved."
+                ),
+            },
+            {
+                "id": "math",
+                "name": "Mathematics",
+                "weight": 1.5,
+                "prompt": (
+                    "Find all local maxima and minima of f(x) = 2x³ − 3x² − 12x + 4. "
+                    "Show every calculus step clearly and verify each critical point is a true extremum."
+                ),
+            },
+            {
+                "id": "code",
+                "name": "Code",
+                "weight": 1.5,
+                "prompt": (
+                    "Write a Python function that finds the longest palindromic substring in a string "
+                    "in O(n) time using Manacher's algorithm. Include step-by-step comments explaining each part."
+                ),
+            },
+            {
+                "id": "writing",
+                "name": "Writing",
+                "weight": 1.0,
+                "prompt": (
+                    "Write a compelling opening paragraph (150–200 words) for a thriller novel set in a "
+                    "near-future city where memories can be extracted and sold. Focus on atmosphere and "
+                    "tension — no plot summary."
+                ),
+            },
+        ],
+    },
+    "code_monkey": {
+        "name": "Code Monkey",
+        "description": "Deep programming challenges: generation, debugging, optimization, security review, and explanation.",
+        "icon": "🐒",
+        "categories": [
+            {
+                "id": "code_gen",
+                "name": "Code Generation",
+                "weight": 1.5,
+                "prompt": (
+                    "Implement a thread-safe LRU cache in Python with O(1) get and put operations. "
+                    "Use type hints and include a concise docstring."
+                ),
+            },
+            {
+                "id": "debugging",
+                "name": "Debugging",
+                "weight": 1.5,
+                "prompt": (
+                    "Find and fix every bug in this merge-sorted implementation. Explain each bug you found:\n\n"
+                    "```python\n"
+                    "def merge_sorted(list1, list2):\n"
+                    "    result = []\n"
+                    "    i = j = 0\n"
+                    "    while i < len(list1) and j < len(list2):\n"
+                    "        if list1[i] <= list2[j]:\n"
+                    "            result.append(list1[i])\n"
+                    "            i += 1\n"
+                    "        else:\n"
+                    "            result.append(list2[j])\n"
+                    "    result.extend(list1[i:])\n"
+                    "    result.extend(list2[j:])\n"
+                    "    return result\n"
+                    "```"
+                ),
+            },
+            {
+                "id": "optimization",
+                "name": "Optimization",
+                "weight": 1.0,
+                "prompt": (
+                    "Optimize this O(n²) function and explain the complexity improvements:\n\n"
+                    "```python\n"
+                    "def has_unique_chars(s):\n"
+                    "    for i in range(len(s)):\n"
+                    "        for j in range(len(s)):\n"
+                    "            if i != j and s[i] == s[j]:\n"
+                    "                return False\n"
+                    "    return True\n"
+                    "```"
+                ),
+            },
+            {
+                "id": "security_review",
+                "name": "Security Review",
+                "weight": 1.0,
+                "prompt": (
+                    "Review this FastAPI login endpoint. Identify every security vulnerability, bug, and design problem:\n\n"
+                    "```python\n"
+                    "@app.post('/login')\n"
+                    "def login(username: str, password: str, db: Session = Depends(get_db)):\n"
+                    "    user = db.execute(f'SELECT * FROM users WHERE username = \"{username}\"').first()\n"
+                    "    if user and user.password == password:\n"
+                    "        token = username + '_' + str(time.time())\n"
+                    "        return {'token': token}\n"
+                    "    return {'error': 'Invalid credentials'}\n"
+                    "```"
+                ),
+            },
+            {
+                "id": "code_explain",
+                "name": "Code Explanation",
+                "weight": 1.0,
+                "prompt": (
+                    "Explain exactly what this function does, how it works, and identify any edge cases or bugs:\n\n"
+                    "```python\n"
+                    "def mystery(nums):\n"
+                    "    seen = {}\n"
+                    "    for i, n in enumerate(nums):\n"
+                    "        complement = -sum(nums) - n\n"
+                    "        if complement in seen:\n"
+                    "            return [seen[complement], i]\n"
+                    "        seen[n] = i\n"
+                    "    return []\n"
+                    "```"
+                ),
+            },
+        ],
+    },
+    "creative_writer": {
+        "name": "Creative Writer",
+        "description": "Creative writing across fiction, poetry, dialogue, worldbuilding, and style mimicry.",
+        "icon": "✍️",
+        "categories": [
+            {
+                "id": "short_story",
+                "name": "Short Story",
+                "weight": 1.5,
+                "prompt": (
+                    "Write a complete short story (200–250 words) about a lighthouse keeper who discovers "
+                    "the light is attracting something other than ships. Emphasise mood over plot, and end "
+                    "with a surprising final line."
+                ),
+            },
+            {
+                "id": "poetry",
+                "name": "Poetry",
+                "weight": 1.0,
+                "prompt": (
+                    "Write a poem about the moment between dreaming and waking. Use at least two named "
+                    "poetic devices (e.g. enjambment, assonance, extended metaphor) and identify them "
+                    "briefly after the poem."
+                ),
+            },
+            {
+                "id": "dialogue",
+                "name": "Dialogue",
+                "weight": 1.0,
+                "prompt": (
+                    "Write a 10-line dialogue between two strangers in an elevator — one just won the "
+                    "lottery, one just lost their job. Neither knows the other's situation. The dialogue "
+                    "should feel natural and subtly reveal both characters without stating the facts directly."
+                ),
+            },
+            {
+                "id": "worldbuilding",
+                "name": "Worldbuilding",
+                "weight": 1.5,
+                "prompt": (
+                    "Describe a society that evolved entirely without private ownership. How does their "
+                    "economy function? How do they resolve conflict and motivate innovation? Be specific "
+                    "and internally consistent — avoid utopian hand-waving."
+                ),
+            },
+            {
+                "id": "style_mimicry",
+                "name": "Style Mimicry",
+                "weight": 1.0,
+                "prompt": (
+                    "Write the same paragraph twice — a detective describing a crime scene — first in the "
+                    "style of Raymond Chandler (hard-boiled noir), then in the style of Agatha Christie "
+                    "(precise, observational, faintly arch). Make the stylistic contrast as sharp as possible."
+                ),
+            },
+        ],
+    },
+    "analyst": {
+        "name": "Analyst",
+        "description": "Analytical thinking: summarization, comparison, argumentation, data reasoning, synthesis.",
+        "icon": "📊",
+        "categories": [
+            {
+                "id": "summarization",
+                "name": "Summarization",
+                "weight": 1.0,
+                "prompt": (
+                    "Summarize the key arguments for and against nuclear energy as a climate solution "
+                    "in exactly 150 words. Maintain strict balance; do not express a personal view."
+                ),
+            },
+            {
+                "id": "comparison",
+                "name": "Comparison",
+                "weight": 1.0,
+                "prompt": (
+                    "Compare microservices vs monolithic architecture for a startup building a social "
+                    "platform expected to scale to 10 million users. Give a clear, reasoned recommendation — "
+                    "not just a pros/cons list."
+                ),
+            },
+            {
+                "id": "argumentation",
+                "name": "Argumentation",
+                "weight": 1.5,
+                "prompt": (
+                    "Construct the strongest possible argument that social media companies should be legally "
+                    "liable for algorithmic amplification of harmful content. Then steelman and refute the "
+                    "two most powerful objections to this position."
+                ),
+            },
+            {
+                "id": "data_reasoning",
+                "name": "Data Reasoning",
+                "weight": 1.5,
+                "prompt": (
+                    "A study reports: 'Students who eat breakfast score 15% higher on morning exams.' "
+                    "A school board decides to mandate breakfast programmes. Identify every logical flaw "
+                    "in this reasoning and specify what additional data would be needed to justify the policy."
+                ),
+            },
+            {
+                "id": "synthesis",
+                "name": "Research Synthesis",
+                "weight": 1.0,
+                "prompt": (
+                    "Three researchers disagree: Dr. A says remote work increases productivity; Dr. B says "
+                    "it decreases it; Dr. C says it depends on job type. Design a study that could settle "
+                    "the debate. Identify the key variables to control and the most likely confounders."
+                ),
+            },
+        ],
+    },
+}
+
+
+class GauntletRequest(BaseModel):
+    """Gauntlet mode request — runs a model through a preset sequence of challenges."""
+    model_ids: List[str]
+    preset_name: str
+    evaluator_model_id: str
+
+
+@router.get("/gauntlet/presets")
+async def get_gauntlet_presets():
+    """Return available gauntlet presets (without full prompts)."""
+    return {
+        "presets": {
+            preset_id: {
+                "name": p["name"],
+                "description": p["description"],
+                "icon": p["icon"],
+                "categories": [
+                    {"id": c["id"], "name": c["name"], "weight": c["weight"]}
+                    for c in p["categories"]
+                ],
+            }
+            for preset_id, p in GAUNTLET_PRESETS.items()
+        }
+    }
+
+
+@router.post("/gauntlet_stream")
+async def arena_gauntlet_stream(request: GauntletRequest, req: Request):
+    """Run a Gauntlet and stream results category-by-category via Server-Sent Events."""
+    if not request.model_ids:
+        raise HTTPException(status_code=400, detail="Need at least 1 model for a gauntlet")
+    if request.preset_name not in GAUNTLET_PRESETS:
+        raise HTTPException(status_code=400, detail=f"Unknown preset: {request.preset_name}")
+
+    provider_manager = ProviderManager()
+    preset = GAUNTLET_PRESETS[request.preset_name]
+    categories = preset["categories"]
+    trace_id = f"GAUNTLET_{uuid.uuid4().hex[:8]}"
+
+    async def event_generator():
+        # ── Start ──────────────────────────────────────────────────────────────
+        start_payload = {
+            "type": "gauntlet_start",
+            "trace_id": trace_id,
+            "preset_name": request.preset_name,
+            "preset": {"name": preset["name"], "icon": preset["icon"]},
+            "categories": [
+                {"id": c["id"], "name": c["name"], "weight": c["weight"]}
+                for c in categories
+            ],
+            "model_ids": request.model_ids,
+        }
+        yield f"data: {json.dumps(start_payload)}\n\n"
+
+        # Per-model accumulated category scores: {model_id: {cat_id: score}}
+        model_cat_scores: Dict[str, Dict[str, Optional[float]]] = {
+            mid: {} for mid in request.model_ids
+        }
+
+        for cat_index, category in enumerate(categories):
+            cat_id = category["id"]
+            cat_name = category["name"]
+            cat_prompt = category["prompt"]
+
+            # ── Category start ──────────────────────────────────────────────
+            yield f"data: {json.dumps({'type': 'category_start', 'category_id': cat_id, 'category_name': cat_name, 'category_index': cat_index, 'total_categories': len(categories)})}\n\n"
+
+            # Call all models in parallel for this category
+            cat_trace = f"{trace_id}_c{cat_index}"
+            tasks = [
+                asyncio.create_task(_call_model(provider_manager, cat_prompt, mid, cat_trace))
+                for mid in request.model_ids
+            ]
+
+            cat_responses: List[Dict] = []
+            for completed_task in asyncio.as_completed(tasks):
+                try:
+                    result = await completed_task
+                    cat_responses.append(result)
+                    # Stream individual model completion (no content — keeps payload small)
+                    yield f"data: {json.dumps({'type': 'model_response', 'category_id': cat_id, 'model_id': result['model_id'], 'success': result['success'], 'time_ms': result['time_ms']})}\n\n"
+                except Exception as exc:
+                    logger.error(f"Gauntlet {cat_id} model call failed: {exc}")
+
+            # ── Evaluate this category ──────────────────────────────────────
+            eval_trace = f"{trace_id}_e{cat_index}"
+            scored = await _evaluate_responses(
+                provider_manager, cat_prompt, cat_responses,
+                request.evaluator_model_id, eval_trace
+            )
+
+            cat_scores: Dict[str, Any] = {}
+            for r in scored:
+                mid = r["model_id"]
+                score = r.get("score")
+                reasoning = r.get("reasoning", "")
+                cat_scores[mid] = {"score": score, "reasoning": reasoning}
+                if score is not None:
+                    model_cat_scores[mid][cat_id] = score
+
+            # ── Category complete ───────────────────────────────────────────
+            yield f"data: {json.dumps({'type': 'category_complete', 'category_id': cat_id, 'category_name': cat_name, 'category_index': cat_index, 'weight': category['weight'], 'scores': cat_scores, 'responses': scored})}\n\n"
+
+        # ── Compute composite scores ────────────────────────────────────────
+        composite_scores: Dict[str, float] = {}
+        for mid in request.model_ids:
+            weighted_sum = 0.0
+            weight_total = 0.0
+            for cat in categories:
+                score = model_cat_scores[mid].get(cat["id"])
+                if score is not None:
+                    weighted_sum += score * cat["weight"]
+                    weight_total += cat["weight"]
+            composite_scores[mid] = round(weighted_sum / weight_total, 2) if weight_total > 0 else 0.0
+
+        results = {
+            mid: {
+                "composite_score": composite_scores.get(mid, 0.0),
+                "category_scores": model_cat_scores[mid],
+            }
+            for mid in request.model_ids
+        }
+        ranked = sorted(request.model_ids, key=lambda m: composite_scores.get(m, 0.0), reverse=True)
+        winner_id = ranked[0] if ranked else None
+
+        # ── Persist gauntlet stats to leaderboard ───────────────────────────
+        leaderboard = _load_leaderboard()
+        gauntlet_data = leaderboard.setdefault("gauntlet", {})
+        for mid in request.model_ids:
+            composite = composite_scores.get(mid, 0.0)
+            entry = gauntlet_data.setdefault(mid, {
+                "runs": 0,
+                "best_composite": 0.0,
+                "last_composite": 0.0,
+                "last_preset": request.preset_name,
+                "total_category_scores": {},
+            })
+            entry["runs"] += 1
+            entry["last_composite"] = composite
+            entry["last_preset"] = request.preset_name
+            if composite > entry.get("best_composite", 0.0):
+                entry["best_composite"] = composite
+            tcs = entry.setdefault("total_category_scores", {})
+            for cid, score in model_cat_scores[mid].items():
+                if score is not None:
+                    agg = tcs.setdefault(cid, {"total": 0.0, "count": 0})
+                    agg["total"] += score
+                    agg["count"] += 1
+
+        leaderboard["gauntlet"] = gauntlet_data
+        _save_leaderboard(leaderboard)
+
+        # ── Gauntlet complete ───────────────────────────────────────────────
+        complete_payload = {
+            "type": "gauntlet_complete",
+            "results": results,
+            "ranked": ranked,
+            "winner_id": winner_id,
+            "leaderboard": gauntlet_data,
+            "categories": [{"id": c["id"], "name": c["name"]} for c in categories],
+        }
+        yield f"data: {json.dumps(complete_payload)}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+# ── AI Conversations ───────────────────────────────────────────────────────────
+
 class AIConvTurnRequest(BaseModel):
     """Request for a single turn in AI Conversation."""
     model_id: str
@@ -331,11 +755,7 @@ class AIConvRenameRequest(BaseModel):
 async def aiconv_generate(request: AIConvTurnRequest, req: Request):
     """Generate a single turn for AI Conversations."""
     try:
-        nexus = getattr(req.app.state, 'nexus', None)
-        if not nexus:
-            raise HTTPException(status_code=503, detail="System not initialized")
-        provider_manager = nexus.provider_manager
-
+        provider_manager = ProviderManager()
         trace_id = f"AICONV_{uuid.uuid4().hex[:8]}"
         
         # Since call_with_failover usually takes a single string prompt, we construct it:

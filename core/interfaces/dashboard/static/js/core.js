@@ -1194,6 +1194,8 @@ async function switchMainTab(tabName, save = true) {
     else if (actualTabName === 'arena' && typeof loadArenaModels === 'function') {
         loadArenaModels();
         if (typeof loadArenaLeaderboard === 'function') loadArenaLeaderboard();
+        if (typeof loadGauntletPresets === 'function') loadGauntletPresets();
+        if (typeof loadGauntletLeaderboard === 'function') loadGauntletLeaderboard();
     }
     else if (actualTabName === 'aiconv' && typeof loadArenaModels === 'function') loadArenaModels();
     else if (actualTabName === 'status' && typeof loadSystemStatusTab === 'function') loadSystemStatusTab();
