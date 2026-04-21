@@ -1715,7 +1715,13 @@ async function createNewProfile(type) {
 async function openAddModelModal(providerName) {
     if (!_suggestedModels || !_registryData) return;
 
-    let providerSuggested = _suggestedModels[providerName] || [];
+    let providerSuggested = [];
+    if (providerName === 'local') {
+        providerSuggested = _suggestedModels.local || [];
+    } else {
+        providerSuggested = (_suggestedModels.suggested || []).filter(m => m.provider_id === providerName);
+    }
+
     const providerExisting = _registryData.providers[providerName]?.models || {};
 
     // Special logic for Local Provider: suggest installed but unregistered models

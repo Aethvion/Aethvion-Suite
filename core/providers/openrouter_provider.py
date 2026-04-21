@@ -105,14 +105,22 @@ class OpenRouterProvider(BaseProvider):
         trace_id: str,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
         messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> Iterator[str]:
         """Stream response via OpenRouter."""
+        active_model = model if model else self.config.model
         try:
+            system_prompt = kwargs.pop("system_prompt", None)
+            msg_list: List[Dict[str, Any]] = []
+            if system_prompt:
+                msg_list.append({"role": "system", "content": system_prompt})
+            msg_list.append({"role": "user", "content": prompt})
+
             payload = {
-                "model": self.config.model,
-                "messages": [{"role": "user", "content": prompt}],
+                "model": active_model,
+                "messages": msg_list,
                 "temperature": temperature,
                 "stream": True,
             }

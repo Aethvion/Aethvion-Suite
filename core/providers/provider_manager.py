@@ -553,10 +553,21 @@ class ProviderManager:
             target_provider_name = None
             if hasattr(self, 'model_to_provider_map'):
                 target_provider_name = self.model_to_provider_map.get(model_id)
-            
+
             if not target_provider_name:
-                logger.warning(f"[{trace_id}] Skipping model '{model_id}', no mapped provider found.")
-                continue
+                # OpenRouter passthrough: any "namespace/model-name" style ID that
+                # isn't explicitly mapped to another provider routes to OpenRouter.
+                if "/" in model_id and "openrouter" in self.providers:
+                    target_provider_name = "openrouter"
+                    logger.info(
+                        f"[{trace_id}] Model '{model_id}' not in registry — "
+                        "routing via OpenRouter passthrough"
+                    )
+                else:
+                    logger.warning(
+                        f"[{trace_id}] Skipping model '{model_id}', no mapped provider found."
+                    )
+                    continue
                 
             provider = self.providers.get(target_provider_name)
             if not provider:
@@ -650,12 +661,20 @@ class ProviderManager:
         for model_id in model_order:
             target_provider_name = self.model_to_provider_map.get(model_id)
             if not target_provider_name:
-                continue
-                
+                # OpenRouter passthrough for namespaced model IDs
+                if "/" in model_id and "openrouter" in self.providers:
+                    target_provider_name = "openrouter"
+                    logger.info(
+                        f"[{trace_id}] Stream: model '{model_id}' not in registry — "
+                        "routing via OpenRouter passthrough"
+                    )
+                else:
+                    continue
+
             provider = self.providers.get(target_provider_name)
             if not provider or provider.status == ProviderStatus.OFFLINE:
                 continue
-            
+
             logger.info(f"[{trace_id}] Attempting stream with model: {model_id} via {target_provider_name}")
             
             try:

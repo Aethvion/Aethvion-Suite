@@ -159,7 +159,8 @@
 
         const prov   = _registry.providers[providerId];
         const models = prov.models || {};
-        const hasSuggested = (_suggested[providerId] || []).length > 0;
+        const hasSuggested = (_suggested.suggested || []).some(m => m.provider_id === providerId) || (_suggested[providerId] || []).length > 0;
+
 
         const entries = Object.entries(models);
         let tableBody = '';
