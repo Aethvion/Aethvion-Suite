@@ -627,7 +627,7 @@ async def arena_gauntlet_stream(request: GauntletRequest, req: Request):
             cat_prompt = category["prompt"]
 
             # ── Category start ──────────────────────────────────────────────
-            yield f"data: {json.dumps({'type': 'category_start', 'category_id': cat_id, 'category_name': cat_name, 'category_index': cat_index, 'total_categories': len(categories)})}\n\n"
+            yield f"data: {json.dumps({'type': 'category_start', 'category_id': cat_id, 'category_name': cat_name, 'category_index': cat_index, 'total_categories': len(categories), 'prompt': cat_prompt})}\n\n"
 
             # Call all models in parallel for this category
             cat_trace = f"{trace_id}_c{cat_index}"
@@ -641,8 +641,8 @@ async def arena_gauntlet_stream(request: GauntletRequest, req: Request):
                 try:
                     result = await completed_task
                     cat_responses.append(result)
-                    # Stream individual model completion (no content — keeps payload small)
-                    yield f"data: {json.dumps({'type': 'model_response', 'category_id': cat_id, 'model_id': result['model_id'], 'success': result['success'], 'time_ms': result['time_ms']})}\n\n"
+                    # Stream individual model completion (includes response content for live preview)
+                    yield f"data: {json.dumps({'type': 'model_response', 'category_id': cat_id, 'model_id': result['model_id'], 'success': result['success'], 'time_ms': result['time_ms'], 'response': result.get('response', '')})}\n\n"
                 except Exception as exc:
                     logger.error(f"Gauntlet {cat_id} model call failed: {exc}")
 

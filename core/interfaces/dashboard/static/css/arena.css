@@ -1040,3 +1040,184 @@
     font-size: 0.67rem;
     color: var(--text-secondary);
 }
+
+/* ── Gauntlet response detail panel ──────────────────────────────────────── */
+
+/* Prompt preview shown while a category is running */
+.gauntlet-running-prompt {
+    margin-top: 0.45rem;
+    padding: 0.45rem 0.65rem;
+    background: rgba(0, 217, 255, 0.05);
+    border-left: 2px solid var(--primary);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.77rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+    white-space: pre-wrap;
+    opacity: 0.85;
+}
+
+/* Toggle button at the bottom of each completed card */
+.gauntlet-view-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    margin-top: 0.55rem;
+    padding: 5px 0;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-size: 0.71rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.gauntlet-view-toggle:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(0, 217, 255, 0.05);
+}
+
+/* Expandable panel container */
+.gauntlet-cat-panel {
+    margin-top: 0.7rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.7rem;
+}
+
+/* Challenge prompt block */
+.gauntlet-cat-prompt {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 0.7rem;
+}
+
+.gauntlet-cat-prompt-label {
+    font-size: 0.67rem;
+    text-transform: uppercase;
+    letter-spacing: 0.9px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+}
+
+.gauntlet-cat-prompt-text {
+    font-size: 0.83rem;
+    color: var(--text-primary);
+    line-height: 1.55;
+    white-space: pre-wrap;
+}
+
+/* List of per-model responses */
+.gauntlet-responses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.gauntlet-response-entry {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.gauntlet-response-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.45rem 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.gauntlet-response-model {
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+    font-size: 0.77rem;
+    font-family: 'Fira Code', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gauntlet-response-score-badge {
+    background: rgba(255, 255, 255, 0.09);
+    border-radius: 4px;
+    padding: 1px 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.gauntlet-response-time {
+    font-size: 0.67rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Evaluator reasoning line */
+.gauntlet-response-reasoning {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.74rem;
+    font-style: italic;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.02);
+    line-height: 1.4;
+}
+
+/* The actual response content */
+.gauntlet-response-body {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.81rem;
+    color: var(--text-primary);
+    line-height: 1.65;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+/* Markdown resets inside response body */
+.gauntlet-response-body.markdown-content p { margin: 0 0 0.5em; }
+.gauntlet-response-body.markdown-content p:last-child { margin-bottom: 0; }
+.gauntlet-response-body.markdown-content h1,
+.gauntlet-response-body.markdown-content h2,
+.gauntlet-response-body.markdown-content h3 {
+    font-size: 0.9rem;
+    margin: 0.6em 0 0.3em;
+    color: var(--text-primary);
+}
+.gauntlet-response-body.markdown-content code {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.78em;
+    background: rgba(255, 255, 255, 0.09);
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+.gauntlet-response-body.markdown-content pre {
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 5px;
+    padding: 0.55rem 0.7rem;
+    overflow-x: auto;
+    margin: 0.4em 0;
+}
+.gauntlet-response-body.markdown-content pre code {
+    background: none;
+    padding: 0;
+}
+.gauntlet-response-body.markdown-content ul,
+.gauntlet-response-body.markdown-content ol {
+    padding-left: 1.3em;
+    margin: 0.3em 0;
+}
+.gauntlet-response-body.markdown-content li {
+    margin-bottom: 0.2em;
+}

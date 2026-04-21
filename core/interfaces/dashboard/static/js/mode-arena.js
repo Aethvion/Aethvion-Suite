@@ -632,6 +632,9 @@ let arenaLbTab = 'battle';
 let gauntletSelectedModels = [];
 let gauntletPresets = {};
 let gauntletRunning = false;
+// Per-category prompt + responses stored as gauntlet runs, keyed by cat_id
+// { [catId]: { prompt: string, responses: { [modelId]: { response, score, reasoning, time_ms } } } }
+let _gauntletCatData = {};
 
 // Color palette for model polygons / score bars (matches radar chart)
 const MODEL_COLORS = [
@@ -808,6 +811,7 @@ async function startGauntlet() {
 // ── Gauntlet SSE handlers ─────────────────────────────────────────────────────
 
 function _gauntletInitDisplay(ev) {
+    _gauntletCatData = {};
     const display = document.getElementById('gauntlet-display');
     if (!display) return;
 
@@ -835,6 +839,8 @@ function _gauntletInitDisplay(ev) {
 }
 
 function _gauntletCategoryStart(ev) {
+    _gauntletCatData[ev.category_id] = { prompt: ev.prompt || '', responses: {} };
+
     const card = document.getElementById(`gauntlet-cat-${ev.category_id}`);
     if (!card) return;
     card.className = 'gauntlet-cat-card running';
@@ -842,10 +848,30 @@ function _gauntletCategoryStart(ev) {
     const status = card.querySelector('.gauntlet-cat-status');
     if (icon)   icon.textContent   = '⏳';
     if (status) status.textContent = 'Generating…';
+
+    // Show the prompt text while models are running
+    if (ev.prompt) {
+        const existing = card.querySelector('.gauntlet-running-prompt');
+        if (!existing) {
+            const promptEl = document.createElement('div');
+            promptEl.className = 'gauntlet-running-prompt';
+            promptEl.textContent = ev.prompt;
+            card.appendChild(promptEl);
+        }
+    }
     card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function _gauntletModelResponse(ev) {
+    // Store response content for the detail panel
+    const catEntry = _gauntletCatData[ev.category_id];
+    if (catEntry) {
+        catEntry.responses[ev.model_id] = {
+            response: ev.response || '',
+            time_ms: ev.time_ms,
+            success: ev.success,
+        };
+    }
     const card   = document.getElementById(`gauntlet-cat-${ev.category_id}`);
     const status = card && card.querySelector('.gauntlet-cat-status');
     if (status) status.textContent = 'Evaluating…';
@@ -878,6 +904,17 @@ function _gauntletCategoryComplete(ev, modelIds) {
             </div>`;
     }).join('');
 
+    // Merge score + reasoning into stored cat data
+    const catEntry = _gauntletCatData[ev.category_id];
+    if (catEntry && ev.responses) {
+        for (const r of ev.responses) {
+            if (!catEntry.responses[r.model_id]) catEntry.responses[r.model_id] = {};
+            if (r.response) catEntry.responses[r.model_id].response = r.response;
+            catEntry.responses[r.model_id].score     = r.score;
+            catEntry.responses[r.model_id].reasoning = r.reasoning || '';
+        }
+    }
+
     const winShort = winner ? (winner.length > 20 ? winner.slice(0,17) + '…' : winner) : null;
     card.className = 'gauntlet-cat-card complete';
     card.innerHTML = `
@@ -886,7 +923,11 @@ function _gauntletCategoryComplete(ev, modelIds) {
             <span class="gauntlet-cat-name">${escapeHtml(ev.category_name)}</span>
             <span class="gauntlet-cat-status">${winShort ? '🏆 ' + escapeHtml(winShort) : 'No winner'}</span>
         </div>
-        <div class="gauntlet-cat-scores">${scoresHtml}</div>`;
+        <div class="gauntlet-cat-scores">${scoresHtml}</div>
+        <button class="gauntlet-view-toggle" onclick="toggleGauntletCatPanel('${ev.category_id}')">
+            <i class="fas fa-chevron-down"></i> View Responses
+        </button>
+        <div class="gauntlet-cat-panel" id="gauntlet-cat-panel-${ev.category_id}" style="display:none;"></div>`;
 
     // Update progress bar
     const completed = ev.category_index + 1;
@@ -945,6 +986,67 @@ function _gauntletComplete(ev, categories) {
     }
     renderRadarChart('gauntlet-radar-container', categories, radarData, ranked);
     resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Gauntlet response detail panel ───────────────────────────────────────────
+
+window.toggleGauntletCatPanel = function toggleGauntletCatPanel(catId) {
+    const panel = document.getElementById(`gauntlet-cat-panel-${catId}`);
+    if (!panel) return;
+    const btn   = panel.previousElementSibling; // the toggle button just above
+    const isOpen = panel.style.display !== 'none';
+
+    if (isOpen) {
+        panel.style.display = 'none';
+        if (btn) btn.innerHTML = '<i class="fas fa-chevron-down"></i> View Responses';
+    } else {
+        panel.style.display = '';
+        if (btn) btn.innerHTML = '<i class="fas fa-chevron-up"></i> Hide Responses';
+        // Only build the inner HTML once
+        if (!panel.dataset.populated) {
+            panel.dataset.populated = '1';
+            panel.innerHTML = _buildGauntletResponsePanel(catId);
+        }
+    }
+};
+
+function _buildGauntletResponsePanel(catId) {
+    const data = _gauntletCatData[catId];
+    if (!data) return '<p style="color:var(--text-secondary);padding:0.5rem 0;">No data available.</p>';
+
+    const renderMd = (text) => {
+        if (typeof marked !== 'undefined' && marked.parse) return marked.parse(text || '');
+        return '<pre style="white-space:pre-wrap;margin:0;">' + escapeHtml(text || '') + '</pre>';
+    };
+
+    const promptHtml = data.prompt ? `
+        <div class="gauntlet-cat-prompt">
+            <div class="gauntlet-cat-prompt-label">📋 Challenge Prompt</div>
+            <div class="gauntlet-cat-prompt-text">${escapeHtml(data.prompt)}</div>
+        </div>` : '';
+
+    const responsesHtml = gauntletSelectedModels.map((mid, mi) => {
+        const r     = data.responses[mid] || {};
+        const color = MODEL_COLORS[mi % MODEL_COLORS.length];
+        const short = mid.length > 34 ? mid.slice(0, 31) + '…' : mid;
+        const score = r.score != null ? r.score : null;
+        return `
+            <div class="gauntlet-response-entry">
+                <div class="gauntlet-response-header" style="border-left:3px solid ${color};">
+                    <span class="gauntlet-response-model" style="color:${color};">${escapeHtml(short)}</span>
+                    <span class="gauntlet-response-score-badge"${score == null ? ' style="opacity:0.4;"' : ''}>${score != null ? score + '/10' : '—'}</span>
+                    ${r.time_ms ? `<span class="gauntlet-response-time">${r.time_ms}ms</span>` : ''}
+                </div>
+                ${r.reasoning ? `<div class="gauntlet-response-reasoning">${escapeHtml(r.reasoning)}</div>` : ''}
+                <div class="gauntlet-response-body markdown-content">${renderMd(r.response || '')}</div>
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="gauntlet-cat-detail">
+            ${promptHtml}
+            <div class="gauntlet-responses-list">${responsesHtml || '<p style="color:var(--text-secondary);font-size:0.8rem;">No responses recorded.</p>'}</div>
+        </div>`;
 }
 
 // ── Radar chart (pure SVG) ────────────────────────────────────────────────────
