@@ -119,13 +119,15 @@ const LocalModels = {
 
     async loadModels() {
         try {
-            const registryRes = await fetch('/api/registry');
-            const registryData = await registryRes.json();
-            this._registered = registryData.providers?.local?.models || {};
-
+            // First fetch local status so new files are auto-registered
             const res = await fetch('/api/registry/local/models/status');
             const data = await res.json();
             this._models = data.models || {};
+
+            // Then fetch registry which will now contain the auto-registered models
+            const registryRes = await fetch('/api/registry');
+            const registryData = await registryRes.json();
+            this._registered = registryData.providers?.local?.models || {};
 
             if (typeof markPanelUpdated !== 'undefined') markPanelUpdated('models');
             this.renderModels();
@@ -596,14 +598,7 @@ const LocalModels = {
                     let msg;
                     try { msg = JSON.parse(part.slice(6)); } catch { continue; }
 
-                    if (msg.pct !== undefined) {
-                        if (dlBar)   dlBar.style.width    = msg.pct + '%';
-                        if (dlPct)   dlPct.textContent    = msg.pct + '%';
-                        if (dlLabel) dlLabel.textContent  = 'Downloading…';
-                        if (dlSize && msg.downloaded_mb)
-                            dlSize.textContent = `${msg.downloaded_mb} MB / ${msg.total_mb} MB`;
-                        if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${msg.pct}%`;
-                    } else if (msg.done) {
+                    if (msg.done) {
                         if (msg.success) {
                             if (dlBar)   { dlBar.style.width = '100%'; dlBar.classList.add('dl-bar-done'); }
                             if (dlLabel) dlLabel.textContent = 'Complete!';
@@ -617,6 +612,13 @@ const LocalModels = {
                             showNotification(`Download failed: ${msg.error || 'Unknown error'}`, 'error');
                             if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Install'; }
                         }
+                    } else if (msg.pct !== undefined) {
+                        if (dlBar)   dlBar.style.width    = msg.pct + '%';
+                        if (dlPct)   dlPct.textContent    = msg.pct + '%';
+                        if (dlLabel) dlLabel.textContent  = 'Downloading…';
+                        if (dlSize && msg.downloaded_mb)
+                            dlSize.textContent = `${msg.downloaded_mb} MB / ${msg.total_mb} MB`;
+                        if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${msg.pct}%`;
                     }
                 }
             }
