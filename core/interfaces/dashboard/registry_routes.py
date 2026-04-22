@@ -674,9 +674,11 @@ async def get_local_models_status():
         registry = _load_registry()
         registry_changed = False
 
+        providers = registry.setdefault("providers", {})
+
         # Ensure "local" provider exists in the registry
-        if "local" not in registry:
-            registry["local"] = {
+        if "local" not in providers:
+            providers["local"] = {
                 "name": "Local Models",
                 "active": True,
                 "chat_config": {"active": True, "priority": 2},
@@ -685,7 +687,7 @@ async def get_local_models_status():
             }
             registry_changed = True
 
-        local_models = registry["local"].setdefault("models", {})
+        local_models = providers["local"].setdefault("models", {})
 
         # Get all .gguf files
         for f in local_dir.glob("*.gguf"):
@@ -708,6 +710,7 @@ async def get_local_models_status():
                 registry_changed = True
 
         if registry_changed:
+            registry = _seed_auto_routing(registry)
             _save_registry(registry)
 
         return {"models": status}

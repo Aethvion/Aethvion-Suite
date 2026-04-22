@@ -383,10 +383,16 @@ const LocalModels = {
 
         const actionHtml = isUnsupported
             ? `<span class="hub-status-badge">Incompatible</span>`
-            : `<button class="hub-action-btn install-btn"
-                       onclick="LocalModels.installSuggestedModel('${model.id}', '${model.repo}', '${model.filename}')">
-                   <i class="fas fa-download"></i> Install
-               </button>`;
+            : `<div style="display:flex; gap:0.4rem; justify-content:flex-end;">
+                   <button class="hub-action-btn delete-btn" style="display:none; padding: 0.6rem; color: #ef4444; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2);"
+                           onclick="LocalModels.deleteModel('${model.filename}')" title="Delete Model">
+                       <i class="fas fa-trash"></i>
+                   </button>
+                   <button class="hub-action-btn install-btn"
+                           onclick="LocalModels.installSuggestedModel('${model.id}', '${model.repo}', '${model.filename}')">
+                       <i class="fas fa-download"></i> Install
+                   </button>
+               </div>`;
 
         return `
         <div class="hub-card suggestion-card-v12 faded-in-card" id="suggested-${model.id}" 
@@ -516,6 +522,7 @@ const LocalModels = {
         grid.querySelectorAll('.suggestion-card-v12').forEach(card => {
             const installBtn = card.querySelector('.install-btn');
             const badge = card.querySelector('.installed-badge');
+            const deleteBtn = card.querySelector('.delete-btn');
 
             // Skip unsupported cards — they have no install button
             if (!installBtn) return;
@@ -529,11 +536,13 @@ const LocalModels = {
                 installBtn.disabled = true;
                 installBtn.innerHTML = '<i class="fas fa-check"></i> Installed';
                 installBtn.classList.add('secondary');
+                if (deleteBtn) deleteBtn.style.display = 'block';
             } else {
                 if (badge) badge.style.display = 'none';
                 installBtn.disabled = false;
                 installBtn.innerHTML = '<i class="fas fa-download"></i> Install';
                 installBtn.classList.remove('secondary');
+                if (deleteBtn) deleteBtn.style.display = 'none';
             }
         });
     },
