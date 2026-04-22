@@ -637,6 +637,9 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
     const html = `<div class="message-content">${messageContent}</div>`;
 
     // Store message in thread
+    if (!threadMessages[threadId]) {
+        threadMessages[threadId] = [];
+    }
     threadMessages[threadId].push({
         role: role,
         content: content,
@@ -1329,31 +1332,28 @@ function streamChatTokens(taskId, threadId) {
     let accumulated = '';
     let streamBubble = null;       // outer .message wrapper
     let streamContent = null;      // inner div that gets updated
-    let streamCursor = null;       // blinking cursor el
     let finalized = false;
+    let storedTaskData = null;
 
     // Create the live streaming bubble in the message list
     function _createBubble() {
         const messagesEl = document.getElementById('chat-messages');
         if (!messagesEl) return;
+
+        // Initialize smooth scroller for this container
+        const scroller = new SmoothScroller(messagesEl);
         // First token arrived — no longer need the typing indicator
         hideTypingIndicator();
         streamBubble = document.createElement('div');
-        streamBubble.className = 'message assistant-message chat-stream-bubble';
+        streamBubble.className = 'message ai-message streaming-bubble';
         streamBubble.dataset.taskId = taskId;
 
         streamContent = document.createElement('div');
         streamContent.className = 'message-content stream-content';
         streamContent.innerHTML = '<strong>Chat:</strong> <div class="stream-text" style="display:inline-block;width:100%;"></div>';
 
-        streamCursor = document.createElement('span');
-        streamCursor.className = 'stream-cursor';
-        streamCursor.textContent = '▋';
-
         streamBubble.appendChild(streamContent);
-        streamBubble.appendChild(streamCursor);
         messagesEl.appendChild(streamBubble);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
 
         // Initialize SmoothTypist for jitter-free rendering
         let lastMarkdownUpdate = 0;
@@ -1374,15 +1374,21 @@ function streamChatTokens(taskId, threadId) {
                     }
                     lastMarkdownUpdate = now;
                 }
-                messagesEl.scrollTop = messagesEl.scrollHeight;
+                scroller.scrollToBottom();
             }
         }, 75, (finalText) => {
             // This is called when the typist is actually DONE with the queue
+            const textEl = streamContent.querySelector('.stream-text');
+            if (textEl) textEl.classList.add('stream-finished');
+
+            // If we've already received the end-of-stream event, we can finalize now.
+            // Otherwise, _finalize will call this again once it's ready.
             if (finalized) {
-                // Render via the standard addMessageToThread path (handles markdown, model label, etc.)
-                // We pass the accumulated taskData if available
-                const finalContent = taskData?.result?.response ?? finalText;
-                addMessageToThread(threadId, 'assistant', finalContent, taskId, taskData);
+                if (streamBubble) streamBubble.remove();
+                streamBubble = null;
+                
+                const finalContent = storedTaskData?.result?.response ?? finalText;
+                addMessageToThread(threadId, 'assistant', finalContent, taskId, storedTaskData);
                 delete _activeStreams[taskId];
             }
         });
@@ -1408,26 +1414,17 @@ function streamChatTokens(taskId, threadId) {
     }
 
     // Replace the live bubble with the fully-rendered final message
-    function _finalize(taskData) {
+    function _finalize(taskData = null) {
         if (finalized) return;
         finalized = true;
+        storedTaskData = taskData;
 
         // Signal typist that stream is finished. 
-        // addMessageToThread will be called by typist.onComplete
+        // If the typist is already done, it will call onComplete immediately.
         const typist = _activeStreams[taskId]?.typist;
         if (typist) {
             typist.finish();
         }
-
-        // Remove cursor
-        if (streamCursor) streamCursor.remove();
-        streamCursor = null;
-        
-        // Note: we don't remove streamBubble here anymore; 
-        // we remove it inside addMessageToThread or let it be handled there.
-        // Actually, addMessageToThread re-renders the whole list or appends.
-        // To prevent double-messages during the gap, we'll keep the bubble 
-        // until addMessageToThread is ready to take over.
 
         // Syntax highlighting
         if (typeof hljs !== 'undefined') {

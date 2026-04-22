@@ -304,6 +304,61 @@ class SmoothTypist {
 }
 window.SmoothTypist = SmoothTypist;
 
+/**
+ * SmoothScroller provides lerped vertical scrolling for a container.
+ */
+class SmoothScroller {
+    constructor(element) {
+        this.element = element;
+        this.targetTop = element.scrollTop;
+        this.currentTop = element.scrollTop;
+        this.isRunning = false;
+        this.rafId = null;
+    }
+
+    scrollTo(top) {
+        this.targetTop = top;
+        if (!this.isRunning) {
+            this.isRunning = true;
+            this.rafId = requestAnimationFrame(this.tick.bind(this));
+        }
+    }
+
+    scrollToBottom() {
+        // Ensure we target the latest scrollHeight
+        this.scrollTo(this.element.scrollHeight - this.element.clientHeight);
+    }
+
+    tick() {
+        if (!this.isRunning) return;
+
+        // Lerp speed (adjust 0.1 for faster/slower)
+        const lerpFactor = 0.12;
+        const diff = this.targetTop - this.currentTop;
+
+        // If target changed (e.g. more content), keep up
+        const maxScroll = this.element.scrollHeight - this.element.clientHeight;
+        if (this.targetTop > maxScroll) this.targetTop = maxScroll;
+
+        if (Math.abs(diff) < 0.5) {
+            this.currentTop = this.targetTop;
+            this.element.scrollTop = this.currentTop;
+            this.isRunning = false;
+            return;
+        }
+
+        this.currentTop += diff * lerpFactor;
+        this.element.scrollTop = this.currentTop;
+        this.rafId = requestAnimationFrame(this.tick.bind(this));
+    }
+
+    stop() {
+        this.isRunning = false;
+        if (this.rafId) cancelAnimationFrame(this.rafId);
+    }
+}
+window.SmoothScroller = SmoothScroller;
+
 // Global variables
 let chatWs = null;
 let logsWs = null;

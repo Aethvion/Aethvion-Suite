@@ -790,6 +790,32 @@ pre:hover .code-copy-btn {
     border-radius: var(--radius-sm);
 }
 
+/* Streaming Animation Styles */
+.stream-content .stream-text {
+    position: relative;
+    display: inline-block;
+}
+
+/* Maintain flow for progressive markdown */
+.stream-content .stream-text > *:last-child {
+    display: inline;
+}
+
+.stream-cursor {
+    display: none;
+}
+
+/* Soft fade reveal for newest content */
+.stream-text {
+    mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 30px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black calc(100% - 30px), transparent 100%);
+}
+
+.stream-text.stream-finished {
+    mask-image: none !important;
+    -webkit-mask-image: none !important;
+}
+
 /* Chat input area */
 .chat-interface-wrapper {
     margin: 1rem 1.5rem 1.5rem;
