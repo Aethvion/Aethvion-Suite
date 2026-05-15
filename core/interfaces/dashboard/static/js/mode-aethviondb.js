@@ -198,6 +198,7 @@
         _currentPage   = 0;
         _setFilterActive('all');
         _resetStatsDisplay();
+        _loadCachedInfo();          // show persisted stats for the new db immediately
         _loadEntityList('all', 0);
         _toast(`Database: ${name}`, 'info');
     }
@@ -211,16 +212,19 @@
         _currentPage   = 0;
         _setFilterActive('all');
         _resetStatsDisplay();
+        _loadCachedInfo();          // show persisted stats for the new db immediately
         _loadEntityList('all', 0);
         const name = folderPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() || folderPath;
         _toast(`Database: ${name}`, 'info');
     }
 
-    /** Reset stat values to "—" and show the hint when the DB changes. */
+    /** Reset stat values to "—" and show the "click to load" hint. */
     function _resetStatsDisplay() {
         ['adb-stat-total', 'adb-stat-stubs', 'adb-stat-index', 'adb-stat-size'].forEach(id => {
             const el = _el(id); if (el) el.textContent = '—';
         });
+        const ht = _el('adb-stats-hint-text');
+        if (ht) ht.textContent = 'Click ↻ to load stats';
         _show('adb-stats-hint');
     }
 
@@ -243,6 +247,33 @@
         } finally {
             if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.classList.remove('adb-btn-spinning'); }
         }
+    }
+
+    /**
+     * Read AethvionDB.INFO from the server (instant — no scanning).
+     * Populates the stats bar with cached values so numbers are visible
+     * immediately on page load / tab switch, before the user clicks ↻.
+     */
+    async function _loadCachedInfo() {
+        try {
+            const res  = await fetch(`${API}/info?${_dbParam()}`);
+            const data = await res.json();
+            if (!data.cached) return;  // no INFO file yet for this db
+
+            const te = _el('adb-stat-total'); if (te) te.textContent = _fmtNum(data.total_entities);
+            const st = _el('adb-stat-stubs'); if (st) st.textContent = _fmtNum(data.stub_count);
+            const si = _el('adb-stat-index'); if (si) si.textContent = _fmtNum(data.index_size);
+            const sz = _el('adb-stat-size');  if (sz) sz.textContent = _fmtBytes(data.total_size_bytes);
+
+            // Update hint: show when data was last refreshed instead of prompting
+            const ht = _el('adb-stats-hint-text');
+            if (ht && data.last_updated) {
+                const d   = new Date(data.last_updated);
+                const fmt = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                ht.textContent = `Cached · ${fmt}`;
+            }
+            _show('adb-stats-hint');  // keep visible as a "this is cached" indicator
+        } catch { /* cached info is optional — silently ignore network/parse errors */ }
     }
 
     // ── Entity list (primary view) ────────────────────────────────────────────
@@ -897,6 +928,7 @@
         _updateDbIndicator();
         _wire();
         _fetchModels();
+        _loadCachedInfo();          // populate stats from AethvionDB.INFO instantly
         _loadEntityList('all', 0);
     }
 

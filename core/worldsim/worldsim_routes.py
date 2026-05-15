@@ -15,8 +15,10 @@ Use ?path=<absolute_path> to point at an arbitrary location instead.
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -63,6 +65,31 @@ def _get_validator(db: str = "default", path: Optional[str] = None):
 def _ensure_db(root: Path) -> None:
     (root / "entities").mkdir(parents=True, exist_ok=True)
     (root / "chunks").mkdir(parents=True, exist_ok=True)
+
+
+# ── AethvionDB.INFO helpers ───────────────────────────────────────────────────
+
+_INFO_FILE = "AethvionDB.INFO"
+
+def _read_db_info(root: Path) -> dict:
+    """Return the contents of AethvionDB.INFO, or {} if absent / unreadable."""
+    p = root / _INFO_FILE
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+    return {}
+
+def _write_db_info(root: Path, data: dict) -> None:
+    """Persist data to AethvionDB.INFO (best-effort — never raises)."""
+    try:
+        (root / _INFO_FILE).write_text(
+            json.dumps(data, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        logger.warning(f"[WorldSim] Could not write {_INFO_FILE}: {exc}")
 
 
 # ── Request schemas ───────────────────────────────────────────────────────────
@@ -120,6 +147,18 @@ async def create_database(req: CreateDatabaseRequest):
     if (root / "entities").exists():
         raise HTTPException(409, f"Database '{req.name}' already exists at {root}")
     _ensure_db(root)
+    now = datetime.now(timezone.utc).isoformat()
+    _write_db_info(root, {
+        "name":             req.name,
+        "created":          now,
+        "last_updated":     now,
+        "total_entities":   0,
+        "stub_count":       0,
+        "index_size":       0,
+        "by_type":          {},
+        "by_status":        {},
+        "total_size_bytes": 0,
+    })
     return {"name": req.name, "path": str(root), "created": True}
 
 
@@ -133,6 +172,23 @@ async def delete_database(name: str, confirm: bool = Query(False)):
         raise HTTPException(404, f"Database '{name}' not found")
     shutil.rmtree(root)
     return {"deleted": name}
+
+
+@router.get("/info")
+async def get_db_info(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """
+    Return cached database metadata from AethvionDB.INFO (zero-cost read).
+    Returns {"cached": false} when no INFO file exists yet.
+    Call /stats to compute fresh values and update the file.
+    """
+    root = _db_root(db, path)
+    info = _read_db_info(root)
+    if not info:
+        return {"cached": False}
+    return {"cached": True, **info}
 
 
 # ── Stats ─────────────────────────────────────────────────────────────────────
@@ -164,7 +220,7 @@ async def get_stats(
                 except OSError:
                     pass
 
-    return {
+    result = {
         "db":               db,
         "total_entities":   len(all_e),
         "by_status":        by_status,
@@ -173,6 +229,18 @@ async def get_stats(
         "stub_count":       by_status.get("stub", 0),
         "total_size_bytes": total_size_bytes,
     }
+
+    # Persist to AethvionDB.INFO so the UI can display stats on next page load
+    # without re-scanning (especially important for large databases).
+    root = _db_root(db, path)
+    existing = _read_db_info(root)
+    _write_db_info(root, {
+        **existing,                              # preserve name, created, etc.
+        **result,
+        "last_updated": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return result
 
 
 # ── Entity CRUD ───────────────────────────────────────────────────────────────
