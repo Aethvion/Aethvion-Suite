@@ -155,8 +155,8 @@
         <!-- Right: Entity explorer -->
         <main class="adb-main">
 
-            <!-- Search + filter bar (always visible) -->
-            <div class="adb-explorer-header">
+            <!-- Search + filter bar (hidden when graph or validation is active) -->
+            <div id="adb-explorer-header" class="adb-explorer-header">
                 <div class="adb-search-row">
                     <div class="adb-search-input-wrap">
                         <i class="fas fa-search adb-search-icon"></i>
@@ -273,7 +273,7 @@
                         </select>
                     </div>
                     <button id="adb-graph-close-btn" class="adb-btn adb-btn-ghost adb-btn-sm">
-                        <i class="fas fa-xmark"></i> Close
+                        <i class="fas fa-arrow-left"></i> Back to List
                     </button>
                 </div>
 

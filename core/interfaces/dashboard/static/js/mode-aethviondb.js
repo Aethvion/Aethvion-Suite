@@ -21,6 +21,7 @@
     let _currentPage         = 0;         // 0-indexed current page
     let _totalCount          = 0;         // total entities for current filter
     const _PAGE_SIZE         = 100;
+    let _graphActive         = false;     // true while graph view is showing
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -77,11 +78,16 @@
     // ── View switching ────────────────────────────────────────────────────────
 
     function _showEntityList() {
+        _graphActive         = false;
         _currentEntityId     = null;
         _currentEntityStatus = null;
+        _show('adb-explorer-header');
         _show('adb-list-pane');
         _hide('adb-entity-detail');
         _hide('adb-validation-view');
+        _hide('adb-graph-view');
+        const btn = _el('adb-graph-btn');
+        if (btn) btn.innerHTML = '<i class="fas fa-diagram-project"></i> Graph';
     }
 
     function _showEntityDetail() {
@@ -91,8 +97,10 @@
     }
 
     function _showValidation() {
+        _hide('adb-explorer-header');
         _hide('adb-list-pane');
         _hide('adb-entity-detail');
+        _hide('adb-graph-view');
         _show('adb-validation-view');
     }
 
@@ -930,10 +938,14 @@
     // ── View helpers ──────────────────────────────────────────────────────────
 
     function _showGraph() {
+        _graphActive = true;
+        _hide('adb-explorer-header');
         _hide('adb-list-pane');
         _hide('adb-entity-detail');
         _hide('adb-validation-view');
         _show('adb-graph-view');
+        const btn = _el('adb-graph-btn');
+        if (btn) btn.innerHTML = '<i class="fas fa-table-list"></i> Table';
     }
 
     async function _openGraph() {
@@ -1082,7 +1094,7 @@
             .attr('dominant-baseline','hanging')
             .attr('font-size',        '10')
             .attr('font-family',      'inherit')
-            .attr('fill',             'var(--text-muted)')
+            .attr('fill',             '#94a3b8')
             .attr('pointer-events',   'none')
             .attr('dy',               d => _gNodeRadius(d) + 3)
             .text(d => d.name.length > 20 ? d.name.slice(0, 18) + '…' : d.name);
@@ -1217,7 +1229,7 @@
     // ── Graph wiring ──────────────────────────────────────────────────────────
 
     function _graphWire() {
-        _el('adb-graph-btn')       ?.addEventListener('click', _openGraph);
+        _el('adb-graph-btn')       ?.addEventListener('click', () => _graphActive ? _closeGraph() : _openGraph());
         _el('adb-graph-close-btn') ?.addEventListener('click', _closeGraph);
         _el('adb-graph-focus-btn') ?.addEventListener('click', _graphFocusSearch);
         _el('adb-graph-full-btn')  ?.addEventListener('click', () => {
