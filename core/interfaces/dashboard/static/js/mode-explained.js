@@ -335,10 +335,14 @@
         }
 
         // Position within viewport
+        if (exAnnotPopup.parentNode !== document.body) {
+            document.body.appendChild(exAnnotPopup);
+        }
         exAnnotPopup.classList.remove('hidden');
-        const pw = exAnnotPopup.offsetWidth  || 280;
+        const iframeRect = exFrame.getBoundingClientRect();
+        const pw = exAnnotPopup.offsetWidth  || 290;
         const ph = exAnnotPopup.offsetHeight || 210;
-        let left = Math.min(x, window.innerWidth  - pw - 12);
+        let left = Math.min(x, iframeRect.right - pw - 12);
         let top  = y;
         if (top + ph > window.innerHeight - 12) top = y - ph - 55;
         exAnnotPopup.style.left = Math.max(8, left) + 'px';
