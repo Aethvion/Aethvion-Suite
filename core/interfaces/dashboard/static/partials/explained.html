@@ -12,7 +12,7 @@
                 </button>
             </div>
         </div>
-        
+
         <div class="es-content">
             <div class="es-field">
                 <label>What should I explain?</label>
@@ -39,7 +39,7 @@
                     </label>
                 </div>
             </div>
-            
+
             <button id="explained-generate-btn" class="primary-btn wide-btn">
                 <i class="fas fa-wand-sparkles"></i> Build Page
             </button>
@@ -60,7 +60,7 @@
                     <!-- Real-time logs go here -->
                 </div>
             </div>
-            
+
             <div id="explained-usage-card" class="es-usage-card hidden">
                 <div class="esu-header">
                     <i class="fas fa-chart-pie"></i> Creation Details
@@ -108,6 +108,16 @@
             <div id="explained-page-tabs" class="epn-tabs"></div>
         </nav>
 
+        <!-- Edit-mode toolbar (shown when a page is loaded) -->
+        <div id="expl-edit-toolbar" class="expl-edit-toolbar hidden">
+            <button id="expl-edit-toggle-btn" class="expl-edit-toggle-btn" title="Toggle Edit Mode to annotate sections">
+                <i class="fas fa-pen-to-square"></i> Edit Mode
+            </button>
+            <span id="expl-edit-hint" class="expl-edit-hint hidden">
+                <i class="fas fa-circle-info"></i> Click any section in the page to add a comment
+            </span>
+        </div>
+
         <div id="explained-output-wrapper" class="explained-output-wrapper">
             <!-- Iframe or Div for the generated content -->
             <div id="explained-placeholder" class="explained-placeholder">
@@ -119,5 +129,42 @@
             </div>
             <iframe id="explained-frame" class="explained-frame hidden" frameborder="0"></iframe>
         </div>
+
+        <!-- Pending comments tray (slides up when comments exist) -->
+        <div id="expl-comments-tray" class="expl-comments-tray hidden">
+            <div class="ect-header">
+                <span class="ect-title">
+                    <i class="fas fa-layer-group"></i>
+                    Pending Changes
+                    <span id="ect-count" class="ect-count">0</span>
+                </span>
+                <div class="ect-actions">
+                    <button id="expl-clear-comments" class="ect-btn ect-btn-ghost">
+                        <i class="fas fa-times"></i> Clear all
+                    </button>
+                    <button id="expl-submit-comments" class="ect-btn ect-btn-primary">
+                        <i class="fas fa-wand-sparkles"></i> Update Page
+                    </button>
+                </div>
+            </div>
+            <div id="ect-list" class="ect-list"></div>
+        </div>
     </main>
+
+    <!-- Annotation popup (fixed positioned, rendered over iframe) -->
+    <div id="expl-annot-popup" class="expl-annot-popup hidden">
+        <div class="eap-title" id="eap-section-title">Section</div>
+        <div class="eap-quick-row">
+            <button class="eap-quick-btn" data-val="Deep dive">🔍 Deep dive</button>
+            <button class="eap-quick-btn" data-val="Expand">📖 Expand</button>
+            <button class="eap-quick-btn" data-val="Simplify">✂ Simplify</button>
+            <button class="eap-quick-btn" data-val="Add examples">💡 Examples</button>
+            <button class="eap-quick-btn" data-val="Add visuals">🎨 Visuals</button>
+        </div>
+        <textarea id="eap-input" placeholder="Or write a custom instruction..." rows="2"></textarea>
+        <div class="eap-footer">
+            <button id="eap-cancel-btn" class="eap-btn eap-btn-ghost">Cancel</button>
+            <button id="eap-add-btn" class="eap-btn eap-btn-primary">Add Comment</button>
+        </div>
+    </div>
 </div>
