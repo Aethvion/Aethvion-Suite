@@ -37,6 +37,13 @@
                 <span id="adb-stat-index" class="adb-stat-value">—</span>
                 <span class="adb-stat-label">indexed <i class="fas fa-circle-info adb-stat-info-icon"></i></span>
             </div>
+            <div class="adb-stat-card" title="Total size of all entity files on disk">
+                <span id="adb-stat-size" class="adb-stat-value">—</span>
+                <span class="adb-stat-label">db size <i class="fas fa-circle-info adb-stat-info-icon"></i></span>
+            </div>
+            <div id="adb-stats-hint" class="adb-stats-hint">
+                <i class="fas fa-circle-info"></i> Click ↻ to load stats
+            </div>
         </div>
     </div>
 
@@ -106,9 +113,12 @@
                 </div>
             </div>
 
-            <!-- Entity list (primary view, auto-loaded) -->
-            <div id="adb-entity-list" class="adb-entity-list">
-                <div class="adb-list-loading"><i class="fas fa-spinner fa-spin"></i> Loading entities…</div>
+            <!-- Entity list pane (list + pagination) -->
+            <div id="adb-list-pane" class="adb-list-pane">
+                <div id="adb-entity-list" class="adb-entity-list">
+                    <div class="adb-list-loading"><i class="fas fa-spinner fa-spin"></i> Loading entities…</div>
+                </div>
+                <div id="adb-entity-pagination" class="adb-entity-pagination hidden"></div>
             </div>
 
             <!-- Entity detail view (shown on entity click) -->

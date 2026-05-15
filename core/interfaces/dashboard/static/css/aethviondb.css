@@ -334,6 +334,29 @@
     color: #f59e0b;
 }
 
+/* ── Stats hint ── */
+.adb-stats-hint {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    opacity: 0.65;
+    white-space: nowrap;
+    padding-left: 0.5rem;
+}
+.adb-stats-hint.hidden { display: none; }
+
+/* ── List pane (wraps entity list + pagination) ── */
+.adb-list-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.adb-list-pane.hidden { display: none; }
+
 /* ── Entity list ── */
 .adb-entity-list {
     flex: 1;
@@ -342,6 +365,59 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
+}
+
+/* ── Pagination bar ── */
+.adb-entity-pagination {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.75rem;
+    border-top: 1px solid var(--border);
+    background: var(--bg-secondary);
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    min-height: 36px;
+}
+.adb-entity-pagination.hidden { display: none; }
+.adb-pag-info {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+}
+.adb-pag-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.adb-pag-btn {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.74rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.12s;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.adb-pag-btn:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    border-color: rgba(34, 211, 238, 0.4);
+    color: #22d3ee;
+}
+.adb-pag-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.adb-pag-page {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    padding: 0 0.25rem;
+    white-space: nowrap;
+    min-width: 80px;
+    text-align: center;
 }
 .adb-list-loading {
     padding: 2rem;
@@ -857,6 +933,9 @@
     animation: adb-spin 0.8s linear infinite;
 }
 @keyframes adb-spin { to { transform: rotate(360deg); } }
+
+/* Refresh button spinning state */
+.adb-btn-spinning i { animation: adb-spin 0.7s linear infinite; }
 
 /* ── WorldSim placeholder (worldsim.css reuses these) ── */
 .wsph-root {

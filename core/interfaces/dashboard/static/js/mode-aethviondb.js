@@ -18,6 +18,9 @@
     let _currentDb           = 'default'; // named database
     let _currentPath         = null;      // folder-path database (overrides _currentDb)
     let _currentFilter       = 'all';     // 'all' | 'active' | 'stub'
+    let _currentPage         = 0;         // 0-indexed current page
+    let _totalCount          = 0;         // total entities for current filter
+    const _PAGE_SIZE         = 100;
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -39,6 +42,19 @@
     function _fmtDate(iso) {
         if (!iso) return '—';
         try { return new Date(iso).toLocaleDateString(); } catch { return iso; }
+    }
+
+    function _fmtBytes(bytes) {
+        if (bytes == null) return '—';
+        if (bytes < 1024)             return bytes + ' B';
+        if (bytes < 1024 * 1024)      return (bytes / 1024).toFixed(1) + ' KB';
+        if (bytes < 1024 ** 3)        return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+        return (bytes / 1024 ** 3).toFixed(2) + ' GB';
+    }
+
+    function _fmtNum(n) {
+        if (n == null) return '—';
+        return Number(n).toLocaleString();
     }
 
     /**
@@ -63,19 +79,19 @@
     function _showEntityList() {
         _currentEntityId     = null;
         _currentEntityStatus = null;
-        _show('adb-entity-list');
+        _show('adb-list-pane');
         _hide('adb-entity-detail');
         _hide('adb-validation-view');
     }
 
     function _showEntityDetail() {
-        _hide('adb-entity-list');
+        _hide('adb-list-pane');
         _show('adb-entity-detail');
         _hide('adb-validation-view');
     }
 
     function _showValidation() {
-        _hide('adb-entity-list');
+        _hide('adb-list-pane');
         _hide('adb-entity-detail');
         _show('adb-validation-view');
     }
@@ -179,9 +195,10 @@
         _updateDbIndicator();
         _persistDb();
         _currentFilter = 'all';
+        _currentPage   = 0;
         _setFilterActive('all');
-        _loadEntityList('all');
-        _refreshStats();
+        _resetStatsDisplay();
+        _loadEntityList('all', 0);
         _toast(`Database: ${name}`, 'info');
     }
 
@@ -191,24 +208,40 @@
         _updateDbIndicator();
         _persistDb();
         _currentFilter = 'all';
+        _currentPage   = 0;
         _setFilterActive('all');
-        _loadEntityList('all');
-        _refreshStats();
+        _resetStatsDisplay();
+        _loadEntityList('all', 0);
         const name = folderPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() || folderPath;
         _toast(`Database: ${name}`, 'info');
+    }
+
+    /** Reset stat values to "—" and show the hint when the DB changes. */
+    function _resetStatsDisplay() {
+        ['adb-stat-total', 'adb-stat-stubs', 'adb-stat-index', 'adb-stat-size'].forEach(id => {
+            const el = _el(id); if (el) el.textContent = '—';
+        });
+        _show('adb-stats-hint');
     }
 
     // ── Stats ─────────────────────────────────────────────────────────────────
 
     async function _refreshStats() {
+        const refreshBtn = _el('adb-refresh-btn');
+        if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.classList.add('adb-btn-spinning'); }
         try {
             const res  = await fetch(`${API}/stats?${_dbParam()}`);
             const data = await res.json();
-            const te = _el('adb-stat-total'); if (te) te.textContent = data.total_entities ?? '—';
-            const st = _el('adb-stat-stubs'); if (st) st.textContent = data.stub_count     ?? '—';
-            const si = _el('adb-stat-index'); if (si) si.textContent = data.index_size     ?? '—';
+            const te = _el('adb-stat-total'); if (te) te.textContent = _fmtNum(data.total_entities);
+            const st = _el('adb-stat-stubs'); if (st) st.textContent = _fmtNum(data.stub_count);
+            const si = _el('adb-stat-index'); if (si) si.textContent = _fmtNum(data.index_size);
+            const sz = _el('adb-stat-size');  if (sz) sz.textContent = _fmtBytes(data.total_size_bytes);
+            _hide('adb-stats-hint');
         } catch (e) {
             console.error('[AethvionDB] Stats failed:', e);
+            _toast('Failed to load stats', 'error');
+        } finally {
+            if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.classList.remove('adb-btn-spinning'); }
         }
     }
 
@@ -220,50 +253,91 @@
         });
     }
 
-    async function _loadEntityList(filter = 'all') {
+    async function _loadEntityList(filter = 'all', page = 0) {
         _currentFilter = filter;
+        _currentPage   = page;
         _showEntityList();
+        _hide('adb-entity-pagination');
 
         const listEl = _el('adb-entity-list');
         if (!listEl) return;
-        listEl.innerHTML = '<div class="adb-list-loading"><i class="fas fa-spinner fa-spin"></i> Loading entities…</div>';
+        listEl.innerHTML = '<div class="adb-list-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
+
+        const offset = page * _PAGE_SIZE;
 
         try {
-            let entities;
+            let entities, total;
 
             if (filter === 'stub') {
-                const res  = await fetch(`${API}/stubs?${_dbParam()}`);
+                const res  = await fetch(`${API}/stubs?${_dbParam({ limit: _PAGE_SIZE, offset })}`);
                 const data = await res.json();
+                total    = data.count || 0;
                 entities = (data.stubs || []).map(s => ({
-                    id:      s.id      || s,
-                    name:    s.name    || s.id || s,
-                    type:    s.type    || 'other',
-                    summary: s.summary || '',
+                    id:      s.id   || s,
+                    name:    s.name || s.id || s,
+                    type:    s.type || 'other',
+                    summary: '',
                     status:  'stub',
                 }));
             } else {
-                const res  = await fetch(`${API}/entities?${_dbParam({ limit: 500 })}`);
+                const statusParam = filter === 'active' ? { status: 'active' } : {};
+                const res  = await fetch(`${API}/entities?${_dbParam({ limit: _PAGE_SIZE, offset, ...statusParam })}`);
                 const data = await res.json();
+                total    = data.total || 0;
                 entities = data.entities || [];
-                if (filter === 'active') {
-                    entities = entities.filter(e => e.status !== 'stub');
-                }
             }
 
-            if (!entities.length) {
+            _totalCount = total;
+
+            if (!entities.length && page === 0) {
                 listEl.innerHTML = '<div class="adb-empty-state"><i class="fas fa-inbox"></i><p>No entities found</p></div>';
                 return;
             }
 
             listEl.innerHTML = entities.map(e => _entityRowHtml(e)).join('');
-
             listEl.querySelectorAll('.adb-entity-row').forEach(row => {
                 row.addEventListener('click', () => _loadEntity(row.dataset.id));
                 row.addEventListener('keydown', ev => { if (ev.key === 'Enter') _loadEntity(row.dataset.id); });
             });
+
+            _renderPagination(total, page);
         } catch (err) {
             listEl.innerHTML = `<div class="adb-empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${err.message}</p></div>`;
         }
+    }
+
+    function _renderPagination(total, page) {
+        const pagEl = _el('adb-entity-pagination');
+        if (!pagEl) return;
+
+        const totalPages = Math.ceil(total / _PAGE_SIZE);
+        if (total <= _PAGE_SIZE) {
+            // Show count-only bar for context, no prev/next needed
+            pagEl.classList.remove('hidden');
+            pagEl.innerHTML = `<div class="adb-pag-info">${_fmtNum(total)} ${total === 1 ? 'entity' : 'entities'}</div>`;
+            return;
+        }
+
+        const from = page * _PAGE_SIZE + 1;
+        const to   = Math.min((page + 1) * _PAGE_SIZE, total);
+
+        pagEl.classList.remove('hidden');
+        pagEl.innerHTML = `
+            <div class="adb-pag-info">
+                Showing ${_fmtNum(from)}–${_fmtNum(to)} of ${_fmtNum(total)}
+            </div>
+            <div class="adb-pag-controls">
+                <button class="adb-pag-btn" id="adb-pag-prev" ${page === 0 ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-left"></i> Prev
+                </button>
+                <span class="adb-pag-page">Page ${page + 1} of ${totalPages}</span>
+                <button class="adb-pag-btn" id="adb-pag-next" ${page >= totalPages - 1 ? 'disabled' : ''}>
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>`;
+
+        _el('adb-pag-prev')?.addEventListener('click', () => _loadEntityList(_currentFilter, page - 1));
+        _el('adb-pag-next')?.addEventListener('click', () => _loadEntityList(_currentFilter, page + 1));
     }
 
     function _entityRowHtml(e) {
@@ -291,6 +365,7 @@
         if (!q && !type) { _loadEntityList(_currentFilter); return; }
 
         _showEntityList();
+        _hide('adb-entity-pagination');
         const listEl = _el('adb-entity-list');
         if (!listEl) return;
         listEl.innerHTML = '<div class="adb-list-loading"><i class="fas fa-spinner fa-spin"></i> Searching…</div>';
@@ -313,8 +388,14 @@
                 row.addEventListener('click', () => _loadEntity(row.dataset.id));
                 row.addEventListener('keydown', ev => { if (ev.key === 'Enter') _loadEntity(row.dataset.id); });
             });
+            // Show result count in pagination bar (no prev/next for search)
+            const pagEl = _el('adb-entity-pagination');
+            if (pagEl) {
+                pagEl.classList.remove('hidden');
+                pagEl.innerHTML = `<div class="adb-pag-info">${results.length} result${results.length !== 1 ? 's' : ''}${results.length === 100 ? ' (limit reached)' : ''}</div>`;
+            }
         } catch (err) {
-            listEl.innerHTML = `<div class="adb-list-empty"><i class="fas fa-exclamation-triangle"></i><p>Error: ${err.message}</p></div>`;
+            listEl.innerHTML = `<div class="adb-empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${err.message}</p></div>`;
         }
     }
 
@@ -545,7 +626,6 @@
                 statusEl.className = 'adb-status adb-status-ok';
             }
             await _loadEntity(data.entity_id);
-            await _refreshStats();
         } catch (e) {
             if (statusEl) {
                 statusEl.textContent = `✗ ${e.message}`;
@@ -590,8 +670,7 @@
                     'success'
                 );
             }
-            await _refreshStats();
-            await _loadEntityList(_currentFilter);
+            await _loadEntityList(_currentFilter, 0);
         } catch (e) {
             _toast(`Expansion failed: ${e.message}`, 'error');
         } finally { _hideBusy(); }
@@ -619,9 +698,8 @@
                     );
                 }
                 await _loadEntity(_currentEntityId);
-                await _refreshStats();
-                // Refresh list so stub→active change is reflected when user goes Back
-                _loadEntityList(_currentFilter);
+                // Refresh list (background) so stub→active badge updates when user goes Back
+                _loadEntityList(_currentFilter, _currentPage);
             } catch (e) {
                 _toast(`Expand failed: ${e.message}`, 'error');
             } finally { _hideBusy(); }
@@ -643,7 +721,6 @@
                     _toast(`Deepened ${n} sub-topic${n !== 1 ? 's' : ''} ✓`, 'success');
                 }
                 await _loadEntity(_currentEntityId);
-                await _refreshStats();
             } catch (e) {
                 _toast(`Deepen failed: ${e.message}`, 'error');
             } finally { _hideBusy(); }
@@ -727,32 +804,32 @@
         _el('adb-search-btn')?.addEventListener('click', _search);
         _el('adb-search-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') _search(); });
 
-        // Header toolbar
+        // Header toolbar — manual stats refresh + list reload
         _el('adb-refresh-btn')?.addEventListener('click', () => {
             _refreshStats();
-            _loadEntityList(_currentFilter);
+            _loadEntityList(_currentFilter, _currentPage);
         });
         _el('adb-expand-btn')?.addEventListener('click', _expandAll);
         _el('adb-validate-btn')?.addEventListener('click', _validateAll);
 
-        // Filter buttons
+        // Filter buttons always reset to page 0
         document.querySelectorAll('.adb-filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 _setFilterActive(btn.dataset.filter);
-                _loadEntityList(btn.dataset.filter);
+                _loadEntityList(btn.dataset.filter, 0);
             });
         });
 
-        // Entity detail — back button + tabs + deepen/validate
-        _el('adb-detail-back')?.addEventListener('click', () => _loadEntityList(_currentFilter));
+        // Entity detail — back button restores the page the user was on
+        _el('adb-detail-back')?.addEventListener('click', () => _loadEntityList(_currentFilter, _currentPage));
         _el('adb-ev-expand-btn')?.addEventListener('click', _deepenCurrent);
         _el('adb-ev-validate-btn')?.addEventListener('click', _validateCurrent);
         document.querySelectorAll('.adb-ev-tab').forEach(btn => {
             btn.addEventListener('click', () => _activateEntityTab(btn.dataset.target));
         });
 
-        // Validation view — back button
-        _el('adb-val-close')?.addEventListener('click', () => _loadEntityList(_currentFilter));
+        // Validation view — back button restores the page the user was on
+        _el('adb-val-close')?.addEventListener('click', () => _loadEntityList(_currentFilter, _currentPage));
 
         // DB modal
         _el('adb-db-change-btn')?.addEventListener('click', _openDbModal);
@@ -791,8 +868,7 @@
         _updateDbIndicator();
         _wire();
         _fetchModels();
-        _refreshStats();
-        _loadEntityList('all');
+        _loadEntityList('all', 0);
     }
 
     document.addEventListener('panelLoaded', function (e) {

@@ -153,13 +153,25 @@ async def get_stats(
         by_type[t]   = by_type.get(t, 0) + 1
         by_status[s] = by_status.get(s, 0) + 1
 
+    # Total size of entity files — reads only OS metadata, not file contents
+    total_size_bytes = 0
+    entities_dir = _db_root(db, path) / "entities"
+    if entities_dir.exists():
+        for f in entities_dir.iterdir():
+            if f.suffix == ".json":
+                try:
+                    total_size_bytes += f.stat().st_size
+                except OSError:
+                    pass
+
     return {
-        "db":             db,
-        "total_entities": len(all_e),
-        "by_status":      by_status,
-        "by_type":        by_type,
-        "index_size":     index.count(),
-        "stub_count":     by_status.get("stub", 0),
+        "db":               db,
+        "total_entities":   len(all_e),
+        "by_status":        by_status,
+        "by_type":          by_type,
+        "index_size":       index.count(),
+        "stub_count":       by_status.get("stub", 0),
+        "total_size_bytes": total_size_bytes,
     }
 
 
@@ -398,12 +410,16 @@ async def get_index_snapshot(
 
 @router.get("/stubs")
 async def list_stubs(
-    db:   str = Query("default"),
-    path: Optional[str] = Query(None),
+    db:     str = Query("default"),
+    path:   Optional[str] = Query(None),
+    limit:  int = Query(100, le=500),
+    offset: int = Query(0, ge=0),
 ):
     writer = _get_writer(db, path)
     stubs  = writer.list_stubs()
+    total  = len(stubs)
+    paged  = stubs[offset:offset + limit]
     return {
-        "count": len(stubs),
-        "stubs": [{"id": e["id"], "name": e["name"], "type": e.get("type")} for e in stubs],
+        "count":  total,
+        "stubs":  [{"id": e["id"], "name": e["name"], "type": e.get("type")} for e in paged],
     }
