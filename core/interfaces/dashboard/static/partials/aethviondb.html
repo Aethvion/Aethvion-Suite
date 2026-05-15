@@ -16,6 +16,9 @@
                 <button id="adb-expand-btn" class="adb-btn adb-btn-accent" title="Run autonomous stub expansion">
                     <i class="fas fa-wand-sparkles"></i> Expand Stubs
                 </button>
+                <button id="adb-graph-btn" class="adb-btn adb-btn-ghost" title="Visualise entity relationships">
+                    <i class="fas fa-diagram-project"></i> Graph
+                </button>
                 <button id="adb-validate-btn" class="adb-btn adb-btn-ghost" title="Run integrity checks">
                     <i class="fas fa-shield-check"></i> Validate
                 </button>
@@ -62,13 +65,15 @@
 
         <!-- Left: Distill panel -->
         <aside class="adb-sidebar">
+
+            <!-- ── Distill text ── -->
             <div class="adb-panel">
                 <div class="adb-panel-header">
                     <i class="fas fa-flask"></i> Distill Content
                 </div>
                 <p class="adb-panel-desc">Paste any text — articles, books, notes, documents. AethvionDB extracts and structures the knowledge automatically.</p>
                 <div class="adb-field">
-                    <textarea id="adb-distill-text" rows="11" placeholder="Paste content here…"></textarea>
+                    <textarea id="adb-distill-text" rows="8" placeholder="Paste content here…"></textarea>
                 </div>
                 <div class="adb-field">
                     <label>Model</label>
@@ -81,6 +86,70 @@
                 </button>
                 <div id="adb-distill-status" class="adb-status hidden"></div>
             </div>
+
+            <!-- ── Distill folder ── -->
+            <div class="adb-panel" id="adb-fd-panel">
+                <div class="adb-panel-header">
+                    <i class="fas fa-folder-open"></i> Distill Folder
+                </div>
+
+                <!-- Step 1: folder picker -->
+                <div id="adb-fd-pick">
+                    <p class="adb-panel-desc">Distil an entire folder of documents. Supports .txt .md .html .json .py and more.</p>
+                    <div class="adb-fd-path-row">
+                        <input type="text" id="adb-fd-path-input" class="adb-fd-path-input" placeholder="Folder path…">
+                        <button id="adb-fd-browse-btn" class="adb-db-browse-btn" title="Browse for folder">
+                            <i class="fas fa-folder-open"></i>
+                        </button>
+                    </div>
+                    <button id="adb-fd-scan-btn" class="adb-primary-btn">
+                        <i class="fas fa-magnifying-glass"></i> Scan Folder
+                    </button>
+                    <div id="adb-fd-pick-status" class="adb-status hidden"></div>
+                </div>
+
+                <!-- Step 2: scan results + start -->
+                <div id="adb-fd-info" class="hidden">
+                    <div id="adb-fd-scan-stats" class="adb-fd-scan-stats"></div>
+                    <div id="adb-fd-type-list" class="adb-fd-type-list"></div>
+                    <div class="adb-field">
+                        <label>Model</label>
+                        <select id="adb-fd-model">
+                            <option value="auto">Auto Select</option>
+                        </select>
+                    </div>
+                    <div class="adb-fd-btn-row">
+                        <button id="adb-fd-start-btn" class="adb-primary-btn" style="flex:1">
+                            <i class="fas fa-play"></i> Start Distilling
+                        </button>
+                        <button id="adb-fd-info-back-btn" class="adb-btn adb-btn-ghost" title="Back">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: job progress -->
+                <div id="adb-fd-prog" class="hidden">
+                    <div class="adb-fd-prog-header">
+                        <span id="adb-fd-prog-folder" class="adb-fd-prog-folder"></span>
+                        <span id="adb-fd-prog-badge" class="adb-fd-badge"></span>
+                    </div>
+                    <div class="adb-fd-bar-wrap">
+                        <div class="adb-fd-bar-track">
+                            <div id="adb-fd-bar-fill" class="adb-fd-bar-fill" style="width:0%"></div>
+                        </div>
+                        <span id="adb-fd-bar-pct" class="adb-fd-bar-pct">0%</span>
+                    </div>
+                    <div id="adb-fd-prog-stats" class="adb-fd-prog-stats"></div>
+                    <div class="adb-fd-btn-row">
+                        <button id="adb-fd-pause-btn"  class="adb-btn adb-btn-ghost   adb-btn-sm hidden"><i class="fas fa-pause"></i> Pause</button>
+                        <button id="adb-fd-resume-btn" class="adb-btn adb-btn-accent  adb-btn-sm hidden"><i class="fas fa-play"></i> Resume</button>
+                        <button id="adb-fd-cancel-btn" class="adb-btn adb-btn-ghost   adb-btn-sm hidden"><i class="fas fa-xmark"></i> Cancel</button>
+                        <button id="adb-fd-new-btn"    class="adb-btn adb-btn-ghost   adb-btn-sm hidden"><i class="fas fa-plus"></i> New</button>
+                    </div>
+                </div>
+            </div>
+
         </aside>
 
         <!-- Right: Entity explorer -->
@@ -175,6 +244,66 @@
                     </div>
                     <div id="adb-tab-json" class="adb-ev-panel hidden">
                         <pre id="adb-ev-raw-json" class="adb-raw-json"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Graph view -->
+            <div id="adb-graph-view" class="adb-graph-view hidden">
+
+                <!-- toolbar -->
+                <div class="adb-graph-bar">
+                    <div class="adb-graph-search-wrap">
+                        <div class="adb-search-input-wrap adb-graph-search-field">
+                            <i class="fas fa-search adb-search-icon"></i>
+                            <input type="text" id="adb-graph-search" class="adb-search-input" placeholder="Focus on entity…">
+                        </div>
+                        <button id="adb-graph-focus-btn" class="adb-btn adb-btn-accent adb-btn-sm">Focus</button>
+                        <button id="adb-graph-full-btn"  class="adb-btn adb-btn-ghost  adb-btn-sm">All</button>
+                    </div>
+                    <div class="adb-graph-controls">
+                        <span id="adb-graph-info" class="adb-graph-info"></span>
+                        <label class="adb-graph-label-toggle" title="Toggle entity name labels">
+                            <input type="checkbox" id="adb-graph-labels-cb" checked> Labels
+                        </label>
+                        <select id="adb-graph-depth" class="adb-graph-depth-sel" title="Focus depth (hops)">
+                            <option value="1">Depth 1</option>
+                            <option value="2" selected>Depth 2</option>
+                            <option value="3">Depth 3</option>
+                        </select>
+                    </div>
+                    <button id="adb-graph-close-btn" class="adb-btn adb-btn-ghost adb-btn-sm">
+                        <i class="fas fa-xmark"></i> Close
+                    </button>
+                </div>
+
+                <!-- canvas -->
+                <div class="adb-graph-canvas-wrap">
+                    <svg id="adb-graph-svg" class="adb-graph-svg"></svg>
+
+                    <!-- floating node card -->
+                    <div id="adb-graph-card" class="adb-graph-card hidden">
+                        <div class="adb-graph-card-header">
+                            <span id="adb-graph-card-type" class="adb-type-badge"></span>
+                            <span id="adb-graph-card-name" class="adb-graph-card-name"></span>
+                            <button id="adb-graph-card-close" class="adb-modal-close"><i class="fas fa-times"></i></button>
+                        </div>
+                        <p id="adb-graph-card-summary" class="adb-graph-card-summary"></p>
+                        <div id="adb-graph-card-meta" class="adb-graph-card-meta"></div>
+                        <div class="adb-graph-card-actions">
+                            <button id="adb-graph-card-focus" class="adb-btn adb-btn-ghost adb-btn-sm">
+                                <i class="fas fa-crosshairs"></i> Focus
+                            </button>
+                            <button id="adb-graph-card-open" class="adb-btn adb-btn-accent adb-btn-sm">
+                                <i class="fas fa-arrow-up-right-from-square"></i> Open
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- loading overlay -->
+                    <div id="adb-graph-loading" class="adb-graph-loading hidden">
+                        <div class="adb-busy-spinner" style="width:26px;height:26px;border-width:3px"></div>
+                        <span>Building graph…</span>
                     </div>
                 </div>
             </div>

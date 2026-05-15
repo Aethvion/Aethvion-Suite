@@ -198,7 +198,12 @@
         _currentPage   = 0;
         _setFilterActive('all');
         _resetStatsDisplay();
-        _loadCachedInfo();          // show persisted stats for the new db immediately
+        if (_graphSim) { _graphSim.stop(); _graphSim = null; }
+        _hide('adb-graph-view');
+        _fdStopPolling();
+        _fdSection('adb-fd-pick');
+        _loadCachedInfo();
+        _fdCheckExistingJob();
         _loadEntityList('all', 0);
         _toast(`Database: ${name}`, 'info');
     }
@@ -212,7 +217,12 @@
         _currentPage   = 0;
         _setFilterActive('all');
         _resetStatsDisplay();
-        _loadCachedInfo();          // show persisted stats for the new db immediately
+        if (_graphSim) { _graphSim.stop(); _graphSim = null; }
+        _hide('adb-graph-view');
+        _fdStopPolling();
+        _fdSection('adb-fd-pick');
+        _loadCachedInfo();
+        _fdCheckExistingJob();
         _loadEntityList('all', 0);
         const name = folderPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() || folderPath;
         _toast(`Database: ${name}`, 'info');
@@ -853,6 +863,674 @@
         } finally { _hideBusy(); }
     }
 
+    // ── Graph view ────────────────────────────────────────────────────────────
+
+    /** Entity-type → fill colour (matches badge palette). */
+    const _GRAPH_COLORS = {
+        person:       '#f472b6',
+        place:        '#4ade80',
+        event:        '#fbbf24',
+        concept:      '#818cf8',
+        organization: '#22d3ee',
+        artifact:     '#c084fc',
+        creature:     '#f87171',
+        work:         '#2dd4bf',
+        species:      '#a3e635',
+        substance:    '#facc15',
+        phenomenon:   '#fb923c',
+        process:      '#60a5fa',
+        universe:     '#e879f9',
+        other:        '#9ca3af',
+    };
+
+    /** Relation kind → edge stroke colour. */
+    const _EDGE_COLORS = {
+        parent_of:       '#f59e0b',
+        child_of:        '#f59e0b',
+        contains:        '#60a5fa',
+        part_of:         '#60a5fa',
+        has_part:        '#60a5fa',
+        created:         '#c084fc',
+        created_by:      '#c084fc',
+        influenced:      '#2dd4bf',
+        influenced_by:   '#2dd4bf',
+        located_in:      '#4ade80',
+        location_of:     '#4ade80',
+        member_of:       '#fb923c',
+        participated_in: '#fb923c',
+        instance_of:     '#818cf8',
+        has_instance:    '#818cf8',
+    };
+
+    // Graph state
+    let _graphSim      = null;   // d3 force simulation
+    let _graphFocusId  = null;   // entity ID of the focused node (null = full graph)
+    let _graphNodeSel  = null;   // d3 node circle selection
+    let _graphLinkSel  = null;   // d3 edge line selection
+    let _graphLabelSel = null;   // d3 label text selection
+    let _graphLinkData = null;   // raw link array (after d3 resolves source/target)
+
+    function _gNodeColor(type)  { return _GRAPH_COLORS[type] || '#9ca3af'; }
+    function _gNodeRadius(d)    { return Math.max(5, Math.min(22, 5 + (d.rel_count || 0) * 1.8)); }
+    function _gEdgeColor(kind)  { return _EDGE_COLORS[kind]  || 'rgba(100,116,139,0.4)'; }
+
+    // ── D3 lazy loader ────────────────────────────────────────────────────────
+
+    async function _graphLoadD3() {
+        if (window.d3) return;
+        return new Promise((resolve, reject) => {
+            const s    = document.createElement('script');
+            s.src      = 'https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js';
+            s.onload   = resolve;
+            s.onerror  = () => reject(new Error('Failed to load D3 from CDN. Check your internet connection.'));
+            document.head.appendChild(s);
+        });
+    }
+
+    // ── View helpers ──────────────────────────────────────────────────────────
+
+    function _showGraph() {
+        _hide('adb-list-pane');
+        _hide('adb-entity-detail');
+        _hide('adb-validation-view');
+        _show('adb-graph-view');
+    }
+
+    async function _openGraph() {
+        _showGraph();
+        _show('adb-graph-loading');
+        _hide('adb-graph-card');
+        try {
+            await _graphLoadD3();
+            await _graphLoad(_graphFocusId);
+        } catch (e) {
+            _toast(`Graph: ${e.message}`, 'error');
+            _closeGraph();
+        }
+    }
+
+    function _closeGraph() {
+        if (_graphSim) { _graphSim.stop(); _graphSim = null; }
+        _hide('adb-graph-view');
+        _showEntityList();
+    }
+
+    // ── Data loading ──────────────────────────────────────────────────────────
+
+    async function _graphLoad(entityId = null) {
+        _graphFocusId = entityId;
+        _show('adb-graph-loading');
+        _hide('adb-graph-card');
+
+        const depth  = _el('adb-graph-depth')?.value || '2';
+        const params = new URLSearchParams(_dbParam({ limit: 500 }));
+        if (entityId) { params.set('entity_id', entityId); params.set('depth', depth); }
+
+        try {
+            const res  = await fetch(`${API}/graph?${params}`);
+            const data = await res.json();
+
+            const infoEl = _el('adb-graph-info');
+            if (infoEl) {
+                infoEl.textContent =
+                    `${_fmtNum(data.node_count)} nodes · ${_fmtNum(data.edge_count)} edges` +
+                    (data.truncated ? ' (truncated — use Focus for large databases)' : '');
+            }
+
+            if (data.node_count === 0) {
+                _toast('No entities to show. Distil some content first.', 'info');
+                _closeGraph();
+                return;
+            }
+
+            _graphRender(data);
+        } catch (e) {
+            _toast(`Graph load failed: ${e.message}`, 'error');
+        } finally {
+            _hide('adb-graph-loading');
+        }
+    }
+
+    // ── Render (D3 force graph) ───────────────────────────────────────────────
+
+    function _graphRender(data) {
+        if (_graphSim) { _graphSim.stop(); _graphSim = null; }
+
+        const svgEl = _el('adb-graph-svg');
+        if (!svgEl || !window.d3) return;
+
+        const d3     = window.d3;
+        const svg    = d3.select(svgEl);
+        const width  = svgEl.clientWidth  || 900;
+        const height = svgEl.clientHeight || 600;
+
+        svg.selectAll('*').remove();
+
+        // ── Defs: arrowhead marker ──
+        svg.append('defs').append('marker')
+            .attr('id', 'adb-graph-arrow')
+            .attr('viewBox', '0 -4 8 8')
+            .attr('refX', 14).attr('refY', 0)
+            .attr('markerWidth', 5).attr('markerHeight', 5)
+            .attr('orient', 'auto')
+            .append('path')
+            .attr('d', 'M0,-4L8,0L0,4')
+            .attr('fill', 'rgba(100,116,139,0.45)');
+
+        // ── Zoom / pan ──
+        const g    = svg.append('g');
+        const zoom = d3.zoom()
+            .scaleExtent([0.04, 8])
+            .on('zoom', evt => g.attr('transform', evt.transform));
+        svg.call(zoom)
+            .on('dblclick.zoom', null);  // disable double-click zoom (we use it to open entity)
+
+        // ── Node and link data (cloned so D3 can mutate source/target) ──
+        const nodes = data.nodes.map(d => ({ ...d }));
+        const links = data.edges.map(d => ({ ...d }));
+        _graphLinkData = links;
+
+        // ── Edges ──
+        const linkG   = g.append('g').attr('class', 'adb-graph-link-g');
+        const linkEl  = linkG.selectAll('line')
+            .data(links)
+            .join('line')
+            .attr('stroke',         d => _gEdgeColor(d.kind))
+            .attr('stroke-width',   1.5)
+            .attr('stroke-opacity', 0.55)
+            .attr('marker-end',     'url(#adb-graph-arrow)');
+        _graphLinkSel = linkEl;
+
+        // ── Nodes ──
+        const nodeG  = g.append('g').attr('class', 'adb-graph-node-g');
+        const nodeEl = nodeG.selectAll('circle')
+            .data(nodes)
+            .join('circle')
+            .attr('r',            _gNodeRadius)
+            .attr('fill',         d => _gNodeColor(d.type))
+            .attr('fill-opacity', d => d.status === 'stub' ? 0.35 : 0.82)
+            .attr('stroke',       d => _gNodeColor(d.type))
+            .attr('stroke-width', d => d.id === data.focused_id ? 3 : 1.5)
+            .attr('stroke-opacity', d => d.status === 'stub' ? 0.5 : 0.7)
+            .attr('cursor', 'pointer')
+            // Drag
+            .call(d3.drag()
+                .on('start', (evt, d) => {
+                    if (!evt.active) _graphSim.alphaTarget(0.3).restart();
+                    d.fx = d.x; d.fy = d.y;
+                })
+                .on('drag', (evt, d) => { d.fx = evt.x; d.fy = evt.y; })
+                .on('end',  (evt, d) => {
+                    if (!evt.active) _graphSim.alphaTarget(0);
+                    d.fx = null; d.fy = null;
+                }))
+            // Hover
+            .on('mouseenter', (evt, d) => _graphHighlight(d.id, true))
+            .on('mouseleave', ()       => _graphHighlight(null,  false))
+            // Click → floating card
+            .on('click', (evt, d)  => { evt.stopPropagation(); _graphSelectNode(d); });
+        _graphNodeSel = nodeEl;
+
+        // ── Labels ──
+        const showLbls = _el('adb-graph-labels-cb')?.checked ?? true;
+        const labelEl  = g.append('g').attr('class', 'adb-graph-label-g')
+            .attr('display', showLbls ? null : 'none')
+            .selectAll('text')
+            .data(nodes)
+            .join('text')
+            .attr('text-anchor',      'middle')
+            .attr('dominant-baseline','hanging')
+            .attr('font-size',        '10')
+            .attr('font-family',      'inherit')
+            .attr('fill',             'var(--text-muted)')
+            .attr('pointer-events',   'none')
+            .attr('dy',               d => _gNodeRadius(d) + 3)
+            .text(d => d.name.length > 20 ? d.name.slice(0, 18) + '…' : d.name);
+        _graphLabelSel = labelEl;
+
+        // Dismiss card on background click
+        svg.on('click', () => _hide('adb-graph-card'));
+
+        // ── Force simulation ──
+        _graphSim = d3.forceSimulation(nodes)
+            .force('link',      d3.forceLink(links).id(d => d.id).distance(85).strength(0.45))
+            .force('charge',    d3.forceManyBody().strength(nodes.length > 150 ? -80 : -200))
+            .force('center',    d3.forceCenter(0, 0))
+            .force('collision', d3.forceCollide().radius(d => _gNodeRadius(d) + 3))
+            .alphaDecay(nodes.length > 200 ? 0.04 : 0.025)
+            .on('tick', () => {
+                linkEl
+                    .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+                nodeEl .attr('cx', d => d.x).attr('cy', d => d.y);
+                labelEl.attr('x',  d => d.x).attr('y',  d => d.y);
+            });
+
+        // Pin focused node at centre so its neighbourhood fans out from it
+        if (data.focused_id) {
+            const focal = nodes.find(n => n.id === data.focused_id);
+            if (focal) { focal.fx = 0; focal.fy = 0; }
+        }
+
+        // Centre the view after settling
+        _graphSim.on('end', () => {
+            const pad = 40;
+            const xs  = nodes.map(n => n.x);
+            const ys  = nodes.map(n => n.y);
+            const x0  = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad;
+            const y0  = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+            const gw  = x1 - x0 || width;
+            const gh  = y1 - y0 || height;
+            const sc  = Math.min(8, 0.9 * Math.min(width / gw, height / gh));
+            const tx  = width  / 2 - sc * (x0 + gw / 2);
+            const ty  = height / 2 - sc * (y0 + gh / 2);
+            svg.transition().duration(600)
+                .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(sc));
+        });
+    }
+
+    // ── Hover highlight ───────────────────────────────────────────────────────
+
+    function _graphHighlight(focusId, on) {
+        if (!_graphNodeSel || !_graphLinkSel) return;
+
+        if (!on || !focusId) {
+            _graphNodeSel .attr('opacity', 1);
+            _graphLinkSel .attr('opacity', 1);
+            _graphLabelSel?.attr('opacity', 1);
+            return;
+        }
+
+        // Collect all IDs directly connected to focusId
+        const connected = new Set([focusId]);
+        (_graphLinkData || []).forEach(d => {
+            const s = typeof d.source === 'object' ? d.source.id : d.source;
+            const t = typeof d.target === 'object' ? d.target.id : d.target;
+            if (s === focusId) connected.add(t);
+            if (t === focusId) connected.add(s);
+        });
+
+        _graphNodeSel .attr('opacity', d => connected.has(d.id) ? 1 : 0.1);
+        _graphLinkSel .attr('opacity', d => {
+            const s = typeof d.source === 'object' ? d.source.id : d.source;
+            const t = typeof d.target === 'object' ? d.target.id : d.target;
+            return (s === focusId || t === focusId) ? 1 : 0.05;
+        });
+        _graphLabelSel?.attr('opacity', d => connected.has(d.id) ? 1 : 0.06);
+    }
+
+    // ── Node selection card ───────────────────────────────────────────────────
+
+    function _graphSelectNode(d) {
+        const typeEl = _el('adb-graph-card-type');
+        if (typeEl) {
+            typeEl.textContent = d.type || 'other';
+            typeEl.className   = `adb-type-badge adb-type-${d.type || 'other'}`;
+        }
+        const nameEl = _el('adb-graph-card-name');
+        if (nameEl) nameEl.textContent = d.name;
+
+        const sumEl = _el('adb-graph-card-summary');
+        if (sumEl) sumEl.textContent = d.summary || '';
+
+        const metaEl = _el('adb-graph-card-meta');
+        if (metaEl) {
+            const isStub = d.status === 'stub';
+            metaEl.innerHTML =
+                `<span class="adb-badge ${isStub ? 'adb-badge-stub' : 'adb-badge-expanded'}">${isStub ? 'stub' : 'expanded'}</span>` +
+                (d.rel_count ? `<span>${d.rel_count} relation${d.rel_count !== 1 ? 's' : ''}</span>` : '');
+        }
+
+        const openBtn = _el('adb-graph-card-open');
+        if (openBtn) openBtn.onclick = () => { _closeGraph(); _loadEntity(d.id); };
+
+        const focBtn = _el('adb-graph-card-focus');
+        if (focBtn) focBtn.onclick = () => _graphLoad(d.id);
+
+        _show('adb-graph-card');
+    }
+
+    // ── Focus search ──────────────────────────────────────────────────────────
+
+    async function _graphFocusSearch() {
+        const q = _el('adb-graph-search')?.value?.trim();
+        if (!q) { _graphLoad(null); return; }
+
+        try {
+            // Try exact name lookup first, fall back to search
+            let entityId = null;
+            const lr = await fetch(`${API}/lookup?name=${encodeURIComponent(q)}&${_dbParam()}`);
+            if (lr.ok) {
+                entityId = (await lr.json()).id;
+            } else {
+                const sr   = await fetch(`${API}/search?q=${encodeURIComponent(q)}&${_dbParam({ limit: 1 })}`);
+                const sd   = await sr.json();
+                entityId   = sd.results?.[0]?.id ?? null;
+            }
+            if (!entityId) { _toast(`No entity found for "${q}"`, 'error'); return; }
+            _graphLoad(entityId);
+        } catch (e) {
+            _toast(`Focus failed: ${e.message}`, 'error');
+        }
+    }
+
+    // ── Graph wiring ──────────────────────────────────────────────────────────
+
+    function _graphWire() {
+        _el('adb-graph-btn')       ?.addEventListener('click', _openGraph);
+        _el('adb-graph-close-btn') ?.addEventListener('click', _closeGraph);
+        _el('adb-graph-focus-btn') ?.addEventListener('click', _graphFocusSearch);
+        _el('adb-graph-full-btn')  ?.addEventListener('click', () => {
+            const si = _el('adb-graph-search'); if (si) si.value = '';
+            _graphLoad(null);
+        });
+        _el('adb-graph-search')    ?.addEventListener('keydown', e => { if (e.key === 'Enter') _graphFocusSearch(); });
+        _el('adb-graph-card-close')?.addEventListener('click',   () => _hide('adb-graph-card'));
+        _el('adb-graph-depth')     ?.addEventListener('change',  () => { if (_graphFocusId) _graphLoad(_graphFocusId); });
+        _el('adb-graph-labels-cb') ?.addEventListener('change',  e => {
+            _graphLabelSel?.attr('display', e.target.checked ? null : 'none');
+        });
+    }
+
+    // ── Folder distillation ───────────────────────────────────────────────────
+
+    /**
+     * File extensions the backend will distil (mirrored from folder_distiller.py).
+     * Used purely for the scan-results visual — grays out unsupported types.
+     */
+    const _FD_SUPPORTED = new Set([
+        '.txt','.md','.markdown','.rst','.org','.tex',
+        '.html','.htm',
+        '.csv','.tsv','.json','.yaml','.yml','.toml','.xml',
+        '.py','.js','.ts','.jsx','.tsx','.mjs',
+        '.java','.cpp','.c','.h','.hpp',
+        '.rb','.go','.rs','.php','.cs','.swift','.kt',
+        '.sh','.bash','.zsh','.fish',
+        '.sql','.r','.lua','.log',
+    ]);
+
+    let _fdScanData    = null;     // last scan result
+    let _fdPollHandle  = null;     // setInterval handle
+
+    function _fdEl(id) { return document.getElementById(id); }
+
+    function _fdSection(show) {
+        ['adb-fd-pick', 'adb-fd-info', 'adb-fd-prog'].forEach(id => {
+            _fdEl(id)?.classList.toggle('hidden', id !== show);
+        });
+    }
+
+    // ── Browse ────────────────────────────────────────────────────────────────
+
+    async function _fdBrowse() {
+        const btn   = _fdEl('adb-fd-browse-btn');
+        const input = _fdEl('adb-fd-path-input');
+        const init  = input?.value?.trim() || _currentPath || '';
+        if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
+        try {
+            const res  = await fetch(`${BROWSE_API}?initial=${encodeURIComponent(init)}`);
+            const data = await res.json();
+            if (!data.cancelled && data.path && input) input.value = data.path;
+        } catch {
+            _toast('Could not open folder browser.', 'error');
+        } finally {
+            if (btn) { btn.innerHTML = '<i class="fas fa-folder-open"></i>'; btn.disabled = false; }
+        }
+    }
+
+    // ── Scan ──────────────────────────────────────────────────────────────────
+
+    async function _fdScan() {
+        const folder   = _fdEl('adb-fd-path-input')?.value?.trim();
+        if (!folder) { _toast('Enter a folder path first.', 'error'); return; }
+
+        const btn      = _fdEl('adb-fd-scan-btn');
+        const statusEl = _fdEl('adb-fd-pick-status');
+
+        if (btn) btn.disabled = true;
+        if (statusEl) {
+            statusEl.textContent = 'Scanning…';
+            statusEl.className   = 'adb-status adb-status-loading';
+            statusEl.classList.remove('hidden');
+        }
+
+        try {
+            const res  = await fetch(`${API}/distill-folder/scan?folder=${encodeURIComponent(folder)}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Scan failed');
+
+            _fdScanData = data;
+            _fdRenderScanResults(data);
+            _fdSection('adb-fd-info');
+            if (statusEl) statusEl.classList.add('hidden');
+        } catch (e) {
+            if (statusEl) {
+                statusEl.textContent = `✗ ${e.message}`;
+                statusEl.className   = 'adb-status adb-status-error';
+            }
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    function _fdRenderScanResults(data) {
+        // Stat grid
+        const statsEl = _fdEl('adb-fd-scan-stats');
+        if (statsEl) {
+            statsEl.innerHTML = `
+                <div class="adb-fd-stat-grid">
+                    <div class="adb-fd-stat-item">
+                        <span class="adb-fd-stat-val">${_fmtNum(data.total_files)}</span>
+                        <span class="adb-fd-stat-lbl">total files</span>
+                    </div>
+                    <div class="adb-fd-stat-item adb-fd-stat-item-accent">
+                        <span class="adb-fd-stat-val">${_fmtNum(data.supported_files)}</span>
+                        <span class="adb-fd-stat-lbl">supported</span>
+                    </div>
+                    <div class="adb-fd-stat-item">
+                        <span class="adb-fd-stat-val">${data.total_size_fmt || _fmtBytes(data.total_size_bytes)}</span>
+                        <span class="adb-fd-stat-lbl">total size</span>
+                    </div>
+                </div>`;
+        }
+
+        // File-type breakdown bars
+        const typeEl = _fdEl('adb-fd-type-list');
+        if (typeEl) {
+            const types    = data.top_types || [];
+            const maxCount = Math.max(...types.map(t => t.count), 1);
+            typeEl.innerHTML = types.slice(0, 8).map(t => {
+                const pct       = Math.max(4, Math.round(t.count / maxCount * 100));
+                const supported = _FD_SUPPORTED.has(t.ext);
+                return `<div class="adb-fd-type-row${supported ? '' : ' adb-fd-type-unsupported'}">
+                    <span class="adb-fd-type-ext">${t.ext}</span>
+                    <div class="adb-fd-type-bar-wrap">
+                        <div class="adb-fd-type-bar" style="width:${pct}%"></div>
+                    </div>
+                    <span class="adb-fd-type-count">${_fmtNum(t.count)}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // Sync model options to fd-model selector
+        const src  = _fdEl('adb-distill-model');
+        const dest = _fdEl('adb-fd-model');
+        if (src && dest) dest.innerHTML = src.innerHTML;
+    }
+
+    // ── Start ─────────────────────────────────────────────────────────────────
+
+    async function _fdStart() {
+        const folder = _fdScanData?.folder_path || _fdEl('adb-fd-path-input')?.value?.trim();
+        const model  = _fdEl('adb-fd-model')?.value || 'auto';
+        if (!folder) return;
+
+        const btn = _fdEl('adb-fd-start-btn');
+        if (btn) btn.disabled = true;
+
+        try {
+            const params = new URLSearchParams(_dbParam({ folder, model }));
+            const res    = await fetch(`${API}/distill-folder/start?${params}`, { method: 'POST' });
+            const data   = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Could not start');
+
+            _fdSection('adb-fd-prog');
+            _fdStartPolling();
+            _toast(`Distilling ${_fmtNum(data.total_files)} files in background`, 'info');
+        } catch (e) {
+            _toast(`Start failed: ${e.message}`, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    // ── Pause / Resume / Cancel ───────────────────────────────────────────────
+
+    async function _fdPause() {
+        try {
+            await fetch(`${API}/distill-folder/pause?${_dbParam()}`, { method: 'POST' });
+            _fdStopPolling();
+            await _fdPollOnce();   // immediate UI update
+        } catch (e) {
+            _toast(`Pause failed: ${e.message}`, 'error');
+        }
+    }
+
+    async function _fdResume() {
+        try {
+            const res  = await fetch(`${API}/distill-folder/resume?${_dbParam()}`, { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Could not resume');
+            _fdStartPolling();
+        } catch (e) {
+            _toast(`Resume failed: ${e.message}`, 'error');
+        }
+    }
+
+    async function _fdCancel() {
+        if (!confirm('Cancel this distillation job?')) return;
+        try {
+            await fetch(`${API}/distill-folder/cancel?${_dbParam()}`, { method: 'POST' });
+            _fdStopPolling();
+            await _fdPollOnce();
+        } catch (e) {
+            _toast(`Cancel failed: ${e.message}`, 'error');
+        }
+    }
+
+    // ── Polling ───────────────────────────────────────────────────────────────
+
+    function _fdStartPolling() {
+        _fdStopPolling();
+        _fdPollOnce();
+        _fdPollHandle = setInterval(_fdPollOnce, 2500);
+    }
+
+    function _fdStopPolling() {
+        if (_fdPollHandle) { clearInterval(_fdPollHandle); _fdPollHandle = null; }
+    }
+
+    async function _fdPollOnce() {
+        try {
+            const res  = await fetch(`${API}/distill-folder/status?${_dbParam()}`);
+            const data = await res.json();
+            _fdApplyStatus(data);
+            if (['paused', 'completed', 'cancelled', 'idle'].includes(data.status)) {
+                _fdStopPolling();
+            }
+        } catch { /* ignore transient poll errors */ }
+    }
+
+    // ── Render progress view ──────────────────────────────────────────────────
+
+    function _fdApplyStatus(data) {
+        if (!data || data.status === 'idle') {
+            _fdSection('adb-fd-pick');
+            return;
+        }
+
+        _fdSection('adb-fd-prog');
+
+        // Folder name label
+        const folderEl = _fdEl('adb-fd-prog-folder');
+        if (folderEl) {
+            const parts = (data.folder_path || '').replace(/\\/g, '/').split('/').filter(Boolean);
+            folderEl.textContent = parts[parts.length - 1] || data.folder_path || '—';
+            folderEl.title       = data.folder_path || '';
+        }
+
+        // Status badge
+        const badgeEl = _fdEl('adb-fd-prog-badge');
+        if (badgeEl) {
+            const LABELS  = { running:'Running', paused:'Paused', completed:'Done', cancelled:'Cancelled', error:'Error', starting:'Starting' };
+            const CLASSES = { running:'adb-fd-badge-running', paused:'adb-fd-badge-paused', completed:'adb-fd-badge-done', cancelled:'adb-fd-badge-paused', error:'adb-fd-badge-error' };
+            badgeEl.textContent = LABELS[data.status]  || data.status;
+            badgeEl.className   = `adb-fd-badge ${CLASSES[data.status] || ''}`;
+        }
+
+        // Progress bar
+        const pct    = data.progress_pct ?? 0;
+        const fillEl = _fdEl('adb-fd-bar-fill');
+        const pctEl  = _fdEl('adb-fd-bar-pct');
+        if (fillEl) fillEl.style.width  = `${pct}%`;
+        if (pctEl)  pctEl.textContent   = `${pct.toFixed(1)}%`;
+
+        // Stats block
+        const statsEl = _fdEl('adb-fd-prog-stats');
+        if (statsEl) {
+            const total     = data.total_files  || 0;
+            const done      = data.next_index   || 0;
+            const remaining = Math.max(0, total - done);
+            statsEl.innerHTML = `
+                <div class="adb-fd-ps-row">
+                    <span class="adb-fd-ps-val adb-fd-ps-ok">${_fmtNum(data.processed || 0)}</span>
+                    <span class="adb-fd-ps-lbl">distilled</span>
+                    <span class="adb-fd-ps-val adb-fd-ps-skip">${_fmtNum(data.skipped  || 0)}</span>
+                    <span class="adb-fd-ps-lbl">skipped</span>
+                    <span class="adb-fd-ps-val adb-fd-ps-err">${_fmtNum(data.failed   || 0)}</span>
+                    <span class="adb-fd-ps-lbl">failed</span>
+                </div>
+                <div class="adb-fd-ps-remaining">${_fmtNum(remaining)} remaining of ${_fmtNum(total)}</div>`;
+        }
+
+        // Context-sensitive buttons
+        const isRunning  = data.status === 'running' || data.status === 'starting';
+        const isPaused   = data.status === 'paused';
+        const isDone     = data.status === 'completed' || data.status === 'cancelled';
+
+        _fdEl('adb-fd-pause-btn') ?.classList.toggle('hidden', !isRunning);
+        _fdEl('adb-fd-resume-btn')?.classList.toggle('hidden', !isPaused);
+        _fdEl('adb-fd-cancel-btn')?.classList.toggle('hidden', isDone || (!isRunning && !isPaused));
+        _fdEl('adb-fd-new-btn')   ?.classList.toggle('hidden', !isDone);
+    }
+
+    // ── Init check (restore state from DISTILLINFO on load) ──────────────────
+
+    async function _fdCheckExistingJob() {
+        try {
+            const res  = await fetch(`${API}/distill-folder/status?${_dbParam()}`);
+            const data = await res.json();
+            if (data.status && data.status !== 'idle') {
+                _fdApplyStatus(data);
+                if (data.status === 'running') _fdStartPolling();
+            }
+        } catch { /* ignore */ }
+    }
+
+    // ── Wire ──────────────────────────────────────────────────────────────────
+
+    function _fdWire() {
+        _fdEl('adb-fd-browse-btn')   ?.addEventListener('click', _fdBrowse);
+        _fdEl('adb-fd-scan-btn')     ?.addEventListener('click', _fdScan);
+        _fdEl('adb-fd-path-input')   ?.addEventListener('keydown', e => { if (e.key === 'Enter') _fdScan(); });
+        _fdEl('adb-fd-info-back-btn')?.addEventListener('click', () => _fdSection('adb-fd-pick'));
+        _fdEl('adb-fd-start-btn')    ?.addEventListener('click', _fdStart);
+        _fdEl('adb-fd-pause-btn')    ?.addEventListener('click', _fdPause);
+        _fdEl('adb-fd-resume-btn')   ?.addEventListener('click', _fdResume);
+        _fdEl('adb-fd-cancel-btn')   ?.addEventListener('click', _fdCancel);
+        _fdEl('adb-fd-new-btn')      ?.addEventListener('click', () => { _fdStopPolling(); _fdSection('adb-fd-pick'); });
+    }
+
     // ── Wiring ────────────────────────────────────────────────────────────────
 
     function _wire() {
@@ -927,8 +1605,11 @@
 
         _updateDbIndicator();
         _wire();
+        _graphWire();
+        _fdWire();
         _fetchModels();
         _loadCachedInfo();          // populate stats from AethvionDB.INFO instantly
+        _fdCheckExistingJob();      // restore folder-distill progress view if a job exists
         _loadEntityList('all', 0);
     }
 

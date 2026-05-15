@@ -479,6 +479,260 @@ async def get_index_snapshot(
     return {"total": index.count(), "entries": [{"name": k, "id": v} for k, v in items]}
 
 
+# ── Graph ─────────────────────────────────────────────────────────────────────
+
+def _graph_bfs(writer, start_id: str, depth: int) -> set:
+    """Return all entity IDs reachable from start_id within `depth` hops."""
+    visited  = {start_id}
+    frontier = {start_id}
+    for _ in range(depth):
+        nxt: set = set()
+        for eid in frontier:
+            entity = writer.get(eid)
+            if not entity:
+                continue
+            for rel in (entity.get("sections") or {}).get("relations", []):
+                tid = rel.get("target_id")
+                if tid and tid not in visited:
+                    nxt.add(tid)
+                    visited.add(tid)
+        frontier = nxt
+        if not frontier:
+            break
+    return visited
+
+
+@router.get("/graph")
+async def get_graph(
+    db:        str = Query("default"),
+    path:      Optional[str] = Query(None),
+    entity_id: Optional[str] = Query(None, description="Focus node — returns BFS neighbourhood"),
+    depth:     int = Query(2, ge=1, le=4),
+    limit:     int = Query(500, le=2000),
+):
+    """
+    Return nodes + directed edges for graph visualisation.
+
+    Without entity_id: all entities up to `limit` (full graph).
+    With entity_id:    BFS neighbourhood up to `depth` hops from that entity.
+    """
+    writer = _get_writer(db, path)
+    all_e  = writer.list_all()          # full entities, no deleted
+
+    if entity_id:
+        included = await asyncio.to_thread(_graph_bfs, writer, entity_id, depth)
+    else:
+        included = {e["id"] for e in all_e[:limit]}
+
+    nodes: list[dict] = []
+    edges: list[dict] = []
+    seen_edges: set   = set()
+    id_set: set       = set()
+
+    for e in all_e:
+        if e["id"] not in included:
+            continue
+        id_set.add(e["id"])
+        core = (e.get("sections") or {}).get("core", {})
+        nodes.append({
+            "id":        e["id"],
+            "name":      e["name"],
+            "type":      e.get("type", "other"),
+            "status":    e.get("status", "active"),
+            "summary":   core.get("summary", "")[:120],
+            "rel_count": len((e.get("sections") or {}).get("relations", [])),
+        })
+
+    # Edges — only where both endpoints are in the node set
+    for e in all_e:
+        if e["id"] not in id_set:
+            continue
+        for rel in (e.get("sections") or {}).get("relations", []):
+            tid = rel.get("target_id")
+            if not tid or tid not in id_set:
+                continue
+            kind = rel.get("kind", "related_to")
+            # Dedup undirected (keep first direction encountered)
+            key = (min(e["id"], tid), max(e["id"], tid), kind)
+            if key not in seen_edges:
+                seen_edges.add(key)
+                edges.append({"source": e["id"], "target": tid, "kind": kind})
+
+    return {
+        "node_count": len(nodes),
+        "edge_count": len(edges),
+        "nodes":      nodes,
+        "edges":      edges,
+        "focused_id": entity_id,
+        "truncated":  (entity_id is None) and len(all_e) > limit,
+    }
+
+
+# ── Folder distillation ───────────────────────────────────────────────────────
+
+@router.get("/distill-folder/scan")
+async def scan_folder_endpoint(
+    folder: str = Query(..., description="Absolute path to the folder to scan"),
+):
+    """Scan a folder and return file metadata without starting distillation."""
+    from .folder_distiller import scan_folder
+    try:
+        return await asyncio.to_thread(scan_folder, folder)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+    except NotADirectoryError as e:
+        raise HTTPException(400, str(e))
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+
+
+@router.get("/distill-folder/status")
+async def get_distill_status(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """
+    Return the current folder-distillation job status from AethvionDB.DISTILLINFO.
+    If the task was running when the server restarted the status is corrected
+    to "paused" automatically.
+    """
+    from .folder_distiller import read_distill_info, write_distill_info, is_running
+    root = _db_root(db, path)
+    info = read_distill_info(root)
+    if not info:
+        return {"status": "idle"}
+
+    status = info.get("status", "idle")
+    # Server was killed mid-run — treat as paused so user can resume
+    if status == "running" and not is_running(root):
+        status = "paused"
+        info   = {**info, "status": "paused", "last_updated": datetime.now(timezone.utc).isoformat()}
+        write_distill_info(root, info)
+
+    total    = info.get("total_files", 0)
+    next_idx = info.get("next_index",  0)
+    pct      = round(next_idx / total * 100, 1) if total else 0.0
+
+    return {**info, "status": status, "progress_pct": pct, "is_running": is_running(root)}
+
+
+@router.post("/distill-folder/start")
+async def start_folder_distill(
+    folder: str = Query(..., description="Absolute path to the source folder"),
+    model:  str = Query("auto"),
+    db:     str = Query("default"),
+    path:   Optional[str] = Query(None),
+):
+    """
+    Start distilling a folder from scratch.
+    Scans the folder in a thread (non-blocking), then launches a background task.
+    """
+    from .folder_distiller import (
+        _active_tasks, _pause_events,
+        prepare_start_job, run_distill_job,
+    )
+    root = _db_root(db, path)
+    key  = str(root)
+
+    if key in _active_tasks:
+        raise HTTPException(409, "A distillation job is already running for this database.")
+
+    _ensure_db(root)
+
+    # Scan + write queue in a thread (can take seconds for large folders)
+    total = await asyncio.to_thread(
+        prepare_start_job, root, folder, model, "folder_distill"
+    )
+
+    # Event must be created from the async context so it belongs to the running loop
+    ev = asyncio.Event()
+    ev.set()                       # set = not paused = running
+    _pause_events[key] = ev
+
+    writer = _get_writer(db, path)
+    index  = _get_index(db, path)
+
+    task = asyncio.create_task(run_distill_job(root, writer, index, model, "folder_distill"))
+    _active_tasks[key] = task
+    task.add_done_callback(lambda _: _active_tasks.pop(key, None))
+
+    return {"started": True, "total_files": total}
+
+
+@router.post("/distill-folder/pause")
+async def pause_folder_distill(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """Signal the running job to pause after the current file."""
+    from .folder_distiller import pause_job
+    return pause_job(_db_root(db, path))
+
+
+@router.post("/distill-folder/resume")
+async def resume_folder_distill(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """Resume a paused (or interrupted) folder distillation job."""
+    from .folder_distiller import (
+        _active_tasks, _pause_events,
+        read_distill_info, write_distill_info, run_distill_job,
+    )
+    root = _db_root(db, path)
+    key  = str(root)
+
+    if key in _active_tasks:
+        raise HTTPException(409, "Job is already running.")
+
+    info = read_distill_info(root)
+    if not info:
+        raise HTTPException(404, "No distillation job found for this database.")
+    if info.get("status") not in ("paused", "error", "starting"):
+        raise HTTPException(409, f"Cannot resume — current status is '{info.get('status')}'.")
+
+    folder = info.get("folder_path", "")
+    if not folder or not Path(folder).exists():
+        raise HTTPException(400, f"Source folder missing or moved: {folder!r}")
+
+    model  = info.get("model",  "auto")
+    source = info.get("source", "folder_distill")
+
+    ev = asyncio.Event()
+    ev.set()
+    _pause_events[key] = ev
+
+    writer = _get_writer(db, path)
+    index  = _get_index(db, path)
+
+    task = asyncio.create_task(run_distill_job(root, writer, index, model, source))
+    _active_tasks[key] = task
+    task.add_done_callback(lambda _: _active_tasks.pop(key, None))
+
+    return {"resumed": True, "next_index": info.get("next_index", 0)}
+
+
+@router.post("/distill-folder/cancel")
+async def cancel_folder_distill(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """Pause the job (if running) and mark it as cancelled in DISTILLINFO."""
+    from .folder_distiller import (
+        pause_job, read_distill_info, write_distill_info,
+    )
+    root = _db_root(db, path)
+    pause_job(root)
+    info = read_distill_info(root)
+    if info:
+        write_distill_info(root, {
+            **info,
+            "status":       "cancelled",
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+        })
+    return {"cancelled": True}
+
+
 @router.get("/stubs")
 async def list_stubs(
     db:     str = Query("default"),
