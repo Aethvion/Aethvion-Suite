@@ -13,9 +13,33 @@
                 </div>
             </div>
             <div class="adb-header-actions">
-                <button id="adb-expand-btn" class="adb-btn adb-btn-accent" title="Run autonomous stub expansion">
-                    <i class="fas fa-wand-sparkles"></i> Expand Stubs
-                </button>
+                <div class="adb-expand-wrap" id="adb-expand-wrap">
+                    <button id="adb-expand-btn" class="adb-btn adb-btn-accent" title="Smart stub expansion">
+                        <i class="fas fa-wand-sparkles"></i> Expand Stubs
+                        <i class="fas fa-chevron-down adb-expand-chevron"></i>
+                    </button>
+                    <div id="adb-expand-dropdown" class="adb-expand-dropdown hidden">
+                        <div class="adb-expand-dd-title">Expand stubs by importance</div>
+                        <button class="adb-expand-option" data-min="1">
+                            <span class="adb-expand-opt-label">
+                                <i class="fas fa-circle-nodes"></i> 1+ relations
+                            </span>
+                            <span id="adb-expand-count-1" class="adb-expand-opt-count">—</span>
+                        </button>
+                        <button class="adb-expand-option" data-min="2">
+                            <span class="adb-expand-opt-label">
+                                <i class="fas fa-circle-nodes"></i> 2+ relations
+                            </span>
+                            <span id="adb-expand-count-2" class="adb-expand-opt-count">—</span>
+                        </button>
+                        <button class="adb-expand-option" data-min="3">
+                            <span class="adb-expand-opt-label">
+                                <i class="fas fa-circle-nodes"></i> 3+ relations
+                            </span>
+                            <span id="adb-expand-count-3" class="adb-expand-opt-count">—</span>
+                        </button>
+                    </div>
+                </div>
                 <button id="adb-graph-btn" class="adb-btn adb-btn-ghost" title="Visualise entity relationships">
                     <i class="fas fa-diagram-project"></i> Graph
                 </button>

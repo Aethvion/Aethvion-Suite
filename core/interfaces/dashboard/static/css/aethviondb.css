@@ -133,6 +133,91 @@
 .adb-btn-sm { padding: 0.28rem 0.6rem; font-size: 0.77rem; }
 .adb-btn-xs { padding: 0.18rem 0.45rem; font-size: 0.72rem; }
 
+/* ── Expand dropdown ── */
+.adb-expand-wrap {
+    position: relative;
+}
+.adb-expand-chevron {
+    font-size: 0.6rem;
+    margin-left: 0.15rem;
+    transition: transform 0.18s ease;
+    opacity: 0.7;
+}
+.adb-expand-wrap.open .adb-expand-chevron {
+    transform: rotate(180deg);
+}
+.adb-expand-dropdown {
+    position: absolute;
+    top: calc(100% + 7px);
+    left: 0;
+    min-width: 230px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+    z-index: 150;
+    overflow: hidden;
+}
+.adb-expand-dropdown.hidden { display: none; }
+.adb-expand-dd-title {
+    font-size: 0.67rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    padding: 0.6rem 0.85rem 0.35rem;
+    border-bottom: 1px solid var(--border);
+}
+.adb-expand-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.52rem 0.85rem;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    transition: background 0.12s, color 0.12s;
+    gap: 0.5rem;
+    text-align: left;
+}
+.adb-expand-option:last-child { border-bottom: none; }
+.adb-expand-option:hover {
+    background: rgba(34, 211, 238, 0.07);
+    color: #22d3ee;
+}
+.adb-expand-option:hover .adb-expand-opt-count {
+    border-color: rgba(34, 211, 238, 0.4);
+    color: #22d3ee;
+}
+.adb-expand-opt-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.adb-expand-opt-label i {
+    font-size: 0.7rem;
+    color: #22d3ee;
+    opacity: 0.75;
+}
+.adb-expand-opt-count {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 0.08rem 0.5rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    transition: color 0.12s, border-color 0.12s;
+    flex-shrink: 0;
+}
+
 /* ── Database bar ── */
 .adb-db-bar {
     display: flex;

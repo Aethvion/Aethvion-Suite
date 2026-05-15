@@ -269,6 +269,7 @@
             const si = _el('adb-stat-index'); if (si) si.textContent = _fmtNum(data.index_size);
             const sz = _el('adb-stat-size');  if (sz) sz.textContent = _fmtBytes(data.total_size_bytes);
             _hide('adb-stats-hint');
+            _updateExpandCounts(data.stubs_by_min_relations);
         } catch (e) {
             console.error('[AethvionDB] Stats failed:', e);
             _toast('Failed to load stats', 'error');
@@ -301,6 +302,9 @@
                 ht.textContent = `Cached · ${fmt}`;
             }
             _show('adb-stats-hint');  // keep visible as a "this is cached" indicator
+
+            // Populate smart-expand dropdown counts
+            _updateExpandCounts(data.stubs_by_min_relations);
         } catch { /* cached info is optional — silently ignore network/parse errors */ }
     }
 
@@ -726,6 +730,69 @@
     }
 
     // ── Expansion ─────────────────────────────────────────────────────────────
+
+    // ── Smart expand dropdown ─────────────────────────────────────────────────
+
+    let _expandDdOpen = false;
+
+    function _updateExpandCounts(counts) {
+        if (!counts) return;
+        const c1 = _el('adb-expand-count-1'); if (c1) c1.textContent = _fmtNum(counts['1'] ?? null);
+        const c2 = _el('adb-expand-count-2'); if (c2) c2.textContent = _fmtNum(counts['2'] ?? null);
+        const c3 = _el('adb-expand-count-3'); if (c3) c3.textContent = _fmtNum(counts['3'] ?? null);
+    }
+
+    function _openExpandDropdown() {
+        _expandDdOpen = true;
+        _el('adb-expand-dropdown')?.classList.remove('hidden');
+        _el('adb-expand-wrap')?.classList.add('open');
+    }
+
+    function _closeExpandDropdown() {
+        _expandDdOpen = false;
+        _el('adb-expand-dropdown')?.classList.add('hidden');
+        _el('adb-expand-wrap')?.classList.remove('open');
+    }
+
+    function _toggleExpandDropdown(e) {
+        e.stopPropagation();
+        _expandDdOpen ? _closeExpandDropdown() : _openExpandDropdown();
+    }
+
+    async function _smartExpand(minRelations) {
+        _closeExpandDropdown();
+        _showBusy(`Expanding stubs with ${minRelations}+ relations…`);
+        try {
+            const res  = await fetch(
+                `${API}/expand/smart?${_dbParam({ min_relations: minRelations, max_entities: 20 })}`,
+                { method: 'POST' }
+            );
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Expansion failed');
+
+            if (data.message && !data.expanded?.length) {
+                _toast(data.message, 'info');
+            } else {
+                const expanded = data.expanded?.length || 0;
+                const failed   = data.failed?.length   || 0;
+                const newStubs = data.new_stubs?.length || 0;
+                if (failed > 0 && expanded === 0) {
+                    _toast(`Expansion failed for ${failed} stub${failed !== 1 ? 's' : ''}`, 'error');
+                } else if (failed > 0) {
+                    _toast(`Expanded ${expanded}, ${failed} failed${newStubs ? `, ${newStubs} new stubs` : ''}`, 'error');
+                } else {
+                    _toast(
+                        `Expanded ${expanded} stub${expanded !== 1 ? 's' : ''}` +
+                        (newStubs ? ` — ${newStubs} new sub-topics` : '') + ' ✓',
+                        'success'
+                    );
+                }
+            }
+            await _loadEntityList(_currentFilter, 0);
+        } catch (e) {
+            _toast(`Expansion failed: ${e.message}`, 'error');
+        } finally { _hideBusy(); }
+    }
 
     async function _expandAll() {
         _showBusy('Expanding stubs…');
@@ -1713,7 +1780,19 @@
             _refreshStats();
             _loadEntityList(_currentFilter, _currentPage);
         });
-        _el('adb-expand-btn')?.addEventListener('click', _expandAll);
+        _el('adb-expand-btn')?.addEventListener('click', _toggleExpandDropdown);
+        document.querySelectorAll('.adb-expand-option').forEach(opt => {
+            opt.addEventListener('click', e => {
+                e.stopPropagation();
+                _smartExpand(parseInt(opt.dataset.min, 10));
+            });
+        });
+        // Close dropdown when clicking anywhere outside it
+        document.addEventListener('click', e => {
+            if (_expandDdOpen && !_el('adb-expand-wrap')?.contains(e.target)) {
+                _closeExpandDropdown();
+            }
+        });
         _el('adb-validate-btn')?.addEventListener('click', _validateAll);
 
         // Filter buttons always reset to page 0

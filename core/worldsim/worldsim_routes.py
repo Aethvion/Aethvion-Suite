@@ -220,14 +220,34 @@ async def get_stats(
                 except OSError:
                     pass
 
+    # Count incoming relations for each stub entity.
+    # An "incoming relation" is when an active entity has a relation whose
+    # target_id points to a stub.  More incoming = more likely to be important.
+    stub_ids = {e["id"] for e in all_e if e.get("status") == "stub"}
+    incoming: dict[str, int] = {sid: 0 for sid in stub_ids}
+    for e in all_e:
+        if e.get("status") == "deleted":
+            continue
+        for rel in (e.get("sections") or {}).get("relations", []):
+            tid = rel.get("target_id")
+            if tid in incoming:
+                incoming[tid] += 1
+
+    stubs_by_min_relations = {
+        "1": sum(1 for c in incoming.values() if c >= 1),
+        "2": sum(1 for c in incoming.values() if c >= 2),
+        "3": sum(1 for c in incoming.values() if c >= 3),
+    }
+
     result = {
-        "db":               db,
-        "total_entities":   len(all_e),
-        "by_status":        by_status,
-        "by_type":          by_type,
-        "index_size":       index.count(),
-        "stub_count":       by_status.get("stub", 0),
-        "total_size_bytes": total_size_bytes,
+        "db":                    db,
+        "total_entities":        len(all_e),
+        "by_status":             by_status,
+        "by_type":               by_type,
+        "index_size":            index.count(),
+        "stub_count":            by_status.get("stub", 0),
+        "total_size_bytes":      total_size_bytes,
+        "stubs_by_min_relations": stubs_by_min_relations,
     }
 
     # Persist to AethvionDB.INFO so the UI can display stats on next page load
@@ -413,6 +433,52 @@ async def expand_stubs(
     from .expansion_engine import ExpansionEngine
     engine = ExpansionEngine(writer=_get_writer(db, path), index=_get_index(db, path))
     report = await engine.run(max_entities=req.max_entities, model=req.model, only_ids=req.entity_ids)
+    return report.as_dict()
+
+
+@router.post("/expand/smart")
+async def smart_expand(
+    min_relations: int = Query(1, ge=1, le=10, description="Minimum incoming relations a stub must have"),
+    max_entities:  int = Query(20, le=100),
+    model:         Optional[str] = Query(None),
+    db:            str = Query("default"),
+    path:          Optional[str] = Query(None),
+):
+    """
+    Expand only the stubs that have at least `min_relations` incoming references
+    from other entities.  Stubs with more incoming references are more likely to
+    be important nodes worth expanding first.
+    """
+    writer = _get_writer(db, path)
+    all_e  = writer.list_all()
+
+    # Build incoming-relation count for every stub
+    stub_ids = {e["id"] for e in all_e if e.get("status") == "stub"}
+    incoming: dict[str, int] = {sid: 0 for sid in stub_ids}
+    for e in all_e:
+        if e.get("status") == "deleted":
+            continue
+        for rel in (e.get("sections") or {}).get("relations", []):
+            tid = rel.get("target_id")
+            if tid in incoming:
+                incoming[tid] += 1
+
+    target_ids = [sid for sid, c in incoming.items() if c >= min_relations]
+
+    if not target_ids:
+        return {
+            "expanded": [], "failed": [], "skipped": [], "new_stubs": [],
+            "total_processed": 0,
+            "message": f"No stubs with {min_relations}+ incoming relations found.",
+        }
+
+    from .expansion_engine import ExpansionEngine
+    engine = ExpansionEngine(writer=writer, index=_get_index(db, path))
+    report = await engine.run(
+        max_entities=min(max_entities, len(target_ids)),
+        model=model,
+        only_ids=target_ids,
+    )
     return report.as_dict()
 
 
