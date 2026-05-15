@@ -266,26 +266,13 @@
         const offset = page * _PAGE_SIZE;
 
         try {
-            let entities, total;
-
-            if (filter === 'stub') {
-                const res  = await fetch(`${API}/stubs?${_dbParam({ limit: _PAGE_SIZE, offset })}`);
-                const data = await res.json();
-                total    = data.count || 0;
-                entities = (data.stubs || []).map(s => ({
-                    id:      s.id   || s,
-                    name:    s.name || s.id || s,
-                    type:    s.type || 'other',
-                    summary: '',
-                    status:  'stub',
-                }));
-            } else {
-                const statusParam = filter === 'active' ? { status: 'active' } : {};
-                const res  = await fetch(`${API}/entities?${_dbParam({ limit: _PAGE_SIZE, offset, ...statusParam })}`);
-                const data = await res.json();
-                total    = data.total || 0;
-                entities = data.entities || [];
-            }
+            const statusParam = filter === 'stub'   ? { status: 'stub' }
+                              : filter === 'active' ? { status: 'active' }
+                              : {};
+            const res  = await fetch(`${API}/entities?${_dbParam({ limit: _PAGE_SIZE, offset, ...statusParam })}`);
+            const data = await res.json();
+            const total    = data.total    || 0;
+            const entities = data.entities || [];
 
             _totalCount = total;
 
@@ -294,10 +281,10 @@
                 return;
             }
 
-            listEl.innerHTML = entities.map(e => _entityRowHtml(e)).join('');
-            listEl.querySelectorAll('.adb-entity-row').forEach(row => {
-                row.addEventListener('click', () => _loadEntity(row.dataset.id));
-                row.addEventListener('keydown', ev => { if (ev.key === 'Enter') _loadEntity(row.dataset.id); });
+            listEl.innerHTML = _renderTable(entities);
+            listEl.querySelectorAll('.adb-tr').forEach(row => {
+                row.addEventListener('click',   ()  => _loadEntity(row.dataset.id));
+                row.addEventListener('keydown', ev  => { if (ev.key === 'Enter') _loadEntity(row.dataset.id); });
             });
 
             _renderPagination(total, page);
@@ -341,18 +328,60 @@
     }
 
     function _entityRowHtml(e) {
-        const isStub   = e.status === 'stub';
-        const badgeCls = isStub ? 'adb-badge-stub' : 'adb-badge-expanded';
-        const badgeTxt = isStub ? 'stub' : 'expanded';
-        const summary  = e.summary || e.sections?.core?.summary || '';
-        return `<div class="adb-entity-row" data-id="${e.id}" role="button" tabindex="0">
-            <span class="adb-type-badge adb-type-${e.type || 'other'}">${e.type || 'other'}</span>
-            <div class="adb-entity-row-center">
-                <span class="adb-entity-row-name">${e.name || e.id}</span>
-                ${summary ? `<span class="adb-entity-row-summary">${summary}</span>` : ''}
-            </div>
-            <span class="adb-badge ${badgeCls}">${badgeTxt}</span>
-        </div>`;
+        const isStub    = e.status === 'stub';
+        const badgeCls  = isStub ? 'adb-badge-stub' : 'adb-badge-expanded';
+        const badgeTxt  = isStub ? 'stub' : 'expanded';
+        const summary   = e.summary || e.sections?.core?.summary || '';
+        const tags      = e.tags || e.sections?.core?.tags || [];
+        const relCount  = e.relations_count != null ? e.relations_count : (e.sections?.relations?.length ?? null);
+        const stubCount = e.stubs_count     != null ? e.stubs_count     : (e.sections?.stubs?.length    ?? null);
+
+        const tagHtml = tags.slice(0, 3).map(t => `<span class="adb-tag-sm">${t}</span>`).join('')
+                      + (tags.length > 3 ? `<span class="adb-tag-sm">+${tags.length - 3}</span>` : '');
+
+        return `<tr class="adb-tr" data-id="${e.id}" tabindex="0">
+            <td class="adb-td">
+                <span class="adb-type-badge adb-type-${e.type || 'other'}">${e.type || 'other'}</span>
+            </td>
+            <td class="adb-td">
+                <div class="adb-td-name-text">${e.name || e.id}</div>
+                ${summary ? `<div class="adb-td-summary">${summary}</div>` : ''}
+            </td>
+            <td class="adb-td">
+                <div class="adb-td-tags">${tagHtml}</div>
+            </td>
+            <td class="adb-td adb-td-num${relCount  ? ' has-data' : ''}">${relCount  ?? '—'}</td>
+            <td class="adb-td adb-td-num${stubCount ? ' has-data' : ''}">${stubCount ?? '—'}</td>
+            <td class="adb-td">
+                <span class="adb-badge ${badgeCls}">${badgeTxt}</span>
+            </td>
+        </tr>`;
+    }
+
+    function _renderTable(entities) {
+        return `<table class="adb-table">
+            <colgroup>
+                <col class="adb-col-type">
+                <col>
+                <col class="adb-col-tags">
+                <col class="adb-col-rel">
+                <col class="adb-col-stubs">
+                <col class="adb-col-status">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th class="adb-col-type">Type</th>
+                    <th>Name / Summary</th>
+                    <th class="adb-col-tags">Tags</th>
+                    <th class="adb-col-rel" title="Number of relations">Rel.</th>
+                    <th class="adb-col-stubs" title="Number of sub-topics">Sub.</th>
+                    <th class="adb-col-status">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${entities.map(e => _entityRowHtml(e)).join('')}
+            </tbody>
+        </table>`;
     }
 
     // ── Search ────────────────────────────────────────────────────────────────
@@ -383,10 +412,10 @@
                 return;
             }
 
-            listEl.innerHTML = results.map(r => _entityRowHtml(r)).join('');
-            listEl.querySelectorAll('.adb-entity-row').forEach(row => {
-                row.addEventListener('click', () => _loadEntity(row.dataset.id));
-                row.addEventListener('keydown', ev => { if (ev.key === 'Enter') _loadEntity(row.dataset.id); });
+            listEl.innerHTML = _renderTable(results);
+            listEl.querySelectorAll('.adb-tr').forEach(row => {
+                row.addEventListener('click',   ()  => _loadEntity(row.dataset.id));
+                row.addEventListener('keydown', ev  => { if (ev.key === 'Enter') _loadEntity(row.dataset.id); });
             });
             // Show result count in pagination bar (no prev/next for search)
             const pagEl = _el('adb-entity-pagination');

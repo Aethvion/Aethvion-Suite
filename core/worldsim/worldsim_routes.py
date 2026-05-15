@@ -299,11 +299,14 @@ async def search_entities(
             if q_lower not in name and q_lower not in summary and not any(q_lower in a for a in aliases):
                 continue
         results.append({
-            "id":      e["id"],
-            "name":    e["name"],
-            "type":    e.get("type"),
-            "status":  e.get("status"),
-            "summary": e["sections"]["core"].get("summary", "")[:200],
+            "id":              e["id"],
+            "name":            e["name"],
+            "type":            e.get("type"),
+            "status":          e.get("status"),
+            "summary":         e["sections"]["core"].get("summary", "")[:200],
+            "tags":            e["sections"]["core"].get("tags", [])[:5],
+            "relations_count": len(e["sections"].get("relations", [])),
+            "stubs_count":     len(e["sections"].get("stubs", [])),
         })
         if len(results) >= limit:
             break

@@ -361,10 +361,93 @@
 .adb-entity-list {
     flex: 1;
     overflow-y: auto;
-    padding: 0.5rem 0.75rem;
+}
+
+/* ── Entity table ── */
+.adb-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 0.82rem;
+}
+.adb-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg-secondary);
+}
+.adb-table th {
+    padding: 0.38rem 0.65rem;
+    font-size: 0.67rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    user-select: none;
+}
+.adb-table th.adb-col-rel,
+.adb-table th.adb-col-stubs { text-align: center; }
+.adb-col-type   { width: 82px; }
+.adb-col-tags   { width: 165px; }
+.adb-col-rel    { width: 55px; }
+.adb-col-stubs  { width: 52px; }
+.adb-col-status { width: 88px; }
+.adb-tr {
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.09s;
+}
+.adb-tr:hover  { background: var(--bg-secondary); }
+.adb-tr:focus  { outline: 2px solid rgba(34,211,238,0.35); outline-offset: -2px; }
+.adb-td {
+    padding: 0.42rem 0.65rem;
+    vertical-align: middle;
+    overflow: hidden;
+}
+.adb-td-num {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.77rem;
+    font-variant-numeric: tabular-nums;
+}
+.adb-td-num.has-data { color: var(--text-secondary); font-weight: 600; }
+.adb-td-name-text {
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+.adb-td-summary {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    margin-top: 0.08rem;
+}
+.adb-td-tags {
     display: flex;
-    flex-direction: column;
-    gap: 3px;
+    flex-wrap: nowrap;
+    gap: 0.2rem;
+    overflow: hidden;
+}
+.adb-tag-sm {
+    font-size: 0.61rem;
+    padding: 0.08rem 0.32rem;
+    background: rgba(34,211,238,0.07);
+    border: 1px solid rgba(34,211,238,0.18);
+    border-radius: 20px;
+    color: #22d3ee;
+    white-space: nowrap;
+    flex-shrink: 0;
+    line-height: 1.4;
 }
 
 /* ── Pagination bar ── */
