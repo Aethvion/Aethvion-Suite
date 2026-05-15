@@ -177,7 +177,7 @@ class ContentDistiller:
         self,
         writer: EntityWriter,
         index:  NameIndex,
-        model:  str = "gemini-1.5-flash",
+        model:  str = "auto",
     ) -> None:
         self._writer = writer
         self._index  = index

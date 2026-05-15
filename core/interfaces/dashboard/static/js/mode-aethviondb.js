@@ -13,10 +13,11 @@
     const BROWSE_API = '/api/agents/browse/native';
 
     // ── State ─────────────────────────────────────────────────────────────────
-    let _currentEntityId = null;
-    let _currentDb       = 'default'; // named database
-    let _currentPath     = null;      // folder-path database (overrides _currentDb)
-    let _currentFilter   = 'all';     // 'all' | 'active' | 'stub'
+    let _currentEntityId     = null;
+    let _currentEntityStatus = null;  // 'stub' | 'active' — set when entity detail opens
+    let _currentDb           = 'default'; // named database
+    let _currentPath         = null;      // folder-path database (overrides _currentDb)
+    let _currentFilter       = 'all';     // 'all' | 'active' | 'stub'
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -60,6 +61,8 @@
     // ── View switching ────────────────────────────────────────────────────────
 
     function _showEntityList() {
+        _currentEntityId     = null;
+        _currentEntityStatus = null;
         _show('adb-entity-list');
         _hide('adb-entity-detail');
         _hide('adb-validation-view');
@@ -328,8 +331,21 @@
     }
 
     function _renderEntity(entity) {
-        _currentEntityId = entity.id;
+        _currentEntityId     = entity.id;
+        _currentEntityStatus = entity.status || 'active';
         _showEntityDetail();
+
+        // Update Deepen button label to reflect context
+        const deepenBtn = _el('adb-ev-expand-btn');
+        if (deepenBtn) {
+            if (_currentEntityStatus === 'stub') {
+                deepenBtn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Expand';
+                deepenBtn.title = 'Expand this stub into a full entity';
+            } else {
+                deepenBtn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Deepen';
+                deepenBtn.title = 'Expand the sub-topics listed in this entity';
+            }
+        }
 
         // Type badge
         const typeBadge = _el('adb-ev-type-badge');
@@ -552,7 +568,28 @@
                 body:    JSON.stringify({ max_entities: 10 }),
             });
             const data = await res.json();
-            _toast(`Expanded ${data.expanded?.length || 0} entities, ${data.new_stubs?.length || 0} new stubs found`, 'success');
+            if (!res.ok) throw new Error(data.detail || 'Expansion failed');
+
+            const expanded = data.expanded?.length || 0;
+            const failed   = data.failed?.length   || 0;
+            const newStubs = data.new_stubs?.length || 0;
+            const skipped  = data.skipped?.length   || 0;
+
+            if (expanded === 0 && failed === 0 && skipped === 0) {
+                _toast('No stubs to expand', 'info');
+            } else if (failed > 0 && expanded === 0) {
+                _toast(`Expansion failed for ${failed} stub${failed !== 1 ? 's' : ''} — check console`, 'error');
+                console.warn('[AethvionDB] Expansion failures:', data.failed);
+            } else if (failed > 0) {
+                _toast(`Expanded ${expanded}, ${failed} failed${newStubs ? `, ${newStubs} new stubs` : ''}`, 'error');
+                console.warn('[AethvionDB] Expansion failures:', data.failed);
+            } else {
+                _toast(
+                    `Expanded ${expanded} stub${expanded !== 1 ? 's' : ''}` +
+                    (newStubs ? ` — ${newStubs} new sub-topics discovered` : '') + ' ✓',
+                    'success'
+                );
+            }
             await _refreshStats();
             await _loadEntityList(_currentFilter);
         } catch (e) {
@@ -562,16 +599,55 @@
 
     async function _deepenCurrent() {
         if (!_currentEntityId) return;
-        _showBusy('Deepening entity stubs…');
-        try {
-            const res  = await fetch(`${API}/entities/${_currentEntityId}/deepen?${_dbParam({ max_stubs: 5 })}`, { method: 'POST' });
-            const data = await res.json();
-            _toast(`Deepened: ${data.expanded?.length || 0} new entities expanded`, 'success');
-            await _loadEntity(_currentEntityId);
-            await _refreshStats();
-        } catch (e) {
-            _toast(`Deepen failed: ${e.message}`, 'error');
-        } finally { _hideBusy(); }
+
+        if (_currentEntityStatus === 'stub') {
+            // Stub entity: expand it into a full entity
+            _showBusy('Expanding stub…');
+            try {
+                const res  = await fetch(`${API}/entities/${_currentEntityId}/expand?${_dbParam()}`, { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Expand failed');
+                if (data.error && data.error !== 'already_active') {
+                    _toast(`Expand failed: ${data.error}`, 'error');
+                } else {
+                    const newStubs = data.new_stubs?.length || 0;
+                    _toast(
+                        data.error === 'already_active'
+                            ? 'Entity is already expanded'
+                            : `Expanded ✓${newStubs ? ` — ${newStubs} new sub-topics found` : ''}`,
+                        data.error === 'already_active' ? 'info' : 'success'
+                    );
+                }
+                await _loadEntity(_currentEntityId);
+                await _refreshStats();
+                // Refresh list so stub→active change is reflected when user goes Back
+                _loadEntityList(_currentFilter);
+            } catch (e) {
+                _toast(`Expand failed: ${e.message}`, 'error');
+            } finally { _hideBusy(); }
+        } else {
+            // Active entity: expand the sub-topics (stubs) listed inside it
+            _showBusy('Deepening sub-topics…');
+            try {
+                const res  = await fetch(`${API}/entities/${_currentEntityId}/deepen?${_dbParam({ max_stubs: 5 })}`, { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Deepen failed');
+                const n = data.expanded?.length || 0;
+                const f = data.failed?.length   || 0;
+                if (n === 0 && f === 0) {
+                    _toast('No sub-topics to deepen (add some stubs first)', 'info');
+                } else if (f > 0) {
+                    _toast(`Deepened ${n}, ${f} failed — check console`, 'error');
+                    console.warn('[AethvionDB] Deepen failures:', data.failed);
+                } else {
+                    _toast(`Deepened ${n} sub-topic${n !== 1 ? 's' : ''} ✓`, 'success');
+                }
+                await _loadEntity(_currentEntityId);
+                await _refreshStats();
+            } catch (e) {
+                _toast(`Deepen failed: ${e.message}`, 'error');
+            } finally { _hideBusy(); }
+        }
     }
 
     // ── Validation ────────────────────────────────────────────────────────────

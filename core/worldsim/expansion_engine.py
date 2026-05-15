@@ -53,50 +53,43 @@ from .distiller import _extract_json, _map_to_sections as _map_to_entity_section
 logger = get_logger(__name__)
 
 
-_EXPANSION_SYSTEM_PROMPT = """You are a knowledge generator for a structured world-simulation database.
+_EXPANSION_SYSTEM_PROMPT = """You are a JSON-only knowledge generator for a structured database.
 
-You will be given the name of an entity and some context about it (from related entities).
-Your task is to generate a comprehensive, factual entry for this entity.
+CRITICAL: Your entire response must be a single valid JSON object. No prose, no markdown, no code fences, no explanation before or after. Start your response with { and end with }.
 
-RULES:
-- Output ONLY valid JSON. No markdown fences, no explanation.
-- Be factual. Do not invent historical events unless they are well-known facts.
-- Keep summary to 2-4 sentences maximum.
-- "stubs" should list only meaningful proper nouns (people, places, orgs, concepts) that deserve their own entry.
-- "type" must be exactly one of:
-  person, place, event, concept, organization, artifact, creature,
-  substance, process, phenomenon, work, species, universe, other
-- Properties should capture the most important structured facts (birth year, nationality, field, etc.)
+You will receive an entity name. Generate a comprehensive knowledge entry for it.
 
-Output this exact JSON structure:
-{
-  "type": "<entity_type>",
-  "aliases": ["alternate name"],
-  "categories": ["Category"],
-  "tags": ["keyword"],
-  "summary": "2-4 sentence description",
-  "timeline": [
-    { "date": "YYYY", "event": "What happened", "ref_names": [] }
-  ],
-  "relations": [
-    { "kind": "related_to", "target_name": "Name", "note": "" }
-  ],
-  "properties": {
-    "key": "value"
-  },
-  "stubs": ["Name of sub-topic"]
-}"""
+Rules:
+- "type" must be one of: person, place, event, concept, organization, artifact, creature, substance, process, phenomenon, work, species, universe, other
+- "summary" is 2-4 sentences describing what this entity is
+- "stubs" lists only important proper nouns that appear in context and deserve their own entries (other people, places, organizations, concepts). Keep this list short — 3-8 items max.
+- "timeline" events only when well-known dates are certain
+- "properties" captures key structured facts (e.g. birth_year, nationality, field, founded)
+- Use empty arrays [] for sections you have nothing to say about
+- Do not invent facts. Use known/public knowledge only.
+
+Respond with exactly this JSON shape (no other text):
+{"type":"...","aliases":[],"categories":[],"tags":[],"summary":"...","timeline":[{"date":"YYYY","event":"...","ref_names":[]}],"relations":[{"kind":"related_to","target_name":"...","note":""}],"properties":{"key":"value"},"stubs":[]}"""
+
+_EXPANSION_RETRY_SUFFIX = (
+    "\n\nIMPORTANT: You must respond with ONLY a JSON object. "
+    "No explanation. No markdown. Start immediately with { and end with }."
+)
 
 
 def _build_expansion_prompt(
     entity_name: str,
     context_snippets: list[str],
     max_context_chars: int = 2000,
+    retry: bool = False,
 ) -> str:
     ctx = "\n".join(context_snippets)[:max_context_chars]
-    prompt = f"Entity to expand: {entity_name}"
+    prompt = f'Generate a knowledge database entry for: "{entity_name}"'
     if ctx:
         prompt += f"\n\nContext from related entities:\n{ctx}"
+    prompt += "\n\nRespond with a JSON object only."
+    if retry:
+        prompt += _EXPANSION_RETRY_SUFFIX
     return prompt
 
 
@@ -140,7 +133,7 @@ class ExpansionEngine:
         self,
         writer: Optional[EntityWriter] = None,
         index: Optional[NameIndex] = None,
-        model: str = "gemini-1.5-flash",
+        model: str = "auto",
         concurrency: int = 2,
     ) -> None:
         self._writer        = writer or EntityWriter()
@@ -209,34 +202,50 @@ class ExpansionEngine:
 
         used_model = model or self._default_model
         context    = self._gather_context(entity_id)
-        prompt     = _build_expansion_prompt(entity["name"], context)
 
         async with self._semaphore:
             from core.providers import ProviderManager
             pm = ProviderManager()
-            trace_id = uuid.uuid4().hex
 
-            try:
-                response = await asyncio.to_thread(
-                    pm.call_with_failover,
-                    prompt=prompt,
-                    system_prompt=_EXPANSION_SYSTEM_PROMPT,
-                    model=used_model,
-                    trace_id=trace_id,
-                    source=CallSource.WORLDSIM,
-                )
-                raw = response.content if hasattr(response, "content") else str(response)
-            except Exception as e:
-                result["error"] = f"AI call failed: {e}"
-                logger.error(f"[ExpansionEngine] {entity_id}: {result['error']}")
+            raw = None
+            for attempt in range(2):   # up to 2 attempts
+                prompt   = _build_expansion_prompt(entity["name"], context, retry=(attempt > 0))
+                trace_id = uuid.uuid4().hex
+                try:
+                    response = await asyncio.to_thread(
+                        pm.call_with_failover,
+                        prompt=prompt,
+                        system_prompt=_EXPANSION_SYSTEM_PROMPT,
+                        model=used_model,
+                        trace_id=trace_id,
+                        source=CallSource.WORLDSIM,
+                    )
+                    raw = response.content if hasattr(response, "content") else str(response)
+                except Exception as e:
+                    result["error"] = f"AI call failed: {e}"
+                    logger.error(f"[ExpansionEngine] {entity_id}: {result['error']}")
+                    return result
+
+                try:
+                    extracted = _extract_json(raw)
+                    break   # success — exit retry loop
+                except Exception as parse_err:
+                    if attempt == 0:
+                        logger.warning(
+                            f"[ExpansionEngine] {entity_id}: JSON parse failed on attempt 1, retrying. "
+                            f"Raw response ({len(raw)} chars): {raw[:500]!r}"
+                        )
+                    else:
+                        result["error"] = f"JSON parse failed: {parse_err}"
+                        logger.error(
+                            f"[ExpansionEngine] {entity_id}: {result['error']}. "
+                            f"Raw response ({len(raw)} chars): {raw[:500]!r}"
+                        )
+                        return result
+            else:
+                # Should not reach here, but guard anyway
+                result["error"] = "JSON parse failed after retries"
                 return result
-
-        try:
-            extracted = _extract_json(raw)
-        except Exception as e:
-            result["error"] = f"JSON parse failed: {e}"
-            logger.warning(f"[ExpansionEngine] {entity_id}: {result['error']}")
-            return result
 
         # Map to sections
         try:
