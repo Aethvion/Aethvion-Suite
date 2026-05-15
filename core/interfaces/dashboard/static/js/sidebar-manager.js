@@ -31,6 +31,7 @@
         { id: 'arena',             label: 'Arena',            icon: 'fas fa-shield-halved',      mode: ['ai']   },
         { id: 'aiconv',            label: 'AI Conv.',         icon: 'fas fa-masks-theater',      mode: ['ai']   },
         { id: 'explained',         label: 'Explained',        icon: 'fas fa-lightbulb',          mode: ['ai']   },
+        { id: 'worldsim',          label: 'WorldSim',         icon: 'fas fa-globe',              mode: ['ai']   },
         { id: 'misaka-cipher',     label: 'Misaka Cipher',    icon: 'fas fa-wand-magic-sparkles',mode: ['ai']   },
         { id: 'axiom',             label: 'Axiom',            icon: 'fas fa-atom',               mode: ['ai']   },
         { id: 'lyra',              label: 'Lyra',             icon: 'fas fa-music',              mode: ['ai']   },

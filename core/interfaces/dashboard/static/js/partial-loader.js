@@ -27,6 +27,7 @@
         'advaiconv':        ['/static/js/mode-adv-aiconv.js'],
         'researchboard':    ['/static/js/mode-research-board.js'],
         'explained':        ['/static/js/mode-explained.js'],
+        'worldsim':         ['/static/js/mode-worldsim.js'],
         'misaka-cipher':    ['/static/js/mode-misakacipher.js'],
         'axiom':            ['/static/js/mode-axiom.js'],
         'lyra':             ['/static/js/mode-lyra.js'],

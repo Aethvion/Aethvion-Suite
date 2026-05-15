@@ -136,6 +136,9 @@ class CallSource:
     AXIOM         = "axiom"           # Axiom analytical companion
     LYRA          = "lyra"            # Lyra creative companion
 
+    # ── WorldSim knowledge distillation ─────────────────────────────────
+    WORLDSIM      = "worldsim"        # Entity extraction / expansion / distillation
+
     # ── Internal / meta ───────────────────────────────────────────────────
     AUTO_ROUTER   = "auto_router"     # Internal routing decision (recursive)
 
@@ -231,6 +234,15 @@ ISOLATION_RULES: dict[str, dict] = {
     CallSource.RESEARCH: {
         "description":          "Research analysis. User-provided context only.",
         "expects_system_prompt": False,  # caller may or may not provide one
+        "persona":              False,
+        "memories":             False,
+        "tools":                False,
+        "identity":             False,
+        "aethvion_internals":   False,
+    },
+    CallSource.WORLDSIM: {
+        "description":          "WorldSim entity distillation / expansion. No persona or memory.",
+        "expects_system_prompt": True,
         "persona":              False,
         "memories":             False,
         "tools":                False,

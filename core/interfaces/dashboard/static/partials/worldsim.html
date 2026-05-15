@@ -1,0 +1,217 @@
+<div id="worldsim-root" class="ws-root">
+    <!-- Toolbar -->
+    <div class="ws-toolbar">
+        <div class="ws-toolbar-left">
+            <i class="fas fa-globe ws-brand-icon"></i>
+            <span class="ws-brand-label">WorldSim</span>
+            <div class="ws-stats-strip" id="ws-stats-strip">
+                <span class="ws-stat-chip" id="ws-stat-total"><i class="fas fa-database"></i> –</span>
+                <span class="ws-stat-chip ws-stat-stub" id="ws-stat-stubs"><i class="fas fa-circle-half-stroke"></i> – stubs</span>
+                <span class="ws-stat-chip" id="ws-stat-index"><i class="fas fa-hashtag"></i> – indexed</span>
+            </div>
+        </div>
+        <div class="ws-toolbar-right">
+            <button id="ws-expand-btn" class="ws-icon-btn" title="Expand all stubs">
+                <i class="fas fa-wand-sparkles"></i> Expand Stubs
+            </button>
+            <button id="ws-validate-btn" class="ws-icon-btn ws-icon-btn-ghost" title="Run integrity checks">
+                <i class="fas fa-shield-check"></i> Validate
+            </button>
+            <button id="ws-refresh-btn" class="ws-icon-btn ws-icon-btn-ghost" title="Refresh stats">
+                <i class="fas fa-rotate-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Database bar -->
+    <div class="ws-db-bar">
+        <i class="fas fa-folder ws-db-folder-icon"></i>
+        <span id="ws-db-indicator-name" class="ws-db-indicator-name">default</span>
+        <button id="ws-db-change-btn" class="ws-icon-btn ws-icon-btn-ghost ws-db-change-btn">
+            <i class="fas fa-folder-open"></i> Change
+        </button>
+    </div>
+
+    <div class="ws-layout">
+        <!-- Left: Input panel -->
+        <aside class="ws-sidebar">
+            <!-- Distill -->
+            <div class="ws-panel">
+                <div class="ws-panel-header">
+                    <i class="fas fa-flask"></i> Distill Content
+                </div>
+                <div class="ws-field">
+                    <label>Content</label>
+                    <textarea id="ws-distill-text" rows="9" placeholder="Paste any informational text — articles, books, notes, documents…"></textarea>
+                </div>
+                <div class="ws-field">
+                    <label>Model</label>
+                    <select id="ws-distill-model">
+                        <option value="auto">Auto Select</option>
+                    </select>
+                </div>
+                <button id="ws-distill-btn" class="ws-primary-btn">
+                    <i class="fas fa-flask"></i> Distill
+                </button>
+                <div id="ws-distill-status" class="ws-status hidden"></div>
+            </div>
+
+            <!-- Search -->
+            <div class="ws-panel">
+                <div class="ws-panel-header">
+                    <i class="fas fa-search"></i> Search Entities
+                </div>
+                <div class="ws-search-row">
+                    <input type="text" id="ws-search-input" placeholder="Search by name, summary, tag…">
+                    <button id="ws-search-btn" class="ws-icon-btn"><i class="fas fa-search"></i></button>
+                </div>
+                <div class="ws-field">
+                    <select id="ws-search-type">
+                        <option value="">All types</option>
+                        <option value="person">Person</option>
+                        <option value="place">Place</option>
+                        <option value="event">Event</option>
+                        <option value="concept">Concept</option>
+                        <option value="organization">Organization</option>
+                        <option value="artifact">Artifact</option>
+                        <option value="creature">Creature</option>
+                        <option value="work">Work</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div id="ws-search-results" class="ws-search-results">
+                    <div class="ws-empty-hint">Search above to find entities</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right: Entity viewer -->
+        <main class="ws-main">
+            <!-- Placeholder -->
+            <div id="ws-placeholder" class="ws-placeholder">
+                <div class="ws-placeholder-icon"><i class="fas fa-globe"></i></div>
+                <h2>WorldSim Knowledge Graph</h2>
+                <p>Distill some text on the left to create your first entity, or search for an existing one.</p>
+                <div class="ws-quick-actions">
+                    <button class="ws-quick-btn" id="ws-load-stubs-btn">
+                        <i class="fas fa-circle-half-stroke"></i> Browse Stubs
+                    </button>
+                    <button class="ws-quick-btn" id="ws-load-all-btn">
+                        <i class="fas fa-database"></i> Browse All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Entity detail view -->
+            <div id="ws-entity-view" class="ws-entity-view hidden">
+                <div class="ws-ev-header">
+                    <div class="ws-ev-title-row">
+                        <div>
+                            <span id="ws-ev-type-badge" class="ws-type-badge">person</span>
+                            <h2 id="ws-ev-name" class="ws-ev-name"></h2>
+                        </div>
+                        <div class="ws-ev-actions">
+                            <button id="ws-ev-expand-btn" class="ws-icon-btn" title="Expand this entity's stubs">
+                                <i class="fas fa-wand-sparkles"></i> Deepen
+                            </button>
+                            <button id="ws-ev-validate-btn" class="ws-icon-btn ws-icon-btn-ghost" title="Validate this entity">
+                                <i class="fas fa-shield-check"></i>
+                            </button>
+                            <span id="ws-ev-status-badge" class="ws-status-badge"></span>
+                        </div>
+                    </div>
+                    <p id="ws-ev-summary" class="ws-ev-summary"></p>
+                    <div id="ws-ev-meta" class="ws-ev-meta"></div>
+                </div>
+
+                <div class="ws-ev-tabs">
+                    <button class="ws-ev-tab active" data-target="ws-ev-tab-core">Core</button>
+                    <button class="ws-ev-tab" data-target="ws-ev-tab-timeline">Timeline</button>
+                    <button class="ws-ev-tab" data-target="ws-ev-tab-relations">Relations</button>
+                    <button class="ws-ev-tab" data-target="ws-ev-tab-props">Properties</button>
+                    <button class="ws-ev-tab" data-target="ws-ev-tab-stubs">Stubs</button>
+                    <button class="ws-ev-tab" data-target="ws-ev-tab-json">Raw JSON</button>
+                </div>
+
+                <div class="ws-ev-content">
+                    <div id="ws-ev-tab-core" class="ws-ev-panel active">
+                        <div id="ws-ev-aliases" class="ws-ev-section"></div>
+                        <div id="ws-ev-categories" class="ws-ev-section"></div>
+                        <div id="ws-ev-tags" class="ws-ev-section"></div>
+                    </div>
+                    <div id="ws-ev-tab-timeline" class="ws-ev-panel hidden">
+                        <div id="ws-ev-timeline-list" class="ws-timeline-list"></div>
+                    </div>
+                    <div id="ws-ev-tab-relations" class="ws-ev-panel hidden">
+                        <div id="ws-ev-relations-list" class="ws-relations-list"></div>
+                    </div>
+                    <div id="ws-ev-tab-props" class="ws-ev-panel hidden">
+                        <div id="ws-ev-props-table" class="ws-props-table"></div>
+                    </div>
+                    <div id="ws-ev-tab-stubs" class="ws-ev-panel hidden">
+                        <p class="ws-stubs-hint">These sub-topics are referenced but not yet expanded:</p>
+                        <div id="ws-ev-stubs-list" class="ws-stubs-list"></div>
+                    </div>
+                    <div id="ws-ev-tab-json" class="ws-ev-panel hidden">
+                        <pre id="ws-ev-raw-json" class="ws-raw-json"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Entity list view (stubs / all) -->
+            <div id="ws-list-view" class="ws-list-view hidden">
+                <div class="ws-lv-header">
+                    <h3 id="ws-lv-title" class="ws-lv-title"></h3>
+                    <button id="ws-lv-close" class="ws-icon-btn ws-icon-btn-ghost"><i class="fas fa-times"></i></button>
+                </div>
+                <div id="ws-lv-items" class="ws-lv-items"></div>
+            </div>
+
+            <!-- Validation report view -->
+            <div id="ws-validation-view" class="ws-validation-view hidden">
+                <div class="ws-lv-header">
+                    <h3 class="ws-lv-title"><i class="fas fa-shield-check"></i> Validation Report</h3>
+                    <button id="ws-val-close" class="ws-icon-btn ws-icon-btn-ghost"><i class="fas fa-times"></i></button>
+                </div>
+                <div id="ws-val-summary" class="ws-val-summary"></div>
+                <div id="ws-val-issues" class="ws-val-issues"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Database selector modal -->
+    <div id="ws-db-modal" class="ws-db-modal-overlay hidden">
+        <div class="ws-db-modal">
+            <div class="ws-db-modal-header">
+                <span>Select Database</span>
+                <button id="ws-db-modal-close" class="ws-db-modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="ws-db-modal-body">
+                <div class="ws-db-modal-section-label">Named databases</div>
+                <div id="ws-db-named-list" class="ws-db-named-list">
+                    <div class="ws-empty-hint">Loading…</div>
+                </div>
+                <div class="ws-db-modal-divider">or open a folder directly</div>
+                <div class="ws-db-path-row">
+                    <input type="text" id="ws-db-folder-input" class="ws-db-folder-input" placeholder="Folder path…">
+                    <button id="ws-db-browse-btn" class="ws-db-browse-btn" title="Browse for folder">
+                        <i class="fas fa-folder-open"></i>
+                    </button>
+                </div>
+                <p class="ws-db-path-hint">Any folder works — a WorldSim database is created automatically if needed.</p>
+            </div>
+            <div class="ws-db-modal-footer">
+                <button id="ws-db-modal-cancel" class="ws-icon-btn ws-icon-btn-ghost">Cancel</button>
+                <button id="ws-db-modal-open" class="ws-icon-btn">Open</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expand / busy overlay -->
+    <div id="ws-busy-overlay" class="ws-busy-overlay hidden">
+        <div class="ws-busy-inner">
+            <div class="ws-busy-spinner"></div>
+            <span id="ws-busy-text">Working…</span>
+        </div>
+    </div>
+</div>

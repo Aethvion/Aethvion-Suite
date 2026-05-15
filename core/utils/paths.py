@@ -45,6 +45,8 @@ EXPLAINED         = MODE_EXPLAINED
 MODE_COMPANIONS   = COMPANIONS
 MODE_WORKSPACES   = MODES / "workspaces"
 MODE_SCHEDULE     = MODES / "schedule"
+MODE_WORLDSIM     = MODES / "worldsim"
+WORLDSIM          = MODE_WORLDSIM   # Root; databases live as subdirs inside here
 
 # Legacy compatibility / Common aliases
 HISTORY     = MODES     # Generic history root
@@ -153,7 +155,7 @@ def ensure_all() -> None:
         APP_GAMES, APP_HARDWARE, APP_BRIDGES, APP_PHOTO, APP_TRACKING, APP_VTUBER,
         # Modes
         MODE_CHAT, MODE_AGENTS, MODE_AGENT_CORP, MODE_AI_CONV, MODE_ADV_AICONV,
-        MODE_EXPLAINED, MODE_COMPANIONS, MODE_WORKSPACES,
+        MODE_EXPLAINED, MODE_COMPANIONS, MODE_WORKSPACES, MODE_WORLDSIM,
         # Sub-directories
         LOGS_USAGE, LOGS_NOTIFICATIONS,
         COMPANIONS_PERSONAS, COMPANIONS_KNOWLEDGE, COMPANIONS_MEMORY,

@@ -64,6 +64,7 @@ async def register_all_routers(app: FastAPI):
         
         from core.companions.companion_routes import router as companion_router
         from core.companions.companion_creator_routes import router as companion_creator_router
+        from core.worldsim.worldsim_routes import router as worldsim_router
         
         app.include_router(system_router)
         app.include_router(preferences_router)
@@ -97,6 +98,7 @@ async def register_all_routers(app: FastAPI):
         app.include_router(documentation_router)
         app.include_router(companion_router)
         app.include_router(companion_creator_router)
+        app.include_router(worldsim_router)
         
         logger.debug("All routers included successfully.")
     except Exception as e:

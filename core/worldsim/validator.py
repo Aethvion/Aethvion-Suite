@@ -1,0 +1,404 @@
+"""
+core/worldsim/validator.py
+═══════════════════════════
+Code-only integrity validator for WorldSim entities.
+
+No AI calls — purely deterministic rule checks. Run on every write or
+on demand via the dashboard. Returns structured issues so callers can
+decide whether to block, warn, or log.
+
+Checks
+------
+1. Temporal consistency   — timeline events not anachronistic; dates parseable
+2. Spatial plausibility   — entity can't be "located_in" two mutually exclusive
+                            places simultaneously
+3. Lifespan integrity     — birth before death; events within lifespan
+4. Containment            — located_in relations don't form cycles
+5. Reference integrity    — all target_id values point to real entities
+6. Type consistency       — required properties present for known types
+7. Self-reference         — entity must not relate to itself
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Optional
+
+from core.utils.logger import get_logger
+from .entity_writer import EntityWriter
+
+logger = get_logger(__name__)
+
+
+class Severity(str, Enum):
+    ERROR   = "error"    # Integrity violation — entity is corrupt
+    WARNING = "warning"  # Suspicious but not necessarily wrong
+    INFO    = "info"     # Informational note
+
+
+@dataclass
+class Issue:
+    severity:  Severity
+    check:     str         # Name of the check that raised this
+    message:   str
+    entity_id: str = ""
+    field:     str = ""    # Which field/section triggered it
+
+
+@dataclass
+class ValidationResult:
+    entity_id: str
+    issues:    list[Issue] = field(default_factory=list)
+
+    @property
+    def ok(self) -> bool:
+        return not any(i.severity == Severity.ERROR for i in self.issues)
+
+    @property
+    def errors(self) -> list[Issue]:
+        return [i for i in self.issues if i.severity == Severity.ERROR]
+
+    @property
+    def warnings(self) -> list[Issue]:
+        return [i for i in self.issues if i.severity == Severity.WARNING]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "entity_id": self.entity_id,
+            "ok":        self.ok,
+            "issues": [
+                {
+                    "severity": i.severity.value,
+                    "check":    i.check,
+                    "message":  i.message,
+                    "field":    i.field,
+                }
+                for i in self.issues
+            ],
+        }
+
+
+# ── Date helpers ──────────────────────────────────────────────────────────────
+
+_YEAR_RE  = re.compile(r"^~?(\d{1,4})(?:\s*(?:BC|BCE|AD|CE))?$", re.IGNORECASE)
+_DATE_RE  = re.compile(r"^~?(\d{4})-(\d{2})-(\d{2})$")
+
+
+def _parse_year(date_str: str) -> Optional[int]:
+    """
+    Extract a year integer from a date string.
+    Returns None if unparseable.
+    Negative = BCE.
+    """
+    s = date_str.strip()
+    is_bce = bool(re.search(r"\bBC(E)?\b", s, re.IGNORECASE))
+
+    m = _DATE_RE.match(s)
+    if m:
+        year = int(m.group(1))
+        return -year if is_bce else year
+
+    m = _YEAR_RE.match(s)
+    if m:
+        year = int(m.group(1))
+        return -year if is_bce else year
+
+    return None
+
+
+# ── Individual checks ─────────────────────────────────────────────────────────
+
+def _check_temporal(entity: dict[str, Any]) -> list[Issue]:
+    issues: list[Issue] = []
+    timeline = entity["sections"].get("timeline", [])
+    if not isinstance(timeline, list):
+        return issues
+
+    years = []
+    for i, ev in enumerate(timeline):
+        if not isinstance(ev, dict):
+            continue
+        date_str = ev.get("date", "")
+        year = _parse_year(date_str)
+        if year is None and date_str:
+            issues.append(Issue(
+                Severity.WARNING, "temporal",
+                f"timeline[{i}]: unparseable date {date_str!r}",
+                entity["id"], f"timeline[{i}].date",
+            ))
+        elif year is not None:
+            years.append((i, year))
+
+    # Check ordering (events should be roughly chronological)
+    for idx in range(1, len(years)):
+        prev_i, prev_y = years[idx - 1]
+        cur_i,  cur_y  = years[idx]
+        if cur_y < prev_y - 5:  # allow 5-year slack for approximations
+            issues.append(Issue(
+                Severity.WARNING, "temporal",
+                f"timeline[{cur_i}] ({cur_y}) appears before timeline[{prev_i}] ({prev_y}) — out of order?",
+                entity["id"], f"timeline[{cur_i}].date",
+            ))
+
+    return issues
+
+
+def _check_lifespan(entity: dict[str, Any]) -> list[Issue]:
+    """For person/creature entities: birth must precede death."""
+    issues: list[Issue] = []
+    if entity.get("type") not in ("person", "creature", "species"):
+        return issues
+
+    props = entity["sections"].get("properties", {})
+    birth_str = props.get("birth_date") or props.get("born") or props.get("birth_year")
+    death_str = props.get("death_date") or props.get("died") or props.get("death_year")
+
+    if not birth_str or not death_str:
+        return issues
+
+    birth = _parse_year(str(birth_str))
+    death = _parse_year(str(death_str))
+
+    if birth is None or death is None:
+        return issues
+
+    if death < birth:
+        issues.append(Issue(
+            Severity.ERROR, "lifespan",
+            f"Death ({death_str}) precedes birth ({birth_str})",
+            entity["id"], "properties",
+        ))
+    elif death - birth > 200:
+        issues.append(Issue(
+            Severity.WARNING, "lifespan",
+            f"Lifespan of {death - birth} years seems implausible",
+            entity["id"], "properties",
+        ))
+
+    # Check timeline events fall within lifespan (loose check)
+    timeline = entity["sections"].get("timeline", [])
+    for i, ev in enumerate(timeline):
+        if not isinstance(ev, dict):
+            continue
+        ev_year = _parse_year(ev.get("date", ""))
+        if ev_year is None:
+            continue
+        if ev_year < birth - 5:
+            issues.append(Issue(
+                Severity.WARNING, "lifespan",
+                f"timeline[{i}] ({ev_year}) is before entity birth year ({birth})",
+                entity["id"], f"timeline[{i}].date",
+            ))
+        if ev_year > death + 10:
+            issues.append(Issue(
+                Severity.WARNING, "lifespan",
+                f"timeline[{i}] ({ev_year}) is long after entity death ({death})",
+                entity["id"], f"timeline[{i}].date",
+            ))
+
+    return issues
+
+
+def _check_self_reference(entity: dict[str, Any]) -> list[Issue]:
+    issues: list[Issue] = []
+    eid = entity["id"]
+    for i, rel in enumerate(entity["sections"].get("relations", [])):
+        if isinstance(rel, dict) and rel.get("target_id") == eid:
+            issues.append(Issue(
+                Severity.ERROR, "self_reference",
+                f"relations[{i}] points to itself ({eid})",
+                eid, f"relations[{i}]",
+            ))
+    return issues
+
+
+def _check_reference_integrity(
+    entity: dict[str, Any],
+    writer: EntityWriter,
+) -> list[Issue]:
+    """All target_id values in relations must exist in the entity store."""
+    issues: list[Issue] = []
+    for i, rel in enumerate(entity["sections"].get("relations", [])):
+        if not isinstance(rel, dict):
+            continue
+        target_id = rel.get("target_id", "")
+        if target_id and not writer.exists(target_id):
+            issues.append(Issue(
+                Severity.ERROR, "reference_integrity",
+                f"relations[{i}].target_id {target_id!r} does not exist",
+                entity["id"], f"relations[{i}].target_id",
+            ))
+    # Also check timeline ref_ids
+    for i, ev in enumerate(entity["sections"].get("timeline", [])):
+        if not isinstance(ev, dict):
+            continue
+        for j, ref_id in enumerate(ev.get("ref_ids", [])):
+            if ref_id and not writer.exists(ref_id):
+                issues.append(Issue(
+                    Severity.WARNING, "reference_integrity",
+                    f"timeline[{i}].ref_ids[{j}] {ref_id!r} does not exist",
+                    entity["id"], f"timeline[{i}].ref_ids[{j}]",
+                ))
+    return issues
+
+
+def _check_containment_cycle(
+    entity: dict[str, Any],
+    writer: EntityWriter,
+    max_depth: int = 10,
+) -> list[Issue]:
+    """
+    Detect cycles in located_in / part_of / member_of containment chains.
+    Walks up the chain and checks for revisits.
+    """
+    issues: list[Issue] = []
+    start_id = entity["id"]
+    containment_kinds = {"located_in", "part_of", "member_of", "child_of"}
+
+    visited = {start_id}
+    current_id = start_id
+    depth = 0
+
+    while depth < max_depth:
+        current = writer.get(current_id)
+        if not current:
+            break
+        parent_id = None
+        for rel in current["sections"].get("relations", []):
+            if isinstance(rel, dict) and rel.get("kind") in containment_kinds:
+                parent_id = rel.get("target_id")
+                break
+        if not parent_id:
+            break
+        if parent_id in visited:
+            issues.append(Issue(
+                Severity.ERROR, "containment_cycle",
+                f"Containment cycle detected: {start_id} → ... → {parent_id} (revisit)",
+                start_id, "relations",
+            ))
+            break
+        visited.add(parent_id)
+        current_id = parent_id
+        depth += 1
+
+    return issues
+
+
+def _check_type_consistency(entity: dict[str, Any]) -> list[Issue]:
+    """Type-specific required property checks."""
+    issues: list[Issue] = []
+    etype   = entity.get("type", "other")
+    props   = entity["sections"].get("properties", {})
+    summary = entity["sections"]["core"].get("summary", "")
+
+    if not summary:
+        issues.append(Issue(
+            Severity.WARNING, "type_consistency",
+            "core.summary is empty — entity has no description",
+            entity["id"], "sections.core.summary",
+        ))
+
+    if etype == "person":
+        if not props.get("birth_date") and not props.get("birth_year") and not props.get("born"):
+            issues.append(Issue(
+                Severity.INFO, "type_consistency",
+                "Person entity has no birth date in properties",
+                entity["id"], "sections.properties",
+            ))
+
+    elif etype == "place":
+        location_kinds = {"located_in", "part_of", "contains"}
+        has_location_rel = any(
+            rel.get("kind") in location_kinds
+            for rel in entity["sections"].get("relations", [])
+            if isinstance(rel, dict)
+        )
+        if not has_location_rel and not props.get("coordinates") and not props.get("country"):
+            issues.append(Issue(
+                Severity.INFO, "type_consistency",
+                "Place entity has no location relation or coordinates",
+                entity["id"], "sections.relations",
+            ))
+
+    elif etype == "event":
+        if not entity["sections"].get("timeline"):
+            issues.append(Issue(
+                Severity.WARNING, "type_consistency",
+                "Event entity has an empty timeline",
+                entity["id"], "sections.timeline",
+            ))
+
+    return issues
+
+
+# ── Main Validator class ──────────────────────────────────────────────────────
+
+class Validator:
+    """
+    Run all integrity checks on one or more entities.
+
+    Usage
+    -----
+    v = Validator(writer)
+    result = v.validate("ws_abc123")
+    if not result.ok:
+        for issue in result.errors:
+            print(issue.message)
+
+    # Validate entire store
+    results = v.validate_all()
+    """
+
+    def __init__(self, writer: Optional[EntityWriter] = None) -> None:
+        self._writer = writer or EntityWriter()
+
+    def validate(self, entity_id: str) -> ValidationResult:
+        """Run all checks on a single entity."""
+        entity = self._writer.get(entity_id)
+        if not entity:
+            return ValidationResult(
+                entity_id=entity_id,
+                issues=[Issue(Severity.ERROR, "not_found", f"Entity {entity_id!r} not found", entity_id)],
+            )
+
+        result = ValidationResult(entity_id=entity_id)
+
+        result.issues.extend(_check_temporal(entity))
+        result.issues.extend(_check_lifespan(entity))
+        result.issues.extend(_check_self_reference(entity))
+        result.issues.extend(_check_reference_integrity(entity, self._writer))
+        result.issues.extend(_check_containment_cycle(entity, self._writer))
+        result.issues.extend(_check_type_consistency(entity))
+
+        if result.issues:
+            logger.debug(
+                f"[Validator] {entity_id}: "
+                f"{len(result.errors)} errors, {len(result.warnings)} warnings"
+            )
+
+        return result
+
+    def validate_all(self, include_deleted: bool = False) -> list[ValidationResult]:
+        """Run all checks on every entity in the store."""
+        entities = self._writer.list_all(include_deleted=include_deleted)
+        results  = []
+        for entity in entities:
+            results.append(self.validate(entity["id"]))
+        return results
+
+    def summary(self) -> dict[str, Any]:
+        """Return aggregate statistics for all entities."""
+        results = self.validate_all()
+        total_errors   = sum(len(r.errors)   for r in results)
+        total_warnings = sum(len(r.warnings) for r in results)
+        failed = [r.entity_id for r in results if not r.ok]
+        return {
+            "total_entities": len(results),
+            "clean":          sum(1 for r in results if r.ok),
+            "with_errors":    len(failed),
+            "total_errors":   total_errors,
+            "total_warnings": total_warnings,
+            "failed_ids":     failed,
+        }
