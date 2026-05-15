@@ -22,6 +22,7 @@
     let _totalCount          = 0;         // total entities for current filter
     const _PAGE_SIZE         = 100;
     let _graphActive         = false;     // true while graph view is showing
+    let _bakeActive          = false;     // true while bake view is showing
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -79,6 +80,7 @@
 
     function _showEntityList() {
         _graphActive         = false;
+        _bakeActive          = false;
         _currentEntityId     = null;
         _currentEntityStatus = null;
         _show('adb-explorer-header');
@@ -86,8 +88,11 @@
         _hide('adb-entity-detail');
         _hide('adb-validation-view');
         _hide('adb-graph-view');
-        const btn = _el('adb-graph-btn');
-        if (btn) btn.innerHTML = '<i class="fas fa-diagram-project"></i> Graph';
+        _hide('adb-bake-view');
+        const gBtn = _el('adb-graph-btn');
+        if (gBtn) gBtn.innerHTML = '<i class="fas fa-diagram-project"></i> Graph';
+        const bBtn = _el('adb-bake-header-btn');
+        if (bBtn) bBtn.innerHTML = '<i class="fas fa-box-archive"></i> Bake';
     }
 
     function _showEntityDetail() {
@@ -101,6 +106,7 @@
         _hide('adb-list-pane');
         _hide('adb-entity-detail');
         _hide('adb-graph-view');
+        _hide('adb-bake-view');
         _show('adb-validation-view');
     }
 
@@ -210,8 +216,10 @@
         _hide('adb-graph-view');
         _fdStopPolling();
         _fdSection('adb-fd-pick');
+        _bakeStopPolling();
         _loadCachedInfo();
         _fdCheckExistingJob();
+        _bakeCheckExisting();
         _loadEntityList('all', 0);
         _toast(`Database: ${name}`, 'info');
     }
@@ -229,8 +237,10 @@
         _hide('adb-graph-view');
         _fdStopPolling();
         _fdSection('adb-fd-pick');
+        _bakeStopPolling();
         _loadCachedInfo();
         _fdCheckExistingJob();
+        _bakeCheckExisting();
         _loadEntityList('all', 0);
         const name = folderPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() || folderPath;
         _toast(`Database: ${name}`, 'info');
@@ -939,14 +949,34 @@
 
     function _showGraph() {
         _graphActive = true;
+        _bakeActive  = false;
         _hide('adb-explorer-header');
         _hide('adb-list-pane');
         _hide('adb-entity-detail');
         _hide('adb-validation-view');
+        _hide('adb-bake-view');
         _show('adb-graph-view');
-        const btn = _el('adb-graph-btn');
-        if (btn) btn.innerHTML = '<i class="fas fa-table-list"></i> Table';
+        const gBtn = _el('adb-graph-btn');
+        if (gBtn) gBtn.innerHTML = '<i class="fas fa-table-list"></i> Table';
+        const bBtn = _el('adb-bake-header-btn');
+        if (bBtn) bBtn.innerHTML = '<i class="fas fa-box-archive"></i> Bake';
     }
+
+    function _showBakeView() {
+        _bakeActive  = true;
+        _graphActive = false;
+        _hide('adb-explorer-header');
+        _hide('adb-list-pane');
+        _hide('adb-entity-detail');
+        _hide('adb-validation-view');
+        _hide('adb-graph-view');
+        _show('adb-bake-view');
+        const gBtn = _el('adb-graph-btn');
+        if (gBtn) gBtn.innerHTML = '<i class="fas fa-diagram-project"></i> Graph';
+        const bBtn = _el('adb-bake-header-btn');
+        if (bBtn) bBtn.innerHTML = '<i class="fas fa-table-list"></i> Table';
+    }
+
 
     async function _openGraph() {
         _showGraph();
@@ -1543,6 +1573,130 @@
         _fdEl('adb-fd-new-btn')      ?.addEventListener('click', () => { _fdStopPolling(); _fdSection('adb-fd-pick'); });
     }
 
+    // ── Bake ─────────────────────────────────────────────────────────────────
+
+    let _bakePollHandle = null;
+
+    function _bakeStopPolling() {
+        if (_bakePollHandle) { clearInterval(_bakePollHandle); _bakePollHandle = null; }
+    }
+
+    function _bakeStartPolling() {
+        _bakeStopPolling();
+        _bakePollHandle = setInterval(_bakePoll, 1500);
+    }
+
+    async function _bakePoll() {
+        try {
+            const res  = await fetch(`${API}/bake/status?${_dbParam()}`);
+            const data = await res.json();
+            _bakeApplyStatus(data);
+            if (data.status !== 'running') _bakeStopPolling();
+        } catch { /* ignore transient poll errors */ }
+    }
+
+    function _bakeApplyStatus(data) {
+        const resultEl = _el('adb-bake-result');
+        const innerEl  = _el('adb-bake-result-inner');
+        const dlBtn    = _el('adb-bake-download-btn');
+        const bakeBtn  = _el('adb-bake-btn');
+        if (!resultEl || !innerEl) return;
+
+        if (!data || data.status === 'idle') {
+            resultEl.classList.add('hidden');
+            if (dlBtn) dlBtn.classList.add('hidden');
+            return;
+        }
+
+        resultEl.classList.remove('hidden');
+
+        const STATUS_LABEL = { running:'Baking…', done:'Done', error:'Error' };
+        const STATUS_CLS   = { running:'adb-bake-badge-running', done:'adb-bake-badge-done', error:'adb-bake-badge-error' };
+        const badge = `<span class="adb-bake-badge ${STATUS_CLS[data.status] || ''}">${STATUS_LABEL[data.status] || data.status}</span>`;
+
+        if (data.status === 'running') {
+            innerEl.innerHTML = `<div class="adb-bake-meta-row">${badge} <span>Baking in progress…</span></div>`;
+            if (dlBtn) dlBtn.classList.add('hidden');
+            if (bakeBtn) { bakeBtn.disabled = true; bakeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Baking…'; }
+        } else if (data.status === 'done') {
+            const fmt = { jsonl:'JSONL', json:'JSON', markdown:'Markdown', txt:'Plain text' }[data.format] || data.format || '—';
+            innerEl.innerHTML = `
+                <div class="adb-bake-meta-row">${badge}
+                    <span class="adb-bake-key">Format</span><span class="adb-bake-val">${fmt}</span>
+                </div>
+                <div class="adb-bake-meta-row">
+                    <span class="adb-bake-key">Entities</span><span class="adb-bake-val">${_fmtNum(data.entity_count)}</span>
+                </div>
+                <div class="adb-bake-meta-row">
+                    <span class="adb-bake-key">Size</span><span class="adb-bake-val">${data.size_fmt || '—'}</span>
+                </div>
+                <div class="adb-bake-meta-row">
+                    <span class="adb-bake-key">Baked</span><span class="adb-bake-val">${_fmtDate(data.baked_at)}</span>
+                </div>`;
+            if (dlBtn) dlBtn.classList.remove('hidden');
+            if (bakeBtn) { bakeBtn.disabled = false; bakeBtn.innerHTML = '<i class="fas fa-box-archive"></i> Re-Bake'; }
+            // Sync the format radio to what was last baked
+            if (data.format) {
+                const r = document.querySelector(`input[name="adb-bake-fmt"][value="${data.format}"]`);
+                if (r) r.checked = true;
+            }
+        } else if (data.status === 'error') {
+            innerEl.innerHTML = `<div class="adb-bake-meta-row">${badge} <span style="color:#f87171">${data.error || 'Unknown error'}</span></div>`;
+            if (dlBtn) dlBtn.classList.add('hidden');
+            if (bakeBtn) { bakeBtn.disabled = false; bakeBtn.innerHTML = '<i class="fas fa-box-archive"></i> Bake Now'; }
+        }
+    }
+
+    async function _bakeStart() {
+        const fmt          = document.querySelector('input[name="adb-bake-fmt"]:checked')?.value || 'jsonl';
+        const includeStubs = _el('adb-bake-stubs')?.checked ?? true;
+        const bakeBtn      = _el('adb-bake-btn');
+
+        if (bakeBtn) { bakeBtn.disabled = true; bakeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting…'; }
+
+        try {
+            const res = await fetch(`${API}/bake?${_dbParam()}`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ format: fmt, include_stubs: includeStubs }),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.detail || `HTTP ${res.status}`);
+            }
+            _bakeApplyStatus({ status: 'running' });
+            _bakeStartPolling();
+        } catch (e) {
+            _toast(`Bake failed: ${e.message}`, 'error');
+            if (bakeBtn) { bakeBtn.disabled = false; bakeBtn.innerHTML = '<i class="fas fa-box-archive"></i> Bake'; }
+        }
+    }
+
+    function _bakeDownload() {
+        const url = `${API}/bake/download?${_dbParam()}`;
+        const a   = document.createElement('a');
+        a.href    = url;
+        a.click();
+    }
+
+    async function _bakeCheckExisting() {
+        try {
+            const res  = await fetch(`${API}/bake/status?${_dbParam()}`);
+            const data = await res.json();
+            if (data.status && data.status !== 'idle') {
+                _bakeApplyStatus(data);
+                if (data.status === 'running') _bakeStartPolling();
+            }
+        } catch { /* ignore */ }
+    }
+
+    function _bakeWire() {
+        _el('adb-bake-header-btn')  ?.addEventListener('click', () => _bakeActive ? _showEntityList() : _showBakeView());
+        _el('adb-bake-close-btn')   ?.addEventListener('click', _showEntityList);
+        _el('adb-bake-btn')         ?.addEventListener('click', _bakeStart);
+        _el('adb-bake-download-btn')?.addEventListener('click', _bakeDownload);
+    }
+
     // ── Wiring ────────────────────────────────────────────────────────────────
 
     function _wire() {
@@ -1619,9 +1773,11 @@
         _wire();
         _graphWire();
         _fdWire();
+        _bakeWire();
         _fetchModels();
         _loadCachedInfo();          // populate stats from AethvionDB.INFO instantly
         _fdCheckExistingJob();      // restore folder-distill progress view if a job exists
+        _bakeCheckExisting();       // restore bake result panel if a bake exists
         _loadEntityList('all', 0);
     }
 

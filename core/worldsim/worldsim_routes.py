@@ -733,6 +733,93 @@ async def cancel_folder_distill(
     return {"cancelled": True}
 
 
+# ── Bake ──────────────────────────────────────────────────────────────────────
+
+class BakeRequest(BaseModel):
+    format:        str  = "jsonl"   # jsonl | json | markdown | txt
+    include_stubs: bool = True
+
+
+@router.get("/bake/status")
+async def get_bake_status(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """Return the last bake info from AethvionDB.BAKEINFO."""
+    from .baker import read_bake_info, is_baking
+    root = _db_root(db, path)
+    info = read_bake_info(root)
+    if not info:
+        return {"status": "idle"}
+    return {**info, "is_baking": is_baking(root)}
+
+
+@router.post("/bake")
+async def start_bake(
+    req:  BakeRequest,
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """
+    Start baking the database into a single export file.
+    Runs in the background — poll /bake/status to monitor progress.
+    """
+    from .baker import (
+        _bake_tasks, bake_database, is_baking, write_bake_info, BAKE_FORMATS
+    )
+    root = _db_root(db, path)
+    key  = str(root)
+
+    if is_baking(root):
+        raise HTTPException(409, "A bake is already running for this database.")
+
+    if req.format not in BAKE_FORMATS:
+        raise HTTPException(400, f"Unknown format {req.format!r}. Must be one of {BAKE_FORMATS}")
+
+    writer = _get_writer(db, path)
+
+    task = asyncio.create_task(
+        bake_database(root, writer, fmt=req.format, include_stubs=req.include_stubs)
+    )
+    _bake_tasks[key] = task
+    task.add_done_callback(lambda _: _bake_tasks.pop(key, None))
+
+    return {"started": True, "format": req.format, "include_stubs": req.include_stubs}
+
+
+@router.get("/bake/download")
+async def download_bake(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """Download the most recently baked output file."""
+    from fastapi.responses import FileResponse
+    from .baker import read_bake_info
+
+    root = _db_root(db, path)
+    info = read_bake_info(root)
+
+    if not info or info.get("status") != "done":
+        raise HTTPException(404, "No completed bake found. Run a bake first.")
+
+    out_path = Path(info["output_path"])
+    if not out_path.exists():
+        raise HTTPException(404, f"Baked file missing: {out_path.name}")
+
+    media = {
+        "jsonl":    "application/x-ndjson",
+        "json":     "application/json",
+        "markdown": "text/markdown",
+        "txt":      "text/plain",
+    }.get(info.get("format", ""), "application/octet-stream")
+
+    return FileResponse(
+        path=str(out_path),
+        media_type=media,
+        filename=out_path.name,
+    )
+
+
 @router.get("/stubs")
 async def list_stubs(
     db:     str = Query("default"),

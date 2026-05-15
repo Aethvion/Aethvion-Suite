@@ -92,7 +92,7 @@ def make_empty(
 ) -> dict[str, Any]:
     """
     Return a minimal valid entity dict.
-    Use EntityWriter.create() for disk-persisted creation.
+    Use EntityWriter.create() for persistent on-disk creation.
     """
     now = _now_iso()
     return {

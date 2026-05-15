@@ -19,6 +19,9 @@
                 <button id="adb-graph-btn" class="adb-btn adb-btn-ghost" title="Visualise entity relationships">
                     <i class="fas fa-diagram-project"></i> Graph
                 </button>
+                <button id="adb-bake-header-btn" class="adb-btn adb-btn-ghost" title="Bake database into a single export file">
+                    <i class="fas fa-box-archive"></i> Bake
+                </button>
                 <button id="adb-validate-btn" class="adb-btn adb-btn-ghost" title="Run integrity checks">
                     <i class="fas fa-shield-check"></i> Validate
                 </button>
@@ -318,6 +321,75 @@
                 </div>
                 <div id="adb-val-summary" class="adb-val-summary"></div>
                 <div id="adb-val-issues" class="adb-val-issues"></div>
+            </div>
+
+            <!-- Bake view -->
+            <div id="adb-bake-view" class="adb-bake-view hidden">
+                <div class="adb-detail-topbar">
+                    <button id="adb-bake-close-btn" class="adb-btn adb-btn-ghost adb-btn-sm">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </button>
+                    <span class="adb-val-title"><i class="fas fa-box-archive"></i> Bake Database</span>
+                </div>
+
+                <div class="adb-bake-body">
+
+                    <!-- Format cards -->
+                    <div class="adb-bake-section">
+                        <div class="adb-bake-section-title">Export format</div>
+                        <p class="adb-bake-section-desc">Choose how the baked file is structured. Raw entity files are never modified.</p>
+                        <div class="adb-bake-fmt-grid">
+                            <label class="adb-bake-fmt-card">
+                                <input type="radio" name="adb-bake-fmt" value="jsonl" checked>
+                                <i class="fas fa-list-ul adb-bake-fmt-icon"></i>
+                                <span class="adb-bake-fmt-name">JSONL</span>
+                                <span class="adb-bake-fmt-desc">One entity per line — ideal for vector databases and streaming pipelines</span>
+                            </label>
+                            <label class="adb-bake-fmt-card">
+                                <input type="radio" name="adb-bake-fmt" value="json">
+                                <i class="fas fa-code adb-bake-fmt-icon"></i>
+                                <span class="adb-bake-fmt-name">JSON</span>
+                                <span class="adb-bake-fmt-desc">Single structured document — easy to import into any system</span>
+                            </label>
+                            <label class="adb-bake-fmt-card">
+                                <input type="radio" name="adb-bake-fmt" value="markdown">
+                                <i class="fas fa-hashtag adb-bake-fmt-icon"></i>
+                                <span class="adb-bake-fmt-name">Markdown</span>
+                                <span class="adb-bake-fmt-desc">Formatted and human-readable — great for RAG systems and LLM prompts</span>
+                            </label>
+                            <label class="adb-bake-fmt-card">
+                                <input type="radio" name="adb-bake-fmt" value="txt">
+                                <i class="fas fa-align-left adb-bake-fmt-icon"></i>
+                                <span class="adb-bake-fmt-name">Plain text</span>
+                                <span class="adb-bake-fmt-desc">Maximum density — fits the most content into LLM context windows</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Options -->
+                    <div class="adb-bake-section">
+                        <div class="adb-bake-section-title">Options</div>
+                        <label class="adb-checkbox-row">
+                            <input type="checkbox" id="adb-bake-stubs" checked>
+                            <span>Include stub entities</span>
+                        </label>
+                    </div>
+
+                    <!-- Action -->
+                    <button id="adb-bake-btn" class="adb-primary-btn adb-bake-go-btn">
+                        <i class="fas fa-box-archive"></i> Bake Now
+                    </button>
+
+                    <!-- Last bake result -->
+                    <div id="adb-bake-result" class="adb-bake-section hidden">
+                        <div class="adb-bake-section-title">Last bake</div>
+                        <div id="adb-bake-result-inner" class="adb-bake-meta"></div>
+                        <button id="adb-bake-download-btn" class="adb-btn adb-btn-accent hidden">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+
+                </div>
             </div>
 
         </main>

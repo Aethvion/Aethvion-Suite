@@ -1406,6 +1406,183 @@
     color: var(--text-muted);
 }
 
+/* ── Bake view ── */
+.adb-bake-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-primary);
+}
+.adb-bake-view.hidden { display: none; }
+
+.adb-bake-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-width: 780px;
+    width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+.adb-bake-section {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.adb-bake-section.hidden { display: none; }
+
+.adb-bake-section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+}
+.adb-bake-section-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.45;
+}
+
+/* Format radio cards */
+.adb-bake-fmt-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.55rem;
+    margin-top: 0.15rem;
+}
+.adb-bake-fmt-card {
+    display: grid;
+    grid-template-areas: "icon name" "icon desc";
+    grid-template-columns: 28px 1fr;
+    gap: 0 0.6rem;
+    padding: 0.7rem 0.85rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+}
+.adb-bake-fmt-card:hover {
+    border-color: rgba(34,211,238,0.4);
+    background: rgba(34,211,238,0.03);
+}
+.adb-bake-fmt-card input[type="radio"] {
+    display: none;
+}
+.adb-bake-fmt-card:has(input:checked) {
+    border-color: rgba(34,211,238,0.6);
+    background: rgba(34,211,238,0.07);
+}
+.adb-bake-fmt-icon {
+    grid-area: icon;
+    align-self: center;
+    font-size: 1rem;
+    color: #22d3ee;
+    text-align: center;
+}
+.adb-bake-fmt-name {
+    grid-area: name;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    align-self: end;
+}
+.adb-bake-fmt-desc {
+    grid-area: desc;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    align-self: start;
+}
+
+/* Bake Now button */
+.adb-bake-go-btn {
+    align-self: flex-start;
+}
+
+/* ── Bake panel (shared meta/badge styles) ── */
+.adb-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+}
+.adb-checkbox-row input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: #22d3ee;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.adb-bake-meta {
+    font-size: 0.77rem;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 0.22rem;
+    padding: 0.5rem 0.6rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    margin-bottom: 0.4rem;
+}
+.adb-bake-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+.adb-bake-badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: 0.15rem 0.4rem;
+    border-radius: 20px;
+    border: 1px solid;
+    flex-shrink: 0;
+}
+.adb-bake-badge-running {
+    background: rgba(34,211,238,0.1);
+    border-color: rgba(34,211,238,0.35);
+    color: #22d3ee;
+    animation: adb-fd-pulse 2s ease-in-out infinite;
+}
+.adb-bake-badge-done {
+    background: rgba(34,197,94,0.1);
+    border-color: rgba(34,197,94,0.3);
+    color: #4ade80;
+}
+.adb-bake-badge-error {
+    background: rgba(239,68,68,0.1);
+    border-color: rgba(239,68,68,0.3);
+    color: #f87171;
+}
+.adb-bake-key {
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 60px;
+}
+.adb-bake-val {
+    color: var(--text-primary);
+}
+
 /* ── WorldSim placeholder (worldsim.css reuses these) ── */
 .wsph-root {
     display: flex;
