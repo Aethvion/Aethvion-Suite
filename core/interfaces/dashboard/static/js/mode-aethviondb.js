@@ -59,6 +59,12 @@
         return Number(n).toLocaleString();
     }
 
+    /** Return the currently selected model (null means "auto" / server decides). */
+    function _selectedModel() {
+        const v = _el('adb-distill-model')?.value;
+        return (v && v !== 'auto') ? v : null;
+    }
+
     /**
      * Build a URLSearchParams string that includes either ?path= (folder db)
      * or ?db= (named db), plus any extra key/value pairs.
@@ -763,8 +769,9 @@
         _closeExpandDropdown();
         _showBusy(`Expanding stubs with ${minRelations}+ relations…`);
         try {
+            const model = _selectedModel();
             const res  = await fetch(
-                `${API}/expand/smart?${_dbParam({ min_relations: minRelations, max_entities: 20 })}`,
+                `${API}/expand/smart?${_dbParam({ min_relations: minRelations, max_entities: 20, ...(model ? { model } : {}) })}`,
                 { method: 'POST' }
             );
             const data = await res.json();
@@ -797,10 +804,11 @@
     async function _expandAll() {
         _showBusy('Expanding stubs…');
         try {
+            const model = _selectedModel();
             const res  = await fetch(`${API}/expand?${_dbParam()}`, {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ max_entities: 10 }),
+                body:    JSON.stringify({ max_entities: 10, ...(model ? { model } : {}) }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || 'Expansion failed');
@@ -838,7 +846,8 @@
             // Stub entity: expand it into a full entity
             _showBusy('Expanding stub…');
             try {
-                const res  = await fetch(`${API}/entities/${_currentEntityId}/expand?${_dbParam()}`, { method: 'POST' });
+                const model = _selectedModel();
+                const res  = await fetch(`${API}/entities/${_currentEntityId}/expand?${_dbParam(model ? { model } : {})}`, { method: 'POST' });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.detail || 'Expand failed');
                 if (data.error && data.error !== 'already_active') {
@@ -862,7 +871,8 @@
             // Active entity: expand the sub-topics (stubs) listed inside it
             _showBusy('Deepening sub-topics…');
             try {
-                const res  = await fetch(`${API}/entities/${_currentEntityId}/deepen?${_dbParam({ max_stubs: 5 })}`, { method: 'POST' });
+                const model = _selectedModel();
+                const res  = await fetch(`${API}/entities/${_currentEntityId}/deepen?${_dbParam({ max_stubs: 5, ...(model ? { model } : {}) })}`, { method: 'POST' });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.detail || 'Deepen failed');
                 const n = data.expanded?.length || 0;
