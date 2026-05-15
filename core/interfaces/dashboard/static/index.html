@@ -63,6 +63,7 @@
     <link rel="stylesheet" href="/static/css/mode-photo.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/research-board.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/explained.css?v=__VNUM__">
+    <link rel="stylesheet" href="/static/css/aethviondb.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/worldsim.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/audio-models.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/mode-3d-gen.css?v=__VNUM__">
@@ -335,7 +336,7 @@
             <div class="splash-content">
                 <div class="splash-logo-container">
                     <div class="logo-glow"></div>
-                    <img src="/assets/aethvion/aethvion_logo.png" alt="Aethvion Suite" class="splash-logo-img">
+                    <img src="/assets/aethvion/aethvion_logo_nobg.png" alt="Aethvion Suite" class="splash-logo-img">
                 </div>
                 <h1 class="splash-logo">AETHVION SUITE</h1>
 
@@ -376,7 +377,7 @@
                     </div>
                 </div>
                 <div class="header-right">
-                    <div class="compact-status" id="compact-status">
+                    <div class="compact-status" id="compact-status" onclick="setDashboardMode('ai'); switchMainTab('usage');" title="View Detailed Usage">
                         <span title="Tokens Today">Tokens: <strong id="tokens-today">0</strong></span>
                         <span class="status-divider">|</span>
                         <span title="Cost Today">Cost: <strong id="cost-today">$0.00</strong></span>
@@ -500,6 +501,11 @@
                 <!-- Companion Creator Tab -->
                 <div class="main-tab-panel" id="companion-creator-panel">
                     <div id="companion-creator-root"></div>
+                </div>
+
+                <!-- AethvionDB Tab -->
+                <div class="main-tab-panel" id="aethviondb-panel" data-partial="aethviondb">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
                 </div>
 
                 <!-- WorldSim Tab -->

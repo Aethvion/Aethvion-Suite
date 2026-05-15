@@ -463,7 +463,6 @@ body {
     border-color: #f87171;
     color: #fff;
     box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
-    transform: translateY(-1px);
 }
 
 .atb-quit-btn i {

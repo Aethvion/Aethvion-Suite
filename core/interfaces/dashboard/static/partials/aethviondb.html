@@ -1,0 +1,222 @@
+<div id="aethviondb-root" class="adb-root">
+
+    <!-- ── Header ── -->
+    <div class="adb-header">
+        <div class="adb-header-top">
+            <div class="adb-brand">
+                <div class="adb-brand-icon-wrap">
+                    <i class="fas fa-circle-nodes"></i>
+                </div>
+                <div class="adb-brand-text">
+                    <h1 class="adb-brand-name">AethvionDB</h1>
+                    <p class="adb-brand-desc">A fractal knowledge database — every entity connected, nothing duplicated.</p>
+                </div>
+            </div>
+            <div class="adb-header-actions">
+                <button id="adb-expand-btn" class="adb-btn adb-btn-accent" title="Run autonomous stub expansion">
+                    <i class="fas fa-wand-sparkles"></i> Expand Stubs
+                </button>
+                <button id="adb-validate-btn" class="adb-btn adb-btn-ghost" title="Run integrity checks">
+                    <i class="fas fa-shield-check"></i> Validate
+                </button>
+                <button id="adb-refresh-btn" class="adb-btn adb-btn-ghost adb-btn-icon" title="Refresh stats">
+                    <i class="fas fa-rotate-right"></i>
+                </button>
+            </div>
+        </div>
+        <div class="adb-stats-bar">
+            <div class="adb-stat-card">
+                <span id="adb-stat-total" class="adb-stat-value">—</span>
+                <span class="adb-stat-label">entities</span>
+            </div>
+            <div class="adb-stat-card adb-stat-card-stub">
+                <span id="adb-stat-stubs" class="adb-stat-value">—</span>
+                <span class="adb-stat-label">stubs pending</span>
+            </div>
+            <div class="adb-stat-card" title="Number of entity names registered in the name-to-ID index. Should match entity count for a healthy database.">
+                <span id="adb-stat-index" class="adb-stat-value">—</span>
+                <span class="adb-stat-label">indexed <i class="fas fa-circle-info adb-stat-info-icon"></i></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Database bar ── -->
+    <div class="adb-db-bar">
+        <i class="fas fa-folder adb-db-folder-icon"></i>
+        <span id="adb-db-indicator-name" class="adb-db-indicator-name">default</span>
+        <button id="adb-db-change-btn" class="adb-btn adb-btn-ghost adb-btn-xs">
+            <i class="fas fa-folder-open"></i> Change
+        </button>
+    </div>
+
+    <!-- ── Main layout ── -->
+    <div class="adb-layout">
+
+        <!-- Left: Distill panel -->
+        <aside class="adb-sidebar">
+            <div class="adb-panel">
+                <div class="adb-panel-header">
+                    <i class="fas fa-flask"></i> Distill Content
+                </div>
+                <p class="adb-panel-desc">Paste any text — articles, books, notes, documents. AethvionDB extracts and structures the knowledge automatically.</p>
+                <div class="adb-field">
+                    <textarea id="adb-distill-text" rows="11" placeholder="Paste content here…"></textarea>
+                </div>
+                <div class="adb-field">
+                    <label>Model</label>
+                    <select id="adb-distill-model">
+                        <option value="auto">Auto Select</option>
+                    </select>
+                </div>
+                <button id="adb-distill-btn" class="adb-primary-btn">
+                    <i class="fas fa-flask"></i> Distill
+                </button>
+                <div id="adb-distill-status" class="adb-status hidden"></div>
+            </div>
+        </aside>
+
+        <!-- Right: Entity explorer -->
+        <main class="adb-main">
+
+            <!-- Search + filter bar (always visible) -->
+            <div class="adb-explorer-header">
+                <div class="adb-search-row">
+                    <div class="adb-search-input-wrap">
+                        <i class="fas fa-search adb-search-icon"></i>
+                        <input type="text" id="adb-search-input" class="adb-search-input" placeholder="Search by name, summary, or tag…">
+                    </div>
+                    <select id="adb-search-type" class="adb-search-type-sel">
+                        <option value="">All types</option>
+                        <option value="person">Person</option>
+                        <option value="place">Place</option>
+                        <option value="event">Event</option>
+                        <option value="concept">Concept</option>
+                        <option value="organization">Organization</option>
+                        <option value="artifact">Artifact</option>
+                        <option value="creature">Creature</option>
+                        <option value="work">Work</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <button id="adb-search-btn" class="adb-btn adb-btn-accent">Search</button>
+                </div>
+                <div class="adb-filter-row">
+                    <button class="adb-filter-btn active" data-filter="all">All</button>
+                    <button class="adb-filter-btn" data-filter="active">Expanded</button>
+                    <button class="adb-filter-btn adb-filter-btn-stub" data-filter="stub">Stubs</button>
+                </div>
+            </div>
+
+            <!-- Entity list (primary view, auto-loaded) -->
+            <div id="adb-entity-list" class="adb-entity-list">
+                <div class="adb-list-loading"><i class="fas fa-spinner fa-spin"></i> Loading entities…</div>
+            </div>
+
+            <!-- Entity detail view (shown on entity click) -->
+            <div id="adb-entity-detail" class="adb-entity-detail hidden">
+                <div class="adb-detail-topbar">
+                    <button id="adb-detail-back" class="adb-btn adb-btn-ghost adb-btn-sm">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <div class="adb-detail-actions">
+                        <button id="adb-ev-expand-btn" class="adb-btn adb-btn-accent adb-btn-sm">
+                            <i class="fas fa-wand-sparkles"></i> Deepen
+                        </button>
+                        <button id="adb-ev-validate-btn" class="adb-btn adb-btn-ghost adb-btn-sm">
+                            <i class="fas fa-shield-check"></i>
+                        </button>
+                        <span id="adb-ev-status-badge" class="adb-badge"></span>
+                    </div>
+                </div>
+                <div class="adb-ev-header">
+                    <div class="adb-ev-title-row">
+                        <span id="adb-ev-type-badge" class="adb-type-badge">other</span>
+                        <h2 id="adb-ev-name" class="adb-ev-name"></h2>
+                    </div>
+                    <p id="adb-ev-summary" class="adb-ev-summary"></p>
+                    <div id="adb-ev-meta" class="adb-ev-meta"></div>
+                </div>
+                <div class="adb-ev-tabs">
+                    <button class="adb-ev-tab active" data-target="adb-tab-core">Core</button>
+                    <button class="adb-ev-tab" data-target="adb-tab-timeline">Timeline</button>
+                    <button class="adb-ev-tab" data-target="adb-tab-relations">Relations</button>
+                    <button class="adb-ev-tab" data-target="adb-tab-props">Properties</button>
+                    <button class="adb-ev-tab" data-target="adb-tab-stubs">Stubs</button>
+                    <button class="adb-ev-tab" data-target="adb-tab-json">JSON</button>
+                </div>
+                <div class="adb-ev-content">
+                    <div id="adb-tab-core" class="adb-ev-panel active">
+                        <div id="adb-ev-aliases" class="adb-ev-section"></div>
+                        <div id="adb-ev-categories" class="adb-ev-section"></div>
+                        <div id="adb-ev-tags" class="adb-ev-section"></div>
+                    </div>
+                    <div id="adb-tab-timeline" class="adb-ev-panel hidden">
+                        <div id="adb-ev-timeline-list" class="adb-timeline-list"></div>
+                    </div>
+                    <div id="adb-tab-relations" class="adb-ev-panel hidden">
+                        <div id="adb-ev-relations-list" class="adb-relations-list"></div>
+                    </div>
+                    <div id="adb-tab-props" class="adb-ev-panel hidden">
+                        <div id="adb-ev-props-table"></div>
+                    </div>
+                    <div id="adb-tab-stubs" class="adb-ev-panel hidden">
+                        <p class="adb-stubs-hint">Referenced sub-topics not yet expanded into full entities:</p>
+                        <div id="adb-ev-stubs-list" class="adb-stubs-list"></div>
+                    </div>
+                    <div id="adb-tab-json" class="adb-ev-panel hidden">
+                        <pre id="adb-ev-raw-json" class="adb-raw-json"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Validation view -->
+            <div id="adb-validation-view" class="adb-validation-view hidden">
+                <div class="adb-detail-topbar">
+                    <button id="adb-val-close" class="adb-btn adb-btn-ghost adb-btn-sm">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <span class="adb-val-title"><i class="fas fa-shield-check"></i> Validation Report</span>
+                </div>
+                <div id="adb-val-summary" class="adb-val-summary"></div>
+                <div id="adb-val-issues" class="adb-val-issues"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ── Database selector modal ── -->
+    <div id="adb-db-modal" class="adb-modal-overlay hidden">
+        <div class="adb-modal">
+            <div class="adb-modal-header">
+                <span>Select Database</span>
+                <button id="adb-db-modal-close" class="adb-modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="adb-modal-body">
+                <div class="adb-modal-section-label">Named databases</div>
+                <div id="adb-db-named-list" class="adb-db-named-list">
+                    <div class="adb-empty-hint">Loading…</div>
+                </div>
+                <div class="adb-modal-divider">or open a folder directly</div>
+                <div class="adb-db-path-row">
+                    <input type="text" id="adb-db-folder-input" class="adb-db-folder-input" placeholder="Folder path…">
+                    <button id="adb-db-browse-btn" class="adb-db-browse-btn" title="Browse for folder">
+                        <i class="fas fa-folder-open"></i>
+                    </button>
+                </div>
+                <p class="adb-db-path-hint">Any folder works — a database is created automatically if needed.</p>
+            </div>
+            <div class="adb-modal-footer">
+                <button id="adb-db-modal-cancel" class="adb-btn adb-btn-ghost">Cancel</button>
+                <button id="adb-db-modal-open" class="adb-btn adb-btn-accent">Open</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Busy overlay ── -->
+    <div id="adb-busy-overlay" class="adb-busy-overlay hidden">
+        <div class="adb-busy-inner">
+            <div class="adb-busy-spinner"></div>
+            <span id="adb-busy-text">Working…</span>
+        </div>
+    </div>
+
+</div>
