@@ -53,6 +53,11 @@ def _get_cfg(cid: str):
 async def list_companions():
     return {"companions": CompanionRegistry.list_companions()}
 
+@router.get("/{companion_id}/config")
+async def get_companion_config(companion_id: str):
+    """Return the raw JSON config for a companion (used by the universal companion panel)."""
+    return _get_cfg(companion_id)._raw_config
+
 @router.get("/{companion_id}/memory")
 async def get_memory(companion_id: str):
     cfg = _get_cfg(companion_id)

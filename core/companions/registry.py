@@ -100,6 +100,12 @@ class CompanionRegistry:
             cls.load_all()
         return list(cls._companions.values())
 
+    @classmethod
+    def force_reload(cls) -> None:
+        """Force a fresh scan of all companion directories — no server restart needed."""
+        cls._loaded = False
+        cls.load_all()
+
 def get_companion(companion_id: str) -> Optional[CompanionConfig]:
     """Helper for backward compatibility where needed."""
     return CompanionRegistry.get_companion(companion_id)

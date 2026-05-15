@@ -181,3 +181,94 @@
 }
 .cc-form-msg-ok  { background: rgba(34,197,94,0.12); color: #4ade80; }
 .cc-form-msg-error { background: rgba(239,68,68,0.12); color: #f87171; }
+
+/* ── Header ── */
+.cc-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+}
+.cc-header-left { flex: 1; }
+.cc-header-actions { display: flex; gap: 0.5rem; flex-shrink: 0; padding-top: 0.1rem; }
+
+/* ── Small button variant ── */
+.cc-btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+
+/* ── Sidebar groups ── */
+.cc-sidebar { display: flex; flex-direction: column; gap: 0.75rem; min-height: 0; }
+.cc-sidebar-group { display: flex; flex-direction: column; gap: 0.25rem; }
+
+/* ── List lock icon ── */
+.cc-list-lock {
+    margin-left: auto;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    opacity: 0.5;
+    flex-shrink: 0;
+}
+.cc-list-item { align-items: center; }
+
+/* ── Builtin notice ── */
+.cc-builtin-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 7px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+.cc-builtin-notice i { color: #818cf8; flex-shrink: 0; }
+.cc-builtin-notice.hidden { display: none; }
+
+/* ── Import dialog ── */
+.cc-import-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.cc-import-dialog.hidden { display: none; }
+.cc-import-inner {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    width: 100%;
+    max-width: 540px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.cc-import-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+.cc-import-hint { font-size: 0.82rem; color: var(--text-muted); margin: 0; }
+.cc-import-dialog textarea {
+    width: 100%;
+    min-height: 180px;
+    background: var(--bg-tertiary, rgba(255,255,255,0.04));
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text-primary);
+    padding: 0.6rem 0.75rem;
+    font-size: 0.8rem;
+    font-family: monospace;
+    resize: vertical;
+    box-sizing: border-box;
+}
+.cc-import-dialog textarea:focus { outline: none; border-color: var(--accent, #6366f1); }
+.cc-import-actions { display: flex; justify-content: flex-end; }
