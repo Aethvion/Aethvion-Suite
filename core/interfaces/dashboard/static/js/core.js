@@ -2219,29 +2219,36 @@ function initColumnResizeHandles() {
 
         function applyFilter(term) {
             const q = term.trim().toLowerCase();
+            const tabList = document.getElementById('sidebar-tab-list');
 
             // Toggle clear button
             clearBtn.classList.toggle('visible', q.length > 0);
 
-            // All AI-mode nav buttons
-            const tabs = document.querySelectorAll('.main-tab.mode-ai[data-maintab]');
+            // All nav buttons
+            const tabs = document.querySelectorAll('.main-tab[data-maintab]');
 
             if (!q) {
                 // Reset — restore everything
                 tabs.forEach(btn => btn.classList.remove('search-hidden'));
-                document.querySelectorAll('.sidebar-category[data-cat]').forEach(cat => {
-                    cat.classList.remove('search-hidden');
-                    const body = document.querySelector(`.cat-body[data-cat-body="${cat.dataset.cat}"]`);
-                    if (body) body.classList.remove('search-hidden');
-                });
-                document.querySelectorAll('.sidebar-section-header[data-section]').forEach(sec => {
-                    sec.classList.remove('search-hidden');
-                    const body = document.querySelector(`.section-body[data-section-body="${sec.dataset.section}"]`);
-                    if (body) body.classList.remove('search-hidden');
+                document.querySelectorAll('.sidebar-folder').forEach(folder => {
+                    folder.classList.remove('search-hidden');
+                    const header = folder.querySelector('.folder-header');
+                    if (header) {
+                        header.style.pointerEvents = '';
+                        header.style.opacity = '';
+                    }
+                    const body = folder.querySelector('.folder-body');
+                    if (body) {
+                        body.classList.remove('search-hidden');
+                        body.style.display = ''; // restore to CSS controlled state
+                    }
                 });
                 emptyMsg.classList.remove('visible');
+                if (tabList) tabList.classList.remove('is-searching');
                 return;
             }
+
+            if (tabList) tabList.classList.add('is-searching');
 
             // Filter buttons
             let anyVisible = false;
@@ -2253,21 +2260,26 @@ function initColumnResizeHandles() {
                 if (match) anyVisible = true;
             });
 
-            // Expand all sections & categories so matches are visible
-            document.querySelectorAll('.section-body[data-section-body]').forEach(body => {
-                body.classList.remove('search-hidden');
-            });
-            document.querySelectorAll('.sidebar-section-header[data-section]').forEach(sec => {
-                sec.classList.remove('search-hidden');
-            });
-
-            // Hide categories that have zero visible children
-            document.querySelectorAll('.sidebar-category[data-cat]').forEach(cat => {
-                const body = document.querySelector(`.cat-body[data-cat-body="${cat.dataset.cat}"]`);
+            // Handle folders based on visible children
+            document.querySelectorAll('.sidebar-folder').forEach(folder => {
+                const body = folder.querySelector('.folder-body');
                 if (!body) return;
-                const hasVisible = body.querySelectorAll('.main-tab.mode-ai:not(.search-hidden)').length > 0;
-                cat.classList.toggle('search-hidden', !hasVisible);
-                body.classList.toggle('search-hidden', !hasVisible);
+                
+                // Count visible tabs inside this folder body (ignore globally hidden tabs if any)
+                const hasVisible = Array.from(body.querySelectorAll('.main-tab')).some(btn => !btn.classList.contains('search-hidden') && !btn.classList.contains('mode-hidden'));
+                
+                folder.classList.toggle('search-hidden', !hasVisible);
+                
+                if (hasVisible) {
+                    body.classList.remove('search-hidden');
+                    body.style.display = 'flex'; // Force show body regardless of collapse state
+                    
+                    const header = folder.querySelector('.folder-header');
+                    if (header) {
+                        header.style.pointerEvents = 'none'; // Disable folding interaction
+                        header.style.opacity = '0.7';
+                    }
+                }
             });
 
             emptyMsg.classList.toggle('visible', !anyVisible);
@@ -2275,6 +2287,17 @@ function initColumnResizeHandles() {
 
         input.addEventListener('input', () => applyFilter(input.value));
         clearBtn.addEventListener('click', () => { input.value = ''; applyFilter(''); input.focus(); });
+        
+        const tabList = document.getElementById('sidebar-tab-list');
+        if (tabList) {
+            tabList.addEventListener('click', (e) => {
+                const tab = e.target.closest('.main-tab');
+                if (tab && input.value.trim().length > 0) {
+                    input.value = '';
+                    applyFilter('');
+                }
+            });
+        }
 
         // Make .search-hidden respect the filter alongside .mode-hidden
         const style = document.createElement('style');
