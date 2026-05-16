@@ -355,7 +355,7 @@ async def vectorize_all(
         )
 
     except Exception as exc:
-        logger.error(f"[Vectorizer] Task-level error: {exc}")
+        logger.error(f"[Vectorizer] Task level error: {exc}")
         write_vec_info(db_root, {
             "status": "error",
             "error":  str(exc)[:500],
