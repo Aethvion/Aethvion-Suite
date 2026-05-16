@@ -628,6 +628,16 @@ const ATB = (() => {
         document.getElementById('atb-apps-menu')
             ?.addEventListener('click', e => e.stopPropagation());
 
+        const tabsContainer = document.getElementById('atb-tabs');
+        if (tabsContainer) {
+            tabsContainer.addEventListener('wheel', (e) => {
+                if (e.deltaY !== 0) {
+                    e.preventDefault();
+                    tabsContainer.scrollLeft += e.deltaY;
+                }
+            }, { passive: false });
+        }
+
         document.addEventListener('click', () => {
             _closeMenu();
         });

@@ -55,12 +55,28 @@ body {
     display: flex;
     align-items: stretch;
     flex: 1;
+    min-width: 0;
     overflow-x: auto;
-    scrollbar-width: none;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
 
 .atb-tabs::-webkit-scrollbar {
-    display: none;
+    height: 3px;
+}
+
+.atb-tabs::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.atb-tabs::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+.atb-tabs::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
 }
 
 .atb-tab {
