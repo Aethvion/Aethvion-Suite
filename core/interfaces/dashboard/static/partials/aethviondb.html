@@ -7,11 +7,22 @@
                 <div class="adb-brand-icon-wrap">
                     <i class="fas fa-circle-nodes"></i>
                 </div>
-                <div class="adb-brand-text">
-                    <h1 class="adb-brand-name">AethvionDB</h1>
-                    <p class="adb-brand-desc">A fractal knowledge database — every entity connected, nothing duplicated.</p>
-                </div>
+                <h1 class="adb-brand-name">AethvionDB</h1>
             </div>
+
+            <!-- Tab navigation — inline in header -->
+            <nav class="adb-nav-tabs" id="adb-nav-tabs">
+                <button class="adb-nav-tab" data-tab="tools">
+                    <i class="fas fa-wrench"></i> Tools
+                </button>
+                <button class="adb-nav-tab active" data-tab="explorer">
+                    <i class="fas fa-table-list"></i> Explorer
+                </button>
+                <button class="adb-nav-tab" data-tab="graph">
+                    <i class="fas fa-diagram-project"></i> Graph
+                </button>
+            </nav>
+
             <div class="adb-header-actions">
                 <div class="adb-expand-wrap" id="adb-expand-wrap">
                     <button id="adb-expand-btn" class="adb-btn adb-btn-accent" title="Smart stub expansion">
@@ -40,12 +51,6 @@
                         </button>
                     </div>
                 </div>
-                <button id="adb-graph-btn" class="adb-btn adb-btn-ghost" title="Visualise entity relationships">
-                    <i class="fas fa-diagram-project"></i> Graph
-                </button>
-                <button id="adb-bake-header-btn" class="adb-btn adb-btn-ghost" title="Bake database into a single export file">
-                    <i class="fas fa-box-archive"></i> Bake
-                </button>
                 <button id="adb-validate-btn" class="adb-btn adb-btn-ghost" title="Run integrity checks">
                     <i class="fas fa-shield-check"></i> Validate
                 </button>
@@ -71,6 +76,14 @@
                 <span id="adb-stat-size" class="adb-stat-value">—</span>
                 <span class="adb-stat-label">db size <i class="fas fa-circle-info adb-stat-info-icon"></i></span>
             </div>
+            <!-- DB selector — folded into stats bar -->
+            <div class="adb-db-inline">
+                <i class="fas fa-folder adb-db-folder-icon"></i>
+                <span id="adb-db-indicator-name" class="adb-db-indicator-name">default</span>
+                <button id="adb-db-change-btn" class="adb-btn adb-btn-ghost adb-btn-xs">
+                    <i class="fas fa-folder-open"></i>
+                </button>
+            </div>
             <div id="adb-stats-hint" class="adb-stats-hint">
                 <i class="fas fa-circle-info"></i>
                 <span id="adb-stats-hint-text">Click ↻ to load stats</span>
@@ -78,22 +91,15 @@
         </div>
     </div>
 
-    <!-- ── Database bar ── -->
-    <div class="adb-db-bar">
-        <i class="fas fa-folder adb-db-folder-icon"></i>
-        <span id="adb-db-indicator-name" class="adb-db-indicator-name">default</span>
-        <button id="adb-db-change-btn" class="adb-btn adb-btn-ghost adb-btn-xs">
-            <i class="fas fa-folder-open"></i> Change
-        </button>
-    </div>
+    <!-- ══════════════════════════════════════════════════════
+         Tab 1 — Tools
+         Database manipulation: distill, folder distill,
+         vector generation, bake export.
+    ══════════════════════════════════════════════════════ -->
+    <div id="adb-tab-pane-tools" class="adb-tab-pane hidden">
+        <div class="adb-tools-pane">
 
-    <!-- ── Main layout ── -->
-    <div class="adb-layout">
-
-        <!-- Left: Distill panel -->
-        <aside class="adb-sidebar">
-
-            <!-- ── Distill text ── -->
+            <!-- ── Distill Content ── -->
             <div class="adb-panel">
                 <div class="adb-panel-header">
                     <i class="fas fa-flask"></i> Distill Content
@@ -114,7 +120,7 @@
                 <div id="adb-distill-status" class="adb-status hidden"></div>
             </div>
 
-            <!-- ── Distill folder ── -->
+            <!-- ── Distill Folder ── -->
             <div class="adb-panel" id="adb-fd-panel">
                 <div class="adb-panel-header">
                     <i class="fas fa-folder-open"></i> Distill Folder
@@ -169,254 +175,268 @@
                     </div>
                     <div id="adb-fd-prog-stats" class="adb-fd-prog-stats"></div>
                     <div class="adb-fd-btn-row">
-                        <button id="adb-fd-pause-btn"  class="adb-btn adb-btn-ghost   adb-btn-sm hidden"><i class="fas fa-pause"></i> Pause</button>
-                        <button id="adb-fd-resume-btn" class="adb-btn adb-btn-accent  adb-btn-sm hidden"><i class="fas fa-play"></i> Resume</button>
-                        <button id="adb-fd-cancel-btn" class="adb-btn adb-btn-ghost   adb-btn-sm hidden"><i class="fas fa-xmark"></i> Cancel</button>
-                        <button id="adb-fd-new-btn"    class="adb-btn adb-btn-ghost   adb-btn-sm hidden"><i class="fas fa-plus"></i> New</button>
+                        <button id="adb-fd-pause-btn"  class="adb-btn adb-btn-ghost  adb-btn-sm hidden"><i class="fas fa-pause"></i> Pause</button>
+                        <button id="adb-fd-resume-btn" class="adb-btn adb-btn-accent adb-btn-sm hidden"><i class="fas fa-play"></i> Resume</button>
+                        <button id="adb-fd-cancel-btn" class="adb-btn adb-btn-ghost  adb-btn-sm hidden"><i class="fas fa-xmark"></i> Cancel</button>
+                        <button id="adb-fd-new-btn"    class="adb-btn adb-btn-ghost  adb-btn-sm hidden"><i class="fas fa-plus"></i> New</button>
                     </div>
                 </div>
             </div>
 
-        </aside>
-
-        <!-- Right: Entity explorer -->
-        <main class="adb-main">
-
-            <!-- Search + filter bar (hidden when graph or validation is active) -->
-            <div id="adb-explorer-header" class="adb-explorer-header">
-                <div class="adb-search-row">
-                    <div class="adb-search-input-wrap">
-                        <i class="fas fa-search adb-search-icon"></i>
-                        <input type="text" id="adb-search-input" class="adb-search-input" placeholder="Search by name, summary, or tag…">
-                    </div>
-                    <select id="adb-search-type" class="adb-search-type-sel">
-                        <option value="">All types</option>
-                        <option value="person">Person</option>
-                        <option value="place">Place</option>
-                        <option value="event">Event</option>
-                        <option value="concept">Concept</option>
-                        <option value="organization">Organization</option>
-                        <option value="artifact">Artifact</option>
-                        <option value="creature">Creature</option>
-                        <option value="work">Work</option>
-                        <option value="other">Other</option>
+            <!-- ── Vector Search ── -->
+            <div class="adb-panel" id="adb-vec-panel">
+                <div class="adb-panel-header">
+                    <i class="fas fa-microchip"></i> Vector Search
+                </div>
+                <p class="adb-panel-desc">Generate embeddings for semantic search and AI-powered retrieval. Stored directly in each entity's raw data.</p>
+                <div class="adb-field">
+                    <label>Embedding model</label>
+                    <select id="adb-vec-model">
+                        <option value="text-embedding-004">text-embedding-004 (Gemini)</option>
+                        <option value="embedding-001">embedding-001 (Gemini)</option>
                     </select>
-                    <button id="adb-search-btn" class="adb-btn adb-btn-accent">Search</button>
                 </div>
-                <div class="adb-filter-row">
-                    <button class="adb-filter-btn active" data-filter="all">All</button>
-                    <button class="adb-filter-btn" data-filter="active">Expanded</button>
-                    <button class="adb-filter-btn adb-filter-btn-stub" data-filter="stub">Stubs</button>
+                <label class="adb-checkbox-row">
+                    <input type="checkbox" id="adb-vec-force">
+                    <span>Re-generate existing vectors</span>
+                </label>
+                <div id="adb-vec-status" class="hidden">
+                    <div class="adb-vec-status-row">
+                        <span id="adb-vec-count-label" class="adb-vec-count-label">0 / 0 entities</span>
+                        <span id="adb-vec-badge" class="adb-fd-badge"></span>
+                    </div>
+                    <div class="adb-fd-bar-wrap">
+                        <div class="adb-fd-bar-track">
+                            <div id="adb-vec-bar-fill" class="adb-fd-bar-fill" style="width:0%"></div>
+                        </div>
+                        <span id="adb-vec-bar-pct" class="adb-fd-bar-pct">0%</span>
+                    </div>
                 </div>
-            </div>
-
-            <!-- Entity list pane (list + pagination) -->
-            <div id="adb-list-pane" class="adb-list-pane">
-                <div id="adb-entity-list" class="adb-entity-list">
-                    <div class="adb-list-loading"><i class="fas fa-spinner fa-spin"></i> Loading entities…</div>
-                </div>
-                <div id="adb-entity-pagination" class="adb-entity-pagination hidden"></div>
-            </div>
-
-            <!-- Entity detail view (shown on entity click) -->
-            <div id="adb-entity-detail" class="adb-entity-detail hidden">
-                <div class="adb-detail-topbar">
-                    <button id="adb-detail-back" class="adb-btn adb-btn-ghost adb-btn-sm">
-                        <i class="fas fa-arrow-left"></i> Back
+                <div class="adb-fd-btn-row">
+                    <button id="adb-vec-generate-btn" class="adb-primary-btn" style="flex:1">
+                        <i class="fas fa-microchip"></i> Generate Embeddings
                     </button>
-                    <div class="adb-detail-actions">
-                        <button id="adb-ev-expand-btn" class="adb-btn adb-btn-accent adb-btn-sm">
-                            <i class="fas fa-wand-sparkles"></i> Deepen
+                    <button id="adb-vec-cancel-btn" class="adb-btn adb-btn-ghost hidden" title="Cancel">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── Bake Database ── -->
+            <div class="adb-panel" id="adb-bake-panel">
+                <div class="adb-panel-header">
+                    <i class="fas fa-box-archive"></i> Bake Database
+                </div>
+                <p class="adb-panel-desc">Export all entities into one optimised file for AI or system use. Raw data is never modified.</p>
+                <div class="adb-field">
+                    <label>Format</label>
+                    <select id="adb-bake-format">
+                        <option value="jsonl">JSONL — vector DBs, streaming</option>
+                        <option value="json">JSON — structured document</option>
+                        <option value="markdown">Markdown — RAG / LLMs</option>
+                        <option value="txt">Plain text — context windows</option>
+                    </select>
+                </div>
+                <label class="adb-checkbox-row">
+                    <input type="checkbox" id="adb-bake-stubs" checked>
+                    <span>Include stub entities</span>
+                </label>
+                <label class="adb-checkbox-row">
+                    <input type="checkbox" id="adb-bake-vectors">
+                    <span>Include embedding vectors</span>
+                </label>
+                <button id="adb-bake-btn" class="adb-primary-btn">
+                    <i class="fas fa-box-archive"></i> Bake Now
+                </button>
+                <div id="adb-bake-result" class="hidden">
+                    <div id="adb-bake-result-inner" class="adb-bake-meta"></div>
+                    <button id="adb-bake-download-btn" class="adb-btn adb-btn-accent adb-btn-sm hidden">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         Tab 2 — Explorer
+         Entity browser / navigator / table.
+    ══════════════════════════════════════════════════════ -->
+    <div id="adb-tab-pane-explorer" class="adb-tab-pane">
+
+        <!-- Search + filter bar -->
+        <div id="adb-explorer-header" class="adb-explorer-header">
+            <div class="adb-search-row">
+                <div class="adb-search-input-wrap">
+                    <i class="fas fa-search adb-search-icon"></i>
+                    <input type="text" id="adb-search-input" class="adb-search-input" placeholder="Search by name, summary, or tag…">
+                </div>
+                <select id="adb-search-type" class="adb-search-type-sel">
+                    <option value="">All types</option>
+                    <option value="person">Person</option>
+                    <option value="place">Place</option>
+                    <option value="event">Event</option>
+                    <option value="concept">Concept</option>
+                    <option value="organization">Organization</option>
+                    <option value="artifact">Artifact</option>
+                    <option value="creature">Creature</option>
+                    <option value="work">Work</option>
+                    <option value="other">Other</option>
+                </select>
+                <button id="adb-search-btn" class="adb-btn adb-btn-accent">Search</button>
+            </div>
+            <div class="adb-filter-row">
+                <button class="adb-filter-btn active" data-filter="all">All</button>
+                <button class="adb-filter-btn" data-filter="active">Expanded</button>
+                <button class="adb-filter-btn adb-filter-btn-stub" data-filter="stub">Stubs</button>
+            </div>
+        </div>
+
+        <!-- Entity list pane -->
+        <div id="adb-list-pane" class="adb-list-pane">
+            <div id="adb-entity-list" class="adb-entity-list">
+                <div class="adb-list-loading"><i class="fas fa-spinner fa-spin"></i> Loading entities…</div>
+            </div>
+            <div id="adb-entity-pagination" class="adb-entity-pagination hidden"></div>
+        </div>
+
+        <!-- Entity detail view -->
+        <div id="adb-entity-detail" class="adb-entity-detail hidden">
+            <div class="adb-detail-topbar">
+                <button id="adb-detail-back" class="adb-btn adb-btn-ghost adb-btn-sm">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <div class="adb-detail-actions">
+                    <button id="adb-ev-expand-btn" class="adb-btn adb-btn-accent adb-btn-sm">
+                        <i class="fas fa-wand-sparkles"></i> Deepen
+                    </button>
+                    <button id="adb-ev-validate-btn" class="adb-btn adb-btn-ghost adb-btn-sm">
+                        <i class="fas fa-shield-check"></i>
+                    </button>
+                    <span id="adb-ev-status-badge" class="adb-badge"></span>
+                </div>
+            </div>
+            <div class="adb-ev-header">
+                <div class="adb-ev-title-row">
+                    <span id="adb-ev-type-badge" class="adb-type-badge">other</span>
+                    <h2 id="adb-ev-name" class="adb-ev-name"></h2>
+                </div>
+                <p id="adb-ev-summary" class="adb-ev-summary"></p>
+                <div id="adb-ev-meta" class="adb-ev-meta"></div>
+            </div>
+            <div class="adb-ev-tabs">
+                <button class="adb-ev-tab active" data-target="adb-tab-core">Core</button>
+                <button class="adb-ev-tab" data-target="adb-tab-timeline">Timeline</button>
+                <button class="adb-ev-tab" data-target="adb-tab-relations">Relations</button>
+                <button class="adb-ev-tab" data-target="adb-tab-props">Properties</button>
+                <button class="adb-ev-tab" data-target="adb-tab-stubs">Stubs</button>
+                <button class="adb-ev-tab" data-target="adb-tab-json">JSON</button>
+            </div>
+            <div class="adb-ev-content">
+                <div id="adb-tab-core" class="adb-ev-panel active">
+                    <div id="adb-ev-aliases" class="adb-ev-section"></div>
+                    <div id="adb-ev-categories" class="adb-ev-section"></div>
+                    <div id="adb-ev-tags" class="adb-ev-section"></div>
+                </div>
+                <div id="adb-tab-timeline" class="adb-ev-panel hidden">
+                    <div id="adb-ev-timeline-list" class="adb-timeline-list"></div>
+                </div>
+                <div id="adb-tab-relations" class="adb-ev-panel hidden">
+                    <div id="adb-ev-relations-list" class="adb-relations-list"></div>
+                </div>
+                <div id="adb-tab-props" class="adb-ev-panel hidden">
+                    <div id="adb-ev-props-table"></div>
+                </div>
+                <div id="adb-tab-stubs" class="adb-ev-panel hidden">
+                    <p class="adb-stubs-hint">Referenced sub-topics not yet expanded into full entities:</p>
+                    <div id="adb-ev-stubs-list" class="adb-stubs-list"></div>
+                </div>
+                <div id="adb-tab-json" class="adb-ev-panel hidden">
+                    <pre id="adb-ev-raw-json" class="adb-raw-json"></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Validation view -->
+        <div id="adb-validation-view" class="adb-validation-view hidden">
+            <div class="adb-detail-topbar">
+                <button id="adb-val-close" class="adb-btn adb-btn-ghost adb-btn-sm">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <span class="adb-val-title"><i class="fas fa-shield-check"></i> Validation Report</span>
+            </div>
+            <div id="adb-val-summary" class="adb-val-summary"></div>
+            <div id="adb-val-issues" class="adb-val-issues"></div>
+        </div>
+
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         Tab 3 — Graph
+         D3 force-directed relationship graph.
+    ══════════════════════════════════════════════════════ -->
+    <div id="adb-tab-pane-graph" class="adb-tab-pane hidden">
+
+        <div id="adb-graph-view" class="adb-graph-view">
+
+            <!-- toolbar -->
+            <div class="adb-graph-bar">
+                <div class="adb-graph-search-wrap">
+                    <div class="adb-search-input-wrap adb-graph-search-field">
+                        <i class="fas fa-search adb-search-icon"></i>
+                        <input type="text" id="adb-graph-search" class="adb-search-input" placeholder="Focus on entity…">
+                    </div>
+                    <button id="adb-graph-focus-btn" class="adb-btn adb-btn-accent adb-btn-sm">Focus</button>
+                    <button id="adb-graph-full-btn"  class="adb-btn adb-btn-ghost  adb-btn-sm">All</button>
+                </div>
+                <div class="adb-graph-controls">
+                    <span id="adb-graph-info" class="adb-graph-info"></span>
+                    <label class="adb-graph-label-toggle" title="Toggle entity name labels">
+                        <input type="checkbox" id="adb-graph-labels-cb" checked> Labels
+                    </label>
+                    <select id="adb-graph-depth" class="adb-graph-depth-sel" title="Focus depth (hops)">
+                        <option value="1">Depth 1</option>
+                        <option value="2" selected>Depth 2</option>
+                        <option value="3">Depth 3</option>
+                    </select>
+                </div>
+                <button id="adb-graph-close-btn" class="adb-btn adb-btn-ghost adb-btn-sm">
+                    <i class="fas fa-arrow-left"></i> &larr; Explorer
+                </button>
+            </div>
+
+            <!-- canvas -->
+            <div class="adb-graph-canvas-wrap">
+                <svg id="adb-graph-svg" class="adb-graph-svg"></svg>
+
+                <!-- floating node card -->
+                <div id="adb-graph-card" class="adb-graph-card hidden">
+                    <div class="adb-graph-card-header">
+                        <span id="adb-graph-card-type" class="adb-type-badge"></span>
+                        <span id="adb-graph-card-name" class="adb-graph-card-name"></span>
+                        <button id="adb-graph-card-close" class="adb-modal-close"><i class="fas fa-times"></i></button>
+                    </div>
+                    <p id="adb-graph-card-summary" class="adb-graph-card-summary"></p>
+                    <div id="adb-graph-card-meta" class="adb-graph-card-meta"></div>
+                    <div class="adb-graph-card-actions">
+                        <button id="adb-graph-card-focus" class="adb-btn adb-btn-ghost adb-btn-sm">
+                            <i class="fas fa-crosshairs"></i> Focus
                         </button>
-                        <button id="adb-ev-validate-btn" class="adb-btn adb-btn-ghost adb-btn-sm">
-                            <i class="fas fa-shield-check"></i>
-                        </button>
-                        <span id="adb-ev-status-badge" class="adb-badge"></span>
-                    </div>
-                </div>
-                <div class="adb-ev-header">
-                    <div class="adb-ev-title-row">
-                        <span id="adb-ev-type-badge" class="adb-type-badge">other</span>
-                        <h2 id="adb-ev-name" class="adb-ev-name"></h2>
-                    </div>
-                    <p id="adb-ev-summary" class="adb-ev-summary"></p>
-                    <div id="adb-ev-meta" class="adb-ev-meta"></div>
-                </div>
-                <div class="adb-ev-tabs">
-                    <button class="adb-ev-tab active" data-target="adb-tab-core">Core</button>
-                    <button class="adb-ev-tab" data-target="adb-tab-timeline">Timeline</button>
-                    <button class="adb-ev-tab" data-target="adb-tab-relations">Relations</button>
-                    <button class="adb-ev-tab" data-target="adb-tab-props">Properties</button>
-                    <button class="adb-ev-tab" data-target="adb-tab-stubs">Stubs</button>
-                    <button class="adb-ev-tab" data-target="adb-tab-json">JSON</button>
-                </div>
-                <div class="adb-ev-content">
-                    <div id="adb-tab-core" class="adb-ev-panel active">
-                        <div id="adb-ev-aliases" class="adb-ev-section"></div>
-                        <div id="adb-ev-categories" class="adb-ev-section"></div>
-                        <div id="adb-ev-tags" class="adb-ev-section"></div>
-                    </div>
-                    <div id="adb-tab-timeline" class="adb-ev-panel hidden">
-                        <div id="adb-ev-timeline-list" class="adb-timeline-list"></div>
-                    </div>
-                    <div id="adb-tab-relations" class="adb-ev-panel hidden">
-                        <div id="adb-ev-relations-list" class="adb-relations-list"></div>
-                    </div>
-                    <div id="adb-tab-props" class="adb-ev-panel hidden">
-                        <div id="adb-ev-props-table"></div>
-                    </div>
-                    <div id="adb-tab-stubs" class="adb-ev-panel hidden">
-                        <p class="adb-stubs-hint">Referenced sub-topics not yet expanded into full entities:</p>
-                        <div id="adb-ev-stubs-list" class="adb-stubs-list"></div>
-                    </div>
-                    <div id="adb-tab-json" class="adb-ev-panel hidden">
-                        <pre id="adb-ev-raw-json" class="adb-raw-json"></pre>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Graph view -->
-            <div id="adb-graph-view" class="adb-graph-view hidden">
-
-                <!-- toolbar -->
-                <div class="adb-graph-bar">
-                    <div class="adb-graph-search-wrap">
-                        <div class="adb-search-input-wrap adb-graph-search-field">
-                            <i class="fas fa-search adb-search-icon"></i>
-                            <input type="text" id="adb-graph-search" class="adb-search-input" placeholder="Focus on entity…">
-                        </div>
-                        <button id="adb-graph-focus-btn" class="adb-btn adb-btn-accent adb-btn-sm">Focus</button>
-                        <button id="adb-graph-full-btn"  class="adb-btn adb-btn-ghost  adb-btn-sm">All</button>
-                    </div>
-                    <div class="adb-graph-controls">
-                        <span id="adb-graph-info" class="adb-graph-info"></span>
-                        <label class="adb-graph-label-toggle" title="Toggle entity name labels">
-                            <input type="checkbox" id="adb-graph-labels-cb" checked> Labels
-                        </label>
-                        <select id="adb-graph-depth" class="adb-graph-depth-sel" title="Focus depth (hops)">
-                            <option value="1">Depth 1</option>
-                            <option value="2" selected>Depth 2</option>
-                            <option value="3">Depth 3</option>
-                        </select>
-                    </div>
-                    <button id="adb-graph-close-btn" class="adb-btn adb-btn-ghost adb-btn-sm">
-                        <i class="fas fa-arrow-left"></i> Back to List
-                    </button>
-                </div>
-
-                <!-- canvas -->
-                <div class="adb-graph-canvas-wrap">
-                    <svg id="adb-graph-svg" class="adb-graph-svg"></svg>
-
-                    <!-- floating node card -->
-                    <div id="adb-graph-card" class="adb-graph-card hidden">
-                        <div class="adb-graph-card-header">
-                            <span id="adb-graph-card-type" class="adb-type-badge"></span>
-                            <span id="adb-graph-card-name" class="adb-graph-card-name"></span>
-                            <button id="adb-graph-card-close" class="adb-modal-close"><i class="fas fa-times"></i></button>
-                        </div>
-                        <p id="adb-graph-card-summary" class="adb-graph-card-summary"></p>
-                        <div id="adb-graph-card-meta" class="adb-graph-card-meta"></div>
-                        <div class="adb-graph-card-actions">
-                            <button id="adb-graph-card-focus" class="adb-btn adb-btn-ghost adb-btn-sm">
-                                <i class="fas fa-crosshairs"></i> Focus
-                            </button>
-                            <button id="adb-graph-card-open" class="adb-btn adb-btn-accent adb-btn-sm">
-                                <i class="fas fa-arrow-up-right-from-square"></i> Open
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- loading overlay -->
-                    <div id="adb-graph-loading" class="adb-graph-loading hidden">
-                        <div class="adb-busy-spinner" style="width:26px;height:26px;border-width:3px"></div>
-                        <span>Building graph…</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Validation view -->
-            <div id="adb-validation-view" class="adb-validation-view hidden">
-                <div class="adb-detail-topbar">
-                    <button id="adb-val-close" class="adb-btn adb-btn-ghost adb-btn-sm">
-                        <i class="fas fa-arrow-left"></i> Back
-                    </button>
-                    <span class="adb-val-title"><i class="fas fa-shield-check"></i> Validation Report</span>
-                </div>
-                <div id="adb-val-summary" class="adb-val-summary"></div>
-                <div id="adb-val-issues" class="adb-val-issues"></div>
-            </div>
-
-            <!-- Bake view -->
-            <div id="adb-bake-view" class="adb-bake-view hidden">
-                <div class="adb-detail-topbar">
-                    <button id="adb-bake-close-btn" class="adb-btn adb-btn-ghost adb-btn-sm">
-                        <i class="fas fa-arrow-left"></i> Back to List
-                    </button>
-                    <span class="adb-val-title"><i class="fas fa-box-archive"></i> Bake Database</span>
-                </div>
-
-                <div class="adb-bake-body">
-
-                    <!-- Format cards -->
-                    <div class="adb-bake-section">
-                        <div class="adb-bake-section-title">Export format</div>
-                        <p class="adb-bake-section-desc">Choose how the baked file is structured. Raw entity files are never modified.</p>
-                        <div class="adb-bake-fmt-grid">
-                            <label class="adb-bake-fmt-card">
-                                <input type="radio" name="adb-bake-fmt" value="jsonl" checked>
-                                <i class="fas fa-list-ul adb-bake-fmt-icon"></i>
-                                <span class="adb-bake-fmt-name">JSONL</span>
-                                <span class="adb-bake-fmt-desc">One entity per line — ideal for vector databases and streaming pipelines</span>
-                            </label>
-                            <label class="adb-bake-fmt-card">
-                                <input type="radio" name="adb-bake-fmt" value="json">
-                                <i class="fas fa-code adb-bake-fmt-icon"></i>
-                                <span class="adb-bake-fmt-name">JSON</span>
-                                <span class="adb-bake-fmt-desc">Single structured document — easy to import into any system</span>
-                            </label>
-                            <label class="adb-bake-fmt-card">
-                                <input type="radio" name="adb-bake-fmt" value="markdown">
-                                <i class="fas fa-hashtag adb-bake-fmt-icon"></i>
-                                <span class="adb-bake-fmt-name">Markdown</span>
-                                <span class="adb-bake-fmt-desc">Formatted and human-readable — great for RAG systems and LLM prompts</span>
-                            </label>
-                            <label class="adb-bake-fmt-card">
-                                <input type="radio" name="adb-bake-fmt" value="txt">
-                                <i class="fas fa-align-left adb-bake-fmt-icon"></i>
-                                <span class="adb-bake-fmt-name">Plain text</span>
-                                <span class="adb-bake-fmt-desc">Maximum density — fits the most content into LLM context windows</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Options -->
-                    <div class="adb-bake-section">
-                        <div class="adb-bake-section-title">Options</div>
-                        <label class="adb-checkbox-row">
-                            <input type="checkbox" id="adb-bake-stubs" checked>
-                            <span>Include stub entities</span>
-                        </label>
-                    </div>
-
-                    <!-- Action -->
-                    <button id="adb-bake-btn" class="adb-primary-btn adb-bake-go-btn">
-                        <i class="fas fa-box-archive"></i> Bake Now
-                    </button>
-
-                    <!-- Last bake result -->
-                    <div id="adb-bake-result" class="adb-bake-section hidden">
-                        <div class="adb-bake-section-title">Last bake</div>
-                        <div id="adb-bake-result-inner" class="adb-bake-meta"></div>
-                        <button id="adb-bake-download-btn" class="adb-btn adb-btn-accent hidden">
-                            <i class="fas fa-download"></i> Download
+                        <button id="adb-graph-card-open" class="adb-btn adb-btn-accent adb-btn-sm">
+                            <i class="fas fa-arrow-up-right-from-square"></i> Open
                         </button>
                     </div>
+                </div>
 
+                <!-- loading overlay -->
+                <div id="adb-graph-loading" class="adb-graph-loading hidden">
+                    <div class="adb-busy-spinner" style="width:26px;height:26px;border-width:3px"></div>
+                    <span>Building graph…</span>
                 </div>
             </div>
+        </div>
 
-        </main>
     </div>
 
     <!-- ── Database selector modal ── -->

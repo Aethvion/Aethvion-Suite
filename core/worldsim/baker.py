@@ -88,7 +88,7 @@ def bake_output_path(db_root: Path, fmt: str) -> Path:
 
 # ── Entity flattening ──────────────────────────────────────────────────────────
 
-def _flatten(entity: dict, id_to_name: dict[str, str]) -> dict:
+def _flatten(entity: dict, id_to_name: dict[str, str], include_vectors: bool = False) -> dict:
     """
     Flatten the layered entity schema into a single portable dict.
     Relation target_ids are resolved to names where possible.
@@ -123,6 +123,7 @@ def _flatten(entity: dict, id_to_name: dict[str, str]) -> dict:
         "timeline":    sec.get("timeline",   []),
         "properties":  sec.get("properties", {}),
         "stubs":       sec.get("stubs",      []),
+        "vectors":     sec.get("vectors", {}) if include_vectors else {},
     }
 
 
@@ -226,10 +227,11 @@ def _render_txt(entities: list[dict], db_root: Path) -> str:
 # ── Core bake logic (sync — run via asyncio.to_thread) ────────────────────────
 
 def bake_sync(
-    db_root:       Path,
-    writer:        "EntityWriter",
-    fmt:           str  = "jsonl",
-    include_stubs: bool = True,
+    db_root:         Path,
+    writer:          "EntityWriter",
+    fmt:             str  = "jsonl",
+    include_stubs:   bool = True,
+    include_vectors: bool = False,
 ) -> dict:
     """
     Read all entities, render the chosen format, write the output file and
@@ -240,7 +242,7 @@ def bake_sync(
         raise ValueError(f"Unknown format {fmt!r}; must be one of {BAKE_FORMATS}")
 
     # Mark as running immediately
-    write_bake_info(db_root, {"status": "running", "started_at": _now_iso()})
+    write_bake_info(db_root, {"status": "running", "started_at": _now_iso(), "include_vectors": include_vectors})
 
     # Load entities
     all_entities = writer.list_all(include_deleted=False)
@@ -251,7 +253,7 @@ def bake_sync(
     id_to_name = {e["id"]: e["name"] for e in all_entities}
 
     # Flatten each entity
-    flat = [_flatten(e, id_to_name) for e in all_entities]
+    flat = [_flatten(e, id_to_name, include_vectors=include_vectors) for e in all_entities]
 
     # Render
     if   fmt == "jsonl":    content = _render_jsonl(flat)
@@ -274,10 +276,11 @@ def bake_sync(
     size_bytes = out_path.stat().st_size
 
     info = {
-        "status":        "done",
-        "format":        fmt,
-        "include_stubs": include_stubs,
-        "entity_count":  len(flat),
+        "status":          "done",
+        "format":          fmt,
+        "include_stubs":   include_stubs,
+        "include_vectors": include_vectors,
+        "entity_count":    len(flat),
         "baked_at":      _now_iso(),
         "output_file":   out_path.name,
         "output_path":   str(out_path),
@@ -294,10 +297,11 @@ def bake_sync(
 # ── Public async entry point ───────────────────────────────────────────────────
 
 async def bake_database(
-    db_root:       Path,
-    writer:        "EntityWriter",
-    fmt:           str  = "jsonl",
-    include_stubs: bool = True,
+    db_root:         Path,
+    writer:          "EntityWriter",
+    fmt:             str  = "jsonl",
+    include_stubs:   bool = True,
+    include_vectors: bool = False,
 ) -> None:
     """
     Async wrapper: runs bake_sync in a thread, tracks the task in _bake_tasks,
@@ -305,7 +309,7 @@ async def bake_database(
     """
     key = str(db_root)
     try:
-        await asyncio.to_thread(bake_sync, db_root, writer, fmt, include_stubs)
+        await asyncio.to_thread(bake_sync, db_root, writer, fmt, include_stubs, include_vectors)
     except Exception as exc:
         logger.error(f"[Baker] Bake failed for {db_root}: {exc}")
         write_bake_info(db_root, {

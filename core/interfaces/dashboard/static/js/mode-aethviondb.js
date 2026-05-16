@@ -21,8 +21,7 @@
     let _currentPage         = 0;         // 0-indexed current page
     let _totalCount          = 0;         // total entities for current filter
     const _PAGE_SIZE         = 100;
-    let _graphActive         = false;     // true while graph view is showing
-    let _bakeActive          = false;     // true while bake view is showing
+    let _currentTab          = 'explorer'; // 'explorer' | 'graph'
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -85,20 +84,12 @@
     // ── View switching ────────────────────────────────────────────────────────
 
     function _showEntityList() {
-        _graphActive         = false;
-        _bakeActive          = false;
         _currentEntityId     = null;
         _currentEntityStatus = null;
         _show('adb-explorer-header');
         _show('adb-list-pane');
         _hide('adb-entity-detail');
         _hide('adb-validation-view');
-        _hide('adb-graph-view');
-        _hide('adb-bake-view');
-        const gBtn = _el('adb-graph-btn');
-        if (gBtn) gBtn.innerHTML = '<i class="fas fa-diagram-project"></i> Graph';
-        const bBtn = _el('adb-bake-header-btn');
-        if (bBtn) bBtn.innerHTML = '<i class="fas fa-box-archive"></i> Bake';
     }
 
     function _showEntityDetail() {
@@ -111,9 +102,22 @@
         _hide('adb-explorer-header');
         _hide('adb-list-pane');
         _hide('adb-entity-detail');
-        _hide('adb-graph-view');
-        _hide('adb-bake-view');
         _show('adb-validation-view');
+    }
+
+    function _switchTab(tab) {
+        _currentTab = tab;
+        document.querySelectorAll('.adb-nav-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+        _el('adb-tab-pane-tools')   ?.classList.toggle('hidden', tab !== 'tools');
+        _el('adb-tab-pane-explorer')?.classList.toggle('hidden', tab !== 'explorer');
+        _el('adb-tab-pane-graph')   ?.classList.toggle('hidden', tab !== 'graph');
+        if (tab === 'graph') {
+            _openGraph();
+        } else {
+            if (_graphSim) _graphSim.stop();
+        }
     }
 
     // ── DB indicator ──────────────────────────────────────────────────────────
@@ -219,13 +223,15 @@
         _setFilterActive('all');
         _resetStatsDisplay();
         if (_graphSim) { _graphSim.stop(); _graphSim = null; }
-        _hide('adb-graph-view');
+        _switchTab('explorer');
         _fdStopPolling();
         _fdSection('adb-fd-pick');
         _bakeStopPolling();
+        _vecStopPolling();
         _loadCachedInfo();
         _fdCheckExistingJob();
         _bakeCheckExisting();
+        _vecCheckExisting();
         _loadEntityList('all', 0);
         _toast(`Database: ${name}`, 'info');
     }
@@ -240,13 +246,15 @@
         _setFilterActive('all');
         _resetStatsDisplay();
         if (_graphSim) { _graphSim.stop(); _graphSim = null; }
-        _hide('adb-graph-view');
+        _switchTab('explorer');
         _fdStopPolling();
         _fdSection('adb-fd-pick');
         _bakeStopPolling();
+        _vecStopPolling();
         _loadCachedInfo();
         _fdCheckExistingJob();
         _bakeCheckExisting();
+        _vecCheckExisting();
         _loadEntityList('all', 0);
         const name = folderPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() || folderPath;
         _toast(`Database: ${name}`, 'info');
@@ -1024,53 +1032,20 @@
 
     // ── View helpers ──────────────────────────────────────────────────────────
 
-    function _showGraph() {
-        _graphActive = true;
-        _bakeActive  = false;
-        _hide('adb-explorer-header');
-        _hide('adb-list-pane');
-        _hide('adb-entity-detail');
-        _hide('adb-validation-view');
-        _hide('adb-bake-view');
-        _show('adb-graph-view');
-        const gBtn = _el('adb-graph-btn');
-        if (gBtn) gBtn.innerHTML = '<i class="fas fa-table-list"></i> Table';
-        const bBtn = _el('adb-bake-header-btn');
-        if (bBtn) bBtn.innerHTML = '<i class="fas fa-box-archive"></i> Bake';
-    }
-
-    function _showBakeView() {
-        _bakeActive  = true;
-        _graphActive = false;
-        _hide('adb-explorer-header');
-        _hide('adb-list-pane');
-        _hide('adb-entity-detail');
-        _hide('adb-validation-view');
-        _hide('adb-graph-view');
-        _show('adb-bake-view');
-        const gBtn = _el('adb-graph-btn');
-        if (gBtn) gBtn.innerHTML = '<i class="fas fa-diagram-project"></i> Graph';
-        const bBtn = _el('adb-bake-header-btn');
-        if (bBtn) bBtn.innerHTML = '<i class="fas fa-table-list"></i> Table';
-    }
-
-
     async function _openGraph() {
-        _showGraph();
         _show('adb-graph-loading');
         _hide('adb-graph-card');
         try {
             await _graphLoadD3();
-            await _graphLoad(_graphFocusId);
-        } catch (e) {
-            _toast(`Graph: ${e.message}`, 'error');
-            _closeGraph();
+            await _graphLoad();
+        } catch(e) {
+            _toast(`Graph load failed: ${e.message}`, 'error');
         }
     }
 
     function _closeGraph() {
         if (_graphSim) { _graphSim.stop(); _graphSim = null; }
-        _hide('adb-graph-view');
+        _switchTab('explorer');
         _showEntityList();
     }
 
@@ -1336,7 +1311,6 @@
     // ── Graph wiring ──────────────────────────────────────────────────────────
 
     function _graphWire() {
-        _el('adb-graph-btn')       ?.addEventListener('click', () => _graphActive ? _closeGraph() : _openGraph());
         _el('adb-graph-close-btn') ?.addEventListener('click', _closeGraph);
         _el('adb-graph-focus-btn') ?.addEventListener('click', _graphFocusSearch);
         _el('adb-graph-full-btn')  ?.addEventListener('click', () => {
@@ -1650,6 +1624,115 @@
         _fdEl('adb-fd-new-btn')      ?.addEventListener('click', () => { _fdStopPolling(); _fdSection('adb-fd-pick'); });
     }
 
+    // ── Vector search ─────────────────────────────────────────────────────────────
+
+    let _vecPollHandle = null;
+
+    function _vecStopPolling() {
+        if (_vecPollHandle) { clearInterval(_vecPollHandle); _vecPollHandle = null; }
+    }
+
+    function _vecStartPolling() {
+        _vecStopPolling();
+        _vecPollHandle = setInterval(_vecPoll, 2000);
+    }
+
+    async function _vecPoll() {
+        try {
+            const res  = await fetch(`${API}/vectors/status?${_dbParam()}`);
+            const data = await res.json();
+            _vecApplyStatus(data);
+            if (!data.is_vectorizing) _vecStopPolling();
+        } catch { /* ignore */ }
+    }
+
+    function _vecApplyStatus(data) {
+        const statusEl    = _el('adb-vec-status');
+        const countEl     = _el('adb-vec-count-label');
+        const badgeEl     = _el('adb-vec-badge');
+        const fillEl      = _el('adb-vec-bar-fill');
+        const pctEl       = _el('adb-vec-bar-pct');
+        const generateBtn = _el('adb-vec-generate-btn');
+        const cancelBtn   = _el('adb-vec-cancel-btn');
+
+        if (!data || data.status === 'idle') {
+            statusEl?.classList.add('hidden');
+            if (cancelBtn) cancelBtn.classList.add('hidden');
+            return;
+        }
+
+        statusEl?.classList.remove('hidden');
+
+        const total      = data.total      || 0;
+        const vectorized = data.vectorized || 0;
+        const pct        = total > 0 ? Math.round(vectorized / total * 100) : 0;
+
+        if (countEl) countEl.textContent = `${_fmtNum(vectorized)} / ${_fmtNum(total)} entities`;
+        if (fillEl)  fillEl.style.width  = `${pct}%`;
+        if (pctEl)   pctEl.textContent   = `${pct}%`;
+
+        const STATUS_LABEL = { running:'Running', done:'Done', error:'Error', cancelled:'Cancelled' };
+        const STATUS_CLS   = { running:'adb-fd-badge-running', done:'adb-fd-badge-done', error:'adb-fd-badge-error', cancelled:'adb-fd-badge-paused' };
+        if (badgeEl) {
+            badgeEl.textContent = STATUS_LABEL[data.status] || data.status;
+            badgeEl.className   = `adb-fd-badge ${STATUS_CLS[data.status] || ''}`;
+        }
+
+        const isRunning = data.is_vectorizing;
+        if (cancelBtn)   cancelBtn.classList.toggle('hidden', !isRunning);
+        if (generateBtn) {
+            generateBtn.disabled = isRunning;
+            generateBtn.innerHTML = isRunning
+                ? '<i class="fas fa-spinner fa-spin"></i> Vectorizing…'
+                : '<i class="fas fa-microchip"></i> Generate Embeddings';
+        }
+    }
+
+    async function _vecGenerate() {
+        const model        = _el('adb-vec-model')?.value || 'text-embedding-004';
+        const forceRewrite = _el('adb-vec-force')?.checked ?? false;
+        try {
+            const res = await fetch(
+                `${API}/vectors/generate?${_dbParam({ model, force_rewrite: forceRewrite })}`,
+                { method: 'POST' }
+            );
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.detail || `HTTP ${res.status}`);
+            }
+            _vecApplyStatus({ status: 'running', is_vectorizing: true, total: 0, vectorized: 0 });
+            _vecStartPolling();
+        } catch(e) {
+            _toast(`Vectorize failed: ${e.message}`, 'error');
+        }
+    }
+
+    async function _vecCancel() {
+        try {
+            await fetch(`${API}/vectors/cancel?${_dbParam()}`, { method: 'POST' });
+            _vecStopPolling();
+            _vecPoll();  // refresh status once
+        } catch(e) {
+            _toast(`Cancel failed: ${e.message}`, 'error');
+        }
+    }
+
+    async function _vecCheckExisting() {
+        try {
+            const res  = await fetch(`${API}/vectors/status?${_dbParam()}`);
+            const data = await res.json();
+            if (data.status && data.status !== 'idle') {
+                _vecApplyStatus(data);
+                if (data.is_vectorizing) _vecStartPolling();
+            }
+        } catch { /* ignore */ }
+    }
+
+    function _vecWire() {
+        _el('adb-vec-generate-btn')?.addEventListener('click', _vecGenerate);
+        _el('adb-vec-cancel-btn')  ?.addEventListener('click', _vecCancel);
+    }
+
     // ── Bake ─────────────────────────────────────────────────────────────────
 
     let _bakePollHandle = null;
@@ -1712,11 +1795,9 @@
                 </div>`;
             if (dlBtn) dlBtn.classList.remove('hidden');
             if (bakeBtn) { bakeBtn.disabled = false; bakeBtn.innerHTML = '<i class="fas fa-box-archive"></i> Re-Bake'; }
-            // Sync the format radio to what was last baked
-            if (data.format) {
-                const r = document.querySelector(`input[name="adb-bake-fmt"][value="${data.format}"]`);
-                if (r) r.checked = true;
-            }
+            // Sync the format select to what was last baked
+            const sel = _el('adb-bake-format');
+            if (sel && data.format) sel.value = data.format;
         } else if (data.status === 'error') {
             innerEl.innerHTML = `<div class="adb-bake-meta-row">${badge} <span style="color:#f87171">${data.error || 'Unknown error'}</span></div>`;
             if (dlBtn) dlBtn.classList.add('hidden');
@@ -1725,9 +1806,10 @@
     }
 
     async function _bakeStart() {
-        const fmt          = document.querySelector('input[name="adb-bake-fmt"]:checked')?.value || 'jsonl';
-        const includeStubs = _el('adb-bake-stubs')?.checked ?? true;
-        const bakeBtn      = _el('adb-bake-btn');
+        const fmt           = _el('adb-bake-format')?.value || 'jsonl';
+        const includeStubs  = _el('adb-bake-stubs')?.checked ?? true;
+        const includeVectors = _el('adb-bake-vectors')?.checked ?? false;
+        const bakeBtn       = _el('adb-bake-btn');
 
         if (bakeBtn) { bakeBtn.disabled = true; bakeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting…'; }
 
@@ -1735,7 +1817,7 @@
             const res = await fetch(`${API}/bake?${_dbParam()}`, {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ format: fmt, include_stubs: includeStubs }),
+                body:    JSON.stringify({ format: fmt, include_stubs: includeStubs, include_vectors: includeVectors }),
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
@@ -1768,8 +1850,6 @@
     }
 
     function _bakeWire() {
-        _el('adb-bake-header-btn')  ?.addEventListener('click', () => _bakeActive ? _showEntityList() : _showBakeView());
-        _el('adb-bake-close-btn')   ?.addEventListener('click', _showEntityList);
         _el('adb-bake-btn')         ?.addEventListener('click', _bakeStart);
         _el('adb-bake-download-btn')?.addEventListener('click', _bakeDownload);
     }
@@ -1804,6 +1884,11 @@
             }
         });
         _el('adb-validate-btn')?.addEventListener('click', _validateAll);
+
+        // Tab navigation
+        document.querySelectorAll('.adb-nav-tab').forEach(btn => {
+            btn.addEventListener('click', () => _switchTab(btn.dataset.tab));
+        });
 
         // Filter buttons always reset to page 0
         document.querySelectorAll('.adb-filter-btn').forEach(btn => {
@@ -1862,11 +1947,13 @@
         _wire();
         _graphWire();
         _fdWire();
+        _vecWire();
         _bakeWire();
         _fetchModels();
         _loadCachedInfo();          // populate stats from AethvionDB.INFO instantly
         _fdCheckExistingJob();      // restore folder-distill progress view if a job exists
         _bakeCheckExisting();       // restore bake result panel if a bake exists
+        _vecCheckExisting();        // restore vector status if a job exists
         _loadEntityList('all', 0);
     }
 

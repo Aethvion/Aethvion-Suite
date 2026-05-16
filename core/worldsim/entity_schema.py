@@ -115,6 +115,7 @@ def make_empty(
             "relations":  [],
             "properties": {},
             "stubs":      [],
+            "vectors":    {},
         },
     }
 

@@ -21,12 +21,11 @@
     flex-shrink: 0;
 }
 .adb-header-top {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
-    justify-content: space-between;
-    padding: 0.9rem 1.25rem 0.5rem;
+    padding: 0.45rem 1.25rem;
     gap: 1rem;
-    flex-wrap: wrap;
 }
 .adb-brand {
     display: flex;
@@ -34,30 +33,25 @@
     gap: 0.75rem;
 }
 .adb-brand-icon-wrap {
-    width: 38px;
-    height: 38px;
-    border-radius: 10px;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
     background: rgba(34, 211, 238, 0.12);
     border: 1px solid rgba(34, 211, 238, 0.25);
     display: flex;
     align-items: center;
     justify-content: center;
     color: #22d3ee;
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     flex-shrink: 0;
 }
 .adb-brand-name {
-    font-size: 1.15rem;
+    font-size: 1rem;
     font-weight: 800;
     letter-spacing: -0.01em;
     margin: 0;
     color: var(--text-primary);
-}
-.adb-brand-desc {
-    font-size: 0.76rem;
-    color: var(--text-muted);
-    margin: 0.1rem 0 0;
-    line-height: 1.3;
+    white-space: nowrap;
 }
 .adb-header-actions {
     display: flex;
@@ -76,14 +70,14 @@
 .adb-stat-card {
     display: flex;
     align-items: baseline;
-    gap: 0.45rem;
-    padding: 0.5rem 1.2rem 0.5rem 0;
-    margin-right: 1.2rem;
+    gap: 0.35rem;
+    padding: 0.35rem 0.9rem 0.35rem 0;
+    margin-right: 0.9rem;
     border-right: 1px solid var(--border);
 }
 .adb-stat-card:last-child { border-right: none; margin-right: 0; }
 .adb-stat-value {
-    font-size: 1.25rem;
+    font-size: 1.05rem;
     font-weight: 800;
     color: var(--text-primary);
     font-variant-numeric: tabular-nums;
@@ -218,47 +212,38 @@
     flex-shrink: 0;
 }
 
-/* ── Database bar ── */
-.adb-db-bar {
+/* ── DB selector (inline in stats bar) ── */
+.adb-db-inline {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.28rem 1.25rem;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-secondary);
+    gap: 0.35rem;
+    margin-left: auto;
+    padding-left: 1rem;
+    border-left: 1px solid var(--border);
     flex-shrink: 0;
-    min-height: 34px;
 }
-.adb-db-folder-icon { color: #f59e0b; font-size: 0.8rem; flex-shrink: 0; }
+.adb-db-folder-icon { color: #f59e0b; font-size: 0.78rem; flex-shrink: 0; }
 .adb-db-indicator-name {
-    font-size: 0.8rem;
+    font-size: 0.77rem;
     font-weight: 600;
     color: var(--text-secondary);
-    max-width: 240px;
+    max-width: 180px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    flex: 1;
 }
 
-/* ── Main layout ── */
-.adb-layout {
-    display: grid;
-    grid-template-columns: 290px 1fr;
+/* ── Tools tab pane ── */
+.adb-tools-pane {
     flex: 1;
-    overflow: hidden;
-}
-
-/* ── Left sidebar ── */
-.adb-sidebar {
-    border-right: 1px solid var(--border);
     overflow-y: auto;
-    padding: 0.85rem;
-    background: var(--bg-secondary);
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+    padding: 1.25rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 0.85rem;
+    align-items: start;
 }
+
 .adb-panel {
     background: var(--bg-primary, var(--bg-tertiary));
     border: 1px solid var(--border);
@@ -331,12 +316,62 @@
 .adb-status-ok      { background: rgba(34,197,94,0.1);   color: #4ade80; }
 .adb-status-error   { background: rgba(239,68,68,0.1);   color: #f87171; }
 
-/* ── Right main ── */
-.adb-main {
+/* ── Header tab navigation (segmented control) ── */
+.adb-nav-tabs {
+    display: flex;
+    gap: 2px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 3px;
+    justify-content: center;
+}
+.adb-nav-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.85rem;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.adb-nav-tab:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+.adb-nav-tab.active {
+    background: var(--bg-secondary);
+    color: #22d3ee;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+}
+.adb-nav-tab i { font-size: 0.75rem; }
+
+/* ── Tab pane ── */
+.adb-tab-pane {
+    flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background: var(--bg-primary);
+    min-height: 0;
+}
+.adb-tab-pane.hidden { display: none; }
+
+/* ── Vector search panel ── */
+.adb-vec-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+.adb-vec-count-label {
+    font-size: 0.77rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
 }
 
 /* ── Explorer header (search + filter) ── */
@@ -1113,7 +1148,6 @@
     overflow: hidden;
     background: var(--bg-primary);
 }
-.adb-graph-view.hidden { display: none; }
 
 /* toolbar */
 .adb-graph-bar {
@@ -1489,112 +1523,6 @@
 .adb-fd-ps-remaining {
     font-size: 0.72rem;
     color: var(--text-muted);
-}
-
-/* ── Bake view ── */
-.adb-bake-view {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: var(--bg-primary);
-}
-.adb-bake-view.hidden { display: none; }
-
-.adb-bake-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-    max-width: 780px;
-    width: 100%;
-    margin: 0 auto;
-    box-sizing: border-box;
-}
-
-.adb-bake-section {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1rem 1.1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-}
-.adb-bake-section.hidden { display: none; }
-
-.adb-bake-section-title {
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: var(--text-muted);
-}
-.adb-bake-section-desc {
-    font-size: 0.78rem;
-    color: var(--text-muted);
-    margin: 0;
-    line-height: 1.45;
-}
-
-/* Format radio cards */
-.adb-bake-fmt-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.55rem;
-    margin-top: 0.15rem;
-}
-.adb-bake-fmt-card {
-    display: grid;
-    grid-template-areas: "icon name" "icon desc";
-    grid-template-columns: 28px 1fr;
-    gap: 0 0.6rem;
-    padding: 0.7rem 0.85rem;
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-    user-select: none;
-}
-.adb-bake-fmt-card:hover {
-    border-color: rgba(34,211,238,0.4);
-    background: rgba(34,211,238,0.03);
-}
-.adb-bake-fmt-card input[type="radio"] {
-    display: none;
-}
-.adb-bake-fmt-card:has(input:checked) {
-    border-color: rgba(34,211,238,0.6);
-    background: rgba(34,211,238,0.07);
-}
-.adb-bake-fmt-icon {
-    grid-area: icon;
-    align-self: center;
-    font-size: 1rem;
-    color: #22d3ee;
-    text-align: center;
-}
-.adb-bake-fmt-name {
-    grid-area: name;
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    align-self: end;
-}
-.adb-bake-fmt-desc {
-    grid-area: desc;
-    font-size: 0.72rem;
-    color: var(--text-muted);
-    line-height: 1.4;
-    align-self: start;
-}
-
-/* Bake Now button */
-.adb-bake-go-btn {
-    align-self: flex-start;
 }
 
 /* ── Bake panel (shared meta/badge styles) ── */

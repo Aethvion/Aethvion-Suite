@@ -799,11 +799,61 @@ async def cancel_folder_distill(
     return {"cancelled": True}
 
 
+# ── Vectors ───────────────────────────────────────────────────────────────────
+
+@router.get("/vectors/status")
+async def get_vector_status(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """Return vectorization status from VECINFO."""
+    from .vectorizer import read_vec_info, is_vectorizing
+    root = _db_root(db, path)
+    info = read_vec_info(root)
+    if not info:
+        return {"status": "idle", "is_vectorizing": False}
+    return {**info, "is_vectorizing": is_vectorizing(root)}
+
+
+@router.post("/vectors/generate")
+async def start_vectorize(
+    model:         str  = Query("text-embedding-004"),
+    force_rewrite: bool = Query(False),
+    db:            str  = Query("default"),
+    path:          Optional[str] = Query(None),
+):
+    """Start background vectorization job."""
+    from .vectorizer import _vec_tasks, vectorize_all, is_vectorizing, EMBEDDING_MODELS
+    root = _db_root(db, path)
+    key  = str(root)
+
+    if is_vectorizing(root):
+        raise HTTPException(409, "Vectorization already running for this database.")
+    if model not in EMBEDDING_MODELS:
+        raise HTTPException(400, f"Unknown embedding model {model!r}")
+
+    writer = _get_writer(db, path)
+    task   = asyncio.create_task(vectorize_all(root, writer, model, force_rewrite))
+    _vec_tasks[key] = task
+    task.add_done_callback(lambda _: _vec_tasks.pop(key, None))
+    return {"started": True, "model": model}
+
+
+@router.post("/vectors/cancel")
+async def cancel_vectorize_endpoint(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    from .vectorizer import cancel_vectorize
+    return cancel_vectorize(_db_root(db, path))
+
+
 # ── Bake ──────────────────────────────────────────────────────────────────────
 
 class BakeRequest(BaseModel):
-    format:        str  = "jsonl"   # jsonl | json | markdown | txt
-    include_stubs: bool = True
+    format:          str  = "jsonl"   # jsonl | json | markdown | txt
+    include_stubs:   bool = True
+    include_vectors: bool = False
 
 
 @router.get("/bake/status")
@@ -845,12 +895,12 @@ async def start_bake(
     writer = _get_writer(db, path)
 
     task = asyncio.create_task(
-        bake_database(root, writer, fmt=req.format, include_stubs=req.include_stubs)
+        bake_database(root, writer, fmt=req.format, include_stubs=req.include_stubs, include_vectors=req.include_vectors)
     )
     _bake_tasks[key] = task
     task.add_done_callback(lambda _: _bake_tasks.pop(key, None))
 
-    return {"started": True, "format": req.format, "include_stubs": req.include_stubs}
+    return {"started": True, "format": req.format, "include_stubs": req.include_stubs, "include_vectors": req.include_vectors}
 
 
 @router.get("/bake/download")
