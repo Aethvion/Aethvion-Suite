@@ -3,8 +3,12 @@ core/aethviondb/baker.py
 ════════════════════════
 Bake an AethvionDB database into a single optimised export file.
 
-The baked file is a read-only snapshot — raw entity files are never touched.
-A sidecar AethvionDB.BAKEINFO records the last bake result and output location.
+All baked files live in  db_root/baked/
+Each bake has:
+  • An output file   — baked/<name>.<ext>
+  • A metadata file  — baked/<name>.meta.json
+
+Multiple named bakes are fully supported; they coexist independently.
 
 Supported output formats
 ------------------------
@@ -18,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -29,18 +34,42 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-_BAKE_INFO_FILE   = "AethvionDB.BAKEINFO"
-_BAKE_OUTPUT_STEM = "AethvionDB.BAKED"
-
-BAKE_FORMATS = ("jsonl", "json", "markdown", "txt")
+BAKE_FORMATS   = ("jsonl", "json", "markdown", "txt")
+_BAKED_DIR     = "baked"
+_META_SUFFIX   = ".meta.json"
+_SAFE_NAME_RE  = re.compile(r"^[a-zA-Z0-9_\-]{1,64}$")
 
 # ── In-process task tracking ───────────────────────────────────────────────────
 
-_bake_tasks: dict[str, asyncio.Task] = {}   # str(db_root) → Task
+_bake_tasks:        dict[str, asyncio.Task] = {}   # str(db_root) → Task
+_bake_current_name: dict[str, str]          = {}   # str(db_root) → bake name
 
 
 def is_baking(db_root: Path) -> bool:
     return str(db_root) in _bake_tasks
+
+
+def current_bake_name(db_root: Path) -> str | None:
+    return _bake_current_name.get(str(db_root))
+
+
+# ── Path helpers ───────────────────────────────────────────────────────────────
+
+def bake_dir(db_root: Path) -> Path:
+    return db_root / _BAKED_DIR
+
+
+def bake_output_path(db_root: Path, name: str, fmt: str) -> Path:
+    ext = {"json": ".json", "jsonl": ".jsonl", "markdown": ".md", "txt": ".txt"}.get(fmt, ".jsonl")
+    return bake_dir(db_root) / f"{name}{ext}"
+
+
+def bake_meta_path(db_root: Path, name: str) -> Path:
+    return bake_dir(db_root) / f"{name}{_META_SUFFIX}"
+
+
+def safe_name(name: str) -> bool:
+    return bool(_SAFE_NAME_RE.match(name))
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -56,11 +85,11 @@ def _fmt_size(b: int) -> str:
     return f"{b / 1024 ** 3:.2f} GB"
 
 
-# ── Info sidecar ───────────────────────────────────────────────────────────────
+# ── Metadata helpers ───────────────────────────────────────────────────────────
 
-def read_bake_info(db_root: Path) -> dict:
-    """Return contents of AethvionDB.BAKEINFO, or {} if absent / unreadable."""
-    p = db_root / _BAKE_INFO_FILE
+def read_bake_meta(db_root: Path, name: str) -> dict:
+    """Return the metadata for a named bake, or {} if absent."""
+    p = bake_meta_path(db_root, name)
     if p.exists():
         try:
             return json.loads(p.read_text(encoding="utf-8"))
@@ -69,29 +98,86 @@ def read_bake_info(db_root: Path) -> dict:
     return {}
 
 
-def write_bake_info(db_root: Path, data: dict) -> None:
-    """Persist data to AethvionDB.BAKEINFO (best-effort — never raises)."""
+def write_bake_meta(db_root: Path, name: str, data: dict) -> None:
+    """Persist metadata for a named bake (best-effort, never raises)."""
+    bake_dir(db_root).mkdir(parents=True, exist_ok=True)
     try:
-        (db_root / _BAKE_INFO_FILE).write_text(
+        bake_meta_path(db_root, name).write_text(
             json.dumps(data, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
     except Exception as exc:
-        logger.warning(f"[Baker] Could not write {_BAKE_INFO_FILE}: {exc}")
+        logger.warning(f"[Baker] Could not write meta for {name!r}: {exc}")
 
 
-def bake_output_path(db_root: Path, fmt: str) -> Path:
-    """Return the expected output file path for the given format."""
-    ext = {"json": ".json", "jsonl": ".jsonl", "markdown": ".md", "txt": ".txt"}.get(fmt, ".jsonl")
-    return db_root / (_BAKE_OUTPUT_STEM + ext)
+def list_bakes(db_root: Path) -> list[dict]:
+    """Return metadata for all bakes in baked/, newest-first."""
+    bd = bake_dir(db_root)
+    if not bd.exists():
+        return []
+    bakes: list[dict] = []
+    for p in bd.glob(f"*{_META_SUFFIX}"):
+        try:
+            meta = json.loads(p.read_text(encoding="utf-8"))
+            bakes.append(meta)
+        except Exception:
+            pass
+    bakes.sort(key=lambda b: b.get("baked_at", b.get("started_at", "")), reverse=True)
+    return bakes
+
+
+def delete_bake(db_root: Path, name: str) -> bool:
+    """Delete the output file and meta for a named bake. Returns True if found."""
+    found = False
+    for fmt in BAKE_FORMATS:
+        out = bake_output_path(db_root, name, fmt)
+        if out.exists():
+            out.unlink()
+            found = True
+    mp = bake_meta_path(db_root, name)
+    if mp.exists():
+        mp.unlink()
+        found = True
+    return found
+
+
+def rename_bake(db_root: Path, old_name: str, new_name: str) -> bool:
+    """
+    Rename a bake's output file and meta.
+    Returns True on success, False if the bake does not exist.
+    """
+    meta = read_bake_meta(db_root, old_name)
+    if not meta:
+        return False
+    fmt     = meta.get("format", "jsonl")
+    old_out = bake_output_path(db_root, old_name, fmt)
+    new_out = bake_output_path(db_root, new_name, fmt)
+    if old_out.exists():
+        old_out.rename(new_out)
+    meta["name"]        = new_name
+    meta["output_file"] = new_out.name
+    meta["output_path"] = str(new_out)
+    write_bake_meta(db_root, new_name, meta)
+    mp = bake_meta_path(db_root, old_name)
+    if mp.exists():
+        mp.unlink()
+    return True
 
 
 # ── Entity flattening ──────────────────────────────────────────────────────────
 
-def _flatten(entity: dict, id_to_name: dict[str, str], include_vectors: bool = False) -> dict:
+def _flatten(
+    entity:          dict,
+    id_to_name:      dict[str, str],
+    include_vectors: bool             = False,
+    vector_models:   list[str] | None = None,
+) -> dict:
     """
     Flatten the layered entity schema into a single portable dict.
     Relation target_ids are resolved to names where possible.
+
+    vector_models : None   → include all stored models (when include_vectors=True)
+                    [...]  → include only the listed model keys
     """
     sec  = entity.get("sections", {})
     core = sec.get("core", {})
@@ -105,6 +191,12 @@ def _flatten(entity: dict, id_to_name: dict[str, str], include_vectors: bool = F
             "target":    id_to_name.get(tid, tid),
             "note":      r.get("note", ""),
         })
+
+    if include_vectors:
+        all_vecs = sec.get("vectors", {})
+        vectors  = {k: v for k, v in all_vecs.items() if k in vector_models} if vector_models else all_vecs
+    else:
+        vectors = {}
 
     return {
         "id":         entity.get("id",      ""),
@@ -123,7 +215,7 @@ def _flatten(entity: dict, id_to_name: dict[str, str], include_vectors: bool = F
         "timeline":    sec.get("timeline",   []),
         "properties":  sec.get("properties", {}),
         "stubs":       sec.get("stubs",      []),
-        "vectors":     sec.get("vectors", {}) if include_vectors else {},
+        "vectors":     vectors,
     }
 
 
@@ -229,20 +321,28 @@ def _render_txt(entities: list[dict], db_root: Path) -> str:
 def bake_sync(
     db_root:         Path,
     writer:          "EntityWriter",
-    fmt:             str  = "jsonl",
-    include_stubs:   bool = True,
-    include_vectors: bool = False,
+    name:            str             = "default",
+    fmt:             str             = "jsonl",
+    include_stubs:   bool            = True,
+    include_vectors: bool            = False,
+    vector_models:   list[str] | None = None,
 ) -> dict:
     """
     Read all entities, render the chosen format, write the output file and
-    update AethvionDB.BAKEINFO.  Runs in a thread (can be slow for large DBs).
+    update the per-bake meta file.  Runs in a thread (can be slow for large DBs).
     Returns the bake-info dict on success.
     """
     if fmt not in BAKE_FORMATS:
         raise ValueError(f"Unknown format {fmt!r}; must be one of {BAKE_FORMATS}")
 
-    # Mark as running immediately
-    write_bake_info(db_root, {"status": "running", "started_at": _now_iso(), "include_vectors": include_vectors})
+    bake_dir(db_root).mkdir(parents=True, exist_ok=True)
+
+    # Mark as running
+    write_bake_meta(db_root, name, {
+        "name": name, "status": "running", "started_at": _now_iso(),
+        "format": fmt, "include_vectors": include_vectors,
+        "vector_models": vector_models or [],
+    })
 
     # Load entities
     all_entities = writer.list_all(include_deleted=False)
@@ -253,7 +353,7 @@ def bake_sync(
     id_to_name = {e["id"]: e["name"] for e in all_entities}
 
     # Flatten each entity
-    flat = [_flatten(e, id_to_name, include_vectors=include_vectors) for e in all_entities]
+    flat = [_flatten(e, id_to_name, include_vectors=include_vectors, vector_models=vector_models) for e in all_entities]
 
     # Render
     if   fmt == "jsonl":    content = _render_jsonl(flat)
@@ -261,36 +361,27 @@ def bake_sync(
     elif fmt == "markdown": content = _render_markdown(flat, db_root)
     else:                   content = _render_txt(flat, db_root)
 
-    # Remove any stale output files from previous formats
-    for old_fmt in BAKE_FORMATS:
-        old_path = bake_output_path(db_root, old_fmt)
-        if old_path != bake_output_path(db_root, fmt) and old_path.exists():
-            try:
-                old_path.unlink()
-            except OSError:
-                pass
-
     # Write output
-    out_path = bake_output_path(db_root, fmt)
+    out_path = bake_output_path(db_root, name, fmt)
     out_path.write_text(content, encoding="utf-8")
     size_bytes = out_path.stat().st_size
 
     info = {
+        "name":            name,
         "status":          "done",
         "format":          fmt,
         "include_stubs":   include_stubs,
         "include_vectors": include_vectors,
+        "vector_models":   vector_models or [],
         "entity_count":    len(flat),
-        "baked_at":      _now_iso(),
-        "output_file":   out_path.name,
-        "output_path":   str(out_path),
-        "size_bytes":    size_bytes,
-        "size_fmt":      _fmt_size(size_bytes),
+        "baked_at":        _now_iso(),
+        "output_file":     out_path.name,
+        "output_path":     str(out_path),
+        "size_bytes":      size_bytes,
+        "size_fmt":        _fmt_size(size_bytes),
     }
-    write_bake_info(db_root, info)
-    logger.info(
-        f"[Baker] Baked {len(flat)} entities → {out_path.name} ({_fmt_size(size_bytes)})"
-    )
+    write_bake_meta(db_root, name, info)
+    logger.info(f"[Baker] Baked {name!r}: {len(flat)} entities → {out_path.name} ({_fmt_size(size_bytes)})")
     return info
 
 
@@ -299,23 +390,24 @@ def bake_sync(
 async def bake_database(
     db_root:         Path,
     writer:          "EntityWriter",
-    fmt:             str  = "jsonl",
-    include_stubs:   bool = True,
-    include_vectors: bool = False,
+    name:            str             = "default",
+    fmt:             str             = "jsonl",
+    include_stubs:   bool            = True,
+    include_vectors: bool            = False,
+    vector_models:   list[str] | None = None,
 ) -> None:
-    """
-    Async wrapper: runs bake_sync in a thread, tracks the task in _bake_tasks,
-    and writes error info to BAKEINFO on failure.
-    """
+    """Async wrapper: runs bake_sync in a thread, updates meta on failure."""
     key = str(db_root)
     try:
-        await asyncio.to_thread(bake_sync, db_root, writer, fmt, include_stubs, include_vectors)
+        await asyncio.to_thread(bake_sync, db_root, writer, name, fmt, include_stubs, include_vectors, vector_models)
     except Exception as exc:
-        logger.error(f"[Baker] Bake failed for {db_root}: {exc}")
-        write_bake_info(db_root, {
-            "status":      "error",
-            "error":       str(exc)[:300],
-            "failed_at":   _now_iso(),
+        logger.error(f"[Baker] Bake {name!r} failed for {db_root}: {exc}")
+        write_bake_meta(db_root, name, {
+            "name":      name,
+            "status":    "error",
+            "error":     str(exc)[:300],
+            "failed_at": _now_iso(),
         })
     finally:
         _bake_tasks.pop(key, None)
+        _bake_current_name.pop(key, None)

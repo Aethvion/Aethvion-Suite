@@ -842,6 +842,24 @@ async def start_vectorize(
     return {"started": True, "model": model, "include_stubs": include_stubs}
 
 
+@router.get("/vectors/models")
+async def list_vector_models(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """
+    Scan all entities and return the unique embedding model names found
+    in their sections.vectors.  Cheap to call — no embeddings are loaded,
+    only the keys of the vectors dict.
+    """
+    writer = _get_writer(db, path)
+    models: set[str] = set()
+    for entity in writer.list_all(include_deleted=False):
+        vecs = (entity.get("sections") or {}).get("vectors", {})
+        models.update(vecs.keys())
+    return {"models": sorted(models)}
+
+
 @router.post("/vectors/cancel")
 async def cancel_vectorize_endpoint(
     db:   str = Query("default"),
@@ -854,9 +872,15 @@ async def cancel_vectorize_endpoint(
 # ── Bake ──────────────────────────────────────────────────────────────────────
 
 class BakeRequest(BaseModel):
-    format:          str  = "jsonl"   # jsonl | json | markdown | txt
-    include_stubs:   bool = True
-    include_vectors: bool = False
+    name:            str       = "default"
+    format:          str       = "jsonl"
+    include_stubs:   bool      = True
+    include_vectors: bool      = False
+    vector_models:   list[str] = []        # empty = all models; non-empty = only those keys
+
+
+class RenameRequest(BaseModel):
+    new_name: str
 
 
 @router.get("/bake/status")
@@ -864,13 +888,24 @@ async def get_bake_status(
     db:   str = Query("default"),
     path: Optional[str] = Query(None),
 ):
-    """Return the last bake info from AethvionDB.BAKEINFO."""
-    from .baker import read_bake_info, is_baking
+    """Return the status of the currently running bake, or idle."""
+    from .baker import is_baking, current_bake_name, read_bake_meta
     root = _db_root(db, path)
-    info = read_bake_info(root)
-    if not info:
-        return {"status": "idle"}
-    return {**info, "is_baking": is_baking(root)}
+    name = current_bake_name(root)
+    if name:
+        meta = read_bake_meta(root, name)
+        return {**meta, "is_baking": True}
+    return {"status": "idle", "is_baking": False}
+
+
+@router.get("/bake/list")
+async def list_bakes_endpoint(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """Return all named bakes for this database, newest first."""
+    from .baker import list_bakes
+    return {"bakes": list_bakes(_db_root(db, path))}
 
 
 @router.post("/bake")
@@ -879,64 +914,91 @@ async def start_bake(
     db:   str = Query("default"),
     path: Optional[str] = Query(None),
 ):
-    """
-    Start baking the database into a single export file.
-    Runs in the background — poll /bake/status to monitor progress.
-    """
+    """Start a named bake in the background. Poll /bake/status for progress."""
     from .baker import (
-        _bake_tasks, bake_database, is_baking, write_bake_info, BAKE_FORMATS
+        _bake_tasks, _bake_current_name, bake_database, is_baking, BAKE_FORMATS, safe_name,
     )
     root = _db_root(db, path)
     key  = str(root)
 
     if is_baking(root):
         raise HTTPException(409, "A bake is already running for this database.")
-
     if req.format not in BAKE_FORMATS:
         raise HTTPException(400, f"Unknown format {req.format!r}. Must be one of {BAKE_FORMATS}")
+    if not safe_name(req.name):
+        raise HTTPException(400, "Bake name must be 1-64 chars: letters, digits, _ or -")
 
     writer = _get_writer(db, path)
+    _bake_current_name[key] = req.name
 
     task = asyncio.create_task(
-        bake_database(root, writer, fmt=req.format, include_stubs=req.include_stubs, include_vectors=req.include_vectors)
+        bake_database(
+            root, writer,
+            name=req.name,
+            fmt=req.format,
+            include_stubs=req.include_stubs,
+            include_vectors=req.include_vectors,
+            vector_models=req.vector_models or None,
+        )
     )
     _bake_tasks[key] = task
-    task.add_done_callback(lambda _: _bake_tasks.pop(key, None))
+    task.add_done_callback(lambda _: (_bake_tasks.pop(key, None), _bake_current_name.pop(key, None)))
 
-    return {"started": True, "format": req.format, "include_stubs": req.include_stubs, "include_vectors": req.include_vectors}
+    return {"started": True, "name": req.name, "format": req.format}
 
 
-@router.get("/bake/download")
-async def download_bake(
+@router.delete("/bake/{name}")
+async def delete_bake_endpoint(
+    name: str,
     db:   str = Query("default"),
     path: Optional[str] = Query(None),
 ):
-    """Download the most recently baked output file."""
-    from fastapi.responses import FileResponse
-    from .baker import read_bake_info
-
+    from .baker import delete_bake, is_baking, current_bake_name
     root = _db_root(db, path)
-    info = read_bake_info(root)
+    if is_baking(root) and current_bake_name(root) == name:
+        raise HTTPException(409, f"Bake {name!r} is currently running — cancel it first.")
+    if not delete_bake(root, name):
+        raise HTTPException(404, f"Bake {name!r} not found.")
+    return {"deleted": name}
 
-    if not info or info.get("status") != "done":
-        raise HTTPException(404, "No completed bake found. Run a bake first.")
 
-    out_path = Path(info["output_path"])
+@router.patch("/bake/{name}")
+async def rename_bake_endpoint(
+    name: str,
+    req:  RenameRequest,
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    from .baker import rename_bake, safe_name
+    if not safe_name(req.new_name):
+        raise HTTPException(400, "New name must be 1-64 chars: letters, digits, _ or -")
+    if not rename_bake(_db_root(db, path), name, req.new_name):
+        raise HTTPException(404, f"Bake {name!r} not found.")
+    return {"renamed": True, "old_name": name, "new_name": req.new_name}
+
+
+@router.get("/bake/{name}/download")
+async def download_bake(
+    name: str,
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    from fastapi.responses import FileResponse
+    from .baker import read_bake_meta
+    root = _db_root(db, path)
+    meta = read_bake_meta(root, name)
+    if not meta or meta.get("status") != "done":
+        raise HTTPException(404, f"Bake {name!r} not found or not completed.")
+    out_path = Path(meta["output_path"])
     if not out_path.exists():
         raise HTTPException(404, f"Baked file missing: {out_path.name}")
-
     media = {
         "jsonl":    "application/x-ndjson",
         "json":     "application/json",
         "markdown": "text/markdown",
         "txt":      "text/plain",
-    }.get(info.get("format", ""), "application/octet-stream")
-
-    return FileResponse(
-        path=str(out_path),
-        media_type=media,
-        filename=out_path.name,
-    )
+    }.get(meta.get("format", ""), "application/octet-stream")
+    return FileResponse(path=str(out_path), media_type=media, filename=out_path.name)
 
 
 @router.get("/stubs")

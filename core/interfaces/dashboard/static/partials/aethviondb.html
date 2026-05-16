@@ -15,6 +15,9 @@
                 <button class="adb-nav-tab" data-tab="tools">
                     <i class="fas fa-wrench"></i> Tools
                 </button>
+                <button class="adb-nav-tab" data-tab="bake">
+                    <i class="fas fa-box-archive"></i> Bake
+                </button>
                 <button class="adb-nav-tab active" data-tab="explorer">
                     <i class="fas fa-table-list"></i> Explorer
                 </button>
@@ -233,37 +236,79 @@
                 </div>
             </div>
 
-            <!-- ── Bake Database ── -->
-            <div class="adb-panel" id="adb-bake-panel">
-                <div class="adb-panel-header">
-                    <i class="fas fa-box-archive"></i> Bake Database
-                </div>
-                <p class="adb-panel-desc">Export all entities into one optimised file for AI or system use. Raw data is never modified.</p>
-                <div class="adb-field">
-                    <label>Format</label>
-                    <select id="adb-bake-format">
-                        <option value="jsonl">JSONL — vector DBs, streaming</option>
-                        <option value="json">JSON — structured document</option>
-                        <option value="markdown">Markdown — RAG / LLMs</option>
-                        <option value="txt">Plain text — context windows</option>
-                    </select>
-                </div>
-                <label class="adb-checkbox-row">
-                    <input type="checkbox" id="adb-bake-stubs" checked>
-                    <span>Include stub entities</span>
-                </label>
-                <label class="adb-checkbox-row">
-                    <input type="checkbox" id="adb-bake-vectors">
-                    <span>Include embedding vectors</span>
-                </label>
-                <button id="adb-bake-btn" class="adb-primary-btn">
-                    <i class="fas fa-box-archive"></i> Bake Now
-                </button>
-                <div id="adb-bake-result" class="hidden">
-                    <div id="adb-bake-result-inner" class="adb-bake-meta"></div>
-                    <button id="adb-bake-download-btn" class="adb-btn adb-btn-accent adb-btn-sm hidden">
-                        <i class="fas fa-download"></i> Download
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         Tab 2 — Bake
+         Named bake configuration + baked datasets explorer.
+    ══════════════════════════════════════════════════════ -->
+    <div id="adb-tab-pane-bake" class="adb-tab-pane hidden">
+        <div class="adb-bake-page">
+
+            <!-- ── Left: Configure & Run ── -->
+            <div class="adb-bake-config-col">
+                <div class="adb-panel">
+                    <div class="adb-panel-header">
+                        <i class="fas fa-box-archive"></i> New Bake
+                    </div>
+                    <p class="adb-panel-desc">Export all entities into one optimised snapshot. Raw data is never modified.</p>
+
+                    <div class="adb-field">
+                        <label>Bake name</label>
+                        <input type="text" id="adb-bake-name" class="adb-input"
+                               value="default" placeholder="default"
+                               pattern="[a-zA-Z0-9_\-]{1,64}" maxlength="64">
+                    </div>
+                    <div class="adb-field">
+                        <label>Format</label>
+                        <select id="adb-bake-format">
+                            <option value="jsonl">JSONL — vector DBs, streaming</option>
+                            <option value="json">JSON — structured document</option>
+                            <option value="markdown">Markdown — RAG / LLMs</option>
+                            <option value="txt">Plain text — context windows</option>
+                        </select>
+                    </div>
+                    <label class="adb-checkbox-row">
+                        <input type="checkbox" id="adb-bake-stubs" checked>
+                        <span>Include stub entities</span>
+                    </label>
+                    <div class="adb-bake-vec-wrap">
+                        <label class="adb-checkbox-row adb-bake-vec-toggle-row">
+                            <input type="checkbox" id="adb-bake-vectors">
+                            <span>Include embedding vectors</span>
+                            <i class="fas fa-chevron-down adb-bake-vec-chevron" id="adb-bake-vec-chevron"></i>
+                        </label>
+                        <div id="adb-bake-vec-foldout" class="adb-bake-vec-foldout hidden">
+                            <div class="adb-bake-vec-foldout-inner">
+                                <div class="adb-bake-vec-foldout-hint" id="adb-bake-vec-hint">
+                                    <i class="fas fa-spinner fa-spin"></i> Scanning database…
+                                </div>
+                                <div id="adb-bake-vec-model-list" class="adb-bake-vec-model-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="adb-bake-btn" class="adb-primary-btn">
+                        <i class="fas fa-box-archive"></i> Bake Now
                     </button>
+                    <div id="adb-bake-result" class="hidden">
+                        <div id="adb-bake-result-inner" class="adb-bake-meta"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Right: Baked Datasets Explorer ── -->
+            <div class="adb-bake-explorer-col">
+                <div class="adb-panel adb-bake-explorer-panel">
+                    <div class="adb-panel-header">
+                        <i class="fas fa-layer-group"></i> Baked Datasets
+                        <button id="adb-bake-refresh-list" class="adb-btn adb-btn-ghost adb-btn-xs" title="Refresh list">
+                            <i class="fas fa-rotate-right"></i>
+                        </button>
+                    </div>
+                    <div id="adb-bake-list" class="adb-bake-list">
+                        <div class="adb-empty-hint">No bakes yet — run a bake to see it here.</div>
+                    </div>
                 </div>
             </div>
 

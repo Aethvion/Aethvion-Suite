@@ -111,8 +111,10 @@
             btn.classList.toggle('active', btn.dataset.tab === tab);
         });
         _el('adb-tab-pane-tools')   ?.classList.toggle('hidden', tab !== 'tools');
+        _el('adb-tab-pane-bake')    ?.classList.toggle('hidden', tab !== 'bake');
         _el('adb-tab-pane-explorer')?.classList.toggle('hidden', tab !== 'explorer');
         _el('adb-tab-pane-graph')   ?.classList.toggle('hidden', tab !== 'graph');
+        if (tab === 'bake') _bakeLoadList();
         if (tab === 'graph') {
             _openGraph();
         } else {
@@ -228,6 +230,8 @@
         _fdSection('adb-fd-pick');
         _bakeStopPolling();
         _vecStopPolling();
+        _bakeVecModelsLoaded = false;
+        _bakeToggleVecFoldout(false);
         _loadCachedInfo();
         _fdCheckExistingJob();
         _bakeCheckExisting();
@@ -251,6 +255,8 @@
         _fdSection('adb-fd-pick');
         _bakeStopPolling();
         _vecStopPolling();
+        _bakeVecModelsLoaded = false;
+        _bakeToggleVecFoldout(false);
         _loadCachedInfo();
         _fdCheckExistingJob();
         _bakeCheckExisting();
@@ -1818,20 +1824,19 @@
             const res  = await fetch(`${API}/bake/status?${_dbParam()}`);
             const data = await res.json();
             _bakeApplyStatus(data);
-            if (data.status !== 'running') _bakeStopPolling();
+            if (data.status !== 'running') { _bakeStopPolling(); _bakeLoadList(); }
         } catch { /* ignore transient poll errors */ }
     }
 
     function _bakeApplyStatus(data) {
         const resultEl = _el('adb-bake-result');
         const innerEl  = _el('adb-bake-result-inner');
-        const dlBtn    = _el('adb-bake-download-btn');
         const bakeBtn  = _el('adb-bake-btn');
         if (!resultEl || !innerEl) return;
 
         if (!data || data.status === 'idle') {
             resultEl.classList.add('hidden');
-            if (dlBtn) dlBtn.classList.add('hidden');
+            if (bakeBtn) { bakeBtn.disabled = false; bakeBtn.innerHTML = '<i class="fas fa-box-archive"></i> Bake Now'; }
             return;
         }
 
@@ -1842,41 +1847,212 @@
         const badge = `<span class="adb-bake-badge ${STATUS_CLS[data.status] || ''}">${STATUS_LABEL[data.status] || data.status}</span>`;
 
         if (data.status === 'running') {
-            innerEl.innerHTML = `<div class="adb-bake-meta-row">${badge} <span>Baking in progress…</span></div>`;
-            if (dlBtn) dlBtn.classList.add('hidden');
+            innerEl.innerHTML = `<div class="adb-bake-meta-row">${badge} <span>Baking <em>${data.name || ''}</em>…</span></div>`;
             if (bakeBtn) { bakeBtn.disabled = true; bakeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Baking…'; }
         } else if (data.status === 'done') {
             const fmt = { jsonl:'JSONL', json:'JSON', markdown:'Markdown', txt:'Plain text' }[data.format] || data.format || '—';
             innerEl.innerHTML = `
                 <div class="adb-bake-meta-row">${badge}
+                    <span class="adb-bake-key">Name</span><span class="adb-bake-val">${data.name || '—'}</span>
+                </div>
+                <div class="adb-bake-meta-row">
                     <span class="adb-bake-key">Format</span><span class="adb-bake-val">${fmt}</span>
-                </div>
-                <div class="adb-bake-meta-row">
                     <span class="adb-bake-key">Entities</span><span class="adb-bake-val">${_fmtNum(data.entity_count)}</span>
-                </div>
-                <div class="adb-bake-meta-row">
                     <span class="adb-bake-key">Size</span><span class="adb-bake-val">${data.size_fmt || '—'}</span>
-                </div>
-                <div class="adb-bake-meta-row">
-                    <span class="adb-bake-key">Baked</span><span class="adb-bake-val">${_fmtDate(data.baked_at)}</span>
                 </div>`;
-            if (dlBtn) dlBtn.classList.remove('hidden');
-            if (bakeBtn) { bakeBtn.disabled = false; bakeBtn.innerHTML = '<i class="fas fa-box-archive"></i> Re-Bake'; }
-            // Sync the format select to what was last baked
-            const sel = _el('adb-bake-format');
-            if (sel && data.format) sel.value = data.format;
+            if (bakeBtn) { bakeBtn.disabled = false; bakeBtn.innerHTML = '<i class="fas fa-box-archive"></i> Bake Now'; }
         } else if (data.status === 'error') {
             innerEl.innerHTML = `<div class="adb-bake-meta-row">${badge} <span style="color:#f87171">${data.error || 'Unknown error'}</span></div>`;
-            if (dlBtn) dlBtn.classList.add('hidden');
             if (bakeBtn) { bakeBtn.disabled = false; bakeBtn.innerHTML = '<i class="fas fa-box-archive"></i> Bake Now'; }
         }
     }
 
+    // ── Baked datasets list ───────────────────────────────────────────────────
+
+    async function _bakeLoadList() {
+        const listEl = _el('adb-bake-list');
+        if (!listEl) return;
+        try {
+            const res  = await fetch(`${API}/bake/list?${_dbParam()}`);
+            const data = await res.json();
+            _bakeRenderList(data.bakes || []);
+        } catch { /* ignore */ }
+    }
+
+    function _bakeRenderList(bakes) {
+        const listEl = _el('adb-bake-list');
+        if (!listEl) return;
+        if (!bakes.length) {
+            listEl.innerHTML = '<div class="adb-empty-hint">No bakes yet — run a bake to see it here.</div>';
+            return;
+        }
+        const FMT_LABEL = { jsonl:'JSONL', json:'JSON', markdown:'MD', txt:'TXT' };
+        const FMT_CLS   = { jsonl:'adb-bake-fmt-jsonl', json:'adb-bake-fmt-json', markdown:'adb-bake-fmt-md', txt:'adb-bake-fmt-txt' };
+        listEl.innerHTML = bakes.map(b => {
+            const fmtLabel = FMT_LABEL[b.format] || b.format || '?';
+            const fmtCls   = FMT_CLS[b.format] || '';
+            const dateStr  = b.baked_at ? _fmtDate(b.baked_at) : (b.started_at ? _fmtDate(b.started_at) : '—');
+            const running  = b.status === 'running';
+            const failed   = b.status === 'error';
+            const vecInfo  = b.include_vectors
+                ? (b.vector_models?.length ? `${b.vector_models.length} model${b.vector_models.length > 1 ? 's' : ''}` : 'all models')
+                : '';
+            return `
+            <div class="adb-bake-item ${running ? 'adb-bake-item-running' : ''} ${failed ? 'adb-bake-item-error' : ''}" data-name="${b.name}">
+                <div class="adb-bake-item-top">
+                    <span class="adb-bake-item-name" title="${b.name}">${b.name}</span>
+                    <span class="adb-bake-fmt-badge ${fmtCls}">${fmtLabel}</span>
+                    ${running ? '<span class="adb-bake-badge adb-bake-badge-running">Running</span>' : ''}
+                    ${failed  ? '<span class="adb-bake-badge adb-bake-badge-error">Error</span>' : ''}
+                </div>
+                <div class="adb-bake-item-meta">
+                    ${b.entity_count != null ? `<span>${_fmtNum(b.entity_count)} entities</span>` : ''}
+                    ${b.size_fmt ? `<span>${b.size_fmt}</span>` : ''}
+                    ${vecInfo   ? `<span><i class="fas fa-microchip" style="font-size:0.7em"></i> ${vecInfo}</span>` : ''}
+                    <span>${dateStr}</span>
+                </div>
+                ${!running && !failed ? `
+                <div class="adb-bake-item-actions">
+                    <button class="adb-btn adb-btn-ghost adb-btn-xs adb-bake-dl-btn" data-name="${b.name}" title="Download">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="adb-btn adb-btn-ghost adb-btn-xs adb-bake-rename-btn" data-name="${b.name}" title="Rename">
+                        <i class="fas fa-pencil"></i>
+                    </button>
+                    <button class="adb-btn adb-btn-ghost adb-btn-xs adb-bake-del-btn" data-name="${b.name}" title="Delete" style="color:#f87171">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>` : ''}
+            </div>`;
+        }).join('');
+
+        // Wire item buttons
+        listEl.querySelectorAll('.adb-bake-dl-btn').forEach(btn =>
+            btn.addEventListener('click', () => _bakeDownloadItem(btn.dataset.name)));
+        listEl.querySelectorAll('.adb-bake-del-btn').forEach(btn =>
+            btn.addEventListener('click', () => _bakeDeleteItem(btn.dataset.name)));
+        listEl.querySelectorAll('.adb-bake-rename-btn').forEach(btn =>
+            btn.addEventListener('click', () => _bakeRenameItem(btn.dataset.name)));
+    }
+
+    function _bakeDownloadItem(name) {
+        const a = document.createElement('a');
+        a.href  = `${API}/bake/${encodeURIComponent(name)}/download?${_dbParam()}`;
+        a.click();
+    }
+
+    async function _bakeDeleteItem(name) {
+        if (!confirm(`Delete bake "${name}"? This cannot be undone.`)) return;
+        try {
+            const res = await fetch(`${API}/bake/${encodeURIComponent(name)}?${_dbParam()}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || `HTTP ${res.status}`);
+            _toast(`Deleted bake "${name}"`, 'info');
+            _bakeLoadList();
+        } catch (e) { _toast(`Delete failed: ${e.message}`, 'error'); }
+    }
+
+    async function _bakeRenameItem(oldName) {
+        const listEl = _el('adb-bake-list');
+        const itemEl = listEl?.querySelector(`.adb-bake-item[data-name="${oldName}"]`);
+        if (!itemEl) return;
+        const nameSpan = itemEl.querySelector('.adb-bake-item-name');
+        if (!nameSpan) return;
+
+        const input = document.createElement('input');
+        input.type      = 'text';
+        input.value     = oldName;
+        input.className = 'adb-bake-rename-input';
+        input.maxLength = 64;
+        nameSpan.replaceWith(input);
+        input.select();
+
+        const commit = async () => {
+            const newName = input.value.trim();
+            if (!newName || newName === oldName) { _bakeLoadList(); return; }
+            try {
+                const res = await fetch(
+                    `${API}/bake/${encodeURIComponent(oldName)}?${_dbParam()}`,
+                    { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ new_name: newName }) }
+                );
+                if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || `HTTP ${res.status}`);
+                _toast(`Renamed to "${newName}"`, 'info');
+            } catch (e) { _toast(`Rename failed: ${e.message}`, 'error'); }
+            _bakeLoadList();
+        };
+
+        input.addEventListener('blur',  commit);
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+            if (e.key === 'Escape') { _bakeLoadList(); }
+        });
+    }
+
+    let _bakeVecModelsLoaded = false;
+
+    async function _bakeDiscoverVecModels() {
+        const hint    = _el('adb-bake-vec-hint');
+        const listEl  = _el('adb-bake-vec-model-list');
+        if (!listEl) return;
+
+        if (hint) hint.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning database…';
+        listEl.innerHTML = '';
+
+        try {
+            const res  = await fetch(`${API}/vectors/models?${_dbParam()}`);
+            const data = await res.json();
+            const models = data.models || [];
+
+            if (!models.length) {
+                if (hint) hint.textContent = 'No embeddings found in this database.';
+                return;
+            }
+
+            if (hint) hint.classList.add('hidden');
+
+            const _OPENAI = ['text-embedding-3-small','text-embedding-3-large','text-embedding-ada-002'];
+            listEl.innerHTML = models.map(m => {
+                const provider = _OPENAI.includes(m) ? 'OpenAI' : 'Google';
+                const provCls  = _OPENAI.includes(m) ? 'adb-vec-provider-openai' : 'adb-vec-provider-google';
+                return `
+                <label class="adb-bake-vec-model-row">
+                    <input type="checkbox" class="adb-bake-vec-model-cb" value="${m}" checked>
+                    <span class="adb-bake-vec-model-name">${m}</span>
+                    <span class="adb-vec-provider-badge ${provCls}">${provider}</span>
+                </label>`;
+            }).join('');
+
+            _bakeVecModelsLoaded = true;
+        } catch {
+            if (hint) hint.textContent = 'Could not load embedding models.';
+        }
+    }
+
+    function _bakeToggleVecFoldout(open) {
+        const foldout = _el('adb-bake-vec-foldout');
+        const chevron = _el('adb-bake-vec-chevron');
+        if (!foldout) return;
+        if (open) {
+            foldout.classList.remove('hidden');
+            if (chevron) chevron.style.transform = 'rotate(180deg)';
+            if (!_bakeVecModelsLoaded) _bakeDiscoverVecModels();
+        } else {
+            foldout.classList.add('hidden');
+            if (chevron) chevron.style.transform = '';
+        }
+    }
+
+    function _bakeGetSelectedModels() {
+        const cbs = document.querySelectorAll('.adb-bake-vec-model-cb:checked');
+        return Array.from(cbs).map(cb => cb.value);
+    }
+
     async function _bakeStart() {
-        const fmt           = _el('adb-bake-format')?.value || 'jsonl';
-        const includeStubs  = _el('adb-bake-stubs')?.checked ?? true;
+        const name           = (_el('adb-bake-name')?.value.trim() || 'default');
+        const fmt            = _el('adb-bake-format')?.value || 'jsonl';
+        const includeStubs   = _el('adb-bake-stubs')?.checked ?? true;
         const includeVectors = _el('adb-bake-vectors')?.checked ?? false;
-        const bakeBtn       = _el('adb-bake-btn');
+        const vectorModels   = includeVectors ? _bakeGetSelectedModels() : [];
+        const bakeBtn        = _el('adb-bake-btn');
 
         if (bakeBtn) { bakeBtn.disabled = true; bakeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting…'; }
 
@@ -1884,25 +2060,18 @@
             const res = await fetch(`${API}/bake?${_dbParam()}`, {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ format: fmt, include_stubs: includeStubs, include_vectors: includeVectors }),
+                body:    JSON.stringify({ name, format: fmt, include_stubs: includeStubs, include_vectors: includeVectors, vector_models: vectorModels }),
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.detail || `HTTP ${res.status}`);
             }
-            _bakeApplyStatus({ status: 'running' });
+            _bakeApplyStatus({ status: 'running', name });
             _bakeStartPolling();
         } catch (e) {
             _toast(`Bake failed: ${e.message}`, 'error');
-            if (bakeBtn) { bakeBtn.disabled = false; bakeBtn.innerHTML = '<i class="fas fa-box-archive"></i> Bake'; }
+            if (bakeBtn) { bakeBtn.disabled = false; bakeBtn.innerHTML = '<i class="fas fa-box-archive"></i> Bake Now'; }
         }
-    }
-
-    function _bakeDownload() {
-        const url = `${API}/bake/download?${_dbParam()}`;
-        const a   = document.createElement('a');
-        a.href    = url;
-        a.click();
     }
 
     async function _bakeCheckExisting() {
@@ -1917,8 +2086,11 @@
     }
 
     function _bakeWire() {
-        _el('adb-bake-btn')         ?.addEventListener('click', _bakeStart);
-        _el('adb-bake-download-btn')?.addEventListener('click', _bakeDownload);
+        _el('adb-bake-btn')           ?.addEventListener('click', _bakeStart);
+        _el('adb-bake-refresh-list')  ?.addEventListener('click', _bakeLoadList);
+        _el('adb-bake-vectors')?.addEventListener('change', e => {
+            _bakeToggleVecFoldout(e.target.checked);
+        });
     }
 
     // ── Wiring ────────────────────────────────────────────────────────────────
