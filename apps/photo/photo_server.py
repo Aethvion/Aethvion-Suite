@@ -55,9 +55,12 @@ async def serve_index():
     return HTMLResponse(content="<h1>Aethvion Photo</h1><p>Viewer not found.</p>", status_code=404)
 
 if VIEWER_DIR.exists():
-    app.mount("/css", StaticFiles(directory=str(VIEWER_DIR / "css")), name="css")
-    app.mount("/js", StaticFiles(directory=str(VIEWER_DIR / "js")), name="js")
-    app.mount("/assets", StaticFiles(directory=str(VIEWER_DIR / "assets")), name="assets")
+    if (VIEWER_DIR / "css").exists():
+        app.mount("/css", StaticFiles(directory=str(VIEWER_DIR / "css")), name="css")
+    if (VIEWER_DIR / "js").exists():
+        app.mount("/js", StaticFiles(directory=str(VIEWER_DIR / "js")), name="js")
+    if (VIEWER_DIR / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=str(VIEWER_DIR / "assets")), name="assets")
 
 # Mount Data for served files
 app.mount("/api/files/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")

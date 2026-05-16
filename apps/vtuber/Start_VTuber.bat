@@ -71,18 +71,12 @@ python -c "import rembg" >nul 2>&1
 if %errorlevel% neq 0 (
     echo.
     echo [INFO]  The 'rembg' package for automatic background removal is not installed.
-    echo         This is optional, but recommended for clean VTuber rig generation.
-    set /p INSTALL_REMBG="Do you want to install rembg now? (Y/N): "
-    if /I "!INSTALL_REMBG!"=="Y" (
-        echo [SETUP] Installing rembg and onnxruntime...
-        pip install rembg onnxruntime
-        if !errorlevel! neq 0 (
-            echo [WARN] Failed to install optional dependencies. Specter will run without background removal.
-        ) else (
-            echo [OK]   Optional dependencies installed successfully.
-        )
+    echo [SETUP] Installing rembg and onnxruntime...
+    pip install rembg onnxruntime
+    if !errorlevel! neq 0 (
+        echo [WARN] Failed to install optional dependencies. Specter will run without background removal.
     ) else (
-        echo [INFO] Skipping optional background removal setup.
+        echo [OK]   Optional dependencies installed successfully.
     )
     echo.
 ) else (
@@ -110,7 +104,7 @@ echo         Press CTRL+C to stop.
 echo.
 
 :: We launch it using the Python environment targeting the module relative to our Root
-python apps\vtuber\vtuber_server.py
+"%ROOT_DIR%\.venv\Scripts\python.exe" apps\vtuber\vtuber_server.py
 set MAIN_EXIT=%errorlevel%
 
 :: --- 7. Result ------------------------------------------------
