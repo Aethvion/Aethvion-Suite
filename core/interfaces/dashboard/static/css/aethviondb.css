@@ -913,6 +913,88 @@
 }
 .adb-stub-item i { font-size: 0.7em; opacity: 0.7; }
 
+/* ── Vectors tab ── */
+.adb-vec-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.adb-vec-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.7rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.adb-vec-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.adb-vec-model-name {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: monospace;
+}
+
+.adb-vec-provider-badge {
+    font-size: 0.63rem;
+    font-weight: 700;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.adb-vec-provider-openai { background: rgba(16, 163, 127, 0.18); color: #10a37f; border: 1px solid rgba(16,163,127,0.3); }
+.adb-vec-provider-google { background: rgba(66, 133, 244, 0.18); color: #4285f4; border: 1px solid rgba(66,133,244,0.3); }
+
+.adb-vec-dims {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-family: monospace;
+}
+
+.adb-vec-date {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-left: auto;
+}
+
+.adb-vec-row {
+    display: grid;
+    grid-template-columns: 46px 1fr;
+    gap: 0.5rem;
+    align-items: baseline;
+    font-size: 0.78rem;
+}
+
+.adb-vec-row-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    padding-top: 0.1rem;
+}
+
+.adb-vec-input-preview {
+    color: var(--text-secondary);
+    font-style: italic;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.adb-vec-embedding-preview {
+    font-family: monospace;
+    font-size: 0.72rem;
+    color: #22d3ee;
+    opacity: 0.8;
+    overflow-wrap: anywhere;
+}
+
 /* ── Raw JSON ── */
 .adb-raw-json {
     font-family: monospace;

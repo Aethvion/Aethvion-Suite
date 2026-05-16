@@ -654,6 +654,46 @@
                 : '<div class="adb-empty-hint">No sub-topics listed</div>';
         }
 
+        // Vectors tab
+        const vecListEl = _el('adb-ev-vectors-list');
+        if (vecListEl) {
+            const vectors = entity.sections?.vectors || {};
+            const entries = Object.entries(vectors);
+            if (!entries.length) {
+                vecListEl.innerHTML = '<div class="adb-empty-hint">No embeddings generated yet. Use the Vector Search panel in the Tools tab.</div>';
+            } else {
+                vecListEl.innerHTML = entries.map(([modelKey, vec]) => {
+                    const _OPENAI_MODELS = ['text-embedding-3-small','text-embedding-3-large','text-embedding-ada-002'];
+                    const provider  = _OPENAI_MODELS.includes(modelKey) ? 'openai' : 'google';
+                    const provLabel = provider === 'openai' ? 'OpenAI' : 'Google';
+                    const provCls   = `adb-vec-provider-${provider}`;
+                    const dims      = vec.dimensions || (vec.embedding?.length ?? '?');
+                    const genDate   = vec.generated_at ? _fmtDate(vec.generated_at) : '—';
+                    const inputPrev = vec.input ? `"${vec.input.slice(0, 160)}${vec.input.length > 160 ? '…' : ''}"` : '—';
+                    const embPrev   = vec.embedding?.length
+                        ? `[${vec.embedding.slice(0, 6).map(v => v.toFixed(4)).join(', ')}${vec.embedding.length > 6 ? `, … +${vec.embedding.length - 6} more` : ''}]`
+                        : '—';
+                    return `
+                    <div class="adb-vec-card">
+                        <div class="adb-vec-card-header">
+                            <span class="adb-vec-model-name">${modelKey}</span>
+                            <span class="adb-vec-provider-badge ${provCls}">${provLabel}</span>
+                            <span class="adb-vec-dims">${dims} dims</span>
+                            <span class="adb-vec-date">${genDate}</span>
+                        </div>
+                        <div class="adb-vec-row">
+                            <span class="adb-vec-row-label">Input</span>
+                            <span class="adb-vec-input-preview">${inputPrev}</span>
+                        </div>
+                        <div class="adb-vec-row">
+                            <span class="adb-vec-row-label">Vector</span>
+                            <code class="adb-vec-embedding-preview">${embPrev}</code>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        }
+
         // JSON tab
         const rawEl = _el('adb-ev-raw-json');
         if (rawEl) rawEl.textContent = JSON.stringify(entity, null, 2);
