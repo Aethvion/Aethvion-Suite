@@ -165,18 +165,18 @@ const ATB = (() => {
         // Show the target panel; fall back to Nexus if it doesn't exist
         const next = document.getElementById(panelId);
         if (!next) {
-            const nexus = document.getElementById(NEXUS_PANEL);
+            const nexus = document.getElementById(HOME_PANEL);
             if (nexus) nexus.style.display = 'flex';
-            _active = NEXUS_PANEL;
+            _active = HOME_PANEL;
             document.querySelectorAll('.atb-tab').forEach(t =>
-                t.classList.toggle('atb-tab--active', t.dataset.panel === NEXUS_PANEL)
+                t.classList.toggle('atb-tab--active', t.dataset.panel === HOME_PANEL)
             );
             _refreshMenuOpenStates();
             return;
         }
 
         console.log(`[ATB] Switching to ${panelId}`);
-        next.style.display = (panelId === NEXUS_PANEL) ? 'flex' : 'block';
+        next.style.display = (panelId === HOME_PANEL) ? 'flex' : 'block';
         next.style.visibility = 'visible'; // Ensure visibility
         next.style.opacity = '1';
 
@@ -348,7 +348,7 @@ const ATB = (() => {
         const tabEl   = document.querySelector(`[data-panel="${panelId}"]`);
         const panelEl = document.getElementById(panelId);
 
-        if (_active === panelId) switchTo(NEXUS_PANEL);   // switch away first
+        if (_active === panelId) switchTo(HOME_PANEL);   // switch away first
 
         tabEl?.remove();
         panelEl?.remove();
@@ -428,7 +428,7 @@ const ATB = (() => {
 
         // Call switchTo FIRST while _active === panelId so the guard passes
         if (_active === panelId) {
-            switchTo(NEXUS_PANEL);
+            switchTo(HOME_PANEL);
         }
         tabEl.remove();
         document.getElementById(panelId)?.remove();
@@ -610,8 +610,8 @@ const ATB = (() => {
     function init() {
         ServiceMonitor.init();
 
-        document.querySelector('[data-panel="panel-nexus"]')
-            ?.addEventListener('click', () => switchTo(NEXUS_PANEL));
+        document.querySelector('[data-panel="panel-home"]')
+            ?.addEventListener('click', () => switchTo(HOME_PANEL));
 
         document.getElementById('atb-apps-btn')
             ?.addEventListener('click', e => { e.stopPropagation(); _toggleMenu(); });
