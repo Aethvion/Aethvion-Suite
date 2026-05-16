@@ -25,7 +25,6 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from core.utils.logger import get_logger
-from core.utils.paths import AETHVIONDB
 
 from .auth import check_auth
 from .response import envelope, encode_cursor, decode_cursor
@@ -41,7 +40,8 @@ _SAFE_RE = re.compile(r"^[a-zA-Z0-9_\-]{1,64}$")
 def _root(db: str) -> Path:
     if not _SAFE_RE.match(db):
         raise HTTPException(400, f"Invalid database name {db!r}")
-    return AETHVIONDB / db
+    from core.aethviondb.db_registry import resolve_db_root
+    return resolve_db_root(db)
 
 
 def _load_entities(meta: dict) -> list[dict]:

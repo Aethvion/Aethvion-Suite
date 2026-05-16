@@ -36,15 +36,32 @@ router.include_router(baked_router)
 async def api_index():
     """Return API version info and available databases."""
     from core.utils.paths import AETHVIONDB
+    from core.aethviondb.db_registry import list_registered
     import time
     t = time.perf_counter()
 
     AETHVIONDB.mkdir(parents=True, exist_ok=True)
-    databases = []
+
+    # Collect named databases (folders with an entities/ sub-dir)
+    seen: set[str] = set()
+    databases: list[dict] = []
+
     for d in sorted(AETHVIONDB.iterdir()):
-        if d.is_dir() and (d / "entities").exists():
+        if d.is_dir() and d.name != "_db_registry.json" and (d / "entities").exists():
             entity_count = sum(1 for _ in (d / "entities").glob("*.json"))
             databases.append({"name": d.name, "entity_count": entity_count})
+            seen.add(d.name)
+
+    # Also include path-based databases registered by the legacy API
+    for name, path_str in list_registered().items():
+        if name not in seen:
+            from pathlib import Path as _P
+            entities_dir = _P(path_str) / "entities"
+            if entities_dir.exists():
+                entity_count = sum(1 for _ in entities_dir.glob("*.json"))
+                databases.append({"name": name, "entity_count": entity_count, "path": path_str})
+
+    databases.sort(key=lambda d: d["name"])
 
     from .response import envelope
     return envelope(

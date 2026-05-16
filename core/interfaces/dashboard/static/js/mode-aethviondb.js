@@ -2272,15 +2272,35 @@
     let _apiCodeRaw     = '';     // current code text (for copy)
     let _apiParamValues = {};     // {paramName: value} for path + query params
 
+    // DB context
+    let _apiDb         = null;    // null = inherit _currentDb; string = API-tab override
+    let _apiDbs        = [];      // available database names
+    let _apiDbTypes    = [];      // entity types in current API db (for smart selects)
+    let _apiDbBakes    = [];      // bake names for {name} path params
+    let _apiDbKeys     = [];      // key labels for {label} path params
+    let _apiDbStats    = {};      // {total, stub_count, by_type}
+    let _apiCtxReady   = false;   // has context been loaded for current _apiDb?
+
+    // Entity picker
+    let _apiPickerParam  = null;  // which param name the picker is filling
+    let _apiPickerTimer  = null;  // debounce handle
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     function _apiEl(id) { return document.getElementById(id); }
 
+    /** The database the API Explorer is currently targeting. */
+    function _apiCurrentDb() {
+        if (_apiDb) return _apiDb;
+        if (_currentPath) {
+            const p = _currentPath.replace(/\\/g, '/').split('/').filter(Boolean);
+            return p[p.length - 1] || 'default';
+        }
+        return _currentDb || 'default';
+    }
+
     function _apiBuildUrl(ep, pathValues, queryValues) {
-        let path = ep.path.replace('{db}', _currentPath
-            ? (() => { const p = _currentPath.replace(/\\/g,'/').split('/').filter(Boolean); return p[p.length-1] || 'db'; })()
-            : (_currentDb || 'default')
-        );
+        let path = ep.path.replace('{db}', _apiCurrentDb());
         for (const [k, v] of Object.entries(pathValues || {})) {
             if (v) path = path.replace(`{${k}}`, encodeURIComponent(v));
         }
@@ -2315,6 +2335,367 @@
         if (b < 1024) return b + ' B';
         if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
         return (b/1024/1024).toFixed(1) + ' MB';
+    }
+
+    // ── Smart param control ───────────────────────────────────────────────────
+
+    /**
+     * Returns an HTML string for the appropriate input control for a given
+     * parameter name. Context-aware: uses loaded DB entity types, bake names,
+     * and key labels when available.
+     */
+    function _apiSmartControl(name, defaultVal, desc, isPath) {
+        const n    = (name || '').toLowerCase();
+        const val  = defaultVal != null ? String(defaultVal) : '';
+        const base = isPath ? 'adb-api-path-param' : 'adb-api-query-param';
+        const esc  = s => String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+        // Entity ID → picker button + hidden input
+        if (isPath && n === 'id') {
+            return `<div class="adb-api-pick-row">
+                <input class="adb-api-small-input ${base}" data-param="${name}"
+                    value="${esc(val)}" placeholder="entity ID" style="width:90px;min-width:60px">
+                <button class="adb-api-pick-btn" data-pick-param="${name}" title="Browse entities">
+                    <i class="fas fa-search"></i>
+                </button>
+                <span class="adb-api-pick-label">${val ? esc(val) : 'pick…'}</span>
+            </div>`;
+        }
+
+        // Bake name → dropdown from _apiDbBakes, fallback text input
+        if (isPath && n === 'name') {
+            if (_apiDbBakes.length) {
+                const cur = val || _apiDbBakes[0];
+                return `<select class="adb-api-small-input adb-api-smart-select ${base}" data-param="${name}">
+                    ${_apiDbBakes.map(b => `<option value="${esc(b)}" ${b === cur ? 'selected' : ''}>${esc(b)}</option>`).join('')}
+                </select>`;
+            }
+            return `<input class="adb-api-small-input ${base}" data-param="${name}"
+                value="${esc(val || 'default')}" placeholder="snapshot name" style="width:130px">`;
+        }
+
+        // Key label → dropdown from _apiDbKeys, fallback text input
+        if (isPath && n === 'label') {
+            if (_apiDbKeys.length) {
+                const cur = val || _apiDbKeys[0];
+                return `<select class="adb-api-small-input adb-api-smart-select ${base}" data-param="${name}">
+                    ${_apiDbKeys.map(k => `<option value="${esc(k)}" ${k === cur ? 'selected' : ''}>${esc(k)}</option>`).join('')}
+                </select>`;
+            }
+            return `<input class="adb-api-small-input ${base}" data-param="${name}"
+                value="${esc(val)}" placeholder="key label" style="width:130px">`;
+        }
+
+        // status → fixed set
+        if (!isPath && n === 'status') {
+            const opts = ['active', 'stub', 'deleted', 'all'];
+            const cur  = val || 'active';
+            return `<select class="adb-api-small-input adb-api-smart-select ${base}" data-param="${name}">
+                ${opts.map(o => `<option value="${o}" ${o === cur ? 'selected' : ''}>${o}</option>`).join('')}
+            </select>`;
+        }
+
+        // type → entity types from DB + "any"
+        if (!isPath && n === 'type') {
+            if (_apiDbTypes.length) {
+                return `<select class="adb-api-small-input adb-api-smart-select ${base}" data-param="${name}">
+                    <option value="">— any —</option>
+                    ${_apiDbTypes.map(t => `<option value="${esc(t)}" ${t === val ? 'selected' : ''}>${esc(t)}</option>`).join('')}
+                </select>`;
+            }
+            return `<input class="adb-api-small-input ${base}" data-param="${name}"
+                value="${esc(val)}" placeholder="entity type" style="width:130px">`;
+        }
+
+        // direction → fixed set
+        if (!isPath && n === 'direction') {
+            const opts = ['both', 'outbound', 'inbound'];
+            const cur  = val || 'both';
+            return `<select class="adb-api-small-input adb-api-smart-select ${base}" data-param="${name}">
+                ${opts.map(o => `<option value="${o}" ${o === cur ? 'selected' : ''}>${o}</option>`).join('')}
+            </select>`;
+        }
+
+        // hard → boolean
+        if (!isPath && n === 'hard') {
+            return `<select class="adb-api-small-input adb-api-smart-select ${base}" data-param="${name}">
+                <option value="false" ${val !== 'true' ? 'selected' : ''}>false</option>
+                <option value="true"  ${val === 'true' ? 'selected' : ''}>true</option>
+            </select>`;
+        }
+
+        // numeric inputs
+        if (['limit', 'top_k', 'max_depth', 'offset', 'max_entities'].includes(n)) {
+            return `<input type="number" class="adb-api-small-input ${base}" data-param="${name}"
+                value="${esc(val)}" placeholder="${n}" min="1" style="width:80px">`;
+        }
+
+        // sections → hints
+        if (!isPath && n === 'sections') {
+            return `<input class="adb-api-small-input ${base}" data-param="${name}"
+                value="${esc(val)}" placeholder="core,relations,vectors" style="width:180px">`;
+        }
+
+        // default text input
+        const placeholder = isPath ? 'required' : 'optional';
+        return `<input class="adb-api-small-input ${base}" data-param="${name}"
+            value="${esc(val)}" placeholder="${placeholder}" style="width:130px">`;
+    }
+
+    // ── Smart params pane ─────────────────────────────────────────────────────
+
+    function _apiRenderSmartParams(ep) {
+        const cont = _apiEl('adb-api-params-content');
+        if (!cont) return;
+
+        const pathParams  = ep.pathParams || [];
+        const queryParams = ep.params     || [];
+        let   html        = '';
+
+        if (pathParams.length) {
+            html += `<div class="adb-api-params-group-label">Path Parameters</div>
+            <table class="adb-api-params-table-inner">
+                <thead><tr><th>Name</th><th>Value</th><th>Description</th></tr></thead>
+                <tbody>
+                ${pathParams.map(p => `<tr>
+                    <td class="adb-api-param-name">{${p.n}}</td>
+                    <td>${_apiSmartControl(p.n, p.v, 'Path param', true)}</td>
+                    <td class="adb-api-param-desc">path</td>
+                </tr>`).join('')}
+                </tbody>
+            </table>`;
+        }
+
+        if (queryParams.length) {
+            html += `<div class="adb-api-params-group-label" style="margin-top:0.6rem">Query Parameters</div>
+            <table class="adb-api-params-table-inner">
+                <thead><tr><th>Name</th><th>Value</th><th>Description</th></tr></thead>
+                <tbody>
+                ${queryParams.map(p => `<tr>
+                    <td class="adb-api-param-name">${p.n}</td>
+                    <td>${_apiSmartControl(p.n, p.v, p.d, false)}</td>
+                    <td class="adb-api-param-desc">${p.d || ''}</td>
+                </tr>`).join('')}
+                </tbody>
+            </table>`;
+        }
+
+        if (!pathParams.length && !queryParams.length) {
+            html = '<div class="adb-empty-hint" style="padding:0.75rem">No parameters for this endpoint.</div>';
+        }
+
+        cont.innerHTML = html;
+
+        // Initialise _apiParamValues from rendered inputs + selects
+        cont.querySelectorAll('.adb-api-path-param, .adb-api-query-param').forEach(ctrl => {
+            _apiParamValues[ctrl.dataset.param] = ctrl.value;
+
+            const onChange = () => {
+                _apiParamValues[ctrl.dataset.param] = ctrl.value;
+                // If it's the entity ID path param, update the pick-label
+                if (ctrl.classList.contains('adb-api-path-param')) {
+                    const label = ctrl.closest('td')?.querySelector('.adb-api-pick-label');
+                    if (label) label.textContent = ctrl.value || 'pick…';
+                }
+                _apiUpdateUrlDisplay();
+                _apiGenerateCode(_apiCurrentLang);
+            };
+            ctrl.addEventListener('input',  onChange);
+            ctrl.addEventListener('change', onChange);
+        });
+
+        // Wire entity picker open buttons
+        cont.querySelectorAll('.adb-api-pick-btn').forEach(btn => {
+            btn.addEventListener('click', () => _apiPickerOpen(btn.dataset.pickParam));
+        });
+    }
+
+    // ── DB list + context loading ─────────────────────────────────────────────
+
+    async function _apiLoadDatabases() {
+        const sel = _apiEl('adb-api-db-select');
+        if (!sel) return;
+
+        try {
+            // Try the v1 discovery endpoint first
+            const res  = await fetch(`${_API_V1}/`);
+            const data = await res.json();
+            _apiDbs = (data?.data?.databases || []).map(d => (typeof d === 'string' ? d : d.name));
+        } catch {
+            // Fallback to the legacy endpoint
+            try {
+                const res  = await fetch(`${API}/databases`);
+                const data = await res.json();
+                _apiDbs = (data.databases || []).map(d => d.name || d);
+            } catch { _apiDbs = []; }
+        }
+
+        // If the current global DB isn't in the discovered list, prepend it
+        // (handles edge case where path-based DB has same folder name as a named DB)
+        const cur = _apiCurrentDb();
+        if (cur && !_apiDbs.includes(cur)) _apiDbs.unshift(cur);
+
+        sel.innerHTML = _apiDbs.length
+            ? _apiDbs.map(name =>
+                `<option value="${name}" ${name === cur ? 'selected' : ''}>${name}</option>`
+              ).join('')
+            : `<option value="${cur}">${cur}</option>`;
+    }
+
+    function _apiSetDb(name) {
+        _apiDb       = name || null;
+        _apiCtxReady = false;
+        _apiDbTypes  = [];
+        _apiDbBakes  = [];
+        _apiDbKeys   = [];
+        _apiDbStats  = {};
+        _apiUpdateUrlDisplay();
+        _apiUpdateDbStats();
+        _apiLoadDbContext();
+    }
+
+    async function _apiLoadDbContext() {
+        const db = _apiCurrentDb();
+
+        // ── Entity types + counts ──
+        // When _apiDb is null and the global explorer has a path-based database,
+        // pass ?path= so the legacy endpoint reads the right directory AND
+        // triggers register_path_db() — priming the registry for all v1 calls.
+        try {
+            let statsUrl = `${API}/stats?db=${encodeURIComponent(db)}`;
+            if (!_apiDb && _currentPath) {
+                statsUrl += `&path=${encodeURIComponent(_currentPath)}`;
+            }
+            const res  = await fetch(statsUrl);
+            const data = await res.json();
+            _apiDbStats = data;
+            _apiDbTypes = Object.keys(data.by_type || {}).sort();
+        } catch { _apiDbStats = {}; _apiDbTypes = []; }
+
+        // ── Bake names ──
+        try {
+            const res  = await fetch(`${_API_V1}/${encodeURIComponent(db)}/baked`);
+            const data = await res.json();
+            // API returns "bakes" key (list_bakes endpoint); keep "snapshots" as fallback
+            _apiDbBakes = (data?.data?.bakes || data?.data?.snapshots || []).map(s => s.name).filter(Boolean);
+        } catch { _apiDbBakes = []; }
+
+        // ── Key labels ──
+        try {
+            const res  = await fetch(`${_API_V1}/${encodeURIComponent(db)}/keys`);
+            const data = await res.json();
+            _apiDbKeys = (data?.data?.keys || []).map(k => k.label).filter(Boolean);
+        } catch { _apiDbKeys = []; }
+
+        _apiCtxReady = true;
+        _apiUpdateDbStats();
+
+        // Re-render params for the active endpoint so smart controls pick up new context
+        if (_apiCurrentEp) _apiRenderSmartParams(_apiCurrentEp);
+    }
+
+    function _apiUpdateDbStats() {
+        const el = _apiEl('adb-api-db-stats');
+        if (!el) return;
+        const total  = _apiDbStats.total_entities ?? _apiDbStats.count ?? null;
+        const stubs  = _apiDbStats.stub_count ?? null;
+        const types  = _apiDbTypes.length;
+        const bakes  = _apiDbBakes.length;
+        if (total != null) {
+            let txt = `${_fmtNum(total)} entities`;
+            if (stubs != null) txt += ` · ${_fmtNum(stubs)} stubs`;
+            if (types)  txt += ` · ${types} type${types !== 1 ? 's' : ''}`;
+            if (bakes)  txt += ` · ${bakes} snapshot${bakes !== 1 ? 's' : ''}`;
+            el.textContent = txt;
+        } else if (bakes) {
+            el.textContent = `${bakes} snapshot${bakes !== 1 ? 's' : ''}`;
+        } else {
+            el.textContent = '';
+        }
+    }
+
+    // ── Entity picker ─────────────────────────────────────────────────────────
+
+    function _apiPickerOpen(paramName) {
+        _apiPickerParam = paramName;
+        const overlay = _apiEl('adb-api-picker');
+        if (!overlay) return;
+        overlay.classList.remove('hidden');
+        const input = _apiEl('adb-api-picker-search');
+        if (input) { input.value = ''; input.focus(); }
+        // Show empty-state message without hitting the API on open
+        const resultsEl = _apiEl('adb-api-picker-results');
+        if (resultsEl) resultsEl.innerHTML = '<div class="adb-empty-hint">Type to search entities…</div>';
+    }
+
+    async function _apiPickerSearch(q) {
+        const db        = _apiCurrentDb();
+        const resultsEl = _apiEl('adb-api-picker-results');
+        if (!resultsEl) return;
+
+        resultsEl.innerHTML = '<div class="adb-empty-hint"><i class="fas fa-spinner fa-spin"></i></div>';
+
+        try {
+            const res  = await fetch(`${_API_V1}/${encodeURIComponent(db)}/raw/search`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ query: q || '', modes: ['keyword'], limit: 25 }),
+            });
+            const data = await res.json();
+            const items = data?.data?.results || [];
+
+            if (!items.length) {
+                resultsEl.innerHTML = q
+                    ? '<div class="adb-empty-hint">No results.</div>'
+                    : '<div class="adb-empty-hint">Type to search entities…</div>';
+                return;
+            }
+
+            resultsEl.innerHTML = items.map(e => {
+                const name = (e.name || '').replace(/</g, '&lt;');
+                const type = (e.type || '').replace(/</g, '&lt;');
+                const id   = (e.id   || '').replace(/</g, '&lt;');
+                return `<div class="adb-api-picker-item" data-id="${id}" data-name="${name}" data-type="${type}">
+                    <span class="adb-api-picker-item-name">${name}</span>
+                    ${type ? `<span class="adb-api-picker-item-type">${type}</span>` : ''}
+                    <code class="adb-api-picker-item-id">${id}</code>
+                </div>`;
+            }).join('');
+
+            resultsEl.querySelectorAll('.adb-api-picker-item').forEach(item => {
+                item.addEventListener('click', () =>
+                    _apiPickerSelect(item.dataset.id, item.dataset.name, item.dataset.type)
+                );
+            });
+        } catch {
+            resultsEl.innerHTML = '<div class="adb-empty-hint">Search failed.</div>';
+        }
+    }
+
+    function _apiPickerClose() {
+        _apiEl('adb-api-picker')?.classList.add('hidden');
+        _apiPickerParam = null;
+        clearTimeout(_apiPickerTimer);
+    }
+
+    function _apiPickerSelect(id, name, type) {
+        if (!_apiPickerParam) return;
+
+        // Fill the matching path-param input
+        const input = document.querySelector(`.adb-api-path-param[data-param="${_apiPickerParam}"]`);
+        if (input) {
+            input.value = id;
+            _apiParamValues[_apiPickerParam] = id;
+
+            // Update the pick-label next to the input
+            const label = input.closest('td')?.querySelector('.adb-api-pick-label');
+            if (label) label.textContent = `${name}${type ? ' · ' + type : ''}`;
+
+            _apiUpdateUrlDisplay();
+            _apiGenerateCode(_apiCurrentLang);
+        }
+
+        _apiPickerClose();
     }
 
     // ── Render endpoint tree ──────────────────────────────────────────────────
@@ -2353,6 +2734,12 @@
                 if (ep) _apiSelectEndpoint(ep);
             });
         });
+
+        // Bootstrap DB list + context on first open
+        if (!_apiCtxReady) {
+            _apiLoadDatabases();
+            _apiLoadDbContext();
+        }
     }
 
     // ── Select endpoint ───────────────────────────────────────────────────────
@@ -2373,17 +2760,8 @@
             badge.className   = `adb-api-method-badge ${_apiBadgeClass(ep.method)}`;
         }
 
-        // URL display (with {db} resolved, other params yellow)
-        const db = _currentPath
-            ? (() => { const p = _currentPath.replace(/\\/g,'/').split('/').filter(Boolean); return p[p.length-1] || 'db'; })()
-            : (_currentDb || 'default');
-        const urlDisplay = _apiEl('adb-api-url-text');
-        if (urlDisplay) {
-            const html = (`${_API_V1}` + ep.path)
-                .replace(`{db}`, `<span class="adb-api-url-db">${db}</span>`)
-                .replace(/\{([^}]+)\}/g, '<span class="adb-api-url-param">{$1}</span>');
-            urlDisplay.innerHTML = html;
-        }
+        // URL display — resolved via _apiCurrentDb()
+        _apiUpdateUrlDisplay();
 
         // Endpoint description
         const descEl = _apiEl('adb-api-endpoint-desc');
@@ -2398,12 +2776,17 @@
             bodyEditor.style.opacity = hasBody ? '1' : '0.35';
         }
 
-        // Params pane
-        _apiRenderParams(ep);
+        // Params pane — context-aware smart controls
+        _apiRenderSmartParams(ep);
 
-        // Enable send button
+        // Enable send button — show "Preview" for destructive, "Send" for safe
         const sendBtn = _apiEl('adb-api-send-btn');
-        if (sendBtn) sendBtn.disabled = false;
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = _apiIsDestructive(ep)
+                ? '<i class="fas fa-shield-halved"></i> Preview'
+                : '<i class="fas fa-play"></i> Send';
+        }
 
         // Generate code for default lang
         _apiGenerateCode(_apiCurrentLang);
@@ -2468,10 +2851,8 @@
 
     function _apiUpdateUrlDisplay() {
         if (!_apiCurrentEp) return;
-        const ep = _apiCurrentEp;
-        const db = _currentPath
-            ? (() => { const p = _currentPath.replace(/\\/g,'/').split('/').filter(Boolean); return p[p.length-1] || 'db'; })()
-            : (_currentDb || 'default');
+        const ep  = _apiCurrentEp;
+        const db  = _apiCurrentDb();
         const urlDisplay = _apiEl('adb-api-url-text');
         if (!urlDisplay) return;
         let path = ep.path.replace('{db}', db);
@@ -2479,14 +2860,23 @@
             if (v) path = path.replace(`{${k}}`, v);
         }
         const html = (`${_API_V1}` + path)
-            .replace(`{db}`, `<span class="adb-api-url-db">${db}</span>`)
+            .replace(db, `<span class="adb-api-url-db">${db}</span>`)
             .replace(/\{([^}]+)\}/g, '<span class="adb-api-url-param">{$1}</span>');
         urlDisplay.innerHTML = html;
     }
 
+    // ── Destructive-method check ──────────────────────────────────────────────
+
+    const _DESTRUCTIVE = new Set(['PATCH', 'DELETE']);
+
+    /** True when the current endpoint modifies or removes database data. */
+    function _apiIsDestructive(ep) {
+        return _DESTRUCTIVE.has(ep?.method);
+    }
+
     // ── Send request ──────────────────────────────────────────────────────────
 
-    async function _apiSend() {
+    async function _apiSend(force = false) {
         if (!_apiCurrentEp) return;
         const ep = _apiCurrentEp;
 
@@ -2512,7 +2902,14 @@
             }
         }
 
-        // Send
+        // ── Dry-run guard for destructive methods ──
+        if (!force && _apiIsDestructive(ep)) {
+            _apiShowDryRun(ep, url, headers, body);
+            _apiGenerateCode(_apiCurrentLang);
+            return;
+        }
+
+        // Live send
         const sendBtn = _apiEl('adb-api-send-btn');
         if (sendBtn) { sendBtn.disabled = true; sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
 
@@ -2528,10 +2925,62 @@
             _apiLastRaw = JSON.stringify({ error: err.message });
             _apiShowResponse(0, ms, _apiLastRaw);
         } finally {
-            if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = '<i class="fas fa-play"></i> Send'; }
+            if (sendBtn) {
+                const label = _apiIsDestructive(ep)
+                    ? '<i class="fas fa-shield-halved"></i> Preview'
+                    : '<i class="fas fa-play"></i> Send';
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = label;
+            }
         }
 
         _apiGenerateCode(_apiCurrentLang);
+    }
+
+    // ── Dry-run preview ───────────────────────────────────────────────────────
+
+    function _apiShowDryRun(ep, url, headers, body) {
+        const statusEl = _apiEl('adb-api-res-status');
+        const timeEl   = _apiEl('adb-api-res-time');
+        const sizeEl   = _apiEl('adb-api-res-size');
+        const bodyEl   = _apiEl('adb-api-res-body');
+
+        if (statusEl) {
+            statusEl.textContent = '🛡 Dry Run';
+            statusEl.className   = 'adb-api-res-status dry';
+        }
+        if (timeEl) timeEl.textContent = '— ms';
+        if (sizeEl) sizeEl.textContent = '';
+
+        const methodLabel  = ep.method;
+        const isDelete     = ep.method === 'DELETE';
+        const actionVerb   = isDelete ? 'delete' : 'mutate';
+
+        // Build the dry-run body JSON to display
+        const preview = {
+            method:  ep.method,
+            url,
+            headers: { 'Content-Type': 'application/json', ...(headers.Authorization ? { Authorization: '***' } : {}) },
+            ...(body ? { body: JSON.parse(body) } : {}),
+        };
+
+        _apiLastRaw = JSON.stringify(preview, null, 2);
+
+        if (bodyEl) {
+            bodyEl.innerHTML = `
+                <div class="adb-api-dryrun-banner">
+                    <i class="fas fa-shield-halved"></i>
+                    <strong>Safe Mode — No changes were made.</strong>
+                    This is a ${methodLabel} request that would ${actionVerb} database data.<br>
+                    Review the request below, then click <strong>Execute</strong> to actually send it.
+                    <button class="adb-api-dryrun-execute" id="adb-api-dryrun-execute-btn">
+                        <i class="fas fa-bolt"></i> Execute Request
+                    </button>
+                </div>
+                <pre class="adb-api-dryrun-preview">${_apiHighlightJson(_apiLastRaw)}</pre>`;
+
+            _apiEl('adb-api-dryrun-execute-btn')?.addEventListener('click', () => _apiSend(true));
+        }
     }
 
     // ── Show response ─────────────────────────────────────────────────────────
@@ -2631,10 +3080,12 @@
         const listEl = _apiEl('adb-apikey-list');
         if (!listEl) return;
         try {
-            const res  = await fetch(`${_API_V1}/${_currentDb}/keys`);
+            const res  = await fetch(`${_API_V1}/${_apiCurrentDb()}/keys`);
             if (!res.ok) { listEl.innerHTML = '<div class="adb-empty-hint">—</div>'; return; }
             const data = await res.json();
             const keys = data?.data?.keys || [];
+            // Keep _apiDbKeys in sync for the {label} smart param picker
+            _apiDbKeys = keys.map(k => k.label).filter(Boolean);
             if (!keys.length) {
                 listEl.innerHTML = '<div class="adb-empty-hint" style="padding:0.4rem 0.5rem;font-size:0.75rem">No keys — open access</div>';
             } else {
@@ -2658,7 +3109,7 @@
     async function _apiGenerateKey() {
         const label = (_apiEl('adb-apikey-label-input')?.value?.trim()) || 'default';
         try {
-            const res  = await fetch(`${_API_V1}/${_currentDb}/keys`, {
+            const res  = await fetch(`${_API_V1}/${_apiCurrentDb()}/keys`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ label, scopes: ['read', 'write'] }),
@@ -2687,7 +3138,7 @@
     async function _apiRevokeKey(label) {
         if (!confirm(`Revoke key "${label}"? This cannot be undone.`)) return;
         try {
-            await fetch(`${_API_V1}/${_currentDb}/keys/${encodeURIComponent(label)}`, { method: 'DELETE' });
+            await fetch(`${_API_V1}/${_apiCurrentDb()}/keys/${encodeURIComponent(label)}`, { method: 'DELETE' });
             _apiLoadKeys();
             _toast(`Key "${label}" revoked.`, 'success');
         } catch (err) {
@@ -2710,7 +3161,7 @@
 
     function _apiWire() {
         // Send button
-        _apiEl('adb-api-send-btn')?.addEventListener('click', _apiSend);
+        _apiEl('adb-api-send-btn')?.addEventListener('click', () => _apiSend());
 
         // Request sub-tabs
         document.querySelectorAll('.adb-api-req-tab').forEach(btn => {
@@ -2758,6 +3209,29 @@
         // Auth input → regenerate code on change
         _apiEl('adb-api-auth-input')?.addEventListener('input', () => {
             _apiGenerateCode(_apiCurrentLang);
+        });
+
+        // ── DB selector bar ──
+        _apiEl('adb-api-db-select')?.addEventListener('change', e => {
+            _apiSetDb(e.target.value);
+        });
+
+        _apiEl('adb-api-db-refresh')?.addEventListener('click', () => {
+            _apiLoadDatabases();
+            _apiLoadDbContext();
+        });
+
+        // ── Entity picker ──
+        _apiEl('adb-api-picker-close')?.addEventListener('click', _apiPickerClose);
+
+        _apiEl('adb-api-picker-search')?.addEventListener('input', e => {
+            clearTimeout(_apiPickerTimer);
+            _apiPickerTimer = setTimeout(() => _apiPickerSearch(e.target.value), 280);
+        });
+
+        // Close picker on Escape
+        _apiEl('adb-api-picker-search')?.addEventListener('keydown', e => {
+            if (e.key === 'Escape') _apiPickerClose();
         });
     }
 

@@ -39,6 +39,9 @@ _SAFE_DB_RE = re.compile(r"^[a-zA-Z0-9_\-]{1,64}$")
 def _db_root(db: str = "default", path: Optional[str] = None) -> Path:
     """Return the root directory for a database."""
     if path:
+        # Register so the v1 API can find this path-based database by name
+        from .db_registry import register_path_db
+        register_path_db(path)
         return Path(path)
     if not _SAFE_DB_RE.match(db):
         raise HTTPException(400, f"Invalid database name {db!r}")

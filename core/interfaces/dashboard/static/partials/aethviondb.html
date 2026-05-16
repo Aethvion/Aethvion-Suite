@@ -555,6 +555,19 @@
             <!-- ── Main: request builder + response + code gen ── -->
             <div class="adb-api-main">
 
+                <!-- DB selector bar -->
+                <div class="adb-api-db-bar">
+                    <i class="fas fa-database adb-api-db-icon"></i>
+                    <span class="adb-api-db-label">Database:</span>
+                    <select id="adb-api-db-select" class="adb-api-db-select">
+                        <option value="">Loading…</option>
+                    </select>
+                    <span id="adb-api-db-stats" class="adb-api-db-stats"></span>
+                    <button id="adb-api-db-refresh" class="adb-btn adb-btn-ghost adb-btn-xs" title="Reload DB context">
+                        <i class="fas fa-rotate-right"></i>
+                    </button>
+                </div>
+
                 <!-- URL bar -->
                 <div class="adb-api-url-bar">
                     <span id="adb-api-method-badge" class="adb-api-method-badge">GET</span>
@@ -579,8 +592,23 @@
                         spellcheck="false"
                         placeholder="JSON body for POST / PATCH endpoints…"></textarea>
                 </div>
-                <div id="adb-api-pane-params" class="adb-api-req-pane hidden">
+                <div id="adb-api-pane-params" class="adb-api-req-pane hidden" style="position:relative">
                     <div id="adb-api-params-content" class="adb-api-params-content"></div>
+
+                    <!-- Entity picker overlay (anchored inside params pane) -->
+                    <div id="adb-api-picker" class="adb-api-picker hidden">
+                        <div class="adb-api-picker-hdr">
+                            <i class="fas fa-magnifying-glass" style="color:rgba(255,255,255,0.4)"></i>
+                            <input type="text" id="adb-api-picker-search" class="adb-api-picker-input"
+                                placeholder="Search entities by name…" autocomplete="off">
+                            <button id="adb-api-picker-close" class="adb-btn adb-btn-ghost adb-btn-xs">
+                                <i class="fas fa-xmark"></i>
+                            </button>
+                        </div>
+                        <div id="adb-api-picker-results" class="adb-api-picker-results">
+                            <div class="adb-empty-hint">Type to search…</div>
+                        </div>
+                    </div>
                 </div>
                 <div id="adb-api-pane-headers" class="adb-api-req-pane hidden">
                     <table class="adb-api-headers-table">
