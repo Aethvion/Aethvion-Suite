@@ -1888,41 +1888,64 @@
         }
         const FMT_LABEL = { jsonl:'JSONL', json:'JSON', markdown:'MD', txt:'TXT' };
         const FMT_CLS   = { jsonl:'adb-bake-fmt-jsonl', json:'adb-bake-fmt-json', markdown:'adb-bake-fmt-md', txt:'adb-bake-fmt-txt' };
+        const _OPENAI   = ['text-embedding-3-small','text-embedding-3-large','text-embedding-ada-002'];
+
         listEl.innerHTML = bakes.map(b => {
-            const fmtLabel = FMT_LABEL[b.format] || b.format || '?';
-            const fmtCls   = FMT_CLS[b.format] || '';
-            const dateStr  = b.baked_at ? _fmtDate(b.baked_at) : (b.started_at ? _fmtDate(b.started_at) : '—');
-            const running  = b.status === 'running';
-            const failed   = b.status === 'error';
-            const vecInfo  = b.include_vectors
-                ? (b.vector_models?.length ? `${b.vector_models.length} model${b.vector_models.length > 1 ? 's' : ''}` : 'all models')
-                : '';
+            const fmtLabel   = FMT_LABEL[b.format] || b.format || '?';
+            const fmtCls     = FMT_CLS[b.format] || '';
+            const dateStr    = b.baked_at ? _fmtDate(b.baked_at) : (b.started_at ? _fmtDate(b.started_at) : '—');
+            const running    = b.status === 'running';
+            const failed     = b.status === 'error';
+            const fileName   = b.output_file || '';
+
+            // Embeddings row — list each model with provider badge
+            let embeddingHtml = '';
+            if (b.include_vectors) {
+                const models = b.vector_models?.length ? b.vector_models : ['all embedded models'];
+                const chips  = models.map(m => {
+                    const isOpenAI = _OPENAI.includes(m);
+                    const provCls  = isOpenAI ? 'adb-vec-provider-openai' : (m === 'all embedded models' ? '' : 'adb-vec-provider-google');
+                    const provLbl  = isOpenAI ? 'OpenAI' : (m === 'all embedded models' ? '' : 'Google');
+                    return `<span class="adb-bake-emb-chip">
+                        <code>${m}</code>
+                        ${provLbl ? `<span class="adb-vec-provider-badge ${provCls}">${provLbl}</span>` : ''}
+                    </span>`;
+                }).join('');
+                embeddingHtml = `
+                <div class="adb-bake-item-embeddings">
+                    <span class="adb-bake-emb-label"><i class="fas fa-microchip"></i> Embeddings</span>
+                    <div class="adb-bake-emb-chips">${chips}</div>
+                </div>`;
+            }
+
             return `
             <div class="adb-bake-item ${running ? 'adb-bake-item-running' : ''} ${failed ? 'adb-bake-item-error' : ''}" data-name="${b.name}">
                 <div class="adb-bake-item-top">
                     <span class="adb-bake-item-name" title="${b.name}">${b.name}</span>
                     <span class="adb-bake-fmt-badge ${fmtCls}">${fmtLabel}</span>
                     ${running ? '<span class="adb-bake-badge adb-bake-badge-running">Running</span>' : ''}
-                    ${failed  ? '<span class="adb-bake-badge adb-bake-badge-error">Error</span>' : ''}
+                    ${failed  ? '<span class="adb-bake-badge adb-bake-badge-error">Error</span>'   : ''}
+                    ${!running && !failed ? `
+                    <div class="adb-bake-item-actions">
+                        <button class="adb-btn adb-btn-ghost adb-btn-xs adb-bake-dl-btn" data-name="${b.name}" title="Download ${fileName}">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="adb-btn adb-btn-ghost adb-btn-xs adb-bake-rename-btn" data-name="${b.name}" title="Rename">
+                            <i class="fas fa-pencil"></i>
+                        </button>
+                        <button class="adb-btn adb-btn-ghost adb-btn-xs adb-bake-del-btn" data-name="${b.name}" title="Delete" style="color:#f87171">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>` : ''}
                 </div>
                 <div class="adb-bake-item-meta">
                     ${b.entity_count != null ? `<span>${_fmtNum(b.entity_count)} entities</span>` : ''}
-                    ${b.size_fmt ? `<span>${b.size_fmt}</span>` : ''}
-                    ${vecInfo   ? `<span><i class="fas fa-microchip" style="font-size:0.7em"></i> ${vecInfo}</span>` : ''}
+                    ${b.size_fmt   ? `<span>${b.size_fmt}</span>` : ''}
+                    ${b.include_stubs === false ? `<span style="color:#f59e0b">no stubs</span>` : ''}
+                    ${fileName     ? `<span class="adb-bake-filename" title="${fileName}">${fileName}</span>` : ''}
                     <span>${dateStr}</span>
                 </div>
-                ${!running && !failed ? `
-                <div class="adb-bake-item-actions">
-                    <button class="adb-btn adb-btn-ghost adb-btn-xs adb-bake-dl-btn" data-name="${b.name}" title="Download">
-                        <i class="fas fa-download"></i>
-                    </button>
-                    <button class="adb-btn adb-btn-ghost adb-btn-xs adb-bake-rename-btn" data-name="${b.name}" title="Rename">
-                        <i class="fas fa-pencil"></i>
-                    </button>
-                    <button class="adb-btn adb-btn-ghost adb-btn-xs adb-bake-del-btn" data-name="${b.name}" title="Delete" style="color:#f87171">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>` : ''}
+                ${embeddingHtml}
             </div>`;
         }).join('');
 
@@ -1939,6 +1962,12 @@
         const a = document.createElement('a');
         a.href  = `${API}/bake/${encodeURIComponent(name)}/download?${_dbParam()}`;
         a.click();
+    }
+
+    async function _bakeOpenFolder() {
+        try {
+            await fetch(`${API}/bake/open-folder?${_dbParam()}`, { method: 'POST' });
+        } catch (e) { _toast(`Could not open folder: ${e.message}`, 'error'); }
     }
 
     async function _bakeDeleteItem(name) {
@@ -2086,8 +2115,9 @@
     }
 
     function _bakeWire() {
-        _el('adb-bake-btn')           ?.addEventListener('click', _bakeStart);
-        _el('adb-bake-refresh-list')  ?.addEventListener('click', _bakeLoadList);
+        _el('adb-bake-btn')              ?.addEventListener('click', _bakeStart);
+        _el('adb-bake-refresh-list')     ?.addEventListener('click', _bakeLoadList);
+        _el('adb-bake-open-folder-btn')  ?.addEventListener('click', _bakeOpenFolder);
         _el('adb-bake-vectors')?.addEventListener('change', e => {
             _bakeToggleVecFoldout(e.target.checked);
         });

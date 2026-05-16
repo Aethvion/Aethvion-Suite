@@ -898,6 +898,28 @@ async def get_bake_status(
     return {"status": "idle", "is_baking": False}
 
 
+@router.post("/bake/open-folder")
+async def open_bake_folder(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """Open the baked/ folder in the OS file manager."""
+    import subprocess, sys
+    from .baker import bake_dir
+    folder = bake_dir(_db_root(db, path))
+    folder.mkdir(parents=True, exist_ok=True)
+    try:
+        if sys.platform == "win32":
+            import os; os.startfile(str(folder))
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", str(folder)])
+        else:
+            subprocess.Popen(["xdg-open", str(folder)])
+        return {"opened": str(folder)}
+    except Exception as e:
+        raise HTTPException(500, f"Could not open folder: {e}")
+
+
 @router.get("/bake/list")
 async def list_bakes_endpoint(
     db:   str = Query("default"),

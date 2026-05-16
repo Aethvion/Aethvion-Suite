@@ -1788,7 +1788,72 @@
 .adb-bake-item-actions {
     display: flex;
     gap: 0.25rem;
-    margin-top: 0.15rem;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* ── Embeddings row ── */
+.adb-bake-item-embeddings {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid var(--border);
+    margin-top: 0.1rem;
+    flex-wrap: wrap;
+}
+
+.adb-bake-emb-label {
+    font-size: 0.67rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    white-space: nowrap;
+    padding-top: 0.15rem;
+    flex-shrink: 0;
+}
+
+.adb-bake-emb-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.adb-bake-emb-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.74rem;
+}
+
+.adb-bake-emb-chip code {
+    font-family: monospace;
+    font-size: 0.73rem;
+    color: var(--text-primary);
+}
+
+/* Filename in meta row */
+.adb-bake-filename {
+    font-family: monospace;
+    font-size: 0.71rem;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 160px;
+}
+
+/* Panel header flex with actions group */
+.adb-panel-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-left: auto;
 }
 
 .adb-bake-rename-input {

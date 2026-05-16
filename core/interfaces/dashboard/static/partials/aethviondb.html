@@ -302,9 +302,14 @@
                 <div class="adb-panel adb-bake-explorer-panel">
                     <div class="adb-panel-header">
                         <i class="fas fa-layer-group"></i> Baked Datasets
-                        <button id="adb-bake-refresh-list" class="adb-btn adb-btn-ghost adb-btn-xs" title="Refresh list">
-                            <i class="fas fa-rotate-right"></i>
-                        </button>
+                        <div class="adb-panel-header-actions">
+                            <button id="adb-bake-open-folder-btn" class="adb-btn adb-btn-ghost adb-btn-xs" title="Open baked/ folder in file manager">
+                                <i class="fas fa-folder-open"></i> Open folder
+                            </button>
+                            <button id="adb-bake-refresh-list" class="adb-btn adb-btn-ghost adb-btn-xs" title="Refresh list">
+                                <i class="fas fa-rotate-right"></i>
+                            </button>
+                        </div>
                     </div>
                     <div id="adb-bake-list" class="adb-bake-list">
                         <div class="adb-empty-hint">No bakes yet — run a bake to see it here.</div>
