@@ -114,7 +114,9 @@
         _el('adb-tab-pane-bake')    ?.classList.toggle('hidden', tab !== 'bake');
         _el('adb-tab-pane-explorer')?.classList.toggle('hidden', tab !== 'explorer');
         _el('adb-tab-pane-graph')   ?.classList.toggle('hidden', tab !== 'graph');
+        _el('adb-tab-pane-api')     ?.classList.toggle('hidden', tab !== 'api');
         if (tab === 'bake') _bakeLoadList();
+        if (tab === 'api')  { _apiRenderTree(); _apiLoadKeys(); }
         if (tab === 'graph') {
             _openGraph();
         } else {
@@ -2123,6 +2125,642 @@
         });
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    // API Explorer
+    // ══════════════════════════════════════════════════════════════════════════
+
+    const _API_V1 = '/api/v1';
+
+    // ── Endpoint definitions ──────────────────────────────────────────────────
+
+    const _EP = [
+        {
+            group: 'raw', label: 'Raw Database', icon: 'fa-database',
+            items: [
+                { id:'raw.entities.list',      method:'GET',    path:'/{db}/raw/entities',
+                  label:'List Entities',        desc:'Paginated list with optional status / type filters.',
+                  params:[{n:'status',v:'active',d:'active | stub | deleted | all'},{n:'type',v:'',d:'Filter by entity type'},{n:'limit',v:'50',d:'Max results (≤500)'},{n:'cursor',v:'',d:'Cursor from previous response'}],
+                  body: null },
+
+                { id:'raw.entities.get',        method:'GET',    path:'/{db}/raw/entities/{id}',
+                  label:'Get Entity',           desc:'Retrieve a single entity by ID.',
+                  pathParams:[{n:'id',v:''}],
+                  params:[{n:'sections',v:'',d:'Comma-separated: core,relations,vectors,timeline,properties'}],
+                  body: null },
+
+                { id:'raw.entities.upsert',     method:'POST',   path:'/{db}/raw/entities/upsert',
+                  label:'Upsert Entity',        desc:'Create or merge by name. Relations resolved automatically.',
+                  body:{ name:'Aetheron Prime', type:'character', source:'api',
+                         summary:'The first-born AI consciousness of the Aethvion galaxy.',
+                         aliases:['The Prime'], tags:['ai','protagonist'],
+                         properties:{ faction:'Aethvion Council' },
+                         relations:[{ kind:'allied_with', target_name:'Cipher Unit 7', note:'since the Fracture War' }] } },
+
+                { id:'raw.entities.batch',      method:'POST',   path:'/{db}/raw/entities/batch',
+                  label:'Batch Operations',     desc:'Multiple create / patch / delete in one call.',
+                  body:{ operations:[
+                    { op:'upsert', data:{ name:'Entity A', type:'character', summary:'...' } },
+                    { op:'upsert', data:{ name:'Entity B', type:'location',  summary:'...' } },
+                  ], atomic:false } },
+
+                { id:'raw.entities.patch',      method:'PATCH',  path:'/{db}/raw/entities/{id}',
+                  label:'Patch Entity',         desc:'Partial update using dot-path mutations.',
+                  pathParams:[{n:'id',v:''}],
+                  body:{ mutations:{ 'sections.core.summary':'Updated summary.', 'sections.core.tags':['updated'] } } },
+
+                { id:'raw.entities.delete',     method:'DELETE', path:'/{db}/raw/entities/{id}',
+                  label:'Delete Entity',        desc:'Soft-delete by default. Pass ?hard=true for permanent removal.',
+                  pathParams:[{n:'id',v:''}],
+                  params:[{n:'hard',v:'false',d:'true for permanent deletion'}],
+                  body: null },
+
+                { id:'raw.search',              method:'POST',   path:'/{db}/raw/search',
+                  label:'Hybrid Search',        desc:'Combine keyword, vector, and metadata modes with scoring.',
+                  body:{ query:'ancient AI consciousness allied with rebels',
+                         modes:['keyword','vector'], vector_model:'text-embedding-3-small',
+                         filters:{ type:'character', status:'active' }, limit:20, min_score:0.3 } },
+
+                { id:'raw.vectors.search',      method:'POST',   path:'/{db}/raw/vectors/search',
+                  label:'Vector Similarity',    desc:'ANN search — embed on server or supply your own vector.',
+                  body:{ query:'ancient AI consciousness', model:'text-embedding-3-small', top_k:10, filters:{} } },
+
+                { id:'raw.graph.traverse',      method:'POST',   path:'/{db}/raw/graph/traverse',
+                  label:'Graph Traverse',       desc:'BFS from a start node with depth, direction, and relation filters.',
+                  body:{ start_id:'', algorithm:'bfs', depth:2, direction:'outbound', relation_kinds:null, limit:100 } },
+
+                { id:'raw.graph.neighbors',     method:'GET',    path:'/{db}/raw/graph/neighbors/{id}',
+                  label:'Get Neighbors',        desc:"Entity's immediate inbound and outbound neighbors.",
+                  pathParams:[{n:'id',v:''}],
+                  params:[{n:'direction',v:'both',d:'outbound | inbound | both'}],
+                  body: null },
+
+                { id:'raw.graph.path',          method:'POST',   path:'/{db}/raw/graph/path',
+                  label:'Shortest Path',        desc:'BFS shortest path between two entities.',
+                  body:{ start_id:'', end_id:'', max_depth:6 } },
+
+                { id:'raw.distill',             method:'POST',   path:'/{db}/raw/distill',
+                  label:'Distill Text',         desc:'AI extracts structured entities from any text.',
+                  body:{ content:'The Aethvion Council is an ancient governing body…', source:'api', model:'auto' } },
+
+                { id:'raw.entities.relations',  method:'GET',    path:'/{db}/raw/entities/{id}/relations',
+                  label:'Entity Relations',     desc:'All relations with resolved target names.',
+                  pathParams:[{n:'id',v:''}], body: null },
+
+                { id:'raw.entities.vectors',    method:'GET',    path:'/{db}/raw/entities/{id}/vectors',
+                  label:'Entity Vectors',       desc:'Embedding metadata stored on an entity.',
+                  pathParams:[{n:'id',v:''}], body: null },
+
+                { id:'raw.entities.timeline',   method:'GET',    path:'/{db}/raw/entities/{id}/timeline',
+                  label:'Entity Timeline',      desc:'Timeline events for an entity.',
+                  pathParams:[{n:'id',v:''}], body: null },
+            ]
+        },
+        {
+            group: 'baked', label: 'Baked Snapshots', icon: 'fa-box-archive',
+            items: [
+                { id:'baked.list',              method:'GET',    path:'/{db}/baked',
+                  label:'List Snapshots',       desc:'All named bakes for this database, newest first.',
+                  body: null },
+
+                { id:'baked.trigger',           method:'POST',   path:'/{db}/baked',
+                  label:'Trigger Bake',         desc:'Start a new bake job in the background.',
+                  body:{ name:'my-snapshot', format:'jsonl', include_stubs:false, include_vectors:false, vector_models:[] } },
+
+                { id:'baked.get',               method:'GET',    path:'/{db}/baked/{name}',
+                  label:'Get Snapshot',         desc:'Metadata for a named bake.',
+                  pathParams:[{n:'name',v:'default'}], body: null },
+
+                { id:'baked.entities',          method:'GET',    path:'/{db}/baked/{name}/entities',
+                  label:'Snapshot Entities',    desc:'Paginated entities from a baked snapshot.',
+                  pathParams:[{n:'name',v:'default'}],
+                  params:[{n:'limit',v:'100',d:'Max results (≤500)'},{n:'cursor',v:'',d:'Pagination cursor'}],
+                  body: null },
+
+                { id:'baked.search',            method:'POST',   path:'/{db}/baked/{name}/search',
+                  label:'Search Snapshot',      desc:'Keyword search within a baked snapshot — no live DB required.',
+                  pathParams:[{n:'name',v:'default'}],
+                  body:{ query:'ancient AI', filters:{ type:'character' }, limit:20 } },
+
+                { id:'baked.delete',            method:'DELETE', path:'/{db}/baked/{name}',
+                  label:'Delete Snapshot',      desc:'Remove a named bake and its metadata.',
+                  pathParams:[{n:'name',v:'default'}], body: null },
+            ]
+        },
+        {
+            group: 'keys', label: 'API Keys', icon: 'fa-key',
+            items: [
+                { id:'keys.list',               method:'GET',    path:'/{db}/keys',
+                  label:'List Keys',            desc:'All API keys for this database (hashes not shown).',
+                  body: null },
+
+                { id:'keys.generate',           method:'POST',   path:'/{db}/keys',
+                  label:'Generate Key',         desc:'Generate a new API key. Shown once — copy immediately.',
+                  body:{ label:'my-key', scopes:['read','write'] } },
+
+                { id:'keys.revoke',             method:'DELETE', path:'/{db}/keys/{label}',
+                  label:'Revoke Key',           desc:'Permanently revoke a key by its label.',
+                  pathParams:[{n:'label',v:'my-key'}], body: null },
+            ]
+        },
+    ];
+
+    // ── State ─────────────────────────────────────────────────────────────────
+
+    let _apiCurrentEp   = null;   // selected endpoint definition
+    let _apiCurrentLang = 'python';
+    let _apiLastRaw     = '';     // last raw response text (for copy)
+    let _apiCodeRaw     = '';     // current code text (for copy)
+    let _apiParamValues = {};     // {paramName: value} for path + query params
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    function _apiEl(id) { return document.getElementById(id); }
+
+    function _apiBuildUrl(ep, pathValues, queryValues) {
+        let path = ep.path.replace('{db}', _currentPath
+            ? (() => { const p = _currentPath.replace(/\\/g,'/').split('/').filter(Boolean); return p[p.length-1] || 'db'; })()
+            : (_currentDb || 'default')
+        );
+        for (const [k, v] of Object.entries(pathValues || {})) {
+            if (v) path = path.replace(`{${k}}`, encodeURIComponent(v));
+        }
+        const qp = new URLSearchParams();
+        for (const [k, v] of Object.entries(queryValues || {})) {
+            if (v !== '' && v !== null && v !== undefined) qp.set(k, v);
+        }
+        const qs = qp.toString();
+        return `${_API_V1}${path}${qs ? '?' + qs : ''}`;
+    }
+
+    function _apiMethodClass(method) {
+        return { GET:'adb-api-m-get', POST:'adb-api-m-post', PATCH:'adb-api-m-patch', DELETE:'adb-api-m-delete' }[method] || 'adb-api-m-get';
+    }
+    function _apiBadgeClass(method) {
+        return { GET:'adb-api-m-get', POST:'adb-api-m-post', PATCH:'adb-api-m-patch', DELETE:'adb-api-m-delete' }[method] || 'adb-api-m-get';
+    }
+
+    function _apiHighlightJson(raw) {
+        return raw
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, m => {
+                let cls = 'adb-json-number';
+                if (/^"/.test(m)) cls = /:$/.test(m) ? 'adb-json-key' : 'adb-json-string';
+                else if (/true|false/.test(m)) cls = 'adb-json-bool';
+                else if (/null/.test(m)) cls = 'adb-json-null';
+                return `<span class="${cls}">${m}</span>`;
+            });
+    }
+
+    function _apiFmtBytes(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+        return (b/1024/1024).toFixed(1) + ' MB';
+    }
+
+    // ── Render endpoint tree ──────────────────────────────────────────────────
+
+    function _apiRenderTree() {
+        const treeEl = _apiEl('adb-api-tree');
+        if (!treeEl) return;
+        treeEl.innerHTML = _EP.map(group => `
+            <div class="adb-api-tree-group" data-group="${group.group}">
+                <div class="adb-api-tree-group-hdr">
+                    <i class="fas ${group.icon}"></i>
+                    ${group.label}
+                    <i class="fas fa-chevron-down adb-api-tree-group-chevron"></i>
+                </div>
+                <div class="adb-api-tree-items">
+                    ${group.items.map(ep => `
+                        <div class="adb-api-tree-item" data-ep-id="${ep.id}">
+                            <span class="adb-api-method-sm ${_apiMethodClass(ep.method)}">${ep.method}</span>
+                            <span>${ep.label}</span>
+                        </div>`).join('')}
+                </div>
+            </div>`).join('');
+
+        // Wire group collapse toggle
+        treeEl.querySelectorAll('.adb-api-tree-group-hdr').forEach(hdr => {
+            hdr.addEventListener('click', () => {
+                hdr.parentElement.classList.toggle('collapsed');
+            });
+        });
+
+        // Wire endpoint selection
+        treeEl.querySelectorAll('.adb-api-tree-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const epId = item.dataset.epId;
+                const ep   = _EP.flatMap(g => g.items).find(e => e.id === epId);
+                if (ep) _apiSelectEndpoint(ep);
+            });
+        });
+    }
+
+    // ── Select endpoint ───────────────────────────────────────────────────────
+
+    function _apiSelectEndpoint(ep) {
+        _apiCurrentEp    = ep;
+        _apiParamValues  = {};
+
+        // Mark active in tree
+        document.querySelectorAll('.adb-api-tree-item').forEach(el => {
+            el.classList.toggle('active', el.dataset.epId === ep.id);
+        });
+
+        // Method badge
+        const badge = _apiEl('adb-api-method-badge');
+        if (badge) {
+            badge.textContent = ep.method;
+            badge.className   = `adb-api-method-badge ${_apiBadgeClass(ep.method)}`;
+        }
+
+        // URL display (with {db} resolved, other params yellow)
+        const db = _currentPath
+            ? (() => { const p = _currentPath.replace(/\\/g,'/').split('/').filter(Boolean); return p[p.length-1] || 'db'; })()
+            : (_currentDb || 'default');
+        const urlDisplay = _apiEl('adb-api-url-text');
+        if (urlDisplay) {
+            const html = (`${_API_V1}` + ep.path)
+                .replace(`{db}`, `<span class="adb-api-url-db">${db}</span>`)
+                .replace(/\{([^}]+)\}/g, '<span class="adb-api-url-param">{$1}</span>');
+            urlDisplay.innerHTML = html;
+        }
+
+        // Endpoint description
+        const descEl = _apiEl('adb-api-endpoint-desc');
+        if (descEl) descEl.textContent = ep.desc || '';
+
+        // Body pane
+        const bodyEditor = _apiEl('adb-api-body-editor');
+        if (bodyEditor) {
+            const hasBody = ep.body !== null && ep.body !== undefined;
+            bodyEditor.value    = hasBody ? JSON.stringify(ep.body, null, 2) : '';
+            bodyEditor.disabled = !hasBody;
+            bodyEditor.style.opacity = hasBody ? '1' : '0.35';
+        }
+
+        // Params pane
+        _apiRenderParams(ep);
+
+        // Enable send button
+        const sendBtn = _apiEl('adb-api-send-btn');
+        if (sendBtn) sendBtn.disabled = false;
+
+        // Generate code for default lang
+        _apiGenerateCode(_apiCurrentLang);
+    }
+
+    // ── Render params tab ─────────────────────────────────────────────────────
+
+    function _apiRenderParams(ep) {
+        const cont = _apiEl('adb-api-params-content');
+        if (!cont) return;
+
+        const pathParams  = ep.pathParams  || [];
+        const queryParams = ep.params      || [];
+        let   html        = '';
+
+        if (pathParams.length) {
+            html += `<div class="adb-api-params-group-label">Path Parameters</div>
+            <table class="adb-api-params-table-inner">
+                <thead><tr><th>Name</th><th>Value</th><th>Description</th></tr></thead>
+                <tbody>
+                ${pathParams.map(p => `<tr>
+                    <td class="adb-api-param-name">{${p.n}}</td>
+                    <td><input class="adb-api-small-input adb-api-path-param" data-param="${p.n}"
+                        value="${p.v || ''}" placeholder="required" style="width:120px"></td>
+                    <td class="adb-api-param-desc">Path param</td>
+                </tr>`).join('')}
+                </tbody>
+            </table>`;
+        }
+
+        if (queryParams.length) {
+            html += `<div class="adb-api-params-group-label" style="margin-top:0.6rem">Query Parameters</div>
+            <table class="adb-api-params-table-inner">
+                <thead><tr><th>Name</th><th>Value</th><th>Description</th></tr></thead>
+                <tbody>
+                ${queryParams.map(p => `<tr>
+                    <td class="adb-api-param-name">${p.n}</td>
+                    <td><input class="adb-api-small-input adb-api-query-param" data-param="${p.n}"
+                        value="${p.v || ''}" placeholder="optional" style="width:120px"></td>
+                    <td class="adb-api-param-desc">${p.d || ''}</td>
+                </tr>`).join('')}
+                </tbody>
+            </table>`;
+        }
+
+        if (!pathParams.length && !queryParams.length) {
+            html = '<div class="adb-empty-hint" style="padding:0.75rem">No parameters for this endpoint.</div>';
+        }
+
+        cont.innerHTML = html;
+
+        // Wire param inputs
+        cont.querySelectorAll('.adb-api-path-param, .adb-api-query-param').forEach(input => {
+            input.addEventListener('input', () => {
+                _apiParamValues[input.dataset.param] = input.value;
+                _apiUpdateUrlDisplay();
+                _apiGenerateCode(_apiCurrentLang);
+            });
+            _apiParamValues[input.dataset.param] = input.value;
+        });
+    }
+
+    function _apiUpdateUrlDisplay() {
+        if (!_apiCurrentEp) return;
+        const ep = _apiCurrentEp;
+        const db = _currentPath
+            ? (() => { const p = _currentPath.replace(/\\/g,'/').split('/').filter(Boolean); return p[p.length-1] || 'db'; })()
+            : (_currentDb || 'default');
+        const urlDisplay = _apiEl('adb-api-url-text');
+        if (!urlDisplay) return;
+        let path = ep.path.replace('{db}', db);
+        for (const [k, v] of Object.entries(_apiParamValues)) {
+            if (v) path = path.replace(`{${k}}`, v);
+        }
+        const html = (`${_API_V1}` + path)
+            .replace(`{db}`, `<span class="adb-api-url-db">${db}</span>`)
+            .replace(/\{([^}]+)\}/g, '<span class="adb-api-url-param">{$1}</span>');
+        urlDisplay.innerHTML = html;
+    }
+
+    // ── Send request ──────────────────────────────────────────────────────────
+
+    async function _apiSend() {
+        if (!_apiCurrentEp) return;
+        const ep = _apiCurrentEp;
+
+        // Gather params
+        const pathValues  = {};
+        const queryValues = {};
+        document.querySelectorAll('.adb-api-path-param').forEach(i  => { pathValues[i.dataset.param]  = i.value; });
+        document.querySelectorAll('.adb-api-query-param').forEach(i => { queryValues[i.dataset.param] = i.value; });
+
+        const url = window.location.origin + _apiBuildUrl(ep, pathValues, queryValues);
+
+        // Auth header
+        const authVal = _apiEl('adb-api-auth-input')?.value?.trim() || '';
+        const headers = { 'Content-Type': 'application/json' };
+        if (authVal) headers['Authorization'] = authVal;
+
+        // Body
+        let body = undefined;
+        if (['POST','PATCH','PUT'].includes(ep.method)) {
+            const raw = _apiEl('adb-api-body-editor')?.value?.trim() || '';
+            if (raw) {
+                try { JSON.parse(raw); body = raw; } catch { _toast('Request body is not valid JSON.', 'error'); return; }
+            }
+        }
+
+        // Send
+        const sendBtn = _apiEl('adb-api-send-btn');
+        if (sendBtn) { sendBtn.disabled = true; sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+        const t0 = performance.now();
+        try {
+            const res = await fetch(url, { method: ep.method, headers, body });
+            const ms  = performance.now() - t0;
+            const txt = await res.text();
+            _apiLastRaw = txt;
+            _apiShowResponse(res.status, ms, txt);
+        } catch (err) {
+            const ms = performance.now() - t0;
+            _apiLastRaw = JSON.stringify({ error: err.message });
+            _apiShowResponse(0, ms, _apiLastRaw);
+        } finally {
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = '<i class="fas fa-play"></i> Send'; }
+        }
+
+        _apiGenerateCode(_apiCurrentLang);
+    }
+
+    // ── Show response ─────────────────────────────────────────────────────────
+
+    function _apiShowResponse(status, ms, rawText) {
+        const statusEl = _apiEl('adb-api-res-status');
+        const timeEl   = _apiEl('adb-api-res-time');
+        const sizeEl   = _apiEl('adb-api-res-size');
+        const bodyEl   = _apiEl('adb-api-res-body');
+
+        if (statusEl) {
+            const ok = status >= 200 && status < 300;
+            statusEl.textContent = status ? `● ${status}` : '● Error';
+            statusEl.className   = `adb-api-res-status ${ok ? 'ok' : 'err'}`;
+        }
+        if (timeEl)  timeEl.textContent  = `${ms.toFixed(0)} ms`;
+        if (sizeEl)  sizeEl.textContent  = _apiFmtBytes(new TextEncoder().encode(rawText).length);
+
+        if (bodyEl) {
+            try {
+                const parsed = JSON.parse(rawText);
+                const pretty = JSON.stringify(parsed, null, 2);
+                bodyEl.innerHTML = _apiHighlightJson(pretty);
+            } catch {
+                bodyEl.textContent = rawText;
+            }
+        }
+    }
+
+    // ── Code generator ────────────────────────────────────────────────────────
+
+    function _apiGenerateCode(lang) {
+        _apiCurrentLang = lang;
+        const out = _apiEl('adb-api-codegen-output');
+        if (!out || !_apiCurrentEp) return;
+
+        const ep = _apiCurrentEp;
+        const pathValues  = {};
+        const queryValues = {};
+        document.querySelectorAll('.adb-api-path-param').forEach(i  => { pathValues[i.dataset.param]  = i.value; });
+        document.querySelectorAll('.adb-api-query-param').forEach(i => { queryValues[i.dataset.param] = i.value; });
+
+        const url        = window.location.origin + _apiBuildUrl(ep, pathValues, queryValues);
+        const authVal    = _apiEl('adb-api-auth-input')?.value?.trim() || '';
+        const bodyRaw    = _apiEl('adb-api-body-editor')?.value?.trim() || '';
+        const hasBody    = ['POST','PATCH','PUT'].includes(ep.method) && bodyRaw;
+
+        let code = '';
+
+        if (lang === 'python') {
+            code  = `import requests\n\n`;
+            code += `url = "${url}"\n`;
+            code += `headers = {\n    "Content-Type": "application/json",\n`;
+            if (authVal) code += `    "Authorization": "${authVal}",\n`;
+            code += `}\n`;
+            if (hasBody) {
+                code += `body = ${bodyRaw}\n\n`;
+                code += `response = requests.${ep.method.toLowerCase()}(url, json=body, headers=headers)\n`;
+            } else {
+                code += `\nresponse = requests.${ep.method.toLowerCase()}(url, headers=headers)\n`;
+            }
+            code += `print(response.json())`;
+        }
+
+        else if (lang === 'javascript') {
+            code  = `const response = await fetch("${url}", {\n`;
+            code += `  method: "${ep.method}",\n`;
+            code += `  headers: {\n    "Content-Type": "application/json",\n`;
+            if (authVal) code += `    "Authorization": "${authVal}",\n`;
+            code += `  },\n`;
+            if (hasBody) code += `  body: JSON.stringify(${bodyRaw}),\n`;
+            code += `});\nconst data = await response.json();\nconsole.log(data);`;
+        }
+
+        else if (lang === 'curl') {
+            code  = `curl -X ${ep.method} "${url}" \\\n`;
+            code += `  -H "Content-Type: application/json"`;
+            if (authVal) code += ` \\\n  -H "Authorization: ${authVal}"`;
+            if (hasBody) {
+                const oneLine = bodyRaw.replace(/\n/g, ' ').replace(/  +/g, ' ');
+                code += ` \\\n  -d '${oneLine}'`;
+            }
+        }
+
+        _apiCodeRaw = code;
+        out.textContent = code;
+
+        // Sync tab active state
+        document.querySelectorAll('.adb-api-codegen-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.lang === lang);
+        });
+    }
+
+    // ── API Key management ────────────────────────────────────────────────────
+
+    async function _apiLoadKeys() {
+        const listEl = _apiEl('adb-apikey-list');
+        if (!listEl) return;
+        try {
+            const res  = await fetch(`${_API_V1}/${_currentDb}/keys`);
+            if (!res.ok) { listEl.innerHTML = '<div class="adb-empty-hint">—</div>'; return; }
+            const data = await res.json();
+            const keys = data?.data?.keys || [];
+            if (!keys.length) {
+                listEl.innerHTML = '<div class="adb-empty-hint" style="padding:0.4rem 0.5rem;font-size:0.75rem">No keys — open access</div>';
+            } else {
+                listEl.innerHTML = keys.map(k => `
+                    <div class="adb-apikey-item">
+                        <span class="adb-apikey-item-label" title="${k.created}">${k.label}</span>
+                        <span class="adb-apikey-item-scope">${(k.scopes||[]).join('+')}</span>
+                        <button class="adb-apikey-revoke-btn" data-label="${k.label}" title="Revoke">
+                            <i class="fas fa-xmark"></i>
+                        </button>
+                    </div>`).join('');
+                listEl.querySelectorAll('.adb-apikey-revoke-btn').forEach(btn => {
+                    btn.addEventListener('click', () => _apiRevokeKey(btn.dataset.label));
+                });
+            }
+        } catch {
+            listEl.innerHTML = '<div class="adb-empty-hint">—</div>';
+        }
+    }
+
+    async function _apiGenerateKey() {
+        const label = (_apiEl('adb-apikey-label-input')?.value?.trim()) || 'default';
+        try {
+            const res  = await fetch(`${_API_V1}/${_currentDb}/keys`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label, scopes: ['read', 'write'] }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.data?.key) throw new Error(data.error?.message || 'Generate failed');
+
+            const raw = data.data.key;
+
+            // Show reveal box
+            const reveal = _apiEl('adb-apikey-reveal');
+            const valEl  = _apiEl('adb-apikey-reveal-value');
+            if (valEl)  valEl.textContent = raw;
+            if (reveal) reveal.classList.remove('hidden');
+
+            // Hide form
+            _apiEl('adb-apikey-new-form')?.classList.add('hidden');
+            _apiEl('adb-apikey-label-input') && (_apiEl('adb-apikey-label-input').value = '');
+
+            _apiLoadKeys();
+        } catch (err) {
+            _toast(`Key generation failed: ${err.message}`, 'error');
+        }
+    }
+
+    async function _apiRevokeKey(label) {
+        if (!confirm(`Revoke key "${label}"? This cannot be undone.`)) return;
+        try {
+            await fetch(`${_API_V1}/${_currentDb}/keys/${encodeURIComponent(label)}`, { method: 'DELETE' });
+            _apiLoadKeys();
+            _toast(`Key "${label}" revoked.`, 'success');
+        } catch (err) {
+            _toast(`Revoke failed: ${err.message}`, 'error');
+        }
+    }
+
+    // ── Request sub-tab switching ─────────────────────────────────────────────
+
+    function _apiSwitchReqPane(pane) {
+        ['body','params','headers'].forEach(p => {
+            _apiEl(`adb-api-pane-${p}`)?.classList.toggle('hidden', p !== pane);
+        });
+        document.querySelectorAll('.adb-api-req-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.pane === pane);
+        });
+    }
+
+    // ── Wire ──────────────────────────────────────────────────────────────────
+
+    function _apiWire() {
+        // Send button
+        _apiEl('adb-api-send-btn')?.addEventListener('click', _apiSend);
+
+        // Request sub-tabs
+        document.querySelectorAll('.adb-api-req-tab').forEach(btn => {
+            btn.addEventListener('click', () => _apiSwitchReqPane(btn.dataset.pane));
+        });
+
+        // Code gen tabs
+        document.querySelectorAll('.adb-api-codegen-tab').forEach(btn => {
+            btn.addEventListener('click', () => _apiGenerateCode(btn.dataset.lang));
+        });
+
+        // Copy response
+        _apiEl('adb-api-res-copy-btn')?.addEventListener('click', () => {
+            if (_apiLastRaw) {
+                navigator.clipboard.writeText(_apiLastRaw).then(() => _toast('Response copied.', 'success'));
+            }
+        });
+
+        // Copy code
+        _apiEl('adb-api-code-copy-btn')?.addEventListener('click', () => {
+            if (_apiCodeRaw) {
+                navigator.clipboard.writeText(_apiCodeRaw).then(() => _toast('Code copied.', 'success'));
+            }
+        });
+
+        // API key new button — show form
+        _apiEl('adb-apikey-new-btn')?.addEventListener('click', () => {
+            _apiEl('adb-apikey-new-form')?.classList.toggle('hidden');
+            _apiEl('adb-apikey-reveal')?.classList.add('hidden');
+        });
+        _apiEl('adb-apikey-gen-btn')?.addEventListener('click', _apiGenerateKey);
+        _apiEl('adb-apikey-cancel-btn')?.addEventListener('click', () => {
+            _apiEl('adb-apikey-new-form')?.classList.add('hidden');
+        });
+        _apiEl('adb-apikey-reveal-copy')?.addEventListener('click', () => {
+            const val = _apiEl('adb-apikey-reveal-value')?.textContent;
+            if (val) navigator.clipboard.writeText(val).then(() => _toast('API key copied.', 'success'));
+        });
+
+        // Body editor → regenerate code on change
+        _apiEl('adb-api-body-editor')?.addEventListener('input', () => {
+            _apiGenerateCode(_apiCurrentLang);
+        });
+
+        // Auth input → regenerate code on change
+        _apiEl('adb-api-auth-input')?.addEventListener('input', () => {
+            _apiGenerateCode(_apiCurrentLang);
+        });
+    }
+
     // ── Wiring ────────────────────────────────────────────────────────────────
 
     function _wire() {
@@ -2218,6 +2856,7 @@
         _fdWire();
         _vecWire();
         _bakeWire();
+        _apiWire();
         _fetchModels();
         _loadCachedInfo();          // populate stats from AethvionDB.INFO instantly
         _fdCheckExistingJob();      // restore folder-distill progress view if a job exists

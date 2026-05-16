@@ -24,6 +24,9 @@
                 <button class="adb-nav-tab" data-tab="graph">
                     <i class="fas fa-diagram-project"></i> Graph
                 </button>
+                <button class="adb-nav-tab" data-tab="api">
+                    <i class="fas fa-plug"></i> API
+                </button>
             </nav>
 
             <div class="adb-header-actions">
@@ -503,6 +506,132 @@
         </div>
 
     </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         Tab — API Explorer
+         Interactive request builder, response viewer, code gen.
+    ══════════════════════════════════════════════════════ -->
+    <div id="adb-tab-pane-api" class="adb-tab-pane hidden">
+        <div class="adb-api-layout">
+
+            <!-- ── Sidebar: endpoint tree + key manager ── -->
+            <div class="adb-api-sidebar">
+                <div class="adb-api-sidebar-hdr">
+                    <span><i class="fas fa-plug"></i> Endpoints</span>
+                    <span class="adb-api-v-badge">v1</span>
+                </div>
+                <div class="adb-api-tree" id="adb-api-tree"></div>
+
+                <div class="adb-api-sidebar-divider"></div>
+
+                <div class="adb-api-sidebar-hdr">
+                    <span><i class="fas fa-key"></i> API Keys</span>
+                    <button id="adb-apikey-new-btn" class="adb-btn adb-btn-ghost adb-btn-xs" title="Generate new key">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <div id="adb-apikey-list" class="adb-apikey-list">
+                    <div class="adb-empty-hint">No keys — open access</div>
+                </div>
+                <div id="adb-apikey-new-form" class="adb-apikey-new-form hidden">
+                    <input type="text" id="adb-apikey-label-input" class="adb-api-small-input"
+                        placeholder="Key label (e.g. dev)" autocomplete="off">
+                    <div class="adb-apikey-form-btns">
+                        <button id="adb-apikey-gen-btn"    class="adb-btn adb-btn-accent adb-btn-sm">Generate</button>
+                        <button id="adb-apikey-cancel-btn" class="adb-btn adb-btn-ghost  adb-btn-sm">Cancel</button>
+                    </div>
+                </div>
+                <div id="adb-apikey-reveal" class="adb-apikey-reveal hidden">
+                    <div class="adb-apikey-reveal-warn">
+                        <i class="fas fa-triangle-exclamation"></i> Shown once — copy now
+                    </div>
+                    <code id="adb-apikey-reveal-value" class="adb-apikey-reveal-key"></code>
+                    <button id="adb-apikey-reveal-copy" class="adb-btn adb-btn-ghost adb-btn-xs">
+                        <i class="fas fa-copy"></i> Copy key
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── Main: request builder + response + code gen ── -->
+            <div class="adb-api-main">
+
+                <!-- URL bar -->
+                <div class="adb-api-url-bar">
+                    <span id="adb-api-method-badge" class="adb-api-method-badge">GET</span>
+                    <div class="adb-api-url-text" id="adb-api-url-text">Select an endpoint →</div>
+                    <button id="adb-api-send-btn" class="adb-primary-btn adb-api-send-btn" disabled>
+                        <i class="fas fa-play"></i> Send
+                    </button>
+                </div>
+
+                <!-- Request sub-tabs -->
+                <div class="adb-api-req-header">
+                    <div class="adb-api-req-tabs">
+                        <button class="adb-api-req-tab active" data-pane="body">Body</button>
+                        <button class="adb-api-req-tab"        data-pane="params">Params</button>
+                        <button class="adb-api-req-tab"        data-pane="headers">Headers</button>
+                    </div>
+                    <span class="adb-api-endpoint-desc" id="adb-api-endpoint-desc"></span>
+                </div>
+
+                <div id="adb-api-pane-body" class="adb-api-req-pane">
+                    <textarea id="adb-api-body-editor" class="adb-api-body-editor"
+                        spellcheck="false"
+                        placeholder="JSON body for POST / PATCH endpoints…"></textarea>
+                </div>
+                <div id="adb-api-pane-params" class="adb-api-req-pane hidden">
+                    <div id="adb-api-params-content" class="adb-api-params-content"></div>
+                </div>
+                <div id="adb-api-pane-headers" class="adb-api-req-pane hidden">
+                    <table class="adb-api-headers-table">
+                        <thead><tr><th>Header</th><th>Value</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td class="adb-api-hdr-key">Content-Type</td>
+                                <td class="adb-api-hdr-val">application/json</td>
+                            </tr>
+                            <tr>
+                                <td class="adb-api-hdr-key">Authorization</td>
+                                <td><input id="adb-api-auth-input" type="text"
+                                    class="adb-api-small-input" style="width:100%"
+                                    placeholder="Bearer adb_live_…" autocomplete="off"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Response area -->
+                <div class="adb-api-response-section">
+                    <div class="adb-api-res-bar">
+                        <span id="adb-api-res-status" class="adb-api-res-status">—</span>
+                        <span id="adb-api-res-time"   class="adb-api-res-time">—</span>
+                        <span id="adb-api-res-size"   class="adb-api-res-size">—</span>
+                        <button id="adb-api-res-copy-btn" class="adb-btn adb-btn-ghost adb-btn-xs"
+                            style="margin-left:auto" title="Copy raw response">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    <pre id="adb-api-res-body" class="adb-api-res-body">← Select an endpoint and click Send</pre>
+                </div>
+
+                <!-- Code generator -->
+                <div class="adb-api-codegen">
+                    <div class="adb-api-codegen-hdr">
+                        <div class="adb-api-codegen-tabs">
+                            <button class="adb-api-codegen-tab active" data-lang="python">Python</button>
+                            <button class="adb-api-codegen-tab" data-lang="javascript">JavaScript</button>
+                            <button class="adb-api-codegen-tab" data-lang="curl">cURL</button>
+                        </div>
+                        <button id="adb-api-code-copy-btn" class="adb-btn adb-btn-ghost adb-btn-xs">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    <pre id="adb-api-codegen-output" class="adb-api-codegen-output">← Select an endpoint to generate code</pre>
+                </div>
+
+            </div><!-- .adb-api-main -->
+        </div><!-- .adb-api-layout -->
+    </div><!-- #adb-tab-pane-api -->
 
     <!-- ── Database selector modal ── -->
     <div id="adb-db-modal" class="adb-modal-overlay hidden">
