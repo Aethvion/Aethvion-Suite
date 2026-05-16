@@ -4,12 +4,12 @@
  * mode-aethviondb.js
  *
  * Entity list is the primary view — auto-loaded on init.
- * Backend: /api/worldsim/ (unchanged).
+ * Backend: /api/aethviondb/
  * All DOM IDs use the adb- prefix to match partials/aethviondb.html.
  */
 
 (function () {
-    const API        = '/api/worldsim';
+    const API        = '/api/aethviondb';
     const BROWSE_API = '/api/agents/browse/native';
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -1678,6 +1678,14 @@
             badgeEl.className   = `adb-fd-badge ${STATUS_CLS[data.status] || ''}`;
         }
 
+        // Surface errors into the count label so they're not invisible
+        if (data.status === 'error' && data.error && countEl) {
+            countEl.textContent = `Error: ${data.error}`;
+            countEl.style.color = '#f87171';
+        } else if (countEl) {
+            countEl.style.color = '';
+        }
+
         const isRunning = data.is_vectorizing;
         if (cancelBtn)   cancelBtn.classList.toggle('hidden', !isRunning);
         if (generateBtn) {
@@ -1689,11 +1697,16 @@
     }
 
     async function _vecGenerate() {
-        const model        = _el('adb-vec-model')?.value || 'text-embedding-004';
-        const forceRewrite = _el('adb-vec-force')?.checked ?? false;
+        const model         = _el('adb-vec-model')?.value || 'text-embedding-004';
+        const forceRewrite  = _el('adb-vec-force')?.checked ?? false;
+        const includeStubs  = _el('adb-vec-stubs')?.checked ?? true;
         try {
             const res = await fetch(
-                `${API}/vectors/generate?${_dbParam({ model, force_rewrite: forceRewrite })}`,
+                `${API}/vectors/generate?${_dbParam({
+                    model,
+                    force_rewrite:  forceRewrite,
+                    include_stubs:  includeStubs,
+                })}`,
                 { method: 'POST' }
             );
             if (!res.ok) {

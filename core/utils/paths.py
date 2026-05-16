@@ -46,7 +46,13 @@ MODE_COMPANIONS   = COMPANIONS
 MODE_WORKSPACES   = MODES / "workspaces"
 MODE_SCHEDULE     = MODES / "schedule"
 MODE_WORLDSIM     = MODES / "worldsim"
-WORLDSIM          = MODE_WORLDSIM   # Root; databases live as subdirs inside here
+WORLDSIM          = MODE_WORLDSIM   # kept for WorldSim (separate product)
+
+# ── AethvionDB data root ──────────────────────────────────────────────────────
+# Physical directory is data/modes/worldsim/ for backward compatibility with
+# existing databases.  To migrate: move that folder to data/modes/aethviondb/
+# and change this constant to  MODES / "aethviondb".
+AETHVIONDB        = MODES / "worldsim"   # TODO: rename dir → aethviondb when ready
 
 # Legacy compatibility / Common aliases
 HISTORY     = MODES     # Generic history root

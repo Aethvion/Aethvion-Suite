@@ -1,6 +1,6 @@
 """
-core/worldsim/vectorizer.py
-════════════════════════════
+core/aethviondb/vectorizer.py
+══════════════════════════════
 Generate and store embedding vectors for AethvionDB entities.
 
 Uses the google-genai SDK (google-genai>=1.0.0), matching the rest of

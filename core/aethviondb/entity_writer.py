@@ -1,0 +1,288 @@
+"""
+core/aethviondb/entity_writer.py
+══════════════════════════════════
+Layer-1 entity file creator and updater for AethvionDB.
+
+Layer 1 files are the source of truth — they are append-only in spirit:
+  • Never delete or overwrite raw facts; always increment version.
+  • Never copy facts from another entity; reference by ID only.
+
+All mutations go through EntityWriter, which:
+  1. Consults the NameIndex before creating (prevents duplicates).
+  2. Validates the schema on write.
+  3. Writes atomically (temp-file + rename).
+  4. Keeps a reverse ID→path map for fast lookups.
+
+Storage layout
+--------------
+data/modes/worldsim/entities/
+    ws_<hex>.json    — one file per entity
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Optional
+
+from core.utils.paths import AETHVIONDB
+from core.utils.logger import get_logger
+
+_DEFAULT_ENTITIES_DIR = AETHVIONDB / "default" / "entities"
+from .entity_schema import make_empty, validate, _new_id, _now_iso
+from .name_index import NameIndex, get_index
+
+logger = get_logger(__name__)
+
+
+class EntityWriter:
+    """
+    Create, read, and update WorldSim Layer-1 entity files.
+
+    Parameters
+    ----------
+    entities_dir : Path, optional
+        Directory where entity JSON files live.
+        Defaults to data/modes/worldsim/entities/.
+    index : NameIndex, optional
+        The name→ID index to consult and update.
+        Defaults to the module-level singleton.
+    """
+
+    def __init__(
+        self,
+        entities_dir: Optional[Path] = None,
+        index: Optional[NameIndex] = None,
+    ) -> None:
+        self._dir = entities_dir or _DEFAULT_ENTITIES_DIR
+        self._dir.mkdir(parents=True, exist_ok=True)
+        self._index = index or get_index()
+
+    # ── Path helpers ───────────────────────────────────────────────────────────
+
+    def _path_for(self, entity_id: str) -> Path:
+        return self._dir / f"{entity_id}.json"
+
+    # ── Atomic write ──────────────────────────────────────────────────────────
+
+    def _write(self, entity: dict[str, Any]) -> None:
+        path = self._path_for(entity["id"])
+        tmp_fd, tmp_path = tempfile.mkstemp(dir=str(self._dir), suffix=".tmp")
+        try:
+            with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+                json.dump(entity, f, indent=2, ensure_ascii=False)
+            os.replace(tmp_path, str(path))
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+
+    # ── Public API ─────────────────────────────────────────────────────────────
+
+    def exists(self, entity_id: str) -> bool:
+        return self._path_for(entity_id).exists()
+
+    def get(self, entity_id: str) -> Optional[dict[str, Any]]:
+        """Load and return an entity by ID, or None if not found."""
+        path = self._path_for(entity_id)
+        if not path.exists():
+            return None
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception as e:
+            logger.error(f"[EntityWriter] Failed to read {path}: {e}")
+            return None
+
+    def get_by_name(self, name: str) -> Optional[dict[str, Any]]:
+        """Look up by name via the index, then load."""
+        eid = self._index.get(name)
+        if not eid:
+            return None
+        return self.get(eid)
+
+    def create(
+        self,
+        name: str,
+        entity_type: str = "other",
+        source: str = "manual",
+        sections_override: Optional[dict[str, Any]] = None,
+        extra_aliases: Optional[list[str]] = None,
+    ) -> tuple[dict[str, Any], bool]:
+        """
+        Create a new entity file (or return the existing one if already indexed).
+
+        Returns (entity_dict, was_created).
+        was_created=False means the entity already existed in the index.
+        """
+        # Check for existing
+        existing_id = self._index.get(name)
+        if existing_id and self.exists(existing_id):
+            logger.debug(f"[EntityWriter] '{name}' already exists as {existing_id}")
+            return self.get(existing_id), False  # type: ignore[return-value]
+
+        # Generate ID and register in index first
+        entity_id = _new_id()
+        self._index.register(name, entity_id)
+
+        entity = make_empty(name, entity_type, source, entity_id)
+
+        if sections_override:
+            for section_key, section_val in sections_override.items():
+                if section_key in entity["sections"]:
+                    if isinstance(entity["sections"][section_key], dict) and isinstance(section_val, dict):
+                        entity["sections"][section_key].update(section_val)
+                    else:
+                        entity["sections"][section_key] = section_val
+                else:
+                    entity["sections"][section_key] = section_val
+
+        # Register aliases
+        aliases = entity["sections"]["core"].get("aliases", [])
+        if extra_aliases:
+            aliases.extend(extra_aliases)
+        if aliases:
+            self._index.register_aliases(entity_id, aliases)
+
+        # Validate before writing
+        errors = validate(entity)
+        if errors:
+            logger.warning(f"[EntityWriter] Schema warnings for '{name}': {errors}")
+
+        self._write(entity)
+        logger.info(f"[EntityWriter] Created entity: {name!r} ({entity_id})")
+        return entity, True
+
+    def update(
+        self,
+        entity_id: str,
+        mutations: dict[str, Any],
+        merge_sections: bool = True,
+    ) -> dict[str, Any]:
+        """
+        Update an existing entity.
+
+        *mutations* is a partial entity dict. Top-level non-section keys
+        are overwritten directly. Section keys are deep-merged when
+        merge_sections=True (default), or replaced when False.
+
+        The version counter and updated timestamp are always incremented.
+
+        Returns the updated entity.
+        """
+        entity = self.get(entity_id)
+        if entity is None:
+            raise FileNotFoundError(f"Entity {entity_id!r} not found")
+
+        # Mutate top-level fields (except protected ones)
+        protected = {"id", "created", "version", "sections"}
+        for k, v in mutations.items():
+            if k not in protected:
+                entity[k] = v
+
+        # Merge or replace sections
+        incoming_sections = mutations.get("sections", {})
+        if incoming_sections:
+            if merge_sections:
+                for sec, val in incoming_sections.items():
+                    existing = entity["sections"].get(sec)
+                    if isinstance(existing, dict) and isinstance(val, dict):
+                        existing.update(val)
+                    elif isinstance(existing, list) and isinstance(val, list):
+                        # Append new items (dedup by json repr for simple cases)
+                        seen = {json.dumps(x, sort_keys=True) for x in existing}
+                        for item in val:
+                            key = json.dumps(item, sort_keys=True)
+                            if key not in seen:
+                                existing.append(item)
+                                seen.add(key)
+                    else:
+                        entity["sections"][sec] = val
+            else:
+                entity["sections"].update(incoming_sections)
+
+        # Bump metadata
+        entity["version"] = entity.get("version", 0) + 1
+        entity["updated"] = _now_iso()
+
+        errors = validate(entity)
+        if errors:
+            logger.warning(f"[EntityWriter] Schema warnings after update of {entity_id}: {errors}")
+
+        self._write(entity)
+
+        # Re-index any new aliases
+        aliases = entity["sections"]["core"].get("aliases", [])
+        if aliases:
+            self._index.register_aliases(entity_id, aliases)
+
+        logger.debug(f"[EntityWriter] Updated {entity_id} → v{entity['version']}")
+        return entity
+
+    def delete(self, entity_id: str, *, soft: bool = True) -> bool:
+        """
+        Mark an entity as deleted (soft) or remove its file (hard).
+        Hard deletion is irreversible — use with caution.
+        Returns True if the entity existed.
+        """
+        if not self.exists(entity_id):
+            return False
+        if soft:
+            entity = self.get(entity_id)
+            entity["status"] = "deleted"    # type: ignore[index]
+            entity["updated"] = _now_iso()  # type: ignore[index]
+            self._write(entity)             # type: ignore[arg-type]
+            logger.info(f"[EntityWriter] Soft-deleted {entity_id}")
+        else:
+            self._path_for(entity_id).unlink(missing_ok=True)
+            logger.info(f"[EntityWriter] Hard-deleted {entity_id}")
+        return True
+
+    # ── Bulk operations ───────────────────────────────────────────────────────
+
+    def list_all(self, include_deleted: bool = False) -> list[dict[str, Any]]:
+        """Return all entities. Expensive — use for admin/stats only."""
+        results = []
+        for path in sorted(self._dir.glob("ws_*.json")):
+            try:
+                entity = json.loads(path.read_text(encoding="utf-8"))
+                if include_deleted or entity.get("status") != "deleted":
+                    results.append(entity)
+            except Exception as e:
+                logger.warning(f"[EntityWriter] Could not read {path}: {e}")
+        return results
+
+    def count(self, include_deleted: bool = False) -> int:
+        if include_deleted:
+            return sum(1 for _ in self._dir.glob("ws_*.json"))
+        return sum(
+            1 for p in self._dir.glob("ws_*.json")
+            if json.loads(p.read_text(encoding="utf-8")).get("status") != "deleted"
+        )
+
+    def list_stubs(self) -> list[dict[str, Any]]:
+        """Return all active stub entities (status='stub')."""
+        return [e for e in self.list_all() if e.get("status") == "stub"]
+
+    def get_stub_names_for(self, entity_id: str) -> list[str]:
+        """Return the stub names from an entity's sections.stubs, minus already-indexed ones."""
+        entity = self.get(entity_id)
+        if not entity:
+            return []
+        stubs = entity["sections"].get("stubs", [])
+        # Filter out stubs already in the index
+        return [s for s in stubs if not self._index.get(s)]
+
+    def search_by_type(self, entity_type: str) -> list[dict[str, Any]]:
+        return [e for e in self.list_all() if e.get("type") == entity_type]
+
+    def search_by_tag(self, tag: str) -> list[dict[str, Any]]:
+        tag_lower = tag.lower()
+        return [
+            e for e in self.list_all()
+            if any(t.lower() == tag_lower for t in e["sections"]["core"].get("tags", []))
+        ]

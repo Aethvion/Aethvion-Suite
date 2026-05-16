@@ -1,14 +1,14 @@
 """
-core/worldsim/worldsim_routes.py
-═════════════════════════════════
-FastAPI routes for the WorldSim dashboard tab.
+core/aethviondb/aethviondb_routes.py
+══════════════════════════════════════
+FastAPI routes for the AethvionDB dashboard tab.
 
-Prefix: /api/worldsim
+Prefix: /api/aethviondb
 
 Multiple databases
 ------------------
 Every endpoint accepts ?db=<name> (default: "default").
-Named databases live at  WORLDSIM/<name>/
+Named databases live at  AETHVIONDB/<name>/
 Use ?path=<absolute_path> to point at an arbitrary location instead.
 """
 
@@ -26,10 +26,10 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from core.utils.logger import get_logger
-from core.utils.paths import WORLDSIM
+from core.utils.paths import AETHVIONDB
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/worldsim", tags=["worldsim"])
+router = APIRouter(prefix="/api/aethviondb", tags=["aethviondb"])
 
 _SAFE_DB_RE = re.compile(r"^[a-zA-Z0-9_\-]{1,64}$")
 
@@ -42,7 +42,7 @@ def _db_root(db: str = "default", path: Optional[str] = None) -> Path:
         return Path(path)
     if not _SAFE_DB_RE.match(db):
         raise HTTPException(400, f"Invalid database name {db!r}")
-    return WORLDSIM / db
+    return AETHVIONDB / db
 
 
 def _get_writer(db: str = "default", path: Optional[str] = None):
@@ -121,7 +121,7 @@ class UpdateEntityRequest(BaseModel):
 
 class CreateDatabaseRequest(BaseModel):
     name: str
-    path: Optional[str] = None   # Custom filesystem path; if omitted uses WORLDSIM/<name>
+    path: Optional[str] = None   # Custom filesystem path; if omitted uses AETHVIONDB/<name>
 
 
 # ── Database management ───────────────────────────────────────────────────────
@@ -129,9 +129,9 @@ class CreateDatabaseRequest(BaseModel):
 @router.get("/databases")
 async def list_databases():
     """List all named databases stored in the default WorldSim root."""
-    WORLDSIM.mkdir(parents=True, exist_ok=True)
+    AETHVIONDB.mkdir(parents=True, exist_ok=True)
     dbs = []
-    for d in sorted(WORLDSIM.iterdir()):
+    for d in sorted(AETHVIONDB.iterdir()):
         if d.is_dir() and (d / "entities").exists():
             entity_count = sum(1 for _ in (d / "entities").glob("ws_*.json"))
             dbs.append({"name": d.name, "path": str(d), "entity_count": entity_count})
@@ -143,7 +143,7 @@ async def create_database(req: CreateDatabaseRequest):
     """Create a new database (named or at a custom path)."""
     if not _SAFE_DB_RE.match(req.name):
         raise HTTPException(400, f"Invalid database name {req.name!r}")
-    root = Path(req.path) if req.path else WORLDSIM / req.name
+    root = Path(req.path) if req.path else AETHVIONDB / req.name
     if (root / "entities").exists():
         raise HTTPException(409, f"Database '{req.name}' already exists at {root}")
     _ensure_db(root)
@@ -167,7 +167,7 @@ async def delete_database(name: str, confirm: bool = Query(False)):
     """Delete a named database. Requires ?confirm=true."""
     if not confirm:
         raise HTTPException(400, "Pass ?confirm=true to delete a database.")
-    root = WORLDSIM / name
+    root = AETHVIONDB / name
     if not root.exists():
         raise HTTPException(404, f"Database '{name}' not found")
     shutil.rmtree(root)
