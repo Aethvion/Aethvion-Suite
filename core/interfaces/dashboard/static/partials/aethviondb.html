@@ -192,8 +192,15 @@
                 <div class="adb-field">
                     <label>Embedding model</label>
                     <select id="adb-vec-model">
-                        <option value="text-embedding-004">text-embedding-004 (Gemini)</option>
-                        <option value="embedding-001">embedding-001 (Gemini)</option>
+                        <optgroup label="OpenAI">
+                            <option value="text-embedding-3-small" selected>text-embedding-3-small — fast, efficient</option>
+                            <option value="text-embedding-3-large">text-embedding-3-large — highest quality</option>
+                            <option value="text-embedding-ada-002">text-embedding-ada-002 — legacy</option>
+                        </optgroup>
+                        <optgroup label="Google Gemini">
+                            <option value="text-embedding-004">text-embedding-004</option>
+                            <option value="embedding-001">embedding-001 — legacy</option>
+                        </optgroup>
                     </select>
                 </div>
                 <label class="adb-checkbox-row">

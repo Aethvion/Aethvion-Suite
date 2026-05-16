@@ -1665,11 +1665,12 @@
 
         const total      = data.total      || 0;
         const vectorized = data.vectorized || 0;
+        const skipped    = data.skipped    || 0;
+        const failedCnt  = data.failed     || 0;
         const pct        = total > 0 ? Math.round(vectorized / total * 100) : 0;
 
-        if (countEl) countEl.textContent = `${_fmtNum(vectorized)} / ${_fmtNum(total)} entities`;
-        if (fillEl)  fillEl.style.width  = `${pct}%`;
-        if (pctEl)   pctEl.textContent   = `${pct}%`;
+        if (fillEl)  fillEl.style.width = `${pct}%`;
+        if (pctEl)   pctEl.textContent  = `${pct}%`;
 
         const STATUS_LABEL = { running:'Running', done:'Done', error:'Error', cancelled:'Cancelled' };
         const STATUS_CLS   = { running:'adb-fd-badge-running', done:'adb-fd-badge-done', error:'adb-fd-badge-error', cancelled:'adb-fd-badge-paused' };
@@ -1678,12 +1679,25 @@
             badgeEl.className   = `adb-fd-badge ${STATUS_CLS[data.status] || ''}`;
         }
 
-        // Surface errors into the count label so they're not invisible
-        if (data.status === 'error' && data.error && countEl) {
-            countEl.textContent = `Error: ${data.error}`;
-            countEl.style.color = '#f87171';
-        } else if (countEl) {
-            countEl.style.color = '';
+        // Build the count label — surface errors prominently
+        if (countEl) {
+            const errorMsg = data.error || data.last_error || null;
+            if ((data.status === 'error' || (data.status === 'done' && vectorized === 0 && failedCnt > 0)) && errorMsg) {
+                // Trim long SDK error messages to a readable length
+                const short = errorMsg.length > 120 ? errorMsg.slice(0, 120) + '…' : errorMsg;
+                countEl.textContent = `Error: ${short}`;
+                countEl.style.color = '#f87171';
+                if (badgeEl) badgeEl.className = 'adb-fd-badge adb-fd-badge-error';
+            } else if (data.status === 'done') {
+                const parts = [`${_fmtNum(vectorized)} / ${_fmtNum(total)} embedded`];
+                if (skipped  > 0) parts.push(`${_fmtNum(skipped)} skipped`);
+                if (failedCnt > 0) parts.push(`${_fmtNum(failedCnt)} failed`);
+                countEl.textContent = parts.join(' · ');
+                countEl.style.color = failedCnt > 0 ? '#fbbf24' : '';
+            } else {
+                countEl.textContent = `${_fmtNum(vectorized)} / ${_fmtNum(total)} entities`;
+                countEl.style.color = '';
+            }
         }
 
         const isRunning = data.is_vectorizing;

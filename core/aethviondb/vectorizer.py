@@ -3,15 +3,16 @@ core/aethviondb/vectorizer.py
 ══════════════════════════════
 Generate and store embedding vectors for AethvionDB entities.
 
-Uses the google-genai SDK (google-genai>=1.0.0), matching the rest of
-Aethvion Suite.  API key is read from the GOOGLE_AI_API_KEY env var.
+Supported providers:
+  • Google  — GOOGLE_AI_API_KEY  (google-genai SDK)
+  • OpenAI  — OPENAI_API_KEY     (openai SDK)
 
 Vectors are stored inside the entity sections:
   entity["sections"]["vectors"] = {
-      "text-embedding-004": {
+      "text-embedding-3-small": {
           "embedding":    [...floats...],
-          "model":        "text-embedding-004",
-          "dimensions":   768,
+          "model":        "text-embedding-3-small",
+          "dimensions":   1536,
           "generated_at": "ISO-8601",
           "input":        "first 300 chars of what was embedded"
       }
@@ -44,15 +45,32 @@ _vec_tasks: dict[str, asyncio.Task] = {}   # str(db_root) → Task
 # ── Embedding model registry ───────────────────────────────────────────────────
 
 EMBEDDING_MODELS: dict[str, dict] = {
+    # OpenAI
+    "text-embedding-3-small": {
+        "provider":    "openai",
+        "dimensions":  1536,
+        "description": "OpenAI text-embedding-3-small — fast, efficient (recommended)",
+    },
+    "text-embedding-3-large": {
+        "provider":    "openai",
+        "dimensions":  3072,
+        "description": "OpenAI text-embedding-3-large — highest quality",
+    },
+    "text-embedding-ada-002": {
+        "provider":    "openai",
+        "dimensions":  1536,
+        "description": "OpenAI text-embedding-ada-002 — legacy",
+    },
+    # Google
     "text-embedding-004": {
-        "provider":   "google",
-        "dimensions": 768,
-        "description": "Gemini text-embedding-004 — best quality (recommended)",
+        "provider":    "google",
+        "dimensions":  768,
+        "description": "Gemini text-embedding-004",
     },
     "embedding-001": {
-        "provider":   "google",
-        "dimensions": 768,
-        "description": "Gemini embedding-001 — legacy model",
+        "provider":    "google",
+        "dimensions":  768,
+        "description": "Gemini embedding-001 — legacy",
     },
 }
 
@@ -121,39 +139,77 @@ def _entity_to_text(entity: dict) -> str:
     return " ".join(parts)
 
 
-# ── Google client ──────────────────────────────────────────────────────────────
+# ── Provider clients ───────────────────────────────────────────────────────────
 
 def _make_google_client():
     """
-    Create a google-genai Client using the GOOGLE_AI_API_KEY env var.
-    Raises RuntimeError if the key is missing so the caller can surface a
-    clear message rather than a cryptic SDK exception.
+    Create a google-genai Client (google-genai>=1.0.0).
+    Uses GOOGLE_AI_API_KEY env var.
     """
     from google import genai  # google-genai>=1.0.0
 
     api_key = os.getenv("GOOGLE_AI_API_KEY", "")
     if not api_key:
         raise RuntimeError(
-            "GOOGLE_AI_API_KEY environment variable is not set. "
-            "Add it to your .env file to use vector embeddings."
+            "GOOGLE_AI_API_KEY is not set. Add it to your .env file."
         )
-    return genai.Client(api_key=api_key)
+    return genai.Client(api_key=api_key, http_options={"api_version": "v1"})
+
+
+def _make_openai_client():
+    """
+    Create an OpenAI client.
+    Uses OPENAI_API_KEY env var.
+    """
+    try:
+        from openai import OpenAI
+    except ImportError:
+        raise RuntimeError(
+            "openai package is not installed. Run: pip install openai"
+        )
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    if not api_key:
+        raise RuntimeError(
+            "OPENAI_API_KEY is not set. Add it to your .env file."
+        )
+    return OpenAI(api_key=api_key)
 
 
 # ── Embedding ──────────────────────────────────────────────────────────────────
 
 async def _embed_google(text: str, model: str) -> list[float]:
-    """
-    Async wrapper: calls google-genai embed_content in a thread pool so the
-    event loop is not blocked.  Returns the embedding as a list of floats.
-    """
     def _sync_embed() -> list[float]:
         client = _make_google_client()
         result = client.models.embed_content(model=model, contents=text)
-        # result.embeddings is a list of ContentEmbedding; take the first entry
+        if not result or not result.embeddings:
+            raise RuntimeError(f"Empty embedding response from model {model!r}")
         return list(result.embeddings[0].values)
-
     return await asyncio.to_thread(_sync_embed)
+
+
+async def _embed_openai(text: str, model: str) -> list[float]:
+    def _sync_embed() -> list[float]:
+        client = _make_openai_client()
+        response = client.embeddings.create(model=model, input=text)
+        return response.data[0].embedding
+    return await asyncio.to_thread(_sync_embed)
+
+
+async def _embed(text: str, model: str) -> list[float]:
+    """Route to the correct provider based on EMBEDDING_MODELS registry."""
+    provider = EMBEDDING_MODELS.get(model, {}).get("provider", "google")
+    if provider == "openai":
+        return await _embed_openai(text, model)
+    return await _embed_google(text, model)
+
+
+def _preflight_check(model: str) -> None:
+    """Verify the provider client can be constructed. Raises on failure."""
+    provider = EMBEDDING_MODELS.get(model, {}).get("provider", "google")
+    if provider == "openai":
+        _make_openai_client()
+    else:
+        _make_google_client()
 
 
 # ── Background vectorization task ──────────────────────────────────────────────
@@ -188,11 +244,26 @@ async def vectorize_all(
         "started_at": now_iso(),
     })
 
-    vectorized = 0
-    skipped    = 0
-    failed:    list[str] = []
+    vectorized  = 0
+    skipped     = 0
+    failed:     list[str] = []
+    first_error: str | None = None
 
     try:
+        # ── Preflight: verify the embedding client works before touching any entity ──
+        try:
+            _preflight_check(model)
+        except Exception as preflight_exc:
+            err_msg = str(preflight_exc)
+            logger.error(f"[Vectorizer] Preflight failed: {err_msg}")
+            write_vec_info(db_root, {
+                "status":     "error",
+                "error":      err_msg,
+                "model":      model,
+                "started_at": now_iso(),
+            })
+            return
+
         entities = writer.list_all(include_deleted=False)
 
         # Filter out stubs if requested
@@ -225,7 +296,7 @@ async def vectorize_all(
                     skipped += 1
                 else:
                     text       = _entity_to_text(entity)
-                    embedding  = await _embed_google(text, model)
+                    embedding  = await _embed(text, model)
                     dimensions = EMBEDDING_MODELS.get(model, {}).get("dimensions", len(embedding))
                     vec_entry  = {
                         "embedding":    embedding,
@@ -242,8 +313,11 @@ async def vectorize_all(
                     vectorized += 1
 
             except Exception as exc:
-                logger.warning(f"[Vectorizer] Failed to embed entity {entity_id!r}: {exc}")
+                err_str = str(exc)
+                logger.warning(f"[Vectorizer] Failed to embed entity {entity_id!r}: {err_str}")
                 failed.append(entity_id)
+                if first_error is None:
+                    first_error = err_str
 
             # Checkpoint every 5 entities
             if (idx + 1) % 5 == 0:
@@ -255,12 +329,16 @@ async def vectorize_all(
                     "vectorized":    vectorized,
                     "skipped":       skipped,
                     "failed":        len(failed),
+                    "last_error":    first_error,
                     "started_at":    now_iso(),
                 })
 
         # Final status
+        final_status = "done" if vectorized > 0 or skipped > 0 else (
+            "error" if failed else "done"
+        )
         write_vec_info(db_root, {
-            "status":        "done",
+            "status":        final_status,
             "model":         model,
             "include_stubs": include_stubs,
             "total":         total,
@@ -268,6 +346,7 @@ async def vectorize_all(
             "skipped":       skipped,
             "failed":        len(failed),
             "failed_ids":    failed,
+            "last_error":    first_error,
             "completed_at":  now_iso(),
         })
         logger.info(
