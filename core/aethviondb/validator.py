@@ -286,6 +286,25 @@ def _check_containment_cycle(
     return issues
 
 
+def _check_stub_status_mismatch(entity: dict[str, Any]) -> list[Issue]:
+    """
+    Entity is marked 'stub' but already has a non-empty summary —
+    status was never promoted to 'active' after content was written.
+    """
+    issues: list[Issue] = []
+    if entity.get("status") != "stub":
+        return issues
+    summary = entity["sections"]["core"].get("summary", "")
+    if summary:
+        issues.append(Issue(
+            Severity.WARNING, "status_mismatch",
+            "Entity is marked 'stub' but has a non-empty summary — "
+            "status should be promoted to 'active'",
+            entity["id"], "status",
+        ))
+    return issues
+
+
 def _check_type_consistency(entity: dict[str, Any]) -> list[Issue]:
     """Type-specific required property checks."""
     issues: list[Issue] = []
@@ -365,6 +384,7 @@ class Validator:
 
         result = ValidationResult(entity_id=entity_id)
 
+        result.issues.extend(_check_stub_status_mismatch(entity))
         result.issues.extend(_check_temporal(entity))
         result.issues.extend(_check_lifespan(entity))
         result.issues.extend(_check_self_reference(entity))
@@ -390,15 +410,29 @@ class Validator:
 
     def summary(self) -> dict[str, Any]:
         """Return aggregate statistics for all entities."""
-        results = self.validate_all()
+        entities = self._writer.list_all()
+        results: list[ValidationResult] = []
+        stub_mismatches: list[dict[str, str]] = []
+
+        for entity in entities:
+            r = self.validate(entity["id"])
+            results.append(r)
+            # Collect status-mismatch entities with their human-readable name
+            if entity.get("status") == "stub" and entity["sections"]["core"].get("summary"):
+                stub_mismatches.append({
+                    "id":   entity["id"],
+                    "name": entity.get("name", entity["id"]),
+                })
+
         total_errors   = sum(len(r.errors)   for r in results)
         total_warnings = sum(len(r.warnings) for r in results)
         failed = [r.entity_id for r in results if not r.ok]
         return {
-            "total_entities": len(results),
-            "clean":          sum(1 for r in results if r.ok),
-            "with_errors":    len(failed),
-            "total_errors":   total_errors,
-            "total_warnings": total_warnings,
-            "failed_ids":     failed,
+            "total_entities":  len(results),
+            "clean":           sum(1 for r in results if r.ok),
+            "with_errors":     len(failed),
+            "total_errors":    total_errors,
+            "total_warnings":  total_warnings,
+            "failed_ids":      failed,
+            "stub_mismatches": stub_mismatches,   # fixable via /validate/fix-status-mismatches
         }

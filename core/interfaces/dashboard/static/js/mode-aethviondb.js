@@ -23,6 +23,8 @@
     const _PAGE_SIZE         = 100;
     let _currentTab          = 'explorer'; // 'explorer' | 'graph'
     let _selectedIds         = new Set(); // entity IDs checked in the list view
+    let _sortCol             = null;      // null | 'type'|'name'|'tags'|'rel'|'sub'|'status'
+    let _sortDir             = 'asc';    // 'asc' | 'desc'
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -367,22 +369,11 @@
                 return;
             }
 
-            listEl.innerHTML = _renderTable(entities);
-            _wireTableCheckboxes(entities);
-            listEl.querySelectorAll('.adb-tr').forEach(row => {
-                row.addEventListener('click', e => {
-                    if (e.target.closest('.adb-td-check')) return; // let checkbox handle it
-                    _loadEntity(row.dataset.id);
-                });
-                row.addEventListener('keydown', ev => {
-                    if (ev.key === 'Enter') { _loadEntity(row.dataset.id); return; }
-                    if (ev.key === ' ') {
-                        ev.preventDefault();
-                        const chk = row.querySelector('.adb-row-check');
-                        if (chk) { chk.checked = !chk.checked; chk.dispatchEvent(new Event('change')); }
-                    }
-                });
-            });
+            const sorted = _sortEntities(entities);
+            listEl.innerHTML = _renderTable(sorted);
+            _wireTableCheckboxes(sorted);
+            _wireTableSort(entities, listEl);
+            _wireTableRows(listEl);
 
             _renderPagination(total, page);
         } catch (err) {
@@ -459,7 +450,95 @@
         </tr>`;
     }
 
+    /** Return a sorted copy of entities based on current _sortCol / _sortDir. */
+    function _sortEntities(entities) {
+        if (!_sortCol) return entities;
+        const dir = _sortDir === 'asc' ? 1 : -1;
+        return [...entities].sort((a, b) => {
+            switch (_sortCol) {
+                case 'type': {
+                    const av = (a.type || 'other').toLowerCase();
+                    const bv = (b.type || 'other').toLowerCase();
+                    return dir * av.localeCompare(bv);
+                }
+                case 'name': {
+                    const av = (a.name || a.id || '').toLowerCase();
+                    const bv = (b.name || b.id || '').toLowerCase();
+                    return dir * av.localeCompare(bv);
+                }
+                case 'tags': {
+                    const at = a.tags || a.sections?.core?.tags || [];
+                    const bt = b.tags || b.sections?.core?.tags || [];
+                    if (at.length !== bt.length) return dir * (at.length - bt.length);
+                    return dir * (at[0] || '').toLowerCase().localeCompare((bt[0] || '').toLowerCase());
+                }
+                case 'rel': {
+                    const av = a.relations_count ?? a.sections?.relations?.length ?? -1;
+                    const bv = b.relations_count ?? b.sections?.relations?.length ?? -1;
+                    return dir * (av - bv);
+                }
+                case 'sub': {
+                    const av = a.stubs_count ?? a.sections?.stubs?.length ?? -1;
+                    const bv = b.stubs_count ?? b.sections?.stubs?.length ?? -1;
+                    return dir * (av - bv);
+                }
+                case 'status': {
+                    const av = a.status === 'stub' ? 0 : 1;
+                    const bv = b.status === 'stub' ? 0 : 1;
+                    return dir * (av - bv);
+                }
+                default: return 0;
+            }
+        });
+    }
+
+    /** Wire sort-click events on `.adb-th-sort` headers.
+     *  originalEntities = raw server response (never re-sorted in place).
+     *  listEl           = the container whose innerHTML we replace on sort change. */
+    function _wireTableSort(originalEntities, listEl) {
+        listEl.querySelectorAll('.adb-th-sort[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.sort;
+                if (_sortCol === col) {
+                    _sortDir = _sortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    _sortCol = col;
+                    _sortDir = 'asc';
+                }
+                const sorted = _sortEntities(originalEntities);
+                listEl.innerHTML = _renderTable(sorted);
+                _wireTableCheckboxes(sorted);
+                _wireTableSort(originalEntities, listEl); // keep original ref
+                _wireTableRows(listEl);
+            });
+        });
+    }
+
+    /** Wire row click / keyboard navigation after every table render. */
+    function _wireTableRows(listEl) {
+        listEl.querySelectorAll('.adb-tr').forEach(row => {
+            row.addEventListener('click', e => {
+                if (e.target.closest('.adb-td-check')) return;
+                _loadEntity(row.dataset.id);
+            });
+            row.addEventListener('keydown', ev => {
+                if (ev.key === 'Enter') { _loadEntity(row.dataset.id); return; }
+                if (ev.key === ' ') {
+                    ev.preventDefault();
+                    const chk = row.querySelector('.adb-row-check');
+                    if (chk) { chk.checked = !chk.checked; chk.dispatchEvent(new Event('change')); }
+                }
+            });
+        });
+    }
+
     function _renderTable(entities) {
+        const _si = col => {
+            if (_sortCol !== col) return `<span class="adb-sort-icon adb-sort-inactive"><i class="fas fa-sort"></i></span>`;
+            const icon = _sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down';
+            return `<span class="adb-sort-icon"><i class="fas ${icon}"></i></span>`;
+        };
+        const _thCls = col => `adb-th-sort${_sortCol === col ? ' adb-sort-active' : ''}`;
         return `<table class="adb-table">
             <colgroup>
                 <col class="adb-col-check">
@@ -475,12 +554,12 @@
                     <th class="adb-col-check adb-th-check">
                         <input type="checkbox" id="adb-select-all" class="adb-row-check" title="Select all on this page">
                     </th>
-                    <th class="adb-col-type">Type</th>
-                    <th>Name / Summary</th>
-                    <th class="adb-col-tags">Tags</th>
-                    <th class="adb-col-rel" title="Number of relations">Rel.</th>
-                    <th class="adb-col-stubs" title="Number of sub-topics">Sub.</th>
-                    <th class="adb-col-status">Status</th>
+                    <th class="adb-col-type ${_thCls('type')}" data-sort="type">Type${_si('type')}</th>
+                    <th class="${_thCls('name')}" data-sort="name">Name / Summary${_si('name')}</th>
+                    <th class="adb-col-tags ${_thCls('tags')}" data-sort="tags">Tags${_si('tags')}</th>
+                    <th class="adb-col-rel ${_thCls('rel')}" data-sort="rel" title="Number of relations">Rel.${_si('rel')}</th>
+                    <th class="adb-col-stubs ${_thCls('sub')}" data-sort="sub" title="Number of sub-topics">Sub.${_si('sub')}</th>
+                    <th class="adb-col-status ${_thCls('status')}" data-sort="status">Status${_si('status')}</th>
                 </tr>
             </thead>
             <tbody>
@@ -741,22 +820,11 @@
                 return;
             }
 
-            listEl.innerHTML = _renderTable(results);
-            _wireTableCheckboxes(results);
-            listEl.querySelectorAll('.adb-tr').forEach(row => {
-                row.addEventListener('click', e => {
-                    if (e.target.closest('.adb-td-check')) return;
-                    _loadEntity(row.dataset.id);
-                });
-                row.addEventListener('keydown', ev => {
-                    if (ev.key === 'Enter') { _loadEntity(row.dataset.id); return; }
-                    if (ev.key === ' ') {
-                        ev.preventDefault();
-                        const chk = row.querySelector('.adb-row-check');
-                        if (chk) { chk.checked = !chk.checked; chk.dispatchEvent(new Event('change')); }
-                    }
-                });
-            });
+            const sorted = _sortEntities(results);
+            listEl.innerHTML = _renderTable(sorted);
+            _wireTableCheckboxes(sorted);
+            _wireTableSort(results, listEl);
+            _wireTableRows(listEl);
             // Show result count in pagination bar (no prev/next for search)
             const pagEl = _el('adb-entity-pagination');
             if (pagEl) {
@@ -1212,8 +1280,17 @@
             const data = await res.json();
             _showValidation();
 
+            const mismatches = data.stub_mismatches || [];
+            const failed     = data.failed_ids      || [];
+
+            // ── Summary chips ────────────────────────────────────────────────
             const sumEl = _el('adb-val-summary');
             if (sumEl) {
+                const mmChip = mismatches.length
+                    ? `<span class="adb-val-chip adb-val-chip-warn">
+                           <i class="fas fa-tag"></i> ${mismatches.length} status mismatch${mismatches.length !== 1 ? 'es' : ''}
+                       </span>`
+                    : '';
                 sumEl.innerHTML = `
                     <div class="adb-val-chips">
                         <span class="adb-val-chip adb-val-chip-ok">
@@ -1225,25 +1302,90 @@
                         <span class="adb-val-chip">
                             <i class="fas fa-triangle-exclamation"></i> ${data.total_warnings ?? 0} warnings
                         </span>
+                        ${mmChip}
                     </div>`;
             }
 
+            // ── Issues pane ──────────────────────────────────────────────────
             const issueEl = _el('adb-val-issues');
-            if (issueEl) {
-                const failed = data.failed_ids || [];
-                if (!failed.length) {
-                    issueEl.innerHTML = '<div class="adb-empty-hint"><i class="fas fa-check-circle"></i> All entities passed checks.</div>';
-                } else {
-                    issueEl.innerHTML = failed.map(id =>
-                        `<div class="adb-val-item" data-id="${id}" role="button" tabindex="0">
-                            <i class="fas fa-exclamation-triangle"></i> <code>${id}</code>
-                        </div>`).join('');
-                    issueEl.querySelectorAll('.adb-val-item[data-id]').forEach(item => {
-                        item.addEventListener('click', () => _loadEntity(item.dataset.id));
-                        item.addEventListener('keydown', e => { if (e.key === 'Enter') _loadEntity(item.dataset.id); });
-                    });
-                }
+            if (!issueEl) return;
+
+            if (!mismatches.length && !failed.length) {
+                issueEl.innerHTML = '<div class="adb-empty-hint"><i class="fas fa-check-circle"></i> All entities passed checks.</div>';
+                return;
             }
+
+            let html = '';
+
+            // Status-mismatch group with Fix All button
+            if (mismatches.length) {
+                html += `
+                <div class="adb-val-mm-group">
+                    <div class="adb-val-mm-header">
+                        <div class="adb-val-mm-title">
+                            <i class="fas fa-tag"></i>
+                            Status Mismatches
+                            <span class="adb-val-mm-badge">${mismatches.length}</span>
+                        </div>
+                        <button id="adb-val-fix-btn" class="adb-btn adb-btn-accent adb-btn-sm">
+                            <i class="fas fa-wand-sparkles"></i> Fix All
+                        </button>
+                    </div>
+                    <p class="adb-val-mm-desc">
+                        These entities have a summary but are still marked as <code>stub</code>.
+                        Their status should be <code>active</code>.
+                    </p>
+                    <div class="adb-val-mm-list">
+                        ${mismatches.map(m => `
+                            <div class="adb-val-mm-item" data-id="${m.id}" role="button" tabindex="0">
+                                <i class="fas fa-circle-dot adb-val-mm-dot"></i>
+                                <span class="adb-val-mm-name">${m.name}</span>
+                                <code class="adb-val-mm-id">${m.id}</code>
+                            </div>`).join('')}
+                    </div>
+                </div>`;
+            }
+
+            // Regular integrity issues
+            if (failed.length) {
+                if (mismatches.length) html += '<div class="adb-val-section-sep"></div>';
+                html += `<div class="adb-val-section-label">Integrity Issues</div>`;
+                html += failed.map(id =>
+                    `<div class="adb-val-item" data-id="${id}" role="button" tabindex="0">
+                        <i class="fas fa-exclamation-triangle"></i> <code>${id}</code>
+                    </div>`).join('');
+            }
+
+            issueEl.innerHTML = html;
+
+            // Wire mismatch item clicks → open entity
+            issueEl.querySelectorAll('.adb-val-mm-item[data-id]').forEach(item => {
+                item.addEventListener('click', () => _loadEntity(item.dataset.id));
+                item.addEventListener('keydown', e => { if (e.key === 'Enter') _loadEntity(item.dataset.id); });
+            });
+
+            // Wire regular issue clicks → open entity
+            issueEl.querySelectorAll('.adb-val-item[data-id]').forEach(item => {
+                item.addEventListener('click', () => _loadEntity(item.dataset.id));
+                item.addEventListener('keydown', e => { if (e.key === 'Enter') _loadEntity(item.dataset.id); });
+            });
+
+            // Fix All button — promotes all mismatched entities, then re-runs validation
+            _el('adb-val-fix-btn')?.addEventListener('click', async () => {
+                const btn = _el('adb-val-fix-btn');
+                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Fixing…'; }
+                try {
+                    const fixRes  = await fetch(`${API}/validate/fix-status-mismatches?${_dbParam()}`, { method: 'POST' });
+                    const fixData = await fixRes.json();
+                    const n = fixData.fixed ?? 0;
+                    _toast(`Promoted ${n} ${n === 1 ? 'entity' : 'entities'} to active`, 'success');
+                    await _validateAll(); // refresh the view
+                } catch {
+                    _toast('Fix failed', 'error');
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Fix All'; }
+                }
+            });
+
         } catch (e) {
             _toast(`Validation failed: ${e.message}`, 'error');
         } finally { _hideBusy(); }

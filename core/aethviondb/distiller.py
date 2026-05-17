@@ -258,7 +258,7 @@ class ContentDistiller:
         if existing_id and self._writer.exists(existing_id):
             entity = self._writer.update(
                 existing_id,
-                {"type": entity_type, "source": source, "sections": sections},
+                {"type": entity_type, "status": "active", "source": source, "sections": sections},
                 merge_sections=True,
             )
             was_created = False

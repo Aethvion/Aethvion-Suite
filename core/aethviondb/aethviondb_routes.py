@@ -92,7 +92,7 @@ def _write_db_info(root: Path, data: dict) -> None:
             encoding="utf-8",
         )
     except Exception as exc:
-        logger.warning(f"[WorldSim] Could not write {_INFO_FILE}: {exc}")
+        logger.warning(f"[AethvionDB] Could not write {_INFO_FILE}: {exc}")
 
 
 # ── Request schemas ───────────────────────────────────────────────────────────
@@ -131,7 +131,7 @@ class CreateDatabaseRequest(BaseModel):
 
 @router.get("/databases")
 async def list_databases():
-    """List all named databases stored in the default WorldSim root."""
+    """List all named databases stored in the default AethvionDB root."""
     AETHVIONDB.mkdir(parents=True, exist_ok=True)
     dbs = []
     for d in sorted(AETHVIONDB.iterdir()):
@@ -523,6 +523,25 @@ async def validate_all(
 ):
     summary = await asyncio.to_thread(_get_validator(db, path).summary)
     return summary
+
+
+@router.post("/validate/fix-status-mismatches")
+async def fix_status_mismatches(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """
+    Promote every entity that is marked 'stub' but already has a non-empty
+    summary to 'active'.  Returns the list of fixed entity IDs.
+    """
+    writer = _get_writer(db, path)
+    fixed: list[dict[str, str]] = []
+    for entity in writer.list_all():
+        if entity.get("status") == "stub" and entity["sections"]["core"].get("summary"):
+            writer.update(entity["id"], {"status": "active"})
+            fixed.append({"id": entity["id"], "name": entity.get("name", entity["id"])})
+    logger.info(f"[AethvionDB] fix-status-mismatches: promoted {len(fixed)} entities to active")
+    return {"fixed": len(fixed), "entities": fixed}
 
 
 @router.get("/validate/{entity_id}")

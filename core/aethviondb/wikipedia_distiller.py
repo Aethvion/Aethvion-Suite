@@ -308,7 +308,7 @@ class WikipediaDistiller:
 
         if not was_created:
             # Race condition: another caller created it between our check and create
-            entity = self._writer.update(entity["id"], {"sections": sections})
+            entity = self._writer.update(entity["id"], {"status": "active", "sections": sections})
 
         result["entity_id"]   = entity["id"]
         result["entity_name"] = entity["name"]

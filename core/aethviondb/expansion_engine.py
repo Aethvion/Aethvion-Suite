@@ -195,7 +195,11 @@ class ExpansionEngine:
             result["error"] = f"Entity {entity_id!r} not found"
             return result
 
-        if entity.get("status") == "active" and entity["sections"]["core"].get("summary"):
+        if entity["sections"]["core"].get("summary"):
+            # Entity already has content — skip re-expansion.
+            # Self-heal: promote status to "active" if it was incorrectly left as "stub".
+            if entity.get("status") != "active":
+                self._writer.update(entity_id, {"status": "active"})
             result["success"] = True
             result["error"]   = "already_active"
             return result

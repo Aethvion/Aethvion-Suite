@@ -1169,9 +1169,90 @@
     border: 1px solid var(--border);
     color: var(--text-secondary);
 }
-.adb-val-chip-ok  { background: rgba(34,197,94,0.08);  border-color: rgba(34,197,94,0.25);  color: #4ade80; }
-.adb-val-chip-err { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.25);  color: #f87171; }
+.adb-val-chip-ok   { background: rgba(34,197,94,0.08);  border-color: rgba(34,197,94,0.25);  color: #4ade80; }
+.adb-val-chip-err  { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.25);  color: #f87171; }
+.adb-val-chip-warn { background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.25); color: #fbbf24; }
 .adb-val-issues { display: flex; flex-direction: column; gap: 0.25rem; overflow-y: auto; flex: 1; padding: 0 1rem 1rem; }
+
+/* ── Status-mismatch fix group ── */
+.adb-val-mm-group {
+    background: rgba(251,191,36,0.05);
+    border: 1px solid rgba(251,191,36,0.22);
+    border-radius: 9px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+.adb-val-mm-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 0.9rem;
+    border-bottom: 1px solid rgba(251,191,36,0.15);
+    gap: 0.75rem;
+}
+.adb-val-mm-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #fbbf24;
+}
+.adb-val-mm-badge {
+    background: rgba(251,191,36,0.18);
+    border: 1px solid rgba(251,191,36,0.3);
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.05rem 0.45rem;
+    color: #fbbf24;
+}
+.adb-val-mm-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin: 0;
+    padding: 0.5rem 0.9rem 0;
+    line-height: 1.5;
+}
+.adb-val-mm-desc code {
+    font-family: monospace;
+    font-size: 0.78rem;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    padding: 0.05rem 0.3rem;
+}
+.adb-val-mm-list {
+    padding: 0.5rem 0.9rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.adb-val-mm-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s;
+    font-size: 0.82rem;
+}
+.adb-val-mm-item:hover { background: rgba(251,191,36,0.08); }
+.adb-val-mm-dot { color: rgba(251,191,36,0.5); font-size: 0.55rem; flex-shrink: 0; }
+.adb-val-mm-name { color: var(--text-primary); font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adb-val-mm-id { font-family: monospace; font-size: 0.72rem; color: var(--text-muted); flex-shrink: 0; }
+
+/* Section separator + label */
+.adb-val-section-sep { height: 0.5rem; }
+.adb-val-section-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    padding: 0.25rem 0.1rem 0.4rem;
+}
+
 .adb-val-item {
     display: flex;
     align-items: center;
@@ -2799,4 +2880,35 @@
     line-height: 1.55;
     white-space: pre-wrap;
     word-break: break-all;
+}
+
+/* ── Sortable column headers ────────────────────────────── */
+.adb-th-sort {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: color 0.12s, background 0.12s;
+}
+.adb-th-sort:hover {
+    background: rgba(34, 211, 238, 0.06);
+}
+.adb-th-sort.adb-sort-active {
+    color: #22d3ee;
+}
+.adb-sort-icon {
+    margin-left: 0.25rem;
+    font-size: 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+    transition: opacity 0.12s;
+}
+.adb-sort-inactive {
+    opacity: 0.22;
+}
+/* keep icon visible on hover even when inactive */
+.adb-th-sort:hover .adb-sort-inactive {
+    opacity: 0.55;
 }

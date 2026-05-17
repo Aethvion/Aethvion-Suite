@@ -539,16 +539,29 @@ function _renderRecentTable(entries, filter = '') {
         return;
     }
 
+    // Human-readable display names for internal source identifiers
+    const SOURCE_LABELS = {
+        'worldsim':  'AethvionDB',
+        'chat':      'Chat',
+        'agents':    'Agents',
+        'code_ide':  'Code IDE',
+        'explained': 'Explained',
+        'companions':'Companions',
+        'lyra':      'Lyra',
+        'axiom':     'Axiom',
+    };
+
     tbody.innerHTML = rows.slice(0, 100).map(e => {
-        const dt      = new Date(e.timestamp);
-        const time    = dt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-        const prov    = e.provider || 'unknown';
-        const src     = e.source   || 'chat';
-        const total   = (e.input_cost || 0) + (e.output_cost || 0);
-        const approx  = e.tokens_estimated ? '<span class="approx" title="Estimated">~</span>' : '';
+        const dt       = new Date(e.timestamp);
+        const time     = dt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+        const prov     = e.provider || 'unknown';
+        const src      = e.source   || 'chat';
+        const srcLabel = SOURCE_LABELS[src] || src;
+        const total    = (e.input_cost || 0) + (e.output_cost || 0);
+        const approx   = e.tokens_estimated ? '<span class="approx" title="Estimated">~</span>' : '';
         return `<tr>
             <td class="mono-sm">${time}</td>
-            <td><span class="source-badge ${src}">${src}</span></td>
+            <td><span class="source-badge ${src}">${srcLabel}</span></td>
             <td><span class="provider-badge ${prov}">${prov}</span></td>
             <td class="mono-sm text-muted model-cell" title="${e.model || ''}">${e.model || '?'}</td>
             <td>${formatNumber(e.prompt_tokens     || 0)}${approx}</td>
