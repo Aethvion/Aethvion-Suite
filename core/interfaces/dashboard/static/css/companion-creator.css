@@ -272,3 +272,179 @@
 }
 .cc-import-dialog textarea:focus { outline: none; border-color: var(--accent, #6366f1); }
 .cc-import-actions { display: flex; justify-content: flex-end; }
+
+/* ═══════════════════════════════════════════════
+   Advanced / collapsible sections
+   ═══════════════════════════════════════════════ */
+
+.cc-sections {
+    margin-top: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.cc-adv-section {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.cc-adv-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.9rem;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    gap: 0.5rem;
+    user-select: none;
+    transition: background 0.15s;
+    background: var(--bg-secondary);
+}
+.cc-adv-toggle:hover { background: var(--bg-tertiary); }
+.cc-adv-toggle > span { display: flex; align-items: center; gap: 0.5rem; }
+.cc-adv-toggle i:first-child { color: var(--accent, #6366f1); width: 14px; text-align: center; flex-shrink: 0; }
+.cc-adv-chevron { margin-left: auto; transition: transform 0.2s; font-size: 0.75rem; }
+.cc-adv-section.open > .cc-adv-toggle .cc-adv-chevron { transform: rotate(180deg); }
+
+.cc-adv-body {
+    display: none;
+    padding: 1rem;
+    border-top: 1px solid var(--border);
+    background: var(--bg-primary, rgba(0,0,0,0.15));
+}
+.cc-adv-section.open > .cc-adv-body { display: block; }
+
+.cc-adv-badge {
+    font-size: 0.68rem;
+    font-weight: 500;
+    padding: 0.1rem 0.4rem;
+    background: rgba(99,102,241,0.12);
+    color: #818cf8;
+    border-radius: 4px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+/* ── Range inputs ── */
+.cc-range {
+    width: 100%;
+    accent-color: var(--accent, #6366f1);
+    cursor: pointer;
+    height: 4px;
+    margin-top: 0.15rem;
+}
+.cc-range-val {
+    font-family: monospace;
+    font-size: 0.78rem;
+    color: var(--accent, #6366f1);
+    font-weight: 600;
+}
+.cc-range-hint {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 0.1rem;
+}
+
+/* ── Capability toggles ── */
+.cc-caps-grid {
+    display: flex;
+    flex-direction: column;
+}
+.cc-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer;
+    gap: 1rem;
+}
+.cc-toggle-row:last-child { border-bottom: none; }
+.cc-cap-label {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    line-height: 1.3;
+}
+.cc-cap-desc {
+    font-size: 0.73rem;
+    color: var(--text-muted);
+    margin-top: 0.1rem;
+}
+.cc-toggle-wrap {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+}
+.cc-toggle-input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+    pointer-events: none;
+}
+.cc-toggle-thumb {
+    position: absolute;
+    inset: 0;
+    background: var(--bg-tertiary, rgba(255,255,255,0.08));
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    transition: background 0.2s, border-color 0.2s;
+    cursor: pointer;
+}
+.cc-toggle-thumb::after {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    background: var(--text-muted, #888);
+    border-radius: 50%;
+    transition: left 0.2s, background 0.2s;
+}
+.cc-toggle-input:checked + .cc-toggle-thumb {
+    background: var(--accent, #6366f1);
+    border-color: var(--accent, #6366f1);
+}
+.cc-toggle-input:checked + .cc-toggle-thumb::after {
+    left: calc(100% - 16px);
+    background: #fff;
+}
+
+/* ── System Prompts ── */
+.cc-prompt-hint-text {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin: 0 0 0.6rem;
+}
+.cc-prompt-vars {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+.cc-prompt-var {
+    font-family: monospace;
+    font-size: 0.77rem;
+    padding: 0.18rem 0.48rem;
+    background: rgba(99,102,241,0.1);
+    border: 1px solid rgba(99,102,241,0.28);
+    border-radius: 4px;
+    color: #818cf8;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+    user-select: none;
+}
+.cc-prompt-var:hover { background: rgba(99,102,241,0.22); }
+.cc-field textarea.cc-prompt-area {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.82rem;
+    min-height: 90px;
+    line-height: 1.5;
+}

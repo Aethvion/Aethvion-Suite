@@ -140,6 +140,44 @@ def _flat_summary(entity: dict) -> dict:
     }
 
 
+def _strip_embeddings(entity: dict) -> dict:
+    """Remove raw float arrays from the vectors section of an entity.
+
+    The embedding arrays (e.g. 1,536 floats per model) are only needed for
+    vector similarity operations, not for list/browse responses.  Stripping
+    them keeps list payloads small — the metadata (model name, dimensions,
+    generated_at, input preview) is preserved and is sufficient for display.
+
+    Full vectors are returned by the single-entity endpoint:
+      GET /{db}/raw/entities/{id}
+    """
+    sections = entity.get("sections")
+    if not sections:
+        return entity
+
+    vectors = sections.get("vectors")
+    if not vectors:
+        return entity
+
+    stripped: dict = {}
+    for model_key, vdata in vectors.items():
+        if isinstance(vdata, dict):
+            # Keep everything except the raw float array
+            stripped[model_key] = {k: v for k, v in vdata.items() if k != "embedding"}
+            # Always report dimension count even if the array was already absent
+            if "dimensions" not in stripped[model_key]:
+                arr = vdata.get("embedding", [])
+                stripped[model_key]["dimensions"] = len(arr) if isinstance(arr, list) else 0
+        else:
+            # Unexpected shape — keep as-is
+            stripped[model_key] = vdata
+
+    return {
+        **entity,
+        "sections": {**sections, "vectors": stripped},
+    }
+
+
 # ── Request schemas ───────────────────────────────────────────────────────────
 
 class RelationInput(BaseModel):
@@ -259,6 +297,11 @@ async def list_entities(
             ec["sections"] = {k: v for k, v in e.get("sections", {}).items() if k in keys}
             return ec
         page = [_project(e) for e in page]
+
+    # Always strip raw embedding float arrays from list responses.
+    # Each embedding can be 1,536+ floats; 50 entities × multiple models = MB of
+    # useless data in a list view.  Use GET /{db}/raw/entities/{id} for full vectors.
+    page = [_strip_embeddings(e) for e in page]
 
     return envelope(
         {"entities": page, "total": total, "returned": len(page), "offset": offset},

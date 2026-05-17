@@ -35,19 +35,42 @@ _CORE_CONFIG_DIR = Path(__file__).parent / "configs"
 
 # ── Schema ─────────────────────────────────────────────────────────────────────
 
+class BehaviorConfig(BaseModel):
+    temperature: float = 0.85
+    initiate_temperature: float = 0.80
+    change_susceptibility: float = 0.70
+    default_mood: str = "calm"
+
+
+class CapabilitiesConfig(BaseModel):
+    tools_enabled: bool = False
+    workspace_access: bool = False
+    memory_updates_enabled: bool = True
+    internet_search: bool = False
+
+
+class PromptsConfig(BaseModel):
+    chat_system: str = ""
+    initiate_system: str = ""
+
+
 class CompanionCreateRequest(BaseModel):
     name: str
     description: str
     personality: str
-    speech_style: str
+    speech_style: str = ""
     quirks: list[str] = []
     likes: list[str] = []
     dislikes: list[str] = []
     default_model: str = "gemini-1.5-flash"
     accent_color: str = "#6366f1"
     avatar_symbol: str = "✦"
+    default_expression: str = "default"
     expressions: list[str] = []
     moods: list[str] = []
+    behavior: BehaviorConfig = BehaviorConfig()
+    capabilities: CapabilitiesConfig = CapabilitiesConfig()
+    prompts: PromptsConfig = PromptsConfig()
 
 
 class CompanionUpdateRequest(CompanionCreateRequest):
@@ -63,6 +86,9 @@ class BuiltinUpdateRequest(BaseModel):
     dislikes: list[str] = []
     accent_color: str = ""
     avatar_symbol: str = ""
+    behavior: BehaviorConfig = BehaviorConfig()
+    capabilities: CapabilitiesConfig = CapabilitiesConfig()
+    prompts: PromptsConfig = PromptsConfig()
 
 
 class ImportRequest(BaseModel):
@@ -273,6 +299,25 @@ async def update_builtin_companion(companion_id: str, req: BuiltinUpdateRequest)
         base["accent_color"] = req.accent_color
     if req.avatar_symbol:
         base["avatar_symbol"] = req.avatar_symbol
+    # Extended fields
+    base["behavior"] = {
+        "temperature":           req.behavior.temperature,
+        "initiate_temperature":  req.behavior.initiate_temperature,
+        "change_susceptibility": req.behavior.change_susceptibility,
+        "default_mood":          req.behavior.default_mood,
+    }
+    base["capabilities"] = {
+        "tools_enabled":          req.capabilities.tools_enabled,
+        "workspace_access":       req.capabilities.workspace_access,
+        "memory_updates_enabled": req.capabilities.memory_updates_enabled,
+        "internet_search":        req.capabilities.internet_search,
+    }
+    if req.prompts.chat_system or req.prompts.initiate_system:
+        base.setdefault("prompts", {})
+        if req.prompts.chat_system:
+            base["prompts"]["chat_system"] = req.prompts.chat_system
+        if req.prompts.initiate_system:
+            base["prompts"]["initiate_system"] = req.prompts.initiate_system
 
     companion_dir = _CUSTOM_DIR / companion_id
     companion_dir.mkdir(parents=True, exist_ok=True)
@@ -346,19 +391,36 @@ async def create_companion(req: CompanionCreateRequest):
     moods       = req.moods       or ["calm", "happy", "reflective", "intense"]
 
     config = {
-        "id":            companion_id,
-        "name":          req.name,
-        "description":   req.description,
-        "personality":   req.personality,
-        "speech_style":  req.speech_style,
-        "quirks":        req.quirks,
-        "likes":         req.likes,
-        "dislikes":      req.dislikes,
-        "default_model": req.default_model,
-        "accent_color":  req.accent_color,
-        "avatar_symbol": req.avatar_symbol,
-        "expressions":   expressions,
-        "moods":         moods,
+        "id":               companion_id,
+        "name":             req.name,
+        "description":      req.description,
+        "personality":      req.personality,
+        "speech_style":     req.speech_style,
+        "quirks":           req.quirks,
+        "likes":            req.likes,
+        "dislikes":         req.dislikes,
+        "default_model":    req.default_model,
+        "accent_color":     req.accent_color,
+        "avatar_symbol":    req.avatar_symbol,
+        "default_expression": req.default_expression,
+        "expressions":      expressions,
+        "moods":            moods,
+        "behavior": {
+            "temperature":           req.behavior.temperature,
+            "initiate_temperature":  req.behavior.initiate_temperature,
+            "change_susceptibility": req.behavior.change_susceptibility,
+            "default_mood":          req.behavior.default_mood,
+        },
+        "capabilities": {
+            "tools_enabled":          req.capabilities.tools_enabled,
+            "workspace_access":       req.capabilities.workspace_access,
+            "memory_updates_enabled": req.capabilities.memory_updates_enabled,
+            "internet_search":        req.capabilities.internet_search,
+        },
+        "prompts": {
+            "chat_system":    req.prompts.chat_system,
+            "initiate_system": req.prompts.initiate_system,
+        },
         "route_prefix":  f"/api/custom/{companion_id}",
         "type":          "custom",
     }
@@ -407,18 +469,35 @@ async def update_companion(companion_id: str, req: CompanionUpdateRequest):
 
     config = {
         **existing,
-        "name":          req.name,
-        "description":   req.description,
-        "personality":   req.personality,
-        "speech_style":  req.speech_style,
-        "quirks":        req.quirks,
-        "likes":         req.likes,
-        "dislikes":      req.dislikes,
-        "default_model": req.default_model,
-        "accent_color":  req.accent_color,
-        "avatar_symbol": req.avatar_symbol,
-        "expressions":   expressions,
-        "moods":         moods,
+        "name":             req.name,
+        "description":      req.description,
+        "personality":      req.personality,
+        "speech_style":     req.speech_style,
+        "quirks":           req.quirks,
+        "likes":            req.likes,
+        "dislikes":         req.dislikes,
+        "default_model":    req.default_model,
+        "accent_color":     req.accent_color,
+        "avatar_symbol":    req.avatar_symbol,
+        "default_expression": req.default_expression,
+        "expressions":      expressions,
+        "moods":            moods,
+        "behavior": {
+            "temperature":           req.behavior.temperature,
+            "initiate_temperature":  req.behavior.initiate_temperature,
+            "change_susceptibility": req.behavior.change_susceptibility,
+            "default_mood":          req.behavior.default_mood,
+        },
+        "capabilities": {
+            "tools_enabled":          req.capabilities.tools_enabled,
+            "workspace_access":       req.capabilities.workspace_access,
+            "memory_updates_enabled": req.capabilities.memory_updates_enabled,
+            "internet_search":        req.capabilities.internet_search,
+        },
+        "prompts": {
+            "chat_system":    req.prompts.chat_system,
+            "initiate_system": req.prompts.initiate_system,
+        },
     }
     _atomic_write_json(companion_dir / "config.json", config)
 

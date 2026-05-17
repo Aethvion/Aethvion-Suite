@@ -60,6 +60,7 @@ const CompanionCreator = (() => {
           Built-in companion — name and ID are locked. Personality edits take effect immediately.
         </div>
 
+        <!-- ── Identity ─────────────────────────────────────── -->
         <div class="cc-form-grid">
           <div class="cc-field cc-field-full">
             <label>Name <span class="cc-required" id="cc-name-req">*</span></label>
@@ -114,6 +115,145 @@ const CompanionCreator = (() => {
             </select>
           </div>
         </div>
+
+        <!-- ── Advanced sections ─────────────────────────────── -->
+        <div class="cc-sections">
+
+          <!-- Behavior & Mood -->
+          <div class="cc-adv-section" id="cc-s-behavior">
+            <div class="cc-adv-toggle">
+              <span><i class="fas fa-sliders"></i> Behavior &amp; Mood</span>
+              <i class="fas fa-chevron-down cc-adv-chevron"></i>
+            </div>
+            <div class="cc-adv-body">
+              <div class="cc-form-grid" style="margin-top:0">
+                <div class="cc-field">
+                  <label>Temperature&nbsp;<span class="cc-range-val" id="cc-temp-val">0.85</span></label>
+                  <input type="range" id="cc-temperature" min="0" max="1" step="0.01" value="0.85" class="cc-range">
+                  <span class="cc-range-hint">Lower = consistent &middot; Higher = creative</span>
+                </div>
+                <div class="cc-field">
+                  <label>Initiate Temperature&nbsp;<span class="cc-range-val" id="cc-itemp-val">0.80</span></label>
+                  <input type="range" id="cc-initiate-temp" min="0" max="1" step="0.01" value="0.80" class="cc-range">
+                  <span class="cc-range-hint">For spontaneous initiations</span>
+                </div>
+                <div class="cc-field">
+                  <label>Change Susceptibility&nbsp;<span class="cc-range-val" id="cc-chsus-val">0.70</span></label>
+                  <input type="range" id="cc-change-susceptibility" min="0" max="1" step="0.01" value="0.70" class="cc-range">
+                  <span class="cc-range-hint">How open this companion is to changing its mind</span>
+                </div>
+                <div class="cc-field">
+                  <label>Default Mood</label>
+                  <input type="text" id="cc-default-mood" placeholder="calm" maxlength="32">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Capabilities -->
+          <div class="cc-adv-section" id="cc-s-capabilities">
+            <div class="cc-adv-toggle">
+              <span><i class="fas fa-shield-halved"></i> Capabilities</span>
+              <i class="fas fa-chevron-down cc-adv-chevron"></i>
+            </div>
+            <div class="cc-adv-body">
+              <div class="cc-caps-grid">
+                <label class="cc-toggle-row" for="cc-cap-tools">
+                  <div>
+                    <div class="cc-cap-label">Tools Enabled</div>
+                    <div class="cc-cap-desc">Allow function/tool calling in chats</div>
+                  </div>
+                  <span class="cc-toggle-wrap">
+                    <input type="checkbox" id="cc-cap-tools" class="cc-toggle-input">
+                    <span class="cc-toggle-thumb"></span>
+                  </span>
+                </label>
+                <label class="cc-toggle-row" for="cc-cap-workspace">
+                  <div>
+                    <div class="cc-cap-label">Workspace Access</div>
+                    <div class="cc-cap-desc">Read and write project files</div>
+                  </div>
+                  <span class="cc-toggle-wrap">
+                    <input type="checkbox" id="cc-cap-workspace" class="cc-toggle-input">
+                    <span class="cc-toggle-thumb"></span>
+                  </span>
+                </label>
+                <label class="cc-toggle-row" for="cc-cap-memory">
+                  <div>
+                    <div class="cc-cap-label">Memory Updates</div>
+                    <div class="cc-cap-desc">Save observations about the user over time</div>
+                  </div>
+                  <span class="cc-toggle-wrap">
+                    <input type="checkbox" id="cc-cap-memory" class="cc-toggle-input" checked>
+                    <span class="cc-toggle-thumb"></span>
+                  </span>
+                </label>
+                <label class="cc-toggle-row" for="cc-cap-internet">
+                  <div>
+                    <div class="cc-cap-label">Internet Search</div>
+                    <div class="cc-cap-desc">Search the web for current information</div>
+                  </div>
+                  <span class="cc-toggle-wrap">
+                    <input type="checkbox" id="cc-cap-internet" class="cc-toggle-input">
+                    <span class="cc-toggle-thumb"></span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- System Prompts -->
+          <div class="cc-adv-section" id="cc-s-prompts">
+            <div class="cc-adv-toggle">
+              <span><i class="fas fa-terminal"></i> System Prompts <span class="cc-adv-badge">optional</span></span>
+              <i class="fas fa-chevron-down cc-adv-chevron"></i>
+            </div>
+            <div class="cc-adv-body">
+              <p class="cc-prompt-hint-text">Compose dynamic prompts using template variables. Click any tag to copy it.</p>
+              <div class="cc-prompt-vars">
+                <span class="cc-prompt-var" title="Personality &amp; base info block">{base_info}</span>
+                <span class="cc-prompt-var" title="Long-term memory block">{memory}</span>
+                <span class="cc-prompt-var" title="Current date &amp; time">{datetime_ctx}</span>
+                <span class="cc-prompt-var" title="Workspace files context">{workspace_block}</span>
+                <span class="cc-prompt-var" title="Cross-companion bridges">{bridges_block}</span>
+                <span class="cc-prompt-var" title="Auto-initiation instruction">{trigger_instruction}</span>
+              </div>
+              <div class="cc-field" style="margin-top:0.9rem">
+                <label>Chat System Prompt</label>
+                <textarea id="cc-prompt-chat" rows="5" class="cc-prompt-area" placeholder="You are {name}. {base_info} Memory: {memory}. Time: {datetime_ctx}.&#10;&#10;Leave blank to use the default template."></textarea>
+              </div>
+              <div class="cc-field" style="margin-top:0.75rem">
+                <label>Initiate System Prompt <span class="cc-hint">(for auto-initiated messages)</span></label>
+                <textarea id="cc-prompt-initiate" rows="3" class="cc-prompt-area" placeholder="You are {name}. {base_info} {trigger_instruction}&#10;&#10;Leave blank to use the default template."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Expressions & Moods -->
+          <div class="cc-adv-section" id="cc-s-expressions">
+            <div class="cc-adv-toggle">
+              <span><i class="fas fa-masks-theater"></i> Expressions &amp; Moods</span>
+              <i class="fas fa-chevron-down cc-adv-chevron"></i>
+            </div>
+            <div class="cc-adv-body">
+              <div class="cc-form-grid" style="margin-top:0">
+                <div class="cc-field">
+                  <label>Expressions <span class="cc-hint">(one per line)</span></label>
+                  <textarea id="cc-expressions" rows="5" placeholder="default&#10;happy&#10;thinking&#10;focused&#10;error"></textarea>
+                </div>
+                <div class="cc-field">
+                  <label>Moods <span class="cc-hint">(one per line)</span></label>
+                  <textarea id="cc-moods" rows="5" placeholder="calm&#10;happy&#10;reflective&#10;intense"></textarea>
+                </div>
+                <div class="cc-field">
+                  <label>Default Expression</label>
+                  <input type="text" id="cc-default-expression" placeholder="default" maxlength="32">
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /.cc-sections -->
 
         <div id="cc-avatar-preview-wrap" class="cc-avatar-preview-wrap">
           <div class="cc-section-label">Preview</div>
@@ -204,6 +344,20 @@ const CompanionCreator = (() => {
         </div>`;
     }
 
+    // ── Range helpers ─────────────────────────────────────────────────────────
+
+    function _updateRangeDisplays() {
+        [
+            ['cc-temperature',           'cc-temp-val'],
+            ['cc-initiate-temp',         'cc-itemp-val'],
+            ['cc-change-susceptibility', 'cc-chsus-val'],
+        ].forEach(([inputId, valId]) => {
+            const input = document.getElementById(inputId);
+            const disp  = document.getElementById(valId);
+            if (input && disp) disp.textContent = parseFloat(input.value).toFixed(2);
+        });
+    }
+
     // ── Form ──────────────────────────────────────────────────────────────────
 
     function _showForm(fillData = null, isBuiltin = false) {
@@ -231,23 +385,63 @@ const CompanionCreator = (() => {
 
         document.getElementById('cc-form-msg').style.display = 'none';
 
-        const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+        const chk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
 
         if (fillData) {
-            set('cc-name', fillData.name);
-            set('cc-description', fillData.description);
-            set('cc-personality', fillData.personality);
+            // Identity
+            set('cc-name',         fillData.name);
+            set('cc-description',  fillData.description);
+            set('cc-personality',  fillData.personality);
             set('cc-speech-style', fillData.speech_style);
-            set('cc-quirks', (fillData.quirks || []).join('\n'));
-            set('cc-likes', (fillData.likes || []).join('\n'));
+            set('cc-quirks',   (fillData.quirks   || []).join('\n'));
+            set('cc-likes',    (fillData.likes    || []).join('\n'));
             set('cc-dislikes', (fillData.dislikes || []).join('\n'));
-            set('cc-accent-color', fillData.accent_color || '#6366f1');
+            set('cc-accent-color',  fillData.accent_color  || '#6366f1');
             set('cc-avatar-symbol', fillData.avatar_symbol || '✦');
-            set('cc-model', fillData.default_model || 'gemini-1.5-flash');
+            set('cc-model',         fillData.default_model || 'gemini-1.5-flash');
+
+            // Behavior
+            const beh = fillData.behavior || {};
+            set('cc-temperature',           beh.temperature           ?? 0.85);
+            set('cc-initiate-temp',         beh.initiate_temperature  ?? 0.80);
+            set('cc-change-susceptibility', beh.change_susceptibility ?? 0.70);
+            set('cc-default-mood',          beh.default_mood          || 'calm');
+            _updateRangeDisplays();
+
+            // Capabilities
+            const cap = fillData.capabilities || {};
+            chk('cc-cap-tools',     cap.tools_enabled             ?? false);
+            chk('cc-cap-workspace', cap.workspace_access          ?? false);
+            chk('cc-cap-memory',    cap.memory_updates_enabled    ?? true);
+            chk('cc-cap-internet',  cap.internet_search           ?? false);
+
+            // Prompts
+            const prm = fillData.prompts || {};
+            set('cc-prompt-chat',     prm.chat_system    || '');
+            set('cc-prompt-initiate', prm.initiate_system || '');
+
+            // Expressions & Moods
+            set('cc-expressions',       (fillData.expressions || []).join('\n'));
+            set('cc-moods',             (fillData.moods       || []).join('\n'));
+            set('cc-default-expression', fillData.default_expression || 'default');
+
         } else {
             form.reset();
-            set('cc-accent-color', '#6366f1');
+            set('cc-accent-color',  '#6366f1');
             set('cc-avatar-symbol', '✦');
+            // Ranges don't fully reset via form.reset() in all browsers — set explicitly
+            set('cc-temperature',           0.85);
+            set('cc-initiate-temp',         0.80);
+            set('cc-change-susceptibility', 0.70);
+            _updateRangeDisplays();
+            // Memory enabled by default for new companions
+            chk('cc-cap-memory', true);
+            // Default expressions & moods
+            set('cc-expressions', 'default\nhappy\nthinking\nfocused\nerror');
+            set('cc-moods',       'calm\nhappy\nreflective\nintense');
+            set('cc-default-expression', 'default');
+            set('cc-default-mood', 'calm');
         }
         _updatePreview();
     }
@@ -283,17 +477,40 @@ const CompanionCreator = (() => {
     function _collectForm() {
         const lines = id => (document.getElementById(id)?.value || '')
             .split('\n').map(s => s.trim()).filter(Boolean);
+        const num = id => parseFloat(document.getElementById(id)?.value || '0');
+        const chk = id => document.getElementById(id)?.checked ?? false;
+
         return {
             name:          document.getElementById('cc-name')?.value?.trim(),
             description:   document.getElementById('cc-description')?.value?.trim(),
             personality:   document.getElementById('cc-personality')?.value?.trim(),
-            speech_style:  document.getElementById('cc-speech-style')?.value?.trim(),
+            speech_style:  document.getElementById('cc-speech-style')?.value?.trim() || '',
             quirks:        lines('cc-quirks'),
             likes:         lines('cc-likes'),
             dislikes:      lines('cc-dislikes'),
             accent_color:  document.getElementById('cc-accent-color')?.value,
             avatar_symbol: document.getElementById('cc-avatar-symbol')?.value?.trim() || '✦',
             default_model: document.getElementById('cc-model')?.value,
+            // Extended
+            behavior: {
+                temperature:           num('cc-temperature'),
+                initiate_temperature:  num('cc-initiate-temp'),
+                change_susceptibility: num('cc-change-susceptibility'),
+                default_mood:          document.getElementById('cc-default-mood')?.value?.trim() || 'calm',
+            },
+            capabilities: {
+                tools_enabled:          chk('cc-cap-tools'),
+                workspace_access:       chk('cc-cap-workspace'),
+                memory_updates_enabled: chk('cc-cap-memory'),
+                internet_search:        chk('cc-cap-internet'),
+            },
+            prompts: {
+                chat_system:    document.getElementById('cc-prompt-chat')?.value?.trim()     || '',
+                initiate_system: document.getElementById('cc-prompt-initiate')?.value?.trim() || '',
+            },
+            expressions:        lines('cc-expressions'),
+            moods:              lines('cc-moods'),
+            default_expression: document.getElementById('cc-default-expression')?.value?.trim() || 'default',
         };
     }
 
@@ -316,7 +533,6 @@ const CompanionCreator = (() => {
         const payload = _collectForm();
 
         if (_isBuiltin) {
-            // Builtin: only personality fields
             if (!payload.personality) {
                 _setMsg('Personality is required.', true);
                 return;
@@ -346,6 +562,9 @@ const CompanionCreator = (() => {
                     dislikes:      payload.dislikes,
                     accent_color:  payload.accent_color,
                     avatar_symbol: payload.avatar_symbol,
+                    behavior:      payload.behavior,
+                    capabilities:  payload.capabilities,
+                    prompts:       payload.prompts,
                 });
             } else if (_editingId) {
                 url    = `${API}/${_editingId}`;
@@ -425,14 +644,22 @@ const CompanionCreator = (() => {
     }
 
     async function _submitImport() {
-        const raw  = document.getElementById('cc-import-json')?.value?.trim();
+        const raw   = document.getElementById('cc-import-json')?.value?.trim();
         const msgEl = document.getElementById('cc-import-msg');
-        if (!raw) { msgEl.style.display=''; msgEl.textContent='Paste a JSON config first.'; msgEl.className='cc-form-msg cc-form-msg-error'; return; }
-
+        if (!raw) {
+            msgEl.style.display = '';
+            msgEl.textContent   = 'Paste a JSON config first.';
+            msgEl.className     = 'cc-form-msg cc-form-msg-error';
+            return;
+        }
         let config;
         try { config = JSON.parse(raw); }
-        catch { msgEl.style.display=''; msgEl.textContent='Invalid JSON.'; msgEl.className='cc-form-msg cc-form-msg-error'; return; }
-
+        catch {
+            msgEl.style.display = '';
+            msgEl.textContent   = 'Invalid JSON.';
+            msgEl.className     = 'cc-form-msg cc-form-msg-error';
+            return;
+        }
         try {
             const res  = await fetch(`${API}/import`, {
                 method:  'POST',
@@ -442,15 +669,15 @@ const CompanionCreator = (() => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || 'Import failed');
             msgEl.style.display = '';
-            msgEl.textContent = `✓ ${data.message}`;
-            msgEl.className = 'cc-form-msg cc-form-msg-ok';
+            msgEl.textContent   = `✓ ${data.message}`;
+            msgEl.className     = 'cc-form-msg cc-form-msg-ok';
             await _loadList();
             setTimeout(_hideImportDialog, 1200);
             if (typeof showToast === 'function') showToast(data.message, 'success');
         } catch (err) {
             msgEl.style.display = '';
-            msgEl.textContent = `Error: ${err.message}`;
-            msgEl.className = 'cc-form-msg cc-form-msg-error';
+            msgEl.textContent   = `Error: ${err.message}`;
+            msgEl.className     = 'cc-form-msg cc-form-msg-error';
         }
     }
 
@@ -464,6 +691,7 @@ const CompanionCreator = (() => {
         _renderShell();
         _loadList();
 
+        // Sidebar / form actions
         document.getElementById('cc-new-btn')?.addEventListener('click', () => {
             _editingId = null;
             _isBuiltin = false;
@@ -485,9 +713,46 @@ const CompanionCreator = (() => {
         document.getElementById('cc-import-close')?.addEventListener('click', _hideImportDialog);
         document.getElementById('cc-import-submit')?.addEventListener('click', _submitImport);
 
-        // Live preview updates
+        // Live preview
         ['cc-accent-color', 'cc-avatar-symbol', 'cc-name'].forEach(id => {
             document.getElementById(id)?.addEventListener('input', _updatePreview);
+        });
+
+        // Collapsible sections
+        document.querySelectorAll('.cc-adv-toggle').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                toggle.closest('.cc-adv-section').classList.toggle('open');
+            });
+        });
+
+        // Range value displays
+        [
+            ['cc-temperature',           'cc-temp-val'],
+            ['cc-initiate-temp',         'cc-itemp-val'],
+            ['cc-change-susceptibility', 'cc-chsus-val'],
+        ].forEach(([inputId, valId]) => {
+            const input = document.getElementById(inputId);
+            const disp  = document.getElementById(valId);
+            if (input && disp) {
+                input.addEventListener('input', () => {
+                    disp.textContent = parseFloat(input.value).toFixed(2);
+                });
+            }
+        });
+
+        // Prompt variable click-to-copy
+        document.querySelectorAll('.cc-prompt-var').forEach(tag => {
+            tag.addEventListener('click', () => {
+                const text = tag.dataset.var || tag.textContent;
+                navigator.clipboard?.writeText(text).catch(() => {});
+                const orig = tag.textContent;
+                tag.textContent = '✓ copied';
+                tag.style.opacity = '0.7';
+                setTimeout(() => {
+                    tag.textContent = orig;
+                    tag.style.opacity = '';
+                }, 900);
+            });
         });
     }
 
