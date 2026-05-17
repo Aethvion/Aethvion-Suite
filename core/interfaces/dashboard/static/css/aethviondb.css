@@ -565,14 +565,17 @@
     border-top: 1px solid rgba(34, 211, 238, 0.18);
     border-bottom: 1px solid rgba(34, 211, 238, 0.18);
     flex-shrink: 0;
+    position: relative;       /* anchor for the progress strip */
+    overflow: hidden;
 }
 .adb-bulk-bar.hidden { display: none; }
 .adb-bulk-count {
     font-size: 0.79rem;
     font-weight: 700;
     color: #22d3ee;
-    min-width: 78px;
+    min-width: 90px;
     letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
 }
 .adb-bulk-sep {
     width: 1px;
@@ -580,6 +583,73 @@
     background: var(--border);
     flex-shrink: 0;
     margin: 0 0.2rem;
+}
+
+/* Progress strip — thin line anchored to the bottom edge of the bar */
+.adb-bulk-prog {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 2px;
+    background: rgba(34, 211, 238, 0.18);
+}
+.adb-bulk-prog.hidden { display: none; }
+.adb-bulk-prog-fill {
+    height: 100%;
+    background: #22d3ee;
+    width: 0%;
+    transition: width 0.22s ease;
+    box-shadow: 0 0 6px rgba(34, 211, 238, 0.6);
+}
+
+/* ── Per-row operation states ────────────────────────── */
+
+/* Pulsing while the API call is in-flight */
+@keyframes adb-row-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.55; }
+}
+.adb-tr-processing {
+    animation: adb-row-pulse 0.9s ease-in-out infinite;
+    background: rgba(34, 211, 238, 0.04) !important;
+}
+
+/* Success */
+.adb-tr-op-done {
+    background: rgba(34, 197, 94, 0.06) !important;
+    transition: background 0.3s;
+}
+/* Failed */
+.adb-tr-op-fail {
+    background: rgba(239, 68, 68, 0.06) !important;
+    transition: background 0.3s;
+}
+/* Skipped (already active — neutral) */
+.adb-tr-op-skip { opacity: 0.65; }
+
+/* Deleted — fade + strike */
+@keyframes adb-row-vanish {
+    to { opacity: 0.2; }
+}
+.adb-tr-op-del {
+    animation: adb-row-vanish 0.6s ease forwards;
+}
+
+/* Mini badges shown in the status cell during bulk ops */
+.adb-badge-working {
+    background: rgba(34, 211, 238, 0.12);
+    color: #22d3ee;
+    border-color: rgba(34, 211, 238, 0.3);
+    font-style: normal;
+}
+.adb-badge-op-ok {
+    background: rgba(34, 197, 94, 0.12);
+    color: #4ade80;
+    border-color: rgba(34, 197, 94, 0.3);
+}
+.adb-badge-op-err {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
 }
 
 /* ── Danger button ───────────────────────────────────── */

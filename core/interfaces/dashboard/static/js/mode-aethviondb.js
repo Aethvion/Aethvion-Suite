@@ -557,72 +557,160 @@
         });
     }
 
+    // ── Bulk progress helpers ─────────────────────────────────────────────────
+
+    function _bulkProgShow(label, total) {
+        const prog = _el('adb-bulk-prog');
+        const fill = _el('adb-bulk-prog-fill');
+        if (prog) prog.classList.remove('hidden');
+        if (fill) fill.style.width = '0%';
+        const countEl = _el('adb-bulk-count');
+        if (countEl) countEl.textContent = `${label} 0 / ${total}`;
+        // Lock controls during processing
+        ['adb-bulk-expand', 'adb-bulk-delete', 'adb-bulk-clear'].forEach(id => {
+            _el(id)?.setAttribute('disabled', '');
+        });
+    }
+
+    function _bulkProgUpdate(done, total, label) {
+        const fill    = _el('adb-bulk-prog-fill');
+        const countEl = _el('adb-bulk-count');
+        if (fill)    fill.style.width = `${Math.round((done / total) * 100)}%`;
+        if (countEl) countEl.textContent = `${label} ${done} / ${total}`;
+    }
+
+    function _bulkProgDone() {
+        const fill = _el('adb-bulk-prog-fill');
+        if (fill) fill.style.width = '100%';
+        // Re-enable controls
+        ['adb-bulk-expand', 'adb-bulk-delete', 'adb-bulk-clear'].forEach(id => {
+            _el(id)?.removeAttribute('disabled');
+        });
+        // Fade out the strip after a short hold
+        setTimeout(() => _el('adb-bulk-prog')?.classList.add('hidden'), 900);
+    }
+
+    /** Update a row's visual state while a bulk operation is running. */
+    function _markRowState(id, state) {
+        const row   = document.querySelector(`.adb-tr[data-id="${id}"]`);
+        if (!row) return;
+        row.classList.remove('adb-tr-processing', 'adb-tr-op-done', 'adb-tr-op-fail', 'adb-tr-op-skip', 'adb-tr-op-del');
+        const badge = row.querySelector('.adb-badge'); // status badge (not type badge)
+        if (!badge) return;
+        switch (state) {
+            case 'processing':
+                row.classList.add('adb-tr-processing');
+                badge.className = 'adb-badge adb-badge-working';
+                badge.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+                break;
+            case 'done':
+                row.classList.add('adb-tr-op-done');
+                badge.className = 'adb-badge adb-badge-op-ok';
+                badge.innerHTML = '<i class="fas fa-check"></i> done';
+                break;
+            case 'skipped':
+                row.classList.add('adb-tr-op-skip');
+                // Leave badge as-is — entity was already active
+                break;
+            case 'failed':
+                row.classList.add('adb-tr-op-fail');
+                badge.className = 'adb-badge adb-badge-op-err';
+                badge.innerHTML = '<i class="fas fa-times"></i> failed';
+                break;
+            case 'deleted':
+                row.classList.add('adb-tr-op-del');
+                badge.className = 'adb-badge adb-badge-op-err';
+                badge.innerHTML = '<i class="fas fa-trash"></i>';
+                break;
+        }
+    }
+
+    // ── Bulk operations ───────────────────────────────────────────────────────
+
     async function _bulkExpandStubs() {
         const ids = [..._selectedIds];
         if (!ids.length) return;
-
-        // Count which of the selected are stubs (visible rows have data-stub)
-        const visStubs = [...document.querySelectorAll('.adb-tr[data-stub="true"]')]
-            .filter(r => _selectedIds.has(r.dataset.id)).length;
         const n = ids.length;
-        const skipNote = visStubs < n
-            ? `\n${n - visStubs} already-expanded ${n - visStubs === 1 ? 'entity' : 'entities'} will be skipped.`
-            : '';
 
-        if (!confirm(`Expand ${n} selected ${n === 1 ? 'entity' : 'entities'} as stubs?${skipNote}`)) return;
-
-        _showBusy(`Expanding ${n} selected…`);
+        _bulkProgShow('Expanding', n);
         const model = _selectedModel();
-        let expanded = 0, failed = 0, skipped = 0;
+        let expanded = 0, failed = 0, skipped = 0, done = 0;
 
         for (const id of ids) {
+            _markRowState(id, 'processing');
             try {
                 const res  = await fetch(`${API}/entities/${id}/expand?${_dbParam(model ? { model } : {})}`, { method: 'POST' });
                 const data = await res.json();
-                if (!res.ok) { failed++; continue; }
-                if (data.error === 'already_active') { skipped++; continue; }
-                expanded++;
-            } catch { failed++; }
+                if (!res.ok) {
+                    failed++;
+                    _markRowState(id, 'failed');
+                } else if (data.error === 'already_active') {
+                    skipped++;
+                    _markRowState(id, 'skipped');
+                } else {
+                    expanded++;
+                    _markRowState(id, 'done');
+                }
+            } catch {
+                failed++;
+                _markRowState(id, 'failed');
+            }
+            done++;
+            _bulkProgUpdate(done, n, 'Expanding');
         }
 
-        _hideBusy();
+        _bulkProgDone();
         const parts = [];
-        if (expanded) parts.push(`${expanded} expanded ✓`);
-        if (skipped)  parts.push(`${skipped} already expanded`);
+        if (expanded) parts.push(`${expanded} expanded`);
+        if (skipped)  parts.push(`${skipped} already active`);
         if (failed)   parts.push(`${failed} failed`);
         _toast(parts.join(' · ') || 'Done', failed ? 'error' : 'success');
 
         _selectedIds.clear();
-        _updateBulkBar();
-        await _loadEntityList(_currentFilter, _currentPage);
+        // Let the user see the row states for a moment before refreshing
+        setTimeout(() => {
+            _updateBulkBar();
+            _loadEntityList(_currentFilter, _currentPage);
+        }, 1100);
     }
 
     async function _bulkDelete() {
         const ids = [..._selectedIds];
         if (!ids.length) return;
-
         const n = ids.length;
-        if (!confirm(`Delete ${n} selected ${n === 1 ? 'entity' : 'entities'}?\n\nEntities are soft-deleted and can be recovered from their JSON files.`)) return;
 
-        _showBusy(`Deleting ${n} ${n === 1 ? 'entity' : 'entities'}…`);
-        let deleted = 0, failed = 0;
+        _bulkProgShow('Deleting', n);
+        let deleted = 0, failed = 0, done = 0;
 
         for (const id of ids) {
+            _markRowState(id, 'processing');
             try {
                 const res = await fetch(`${API}/entities/${id}?${_dbParam()}`, { method: 'DELETE' });
-                if (!res.ok) { failed++; continue; }
-                deleted++;
-            } catch { failed++; }
+                if (!res.ok) {
+                    failed++;
+                    _markRowState(id, 'failed');
+                } else {
+                    deleted++;
+                    _markRowState(id, 'deleted');
+                }
+            } catch {
+                failed++;
+                _markRowState(id, 'failed');
+            }
+            done++;
+            _bulkProgUpdate(done, n, 'Deleting');
         }
 
-        _hideBusy();
+        _bulkProgDone();
         _toast(
-            `Deleted ${deleted}${failed ? ` · ${failed} failed` : ''} ✓`,
+            `Deleted ${deleted}${failed ? ` · ${failed} failed` : ''}`,
             failed ? 'error' : 'success'
         );
         _selectedIds.clear();
-        _updateBulkBar();
-        await _loadEntityList(_currentFilter, _currentPage);
+        setTimeout(() => {
+            _updateBulkBar();
+            _loadEntityList(_currentFilter, _currentPage);
+        }, 800);
     }
 
     // ── Search ────────────────────────────────────────────────────────────────
