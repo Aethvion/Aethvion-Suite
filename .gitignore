@@ -55,5 +55,6 @@ modules/aethvion/synapse/openseeface/*
 # Local Models
 LocalModels/*
 
-# Claude
+# Claude + ai reports
 .claude/*
+ai reports/*
