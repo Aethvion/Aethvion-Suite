@@ -515,11 +515,33 @@
 }
 .adb-table th.adb-col-rel,
 .adb-table th.adb-col-stubs { text-align: center; }
+.adb-col-check  { width: 38px; }
 .adb-col-type   { width: 82px; }
 .adb-col-tags   { width: 165px; }
 .adb-col-rel    { width: 55px; }
 .adb-col-stubs  { width: 52px; }
 .adb-col-status { width: 88px; }
+
+/* Checkbox header/cell */
+.adb-th-check,
+.adb-td-check {
+    text-align: center;
+    vertical-align: middle;
+    padding-left: 0.5rem;
+    padding-right: 0;
+}
+.adb-row-check {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    accent-color: #22d3ee;
+    flex-shrink: 0;
+}
+
+/* Selected row tint */
+.adb-tr-selected { background: rgba(34, 211, 238, 0.07) !important; }
+.adb-tr-selected:hover { background: rgba(34, 211, 238, 0.12) !important; }
+
 .adb-tr {
     cursor: pointer;
     border-bottom: 1px solid var(--border);
@@ -532,6 +554,41 @@
     vertical-align: middle;
     overflow: hidden;
 }
+
+/* ── Bulk action bar ─────────────────────────────────── */
+.adb-bulk-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 1rem;
+    background: rgba(34, 211, 238, 0.06);
+    border-top: 1px solid rgba(34, 211, 238, 0.18);
+    border-bottom: 1px solid rgba(34, 211, 238, 0.18);
+    flex-shrink: 0;
+}
+.adb-bulk-bar.hidden { display: none; }
+.adb-bulk-count {
+    font-size: 0.79rem;
+    font-weight: 700;
+    color: #22d3ee;
+    min-width: 78px;
+    letter-spacing: 0.01em;
+}
+.adb-bulk-sep {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+    flex-shrink: 0;
+    margin: 0 0.2rem;
+}
+
+/* ── Danger button ───────────────────────────────────── */
+.adb-btn-danger {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.32);
+    color: #f87171;
+}
+.adb-btn-danger:hover:not(:disabled) { background: rgba(239, 68, 68, 0.2); }
 .adb-td-num {
     text-align: center;
     color: var(--text-muted);

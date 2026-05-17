@@ -22,6 +22,7 @@
     let _totalCount          = 0;         // total entities for current filter
     const _PAGE_SIZE         = 100;
     let _currentTab          = 'explorer'; // 'explorer' | 'graph'
+    let _selectedIds         = new Set(); // entity IDs checked in the list view
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -367,9 +368,20 @@
             }
 
             listEl.innerHTML = _renderTable(entities);
+            _wireTableCheckboxes(entities);
             listEl.querySelectorAll('.adb-tr').forEach(row => {
-                row.addEventListener('click',   ()  => _loadEntity(row.dataset.id));
-                row.addEventListener('keydown', ev  => { if (ev.key === 'Enter') _loadEntity(row.dataset.id); });
+                row.addEventListener('click', e => {
+                    if (e.target.closest('.adb-td-check')) return; // let checkbox handle it
+                    _loadEntity(row.dataset.id);
+                });
+                row.addEventListener('keydown', ev => {
+                    if (ev.key === 'Enter') { _loadEntity(row.dataset.id); return; }
+                    if (ev.key === ' ') {
+                        ev.preventDefault();
+                        const chk = row.querySelector('.adb-row-check');
+                        if (chk) { chk.checked = !chk.checked; chk.dispatchEvent(new Event('change')); }
+                    }
+                });
             });
 
             _renderPagination(total, page);
@@ -420,11 +432,15 @@
         const tags      = e.tags || e.sections?.core?.tags || [];
         const relCount  = e.relations_count != null ? e.relations_count : (e.sections?.relations?.length ?? null);
         const stubCount = e.stubs_count     != null ? e.stubs_count     : (e.sections?.stubs?.length    ?? null);
+        const checked   = _selectedIds.has(e.id);
 
         const tagHtml = tags.slice(0, 3).map(t => `<span class="adb-tag-sm">${t}</span>`).join('')
                       + (tags.length > 3 ? `<span class="adb-tag-sm">+${tags.length - 3}</span>` : '');
 
-        return `<tr class="adb-tr" data-id="${e.id}" tabindex="0">
+        return `<tr class="adb-tr${checked ? ' adb-tr-selected' : ''}" data-id="${e.id}" data-stub="${isStub}" tabindex="0">
+            <td class="adb-td adb-td-check">
+                <input type="checkbox" class="adb-row-check" data-id="${e.id}" ${checked ? 'checked' : ''} aria-label="Select ${(e.name || e.id).replace(/"/g, '')}">
+            </td>
             <td class="adb-td">
                 <span class="adb-type-badge adb-type-${e.type || 'other'}">${e.type || 'other'}</span>
             </td>
@@ -446,6 +462,7 @@
     function _renderTable(entities) {
         return `<table class="adb-table">
             <colgroup>
+                <col class="adb-col-check">
                 <col class="adb-col-type">
                 <col>
                 <col class="adb-col-tags">
@@ -455,6 +472,9 @@
             </colgroup>
             <thead>
                 <tr>
+                    <th class="adb-col-check adb-th-check">
+                        <input type="checkbox" id="adb-select-all" class="adb-row-check" title="Select all on this page">
+                    </th>
                     <th class="adb-col-type">Type</th>
                     <th>Name / Summary</th>
                     <th class="adb-col-tags">Tags</th>
@@ -467,6 +487,142 @@
                 ${entities.map(e => _entityRowHtml(e)).join('')}
             </tbody>
         </table>`;
+    }
+
+    // ── Selection & bulk actions ──────────────────────────────────────────────
+
+    function _updateBulkBar() {
+        const bar     = _el('adb-bulk-bar');
+        const countEl = _el('adb-bulk-count');
+        if (!bar || !countEl) return;
+        const n = _selectedIds.size;
+        if (n === 0) {
+            bar.classList.add('hidden');
+        } else {
+            bar.classList.remove('hidden');
+            countEl.textContent = `${n} selected`;
+        }
+    }
+
+    function _clearSelection() {
+        _selectedIds.clear();
+        document.querySelectorAll('.adb-row-check').forEach(c => { c.checked = false; });
+        document.querySelectorAll('.adb-tr').forEach(r => r.classList.remove('adb-tr-selected'));
+        const sa = _el('adb-select-all');
+        if (sa) { sa.checked = false; sa.indeterminate = false; }
+        _updateBulkBar();
+    }
+
+    function _wireTableCheckboxes(entities) {
+        const selectAll = _el('adb-select-all');
+
+        // Set initial select-all state
+        if (selectAll) {
+            const allSel = entities.length > 0 && entities.every(e => _selectedIds.has(e.id));
+            const anySel = entities.some(e => _selectedIds.has(e.id));
+            selectAll.checked       = allSel;
+            selectAll.indeterminate = !allSel && anySel;
+
+            selectAll.addEventListener('change', () => {
+                if (selectAll.checked) {
+                    entities.forEach(e => _selectedIds.add(e.id));
+                } else {
+                    entities.forEach(e => _selectedIds.delete(e.id));
+                }
+                document.querySelectorAll('.adb-row-check:not(#adb-select-all)').forEach(c => {
+                    c.checked = _selectedIds.has(c.dataset.id);
+                    c.closest('.adb-tr')?.classList.toggle('adb-tr-selected', c.checked);
+                });
+                _updateBulkBar();
+            });
+        }
+
+        // Wire individual row checkboxes
+        document.querySelectorAll('.adb-row-check:not(#adb-select-all)').forEach(chk => {
+            chk.addEventListener('change', () => {
+                const id = chk.dataset.id;
+                if (chk.checked) _selectedIds.add(id);
+                else             _selectedIds.delete(id);
+                chk.closest('.adb-tr')?.classList.toggle('adb-tr-selected', chk.checked);
+
+                // Sync select-all state
+                if (selectAll) {
+                    const allNow = entities.every(e => _selectedIds.has(e.id));
+                    const anyNow = entities.some(e => _selectedIds.has(e.id));
+                    selectAll.checked       = allNow;
+                    selectAll.indeterminate = !allNow && anyNow;
+                }
+                _updateBulkBar();
+            });
+        });
+    }
+
+    async function _bulkExpandStubs() {
+        const ids = [..._selectedIds];
+        if (!ids.length) return;
+
+        // Count which of the selected are stubs (visible rows have data-stub)
+        const visStubs = [...document.querySelectorAll('.adb-tr[data-stub="true"]')]
+            .filter(r => _selectedIds.has(r.dataset.id)).length;
+        const n = ids.length;
+        const skipNote = visStubs < n
+            ? `\n${n - visStubs} already-expanded ${n - visStubs === 1 ? 'entity' : 'entities'} will be skipped.`
+            : '';
+
+        if (!confirm(`Expand ${n} selected ${n === 1 ? 'entity' : 'entities'} as stubs?${skipNote}`)) return;
+
+        _showBusy(`Expanding ${n} selected…`);
+        const model = _selectedModel();
+        let expanded = 0, failed = 0, skipped = 0;
+
+        for (const id of ids) {
+            try {
+                const res  = await fetch(`${API}/entities/${id}/expand?${_dbParam(model ? { model } : {})}`, { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok) { failed++; continue; }
+                if (data.error === 'already_active') { skipped++; continue; }
+                expanded++;
+            } catch { failed++; }
+        }
+
+        _hideBusy();
+        const parts = [];
+        if (expanded) parts.push(`${expanded} expanded ✓`);
+        if (skipped)  parts.push(`${skipped} already expanded`);
+        if (failed)   parts.push(`${failed} failed`);
+        _toast(parts.join(' · ') || 'Done', failed ? 'error' : 'success');
+
+        _selectedIds.clear();
+        _updateBulkBar();
+        await _loadEntityList(_currentFilter, _currentPage);
+    }
+
+    async function _bulkDelete() {
+        const ids = [..._selectedIds];
+        if (!ids.length) return;
+
+        const n = ids.length;
+        if (!confirm(`Delete ${n} selected ${n === 1 ? 'entity' : 'entities'}?\n\nEntities are soft-deleted and can be recovered from their JSON files.`)) return;
+
+        _showBusy(`Deleting ${n} ${n === 1 ? 'entity' : 'entities'}…`);
+        let deleted = 0, failed = 0;
+
+        for (const id of ids) {
+            try {
+                const res = await fetch(`${API}/entities/${id}?${_dbParam()}`, { method: 'DELETE' });
+                if (!res.ok) { failed++; continue; }
+                deleted++;
+            } catch { failed++; }
+        }
+
+        _hideBusy();
+        _toast(
+            `Deleted ${deleted}${failed ? ` · ${failed} failed` : ''} ✓`,
+            failed ? 'error' : 'success'
+        );
+        _selectedIds.clear();
+        _updateBulkBar();
+        await _loadEntityList(_currentFilter, _currentPage);
     }
 
     // ── Search ────────────────────────────────────────────────────────────────
@@ -498,9 +654,20 @@
             }
 
             listEl.innerHTML = _renderTable(results);
+            _wireTableCheckboxes(results);
             listEl.querySelectorAll('.adb-tr').forEach(row => {
-                row.addEventListener('click',   ()  => _loadEntity(row.dataset.id));
-                row.addEventListener('keydown', ev  => { if (ev.key === 'Enter') _loadEntity(row.dataset.id); });
+                row.addEventListener('click', e => {
+                    if (e.target.closest('.adb-td-check')) return;
+                    _loadEntity(row.dataset.id);
+                });
+                row.addEventListener('keydown', ev => {
+                    if (ev.key === 'Enter') { _loadEntity(row.dataset.id); return; }
+                    if (ev.key === ' ') {
+                        ev.preventDefault();
+                        const chk = row.querySelector('.adb-row-check');
+                        if (chk) { chk.checked = !chk.checked; chk.dispatchEvent(new Event('change')); }
+                    }
+                });
             });
             // Show result count in pagination bar (no prev/next for search)
             const pagEl = _el('adb-entity-pagination');
@@ -3289,6 +3456,11 @@
 
         // Validation view — back button restores the page the user was on
         _el('adb-val-close')?.addEventListener('click', () => _loadEntityList(_currentFilter, _currentPage));
+
+        // Bulk selection action bar
+        _el('adb-bulk-clear')?.addEventListener('click', _clearSelection);
+        _el('adb-bulk-expand')?.addEventListener('click', _bulkExpandStubs);
+        _el('adb-bulk-delete')?.addEventListener('click', _bulkDelete);
 
         // DB modal
         _el('adb-db-change-btn')?.addEventListener('click', _openDbModal);

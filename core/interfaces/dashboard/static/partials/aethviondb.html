@@ -357,6 +357,21 @@
             </div>
         </div>
 
+        <!-- Bulk action bar — visible when ≥1 row is checked -->
+        <div id="adb-bulk-bar" class="adb-bulk-bar hidden">
+            <span id="adb-bulk-count" class="adb-bulk-count"></span>
+            <button id="adb-bulk-clear" class="adb-btn adb-btn-ghost adb-btn-xs" title="Clear selection">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="adb-bulk-sep"></div>
+            <button id="adb-bulk-expand" class="adb-btn adb-btn-accent adb-btn-sm">
+                <i class="fas fa-wand-sparkles"></i> Expand Stubs
+            </button>
+            <button id="adb-bulk-delete" class="adb-btn adb-btn-danger adb-btn-sm">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        </div>
+
         <!-- Entity list pane -->
         <div id="adb-list-pane" class="adb-list-pane">
             <div id="adb-entity-list" class="adb-entity-list">
