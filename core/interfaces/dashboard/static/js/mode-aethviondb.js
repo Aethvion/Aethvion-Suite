@@ -3215,6 +3215,155 @@
     }
 
     // ══════════════════════════════════════════════════════════════════════════
+    // Import
+    // ══════════════════════════════════════════════════════════════════════════
+
+    let _importContent  = null;
+    let _importFilename = null;
+
+    function _importFileSelected(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        _importFilename = file.name;
+        const displayEl = _el('adb-import-filename-display');
+        if (displayEl) displayEl.value = file.name;
+
+        const reader = new FileReader();
+        reader.onload = evt => {
+            _importContent = evt.target.result;
+            _importShowPreview(file.name, _importContent);
+            const btn = _el('adb-import-btn');
+            if (btn) btn.disabled = false;
+        };
+        reader.readAsText(file, 'utf-8');
+    }
+
+    function _importShowPreview(filename, content) {
+        const previewEl = _el('adb-import-preview');
+        const textEl    = _el('adb-import-preview-text');
+        if (!previewEl || !textEl) return;
+
+        let count   = 0;
+        let fmtLabel = 'unknown format';
+        const lower  = filename.toLowerCase();
+
+        try {
+            if (lower.endsWith('.jsonl')) {
+                count    = content.split('\n').filter(l => l.trim()).length;
+                fmtLabel = 'JSONL bake';
+            } else {
+                const parsed = JSON.parse(content);
+                if (Array.isArray(parsed)) {
+                    count    = parsed.length;
+                    fmtLabel = 'JSON array';
+                } else if (parsed.entities) {
+                    count    = parsed.entities.length;
+                    fmtLabel = 'JSON bake';
+                } else if (parsed.id && parsed.sections) {
+                    count    = 1;
+                    fmtLabel = 'single entity JSON';
+                } else if (parsed.id) {
+                    count    = 1;
+                    fmtLabel = 'single flat entity';
+                }
+            }
+        } catch {
+            // Try JSONL fallback
+            const lines = content.split('\n').filter(l => l.trim());
+            if (lines.length) {
+                try { JSON.parse(lines[0]); count = lines.length; fmtLabel = 'JSONL'; } catch {}
+            }
+        }
+
+        const icon = count > 0 ? '<i class="fas fa-circle-check" style="color:#4ade80"></i>' : '<i class="fas fa-triangle-exclamation" style="color:#fb923c"></i>';
+        textEl.innerHTML = count > 0
+            ? `${icon} <strong>${count}</strong> ${count === 1 ? 'entity' : 'entities'} detected &mdash; <em>${fmtLabel}</em>`
+            : `${icon} Could not detect entity count &mdash; try importing anyway`;
+
+        previewEl.classList.remove('hidden');
+    }
+
+    async function _runImport() {
+        if (!_importContent) return;
+
+        const btn      = _el('adb-import-btn');
+        const resultEl = _el('adb-import-result');
+        const conflict = _el('adb-import-conflict')?.value || 'skip';
+        const source   = _el('adb-import-source')?.value?.trim() || null;
+
+        if (btn) btn.disabled = true;
+        if (resultEl) {
+            resultEl.innerHTML = '<div class="adb-status adb-status-loading"><i class="fas fa-spinner fa-spin"></i> Importing…</div>';
+            resultEl.classList.remove('hidden');
+        }
+
+        try {
+            const res  = await fetch(`${API}/import?${_dbParam()}`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({
+                    content:       _importContent,
+                    filename:      _importFilename || 'import.json',
+                    conflict_mode: conflict,
+                    ...(source ? { source } : {}),
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Import failed');
+
+            const isOk    = data.failed === 0;
+            const hasData = data.imported > 0 || data.skipped > 0;
+
+            const statusCls = !isOk ? 'adb-status-error' : data.imported > 0 ? 'adb-status-ok' : 'adb-status-loading';
+            const icon2     = data.imported > 0 ? '✓' : data.failed > 0 ? '✗' : 'ℹ';
+
+            let failDetails = '';
+            if (data.failed_list?.length) {
+                const rows = data.failed_list.map(f =>
+                    `<div class="adb-import-fail-row"><code>${_escHtml(f.name)}</code> — ${_escHtml(f.error)}</div>`
+                ).join('');
+                failDetails = `<details class="adb-import-failures"><summary>${data.failed} failure${data.failed !== 1 ? 's' : ''}</summary>${rows}</details>`;
+            }
+
+            if (resultEl) {
+                resultEl.innerHTML = `
+                    <div class="adb-status ${statusCls}">
+                        ${icon2} Imported <strong>${data.imported}</strong>
+                        &nbsp;·&nbsp; Skipped <strong>${data.skipped}</strong>
+                        &nbsp;·&nbsp; Failed <strong>${data.failed}</strong>
+                        &nbsp;<span class="adb-import-fmt-tag">${data.format || ''}</span>
+                    </div>
+                    ${failDetails}`;
+            }
+
+            if (data.imported > 0) {
+                _toast(`Imported ${data.imported} ${data.imported === 1 ? 'entity' : 'entities'} ✓`, 'success');
+                _loadEntityList(_currentFilter, _currentPage);
+            } else if (data.skipped > 0 && data.imported === 0) {
+                _toast(`All ${data.skipped} ${data.skipped === 1 ? 'entity' : 'entities'} already exist — skipped`, 'info');
+            } else if (data.failed > 0 && data.imported === 0) {
+                _toast(`Import failed for all ${data.failed} entities`, 'error');
+            }
+        } catch (e) {
+            if (resultEl) {
+                resultEl.innerHTML = `<div class="adb-status adb-status-error">✗ ${_escHtml(e.message)}</div>`;
+            }
+            _toast(`Import failed: ${e.message}`, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    function _importWire() {
+        _el('adb-import-browse-btn')?.addEventListener('click', () => {
+            _el('adb-import-file-input')?.click();
+        });
+        _el('adb-import-file-input')?.addEventListener('change', _importFileSelected);
+        _el('adb-import-btn')?.addEventListener('click', _runImport);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
     // API Explorer
     // ══════════════════════════════════════════════════════════════════════════
 
@@ -4439,6 +4588,7 @@
         _fdWire();
         _vecWire();
         _bakeWire();
+        _importWire();
         _apiWire();
         _fetchModels();
         _loadCachedInfo();          // populate stats from AethvionDB.INFO instantly

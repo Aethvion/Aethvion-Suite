@@ -122,6 +122,13 @@ class UpdateEntityRequest(BaseModel):
     mutations: dict[str, Any]
 
 
+class ImportRequest(BaseModel):
+    content:        str
+    filename:       str           = "import.json"
+    conflict_mode:  str           = "skip"       # 'skip' | 'overwrite'
+    source:         Optional[str] = None
+
+
 class ApplyExpandRequest(BaseModel):
     proposed: dict[str, Any]
 
@@ -370,6 +377,33 @@ async def delete_entity(
         raise HTTPException(404, f"Entity '{entity_id}' not found")
     writer.delete(entity_id, soft=not hard)
     return {"success": True, "entity_id": entity_id, "mode": "hard" if hard else "soft"}
+
+
+# ── Import ───────────────────────────────────────────────────────────────────
+
+@router.post("/import")
+async def import_entities_route(
+    req:  ImportRequest,
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """
+    Import entities from a baked .jsonl / .json file or a raw entity JSON.
+    Accepts the file content as a string in the request body.
+    """
+    from .importer import import_entities
+    root   = _db_root(db, path)
+    _ensure_db(root)
+    writer = _get_writer(db, path)
+    index  = _get_index(db, path)
+    result = await asyncio.to_thread(
+        import_entities,
+        writer, index,
+        req.content, req.filename, req.conflict_mode, req.source,
+    )
+    if result.get("status") == "error":
+        raise HTTPException(400, result["error"])
+    return result
 
 
 # ── Search ────────────────────────────────────────────────────────────────────

@@ -252,6 +252,57 @@
                 </div>
             </div>
 
+            <!-- ── Import ── -->
+            <div class="adb-panel" id="adb-import-panel">
+                <div class="adb-panel-header">
+                    <i class="fas fa-file-import"></i> Import
+                </div>
+                <p class="adb-panel-desc">
+                    Import entities from a <strong>.jsonl</strong> or <strong>.json</strong> bake export,
+                    a JSON array of entities, or a single entity file.
+                    Preserves all fields: summaries, relations, properties, stubs, vectors.
+                </p>
+
+                <!-- File picker row -->
+                <div class="adb-field">
+                    <label>File</label>
+                    <div class="adb-import-file-row">
+                        <input type="text" id="adb-import-filename-display"
+                               class="adb-input adb-import-filename-display"
+                               placeholder="No file selected" readonly>
+                        <button id="adb-import-browse-btn" class="adb-db-browse-btn" title="Browse for file">
+                            <i class="fas fa-folder-open"></i>
+                        </button>
+                    </div>
+                    <input type="file" id="adb-import-file-input" accept=".json,.jsonl" style="display:none">
+                </div>
+
+                <!-- Auto-detected preview -->
+                <div id="adb-import-preview" class="adb-import-preview hidden">
+                    <div id="adb-import-preview-text" class="adb-import-preview-text"></div>
+                </div>
+
+                <!-- Conflict mode -->
+                <div class="adb-field">
+                    <label title="What to do when an entity with the same name already exists">On conflict</label>
+                    <select id="adb-import-conflict">
+                        <option value="skip">Skip — keep existing entity</option>
+                        <option value="overwrite">Overwrite — replace with imported data</option>
+                    </select>
+                </div>
+
+                <!-- Source tag -->
+                <div class="adb-field">
+                    <label title="Overrides the source field on every imported entity">Source tag (optional)</label>
+                    <input type="text" id="adb-import-source" class="adb-input" placeholder="e.g. import, backup, merge…">
+                </div>
+
+                <button id="adb-import-btn" class="adb-primary-btn" disabled>
+                    <i class="fas fa-file-import"></i> Import
+                </button>
+                <div id="adb-import-result" class="hidden"></div>
+            </div>
+
         </div>
     </div>
 
