@@ -398,7 +398,7 @@
         <div id="adb-explorer-header" class="adb-explorer-header">
             <div class="adb-search-row">
                 <div class="adb-search-input-wrap">
-                    <i class="fas fa-search adb-search-icon"></i>
+                    <i class="fas fa-search adb-search-icon" id="adb-search-mode-icon"></i>
                     <input type="text" id="adb-search-input" class="adb-search-input" placeholder="Search by name, summary, or tag…">
                 </div>
                 <select id="adb-search-type" class="adb-search-type-sel">
@@ -412,6 +412,25 @@
                     <option value="creature">Creature</option>
                     <option value="work">Work</option>
                     <option value="other">Other</option>
+                </select>
+                <!-- Semantic / vector search toggle -->
+                <button id="adb-vsearch-toggle" class="adb-btn adb-btn-ghost adb-vsearch-toggle"
+                        title="Switch to semantic vector search (requires embeddings)">
+                    <i class="fas fa-microchip"></i>
+                    <span class="adb-vsearch-label">Semantic</span>
+                </button>
+                <!-- Model selector — shown only in semantic mode -->
+                <select id="adb-vsearch-model" class="adb-vsearch-model-sel hidden"
+                        title="Embedding model — must match the model used when generating embeddings">
+                    <optgroup label="OpenAI">
+                        <option value="text-embedding-3-small" selected>3-small</option>
+                        <option value="text-embedding-3-large">3-large</option>
+                        <option value="text-embedding-ada-002">ada-002</option>
+                    </optgroup>
+                    <optgroup label="Google">
+                        <option value="text-embedding-004">gemini-004</option>
+                        <option value="embedding-001">gemini-001</option>
+                    </optgroup>
                 </select>
                 <button id="adb-search-btn" class="adb-btn adb-btn-accent">Search</button>
             </div>

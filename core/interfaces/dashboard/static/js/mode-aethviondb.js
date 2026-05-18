@@ -31,6 +31,9 @@
     let _dbmSortCol = 'lastOpened'; // active sort column
     let _dbmSortDir = 'desc';       // 'asc' | 'desc'
 
+    // ── Search state ──────────────────────────────────────────────────────────
+    let _searchMode = 'keyword';    // 'keyword' | 'semantic'
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     function _el(id)   { return document.getElementById(id); }
@@ -1222,9 +1225,27 @@
 
     // ── Search ────────────────────────────────────────────────────────────────
 
+    /** Toggle between keyword and semantic (vector) search modes. */
+    function _vsearchToggle() {
+        _searchMode = _searchMode === 'keyword' ? 'semantic' : 'keyword';
+        const btn  = _el('adb-vsearch-toggle');
+        const sel  = _el('adb-vsearch-model');
+        const inp  = _el('adb-search-input');
+        const icon = _el('adb-search-mode-icon');
+        const sem  = _searchMode === 'semantic';
+        btn ?.classList.toggle('adb-vsearch-active', sem);
+        sel ?.classList.toggle('hidden', !sem);
+        if (icon) icon.className = sem ? 'fas fa-microchip adb-search-icon adb-search-icon-sem' : 'fas fa-search adb-search-icon';
+        if (inp)  inp.placeholder = sem
+            ? 'Describe what you\'re looking for — semantic / vector search…'
+            : 'Search by name, summary, or tag…';
+    }
+
     async function _search() {
         const q    = _el('adb-search-input')?.value?.trim() || '';
         const type = _el('adb-search-type')?.value || '';
+
+        if (_searchMode === 'semantic') { await _searchSemantic(q); return; }
 
         // If both empty, reload the full list with current filter
         if (!q && !type) { _loadEntityList(_currentFilter); return; }
@@ -1260,8 +1281,151 @@
                 pagEl.innerHTML = `<div class="adb-pag-info">${results.length} result${results.length !== 1 ? 's' : ''}${results.length === 100 ? ' (limit reached)' : ''}</div>`;
             }
         } catch (err) {
-            listEl.innerHTML = `<div class="adb-empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${err.message}</p></div>`;
+            listEl.innerHTML = `<div class="adb-empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${_escHtml(err.message)}</p></div>`;
         }
+    }
+
+    /**
+     * Semantic / vector similarity search.
+     * Calls POST /api/v1/{db}/raw/vectors/search — requires pre-generated embeddings.
+     */
+    async function _searchSemantic(q) {
+        if (!q) { _loadEntityList(_currentFilter); return; }
+
+        // v1 API operates on named databases, not arbitrary paths
+        if (_currentPath) {
+            _showEntityList();
+            _hide('adb-entity-pagination');
+            const listEl = _el('adb-entity-list');
+            if (listEl) listEl.innerHTML = `<div class="adb-empty-state">
+                <i class="fas fa-microchip"></i>
+                <p>Vector search is only available for named databases.</p>
+                <p class="adb-empty-sub">Switch to a named database via the <strong>Databases</strong> tab.</p>
+            </div>`;
+            return;
+        }
+
+        _showEntityList();
+        _hide('adb-entity-pagination');
+        const listEl = _el('adb-entity-list');
+        if (!listEl) return;
+        listEl.innerHTML = '<div class="adb-list-loading"><i class="fas fa-microchip fa-spin"></i> Embedding query…</div>';
+
+        const db    = _currentDb;
+        const model = _el('adb-vsearch-model')?.value || 'text-embedding-3-small';
+
+        try {
+            const res  = await fetch(`${_API_V1}/${encodeURIComponent(db)}/raw/vectors/search`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ query: q, model, top_k: 50, filters: {} }),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                const msg = data?.error?.message || data?.detail || 'Vector search failed';
+                listEl.innerHTML = `<div class="adb-empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>${_escHtml(msg)}</p>
+                </div>`;
+                return;
+            }
+
+            const results = data?.data?.results || [];
+
+            if (!results.length) {
+                listEl.innerHTML = `<div class="adb-empty-state">
+                    <i class="fas fa-microchip"></i>
+                    <p>No vector matches found.</p>
+                    <p class="adb-empty-sub">Generate embeddings first via
+                        <strong>Tools → Vector Search</strong>,
+                        then search here using the same model (<em>${_escHtml(model)}</em>).
+                    </p>
+                </div>`;
+                return;
+            }
+
+            listEl.innerHTML = _renderVectorTable(results);
+            _wireTableCheckboxes(results);
+            _wireTableRows(listEl);
+
+            const pagEl = _el('adb-entity-pagination');
+            if (pagEl) {
+                pagEl.classList.remove('hidden');
+                pagEl.innerHTML = `<div class="adb-pag-info">${results.length} semantic match${results.length !== 1 ? 'es' : ''} · <span class="adb-pag-model">${_escHtml(model)}</span></div>`;
+            }
+        } catch (err) {
+            listEl.innerHTML = `<div class="adb-empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${_escHtml(err.message)}</p></div>`;
+        }
+    }
+
+    /** Render the entity table for vector search results (adds a Score column). */
+    function _renderVectorTable(results) {
+        return `<table class="adb-table">
+            <colgroup>
+                <col class="adb-col-check">
+                <col class="adb-col-type">
+                <col>
+                <col class="adb-col-tags">
+                <col class="adb-col-rel">
+                <col class="adb-col-stubs">
+                <col class="adb-col-score">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th class="adb-col-check adb-th-check">
+                        <input type="checkbox" id="adb-select-all" class="adb-row-check" title="Select all">
+                    </th>
+                    <th class="adb-col-type">Type</th>
+                    <th>Name / Summary</th>
+                    <th class="adb-col-tags">Tags</th>
+                    <th class="adb-col-rel" title="Relations">Rel.</th>
+                    <th class="adb-col-stubs" title="Sub-topics">Sub.</th>
+                    <th class="adb-col-score" title="Cosine similarity score">Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${results.map(e => _entityRowVectorHtml(e)).join('')}
+            </tbody>
+        </table>`;
+    }
+
+    /** Row renderer for vector search results — adds a score badge in the last column. */
+    function _entityRowVectorHtml(e) {
+        const isStub    = e.status === 'stub';
+        const summary   = e.summary || '';
+        const tags      = e.tags || [];
+        const relCount  = e.relations_count != null ? e.relations_count : null;
+        const checked   = _selectedIds.has(e.id);
+        const scorePct  = e.score != null ? Math.round(e.score * 100) : null;
+
+        const tagHtml = tags.slice(0, 3).map(t => `<span class="adb-tag-sm">${_escHtml(t)}</span>`).join('')
+                      + (tags.length > 3 ? `<span class="adb-tag-sm">+${tags.length - 3}</span>` : '');
+
+        const scoreCls = scorePct >= 80 ? 'adb-score-high'
+                       : scorePct >= 55 ? 'adb-score-mid'
+                       :                  'adb-score-low';
+
+        return `<tr class="adb-tr${checked ? ' adb-tr-selected' : ''}" data-id="${_escAttr(e.id)}" data-stub="${isStub}" tabindex="0">
+            <td class="adb-td adb-td-check">
+                <input type="checkbox" class="adb-row-check" data-id="${_escAttr(e.id)}" ${checked ? 'checked' : ''}>
+            </td>
+            <td class="adb-td">
+                <span class="adb-type-badge adb-type-${e.type || 'other'}">${_escHtml(e.type || 'other')}</span>
+            </td>
+            <td class="adb-td">
+                <div class="adb-td-name-text">${_escHtml(e.name || e.id)}</div>
+                ${summary ? `<div class="adb-td-summary">${_escHtml(summary)}</div>` : ''}
+            </td>
+            <td class="adb-td">
+                <div class="adb-td-tags">${tagHtml}</div>
+            </td>
+            <td class="adb-td adb-td-num${relCount ? ' has-data' : ''}">${relCount ?? '—'}</td>
+            <td class="adb-td adb-td-num">—</td>
+            <td class="adb-td adb-td-score">
+                ${scorePct != null ? `<span class="adb-score-badge ${scoreCls}">${scorePct}%</span>` : '—'}
+            </td>
+        </tr>`;
     }
 
     // ── Entity detail ─────────────────────────────────────────────────────────
@@ -4888,6 +5052,7 @@
         // Search
         _el('adb-search-btn')?.addEventListener('click', _search);
         _el('adb-search-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') _search(); });
+        _el('adb-vsearch-toggle')?.addEventListener('click', _vsearchToggle);
 
         // Header toolbar — manual stats refresh + list reload
         _el('adb-refresh-btn')?.addEventListener('click', () => {

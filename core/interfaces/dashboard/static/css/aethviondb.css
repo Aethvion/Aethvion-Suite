@@ -3975,3 +3975,91 @@
     min-height: 0;
     overflow: hidden;
 }
+
+/* ═══════════════════════════════════════════════════════
+   Semantic / vector search UI
+   ═══════════════════════════════════════════════════════ */
+
+/* Toggle button — base */
+.adb-vsearch-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.79rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: color 0.13s, border-color 0.13s, background 0.13s;
+}
+.adb-vsearch-label { font-size: 0.79rem; }
+
+/* Active (semantic mode on) */
+.adb-vsearch-toggle.adb-vsearch-active {
+    border-color: rgba(34, 211, 238, 0.55) !important;
+    background:   rgba(34, 211, 238, 0.1)  !important;
+    color:        #22d3ee                  !important;
+}
+
+/* Model dropdown — only visible when toggle is active */
+.adb-vsearch-model-sel {
+    flex-shrink: 0;
+    max-width: 108px;
+    font-size: 0.78rem;
+    background: var(--bg-tertiary, rgba(255, 255, 255, 0.04));
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    padding: 0.28rem 0.4rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+.adb-vsearch-model-sel:focus { outline: none; border-color: #22d3ee; }
+
+/* Search-bar icon in semantic mode */
+.adb-search-icon-sem { color: #22d3ee; }
+
+/* Score column */
+.adb-col-score {
+    width: 58px;
+    text-align: right;
+}
+.adb-td-score { text-align: right; white-space: nowrap; }
+
+/* Score badge */
+.adb-score-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+}
+.adb-score-high {
+    background: rgba(34, 211, 238, 0.14);
+    color: #22d3ee;
+}
+.adb-score-mid {
+    background: rgba(250, 204, 21, 0.12);
+    color: #facc15;
+}
+.adb-score-low {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-muted);
+}
+
+/* Pagination model label */
+.adb-pag-model {
+    font-family: monospace;
+    font-size: 0.78em;
+    opacity: 0.75;
+}
+
+/* Empty-state sub-text */
+.adb-empty-sub {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.35rem;
+    max-width: 340px;
+    line-height: 1.5;
+}

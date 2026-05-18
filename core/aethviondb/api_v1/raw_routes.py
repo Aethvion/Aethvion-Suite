@@ -710,7 +710,11 @@ async def vector_similarity_search(
     if not query_vec and req.query:
         try:
             from core.aethviondb.vectorizer import _embed
-            query_vec = await asyncio.to_thread(_embed, req.query, req.model)
+            # _embed is already async (uses asyncio.to_thread internally for I/O);
+            # do NOT wrap it in to_thread again — that would run the coroutine
+            # constructor in a thread, return an unawaited coroutine object, and
+            # cause a TypeError when the cosine function tries to iterate over it.
+            query_vec = await _embed(req.query, req.model)
         except Exception as exc:
             raise HTTPException(500, f"Embedding failed: {exc}")
 
