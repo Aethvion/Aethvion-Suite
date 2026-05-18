@@ -115,24 +115,28 @@ def _write_queue(db_root: Path, paths: list[str]) -> None:
 
 
 def _save_progress(
-    db_root:     Path,
-    base_info:   dict,
-    status:      str,
-    next_index:  int,
-    processed:   int,
-    failed:      int,
-    skipped:     int,
-    failed_list: list,
+    db_root:      Path,
+    base_info:    dict,
+    status:       str,
+    next_index:   int,
+    processed:    int,
+    failed:       int,
+    skipped:      int,
+    failed_list:  list,
+    log:          list | None = None,
+    current_file: str = "",
 ) -> None:
     write_distill_info(db_root, {
         **base_info,
-        "status":       status,
-        "next_index":   next_index,
-        "processed":    processed,
-        "failed":       failed,
-        "skipped":      skipped,
-        "failed_list":  failed_list[-50:],   # cap to last 50 failures
-        "last_updated": _now_iso(),
+        "status":        status,
+        "next_index":    next_index,
+        "processed":     processed,
+        "failed":        failed,
+        "skipped":       skipped,
+        "failed_list":   failed_list[-50:],   # cap to last 50 failures
+        "log":           (log or [])[-100:],  # cap to last 100 log lines
+        "current_file":  current_file,
+        "last_updated":  _now_iso(),
     })
 
 
@@ -239,6 +243,8 @@ def prepare_start_job(
         "failed":       0,
         "skipped":      0,
         "failed_list":  [],
+        "log":          [],
+        "current_file": "",
     })
     return total
 
@@ -271,11 +277,12 @@ async def run_distill_job(
     failed      = info.get("failed",     0)
     skipped     = info.get("skipped",    0)
     failed_list = list(info.get("failed_list", []))
+    log         = list(info.get("log", []))
     total       = len(file_list)
 
     distiller = ContentDistiller(writer=writer, index=index, model=model)
 
-    _save_progress(db_root, info, "running", next_index, processed, failed, skipped, failed_list)
+    _save_progress(db_root, info, "running", next_index, processed, failed, skipped, failed_list, log)
     logger.info(f"[FolderDistiller] Starting from index {next_index}/{total}")
 
     i = next_index
@@ -284,7 +291,7 @@ async def run_distill_job(
         # ── Pause check ──────────────────────────────────────────────────────
         ev = _pause_events.get(key)
         if ev is not None and not ev.is_set():
-            _save_progress(db_root, info, "paused", i, processed, failed, skipped, failed_list)
+            _save_progress(db_root, info, "paused", i, processed, failed, skipped, failed_list, log)
             logger.info(f"[FolderDistiller] Paused at {i}/{total} "
                         f"(processed={processed} failed={failed} skipped={skipped})")
             _active_tasks.pop(key, None)
@@ -299,10 +306,13 @@ async def run_distill_job(
         if ext not in SUPPORTED_EXTENSIONS:
             skipped += 1
             i       += 1
-            if i % 100 == 0:
-                _save_progress(db_root, info, "running", i, processed, failed, skipped, failed_list)
+            if i % 50 == 0:
+                _save_progress(db_root, info, "running", i, processed, failed, skipped, failed_list, log)
             await asyncio.sleep(0)
             continue
+
+        # ── Signal "currently processing this file" before the LLM call ─────
+        _save_progress(db_root, info, "running", i, processed, failed, skipped, failed_list, log, rel)
 
         # ── Read + distil ────────────────────────────────────────────────────
         try:
@@ -321,6 +331,7 @@ async def run_distill_job(
                 continue
 
             result = await distiller.distill(content=content, source=source)
+            fname  = fp.name
             if result["errors"]:
                 failed += 1
                 failed_list.append({
@@ -328,25 +339,28 @@ async def run_distill_job(
                     "path":  rel,
                     "error": result["errors"][0],
                 })
+                log.append(f"✗ {fname} — {result['errors'][0][:80]}")
                 logger.debug(f"[FolderDistiller] [{i}] FAIL {rel}: {result['errors'][0]}")
             else:
                 processed += 1
-                logger.debug(f"[FolderDistiller] [{i}] OK   {rel} → {result.get('entity_name')}")
+                entity_name = result.get("entity_name") or fname
+                log.append(f"✓ {entity_name} ← {fname}")
+                logger.debug(f"[FolderDistiller] [{i}] OK   {rel} → {entity_name}")
 
         except Exception as exc:
             failed += 1
             failed_list.append({"index": i, "path": rel, "error": str(exc)[:200]})
+            log.append(f"✗ {fp.name} — {str(exc)[:80]}")
             logger.warning(f"[FolderDistiller] [{i}] ERROR {rel}: {exc}")
 
         i += 1
 
-        # Save every 5 distilled files (not on every skip to avoid thrashing disk)
-        if (processed + failed) > 0 and (processed + failed) % 5 == 0:
-            _save_progress(db_root, info, "running", i, processed, failed, skipped, failed_list)
+        # Save after every distilled/failed file (skips are batched above)
+        _save_progress(db_root, info, "running", i, processed, failed, skipped, failed_list, log)
 
         await asyncio.sleep(0)   # yield to the event loop between files
 
-    _save_progress(db_root, info, "completed", total, processed, failed, skipped, failed_list)
+    _save_progress(db_root, info, "completed", total, processed, failed, skipped, failed_list, log)
     logger.info(
         f"[FolderDistiller] Completed {total} files — "
         f"processed={processed} failed={failed} skipped={skipped}"

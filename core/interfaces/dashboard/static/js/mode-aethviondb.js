@@ -2031,6 +2031,37 @@
                 <div class="adb-fd-ps-remaining">${_fmtNum(remaining)} remaining of ${_fmtNum(total)}</div>`;
         }
 
+        // Log window — current file indicator + scrollable history
+        const _esc       = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const logEl      = _fdEl('adb-fd-log');
+        const logNowEl   = _fdEl('adb-fd-log-now');
+
+        if (logEl) {
+            const entries = Array.isArray(data.log) ? data.log : [];
+            if (entries.length > 0) {
+                const atBottom = logEl.scrollTop >= logEl.scrollHeight - logEl.clientHeight - 16;
+                logEl.innerHTML = entries.map(line => {
+                    let cls = 'adb-fd-log-entry';
+                    if (line.startsWith('✓')) cls += ' adb-fd-log-ok';
+                    else if (line.startsWith('✗')) cls += ' adb-fd-log-err';
+                    return `<div class="${cls}">${_esc(line)}</div>`;
+                }).join('');
+                if (atBottom) logEl.scrollTop = logEl.scrollHeight;
+            }
+        }
+
+        if (logNowEl) {
+            const isActive = data.status === 'running' || data.status === 'starting';
+            const cf = (isActive && data.current_file) ? String(data.current_file) : '';
+            if (cf) {
+                const fname = cf.replace(/\\/g, '/').split('/').pop() || cf;
+                logNowEl.textContent = `⟳  ${fname}`;
+                logNowEl.classList.remove('hidden');
+            } else {
+                logNowEl.classList.add('hidden');
+            }
+        }
+
         // Context-sensitive buttons
         const isRunning  = data.status === 'running' || data.status === 'starting';
         const isPaused   = data.status === 'paused';
