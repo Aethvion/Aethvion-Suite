@@ -208,6 +208,7 @@ def prepare_start_job(
     folder_path: str,
     model:       str,
     source:      str,
+    concurrency: int = 1,
 ) -> int:
     """
     Scan the folder, write the queue file and an initial DISTILLINFO.
@@ -237,6 +238,7 @@ def prepare_start_job(
         "status":       "starting",
         "model":        model,
         "source":       source,
+        "concurrency":  max(1, concurrency),
         "total_files":  total,
         "next_index":   0,
         "processed":    0,
@@ -249,18 +251,65 @@ def prepare_start_job(
     return total
 
 
+# ── Per-file distillation helper ───────────────────────────────────────────────
+
+async def _distill_one_file(
+    distiller,
+    source: str,
+    fp:     Path,
+    rel:    str,
+    index:  int,
+) -> dict:
+    """
+    Read and distil a single file.  Always returns a result dict — never raises.
+
+    Keys: status ('ok'|'fail'|'skip'), entity_name, error, fname, rel, index.
+    """
+    fname = fp.name
+    try:
+        content = fp.read_text(encoding="utf-8", errors="replace")
+
+        # Binary / empty heuristics
+        if not content.strip():
+            return {"status": "skip", "fname": fname, "rel": rel, "index": index}
+        if len(content) > 0 and content.count("�") / len(content) > 0.15:
+            return {"status": "skip", "fname": fname, "rel": rel, "index": index}
+
+        result = await distiller.distill(content=content, source=source)
+        if result["errors"]:
+            return {
+                "status": "fail",
+                "error":  result["errors"][0],
+                "fname":  fname, "rel": rel, "index": index,
+            }
+        return {
+            "status":      "ok",
+            "entity_name": result.get("entity_name") or fname,
+            "fname":       fname, "rel": rel, "index": index,
+        }
+    except Exception as exc:
+        return {
+            "status": "fail",
+            "error":  str(exc)[:200],
+            "fname":  fname, "rel": rel, "index": index,
+        }
+
+
 # ── Background task ────────────────────────────────────────────────────────────
 
 async def run_distill_job(
-    db_root: Path,
+    db_root:     Path,
     writer,
     index,
-    model:   str,
-    source:  str,
+    model:       str,
+    source:      str,
+    concurrency: int = 1,
 ) -> None:
     """
-    Async background task: read the queue, distil each file, persist progress.
-    Checks the pause event before every file so pause is responsive.
+    Async background task: read the queue, distil files in parallel batches,
+    persist progress after each batch.  Checks the pause event between batches.
+
+    ``concurrency`` controls how many files are distilled simultaneously.
     """
     from .distiller import ContentDistiller
 
@@ -279,16 +328,18 @@ async def run_distill_job(
     failed_list = list(info.get("failed_list", []))
     log         = list(info.get("log", []))
     total       = len(file_list)
+    concurrency = max(1, concurrency)
 
     distiller = ContentDistiller(writer=writer, index=index, model=model)
 
     _save_progress(db_root, info, "running", next_index, processed, failed, skipped, failed_list, log)
-    logger.info(f"[FolderDistiller] Starting from index {next_index}/{total}")
+    logger.info(f"[FolderDistiller] Starting from index {next_index}/{total} "
+                f"(concurrency={concurrency})")
 
     i = next_index
     while i < total:
 
-        # ── Pause check ──────────────────────────────────────────────────────
+        # ── Pause check (between batches) ────────────────────────────────────
         ev = _pause_events.get(key)
         if ev is not None and not ev.is_set():
             _save_progress(db_root, info, "paused", i, processed, failed, skipped, failed_list, log)
@@ -298,67 +349,52 @@ async def run_distill_job(
             _pause_events.pop(key, None)
             return
 
-        rel  = file_list[i]
-        fp   = Path(info["folder_path"]) / rel
-        ext  = fp.suffix.lower()
+        # ── Build next batch: skip unsupported inline, collect up to N files ─
+        batch: list[tuple[int, str, Path]] = []
+        j = i
+        while j < total and len(batch) < concurrency:
+            rel = file_list[j]
+            fp  = Path(info["folder_path"]) / rel
+            if fp.suffix.lower() not in SUPPORTED_EXTENSIONS:
+                skipped += 1
+                j       += 1
+                continue
+            batch.append((j, rel, fp))
+            j += 1
 
-        # ── Skip unsupported file types quickly ──────────────────────────────
-        if ext not in SUPPORTED_EXTENSIONS:
-            skipped += 1
-            i       += 1
-            if i % 50 == 0:
-                _save_progress(db_root, info, "running", i, processed, failed, skipped, failed_list, log)
+        if not batch:
+            # Only unsupported files remained
+            i = j
+            _save_progress(db_root, info, "running", i, processed, failed, skipped, failed_list, log)
             await asyncio.sleep(0)
             continue
 
-        # ── Signal "currently processing this file" before the LLM call ─────
-        _save_progress(db_root, info, "running", i, processed, failed, skipped, failed_list, log, rel)
+        # ── Signal which files are being processed ───────────────────────────
+        current_names = " | ".join(fp.name for _, _, fp in batch)
+        _save_progress(db_root, info, "running", i, processed, failed, skipped, failed_list, log, current_names)
 
-        # ── Read + distil ────────────────────────────────────────────────────
-        try:
-            content = fp.read_text(encoding="utf-8", errors="replace")
+        # ── Distil batch in parallel ─────────────────────────────────────────
+        coros   = [_distill_one_file(distiller, source, fp, rel, idx) for idx, rel, fp in batch]
+        results = await asyncio.gather(*coros)
 
-            # Heuristic: skip files that look binary (many replacement chars) or empty
-            if not content.strip():
+        # ── Apply results ────────────────────────────────────────────────────
+        for res in results:
+            if res["status"] == "skip":
                 skipped += 1
-                i       += 1
-                await asyncio.sleep(0)
-                continue
-            if len(content) > 0 and content.count("�") / len(content) > 0.15:
-                skipped += 1
-                i       += 1
-                await asyncio.sleep(0)
-                continue
-
-            result = await distiller.distill(content=content, source=source)
-            fname  = fp.name
-            if result["errors"]:
+            elif res["status"] == "fail":
                 failed += 1
-                failed_list.append({
-                    "index": i,
-                    "path":  rel,
-                    "error": result["errors"][0],
-                })
-                log.append(f"✗ {fname} — {result['errors'][0][:80]}")
-                logger.debug(f"[FolderDistiller] [{i}] FAIL {rel}: {result['errors'][0]}")
+                err = res.get("error", "unknown error")
+                failed_list.append({"index": res["index"], "path": res["rel"], "error": err})
+                log.append(f"✗ {res['fname']} — {err[:80]}")
+                logger.debug(f"[FolderDistiller] [{res['index']}] FAIL {res['rel']}: {err}")
             else:
                 processed += 1
-                entity_name = result.get("entity_name") or fname
-                log.append(f"✓ {entity_name} ← {fname}")
-                logger.debug(f"[FolderDistiller] [{i}] OK   {rel} → {entity_name}")
+                log.append(f"✓ {res['entity_name']} ← {res['fname']}")
+                logger.debug(f"[FolderDistiller] [{res['index']}] OK   {res['rel']} → {res['entity_name']}")
 
-        except Exception as exc:
-            failed += 1
-            failed_list.append({"index": i, "path": rel, "error": str(exc)[:200]})
-            log.append(f"✗ {fp.name} — {str(exc)[:80]}")
-            logger.warning(f"[FolderDistiller] [{i}] ERROR {rel}: {exc}")
-
-        i += 1
-
-        # Save after every distilled/failed file (skips are batched above)
+        i = j
         _save_progress(db_root, info, "running", i, processed, failed, skipped, failed_list, log)
-
-        await asyncio.sleep(0)   # yield to the event loop between files
+        await asyncio.sleep(0)   # yield to the event loop between batches
 
     _save_progress(db_root, info, "completed", total, processed, failed, skipped, failed_list, log)
     logger.info(

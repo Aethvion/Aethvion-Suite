@@ -157,6 +157,15 @@
                             <option value="auto">Auto Select</option>
                         </select>
                     </div>
+                    <div class="adb-field">
+                        <label title="How many files to distil simultaneously">Parallel files</label>
+                        <select id="adb-fd-concurrency">
+                            <option value="1">1 — Sequential</option>
+                            <option value="2">2 — Fast</option>
+                            <option value="4" selected>4 — Faster</option>
+                            <option value="8">8 — Max</option>
+                        </select>
+                    </div>
                     <div class="adb-fd-btn-row">
                         <button id="adb-fd-start-btn" class="adb-primary-btn" style="flex:1">
                             <i class="fas fa-play"></i> Start Distilling

@@ -706,14 +706,16 @@ async def get_distill_status(
 
 @router.post("/distill-folder/start")
 async def start_folder_distill(
-    folder: str = Query(..., description="Absolute path to the source folder"),
-    model:  str = Query("auto"),
-    db:     str = Query("default"),
-    path:   Optional[str] = Query(None),
+    folder:      str = Query(..., description="Absolute path to the source folder"),
+    model:       str = Query("auto"),
+    concurrency: int = Query(1, ge=1, le=16, description="Files to distil in parallel"),
+    db:          str = Query("default"),
+    path:        Optional[str] = Query(None),
 ):
     """
     Start distilling a folder from scratch.
     Scans the folder in a thread (non-blocking), then launches a background task.
+    ``concurrency`` controls how many files are distilled simultaneously.
     """
     from .folder_distiller import (
         _active_tasks, _pause_events,
@@ -729,7 +731,7 @@ async def start_folder_distill(
 
     # Scan + write queue in a thread (can take seconds for large folders)
     total = await asyncio.to_thread(
-        prepare_start_job, root, folder, model, "folder_distill"
+        prepare_start_job, root, folder, model, "folder_distill", concurrency
     )
 
     # Event must be created from the async context so it belongs to the running loop
@@ -740,7 +742,9 @@ async def start_folder_distill(
     writer = _get_writer(db, path)
     index  = _get_index(db, path)
 
-    task = asyncio.create_task(run_distill_job(root, writer, index, model, "folder_distill"))
+    task = asyncio.create_task(
+        run_distill_job(root, writer, index, model, "folder_distill", concurrency)
+    )
     _active_tasks[key] = task
     task.add_done_callback(lambda _: _active_tasks.pop(key, None))
 
@@ -783,8 +787,9 @@ async def resume_folder_distill(
     if not folder or not Path(folder).exists():
         raise HTTPException(400, f"Source folder missing or moved: {folder!r}")
 
-    model  = info.get("model",  "auto")
-    source = info.get("source", "folder_distill")
+    model       = info.get("model",       "auto")
+    source      = info.get("source",      "folder_distill")
+    concurrency = info.get("concurrency", 1)
 
     ev = asyncio.Event()
     ev.set()
@@ -793,7 +798,7 @@ async def resume_folder_distill(
     writer = _get_writer(db, path)
     index  = _get_index(db, path)
 
-    task = asyncio.create_task(run_distill_job(root, writer, index, model, source))
+    task = asyncio.create_task(run_distill_job(root, writer, index, model, source, concurrency))
     _active_tasks[key] = task
     task.add_done_callback(lambda _: _active_tasks.pop(key, None))
 

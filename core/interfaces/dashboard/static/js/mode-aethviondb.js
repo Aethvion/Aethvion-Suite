@@ -1899,22 +1899,24 @@
     // ── Start ─────────────────────────────────────────────────────────────────
 
     async function _fdStart() {
-        const folder = _fdScanData?.folder_path || _fdEl('adb-fd-path-input')?.value?.trim();
-        const model  = _fdEl('adb-fd-model')?.value || 'auto';
+        const folder      = _fdScanData?.folder_path || _fdEl('adb-fd-path-input')?.value?.trim();
+        const model       = _fdEl('adb-fd-model')?.value || 'auto';
+        const concurrency = parseInt(_fdEl('adb-fd-concurrency')?.value || '1', 10);
         if (!folder) return;
 
         const btn = _fdEl('adb-fd-start-btn');
         if (btn) btn.disabled = true;
 
         try {
-            const params = new URLSearchParams(_dbParam({ folder, model }));
+            const params = new URLSearchParams(_dbParam({ folder, model, concurrency }));
             const res    = await fetch(`${API}/distill-folder/start?${params}`, { method: 'POST' });
             const data   = await res.json();
             if (!res.ok) throw new Error(data.detail || 'Could not start');
 
             _fdSection('adb-fd-prog');
             _fdStartPolling();
-            _toast(`Distilling ${_fmtNum(data.total_files)} files in background`, 'info');
+            const parallelNote = concurrency > 1 ? `, ${concurrency} at a time` : '';
+            _toast(`Distilling ${_fmtNum(data.total_files)} files${parallelNote}`, 'info');
         } catch (e) {
             _toast(`Start failed: ${e.message}`, 'error');
         } finally {
@@ -2016,9 +2018,13 @@
         // Stats block
         const statsEl = _fdEl('adb-fd-prog-stats');
         if (statsEl) {
-            const total     = data.total_files  || 0;
-            const done      = data.next_index   || 0;
-            const remaining = Math.max(0, total - done);
+            const total       = data.total_files  || 0;
+            const done        = data.next_index   || 0;
+            const remaining   = Math.max(0, total - done);
+            const concurrency = data.concurrency  || 1;
+            const parallelTag = concurrency > 1
+                ? `<span class="adb-fd-ps-parallel"><i class="fas fa-bolt"></i> ${concurrency} parallel</span>`
+                : '';
             statsEl.innerHTML = `
                 <div class="adb-fd-ps-row">
                     <span class="adb-fd-ps-val adb-fd-ps-ok">${_fmtNum(data.processed || 0)}</span>
@@ -2027,6 +2033,7 @@
                     <span class="adb-fd-ps-lbl">skipped</span>
                     <span class="adb-fd-ps-val adb-fd-ps-err">${_fmtNum(data.failed   || 0)}</span>
                     <span class="adb-fd-ps-lbl">failed</span>
+                    ${parallelTag}
                 </div>
                 <div class="adb-fd-ps-remaining">${_fmtNum(remaining)} remaining of ${_fmtNum(total)}</div>`;
         }
@@ -2054,8 +2061,12 @@
             const isActive = data.status === 'running' || data.status === 'starting';
             const cf = (isActive && data.current_file) ? String(data.current_file) : '';
             if (cf) {
-                const fname = cf.replace(/\\/g, '/').split('/').pop() || cf;
-                logNowEl.textContent = `⟳  ${fname}`;
+                // current_file may be "file1.txt | file2.md | file3.py" for parallel batches
+                const parts = cf.split(' | ').filter(Boolean);
+                const display = parts.length <= 2
+                    ? cf
+                    : `${parts[0]}  +${parts.length - 1} more`;
+                logNowEl.textContent = `⟳  ${display}`;
                 logNowEl.classList.remove('hidden');
             } else {
                 logNowEl.classList.add('hidden');

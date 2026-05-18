@@ -1814,10 +1814,21 @@
 .adb-fd-ps-ok   { color: #4ade80; }
 .adb-fd-ps-skip { color: var(--text-muted); }
 .adb-fd-ps-err  { color: #f87171; }
+.adb-fd-ps-parallel {
+    margin-left: auto;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #a78bfa;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.adb-fd-ps-parallel i { font-size: 0.6rem; }
 .adb-fd-ps-remaining {
     font-size: 0.72rem;
     color: var(--text-muted);
 }
+
 
 /* ── Distillation log window ── */
 .adb-fd-log-wrap {
