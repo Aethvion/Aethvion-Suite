@@ -250,39 +250,44 @@ def _check_containment_cycle(
     max_depth: int = 10,
 ) -> list[Issue]:
     """
-    Detect cycles in located_in / part_of / member_of containment chains.
-    Walks up the chain and checks for revisits.
+    Detect cycles in located_in / part_of / member_of / child_of chains.
+
+    Uses a backtracking DFS that follows *all* containment relations for
+    each entity (not just the first one).  Per-branch path tracking avoids
+    false positives from diamond-shaped hierarchies where two paths legitimately
+    converge on the same ancestor.
     """
     issues: list[Issue] = []
     start_id = entity["id"]
     containment_kinds = {"located_in", "part_of", "member_of", "child_of"}
+    reported: set[str] = set()   # avoid emitting duplicate cycle reports
 
-    visited = {start_id}
-    current_id = start_id
-    depth = 0
-
-    while depth < max_depth:
+    def _dfs(current_id: str, path: set, depth: int) -> None:
+        if depth > max_depth:
+            return
         current = writer.get(current_id)
         if not current:
-            break
-        parent_id = None
+            return
         for rel in current["sections"].get("relations", []):
-            if isinstance(rel, dict) and rel.get("kind") in containment_kinds:
-                parent_id = rel.get("target_id")
-                break
-        if not parent_id:
-            break
-        if parent_id in visited:
-            issues.append(Issue(
-                Severity.ERROR, "containment_cycle",
-                f"Containment cycle detected: {start_id} → ... → {parent_id} (revisit)",
-                start_id, "relations",
-            ))
-            break
-        visited.add(parent_id)
-        current_id = parent_id
-        depth += 1
+            if not isinstance(rel, dict) or rel.get("kind") not in containment_kinds:
+                continue
+            parent_id = rel.get("target_id")
+            if not parent_id:
+                continue
+            if parent_id in path:
+                if parent_id not in reported:
+                    issues.append(Issue(
+                        Severity.ERROR, "containment_cycle",
+                        f"Containment cycle detected: {start_id} → … → {parent_id} (revisit)",
+                        start_id, "relations",
+                    ))
+                    reported.add(parent_id)
+                continue   # don't recurse further through this cycle node
+            path.add(parent_id)
+            _dfs(parent_id, path, depth + 1)
+            path.discard(parent_id)   # backtrack
 
+    _dfs(start_id, {start_id}, 0)
     return issues
 
 

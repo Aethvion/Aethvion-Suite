@@ -189,6 +189,8 @@ class EntityWriter:
         new_name = entity.get("name")
         if new_name and new_name != old_name:
             self._index.register(new_name, entity_id)
+            if old_name:
+                self._index.unregister(old_name)
 
         # Merge or replace sections
         incoming_sections = mutations.get("sections", {})

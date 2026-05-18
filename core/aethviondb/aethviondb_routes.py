@@ -922,8 +922,9 @@ async def get_graph(
             if not tid or tid not in id_set:
                 continue
             kind = rel.get("kind", "related_to")
-            # Dedup undirected (keep first direction encountered)
-            key = (min(e["id"], tid), max(e["id"], tid), kind)
+            # Dedup directed edges — (source, target, kind) so A→B and B→A
+            # with the same kind are both preserved as distinct edges.
+            key = (e["id"], tid, kind)
             if key not in seen_edges:
                 seen_edges.add(key)
                 edges.append({"source": e["id"], "target": tid, "kind": kind})
