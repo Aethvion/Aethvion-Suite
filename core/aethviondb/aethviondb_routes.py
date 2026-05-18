@@ -122,6 +122,14 @@ class UpdateEntityRequest(BaseModel):
     mutations: dict[str, Any]
 
 
+class ApplyExpandRequest(BaseModel):
+    proposed: dict[str, Any]
+
+
+class ApplyDeepenRequest(BaseModel):
+    previews: list[dict[str, Any]]
+
+
 class CreateDatabaseRequest(BaseModel):
     name: str
     path: Optional[str] = None   # Custom filesystem path; if omitted uses AETHVIONDB/<name>
@@ -338,15 +346,16 @@ async def create_entity(
 
 @router.put("/entities/{entity_id}")
 async def update_entity(
-    entity_id: str,
-    req:  UpdateEntityRequest,
-    db:   str = Query("default"),
-    path: Optional[str] = Query(None),
+    entity_id:       str,
+    req:             UpdateEntityRequest,
+    db:              str  = Query("default"),
+    path:            Optional[str] = Query(None),
+    replace_sections: bool = Query(False, description="When true, replace sections instead of merging"),
 ):
     writer = _get_writer(db, path)
     if not writer.exists(entity_id):
         raise HTTPException(404, f"Entity '{entity_id}' not found")
-    return writer.update(entity_id, req.mutations)
+    return writer.update(entity_id, req.mutations, merge_sections=not replace_sections)
 
 
 @router.delete("/entities/{entity_id}")
@@ -512,6 +521,69 @@ async def deepen_entity(
     engine = ExpansionEngine(writer=_get_writer(db, path), index=_get_index(db, path))
     report = await engine.deepen_stubs_for(entity_id, max_stubs=max_stubs, model=model)
     return report.as_dict()
+
+
+@router.post("/entities/{entity_id}/expand/preview")
+async def preview_expand_single(
+    entity_id: str,
+    model:     Optional[str] = Query(None),
+    db:        str = Query("default"),
+    path:      Optional[str] = Query(None),
+):
+    """Generate an expansion preview for a stub entity WITHOUT writing it."""
+    from .expansion_engine import ExpansionEngine
+    engine = ExpansionEngine(writer=_get_writer(db, path), index=_get_index(db, path))
+    result = await engine.preview_expand_stub(entity_id, model=model)
+    if result.get("error"):
+        raise HTTPException(500, result["error"])
+    return result
+
+
+@router.post("/entities/{entity_id}/expand/apply")
+async def apply_expand_single(
+    entity_id: str,
+    req:       ApplyExpandRequest,
+    db:        str = Query("default"),
+    path:      Optional[str] = Query(None),
+):
+    """Apply a previously previewed expansion to a stub entity."""
+    from .expansion_engine import ExpansionEngine
+    engine = ExpansionEngine(writer=_get_writer(db, path), index=_get_index(db, path))
+    result = await engine.apply_expand_preview(entity_id, req.proposed)
+    if not result["success"]:
+        raise HTTPException(500, result.get("error", "Apply failed"))
+    return result
+
+
+@router.post("/entities/{entity_id}/deepen/preview")
+async def preview_deepen_entity(
+    entity_id: str,
+    max_stubs: int = Query(5, le=20),
+    model:     Optional[str] = Query(None),
+    db:        str = Query("default"),
+    path:      Optional[str] = Query(None),
+):
+    """Preview deepening the sub-topics of an active entity WITHOUT writing."""
+    from .expansion_engine import ExpansionEngine
+    engine = ExpansionEngine(writer=_get_writer(db, path), index=_get_index(db, path))
+    result = await engine.preview_deepen_stubs_for(entity_id, max_stubs=max_stubs, model=model)
+    if result.get("error"):
+        raise HTTPException(500, result["error"])
+    return result
+
+
+@router.post("/entities/{entity_id}/deepen/apply")
+async def apply_deepen_entity(
+    entity_id: str,
+    req:       ApplyDeepenRequest,
+    db:        str = Query("default"),
+    path:      Optional[str] = Query(None),
+):
+    """Apply selected previewed stub expansions for an active entity."""
+    from .expansion_engine import ExpansionEngine
+    engine = ExpansionEngine(writer=_get_writer(db, path), index=_get_index(db, path))
+    result = await engine.apply_deepen_previews(entity_id, req.previews)
+    return result
 
 
 # ── Validation ────────────────────────────────────────────────────────────────

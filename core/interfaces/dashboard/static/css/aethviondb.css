@@ -2978,3 +2978,280 @@
 .adb-th-sort:hover .adb-sort-inactive {
     opacity: 0.55;
 }
+
+/* ══════════════════════════════════════════
+   Entity Edit Mode
+   ══════════════════════════════════════════ */
+
+/* Name heading becomes editable */
+.adb-ev-name.adb-edit-name {
+    border-bottom: 1.5px solid #22d3ee;
+    padding-bottom: 0.1em;
+    outline: none;
+    cursor: text;
+    min-width: 3ch;
+}
+.adb-ev-name.adb-edit-name:focus {
+    border-bottom-color: #67e8f9;
+}
+
+/* Type select in the header row */
+.adb-edit-type-select {
+    appearance: none;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+}
+.adb-edit-type-select:focus { outline: 1px solid #22d3ee; }
+
+/* Status select badge-style */
+.adb-edit-status-select {
+    appearance: none;
+    border: none;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.15rem 0.55rem;
+    cursor: pointer;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+.adb-edit-status-select:focus { outline: 1px solid #22d3ee; }
+
+/* Summary textarea */
+.adb-edit-summary {
+    width: 100%;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 6px;
+    padding: 0.5rem 0.65rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    resize: vertical;
+    font-family: inherit;
+    margin-top: 0.25rem;
+}
+.adb-edit-summary:focus { outline: 1px solid #22d3ee; border-color: #22d3ee; }
+
+/* Generic edit input */
+.adb-edit-input {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.82rem;
+    font-family: inherit;
+}
+.adb-edit-input:focus { outline: none; border-color: #22d3ee; }
+
+/* Tag chip editor */
+.adb-edit-tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0.35rem 0 0.4rem;
+    min-height: 1.5rem;
+}
+.adb-edit-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(34,211,238,0.1);
+    border: 1px solid rgba(34,211,238,0.3);
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem 0.15rem 0.65rem;
+    font-size: 0.76rem;
+    color: #22d3ee;
+}
+.adb-edit-chip-remove {
+    background: none;
+    border: none;
+    color: #22d3ee;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0;
+    line-height: 1;
+    opacity: 0.6;
+}
+.adb-edit-chip-remove:hover { opacity: 1; }
+.adb-edit-tag-add {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    margin-top: 0.2rem;
+}
+.adb-edit-tag-input { flex: 1; }
+
+/* "xs" button variant */
+.adb-btn-xs {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+/* Add row button */
+.adb-edit-add-btn {
+    margin-top: 0.6rem;
+    font-size: 0.78rem;
+}
+
+/* Remove × button */
+.adb-edit-remove-btn {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0 0.25rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.adb-edit-remove-btn:hover { color: #f87171; }
+
+/* Timeline editor rows */
+.adb-edit-tl-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.adb-edit-tl-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+.adb-edit-tl-date  { width: 8rem; flex-shrink: 0; }
+.adb-edit-tl-event { flex: 1; }
+
+/* Relations editor rows */
+.adb-edit-rel-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.adb-edit-rel-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+.adb-edit-rel-kind   { width: 9rem; flex-shrink: 0; }
+.adb-edit-rel-target { flex: 1.5; }
+.adb-edit-rel-note   { flex: 1; }
+
+/* Properties editor rows */
+.adb-edit-prop-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.adb-edit-prop-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+.adb-edit-prop-key { width: 9rem; flex-shrink: 0; }
+.adb-edit-prop-val { flex: 1; }
+
+/* Stubs editor rows */
+.adb-edit-stub-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.adb-edit-stub-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    color: var(--text-secondary);
+}
+.adb-edit-stub-name { flex: 1; }
+
+/* ══════════════════════════════════════════
+   Deepen / Expand Preview Panel
+   ══════════════════════════════════════════ */
+
+.adb-dp-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 0 0.75rem;
+}
+
+.adb-dp-content {
+    padding: 1rem 1.25rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.adb-dp-description {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    padding: 0.5rem 0.75rem;
+    background: rgba(34,211,238,0.05);
+    border-left: 3px solid rgba(34,211,238,0.4);
+    border-radius: 4px;
+}
+.adb-dp-description strong { color: var(--text-primary); }
+
+/* Preview card */
+.adb-dp-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    cursor: default;
+}
+.adb-dp-card-selectable {
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+.adb-dp-card-selectable:hover {
+    background: var(--bg-tertiary);
+    border-color: rgba(34,211,238,0.4);
+}
+.adb-dp-card-error {
+    border-color: rgba(248,113,113,0.4);
+    background: rgba(248,113,113,0.04);
+}
+.adb-dp-check {
+    margin-top: 0.3rem;
+    flex-shrink: 0;
+    accent-color: #22d3ee;
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+}
+.adb-dp-card-body { flex: 1; min-width: 0; }
+.adb-dp-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+}
+.adb-dp-card-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+.adb-dp-summary {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0 0 0.35rem;
+}
+.adb-dp-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
+}
+.adb-dp-label {
+    font-weight: 600;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+.adb-dp-error {
+    font-size: 0.82rem;
+    color: #f87171;
+    margin: 0.25rem 0 0;
+}

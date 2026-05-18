@@ -180,9 +180,15 @@ class EntityWriter:
 
         # Mutate top-level fields (except protected ones)
         protected = {"id", "created", "version", "sections"}
+        old_name  = entity.get("name")
         for k, v in mutations.items():
             if k not in protected:
                 entity[k] = v
+
+        # Propagate name change to NameIndex
+        new_name = entity.get("name")
+        if new_name and new_name != old_name:
+            self._index.register(new_name, entity_id)
 
         # Merge or replace sections
         incoming_sections = mutations.get("sections", {})

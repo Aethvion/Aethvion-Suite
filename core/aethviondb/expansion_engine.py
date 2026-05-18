@@ -353,6 +353,233 @@ class ExpansionEngine:
         )
         return report
 
+    # ── Preview (non-destructive) ─────────────────────────────────────────────
+
+    async def preview_expand_stub(
+        self,
+        entity_id: str,
+        model: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Run the AI expansion but return the raw proposed data WITHOUT writing
+        anything.  The caller can review and then call apply_expand_preview().
+        """
+        entity = self._writer.get(entity_id)
+        if not entity:
+            return {"entity_id": entity_id, "error": f"Entity {entity_id!r} not found"}
+
+        used_model = model or self._default_model
+        context    = self._gather_context(entity_id)
+
+        async with self._semaphore:
+            from core.providers import ProviderManager
+            pm = ProviderManager()
+
+            raw = None
+            for attempt in range(2):
+                prompt   = _build_expansion_prompt(entity["name"], context, retry=(attempt > 0))
+                trace_id = uuid.uuid4().hex
+                try:
+                    response = await asyncio.to_thread(
+                        pm.call_with_failover,
+                        prompt=prompt,
+                        system_prompt=_EXPANSION_SYSTEM_PROMPT,
+                        model=used_model,
+                        trace_id=trace_id,
+                        source=CallSource.WORLDSIM,
+                    )
+                    raw = response.content if hasattr(response, "content") else str(response)
+                except Exception as e:
+                    return {"entity_id": entity_id, "error": f"AI call failed: {e}"}
+
+                try:
+                    extracted = _extract_json(raw)
+                    break
+                except Exception as parse_err:
+                    if attempt == 0:
+                        logger.warning(f"[ExpansionEngine] preview {entity_id}: JSON parse failed, retrying")
+                    else:
+                        return {"entity_id": entity_id, "error": f"JSON parse failed: {parse_err}"}
+            else:
+                return {"entity_id": entity_id, "error": "JSON parse failed after retries"}
+
+        entity_type = extracted.get("type", entity.get("type", "other"))
+        if entity_type not in VALID_TYPES:
+            entity_type = entity.get("type", "other")
+        extracted["type"] = entity_type
+
+        return {
+            "entity_id":   entity_id,
+            "entity_name": entity["name"],
+            "proposed":    extracted,
+            "error":       None,
+        }
+
+    async def _preview_one_by_name(
+        self,
+        name:            str,
+        context_summary: str,
+        model:           Optional[str] = None,
+    ) -> dict[str, Any]:
+        """AI call for a single stub name given a parent-entity context string."""
+        used_model = model or self._default_model
+        context    = [context_summary] if context_summary else []
+
+        async with self._semaphore:
+            from core.providers import ProviderManager
+            pm = ProviderManager()
+
+            raw = None
+            for attempt in range(2):
+                prompt   = _build_expansion_prompt(name, context, retry=(attempt > 0))
+                trace_id = uuid.uuid4().hex
+                try:
+                    response = await asyncio.to_thread(
+                        pm.call_with_failover,
+                        prompt=prompt,
+                        system_prompt=_EXPANSION_SYSTEM_PROMPT,
+                        model=used_model,
+                        trace_id=trace_id,
+                        source=CallSource.WORLDSIM,
+                    )
+                    raw = response.content if hasattr(response, "content") else str(response)
+                except Exception as e:
+                    return {"name": name, "error": f"AI call failed: {e}"}
+
+                try:
+                    extracted = _extract_json(raw)
+                    break
+                except Exception as parse_err:
+                    if attempt == 0:
+                        logger.warning(f"[ExpansionEngine] preview '{name}': JSON parse failed, retrying")
+                    else:
+                        return {"name": name, "error": f"JSON parse failed: {parse_err}"}
+            else:
+                return {"name": name, "error": "JSON parse failed after retries"}
+
+        entity_type = extracted.get("type", "other")
+        if entity_type not in VALID_TYPES:
+            entity_type = "other"
+        extracted["type"] = entity_type
+
+        return {"name": name, "proposed": extracted, "error": None}
+
+    async def preview_deepen_stubs_for(
+        self,
+        entity_id: str,
+        max_stubs: int = 5,
+        model:     Optional[str] = None,
+    ) -> dict[str, Any]:
+        """
+        Preview expanding the sub-topics (stubs) of an active entity.
+        Returns proposed AI data for each stub WITHOUT writing anything.
+        """
+        entity = self._writer.get(entity_id)
+        if not entity:
+            return {"entity_id": entity_id, "error": "Entity not found", "previews": []}
+
+        stub_names  = self._writer.get_stub_names_for(entity_id)[:max_stubs]
+        entity_name = entity["name"]
+        summary     = entity["sections"]["core"].get("summary", "")
+        ctx_snippet = f"Parent entity: {entity_name}. {summary}"
+
+        coros   = [self._preview_one_by_name(name, ctx_snippet, model) for name in stub_names]
+        results = await asyncio.gather(*coros)
+
+        return {
+            "entity_id":   entity_id,
+            "entity_name": entity_name,
+            "previews":    list(results),
+        }
+
+    async def apply_expand_preview(
+        self,
+        entity_id: str,
+        proposed:  dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Apply a previously previewed expansion to an entity.
+        Resolves target_names → target_ids (creating stubs as needed),
+        then writes via writer.update(merge_sections=False).
+        """
+        try:
+            sections, new_stubs = _map_to_entity_sections(proposed, self._index, self._writer)
+        except Exception as e:
+            return {"success": False, "error": f"Section mapping failed: {e}"}
+
+        entity_type = proposed.get("type", "other")
+        if entity_type not in VALID_TYPES:
+            entity_type = "other"
+
+        mutations: dict[str, Any] = {
+            "type":     entity_type,
+            "status":   "active",
+            "sections": sections,
+        }
+        try:
+            self._writer.update(entity_id, mutations, merge_sections=False)
+        except Exception as e:
+            return {"success": False, "error": f"Write failed: {e}"}
+
+        # Create stub entities for newly discovered sub-topics
+        new_stub_ids = []
+        for stub_name in new_stubs:
+            if not self._index.get(stub_name):
+                stub_entity, created = self._writer.create(
+                    stub_name, entity_type="other", source="expansion"
+                )
+                if created:
+                    self._writer.update(stub_entity["id"], {"status": "stub"})
+                    new_stub_ids.append(stub_entity["id"])
+
+        return {
+            "success":   True,
+            "entity_id": entity_id,
+            "new_stubs": new_stub_ids,
+        }
+
+    async def apply_deepen_previews(
+        self,
+        entity_id: str,
+        previews:  list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """
+        Apply a list of previewed stub expansions for an active entity.
+        For each preview: create the stub entity (or find existing), then
+        apply the proposed expansion to it.
+        """
+        applied: list[dict] = []
+        failed:  list[dict] = []
+
+        for preview in previews:
+            name     = preview.get("name", "")
+            proposed = preview.get("proposed")
+            if not name or not proposed:
+                failed.append({"name": name, "error": "Missing name or proposed data"})
+                continue
+
+            try:
+                stub_entity, created = self._writer.create(
+                    name, entity_type="other", source="expansion"
+                )
+                if created:
+                    self._writer.update(stub_entity["id"], {"status": "stub"})
+            except Exception as e:
+                failed.append({"name": name, "error": f"Create failed: {e}"})
+                continue
+
+            result = await self.apply_expand_preview(stub_entity["id"], proposed)
+            if result["success"]:
+                applied.append({"name": name, "entity_id": stub_entity["id"]})
+            else:
+                failed.append({"name": name, "error": result.get("error", "Unknown error")})
+
+        return {
+            "applied": applied,
+            "failed":  failed,
+            "total":   len(previews),
+        }
+
     # ── Section deepening ─────────────────────────────────────────────────────
 
     async def deepen_stubs_for(

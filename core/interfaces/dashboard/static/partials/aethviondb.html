@@ -404,6 +404,15 @@
                     <i class="fas fa-arrow-left"></i> Back
                 </button>
                 <div class="adb-detail-actions">
+                    <button id="adb-ev-edit-btn" class="adb-btn adb-btn-ghost adb-btn-sm" title="Edit entity">
+                        <i class="fas fa-pen"></i>
+                    </button>
+                    <button id="adb-ev-save-btn" class="adb-btn adb-btn-accent adb-btn-sm hidden" title="Save changes">
+                        <i class="fas fa-check"></i> Save
+                    </button>
+                    <button id="adb-ev-cancel-btn" class="adb-btn adb-btn-ghost adb-btn-sm hidden" title="Cancel editing">
+                        <i class="fas fa-times"></i>
+                    </button>
                     <button id="adb-ev-expand-btn" class="adb-btn adb-btn-accent adb-btn-sm">
                         <i class="fas fa-wand-sparkles"></i> Deepen
                     </button>
@@ -456,6 +465,22 @@
                     <pre id="adb-ev-raw-json" class="adb-raw-json"></pre>
                 </div>
             </div>
+        </div>
+
+        <!-- Deepen preview panel -->
+        <div id="adb-deepen-preview" class="adb-entity-detail hidden">
+            <div class="adb-detail-topbar">
+                <button id="adb-dp-back" class="adb-btn adb-btn-ghost adb-btn-sm">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <span id="adb-dp-title" class="adb-dp-title"></span>
+                <div class="adb-detail-actions">
+                    <button id="adb-dp-apply-btn" class="adb-btn adb-btn-accent adb-btn-sm">
+                        <i class="fas fa-check"></i> Apply Selected
+                    </button>
+                </div>
+            </div>
+            <div id="adb-dp-content" class="adb-dp-content"></div>
         </div>
 
         <!-- Validation view -->

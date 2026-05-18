@@ -84,6 +84,19 @@
         return p.toString();
     }
 
+    // ── HTML escaping ─────────────────────────────────────────────────────────
+
+    function _escHtml(str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function _escAttr(str) { return _escHtml(str); }
+
     // ── View switching ────────────────────────────────────────────────────────
 
     function _showEntityList() {
@@ -92,19 +105,29 @@
         _show('adb-explorer-header');
         _show('adb-list-pane');
         _hide('adb-entity-detail');
+        _hide('adb-deepen-preview');
         _hide('adb-validation-view');
     }
 
     function _showEntityDetail() {
         _hide('adb-list-pane');
         _show('adb-entity-detail');
+        _hide('adb-deepen-preview');
         _hide('adb-validation-view');
+    }
+
+    function _showDeepenPreviewPanel() {
+        _hide('adb-list-pane');
+        _hide('adb-entity-detail');
+        _hide('adb-validation-view');
+        _show('adb-deepen-preview');
     }
 
     function _showValidation() {
         _hide('adb-explorer-header');
         _hide('adb-list-pane');
         _hide('adb-entity-detail');
+        _hide('adb-deepen-preview');
         _show('adb-validation-view');
     }
 
@@ -851,6 +874,14 @@
     function _renderEntity(entity) {
         _currentEntityId     = entity.id;
         _currentEntityStatus = entity.status || 'active';
+
+        // If we were in edit mode, clean up the DOM and reset button states
+        if (_editingEntity) { _editingEntity = null; _exitEditDom(); }
+        _show('adb-ev-edit-btn');
+        _show('adb-ev-expand-btn');
+        _hide('adb-ev-save-btn');
+        _hide('adb-ev-cancel-btn');
+
         _showEntityDetail();
 
         // Update Deepen button label to reflect context
@@ -1114,6 +1145,634 @@
         }
     }
 
+    // ── Entity edit mode ──────────────────────────────────────────────────────
+
+    let _editingEntity = null; // deep clone stored when edit mode is active
+
+    const _VALID_TYPES = [
+        'person','place','event','concept','organization','artifact',
+        'creature','substance','process','phenomenon','work','species','universe','other',
+    ];
+    const _RELATION_KINDS = [
+        'parent_of','child_of','member_of','contains','created_by','created',
+        'located_in','location_of','part_of','has_part','preceded_by','followed_by',
+        'related_to','instance_of','has_instance','influenced_by','influenced',
+        'participated_in','has_participant',
+    ];
+    const _kindOptsHtml = _RELATION_KINDS.map(k => `<option value="${k}">${k}</option>`).join('');
+
+    function _enterEditMode(entity) {
+        _editingEntity = JSON.parse(JSON.stringify(entity));
+
+        _hide('adb-ev-edit-btn');
+        _hide('adb-ev-expand-btn');
+        _show('adb-ev-save-btn');
+        _show('adb-ev-cancel-btn');
+
+        _renderEditHeader(entity);
+        _renderEditCore(entity);
+        _renderEditTimeline(entity);
+        _renderEditRelations(entity);
+        _renderEditProperties(entity);
+        _renderEditStubs(entity);
+    }
+
+    /** Restore any DOM elements that were replaced/mutated during edit mode. */
+    function _exitEditDom() {
+        // type badge: select → span
+        const typeSel = _el('adb-ev-type-badge');
+        if (typeSel && typeSel.tagName === 'SELECT') {
+            const span = document.createElement('span');
+            span.id = 'adb-ev-type-badge';
+            span.className = 'adb-type-badge';
+            typeSel.replaceWith(span);
+        }
+        // summary: textarea → p
+        const summaryTa = _el('adb-ev-summary');
+        if (summaryTa && summaryTa.tagName === 'TEXTAREA') {
+            const p = document.createElement('p');
+            p.id        = 'adb-ev-summary';
+            p.className = 'adb-ev-summary';
+            summaryTa.replaceWith(p);
+        }
+        // status badge: select → span
+        const statusSel = _el('adb-ev-status-badge');
+        if (statusSel && statusSel.tagName === 'SELECT') {
+            const span = document.createElement('span');
+            span.id        = 'adb-ev-status-badge';
+            span.className = 'adb-badge';
+            statusSel.replaceWith(span);
+        }
+        // name: remove contentEditable
+        const nameEl = _el('adb-ev-name');
+        if (nameEl) {
+            nameEl.contentEditable = 'false';
+            nameEl.classList.remove('adb-edit-name');
+        }
+    }
+
+    function _cancelEditMode() {
+        if (!_editingEntity) return;
+        const stored = _editingEntity;
+        _editingEntity = null;
+        _exitEditDom();
+        _show('adb-ev-edit-btn');
+        _show('adb-ev-expand-btn');
+        _hide('adb-ev-save-btn');
+        _hide('adb-ev-cancel-btn');
+        _renderEntity(stored);
+    }
+
+    function _renderEditHeader(entity) {
+        // Type badge → <select>
+        const typeBadge = _el('adb-ev-type-badge');
+        if (typeBadge) {
+            const opts = _VALID_TYPES.map(t =>
+                `<option value="${t}" ${t === (entity.type || 'other') ? 'selected' : ''}>${t}</option>`
+            ).join('');
+            const sel = document.createElement('select');
+            sel.id        = 'adb-ev-type-badge';
+            sel.className = 'adb-edit-type-select';
+            sel.innerHTML = opts;
+            typeBadge.replaceWith(sel);
+        }
+
+        // Name → contenteditable span
+        const nameEl = _el('adb-ev-name');
+        if (nameEl) {
+            nameEl.contentEditable = 'true';
+            nameEl.classList.add('adb-edit-name');
+            nameEl.spellcheck = false;
+        }
+
+        // Summary → <textarea>
+        const summaryEl = _el('adb-ev-summary');
+        if (summaryEl) {
+            const ta = document.createElement('textarea');
+            ta.id        = 'adb-ev-summary';
+            ta.className = 'adb-edit-summary';
+            ta.rows      = 3;
+            ta.value     = entity.sections?.core?.summary || '';
+            summaryEl.replaceWith(ta);
+        }
+
+        // Status badge → <select>
+        const statusEl = _el('adb-ev-status-badge');
+        if (statusEl) {
+            const sel = document.createElement('select');
+            sel.id        = 'adb-ev-status-badge';
+            sel.className = 'adb-badge adb-edit-status-select';
+            sel.innerHTML = ['active','stub'].map(s =>
+                `<option value="${s}" ${s === entity.status ? 'selected' : ''}>${s}</option>`
+            ).join('');
+            statusEl.replaceWith(sel);
+        }
+    }
+
+    /* ── Tag editor (aliases / categories / tags) ── */
+
+    function _renderTagEditor(id, label, items) {
+        const chips = items.map(item =>
+            `<span class="adb-edit-chip">${_escHtml(item)}<button class="adb-edit-chip-remove" title="Remove" type="button">×</button></span>`
+        ).join('');
+        return `
+            <div class="adb-ev-section-label">${label}</div>
+            <div class="adb-edit-tag-row" id="${id}">${chips}</div>
+            <div class="adb-edit-tag-add">
+                <input type="text" class="adb-edit-input adb-edit-tag-input" data-for="${id}" placeholder="Add…">
+                <button class="adb-btn adb-btn-ghost adb-btn-xs adb-edit-tag-add-btn" data-for="${id}" type="button">+</button>
+            </div>`;
+    }
+
+    function _wireTagEditor(container, id) {
+        container.querySelectorAll('.adb-edit-chip-remove').forEach(btn =>
+            btn.addEventListener('click', () => btn.closest('.adb-edit-chip')?.remove())
+        );
+        const addBtn = container.querySelector(`.adb-edit-tag-add-btn[data-for="${id}"]`);
+        const input  = container.querySelector(`.adb-edit-tag-input[data-for="${id}"]`);
+        const row    = container.querySelector(`#${id}`);
+        if (!addBtn || !input || !row) return;
+        const addTag = () => {
+            const val = input.value.trim(); if (!val) return;
+            const chip = document.createElement('span');
+            chip.className = 'adb-edit-chip';
+            chip.innerHTML = `${_escHtml(val)}<button class="adb-edit-chip-remove" title="Remove" type="button">×</button>`;
+            chip.querySelector('.adb-edit-chip-remove').addEventListener('click', () => chip.remove());
+            row.appendChild(chip);
+            input.value = '';
+        };
+        addBtn.addEventListener('click', addTag);
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } });
+    }
+
+    function _getTagEditorValues(container, id) {
+        return Array.from(container.querySelectorAll(`#${id} .adb-edit-chip`))
+            .map(chip => chip.childNodes[0]?.textContent?.trim() || '')
+            .filter(Boolean);
+    }
+
+    function _renderEditCore(entity) {
+        const core   = entity.sections?.core || {};
+        const aliasEl = _el('adb-ev-aliases');
+        const catEl   = _el('adb-ev-categories');
+        const tagEl   = _el('adb-ev-tags');
+        if (aliasEl) { aliasEl.innerHTML = _renderTagEditor('adb-edit-aliases',    'Aliases',     core.aliases    || []); _wireTagEditor(aliasEl, 'adb-edit-aliases');    }
+        if (catEl)   { catEl.innerHTML   = _renderTagEditor('adb-edit-categories', 'Categories',  core.categories || []); _wireTagEditor(catEl,   'adb-edit-categories'); }
+        if (tagEl)   { tagEl.innerHTML   = _renderTagEditor('adb-edit-tags',       'Tags',        core.tags       || []); _wireTagEditor(tagEl,   'adb-edit-tags');       }
+    }
+
+    /* ── Timeline editor ── */
+
+    function _tlRow(ev) {
+        return `<div class="adb-edit-tl-row">
+            <input class="adb-edit-input adb-edit-tl-date"  type="text" placeholder="YYYY or YYYY-MM-DD" value="${_escAttr(ev.date  || '')}">
+            <input class="adb-edit-input adb-edit-tl-event" type="text" placeholder="Event description"  value="${_escAttr(ev.event || '')}">
+            <button class="adb-edit-remove-btn" title="Remove" type="button">×</button>
+        </div>`;
+    }
+
+    function _wireTimelineEditor(tlEl) {
+        tlEl.querySelector('#adb-edit-tl-add')?.addEventListener('click', () => {
+            const rows = tlEl.querySelector('#adb-edit-tl-rows');
+            const div  = document.createElement('div');
+            div.className = 'adb-edit-tl-row';
+            div.innerHTML = `
+                <input class="adb-edit-input adb-edit-tl-date"  type="text" placeholder="YYYY or YYYY-MM-DD">
+                <input class="adb-edit-input adb-edit-tl-event" type="text" placeholder="Event description">
+                <button class="adb-edit-remove-btn" title="Remove" type="button">×</button>`;
+            div.querySelector('.adb-edit-remove-btn').addEventListener('click', () => div.remove());
+            rows?.appendChild(div);
+        });
+        tlEl.querySelectorAll('#adb-edit-tl-rows .adb-edit-remove-btn').forEach(btn =>
+            btn.addEventListener('click', () => btn.closest('.adb-edit-tl-row')?.remove())
+        );
+    }
+
+    function _renderEditTimeline(entity) {
+        const tlEl = _el('adb-ev-timeline-list');
+        if (!tlEl) return;
+        tlEl.innerHTML = `
+            <div class="adb-edit-tl-list" id="adb-edit-tl-rows">
+                ${(entity.sections?.timeline || []).map(_tlRow).join('')}
+            </div>
+            <button class="adb-btn adb-btn-ghost adb-btn-sm adb-edit-add-btn" id="adb-edit-tl-add" type="button">
+                <i class="fas fa-plus"></i> Add Event
+            </button>`;
+        _wireTimelineEditor(tlEl);
+    }
+
+    /* ── Relations editor ── */
+
+    function _relRow(rel) {
+        const opts = _RELATION_KINDS.map(k =>
+            `<option value="${k}" ${k === (rel.kind || 'related_to') ? 'selected' : ''}>${k}</option>`
+        ).join('');
+        return `<div class="adb-edit-rel-row">
+            <select class="adb-edit-input adb-edit-rel-kind">${opts}</select>
+            <input class="adb-edit-input adb-edit-rel-target" type="text" placeholder="Entity name…"
+                   value="" data-entity-id="${_escAttr(rel.target_id || '')}">
+            <input class="adb-edit-input adb-edit-rel-note" type="text" placeholder="Note (optional)"
+                   value="${_escAttr(rel.note || '')}">
+            <button class="adb-edit-remove-btn" title="Remove" type="button">×</button>
+        </div>`;
+    }
+
+    function _wireRelEditor(relEl) {
+        relEl.querySelector('#adb-edit-rel-add')?.addEventListener('click', () => {
+            const rows = relEl.querySelector('#adb-edit-rel-rows');
+            const div  = document.createElement('div');
+            div.className = 'adb-edit-rel-row';
+            div.innerHTML = `
+                <select class="adb-edit-input adb-edit-rel-kind">${_kindOptsHtml}</select>
+                <input class="adb-edit-input adb-edit-rel-target" type="text" placeholder="Entity name…" data-entity-id="">
+                <input class="adb-edit-input adb-edit-rel-note"   type="text" placeholder="Note (optional)">
+                <button class="adb-edit-remove-btn" title="Remove" type="button">×</button>`;
+            div.querySelector('.adb-edit-remove-btn').addEventListener('click', () => div.remove());
+            div.querySelector('.adb-edit-rel-target').addEventListener('input', function () { this.dataset.entityId = ''; });
+            rows?.appendChild(div);
+        });
+        relEl.querySelectorAll('#adb-edit-rel-rows .adb-edit-remove-btn').forEach(btn =>
+            btn.addEventListener('click', () => btn.closest('.adb-edit-rel-row')?.remove())
+        );
+        relEl.querySelectorAll('.adb-edit-rel-target').forEach(inp =>
+            inp.addEventListener('input', function () { this.dataset.entityId = ''; })
+        );
+    }
+
+    function _renderEditRelations(entity) {
+        const relEl = _el('adb-ev-relations-list');
+        if (!relEl) return;
+        relEl.innerHTML = `
+            <div class="adb-edit-rel-list" id="adb-edit-rel-rows">
+                ${(entity.sections?.relations || []).map(_relRow).join('')}
+            </div>
+            <button class="adb-btn adb-btn-ghost adb-btn-sm adb-edit-add-btn" id="adb-edit-rel-add" type="button">
+                <i class="fas fa-plus"></i> Add Relation
+            </button>`;
+        _wireRelEditor(relEl);
+        // Async: resolve target IDs to display names
+        relEl.querySelectorAll('.adb-edit-rel-target').forEach(inp => {
+            const tid = inp.dataset.entityId;
+            if (!tid) return;
+            fetch(`${API}/entities/${tid}?${_dbParam()}`)
+                .then(r => r.ok ? r.json() : null)
+                .then(ent => { if (ent) inp.value = ent.name; })
+                .catch(() => {});
+        });
+    }
+
+    /* ── Properties editor ── */
+
+    function _propRow(k, v) {
+        return `<div class="adb-edit-prop-row">
+            <input class="adb-edit-input adb-edit-prop-key" type="text" placeholder="key"   value="${_escAttr(k)}">
+            <input class="adb-edit-input adb-edit-prop-val" type="text" placeholder="value" value="${_escAttr(v)}">
+            <button class="adb-edit-remove-btn" title="Remove" type="button">×</button>
+        </div>`;
+    }
+
+    function _wirePropEditor(propEl) {
+        propEl.querySelector('#adb-edit-prop-add')?.addEventListener('click', () => {
+            const rows = propEl.querySelector('#adb-edit-prop-rows');
+            const div  = document.createElement('div');
+            div.className = 'adb-edit-prop-row';
+            div.innerHTML = `
+                <input class="adb-edit-input adb-edit-prop-key" type="text" placeholder="key">
+                <input class="adb-edit-input adb-edit-prop-val" type="text" placeholder="value">
+                <button class="adb-edit-remove-btn" title="Remove" type="button">×</button>`;
+            div.querySelector('.adb-edit-remove-btn').addEventListener('click', () => div.remove());
+            rows?.appendChild(div);
+        });
+        propEl.querySelectorAll('.adb-edit-remove-btn').forEach(btn =>
+            btn.addEventListener('click', () => btn.closest('.adb-edit-prop-row')?.remove())
+        );
+    }
+
+    function _renderEditProperties(entity) {
+        const propEl = _el('adb-ev-props-table');
+        if (!propEl) return;
+        const entries = Object.entries(entity.sections?.properties || {});
+        propEl.innerHTML = `
+            <div class="adb-edit-prop-list" id="adb-edit-prop-rows">
+                ${entries.map(([k, v]) => _propRow(k, v)).join('')}
+            </div>
+            <button class="adb-btn adb-btn-ghost adb-btn-sm adb-edit-add-btn" id="adb-edit-prop-add" type="button">
+                <i class="fas fa-plus"></i> Add Property
+            </button>`;
+        _wirePropEditor(propEl);
+    }
+
+    /* ── Stubs editor ── */
+
+    function _stubRow(s) {
+        return `<div class="adb-edit-stub-row">
+            <i class="fas fa-circle-half-stroke"></i>
+            <input class="adb-edit-input adb-edit-stub-name" type="text" value="${_escAttr(s)}">
+            <button class="adb-edit-remove-btn" title="Remove" type="button">×</button>
+        </div>`;
+    }
+
+    function _wireStubEditor(stubEl) {
+        stubEl.querySelector('#adb-edit-stub-add')?.addEventListener('click', () => {
+            const rows = stubEl.querySelector('#adb-edit-stub-rows');
+            const div  = document.createElement('div');
+            div.className = 'adb-edit-stub-row';
+            div.innerHTML = `
+                <i class="fas fa-circle-half-stroke"></i>
+                <input class="adb-edit-input adb-edit-stub-name" type="text" placeholder="Sub-topic name">
+                <button class="adb-edit-remove-btn" title="Remove" type="button">×</button>`;
+            div.querySelector('.adb-edit-remove-btn').addEventListener('click', () => div.remove());
+            rows?.appendChild(div);
+        });
+        stubEl.querySelectorAll('.adb-edit-remove-btn').forEach(btn =>
+            btn.addEventListener('click', () => btn.closest('.adb-edit-stub-row')?.remove())
+        );
+    }
+
+    function _renderEditStubs(entity) {
+        const stubEl = _el('adb-ev-stubs-list');
+        if (!stubEl) return;
+        stubEl.innerHTML = `
+            <div class="adb-edit-stub-list" id="adb-edit-stub-rows">
+                ${(entity.sections?.stubs || []).map(_stubRow).join('')}
+            </div>
+            <button class="adb-btn adb-btn-ghost adb-btn-sm adb-edit-add-btn" id="adb-edit-stub-add" type="button">
+                <i class="fas fa-plus"></i> Add Sub-topic
+            </button>`;
+        _wireStubEditor(stubEl);
+    }
+
+    /* ── Collect & save ── */
+
+    async function _saveEdit() {
+        if (!_currentEntityId) return;
+        const btn = _el('adb-ev-save-btn');
+        if (btn) btn.disabled = true;
+
+        try {
+            const nameEl    = _el('adb-ev-name');
+            const typeSel   = _el('adb-ev-type-badge');
+            const statusSel = _el('adb-ev-status-badge');
+            const summaryEl = _el('adb-ev-summary');
+
+            const name   = nameEl?.textContent?.trim() || _editingEntity?.name || '';
+            const type   = typeSel?.value              || _editingEntity?.type  || 'other';
+            const status = statusSel?.value             || _editingEntity?.status || 'active';
+            const summary = summaryEl?.value?.trim()   || '';
+
+            const aliasEl    = _el('adb-ev-aliases');
+            const catEl      = _el('adb-ev-categories');
+            const tagEl      = _el('adb-ev-tags');
+            const aliases    = aliasEl ? _getTagEditorValues(aliasEl, 'adb-edit-aliases')    : [];
+            const categories = catEl   ? _getTagEditorValues(catEl,   'adb-edit-categories') : [];
+            const tags       = tagEl   ? _getTagEditorValues(tagEl,   'adb-edit-tags')       : [];
+
+            // Timeline
+            const timeline = [];
+            document.querySelectorAll('#adb-edit-tl-rows .adb-edit-tl-row').forEach(row => {
+                const date  = row.querySelector('.adb-edit-tl-date')?.value?.trim();
+                const event = row.querySelector('.adb-edit-tl-event')?.value?.trim();
+                if (date && event) timeline.push({ date, event });
+            });
+
+            // Properties
+            const properties = {};
+            document.querySelectorAll('#adb-edit-prop-rows .adb-edit-prop-row').forEach(row => {
+                const k = row.querySelector('.adb-edit-prop-key')?.value?.trim();
+                const v = row.querySelector('.adb-edit-prop-val')?.value?.trim();
+                if (k) properties[k] = v || '';
+            });
+
+            // Stubs
+            const stubs = [];
+            document.querySelectorAll('#adb-edit-stub-rows .adb-edit-stub-row').forEach(row => {
+                const n = row.querySelector('.adb-edit-stub-name')?.value?.trim();
+                if (n) stubs.push(n);
+            });
+
+            // Relations — resolve target names to IDs
+            const relations = [];
+            for (const row of document.querySelectorAll('#adb-edit-rel-rows .adb-edit-rel-row')) {
+                const kind      = row.querySelector('.adb-edit-rel-kind')?.value || 'related_to';
+                const targetInp = row.querySelector('.adb-edit-rel-target');
+                const note      = row.querySelector('.adb-edit-rel-note')?.value?.trim() || '';
+                if (!targetInp) continue;
+
+                let target_id  = targetInp.dataset.entityId || '';
+                const targetName = targetInp.value?.trim();
+                if (!target_id && targetName) {
+                    try {
+                        const r   = await fetch(`${API}/lookup?${_dbParam({ name: targetName })}`);
+                        const ent = r.ok ? await r.json() : null;
+                        if (ent) target_id = ent.id;
+                    } catch {}
+                }
+                if (!target_id && targetName) {
+                    try {
+                        const r = await fetch(`${API}/entities?${_dbParam()}`, {
+                            method:  'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body:    JSON.stringify({ name: targetName, entity_type: 'other', source: 'manual' }),
+                        });
+                        const created = r.ok ? await r.json() : null;
+                        if (created?.entity) target_id = created.entity.id;
+                    } catch {}
+                }
+                if (target_id) {
+                    const rel = { kind, target_id };
+                    if (note) rel.note = note;
+                    relations.push(rel);
+                }
+            }
+
+            const mutations = {
+                name, type, status,
+                sections: { core: { summary, aliases, categories, tags }, timeline, relations, properties, stubs },
+            };
+
+            const res  = await fetch(
+                `${API}/entities/${_currentEntityId}?${_dbParam()}&replace_sections=true`, {
+                    method:  'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ mutations }),
+                }
+            );
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Save failed');
+
+            _editingEntity = null;
+            _exitEditDom();
+            _show('adb-ev-edit-btn');
+            _show('adb-ev-expand-btn');
+            _hide('adb-ev-save-btn');
+            _hide('adb-ev-cancel-btn');
+            _renderEntity(data);
+            _toast('Entity saved ✓', 'success');
+            _loadEntityList(_currentFilter, _currentPage);
+        } catch (e) {
+            _toast(`Save failed: ${e.message}`, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    // ── Deepen preview ────────────────────────────────────────────────────────
+
+    function _onDpBack() {
+        _hide('adb-deepen-preview');
+        _showEntityDetail();
+    }
+
+    function _renderPreviewCard(name, proposed, idx, selectable) {
+        const p = proposed || {};
+        const checkHtml = selectable
+            ? `<input type="checkbox" class="adb-dp-check" data-idx="${idx}" checked>`
+            : '';
+        return `<label class="adb-dp-card${selectable ? ' adb-dp-card-selectable' : ''}">
+            ${checkHtml}
+            <div class="adb-dp-card-body">
+                <div class="adb-dp-card-header">
+                    <span class="adb-type-badge adb-type-${p.type || 'other'}">${p.type || 'other'}</span>
+                    <span class="adb-dp-card-name">${_escHtml(name)}</span>
+                </div>
+                <p class="adb-dp-summary">${_escHtml(p.summary || '(No summary generated)')}</p>
+                ${p.aliases?.length
+                    ? `<div class="adb-dp-row"><span class="adb-dp-label">Aliases:</span> ${p.aliases.map(a => `<span class="adb-tag">${_escHtml(a)}</span>`).join(' ')}</div>`
+                    : ''}
+                ${p.tags?.length
+                    ? `<div class="adb-dp-row"><span class="adb-dp-label">Tags:</span> ${p.tags.map(t => `<span class="adb-tag adb-tag-accent">${_escHtml(t)}</span>`).join(' ')}</div>`
+                    : ''}
+                ${p.relations?.length
+                    ? `<div class="adb-dp-row"><span class="adb-dp-label">Relations:</span> ${p.relations.map(r => `<span class="adb-rel-kind">${_escHtml(r.kind || 'related_to')}</span> ${_escHtml(r.target_name || '')}`).join(', ')}</div>`
+                    : ''}
+                ${p.stubs?.length
+                    ? `<div class="adb-dp-row"><span class="adb-dp-label">New sub-topics:</span> ${p.stubs.map(s => `<span class="adb-tag">${_escHtml(s)}</span>`).join(' ')}</div>`
+                    : ''}
+            </div>
+        </label>`;
+    }
+
+    function _showExpandPreview(data) {
+        const titleEl   = _el('adb-dp-title');
+        const contentEl = _el('adb-dp-content');
+        if (!titleEl || !contentEl) return;
+
+        titleEl.textContent = `Preview: ${data.entity_name}`;
+        contentEl.innerHTML = `
+            <div class="adb-dp-description">
+                Review the proposed expansion for <strong>${_escHtml(data.entity_name)}</strong>.
+                Nothing will be written until you click <strong>Apply Selected</strong>.
+            </div>
+            ${_renderPreviewCard(data.entity_name, data.proposed, 0, false)}`;
+
+        const applyBtn = _el('adb-dp-apply-btn');
+        if (applyBtn) {
+            applyBtn.dataset.mode    = 'expand';
+            applyBtn.dataset.payload = JSON.stringify({ proposed: data.proposed });
+        }
+        _el('adb-dp-back')?.addEventListener('click', _onDpBack, { once: true });
+        _showDeepenPreviewPanel();
+    }
+
+    function _showDeepenPreview(data) {
+        const titleEl   = _el('adb-dp-title');
+        const contentEl = _el('adb-dp-content');
+        if (!titleEl || !contentEl) return;
+
+        const allPreviews = data.previews || [];
+        const ok  = allPreviews.filter(p => !p.error);
+        const bad = allPreviews.filter(p =>  p.error);
+
+        titleEl.textContent = `Sub-topic Preview — ${data.entity_name}`;
+        const goodCards = ok.map((preview, i) => _renderPreviewCard(preview.name, preview.proposed, i, true)).join('');
+        const errCards  = bad.map(p => `
+            <div class="adb-dp-card adb-dp-card-error">
+                <div class="adb-dp-card-header">
+                    <span class="adb-dp-card-name">${_escHtml(p.name)}</span>
+                    <span class="adb-badge adb-badge-stub">Error</span>
+                </div>
+                <p class="adb-dp-error">${_escHtml(p.error)}</p>
+            </div>`).join('');
+
+        contentEl.innerHTML = `
+            <div class="adb-dp-description">
+                ${ok.length} sub-topic${ok.length !== 1 ? 's' : ''} previewed for <strong>${_escHtml(data.entity_name)}</strong>.
+                Uncheck any you don't want to apply.
+            </div>
+            ${goodCards}${errCards}`;
+
+        const applyBtn = _el('adb-dp-apply-btn');
+        if (applyBtn) {
+            applyBtn.dataset.mode    = 'deepen';
+            applyBtn.dataset.payload = JSON.stringify({ previews: data.previews });
+        }
+        _el('adb-dp-back')?.addEventListener('click', _onDpBack, { once: true });
+        _showDeepenPreviewPanel();
+    }
+
+    async function _applyDeepenPreview() {
+        const applyBtn = _el('adb-dp-apply-btn');
+        if (!applyBtn || !_currentEntityId) return;
+
+        const mode    = applyBtn.dataset.mode;
+        const payload = JSON.parse(applyBtn.dataset.payload || '{}');
+
+        applyBtn.disabled = true;
+        _showBusy('Applying…');
+
+        try {
+            if (mode === 'expand') {
+                const res  = await fetch(`${API}/entities/${_currentEntityId}/expand/apply?${_dbParam()}`, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ proposed: payload.proposed }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Apply failed');
+                const newStubs = data.new_stubs?.length || 0;
+                _toast(`Expanded ✓${newStubs ? ` — ${newStubs} new sub-topics found` : ''}`, 'success');
+            } else {
+                const allPrev = payload.previews || [];
+                const checks  = Array.from(document.querySelectorAll('.adb-dp-check'));
+                const selected = checks
+                    .filter(c => c.checked)
+                    .map(c => allPrev[parseInt(c.dataset.idx)])
+                    .filter(p => p && !p.error);
+
+                if (!selected.length) {
+                    _toast('No items selected', 'info');
+                    applyBtn.disabled = false;
+                    _hideBusy();
+                    return;
+                }
+                const res  = await fetch(`${API}/entities/${_currentEntityId}/deepen/apply?${_dbParam()}`, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ previews: selected }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Apply failed');
+                const n = data.applied?.length || 0;
+                const f = data.failed?.length  || 0;
+                if (f > 0) {
+                    _toast(`Applied ${n}, ${f} failed`, 'error');
+                    console.warn('[AethvionDB] Deepen apply failures:', data.failed);
+                } else {
+                    _toast(`Applied ${n} sub-topic${n !== 1 ? 's' : ''} ✓`, 'success');
+                }
+            }
+
+            _hide('adb-deepen-preview');
+            await _loadEntity(_currentEntityId);
+            _loadEntityList(_currentFilter, _currentPage);
+        } catch (e) {
+            _toast(`Apply failed: ${e.message}`, 'error');
+        } finally {
+            applyBtn.disabled = false;
+            _hideBusy();
+        }
+    }
+
     // ── Expansion ─────────────────────────────────────────────────────────────
 
     // ── Smart expand dropdown ─────────────────────────────────────────────────
@@ -1222,52 +1881,43 @@
         if (!_currentEntityId) return;
 
         if (_currentEntityStatus === 'stub') {
-            // Stub entity: expand it into a full entity
-            _showBusy('Expanding stub…');
+            // Stub entity: preview expanding it (non-destructive)
+            _showBusy('Generating expansion preview…');
             try {
                 const model = _selectedModel();
-                const res  = await fetch(`${API}/entities/${_currentEntityId}/expand?${_dbParam(model ? { model } : {})}`, { method: 'POST' });
+                const res  = await fetch(
+                    `${API}/entities/${_currentEntityId}/expand/preview?${_dbParam(model ? { model } : {})}`,
+                    { method: 'POST' }
+                );
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || 'Expand failed');
-                if (data.error && data.error !== 'already_active') {
-                    _toast(`Expand failed: ${data.error}`, 'error');
-                } else {
-                    const newStubs = data.new_stubs?.length || 0;
-                    _toast(
-                        data.error === 'already_active'
-                            ? 'Entity is already expanded'
-                            : `Expanded ✓${newStubs ? ` — ${newStubs} new sub-topics found` : ''}`,
-                        data.error === 'already_active' ? 'info' : 'success'
-                    );
-                }
-                await _loadEntity(_currentEntityId);
-                // Refresh list (background) so stub→active badge updates when user goes Back
-                _loadEntityList(_currentFilter, _currentPage);
+                if (!res.ok) throw new Error(data.detail || 'Preview failed');
+                _hideBusy();
+                _showExpandPreview(data);
             } catch (e) {
-                _toast(`Expand failed: ${e.message}`, 'error');
-            } finally { _hideBusy(); }
+                _hideBusy();
+                _toast(`Preview failed: ${e.message}`, 'error');
+            }
         } else {
-            // Active entity: expand the sub-topics (stubs) listed inside it
-            _showBusy('Deepening sub-topics…');
+            // Active entity: preview deepening sub-topics (non-destructive)
+            _showBusy('Generating deepen preview…');
             try {
                 const model = _selectedModel();
-                const res  = await fetch(`${API}/entities/${_currentEntityId}/deepen?${_dbParam({ max_stubs: 5, ...(model ? { model } : {}) })}`, { method: 'POST' });
+                const res  = await fetch(
+                    `${API}/entities/${_currentEntityId}/deepen/preview?${_dbParam({ max_stubs: 5, ...(model ? { model } : {}) })}`,
+                    { method: 'POST' }
+                );
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || 'Deepen failed');
-                const n = data.expanded?.length || 0;
-                const f = data.failed?.length   || 0;
-                if (n === 0 && f === 0) {
-                    _toast('No sub-topics to deepen (add some stubs first)', 'info');
-                } else if (f > 0) {
-                    _toast(`Deepened ${n}, ${f} failed — check console`, 'error');
-                    console.warn('[AethvionDB] Deepen failures:', data.failed);
-                } else {
-                    _toast(`Deepened ${n} sub-topic${n !== 1 ? 's' : ''} ✓`, 'success');
+                if (!res.ok) throw new Error(data.detail || 'Preview failed');
+                _hideBusy();
+                if (!data.previews?.length) {
+                    _toast('No sub-topics to preview (add some in the Stubs tab first)', 'info');
+                    return;
                 }
-                await _loadEntity(_currentEntityId);
+                _showDeepenPreview(data);
             } catch (e) {
-                _toast(`Deepen failed: ${e.message}`, 'error');
-            } finally { _hideBusy(); }
+                _hideBusy();
+                _toast(`Preview failed: ${e.message}`, 'error');
+            }
         }
     }
 
@@ -3719,12 +4369,27 @@
         });
 
         // Entity detail — back button restores the page the user was on
-        _el('adb-detail-back')?.addEventListener('click', () => _loadEntityList(_currentFilter, _currentPage));
+        _el('adb-detail-back')?.addEventListener('click', () => {
+            if (_editingEntity) { _cancelEditMode(); return; }
+            _loadEntityList(_currentFilter, _currentPage);
+        });
+        _el('adb-ev-edit-btn')?.addEventListener('click', () => {
+            if (!_currentEntityId) return;
+            fetch(`${API}/entities/${_currentEntityId}?${_dbParam()}`)
+                .then(r => r.ok ? r.json() : null)
+                .then(ent => { if (ent) _enterEditMode(ent); })
+                .catch(e => _toast(`Load failed: ${e.message}`, 'error'));
+        });
+        _el('adb-ev-save-btn')?.addEventListener('click', _saveEdit);
+        _el('adb-ev-cancel-btn')?.addEventListener('click', _cancelEditMode);
         _el('adb-ev-expand-btn')?.addEventListener('click', _deepenCurrent);
         _el('adb-ev-validate-btn')?.addEventListener('click', _validateCurrent);
         document.querySelectorAll('.adb-ev-tab').forEach(btn => {
             btn.addEventListener('click', () => _activateEntityTab(btn.dataset.target));
         });
+
+        // Deepen preview panel
+        _el('adb-dp-apply-btn')?.addEventListener('click', _applyDeepenPreview);
 
         // Validation view — back button restores the page the user was on
         _el('adb-val-close')?.addEventListener('click', () => _loadEntityList(_currentFilter, _currentPage));
