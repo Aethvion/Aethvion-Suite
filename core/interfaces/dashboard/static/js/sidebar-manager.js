@@ -70,11 +70,11 @@
             description: 'Productivity workspace with agents, scheduling, and system management.',
             highlights: ['Chat & Agents', 'Schedule', 'Model Hub', 'System'],
             folders: [
-                { name: 'Workspace', expanded: true,  tabs: ['chat', 'agents', 'agent-corp', 'schedule'] },
+                { name: 'Workspace', expanded: true,  tabs: ['agents', 'agent-corp', 'schedule'] },
                 { name: 'Models',    expanded: false, tabs: ['local-models', 'api-providers'] },
                 { name: 'System',    expanded: false, tabs: ['logs', 'status', 'ports'] },
             ],
-            enabled: new Set(['suite-home', 'chat', 'agents', 'agent-corp', 'schedule',
+            enabled: new Set(['suite-home', 'agents', 'agent-corp', 'schedule',
                               'local-models', 'api-providers', '3d-models', 'logs', 'status', 'ports']),
         },
         {
@@ -86,9 +86,9 @@
             highlights: ['Photo Studio', 'Audio', 'AI Conversations', 'Output'],
             folders: [
                 { name: 'Studio',   expanded: true,  tabs: ['photo', 'audio', 'output', 'screenshots'] },
-                { name: 'AI Tools', expanded: false, tabs: ['chat', 'explained', 'advaiconv'] },
+                { name: 'AI Tools', expanded: false, tabs: ['explained', 'advaiconv'] },
             ],
-            enabled: new Set(['suite-home', 'chat', 'photo', 'audio', 'explained',
+            enabled: new Set(['suite-home', 'photo', 'audio', 'explained',
                               'advaiconv', 'output', 'screenshots']),
         },
         {
@@ -100,9 +100,9 @@
             highlights: ['Directors', 'Arena', 'AI Conv.', 'Explained', 'Persistent Memory'],
             folders: [
                 { name: 'Research',  expanded: true,  tabs: ['advaiconv', 'researchboard', 'arena', 'aiconv', 'explained'] },
-                { name: 'Knowledge', expanded: false, tabs: ['chat', 'persistent-memory', 'documentation'] },
+                { name: 'Knowledge', expanded: false, tabs: ['persistent-memory', 'documentation'] },
             ],
-            enabled: new Set(['suite-home', 'chat', 'advaiconv', 'researchboard', 'arena',
+            enabled: new Set(['suite-home', 'advaiconv', 'researchboard', 'arena',
                               'aiconv', 'explained', 'persistent-memory', 'documentation']),
         },
         {
@@ -114,10 +114,10 @@
             highlights: ['Misaka Cipher', 'Axiom', 'Lyra', 'Games', 'Memory'],
             folders: [
                 { name: 'Companions',    expanded: true,  tabs: ['misaka-cipher', 'axiom', 'lyra', 'companion-creator'] },
-                { name: 'Entertainment', expanded: false, tabs: ['games-center', 'chat'] },
+                { name: 'Entertainment', expanded: false, tabs: ['games-center'] },
                 { name: 'Memory',        expanded: false, tabs: ['memory'] },
             ],
-            enabled: new Set(['suite-home', 'chat', 'misaka-cipher', 'axiom', 'lyra',
+            enabled: new Set(['suite-home', 'misaka-cipher', 'axiom', 'lyra',
                               'companion-creator', 'games-center', 'memory']),
         },
         {
@@ -146,7 +146,8 @@
     function defaultProfileData(name = 'Default') {
         return {
             name,
-            hidden: {},
+            // chat and aethviondb live in the header nav — keep them out of the sidebar
+            hidden: { chat: true, aethviondb: true },
             folders: {
                 'f-workspace':  { name: 'Workspace',    expanded: true  },
                 'f-research':   { name: 'Research',     expanded: false },
@@ -159,7 +160,7 @@
             },
             order: [
                 { type: 'tab',    id: 'suite-home' },
-                { type: 'folder', id: 'f-workspace',  children: ['chat','agents','agent-corp','schedule','photo','audio','3d-gen'] },
+                { type: 'folder', id: 'f-workspace',  children: ['agents','agent-corp','schedule','photo','audio','3d-gen'] },
                 { type: 'folder', id: 'f-research',   children: ['advaiconv','researchboard','arena','aiconv','explained'] },
                 { type: 'folder', id: 'f-companions', children: ['misaka-cipher','axiom','lyra','companion-creator'] },
                 { type: 'folder', id: 'f-fun',        children: ['games-center'] },
@@ -214,7 +215,23 @@
             if (raw) {
                 const saved = JSON.parse(raw);
                 if (saved?.profiles) {
-                    Object.values(saved.profiles).forEach(surfaceNewTabs);
+                    Object.values(saved.profiles).forEach(profile => {
+                        // Migration: Chat and AethvionDB are header-nav items — hide from sidebar
+                        profile.hidden = profile.hidden || {};
+                        profile.hidden['chat']       = true;
+                        profile.hidden['aethviondb'] = true;
+                        // Remove from any folder children so they don't clutter edit mode either
+                        if (profile.order) {
+                            profile.order.forEach(entry => {
+                                if (entry.type === 'folder' && Array.isArray(entry.children)) {
+                                    entry.children = entry.children.filter(
+                                        id => id !== 'chat' && id !== 'aethviondb'
+                                    );
+                                }
+                            });
+                        }
+                        surfaceNewTabs(profile);
+                    });
                     return saved;
                 }
             }

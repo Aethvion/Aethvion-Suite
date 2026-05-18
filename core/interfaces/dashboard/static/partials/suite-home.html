@@ -21,7 +21,7 @@
 
             <div class="sh-ctas" id="sh-ctas">
                 <button class="sh-cta-primary" id="sh-cta-primary"
-                    onclick="setDashboardMode('ai'); switchMainTab('chat');">
+                    onclick="setDashboardMode('ai', true, 'chat');">
                     <i class="fas fa-rocket"></i>
                     <span>Quick Start Chat</span>
                     <i class="fas fa-arrow-right sh-cta-arrow"></i>
@@ -98,19 +98,19 @@
                     <h3>Chat & Research</h3>
                 </div>
                 <div class="sh-hg-links">
-                    <div class="sh-hg-link" onclick="setDashboardMode('ai'); switchMainTab('chat');">
+                    <div class="sh-hg-link" onclick="setDashboardMode('ai', true, 'chat');">
                         <i class="fas fa-comment-dots"></i>
                         <span>Unified Chat</span>
                     </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('ai'); switchMainTab('researchboard');">
+                    <div class="sh-hg-link" onclick="setDashboardMode('ai', true, 'researchboard');">
                         <i class="fas fa-balance-scale"></i>
                         <span>Research Board</span>
                     </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('ai'); switchMainTab('arena');">
+                    <div class="sh-hg-link" onclick="setDashboardMode('ai', true, 'arena');">
                         <i class="fas fa-shield-halved"></i>
                         <span>Model Arena</span>
                     </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('ai'); switchMainTab('advaiconv');">
+                    <div class="sh-hg-link" onclick="setDashboardMode('ai', true, 'advaiconv');">
                         <i class="fas fa-flask"></i>
                         <span>Advanced Lab</span>
                     </div>
@@ -124,19 +124,19 @@
                     <h3>Creativity & Logic</h3>
                 </div>
                 <div class="sh-hg-links">
-                    <div class="sh-hg-link" onclick="setDashboardMode('ai'); switchMainTab('photo');">
+                    <div class="sh-hg-link" onclick="setDashboardMode('ai', true, 'photo');">
                         <i class="fas fa-image"></i>
                         <span>Photo Studio</span>
                     </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('ai'); switchMainTab('audio');">
+                    <div class="sh-hg-link" onclick="setDashboardMode('ai', true, 'audio');">
                         <i class="fas fa-microphone"></i>
                         <span>Audio Studio</span>
                     </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('ai'); switchMainTab('misaka-cipher');">
+                    <div class="sh-hg-link" onclick="setDashboardMode('ai', true, 'misaka-cipher');">
                         <i class="fas fa-sparkles"></i>
                         <span>Companions</span>
                     </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('ai'); switchMainTab('games-center');">
+                    <div class="sh-hg-link" onclick="setDashboardMode('ai', true, 'games-center');">
                         <i class="fas fa-gamepad"></i>
                         <span>Games Center</span>
                     </div>
@@ -150,19 +150,19 @@
                     <h3>Automation & Tasks</h3>
                 </div>
                 <div class="sh-hg-links">
-                    <div class="sh-hg-link" onclick="setDashboardMode('ai'); switchMainTab('agents');">
+                    <div class="sh-hg-link" onclick="setDashboardMode('ai', true, 'agents');">
                         <i class="fas fa-robot"></i>
                         <span>Task Agents</span>
                     </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('ai'); switchMainTab('agent-corp');">
+                    <div class="sh-hg-link" onclick="setDashboardMode('ai', true, 'agent-corp');">
                         <i class="fas fa-building"></i>
                         <span>Agent Corp</span>
                     </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('ai'); switchMainTab('schedule');">
+                    <div class="sh-hg-link" onclick="setDashboardMode('ai', true, 'schedule');">
                         <i class="fas fa-calendar-alt"></i>
                         <span>Task Schedule</span>
                     </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('ai'); switchMainTab('memory');">
+                    <div class="sh-hg-link" onclick="setDashboardMode('ai', true, 'memory');">
                         <i class="fas fa-brain"></i>
                         <span>System Memory</span>
                     </div>
@@ -205,7 +205,7 @@
                 <i class="fas fa-clock-rotate-left sh-section-icon"></i>
                 <h3 class="sh-section-title">Recent Activity</h3>
             </div>
-            <button class="sh-section-action" onclick="setDashboardMode('ai'); switchMainTab('chat');">
+            <button class="sh-section-action" onclick="setDashboardMode('ai', true, 'chat');">
                 View All <i class="fas fa-arrow-right"></i>
             </button>
         </div>
@@ -250,7 +250,7 @@
         </div>
     </div>
 
-    <!-- ══ FOOTER ═════════════════════════════════════════════════════════ -->
+    <!-- ══ FOOTER ════════════════════════════════════════════════════════ -->
     <div class="hub-system-info" style="margin-top: 2.5rem; text-align: center; opacity: 0.5;">
         <span class="sys-badge" id="suite-hero-version">Version —</span>
         <span class="sys-badge status-live">Aethvion Suite v15</span>

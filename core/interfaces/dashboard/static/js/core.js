@@ -982,7 +982,11 @@ async function updateSystemInfo() {
 }
 
 // Main Navigation Logic
-async function setDashboardMode(mode, save = true) {
+// _tab: when provided, jump straight to that tab instead of restoring the
+//       last saved one. This avoids a race condition where the caller's own
+//       switchMainTab() fires first but then setDashboardMode's async
+//       completion fires a second switchMainTab(savedTab) and overrides it.
+async function setDashboardMode(mode, save = true, _tab = null) {
     if (mode !== 'home' && mode !== 'ai') return;
     dashboardMode = mode;
 
@@ -1013,6 +1017,14 @@ async function setDashboardMode(mode, save = true) {
             el.classList.add('mode-hidden');
         }
     });
+
+    if (_tab) {
+        // Caller supplied the target — skip sidebar-button validation entirely.
+        // switchMainTab only needs the panel element (#<tab>-panel), which always
+        // exists even when the tab has no sidebar button (e.g. chat, aethviondb).
+        await switchMainTab(_tab, false);
+        return;
+    }
 
     // Restore the last active tab for this mode
     let targetTab = dashboardMode === 'home' ? 'suite-home' : 'chat';
@@ -1062,8 +1074,8 @@ function goToAIHub() {
     if (dashboardMode === 'ai' && !_noSidebar.has(currentMainTab)) return;
     // Navigate to the last sidebar tab the user visited, or fall back to 'agents'.
     const target = localStorage.getItem('_last_ai_hub_tab') || 'agents';
-    setDashboardMode('ai');
-    switchMainTab(target);
+    // Pass target directly so setDashboardMode doesn't restore a different saved tab.
+    setDashboardMode('ai', true, target);
 }
 window.goToAIHub = goToAIHub;
 

@@ -370,14 +370,14 @@
                         <i class="fas fa-bars"></i>
                     </button>
                     <h1 class="logo" style="margin-left: 10px; cursor: pointer;"
-                        onclick="setDashboardMode('home'); switchMainTab('suite-home');">Aethvion Suite</h1>
+                        onclick="setDashboardMode('home', true, 'suite-home');">Aethvion Suite</h1>
                     <nav class="hdr-nav" id="hdr-nav">
                         <button class="hdr-nav-btn" data-nav="home"
-                                onclick="setDashboardMode('home'); switchMainTab('suite-home');">
+                                onclick="setDashboardMode('home', true, 'suite-home');">
                             <i class="fas fa-house"></i><span>Home</span>
                         </button>
                         <button class="hdr-nav-btn" data-nav="chat"
-                                onclick="setDashboardMode('ai'); switchMainTab('chat');">
+                                onclick="setDashboardMode('ai', true, 'chat');">
                             <i class="fas fa-comments"></i><span>Chat</span>
                         </button>
                         <button class="hdr-nav-btn" data-nav="ai"
@@ -385,13 +385,13 @@
                             <i class="fas fa-robot"></i><span>AI</span>
                         </button>
                         <button class="hdr-nav-btn" data-nav="aethviondb"
-                                onclick="setDashboardMode('ai'); switchMainTab('aethviondb');">
+                                onclick="setDashboardMode('ai', true, 'aethviondb');">
                             <i class="fas fa-circle-nodes"></i><span>AethvionDB</span>
                         </button>
                     </nav>
                 </div>
                 <div class="header-right">
-                    <div class="compact-status" id="compact-status" onclick="setDashboardMode('ai'); switchMainTab('usage');" title="View Detailed Usage">
+                    <div class="compact-status" id="compact-status" onclick="setDashboardMode('ai', true, 'usage');" title="View Detailed Usage">
                         <span title="Tokens Today">Tokens: <strong id="tokens-today">0</strong></span>
                         <span class="status-divider">|</span>
                         <span title="Cost Today">Cost: <strong id="cost-today">$0.00</strong></span>
