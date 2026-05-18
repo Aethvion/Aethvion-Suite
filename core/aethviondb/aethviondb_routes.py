@@ -195,12 +195,15 @@ async def list_databases():
                 except OSError: pass
         backups     = _lb(db_path)
         last_backup = backups[0].get("created") if backups else None
+        info        = _read_db_info(db_path)
+        last_updated = info.get("last_updated")
         dbs.append({
             **entry,
             "entity_count": entity_count,
             "size_bytes":   size_bytes,
             "backup_count": len(backups),
             "last_backup":  last_backup,
+            "last_updated": last_updated,
             "path_exists":  db_path.exists(),
         })
 

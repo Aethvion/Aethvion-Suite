@@ -26,6 +26,11 @@
     let _sortCol             = null;      // null | 'type'|'name'|'tags'|'rel'|'sub'|'status'
     let _sortDir             = 'asc';    // 'asc' | 'desc'
 
+    // ── Databases tab state ───────────────────────────────────────────────────
+    let _dbmData    = [];            // raw list from last /databases fetch
+    let _dbmSortCol = 'lastOpened'; // active sort column
+    let _dbmSortDir = 'desc';       // 'asc' | 'desc'
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     function _el(id)   { return document.getElementById(id); }
@@ -209,6 +214,130 @@
         });
     }
 
+    // ── Databases table helpers ───────────────────────────────────────────────
+
+    function _dbmGetAllLastOpened() {
+        try { return JSON.parse(localStorage.getItem('adb_last_opened') || '{}'); }
+        catch { return {}; }
+    }
+
+    function _dbmTrackOpened(name) {
+        if (!name) return;
+        try {
+            const map = _dbmGetAllLastOpened();
+            map[name] = new Date().toISOString();
+            localStorage.setItem('adb_last_opened', JSON.stringify(map));
+        } catch {}
+    }
+
+    function _dbmSortBy(col) {
+        if (_dbmSortCol === col) {
+            _dbmSortDir = _dbmSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            _dbmSortCol = col;
+            _dbmSortDir = col === 'name' ? 'asc' : 'desc';
+        }
+        _dbmRenderTable();
+    }
+
+    function _dbmRenderTable() {
+        const tbody = _el('adb-dbm-tbody');
+        if (!tbody) return;
+
+        const loMap = _dbmGetAllLastOpened();
+        const rows  = _dbmData.map(db => ({ ...db, lastOpened: loMap[db.name] || null }));
+
+        // Sort — nulls/empty always last regardless of direction
+        const col = _dbmSortCol;
+        const dir = _dbmSortDir === 'asc' ? 1 : -1;
+        rows.sort((a, b) => {
+            let av, bv;
+            switch (col) {
+                case 'name':       av = a.name?.toLowerCase() || '';  bv = b.name?.toLowerCase() || '';  break;
+                case 'entities':   av = a.entity_count ?? null;        bv = b.entity_count ?? null;        break;
+                case 'size':       av = a.size_bytes   ?? null;        bv = b.size_bytes   ?? null;        break;
+                case 'backups':    av = a.backup_count ?? null;        bv = b.backup_count ?? null;        break;
+                case 'lastBackup': av = a.last_backup  || null;        bv = b.last_backup  || null;        break;
+                case 'created':    av = a.created      || null;        bv = b.created      || null;        break;
+                case 'updated':    av = a.last_updated || null;        bv = b.last_updated || null;        break;
+                case 'lastOpened': av = a.lastOpened   || null;        bv = b.lastOpened   || null;        break;
+                default:           av = null; bv = null;
+            }
+            if (av === null && bv === null) return 0;
+            if (av === null) return 1;   // nulls always sink to bottom
+            if (bv === null) return -1;
+            if (av < bv) return -dir;
+            if (av > bv) return  dir;
+            return 0;
+        });
+
+        const isActive = db =>
+            (!_currentPath && db.name === _currentDb) ||
+            (_currentPath  && db.path === _currentPath);
+
+        tbody.innerHTML = rows.map(db => {
+            const active = isActive(db);
+            const loRel  = _relTime(db.lastOpened);
+            return `<tr class="adb-dbm-tr${active ? ' adb-dbm-tr-active' : ''}" data-name="${_escAttr(db.name)}">
+                <td class="adb-dbm-td adb-dbm-td-icon">
+                    <span class="adb-dbm-row-icon${active ? ' adb-dbm-row-icon-active' : ''}">
+                        <i class="fas fa-database"></i>
+                    </span>
+                </td>
+                <td class="adb-dbm-td adb-dbm-td-name">
+                    <div class="adb-dbm-name-cell">
+                        <span class="adb-dbm-name-text">
+                            ${_escHtml(db.name)}
+                            ${active ? '<span class="adb-dbm-active-badge">active</span>' : ''}
+                            ${!db.path_exists ? '<span class="adb-dbm-warn-badge" title="Path not found on disk">missing</span>' : ''}
+                        </span>
+                        ${db.description ? `<span class="adb-dbm-name-desc">${_escHtml(db.description)}</span>` : ''}
+                        <span class="adb-dbm-name-path" title="${_escAttr(db.path)}">${_escHtml(db.path)}</span>
+                    </div>
+                </td>
+                <td class="adb-dbm-td adb-dbm-td-num">${db.entity_count != null ? _fmtNum(db.entity_count) : '<span class="adb-dbm-null">—</span>'}</td>
+                <td class="adb-dbm-td adb-dbm-td-num">${db.size_bytes > 0 ? _fmtBytes(db.size_bytes) : '<span class="adb-dbm-null">—</span>'}</td>
+                <td class="adb-dbm-td adb-dbm-td-num">${db.backup_count > 0 ? db.backup_count : '<span class="adb-dbm-null adb-dbm-null-dim">0</span>'}</td>
+                <td class="adb-dbm-td adb-dbm-td-date">${db.last_backup  ? `<span title="${_escAttr(db.last_backup)}">${_relTime(db.last_backup)}</span>`   : '<span class="adb-dbm-null">—</span>'}</td>
+                <td class="adb-dbm-td adb-dbm-td-date">${db.created      ? `<span title="${_escAttr(db.created)}">${_fmtDate(db.created)}</span>`           : '<span class="adb-dbm-null">—</span>'}</td>
+                <td class="adb-dbm-td adb-dbm-td-date">${db.last_updated ? `<span title="${_escAttr(db.last_updated)}">${_relTime(db.last_updated)}</span>`  : '<span class="adb-dbm-null">—</span>'}</td>
+                <td class="adb-dbm-td adb-dbm-td-date">${loRel           ? `<span title="${_escAttr(db.lastOpened)}">${loRel}</span>`                        : '<span class="adb-dbm-null">—</span>'}</td>
+                <td class="adb-dbm-td adb-dbm-td-actions">
+                    <div class="adb-dbm-row-actions">
+                        <button class="adb-btn adb-btn-ghost adb-btn-xs adb-dbm-settings-btn" data-name="${_escAttr(db.name)}" title="Settings">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        ${active
+                            ? '<span class="adb-dbm-active-label">Active</span>'
+                            : `<button class="adb-btn adb-btn-accent adb-btn-xs adb-dbm-switch-btn" data-name="${_escAttr(db.name)}">
+                                   <i class="fas fa-right-to-bracket"></i> Switch
+                               </button>`}
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        // Update sort-header icons
+        document.querySelectorAll('.adb-dbm-th-sortable').forEach(th => {
+            const thCol = th.dataset.col;
+            th.classList.toggle('adb-dbm-th-active', thCol === col);
+            const icon = th.querySelector('.adb-dbm-sort-icon');
+            if (icon) {
+                icon.className = thCol === col
+                    ? `adb-dbm-sort-icon fas fa-arrow-${_dbmSortDir === 'asc' ? 'up' : 'down'}`
+                    : 'adb-dbm-sort-icon fas fa-sort';
+            }
+        });
+
+        // Wire row action buttons
+        tbody.querySelectorAll('.adb-dbm-switch-btn').forEach(btn => {
+            btn.addEventListener('click', () => _switchToNamed(btn.dataset.name));
+        });
+        tbody.querySelectorAll('.adb-dbm-settings-btn').forEach(btn => {
+            btn.addEventListener('click', () => _dbmShowSettings(btn.dataset.name));
+        });
+    }
+
     async function _dbmLoadList() {
         const listEl  = _el('adb-dbm-db-list');
         const countEl = _el('adb-dbm-tab-count');
@@ -218,6 +347,7 @@
             const res  = await fetch(`${API}/databases`);
             const data = await res.json();
             const dbs  = data.databases || [];
+            _dbmData   = dbs;
 
             if (countEl) countEl.textContent = dbs.length ? `${dbs.length} database${dbs.length !== 1 ? 's' : ''}` : '';
 
@@ -226,57 +356,45 @@
                 return;
             }
 
-            listEl.innerHTML = dbs.map(db => {
-                const isActive = (!_currentPath && db.name === _currentDb)
-                    || (_currentPath && db.path === _currentPath);
+            // Column definitions
+            const cols = [
+                { col: null,          label: '',             sortable: false },
+                { col: 'name',        label: 'Name',         sortable: true  },
+                { col: 'entities',    label: 'Entities',     sortable: true  },
+                { col: 'size',        label: 'Size',         sortable: true  },
+                { col: 'backups',     label: 'Backups',      sortable: true  },
+                { col: 'lastBackup',  label: 'Last Backup',  sortable: true  },
+                { col: 'created',     label: 'Created',      sortable: true  },
+                { col: 'updated',     label: 'Updated',      sortable: true  },
+                { col: 'lastOpened',  label: 'Last Opened',  sortable: true  },
+                { col: null,          label: 'Actions',      sortable: false },
+            ];
 
-                // Stat chips
-                const entityChip  = `<span class="adb-dbm-stat-chip"><i class="fas fa-layer-group"></i> ${_fmtNum(db.entity_count ?? 0)} entities</span>`;
-                const sizeChip    = db.size_bytes > 0
-                    ? `<span class="adb-dbm-stat-chip"><i class="fas fa-weight-hanging"></i> ${_fmtBytes(db.size_bytes)}</span>`
-                    : '';
-                const bkChip      = db.backup_count > 0
-                    ? `<span class="adb-dbm-stat-chip adb-dbm-stat-backup"><i class="fas fa-clock-rotate-left"></i> ${db.backup_count} backup${db.backup_count !== 1 ? 's' : ''}</span>`
-                    : `<span class="adb-dbm-stat-chip adb-dbm-stat-no-backup"><i class="fas fa-clock-rotate-left"></i> no backups</span>`;
-                const lastBkChip  = db.last_backup
-                    ? `<span class="adb-dbm-stat-chip" title="${_escAttr(db.last_backup)}"><i class="fas fa-download"></i> ${_relTime(db.last_backup)}</span>`
-                    : '';
+            const theadHtml = `<thead><tr class="adb-dbm-tr-head">${cols.map(c => {
+                if (!c.sortable) return `<th class="adb-dbm-th">${c.label}</th>`;
+                const active = c.col === _dbmSortCol;
+                const icon   = active
+                    ? `fa-arrow-${_dbmSortDir === 'asc' ? 'up' : 'down'}`
+                    : 'fa-sort';
+                return `<th class="adb-dbm-th adb-dbm-th-sortable${active ? ' adb-dbm-th-active' : ''}" data-col="${c.col}">
+                    ${c.label} <i class="adb-dbm-sort-icon fas ${icon}"></i>
+                </th>`;
+            }).join('')}</tr></thead>`;
 
-                return `<div class="adb-dbm-tab-card${isActive ? ' adb-dbm-tab-card-active' : ''}" data-name="${_escAttr(db.name)}">
-                    <div class="adb-dbm-tab-card-icon">
-                        <i class="fas fa-database"></i>
-                    </div>
-                    <div class="adb-dbm-tab-card-body">
-                        <div class="adb-dbm-tab-card-title">
-                            ${_escHtml(db.name)}
-                            ${isActive ? '<span class="adb-dbm-active-badge">active</span>' : ''}
-                            ${!db.path_exists ? '<span class="adb-dbm-warn-badge" title="Path not found on disk">missing</span>' : ''}
-                        </div>
-                        ${db.description ? `<div class="adb-dbm-tab-card-desc">${_escHtml(db.description)}</div>` : ''}
-                        <div class="adb-dbm-tab-card-stats">
-                            ${entityChip}${sizeChip}${bkChip}${lastBkChip}
-                        </div>
-                        <div class="adb-dbm-tab-card-path" title="${_escAttr(db.path)}">${_escHtml(db.path)}</div>
-                    </div>
-                    <div class="adb-dbm-tab-card-actions">
-                        <button class="adb-btn adb-btn-ghost adb-btn-sm adb-dbm-settings-btn" data-name="${_escAttr(db.name)}" title="Settings">
-                            <i class="fas fa-cog"></i> Settings
-                        </button>
-                        ${isActive
-                            ? `<span class="adb-dbm-active-label">Active</span>`
-                            : `<button class="adb-btn adb-btn-accent adb-btn-sm adb-dbm-switch-btn" data-name="${_escAttr(db.name)}">
-                                   <i class="fas fa-right-to-bracket"></i> Switch
-                               </button>`}
-                    </div>
-                </div>`;
-            }).join('');
+            listEl.innerHTML = `<div class="adb-dbm-table-wrap">
+                <table class="adb-dbm-table">
+                    ${theadHtml}
+                    <tbody id="adb-dbm-tbody"></tbody>
+                </table>
+            </div>`;
 
-            listEl.querySelectorAll('.adb-dbm-switch-btn').forEach(btn => {
-                btn.addEventListener('click', () => _switchToNamed(btn.dataset.name));
+            // Wire sortable header clicks
+            listEl.querySelectorAll('.adb-dbm-th-sortable').forEach(th => {
+                th.addEventListener('click', () => _dbmSortBy(th.dataset.col));
             });
-            listEl.querySelectorAll('.adb-dbm-settings-btn').forEach(btn => {
-                btn.addEventListener('click', () => _dbmShowSettings(btn.dataset.name));
-            });
+
+            _dbmRenderTable();
+
         } catch {
             listEl.innerHTML = '<div class="adb-empty-hint">Could not load databases.</div>';
         }
@@ -532,6 +650,7 @@
     function _switchToNamed(name) {
         _currentDb   = name;
         _currentPath = null;
+        _dbmTrackOpened(name);
         _updateDbIndicator();
         _persistDb();
         _currentFilter = 'all';

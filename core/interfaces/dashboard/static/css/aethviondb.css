@@ -3379,7 +3379,6 @@
     overflow: hidden;
     padding: 1.25rem 1.5rem;
     gap: 0;
-    max-width: 860px;
     width: 100%;
     box-sizing: border-box;
 }
@@ -3803,3 +3802,176 @@
 }
 
 /* .adb-btn-danger is defined earlier in the base button section */
+
+/* ═══════════════════════════════════════════════════════
+   Databases tab — sortable table layout
+   ═══════════════════════════════════════════════════════ */
+
+/* Scrollable wrapper so the table can overflow horizontally on narrow windows */
+.adb-dbm-table-wrap {
+    overflow: auto;
+    flex: 1;
+    min-height: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.015);
+}
+
+/* The table itself */
+.adb-dbm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    table-layout: auto;
+}
+
+/* Header row */
+.adb-dbm-tr-head { background: rgba(255, 255, 255, 0.03); }
+
+.adb-dbm-th {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    font-size: 0.69rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.065em;
+    color: var(--text-muted);
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+    user-select: none;
+}
+
+/* Sortable column headers */
+.adb-dbm-th-sortable {
+    cursor: pointer;
+    transition: color 0.13s;
+}
+.adb-dbm-th-sortable:hover { color: var(--text-secondary); }
+.adb-dbm-th-active { color: #22d3ee !important; }
+
+.adb-dbm-sort-icon {
+    font-size: 0.6rem;
+    margin-left: 3px;
+    opacity: 0.55;
+    vertical-align: middle;
+}
+.adb-dbm-th-active .adb-dbm-sort-icon { opacity: 1; }
+
+/* Body rows */
+.adb-dbm-tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background 0.1s;
+}
+.adb-dbm-tr:last-child { border-bottom: none; }
+.adb-dbm-tr:hover { background: rgba(255, 255, 255, 0.03); }
+.adb-dbm-tr-active {
+    background: rgba(34, 211, 238, 0.04) !important;
+}
+.adb-dbm-tr-active:hover { background: rgba(34, 211, 238, 0.07) !important; }
+
+/* Generic data cell */
+.adb-dbm-td {
+    padding: 0.5rem 0.75rem;
+    vertical-align: middle;
+    color: var(--text-secondary);
+}
+
+/* Icon column */
+.adb-dbm-td-icon { width: 36px; padding-right: 0; }
+.adb-dbm-row-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    background: rgba(34, 211, 238, 0.07);
+    border: 1px solid rgba(34, 211, 238, 0.13);
+    color: rgba(34, 211, 238, 0.65);
+    font-size: 0.78rem;
+    flex-shrink: 0;
+}
+.adb-dbm-row-icon-active {
+    background: rgba(34, 211, 238, 0.14);
+    border-color: rgba(34, 211, 238, 0.35);
+    color: #22d3ee;
+}
+
+/* Name column */
+.adb-dbm-td-name { min-width: 160px; max-width: 340px; }
+.adb-dbm-name-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+.adb-dbm-name-text {
+    font-size: 0.87rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+.adb-dbm-name-desc {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.adb-dbm-name-path {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: help;
+    max-width: 300px;
+}
+
+/* Numeric columns */
+.adb-dbm-td-num {
+    width: 90px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* Date / relative-time columns */
+.adb-dbm-td-date {
+    width: 110px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Actions column */
+.adb-dbm-td-actions {
+    width: 130px;
+    text-align: right;
+    white-space: nowrap;
+}
+.adb-dbm-row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.3rem;
+}
+
+/* Empty / null placeholder */
+.adb-dbm-null {
+    color: var(--text-muted);
+    opacity: 0.5;
+}
+.adb-dbm-null-dim { opacity: 0.35; }
+
+/* Make the card-list container fill height (table mode) */
+#adb-dbm-db-list {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
