@@ -49,10 +49,7 @@ MODE_WORLDSIM     = MODES / "worldsim"
 WORLDSIM          = MODE_WORLDSIM   # kept for WorldSim (separate product)
 
 # ── AethvionDB data root ──────────────────────────────────────────────────────
-# Physical directory is data/modes/worldsim/ for backward compatibility with
-# existing databases.  To migrate: move that folder to data/modes/aethviondb/
-# and change this constant to  MODES / "aethviondb".
-AETHVIONDB        = MODES / "worldsim"   # TODO: rename dir → aethviondb when ready
+AETHVIONDB        = DATA / "aethviondb"
 
 # Legacy compatibility / Common aliases
 HISTORY     = MODES     # Generic history root
@@ -162,6 +159,7 @@ def ensure_all() -> None:
         # Modes
         MODE_CHAT, MODE_AGENTS, MODE_AGENT_CORP, MODE_AI_CONV, MODE_ADV_AICONV,
         MODE_EXPLAINED, MODE_COMPANIONS, MODE_WORKSPACES, MODE_WORLDSIM,
+        AETHVIONDB,
         # Sub-directories
         LOGS_USAGE, LOGS_NOTIFICATIONS,
         COMPANIONS_PERSONAS, COMPANIONS_KNOWLEDGE, COMPANIONS_MEMORY,

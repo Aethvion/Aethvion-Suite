@@ -12,6 +12,9 @@
 
             <!-- Tab navigation — inline in header -->
             <nav class="adb-nav-tabs" id="adb-nav-tabs">
+                <button class="adb-nav-tab" data-tab="databases">
+                    <i class="fas fa-database"></i> Databases
+                </button>
                 <button class="adb-nav-tab" data-tab="tools">
                     <i class="fas fa-wrench"></i> Tools
                 </button>
@@ -82,14 +85,12 @@
                 <span id="adb-stat-size" class="adb-stat-value">—</span>
                 <span class="adb-stat-label">db size <i class="fas fa-circle-info adb-stat-info-icon"></i></span>
             </div>
-            <!-- DB selector — folded into stats bar -->
-            <div class="adb-db-inline">
-                <i class="fas fa-folder adb-db-folder-icon"></i>
+            <!-- DB indicator — clicking goes to Databases tab -->
+            <button id="adb-db-change-btn" class="adb-db-tab-chip" title="Manage databases">
+                <i class="fas fa-database adb-db-folder-icon"></i>
                 <span id="adb-db-indicator-name" class="adb-db-indicator-name">default</span>
-                <button id="adb-db-change-btn" class="adb-btn adb-btn-ghost adb-btn-xs">
-                    <i class="fas fa-folder-open"></i>
-                </button>
-            </div>
+                <i class="fas fa-chevron-right adb-db-chip-arrow"></i>
+            </button>
             <div id="adb-stats-hint" class="adb-stats-hint">
                 <i class="fas fa-circle-info"></i>
                 <span id="adb-stats-hint-text">Click ↻ to load stats</span>
@@ -769,33 +770,130 @@
         </div><!-- .adb-api-layout -->
     </div><!-- #adb-tab-pane-api -->
 
-    <!-- ── Database selector modal ── -->
-    <div id="adb-db-modal" class="adb-modal-overlay hidden">
-        <div class="adb-modal">
-            <div class="adb-modal-header">
-                <span>Select Database</span>
-                <button id="adb-db-modal-close" class="adb-modal-close"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="adb-modal-body">
-                <div class="adb-modal-section-label">Named databases</div>
-                <div id="adb-db-named-list" class="adb-db-named-list">
-                    <div class="adb-empty-hint">Loading…</div>
-                </div>
-                <div class="adb-modal-divider">or open a folder directly</div>
-                <div class="adb-db-path-row">
-                    <input type="text" id="adb-db-folder-input" class="adb-db-folder-input" placeholder="Folder path…">
-                    <button id="adb-db-browse-btn" class="adb-db-browse-btn" title="Browse for folder">
-                        <i class="fas fa-folder-open"></i>
+    <!-- ══════════════════════════════════════════════════════
+         Tab 0 — Databases
+         Browse, create, switch, and configure databases.
+    ══════════════════════════════════════════════════════ -->
+    <div id="adb-tab-pane-databases" class="adb-tab-pane hidden">
+        <div class="adb-dbm-tab-root">
+
+            <!-- View: List ─────────────────────────────────────────── -->
+            <div id="adb-dbm-list" class="adb-dbm-tab-view">
+                <div class="adb-dbm-tab-topbar">
+                    <div class="adb-dbm-tab-topbar-left">
+                        <h2 class="adb-dbm-tab-heading">Databases</h2>
+                        <span id="adb-dbm-tab-count" class="adb-dbm-tab-count"></span>
+                    </div>
+                    <button id="adb-dbm-new-btn" class="adb-btn adb-btn-accent adb-btn-sm">
+                        <i class="fas fa-plus"></i> New Database
                     </button>
                 </div>
-                <p class="adb-db-path-hint">Any folder works — a database is created automatically if needed.</p>
-            </div>
-            <div class="adb-modal-footer">
-                <button id="adb-db-modal-cancel" class="adb-btn adb-btn-ghost">Cancel</button>
-                <button id="adb-db-modal-open" class="adb-btn adb-btn-accent">Open</button>
-            </div>
-        </div>
-    </div>
+                <div id="adb-dbm-db-list" class="adb-dbm-tab-card-list">
+                    <div class="adb-empty-hint"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+            </div><!-- /list view -->
+
+            <!-- View: Create ───────────────────────────────────────── -->
+            <div id="adb-dbm-create" class="adb-dbm-tab-view hidden">
+                <div class="adb-dbm-tab-topbar">
+                    <div class="adb-modal-header-back">
+                        <button id="adb-dbm-create-back" class="adb-modal-back-btn" title="Back to list">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h2 class="adb-dbm-tab-heading">New Database</h2>
+                    </div>
+                </div>
+                <div class="adb-dbm-tab-form">
+                    <div class="adb-dbm-tab-form-section">
+                        <label class="adb-form-label">Name <span class="adb-form-required">*</span></label>
+                        <input type="text" id="adb-dbm-create-name" class="adb-form-input" placeholder="my_database" autocomplete="off">
+                        <p class="adb-form-hint">Letters, numbers, underscores and hyphens only (max 64).</p>
+                    </div>
+                    <div class="adb-dbm-tab-form-section">
+                        <label class="adb-form-label">Custom Path <span class="adb-form-optional">(optional)</span></label>
+                        <div class="adb-db-path-row">
+                            <input type="text" id="adb-dbm-create-path" class="adb-form-input" placeholder="Leave empty for default location">
+                            <button id="adb-dbm-create-browse" class="adb-db-browse-btn" title="Browse for folder">
+                                <i class="fas fa-folder-open"></i>
+                            </button>
+                        </div>
+                        <p class="adb-form-hint">Default: <code>data/aethviondb/{name}/</code> — or point to an existing folder to register it.</p>
+                    </div>
+                    <div class="adb-dbm-tab-form-section">
+                        <label class="adb-form-label">Description <span class="adb-form-optional">(optional)</span></label>
+                        <input type="text" id="adb-dbm-create-desc" class="adb-form-input" placeholder="What is this database for?">
+                    </div>
+                    <div class="adb-dbm-tab-form-actions">
+                        <button id="adb-dbm-create-cancel" class="adb-btn adb-btn-ghost">Cancel</button>
+                        <button id="adb-dbm-create-submit" class="adb-btn adb-btn-accent">
+                            <i class="fas fa-plus"></i> Create
+                        </button>
+                    </div>
+                </div>
+            </div><!-- /create view -->
+
+            <!-- View: Settings ─────────────────────────────────────── -->
+            <div id="adb-dbm-settings" class="adb-dbm-tab-view hidden">
+                <div class="adb-dbm-tab-topbar">
+                    <div class="adb-modal-header-back">
+                        <button id="adb-dbm-settings-back" class="adb-modal-back-btn" title="Back to list">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h2 class="adb-dbm-tab-heading" id="adb-dbm-settings-title">Settings</h2>
+                    </div>
+                    <button id="adb-dbm-settings-save" class="adb-btn adb-btn-accent adb-btn-sm">
+                        Save Settings
+                    </button>
+                </div>
+                <div class="adb-dbm-tab-settings-body">
+
+                    <!-- Description -->
+                    <div class="adb-dbm-section">
+                        <div class="adb-dbm-section-label">Description</div>
+                        <input type="text" id="adb-dbm-settings-desc" class="adb-form-input" placeholder="What is this database for?">
+                    </div>
+
+                    <!-- Backup settings + list -->
+                    <div class="adb-dbm-section">
+                        <div class="adb-dbm-section-label">Backups</div>
+                        <div class="adb-dbm-backup-config">
+                            <label class="adb-dbm-toggle-row">
+                                <input type="checkbox" id="adb-dbm-backup-enabled">
+                                <span>Prune old backups automatically</span>
+                            </label>
+                            <div class="adb-dbm-keep-row">
+                                <span class="adb-form-label-inline">Keep</span>
+                                <input type="number" id="adb-dbm-backup-keep" class="adb-form-input-xs" value="5" min="1" max="50">
+                                <span class="adb-form-label-inline">most recent</span>
+                            </div>
+                        </div>
+                        <button id="adb-dbm-backup-now-btn" class="adb-btn adb-btn-ghost adb-btn-sm">
+                            <i class="fas fa-download"></i> Create Backup Now
+                        </button>
+                        <div id="adb-dbm-backup-list" class="adb-dbm-backup-list">
+                            <div class="adb-empty-hint">No backups yet.</div>
+                        </div>
+                    </div>
+
+                    <!-- Danger zone -->
+                    <div class="adb-dbm-section adb-dbm-section-danger">
+                        <div class="adb-dbm-section-label">Danger Zone</div>
+                        <p class="adb-form-hint" style="margin:0 0 .4rem">Permanently deletes all entity data on disk.</p>
+                        <button id="adb-dbm-delete-btn" class="adb-btn adb-btn-danger adb-btn-sm">
+                            <i class="fas fa-trash"></i> Delete Database
+                        </button>
+                    </div>
+
+                </div>
+                <div class="adb-dbm-tab-settings-cancel-row">
+                    <button id="adb-dbm-settings-cancel" class="adb-btn adb-btn-ghost adb-btn-sm">
+                        ← Back to list
+                    </button>
+                </div>
+            </div><!-- /settings view -->
+
+        </div><!-- .adb-dbm-tab-root -->
+    </div><!-- #adb-tab-pane-databases -->
 
     <!-- ── Busy overlay ── -->
     <div id="adb-busy-overlay" class="adb-busy-overlay hidden">

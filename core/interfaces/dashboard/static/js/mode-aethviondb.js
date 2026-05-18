@@ -48,6 +48,21 @@
         try { return new Date(iso).toLocaleDateString(); } catch { return iso; }
     }
 
+    function _relTime(iso) {
+        if (!iso) return null;
+        try {
+            const diff = Date.now() - new Date(iso).getTime();
+            const m    = Math.floor(diff / 60000);
+            if (m < 1)   return 'just now';
+            if (m < 60)  return `${m}m ago`;
+            const h = Math.floor(m / 60);
+            if (h < 24)  return `${h}h ago`;
+            const d = Math.floor(h / 24);
+            if (d < 30)  return `${d}d ago`;
+            return _fmtDate(iso);
+        } catch { return _fmtDate(iso); }
+    }
+
     function _fmtBytes(bytes) {
         if (bytes == null) return '—';
         if (bytes < 1024)             return bytes + ' B';
@@ -136,11 +151,13 @@
         document.querySelectorAll('.adb-nav-tab').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.tab === tab);
         });
-        _el('adb-tab-pane-tools')   ?.classList.toggle('hidden', tab !== 'tools');
-        _el('adb-tab-pane-bake')    ?.classList.toggle('hidden', tab !== 'bake');
-        _el('adb-tab-pane-explorer')?.classList.toggle('hidden', tab !== 'explorer');
-        _el('adb-tab-pane-graph')   ?.classList.toggle('hidden', tab !== 'graph');
-        _el('adb-tab-pane-api')     ?.classList.toggle('hidden', tab !== 'api');
+        _el('adb-tab-pane-databases')?.classList.toggle('hidden', tab !== 'databases');
+        _el('adb-tab-pane-tools')    ?.classList.toggle('hidden', tab !== 'tools');
+        _el('adb-tab-pane-bake')     ?.classList.toggle('hidden', tab !== 'bake');
+        _el('adb-tab-pane-explorer') ?.classList.toggle('hidden', tab !== 'explorer');
+        _el('adb-tab-pane-graph')    ?.classList.toggle('hidden', tab !== 'graph');
+        _el('adb-tab-pane-api')      ?.classList.toggle('hidden', tab !== 'api');
+        if (tab === 'databases') { _dbmView('adb-dbm-list'); _dbmLoadList(); }
         if (tab === 'bake') _bakeLoadList();
         if (tab === 'api')  { _apiRenderTree(); _apiLoadKeys(); }
         if (tab === 'graph') {
@@ -174,59 +191,145 @@
 
     // ── Database modal ────────────────────────────────────────────────────────
 
-    async function _openDbModal() {
-        _show('adb-db-modal');
-        const listEl = _el('adb-db-named-list');
-        if (listEl) {
-            listEl.innerHTML = '<div class="adb-empty-hint"><i class="fas fa-spinner fa-spin"></i></div>';
-            try {
-                const res  = await fetch(`${API}/databases`);
-                const data = await res.json();
-                let dbs = (data.databases || []).map(d => d.name);
-                if (!dbs.includes('default')) dbs.unshift('default');
+    let _dbmSettingsName = null;   // name of DB currently shown in settings view
 
-                if (!dbs.length) {
-                    listEl.innerHTML = '<div class="adb-empty-hint">No named databases yet.</div>';
-                } else {
-                    listEl.innerHTML = dbs.map(name => {
-                        const active = (!_currentPath && name === _currentDb) ? ' adb-db-named-active' : '';
-                        return `<div class="adb-db-named-item${active}" data-name="${name}">
-                            <i class="fas fa-database adb-db-named-icon"></i>
-                            <span>${name}</span>
-                        </div>`;
-                    }).join('');
-                    listEl.querySelectorAll('.adb-db-named-item').forEach(item => {
-                        item.addEventListener('click', () => {
-                            _switchToNamed(item.dataset.name);
-                            _closeDbModal();
-                        });
-                    });
-                }
-            } catch {
-                listEl.innerHTML = '<div class="adb-empty-hint">Could not load databases.</div>';
+    function _dbmOpen() {
+        _switchTab('databases');
+    }
+
+    function _dbmClose() {
+        // No-op — databases is a full tab now; navigation uses _dbmView() / _switchTab()
+    }
+
+    /** Switch between the three tab views (list / create / settings). */
+    function _dbmView(viewId) {
+        ['adb-dbm-list', 'adb-dbm-create', 'adb-dbm-settings'].forEach(id => {
+            const el = _el(id);
+            if (el) el.classList.toggle('hidden', id !== viewId);
+        });
+    }
+
+    async function _dbmLoadList() {
+        const listEl  = _el('adb-dbm-db-list');
+        const countEl = _el('adb-dbm-tab-count');
+        if (!listEl) return;
+        listEl.innerHTML = '<div class="adb-empty-hint"><i class="fas fa-spinner fa-spin"></i></div>';
+        try {
+            const res  = await fetch(`${API}/databases`);
+            const data = await res.json();
+            const dbs  = data.databases || [];
+
+            if (countEl) countEl.textContent = dbs.length ? `${dbs.length} database${dbs.length !== 1 ? 's' : ''}` : '';
+
+            if (!dbs.length) {
+                listEl.innerHTML = '<div class="adb-empty-hint">No databases yet. Click <strong>New Database</strong> to create one.</div>';
+                return;
             }
+
+            listEl.innerHTML = dbs.map(db => {
+                const isActive = (!_currentPath && db.name === _currentDb)
+                    || (_currentPath && db.path === _currentPath);
+
+                // Stat chips
+                const entityChip  = `<span class="adb-dbm-stat-chip"><i class="fas fa-layer-group"></i> ${_fmtNum(db.entity_count ?? 0)} entities</span>`;
+                const sizeChip    = db.size_bytes > 0
+                    ? `<span class="adb-dbm-stat-chip"><i class="fas fa-weight-hanging"></i> ${_fmtBytes(db.size_bytes)}</span>`
+                    : '';
+                const bkChip      = db.backup_count > 0
+                    ? `<span class="adb-dbm-stat-chip adb-dbm-stat-backup"><i class="fas fa-clock-rotate-left"></i> ${db.backup_count} backup${db.backup_count !== 1 ? 's' : ''}</span>`
+                    : `<span class="adb-dbm-stat-chip adb-dbm-stat-no-backup"><i class="fas fa-clock-rotate-left"></i> no backups</span>`;
+                const lastBkChip  = db.last_backup
+                    ? `<span class="adb-dbm-stat-chip" title="${_escAttr(db.last_backup)}"><i class="fas fa-download"></i> ${_relTime(db.last_backup)}</span>`
+                    : '';
+
+                return `<div class="adb-dbm-tab-card${isActive ? ' adb-dbm-tab-card-active' : ''}" data-name="${_escAttr(db.name)}">
+                    <div class="adb-dbm-tab-card-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="adb-dbm-tab-card-body">
+                        <div class="adb-dbm-tab-card-title">
+                            ${_escHtml(db.name)}
+                            ${isActive ? '<span class="adb-dbm-active-badge">active</span>' : ''}
+                            ${!db.path_exists ? '<span class="adb-dbm-warn-badge" title="Path not found on disk">missing</span>' : ''}
+                        </div>
+                        ${db.description ? `<div class="adb-dbm-tab-card-desc">${_escHtml(db.description)}</div>` : ''}
+                        <div class="adb-dbm-tab-card-stats">
+                            ${entityChip}${sizeChip}${bkChip}${lastBkChip}
+                        </div>
+                        <div class="adb-dbm-tab-card-path" title="${_escAttr(db.path)}">${_escHtml(db.path)}</div>
+                    </div>
+                    <div class="adb-dbm-tab-card-actions">
+                        <button class="adb-btn adb-btn-ghost adb-btn-sm adb-dbm-settings-btn" data-name="${_escAttr(db.name)}" title="Settings">
+                            <i class="fas fa-cog"></i> Settings
+                        </button>
+                        ${isActive
+                            ? `<span class="adb-dbm-active-label">Active</span>`
+                            : `<button class="adb-btn adb-btn-accent adb-btn-sm adb-dbm-switch-btn" data-name="${_escAttr(db.name)}">
+                                   <i class="fas fa-right-to-bracket"></i> Switch
+                               </button>`}
+                    </div>
+                </div>`;
+            }).join('');
+
+            listEl.querySelectorAll('.adb-dbm-switch-btn').forEach(btn => {
+                btn.addEventListener('click', () => _switchToNamed(btn.dataset.name));
+            });
+            listEl.querySelectorAll('.adb-dbm-settings-btn').forEach(btn => {
+                btn.addEventListener('click', () => _dbmShowSettings(btn.dataset.name));
+            });
+        } catch {
+            listEl.innerHTML = '<div class="adb-empty-hint">Could not load databases.</div>';
         }
-        const folderInput = _el('adb-db-folder-input');
-        if (folderInput) folderInput.value = _currentPath || '';
     }
 
-    function _closeDbModal() {
-        _hide('adb-db-modal');
+    function _dbmShowCreate() {
+        _dbmView('adb-dbm-create');
+        const n = _el('adb-dbm-create-name'); if (n) { n.value = ''; setTimeout(() => n.focus(), 60); }
+        const p = _el('adb-dbm-create-path'); if (p) p.value = '';
+        const d = _el('adb-dbm-create-desc'); if (d) d.value = '';
     }
 
-    async function _browseFolder() {
-        const btn         = _el('adb-db-browse-btn');
-        const folderInput = _el('adb-db-folder-input');
-        const initial     = folderInput?.value?.trim() || _currentPath || '';
+    async function _dbmCreate() {
+        const name = _el('adb-dbm-create-name')?.value?.trim();
+        const path = _el('adb-dbm-create-path')?.value?.trim() || null;
+        const desc = _el('adb-dbm-create-desc')?.value?.trim() || '';
 
+        if (!name) { _toast('Database name is required.', 'warning'); return; }
+
+        const btn = _el('adb-dbm-create-submit');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+        try {
+            const res  = await fetch(`${API}/databases`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ name, path, description: desc }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Create failed');
+            const verb = data.created ? 'created' : 'registered';
+            _toast(`Database "${name}" ${verb}.`, 'success');
+            _switchToNamed(name);
+            // Stay on the databases tab, go back to list so user sees the new entry
+            _dbmView('adb-dbm-list');
+            _dbmLoadList();
+        } catch (e) {
+            _toast(e.message, 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-plus"></i> Create'; }
+        }
+    }
+
+    async function _dbmBrowse(inputId) {
+        const input   = _el(inputId);
+        const initial = input?.value?.trim() || '';
+        // Find the browse button nearest to the input
+        const btn = input?.closest('.adb-db-path-row')?.querySelector('.adb-db-browse-btn');
         if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
-
         try {
             const res  = await fetch(`${BROWSE_API}?initial=${encodeURIComponent(initial)}`);
             const data = await res.json();
-            if (!data.cancelled && data.path) {
-                if (folderInput) folderInput.value = data.path;
-            }
+            if (!data.cancelled && data.path && input) input.value = data.path;
         } catch {
             _toast('Could not open folder browser.', 'error');
         } finally {
@@ -234,13 +337,196 @@
         }
     }
 
-    function _openSelectedDb() {
-        const folderInput = _el('adb-db-folder-input');
-        const path = folderInput?.value?.trim();
-        if (path) {
-            _switchToPath(path);
+    async function _dbmShowSettings(name) {
+        _dbmSettingsName = name;
+        _dbmView('adb-dbm-settings');
+        const title = _el('adb-dbm-settings-title');
+        if (title) title.textContent = `${name} — Settings`;
+
+        // Load registry metadata via list endpoint
+        try {
+            const res  = await fetch(`${API}/databases`);
+            const data = await res.json();
+            const db   = (data.databases || []).find(d => d.name === name);
+            if (db) {
+                const desc = _el('adb-dbm-settings-desc');
+                if (desc) desc.value = db.description || '';
+                const bkEnabled = _el('adb-dbm-backup-enabled');
+                if (bkEnabled) bkEnabled.checked = db.backup?.enabled || false;
+                const bkKeep = _el('adb-dbm-backup-keep');
+                if (bkKeep) bkKeep.value = db.backup?.keep_count ?? 5;
+            }
+        } catch {
+            _toast('Could not load database settings.', 'error');
         }
-        _closeDbModal();
+
+        _dbmLoadBackups(name);
+    }
+
+    async function _dbmSaveSettings() {
+        const name = _dbmSettingsName;
+        if (!name) return;
+
+        const desc      = _el('adb-dbm-settings-desc')?.value?.trim() ?? '';
+        const enabled   = _el('adb-dbm-backup-enabled')?.checked ?? false;
+        const keepCount = parseInt(_el('adb-dbm-backup-keep')?.value || '5', 10);
+
+        const btn = _el('adb-dbm-settings-save');
+        if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+        try {
+            const res = await fetch(`${API}/databases/${encodeURIComponent(name)}/settings`, {
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ description: desc, backup: { enabled, keep_count: keepCount } }),
+            });
+            if (!res.ok) throw new Error((await res.json()).detail || 'Save failed');
+            _toast('Settings saved.', 'success');
+        } catch (e) {
+            _toast(e.message, 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = 'Save Settings'; }
+        }
+    }
+
+    async function _dbmCreateBackup() {
+        const name = _dbmSettingsName;
+        if (!name) return;
+        const label = prompt('Backup label (optional):', '') ?? '';
+
+        const btn = _el('adb-dbm-backup-now-btn');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…'; }
+
+        try {
+            const res  = await fetch(`${API}/databases/${encodeURIComponent(name)}/backup`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ label }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Backup failed');
+            _toast(`Backup created: ${data.backup_id}`, 'success');
+            _dbmLoadBackups(name);
+        } catch (e) {
+            _toast(e.message, 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Create Backup Now'; }
+        }
+    }
+
+    async function _dbmLoadBackups(name) {
+        const listEl = _el('adb-dbm-backup-list');
+        if (!listEl) return;
+        listEl.innerHTML = '<div class="adb-empty-hint"><i class="fas fa-spinner fa-spin"></i></div>';
+        try {
+            const res  = await fetch(`${API}/databases/${encodeURIComponent(name)}/backups`);
+            const data = await res.json();
+            const bks  = data.backups || [];
+
+            if (!bks.length) {
+                listEl.innerHTML = '<div class="adb-empty-hint">No backups yet.</div>';
+                return;
+            }
+
+            listEl.innerHTML = bks.map(b => `
+                <div class="adb-dbm-backup-row" data-bid="${_escAttr(b.backup_id)}">
+                    <div class="adb-dbm-backup-info">
+                        <span class="adb-dbm-backup-id">${_escHtml(b.backup_id)}</span>
+                        ${b.label ? `<span class="adb-dbm-backup-label">${_escHtml(b.label)}</span>` : ''}
+                        <span class="adb-dbm-backup-meta">${_fmtDate(b.created)} · ${b.entity_count} entities · ${_fmtBytes(b.size_bytes)}</span>
+                    </div>
+                    <div class="adb-dbm-backup-actions">
+                        <button class="adb-btn adb-btn-ghost adb-btn-xs adb-dbm-restore-btn" data-bid="${_escAttr(b.backup_id)}" title="Restore this backup">
+                            <i class="fas fa-undo"></i> Restore
+                        </button>
+                        <button class="adb-btn adb-btn-ghost adb-btn-xs adb-dbm-del-backup-btn" data-bid="${_escAttr(b.backup_id)}" title="Delete backup">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`).join('');
+
+            listEl.querySelectorAll('.adb-dbm-restore-btn').forEach(btn => {
+                btn.addEventListener('click', () => _dbmRestoreBackup(name, btn.dataset.bid));
+            });
+            listEl.querySelectorAll('.adb-dbm-del-backup-btn').forEach(btn => {
+                btn.addEventListener('click', () => _dbmDeleteBackup(name, btn.dataset.bid));
+            });
+        } catch {
+            listEl.innerHTML = '<div class="adb-empty-hint">Could not load backups.</div>';
+        }
+    }
+
+    async function _dbmRestoreBackup(name, bid) {
+        if (!confirm(
+            `Restore backup "${bid}"?\n\nThis replaces ALL current database contents. The current data will be lost.`
+        )) return;
+
+        _showBusy('Restoring backup…');
+        try {
+            const res  = await fetch(
+                `${API}/databases/${encodeURIComponent(name)}/backups/${encodeURIComponent(bid)}/restore`,
+                { method: 'POST' }
+            );
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Restore failed');
+            _toast(`Restored: ${data.entity_count} entities.`, 'success');
+            // Reload entity list if this is the active database
+            if (name === _currentDb) _loadEntityList(_currentFilter, _currentPage);
+        } catch (e) {
+            _toast(e.message, 'error');
+        } finally {
+            _hideBusy();
+        }
+    }
+
+    async function _dbmDeleteBackup(name, bid) {
+        if (!confirm(`Delete backup "${bid}"? This cannot be undone.`)) return;
+        try {
+            const res = await fetch(
+                `${API}/databases/${encodeURIComponent(name)}/backups/${encodeURIComponent(bid)}`,
+                { method: 'DELETE' }
+            );
+            if (!res.ok) throw new Error((await res.json()).detail || 'Delete failed');
+            _toast('Backup deleted.', 'success');
+            _dbmLoadBackups(name);
+        } catch (e) {
+            _toast(e.message, 'error');
+        }
+    }
+
+    async function _dbmDeleteDatabase() {
+        const name = _dbmSettingsName;
+        if (!name) return;
+        if (!confirm(`Delete database "${name}"?\n\nALL entity data will be permanently deleted from disk.`)) return;
+        const typed = prompt(`Type "${name}" to confirm:`);
+        if (typed !== name) { _toast('Deletion cancelled.', 'info'); return; }
+
+        _showBusy('Deleting database…');
+        try {
+            const res = await fetch(
+                `${API}/databases/${encodeURIComponent(name)}?confirm=true`,
+                { method: 'DELETE' }
+            );
+            if (!res.ok) throw new Error((await res.json()).detail || 'Delete failed');
+            _toast(`Database "${name}" deleted.`, 'success');
+            if (name === _currentDb) _switchToNamed('default');
+            _dbmView('adb-dbm-list');
+            _dbmLoadList();
+        } catch (e) {
+            _toast(e.message, 'error');
+        } finally {
+            _hideBusy();
+        }
+    }
+
+    // Keep legacy stubs so any other code that calls them doesn't break
+    function _openDbModal()  { _dbmOpen(); }
+    function _closeDbModal() { _dbmClose(); }
+    async function _browseFolder() { await _dbmBrowse('adb-db-folder-input'); }
+    function _openSelectedDb() {
+        const path = _el('adb-db-folder-input')?.value?.trim();
+        if (path) _switchToPath(path);
+        _dbmClose();
     }
 
     function _switchToNamed(name) {
@@ -4548,16 +4834,25 @@
         _el('adb-bulk-expand')?.addEventListener('click', _bulkExpandStubs);
         _el('adb-bulk-delete')?.addEventListener('click', _bulkDelete);
 
-        // DB modal
-        _el('adb-db-change-btn')?.addEventListener('click', _openDbModal);
-        _el('adb-db-modal-close')?.addEventListener('click', _closeDbModal);
-        _el('adb-db-modal-cancel')?.addEventListener('click', _closeDbModal);
-        _el('adb-db-browse-btn')?.addEventListener('click', _browseFolder);
-        _el('adb-db-modal-open')?.addEventListener('click', _openSelectedDb);
-        _el('adb-db-folder-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') _openSelectedDb(); });
-        _el('adb-db-modal')?.addEventListener('click', e => {
-            if (e.target === _el('adb-db-modal')) _closeDbModal();
-        });
+        // DB chip in stats bar → navigate to Databases tab
+        _el('adb-db-change-btn')?.addEventListener('click', () => _switchTab('databases'));
+
+        // Databases tab — list view
+        _el('adb-dbm-new-btn')?.addEventListener('click', _dbmShowCreate);
+
+        // Databases tab — create view
+        _el('adb-dbm-create-back')?.addEventListener('click', () => { _dbmView('adb-dbm-list'); _dbmLoadList(); });
+        _el('adb-dbm-create-cancel')?.addEventListener('click', () => { _dbmView('adb-dbm-list'); _dbmLoadList(); });
+        _el('adb-dbm-create-submit')?.addEventListener('click', _dbmCreate);
+        _el('adb-dbm-create-browse')?.addEventListener('click', () => _dbmBrowse('adb-dbm-create-path'));
+        _el('adb-dbm-create-name')?.addEventListener('keydown', e => { if (e.key === 'Enter') _dbmCreate(); });
+
+        // Databases tab — settings view
+        _el('adb-dbm-settings-back')?.addEventListener('click', () => { _dbmView('adb-dbm-list'); _dbmLoadList(); });
+        _el('adb-dbm-settings-cancel')?.addEventListener('click', () => { _dbmView('adb-dbm-list'); _dbmLoadList(); });
+        _el('adb-dbm-settings-save')?.addEventListener('click', _dbmSaveSettings);
+        _el('adb-dbm-backup-now-btn')?.addEventListener('click', _dbmCreateBackup);
+        _el('adb-dbm-delete-btn')?.addEventListener('click', _dbmDeleteDatabase);
     }
 
     // ── Init ──────────────────────────────────────────────────────────────────

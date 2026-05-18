@@ -1,30 +1,41 @@
 """
 core/aethviondb/db_registry.py
 ════════════════════════════════
-Lightweight path registry that bridges path-based databases (opened via the
-legacy ?path= parameter) to the v1 API (which routes by name only).
+Database registry — maps named databases to filesystem paths and stores
+per-database metadata (description, backup settings, etc.).
 
-Problem:
-  The legacy API accepts ?path=<absolute_path> so users can open any folder as
-  a database.  The v1 REST API uses /{db}/ in the URL — it can only receive a
-  name.  When the user browses to C:\\MyData\\DB_Test_2 in the explorer, the
-  legacy API reads from that path, but the v1 API defaults to
-  AETHVIONDB/DB_Test_2/, which is a completely different (possibly empty)
-  directory.
+Registry file: data/aethviondb/_db_registry.json
 
-Solution:
-  Every time the legacy API opens a path-based database it calls
-  register_path_db(path).  This writes  name → actual_path  to a small JSON
-  file at AETHVIONDB/_db_registry.json.  The v1 API calls resolve_db_root(db)
-  which checks that file before falling back to AETHVIONDB/<db>.
+Format (v2)
+-----------
+{
+  "version": 2,
+  "databases": {
+    "default": {
+      "name": "default",
+      "path": "/absolute/path/to/default",
+      "description": "",
+      "created": "2024-01-01T00:00:00+00:00",
+      "backup": {
+        "enabled": false,
+        "keep_count": 5
+      }
+    }
+  }
+}
 
-Registry file: AETHVIONDB/_db_registry.json
+Migration
+---------
+Old v1 format was a flat {name: path} dict.  On first read the registry is
+automatically migrated to v2 and re-saved.
 """
 from __future__ import annotations
 
 import json
 import re
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from core.utils.logger import get_logger
 from core.utils.paths import AETHVIONDB
@@ -35,9 +46,26 @@ _REGISTRY_FILE = AETHVIONDB / "_db_registry.json"
 _SAFE_RE       = re.compile(r"^[a-zA-Z0-9_\-]{1,64}$")
 
 
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _default_db_entry(name: str, path: str) -> dict:
+    return {
+        "name":        name,
+        "path":        path,
+        "description": "",
+        "created":     _now_iso(),
+        "backup": {
+            "enabled":    False,
+            "keep_count": 5,
+        },
+    }
+
+
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
-def _read() -> dict:
+def _read_raw() -> dict:
     """Read the registry file; returns {} on any error."""
     if _REGISTRY_FILE.exists():
         try:
@@ -45,6 +73,37 @@ def _read() -> dict:
         except Exception:
             return {}
     return {}
+
+
+def _migrate(raw: dict) -> dict:
+    """Migrate v1 {name: path} format to v2 in-place."""
+    if raw.get("version") == 2:
+        return raw
+
+    # Old flat format: all keys are name → path strings
+    databases: dict[str, dict] = {}
+    for k, v in raw.items():
+        if k == "version":
+            continue
+        if isinstance(v, str):
+            databases[k] = _default_db_entry(k, v)
+        elif isinstance(v, dict) and "path" in v:
+            entry = _default_db_entry(k, v["path"])
+            for fk in ("description", "created", "backup"):
+                if fk in v:
+                    entry[fk] = v[fk]
+            databases[k] = entry
+
+    return {"version": 2, "databases": databases}
+
+
+def _read() -> dict:
+    """Read, migrate if needed, and return the v2 registry dict."""
+    raw      = _read_raw()
+    migrated = _migrate(raw)
+    if migrated is not raw:
+        _write(migrated)
+    return migrated
 
 
 def _write(registry: dict) -> None:
@@ -61,53 +120,126 @@ def _write(registry: dict) -> None:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+def register_db(
+    name:        str,
+    path:        str | Path,
+    description: str = "",
+    *,
+    overwrite:   bool = True,
+) -> dict:
+    """Add or update a database entry in the registry.
+
+    When *overwrite* is False the existing entry is returned unchanged if
+    a database with that name is already registered.
+
+    Returns the (possibly updated) entry dict.
+    """
+    reg      = _read()
+    dbs      = reg.setdefault("databases", {})
+    path_str = str(path)
+
+    if name in dbs:
+        if not overwrite:
+            return dbs[name]
+        dbs[name]["path"] = path_str
+        if description:
+            dbs[name]["description"] = description
+    else:
+        dbs[name] = _default_db_entry(name, path_str)
+        if description:
+            dbs[name]["description"] = description
+
+    _write(reg)
+    logger.debug(f"[DBRegistry] Registered {name!r} → {path_str}")
+    return dbs[name]
+
+
+def update_db(name: str, **kwargs: Any) -> dict | None:
+    """Update metadata fields on an existing database entry.
+
+    Allowed kwargs:
+      description (str)   — human-readable description
+      backup      (dict)  — subset of {enabled: bool, keep_count: int}
+
+    Returns the updated entry dict, or None if *name* is not registered.
+    """
+    reg = _read()
+    dbs = reg.get("databases", {})
+    if name not in dbs:
+        return None
+
+    entry = dbs[name]
+    if "description" in kwargs:
+        entry["description"] = str(kwargs["description"])
+    if "backup" in kwargs and isinstance(kwargs["backup"], dict):
+        entry.setdefault("backup", {}).update(kwargs["backup"])
+
+    _write(reg)
+    return entry
+
+
+def remove_db(name: str) -> bool:
+    """Remove a database from the registry.
+
+    Returns True if the entry existed and was removed, False otherwise.
+    The database files on disk are NOT deleted — only the registry entry.
+    """
+    reg = _read()
+    dbs = reg.get("databases", {})
+    if name not in dbs:
+        return False
+    del dbs[name]
+    _write(reg)
+    return True
+
+
+def get_db(name: str) -> dict | None:
+    """Return the metadata dict for a single database, or None."""
+    return _read().get("databases", {}).get(name)
+
+
+def list_dbs() -> list[dict]:
+    """Return all registered databases as a list of entry dicts."""
+    return list(_read().get("databases", {}).values())
+
+
+def resolve_db_root(db: str) -> Path:
+    """Return the filesystem root for a named database.
+
+    Lookup order:
+      1. Registry entry whose path still exists on disk
+      2. AETHVIONDB/<db>  (default fallback)
+    """
+    entry = get_db(db)
+    if entry:
+        p = Path(entry["path"])
+        if p.exists():
+            logger.debug(f"[DBRegistry] Resolved {db!r} → {p} (registry)")
+            return p
+        # Stale path — log but still fall through to default
+        logger.debug(f"[DBRegistry] Stale registry entry for {db!r}: path gone ({p})")
+
+    return AETHVIONDB / db
+
+
+# ── Backward-compat shims ─────────────────────────────────────────────────────
+
 def register_path_db(path: str | Path) -> None:
     """Register a path-based database by its folder name.
 
-    Called by the legacy API whenever it processes a request that includes
-    ?path=<absolute_path>.  Only names that match the v1 safe-name regex are
-    registered (others can't be addressed via the v1 API anyway).
-
-    Duplicate registrations simply overwrite the previous entry so the most
-    recently opened path is always authoritative.
+    Legacy shim called by _db_root() when a ?path= query param is used.
+    Only names matching the v1 safe-name regex are registered.
     """
     try:
         p    = Path(path)
         name = p.name
         if not name or not _SAFE_RE.match(name):
             return
-        registry       = _read()
-        registry[name] = str(p)
-        _write(registry)
-        logger.debug(f"[DBRegistry] Registered {name!r} → {p}")
+        register_db(name, p, overwrite=True)
     except Exception as exc:
         logger.debug(f"[DBRegistry] Could not register {path!r}: {exc}")
 
 
-def resolve_db_root(db: str) -> Path:
-    """Return the actual filesystem root for a named database.
-
-    Lookup order:
-      1. Registry (path-based DBs registered by the legacy API)
-      2. AETHVIONDB/<db>  (default for named databases)
-
-    The registry entry is only used when the registered path still exists on
-    disk.  If the path was deleted or moved, the fallback is used instead.
-    """
-    registry = _read()
-    if db in registry:
-        p = Path(registry[db])
-        if p.exists():
-            logger.debug(f"[DBRegistry] Resolved {db!r} → {p} (registry)")
-            return p
-        # Stale entry — remove it and fall through
-        logger.debug(f"[DBRegistry] Stale entry for {db!r}, path gone: {p}")
-        registry.pop(db, None)
-        _write(registry)
-
-    return AETHVIONDB / db
-
-
 def list_registered() -> dict[str, str]:
-    """Return a copy of the current registry (name → path string)."""
-    return dict(_read())
+    """Return {name: path} for all registered databases (legacy compat)."""
+    return {e["name"]: e["path"] for e in list_dbs()}

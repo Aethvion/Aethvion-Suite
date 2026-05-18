@@ -45,7 +45,8 @@ def _db_root(db: str = "default", path: Optional[str] = None) -> Path:
         return Path(path)
     if not _SAFE_DB_RE.match(db):
         raise HTTPException(400, f"Invalid database name {db!r}")
-    return AETHVIONDB / db
+    from .db_registry import resolve_db_root
+    return resolve_db_root(db)
 
 
 def _get_writer(db: str = "default", path: Optional[str] = None):
@@ -138,58 +139,230 @@ class ApplyDeepenRequest(BaseModel):
 
 
 class CreateDatabaseRequest(BaseModel):
-    name: str
-    path: Optional[str] = None   # Custom filesystem path; if omitted uses AETHVIONDB/<name>
+    name:        str
+    path:        Optional[str] = None   # Custom filesystem path; if omitted uses AETHVIONDB/<name>
+    description: str           = ""
+
+
+class UpdateDatabaseSettingsRequest(BaseModel):
+    description: Optional[str]  = None
+    backup:      Optional[dict] = None   # {enabled: bool, keep_count: int}
+
+
+class CreateBackupRequest(BaseModel):
+    label: str = ""
 
 
 # ── Database management ───────────────────────────────────────────────────────
 
 @router.get("/databases")
 async def list_databases():
-    """List all named databases stored in the default AethvionDB root."""
+    """List all named databases (registry + auto-discovered)."""
+    from .db_registry import register_db, list_dbs
+
     AETHVIONDB.mkdir(parents=True, exist_ok=True)
-    dbs = []
-    for d in sorted(AETHVIONDB.iterdir()):
-        if d.is_dir() and (d / "entities").exists():
-            entity_count = sum(1 for _ in (d / "entities").glob("ws_*.json"))
-            dbs.append({"name": d.name, "path": str(d), "entity_count": entity_count})
-    return {"databases": dbs}
+
+    # ── Legacy migration (one-time, non-destructive) ──────────────────────────
+    # If databases lived in the old data/modes/worldsim/ root, register them
+    # with their original absolute paths so nothing is lost when the root moves.
+    from core.utils.paths import MODES
+    _legacy_root = MODES / "worldsim"
+    if _legacy_root.exists():
+        for d in _legacy_root.iterdir():
+            if (d.is_dir()
+                    and not d.name.startswith("_")
+                    and (d / "entities").exists()):
+                register_db(d.name, str(d), overwrite=False)
+
+    # Auto-discover databases in the new default root
+    for d in AETHVIONDB.iterdir():
+        if (d.is_dir()
+                and not d.name.startswith("_")
+                and (d / "entities").exists()):
+            register_db(d.name, str(d), overwrite=False)
+
+    # Build enriched list from registry
+    from .backup import list_backups as _lb
+    dbs: list[dict] = []
+    for entry in list_dbs():
+        db_path      = Path(entry["path"])
+        entity_count = 0
+        size_bytes   = 0
+        if (db_path / "entities").exists():
+            for f in (db_path / "entities").glob("ws_*.json"):
+                entity_count += 1
+                try:   size_bytes += f.stat().st_size
+                except OSError: pass
+        backups     = _lb(db_path)
+        last_backup = backups[0].get("created") if backups else None
+        dbs.append({
+            **entry,
+            "entity_count": entity_count,
+            "size_bytes":   size_bytes,
+            "backup_count": len(backups),
+            "last_backup":  last_backup,
+            "path_exists":  db_path.exists(),
+        })
+
+    return {"databases": sorted(dbs, key=lambda d: d["name"])}
 
 
 @router.post("/databases")
 async def create_database(req: CreateDatabaseRequest):
-    """Create a new database (named or at a custom path)."""
+    """Create a new database or register an existing folder under a name."""
+    from .db_registry import register_db
+
     if not _SAFE_DB_RE.match(req.name):
         raise HTTPException(400, f"Invalid database name {req.name!r}")
-    root = Path(req.path) if req.path else AETHVIONDB / req.name
-    if (root / "entities").exists():
-        raise HTTPException(409, f"Database '{req.name}' already exists at {root}")
-    _ensure_db(root)
-    now = datetime.now(timezone.utc).isoformat()
-    _write_db_info(root, {
-        "name":             req.name,
-        "created":          now,
-        "last_updated":     now,
-        "total_entities":   0,
-        "stub_count":       0,
-        "index_size":       0,
-        "by_type":          {},
-        "by_status":        {},
-        "total_size_bytes": 0,
-    })
-    return {"name": req.name, "path": str(root), "created": True}
+
+    root           = Path(req.path) if req.path else AETHVIONDB / req.name
+    already_exists = (root / "entities").exists()
+
+    if not already_exists:
+        _ensure_db(root)
+        now = datetime.now(timezone.utc).isoformat()
+        _write_db_info(root, {
+            "name":             req.name,
+            "created":          now,
+            "last_updated":     now,
+            "total_entities":   0,
+            "stub_count":       0,
+            "index_size":       0,
+            "by_type":          {},
+            "by_status":        {},
+            "total_size_bytes": 0,
+        })
+
+    register_db(req.name, str(root), description=req.description)
+    return {"name": req.name, "path": str(root), "created": not already_exists}
 
 
 @router.delete("/databases/{name}")
 async def delete_database(name: str, confirm: bool = Query(False)):
-    """Delete a named database. Requires ?confirm=true."""
+    """Delete a named database and remove it from the registry. Requires ?confirm=true."""
+    from .db_registry import remove_db, get_db
+
     if not confirm:
         raise HTTPException(400, "Pass ?confirm=true to delete a database.")
-    root = AETHVIONDB / name
+
+    # Resolve path via registry, fall back to default location
+    entry = get_db(name)
+    root  = Path(entry["path"]) if entry else AETHVIONDB / name
     if not root.exists():
-        raise HTTPException(404, f"Database '{name}' not found")
+        raise HTTPException(404, f"Database '{name}' not found at {root}")
     shutil.rmtree(root)
+    remove_db(name)
     return {"deleted": name}
+
+
+@router.put("/databases/{name}/settings")
+async def update_database_settings(name: str, req: UpdateDatabaseSettingsRequest):
+    """Update description and/or backup settings for a named database."""
+    from .db_registry import update_db, get_db
+
+    if not _SAFE_DB_RE.match(name):
+        raise HTTPException(400, f"Invalid database name {name!r}")
+    if not get_db(name):
+        raise HTTPException(404, f"Database '{name}' not registered")
+
+    kwargs: dict = {}
+    if req.description is not None:
+        kwargs["description"] = req.description
+    if req.backup is not None:
+        # Validate and sanitise backup sub-fields
+        bk: dict = {}
+        if "enabled" in req.backup:
+            bk["enabled"] = bool(req.backup["enabled"])
+        if "keep_count" in req.backup:
+            bk["keep_count"] = max(1, int(req.backup["keep_count"]))
+        kwargs["backup"] = bk
+
+    entry = update_db(name, **kwargs)
+    return {"updated": True, "entry": entry}
+
+
+@router.post("/databases/{name}/backup")
+async def create_backup_route(
+    name: str,
+    req:  CreateBackupRequest,
+):
+    """Create a point-in-time backup of a named database."""
+    from .backup import create_backup
+    from .db_registry import get_db
+
+    if not _SAFE_DB_RE.match(name):
+        raise HTTPException(400, f"Invalid database name {name!r}")
+
+    entry    = get_db(name)
+    db_root  = Path(entry["path"]) if entry else AETHVIONDB / name
+    if not db_root.exists():
+        raise HTTPException(404, f"Database '{name}' not found")
+
+    try:
+        meta = await asyncio.to_thread(create_backup, db_root, name, req.label)
+    except RuntimeError as exc:
+        raise HTTPException(500, str(exc))
+
+    # Prune old backups if keep_count is configured
+    if entry:
+        keep_count = entry.get("backup", {}).get("keep_count", 0)
+        if entry.get("backup", {}).get("enabled") and keep_count > 0:
+            from .backup import prune_backups
+            await asyncio.to_thread(prune_backups, db_root, keep_count)
+
+    return meta
+
+
+@router.get("/databases/{name}/backups")
+async def list_backups_route(name: str):
+    """List all backups for a named database, newest first."""
+    from .backup import list_backups
+    from .db_registry import get_db
+
+    if not _SAFE_DB_RE.match(name):
+        raise HTTPException(400, f"Invalid database name {name!r}")
+
+    entry   = get_db(name)
+    db_root = Path(entry["path"]) if entry else AETHVIONDB / name
+    backups = await asyncio.to_thread(list_backups, db_root)
+    return {"backups": backups}
+
+
+@router.post("/databases/{name}/backups/{backup_id}/restore")
+async def restore_backup_route(name: str, backup_id: str):
+    """Restore a backup, replacing the current database contents."""
+    from .backup import restore_backup
+    from .db_registry import get_db
+
+    if not _SAFE_DB_RE.match(name):
+        raise HTTPException(400, f"Invalid database name {name!r}")
+
+    entry   = get_db(name)
+    db_root = Path(entry["path"]) if entry else AETHVIONDB / name
+
+    try:
+        result = await asyncio.to_thread(restore_backup, db_root, backup_id)
+    except RuntimeError as exc:
+        raise HTTPException(400, str(exc))
+
+    return result
+
+
+@router.delete("/databases/{name}/backups/{backup_id}")
+async def delete_backup_route(name: str, backup_id: str):
+    """Delete a specific backup."""
+    from .backup import delete_backup
+    from .db_registry import get_db
+
+    if not _SAFE_DB_RE.match(name):
+        raise HTTPException(400, f"Invalid database name {name!r}")
+
+    entry   = get_db(name)
+    db_root = Path(entry["path"]) if entry else AETHVIONDB / name
+    deleted = await asyncio.to_thread(delete_backup, db_root, backup_id)
+    if not deleted:
+        raise HTTPException(404, f"Backup '{backup_id}' not found")
+    return {"deleted": backup_id}
 
 
 @router.get("/info")
