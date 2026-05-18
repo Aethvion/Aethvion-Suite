@@ -1030,17 +1030,6 @@ async function setDashboardMode(mode, save = true) {
         localStorage.removeItem('active_tab');
     }
 
-    // 3. For AI mode: if the restored tab has no sidebar (Home/Chat/AethvionDB),
-    //    redirect to the last sidebar-capable AI tab so the "AI" button always
-    //    lands on the AI workspace — not a sidebar-less tab like Chat.
-    if (mode === 'ai') {
-        const _noSidebarSet = new Set(['suite-home', 'chat', 'aethviondb']);
-        if (_noSidebarSet.has(targetTab)) {
-            const _lastHub = localStorage.getItem('_last_ai_hub_tab');
-            targetTab = (_lastHub && !_noSidebarSet.has(_lastHub)) ? _lastHub : 'agents';
-        }
-    }
-
     // Validate target tab exists.
     // If not found yet, it might still be rendering (race condition with sidebar-manager)
     let targetBtn = document.querySelector(`.main-tab[data-maintab="${targetTab}"]`);
@@ -1061,6 +1050,22 @@ async function setDashboardMode(mode, save = true) {
 
     await switchMainTab(targetTab, false);
 }
+
+// ─── AI Hub navigation — used by the "AI" header nav button ─────────────────
+// Unlike setDashboardMode('ai') (which restores whatever tab was last saved,
+// including Chat/AethvionDB), this always lands on a sidebar-capable AI tab.
+// On refresh/restore the saved tab is respected exactly as-is; this only
+// fires on an explicit user click of the AI button.
+function goToAIHub() {
+    const _noSidebar = new Set(['suite-home', 'chat', 'aethviondb']);
+    // Already on a sidebar-capable AI tab — nothing to do.
+    if (dashboardMode === 'ai' && !_noSidebar.has(currentMainTab)) return;
+    // Navigate to the last sidebar tab the user visited, or fall back to 'agents'.
+    const target = localStorage.getItem('_last_ai_hub_tab') || 'agents';
+    setDashboardMode('ai');
+    switchMainTab(target);
+}
+window.goToAIHub = goToAIHub;
 
 // ─── Sidebar Category Collapse ───────────────────────────────────
 function initCategoryCollapse() {
