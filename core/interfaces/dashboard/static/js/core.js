@@ -551,7 +551,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tab) return;
 
         // Handle AI mode switching if needed
-        const AI_TABS = ['chat', 'agents', 'agent-corp', 'schedule', 'photo', 'audio'];
+        const AI_TABS = ['chat', 'agents', 'agent-corp', 'schedule', 'photo', 'audio', 'aethviondb'];
         if (AI_TABS.includes(tab)) {
             if (typeof setDashboardMode === 'function') setDashboardMode('ai');
         }
@@ -1030,7 +1030,18 @@ async function setDashboardMode(mode, save = true) {
         localStorage.removeItem('active_tab');
     }
 
-    // Validate target tab exists. 
+    // 3. For AI mode: if the restored tab has no sidebar (Home/Chat/AethvionDB),
+    //    redirect to the last sidebar-capable AI tab so the "AI" button always
+    //    lands on the AI workspace — not a sidebar-less tab like Chat.
+    if (mode === 'ai') {
+        const _noSidebarSet = new Set(['suite-home', 'chat', 'aethviondb']);
+        if (_noSidebarSet.has(targetTab)) {
+            const _lastHub = localStorage.getItem('_last_ai_hub_tab');
+            targetTab = (_lastHub && !_noSidebarSet.has(_lastHub)) ? _lastHub : 'agents';
+        }
+    }
+
+    // Validate target tab exists.
     // If not found yet, it might still be rendering (race condition with sidebar-manager)
     let targetBtn = document.querySelector(`.main-tab[data-maintab="${targetTab}"]`);
 
@@ -1309,6 +1320,45 @@ async function switchMainTab(tabName, save = true) {
     document.querySelectorAll('.tab-dropdown-item').forEach(item => {
         item.classList.toggle('active', item.dataset.subtab === actualTabName);
     });
+
+    // ── Update header primary nav active state ───────────────────────────────
+    const _hdrBtns = document.querySelectorAll('#hdr-nav .hdr-nav-btn');
+    if (_hdrBtns.length) {
+        _hdrBtns.forEach(btn => btn.classList.remove('active'));
+        // Direct tab match (e.g. chat → Chat btn, aethviondb → AethvionDB btn)
+        const _directBtn = document.querySelector(`#hdr-nav .hdr-nav-btn[data-nav="${actualTabName}"]`);
+        if (_directBtn) {
+            _directBtn.classList.add('active');
+        } else {
+            // Fall back to the mode button (Home or AI)
+            const _fallbackNav = (dashboardMode === 'home') ? 'home' : 'ai';
+            const _fallbackBtn = document.querySelector(`#hdr-nav .hdr-nav-btn[data-nav="${_fallbackNav}"]`);
+            if (_fallbackBtn) _fallbackBtn.classList.add('active');
+        }
+    }
+
+    // ── Sidebar suppression — no sidebar on Home, Chat, AethvionDB ───────────
+    const _NO_SIDEBAR = new Set(['suite-home', 'chat', 'aethviondb']);
+    const _suppress = _NO_SIDEBAR.has(actualTabName);
+    const _sidebarEl     = document.getElementById('sidebar-nav');
+    const _toggleBtn     = document.getElementById('sidebar-toggle');
+    const _hideToggleBtn = document.getElementById('sidebar-hide-toggle');
+
+    if (_sidebarEl) {
+        if (_suppress) {
+            _sidebarEl.classList.add('sidebar-suppressed');
+        } else {
+            _sidebarEl.classList.remove('sidebar-suppressed');
+        }
+    }
+    if (_toggleBtn)     _toggleBtn.style.display     = _suppress ? 'none' : '';
+    if (_hideToggleBtn) _hideToggleBtn.style.display = _suppress ? 'none' : '';
+
+    // Remember the last sidebar-capable AI tab so the "AI" header button
+    // can always navigate back here (not to a sidebar-less tab like Chat).
+    if (!_suppress && actualTabName !== 'suite-home') {
+        localStorage.setItem('_last_ai_hub_tab', actualTabName);
+    }
 
     // Update panels
     document.querySelectorAll('.main-tab-panel').forEach(panel => {

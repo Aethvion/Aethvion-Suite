@@ -367,17 +367,23 @@ function _isHidden(source) {
 
     // ── Init ───────────────────────────────────────────────────────────
     function init() {
-        // Build bell button and insert before the status indicator
+        // Build bell button and insert before the header settings button
         bellBtn = _buildBell();
         badge = bellBtn.querySelector('.notif-badge');
 
-        const statusIndicator = document.getElementById('home-status-indicator');
-        if (statusIndicator && statusIndicator.parentNode) {
-            statusIndicator.parentNode.insertBefore(bellBtn, statusIndicator);
+        const settingsBtn = document.getElementById('header-settings-btn');
+        if (settingsBtn && settingsBtn.parentNode) {
+            // Insert bell before the settings gear — order: …status · bell · settings
+            settingsBtn.parentNode.insertBefore(bellBtn, settingsBtn);
         } else {
-            // Fallback: append to header-right if available
-            const headerRight = document.querySelector('.header-right');
-            if (headerRight) headerRight.prepend(bellBtn);
+            // Fallback: insert before status indicator (legacy layout)
+            const statusIndicator = document.getElementById('home-status-indicator');
+            if (statusIndicator && statusIndicator.parentNode) {
+                statusIndicator.parentNode.insertBefore(bellBtn, statusIndicator);
+            } else {
+                const headerRight = document.querySelector('.header-right');
+                if (headerRight) headerRight.prepend(bellBtn);
+            }
         }
 
         // Build panel

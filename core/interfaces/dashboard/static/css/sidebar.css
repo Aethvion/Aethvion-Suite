@@ -132,6 +132,19 @@
     pointer-events: none;
 }
 
+/* Suppressed state — tabs that have no sidebar (Home, Chat, AethvionDB).
+   Override without touching the hidden/collapsed state flags so restoring
+   the sidebar brings back the exact previous state. */
+.sidebar-nav.sidebar-suppressed {
+    width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
 /* Main tab overrides for vertical layout */
 .sidebar-nav .main-tabs {
     flex-direction: column;

@@ -362,7 +362,7 @@
         <!-- Header -->
         <header class="header">
             <div class="header-top">
-                <div style="display: flex; align-items: center;">
+                <div class="hdr-left">
                     <button id="sidebar-hide-toggle" class="sidebar-toggle-btn" title="Hide Sidebar">
                         <i class="fas fa-angles-left"></i>
                     </button>
@@ -371,10 +371,24 @@
                     </button>
                     <h1 class="logo" style="margin-left: 10px; cursor: pointer;"
                         onclick="setDashboardMode('home'); switchMainTab('suite-home');">Aethvion Suite</h1>
-                    <div class="dash-mode-toggle" id="dashboard-mode-toggle">
-                        <div class="mode-btn active" data-value="home">HOME</div>
-                        <div class="mode-btn" data-value="ai">AI</div>
-                    </div>
+                    <nav class="hdr-nav" id="hdr-nav">
+                        <button class="hdr-nav-btn" data-nav="home"
+                                onclick="setDashboardMode('home'); switchMainTab('suite-home');">
+                            <i class="fas fa-house"></i><span>Home</span>
+                        </button>
+                        <button class="hdr-nav-btn" data-nav="chat"
+                                onclick="setDashboardMode('ai'); switchMainTab('chat');">
+                            <i class="fas fa-comments"></i><span>Chat</span>
+                        </button>
+                        <button class="hdr-nav-btn" data-nav="ai"
+                                onclick="setDashboardMode('ai');">
+                            <i class="fas fa-robot"></i><span>AI</span>
+                        </button>
+                        <button class="hdr-nav-btn" data-nav="aethviondb"
+                                onclick="setDashboardMode('ai'); switchMainTab('aethviondb');">
+                            <i class="fas fa-circle-nodes"></i><span>AethvionDB</span>
+                        </button>
+                    </nav>
                 </div>
                 <div class="header-right">
                     <div class="compact-status" id="compact-status" onclick="setDashboardMode('ai'); switchMainTab('usage');" title="View Detailed Usage">
@@ -386,6 +400,10 @@
                         <span class="status-dot"></span>
                         <span class="status-text">Connecting...</span>
                     </div>
+                    <button class="hdr-settings-btn" id="header-settings-btn" title="Settings"
+                            onclick="switchMainTab('settings');">
+                        <i class="fas fa-gear"></i>
+                    </button>
                 </div>
             </div>
         </header>
