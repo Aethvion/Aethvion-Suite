@@ -1693,6 +1693,32 @@
     flex-wrap: wrap;
 }
 
+/* back-to-full-graph button — floats top-left of canvas in focused mode */
+.adb-graph-back-btn {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    transition: background 0.15s, color 0.15s;
+}
+.adb-graph-back-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+.adb-graph-back-btn.hidden { display: none; }
+
 /* graph loading overlay */
 .adb-graph-loading {
     position: absolute;

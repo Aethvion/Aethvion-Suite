@@ -2721,6 +2721,9 @@
         _graphFocusId = entityId;
         _show('adb-graph-loading');
         _hide('adb-graph-card');
+        // Show the Back button only when viewing a focused subgraph
+        const backBtn = _el('adb-graph-back-btn');
+        if (backBtn) backBtn.classList.toggle('hidden', !entityId);
 
         const depth  = _el('adb-graph-depth')?.value || '2';
         const params = new URLSearchParams(_dbParam({ limit: 500 }));
@@ -2871,10 +2874,16 @@
                 labelEl.attr('x',  d => d.x).attr('y',  d => d.y);
             });
 
-        // Pin focused node at centre so its neighbourhood fans out from it
+        // Pin focused node at centre so its neighbourhood fans out from it.
+        // Also immediately shift the viewport so (0,0) maps to canvas centre —
+        // without this the focused node sits at the SVG origin (top-left corner)
+        // until the simulation settles and the 'end' fit fires.
         if (data.focused_id) {
             const focal = nodes.find(n => n.id === data.focused_id);
-            if (focal) { focal.fx = 0; focal.fy = 0; }
+            if (focal) {
+                focal.fx = 0; focal.fy = 0;
+                svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2));
+            }
         }
 
         // Centre the view after the initial settle only.
@@ -3052,6 +3061,10 @@
 
     function _graphWire() {
         _el('adb-graph-close-btn') ?.addEventListener('click', _closeGraph);
+        _el('adb-graph-back-btn')  ?.addEventListener('click', () => {
+            const si = _el('adb-graph-search'); if (si) si.value = '';
+            _graphLoad(null);
+        });
         _el('adb-graph-focus-btn') ?.addEventListener('click', _graphFocusSearch);
         _el('adb-graph-full-btn')  ?.addEventListener('click', () => {
             const si = _el('adb-graph-search'); if (si) si.value = '';
