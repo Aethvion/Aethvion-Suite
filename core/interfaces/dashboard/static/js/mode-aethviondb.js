@@ -2931,6 +2931,7 @@
     // ── Node selection card ───────────────────────────────────────────────────
 
     function _graphSelectNode(d) {
+        // ── Header: type badge + name ─────────────────────────────────────────
         const typeEl = _el('adb-graph-card-type');
         if (typeEl) {
             typeEl.textContent = d.type || 'other';
@@ -2939,9 +2940,23 @@
         const nameEl = _el('adb-graph-card-name');
         if (nameEl) nameEl.textContent = d.name;
 
+        // ── Summary ───────────────────────────────────────────────────────────
         const sumEl = _el('adb-graph-card-summary');
         if (sumEl) sumEl.textContent = d.summary || '';
 
+        // ── Tags ──────────────────────────────────────────────────────────────
+        const tagsEl = _el('adb-graph-card-tags');
+        if (tagsEl) {
+            const tags = d.tags || [];
+            if (tags.length) {
+                tagsEl.innerHTML = tags.map(t => `<span class="adb-tag adb-tag-sm">${_escHtml(t)}</span>`).join('');
+                tagsEl.classList.remove('hidden');
+            } else {
+                tagsEl.classList.add('hidden');
+            }
+        }
+
+        // ── Meta: status badge + relation count ───────────────────────────────
         const metaEl = _el('adb-graph-card-meta');
         if (metaEl) {
             const isStub = d.status === 'stub';
@@ -2950,11 +2965,61 @@
                 (d.rel_count ? `<span>${d.rel_count} relation${d.rel_count !== 1 ? 's' : ''}</span>` : '');
         }
 
+        // ── Connected relations (from already-loaded graph data) ───────────────
+        const relsEl = _el('adb-graph-card-rels');
+        if (relsEl && _graphLinkData) {
+            const connected = [];
+            for (const link of _graphLinkData) {
+                // After d3.forceLink runs, source/target are node objects
+                const src   = link.source;
+                const tgt   = link.target;
+                const srcId = typeof src === 'object' ? src.id   : src;
+                const tgtId = typeof tgt === 'object' ? tgt.id   : tgt;
+                const srcName = typeof src === 'object' ? src.name : srcId;
+                const tgtName = typeof tgt === 'object' ? tgt.name : tgtId;
+                if (srcId === d.id) {
+                    connected.push({ dir: '→', kind: link.kind, name: tgtName });
+                } else if (tgtId === d.id) {
+                    connected.push({ dir: '←', kind: link.kind, name: srcName });
+                }
+            }
+            if (connected.length) {
+                const MAX  = 7;
+                const rows = connected.slice(0, MAX).map(r =>
+                    `<div class="adb-graph-rel-row">
+                        <span class="adb-graph-rel-dir">${r.dir}</span>
+                        <span class="adb-graph-rel-kind">${_escHtml(r.kind)}</span>
+                        <span class="adb-graph-rel-name">${_escHtml(r.name)}</span>
+                    </div>`
+                ).join('');
+                const more = connected.length > MAX
+                    ? `<div class="adb-graph-rel-more">+${connected.length - MAX} more</div>` : '';
+                relsEl.innerHTML = `<div class="adb-graph-rels-label">Relations</div>${rows}${more}`;
+                relsEl.classList.remove('hidden');
+            } else {
+                relsEl.classList.add('hidden');
+            }
+        }
+
+        // ── Action buttons ────────────────────────────────────────────────────
         const openBtn = _el('adb-graph-card-open');
         if (openBtn) openBtn.onclick = () => { _closeGraph(); _loadEntity(d.id); };
 
         const focBtn = _el('adb-graph-card-focus');
         if (focBtn) focBtn.onclick = () => _graphLoad(d.id);
+
+        const deepenBtn = _el('adb-graph-card-deepen');
+        if (deepenBtn) {
+            deepenBtn.innerHTML = d.status === 'stub'
+                ? '<i class="fas fa-wand-sparkles"></i> Expand'
+                : '<i class="fas fa-wand-sparkles"></i> Deepen';
+            deepenBtn.onclick = async () => {
+                _hide('adb-graph-card');
+                _closeGraph();
+                await _loadEntity(d.id);
+                _deepenCurrent();
+            };
+        }
 
         _show('adb-graph-card');
     }

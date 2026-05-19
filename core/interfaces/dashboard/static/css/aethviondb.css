@@ -1585,7 +1585,7 @@
     position: absolute;
     top: 0.85rem;
     right: 0.85rem;
-    width: 240px;
+    width: 272px;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -1634,11 +1634,63 @@
     font-size: 0.7rem;
     color: var(--text-muted);
 }
+.adb-graph-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0 0.7rem 0.35rem;
+}
+.adb-graph-card-rels {
+    padding: 0.3rem 0.7rem 0.4rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+}
+.adb-graph-rels-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 0.15rem;
+}
+.adb-graph-rel-row {
+    display: grid;
+    grid-template-columns: 1.1rem 1fr 1fr;
+    gap: 0.2rem;
+    font-size: 0.7rem;
+    align-items: baseline;
+    line-height: 1.35;
+}
+.adb-graph-rel-dir {
+    color: var(--text-muted);
+    font-family: monospace;
+}
+.adb-graph-rel-kind {
+    color: var(--text-muted);
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.adb-graph-rel-name {
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.adb-graph-rel-more {
+    font-size: 0.67rem;
+    color: var(--text-muted);
+    margin-top: 0.1rem;
+}
 .adb-graph-card-actions {
     display: flex;
     gap: 0.35rem;
     padding: 0.45rem 0.7rem 0.55rem;
     border-top: 1px solid var(--border);
+    flex-wrap: wrap;
 }
 
 /* graph loading overlay */

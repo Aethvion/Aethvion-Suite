@@ -909,7 +909,8 @@ async def get_graph(
             "name":      e["name"],
             "type":      e.get("type", "other"),
             "status":    e.get("status", "active"),
-            "summary":   core.get("summary", "")[:120],
+            "summary":   core.get("summary", "")[:200],
+            "tags":      core.get("tags", [])[:8],
             "rel_count": len((e.get("sections") or {}).get("relations", [])),
         })
 
