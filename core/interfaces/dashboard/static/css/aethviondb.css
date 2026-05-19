@@ -378,6 +378,68 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Breakdown row: embedded · skipped · failed */
+.adb-vec-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 14px;
+    margin-top: 6px;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+}
+.adb-vec-breakdown > span { display: inline-flex; align-items: center; gap: 4px; }
+.adb-vec-bd-embedded { color: #4ade80; }
+.adb-vec-bd-skipped  { color: var(--text-muted); }
+.adb-vec-bd-failed   { color: #f87171; }
+
+/* Error message below the bar */
+.adb-vec-error-msg {
+    margin-top: 6px;
+    padding: 5px 8px;
+    background: rgba(248, 113, 113, 0.08);
+    border-left: 3px solid #f87171;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    color: #f87171;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+/* Coverage section: existing embeddings per model */
+.adb-vec-coverage {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+.adb-vec-coverage-header {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+}
+.adb-vec-cov-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.72rem;
+}
+.adb-vec-cov-table td {
+    padding: 4px 4px;
+    vertical-align: middle;
+}
+.adb-vec-cov-model {
+    font-family: monospace;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+.adb-vec-cov-count {
+    text-align: right;
+    color: var(--text-muted);
+    white-space: nowrap;
+    padding-left: 8px;
+}
+
 /* ── Explorer header (search + filter) ── */
 .adb-explorer-header {
     padding: 0.7rem 1rem 0.5rem;

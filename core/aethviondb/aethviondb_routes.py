@@ -1159,15 +1159,30 @@ async def list_vector_models(
 ):
     """
     Scan all entities and return the unique embedding model names found
-    in their sections.vectors.  Cheap to call — no embeddings are loaded,
-    only the keys of the vectors dict.
+    in their sections.vectors, plus per-model entity counts.
+
+    Cheap to call — embeddings are not loaded, only the keys of the
+    vectors dict are inspected (plus a truthiness check for the value).
+
+    Response
+    --------
+    {
+        "models": ["model-a", ...],          # sorted alphabetically
+        "counts": {"model-a": 125, ...}      # entities that have a non-empty vector
+    }
     """
     writer = _get_writer(db, path)
-    models: set[str] = set()
+    model_counts: dict[str, int] = {}
     for entity in writer.list_all(include_deleted=False):
         vecs = (entity.get("sections") or {}).get("vectors", {})
-        models.update(vecs.keys())
-    return {"models": sorted(models)}
+        for model_name, vec in vecs.items():
+            if vec:  # non-empty vector list — skip placeholder nulls
+                model_counts[model_name] = model_counts.get(model_name, 0) + 1
+    sorted_models = sorted(model_counts.keys())
+    return {
+        "models": sorted_models,
+        "counts": {m: model_counts[m] for m in sorted_models},
+    }
 
 
 @router.post("/vectors/cancel")

@@ -3348,7 +3348,10 @@
             const res  = await fetch(`${API}/vectors/status?${_dbParam()}`);
             const data = await res.json();
             _vecApplyStatus(data);
-            if (!data.is_vectorizing) _vecStopPolling();
+            if (!data.is_vectorizing) {
+                _vecStopPolling();
+                _vecLoadCoverage();   // refresh coverage counts after run completes
+            }
         } catch { /* ignore */ }
     }
 
@@ -3358,6 +3361,8 @@
         const badgeEl     = _el('adb-vec-badge');
         const fillEl      = _el('adb-vec-bar-fill');
         const pctEl       = _el('adb-vec-bar-pct');
+        const breakdownEl = _el('adb-vec-breakdown');
+        const errorMsgEl  = _el('adb-vec-error-msg');
         const generateBtn = _el('adb-vec-generate-btn');
         const cancelBtn   = _el('adb-vec-cancel-btn');
 
@@ -3373,7 +3378,10 @@
         const vectorized = data.vectorized || 0;
         const skipped    = data.skipped    || 0;
         const failedCnt  = data.failed     || 0;
-        const pct        = total > 0 ? Math.round(vectorized / total * 100) : 0;
+        // Skipped = already had embeddings, counts as "done" for progress purposes.
+        // Only actual failures keep the bar from reaching 100 %.
+        const done = vectorized + skipped;
+        const pct  = total > 0 ? Math.round(done / total * 100) : 0;
 
         if (fillEl)  fillEl.style.width = `${pct}%`;
         if (pctEl)   pctEl.textContent  = `${pct}%`;
@@ -3385,24 +3393,40 @@
             badgeEl.className   = `adb-fd-badge ${STATUS_CLS[data.status] || ''}`;
         }
 
-        // Build the count label — surface errors prominently
+        // Count label: simple total progress (detail is in the breakdown below)
         if (countEl) {
-            const errorMsg = data.error || data.last_error || null;
-            if ((data.status === 'error' || (data.status === 'done' && vectorized === 0 && failedCnt > 0)) && errorMsg) {
-                // Trim long SDK error messages to a readable length
-                const short = errorMsg.length > 120 ? errorMsg.slice(0, 120) + '…' : errorMsg;
-                countEl.textContent = `Error: ${short}`;
-                countEl.style.color = '#f87171';
-                if (badgeEl) badgeEl.className = 'adb-fd-badge adb-fd-badge-error';
-            } else if (data.status === 'done') {
-                const parts = [`${_fmtNum(vectorized)} / ${_fmtNum(total)} embedded`];
-                if (skipped  > 0) parts.push(`${_fmtNum(skipped)} skipped`);
-                if (failedCnt > 0) parts.push(`${_fmtNum(failedCnt)} failed`);
-                countEl.textContent = parts.join(' · ');
-                countEl.style.color = failedCnt > 0 ? '#fbbf24' : '';
+            countEl.textContent = `${_fmtNum(done)} / ${_fmtNum(total)} entities`;
+            countEl.style.color = '';
+        }
+
+        // Breakdown: embedded · skipped (already vectorized) · failed
+        if (breakdownEl) {
+            if (total > 0) {
+                const parts = [
+                    `<span class="adb-vec-bd-embedded"><i class="fas fa-check-circle"></i> ${_fmtNum(vectorized)} embedded</span>`,
+                ];
+                if (skipped > 0) {
+                    parts.push(`<span class="adb-vec-bd-skipped" title="Already had embeddings for this model — skipped to avoid overwriting"><i class="fas fa-forward"></i> ${_fmtNum(skipped)} already vectorized</span>`);
+                }
+                if (failedCnt > 0) {
+                    parts.push(`<span class="adb-vec-bd-failed"><i class="fas fa-circle-xmark"></i> ${_fmtNum(failedCnt)} failed</span>`);
+                }
+                breakdownEl.innerHTML = parts.join('');
+                breakdownEl.classList.remove('hidden');
             } else {
-                countEl.textContent = `${_fmtNum(vectorized)} / ${_fmtNum(total)} entities`;
-                countEl.style.color = '';
+                breakdownEl.classList.add('hidden');
+            }
+        }
+
+        // Error message (last_error from VECINFO)
+        if (errorMsgEl) {
+            const errorMsg = data.error || data.last_error || null;
+            if (errorMsg && (data.status === 'error' || failedCnt > 0)) {
+                const short = errorMsg.length > 200 ? errorMsg.slice(0, 200) + '…' : errorMsg;
+                errorMsgEl.textContent = short;
+                errorMsgEl.classList.remove('hidden');
+            } else {
+                errorMsgEl.classList.add('hidden');
             }
         }
 
@@ -3413,6 +3437,41 @@
             generateBtn.innerHTML = isRunning
                 ? '<i class="fas fa-spinner fa-spin"></i> Vectorizing…'
                 : '<i class="fas fa-microchip"></i> Generate Embeddings';
+        }
+    }
+
+    async function _vecLoadCoverage() {
+        const coverageEl = _el('adb-vec-coverage');
+        const bodyEl     = _el('adb-vec-coverage-body');
+        if (!bodyEl) return;
+
+        try {
+            const res  = await fetch(`${API}/vectors/models?${_dbParam()}`);
+            const data = await res.json();
+            const models = data.models || [];
+            const counts = data.counts || {};
+
+            if (!models.length) {
+                if (coverageEl) coverageEl.classList.add('hidden');
+                return;
+            }
+
+            if (coverageEl) coverageEl.classList.remove('hidden');
+
+            const _OPENAI = ['text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002'];
+            bodyEl.innerHTML = `<table class="adb-vec-cov-table"><tbody>${
+                models.map(m => {
+                    const provider = _OPENAI.includes(m) ? 'OpenAI' : 'Google';
+                    const provCls  = _OPENAI.includes(m) ? 'adb-vec-provider-openai' : 'adb-vec-provider-google';
+                    return `<tr>
+                        <td class="adb-vec-cov-model">${m}</td>
+                        <td><span class="adb-vec-provider-badge ${provCls}">${provider}</span></td>
+                        <td class="adb-vec-cov-count">${_fmtNum(counts[m] || 0)} entities</td>
+                    </tr>`;
+                }).join('')
+            }</tbody></table>`;
+        } catch {
+            if (coverageEl) coverageEl.classList.add('hidden');
         }
     }
 
@@ -3459,6 +3518,7 @@
                 if (data.is_vectorizing) _vecStartPolling();
             }
         } catch { /* ignore */ }
+        _vecLoadCoverage();   // always refresh coverage when switching databases
     }
 
     function _vecWire() {

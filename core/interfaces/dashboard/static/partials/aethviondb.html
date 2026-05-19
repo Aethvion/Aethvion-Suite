@@ -242,6 +242,8 @@
                         </div>
                         <span id="adb-vec-bar-pct" class="adb-fd-bar-pct">0%</span>
                     </div>
+                    <div id="adb-vec-breakdown" class="adb-vec-breakdown hidden"></div>
+                    <div id="adb-vec-error-msg" class="adb-vec-error-msg hidden"></div>
                 </div>
                 <div class="adb-fd-btn-row">
                     <button id="adb-vec-generate-btn" class="adb-primary-btn" style="flex:1">
@@ -250,6 +252,12 @@
                     <button id="adb-vec-cancel-btn" class="adb-btn adb-btn-ghost hidden" title="Cancel">
                         <i class="fas fa-xmark"></i>
                     </button>
+                </div>
+                <div id="adb-vec-coverage" class="adb-vec-coverage hidden">
+                    <div class="adb-vec-coverage-header">
+                        <i class="fas fa-layer-group"></i> Existing embeddings
+                    </div>
+                    <div id="adb-vec-coverage-body" class="adb-vec-coverage-body"></div>
                 </div>
             </div>
 
