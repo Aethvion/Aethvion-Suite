@@ -2677,6 +2677,7 @@
     let _graphLinkSel  = null;   // d3 edge line selection
     let _graphLabelSel = null;   // d3 label text selection
     let _graphLinkData = null;   // raw link array (after d3 resolves source/target)
+    let _graphFitDone  = false;  // true after the initial auto-fit; prevents re-fits on drag
 
     function _gNodeColor(type)  { return _GRAPH_COLORS[type] || '#9ca3af'; }
     function _gNodeRadius(d)    { return Math.max(5, Math.min(22, 5 + (d.rel_count || 0) * 1.8)); }
@@ -2754,6 +2755,7 @@
 
     function _graphRender(data) {
         if (_graphSim) { _graphSim.stop(); _graphSim = null; }
+        _graphFitDone = false;   // reset so the new graph gets its initial fit
 
         const svgEl = _el('adb-graph-svg');
         if (!svgEl || !window.d3) return;
@@ -2821,7 +2823,11 @@
                 .on('drag', (evt, d) => { d.fx = evt.x; d.fy = evt.y; })
                 .on('end',  (evt, d) => {
                     if (!evt.active) _graphSim.alphaTarget(0);
-                    d.fx = null; d.fy = null;
+                    // Keep the node pinned at its drop position so it stays where
+                    // the user placed it.  Releasing (fx=null) would let the node
+                    // drift back to force-equilibrium, which also triggers another
+                    // simulation 'end' event and causes the view to re-fit.
+                    d.fx = d.x; d.fy = d.y;
                 }))
             // Hover
             .on('mouseenter', (evt, d) => _graphHighlight(d.id, true))
@@ -2871,8 +2877,12 @@
             if (focal) { focal.fx = 0; focal.fy = 0; }
         }
 
-        // Centre the view after settling
+        // Centre the view after the initial settle only.
+        // Subsequent 'end' events (from drag interactions) must not reset the
+        // viewport — the user may have panned/zoomed to exactly where they want.
         _graphSim.on('end', () => {
+            if (_graphFitDone) return;
+            _graphFitDone = true;
             const pad = 40;
             const xs  = nodes.map(n => n.x);
             const ys  = nodes.map(n => n.y);
