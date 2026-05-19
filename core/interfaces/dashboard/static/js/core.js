@@ -1022,6 +1022,16 @@ async function setDashboardMode(mode, save = true, _tab = null) {
         // Caller supplied the target — skip sidebar-button validation entirely.
         // switchMainTab only needs the panel element (#<tab>-panel), which always
         // exists even when the tab has no sidebar button (e.g. chat, aethviondb).
+        //
+        // Persist the tab so refresh restores to the correct destination.
+        // Header-nav tabs (chat, aethviondb) never go through the normal
+        // switchMainTab(save=true) path, so we save here instead.
+        if (save) {
+            localStorage.setItem(`active_tab_hint_${dashboardMode}`, _tab);
+            if (typeof savePreference === 'function') {
+                savePreference(`active_tab_${dashboardMode}`, _tab);
+            }
+        }
         await switchMainTab(_tab, false);
         return;
     }
@@ -1056,8 +1066,14 @@ async function setDashboardMode(mode, save = true, _tab = null) {
     }
 
     if (!targetBtn || targetBtn.classList.contains('mode-hidden')) {
-        console.warn(`[Core] Target tab '${targetTab}' not found or hidden. Falling back.`);
-        targetTab = dashboardMode === 'home' ? 'suite-home' : 'chat';
+        // Sidebar-less tabs (e.g. 'chat', 'aethviondb') have panels but no sidebar
+        // button — they're still valid destinations, so skip the fallback if the
+        // panel element exists in the DOM.
+        const _panelExists = !!document.getElementById(`${targetTab}-panel`);
+        if (!_panelExists) {
+            console.warn(`[Core] Target tab '${targetTab}' not found or hidden. Falling back.`);
+            targetTab = dashboardMode === 'home' ? 'suite-home' : 'chat';
+        }
     }
 
     await switchMainTab(targetTab, false);

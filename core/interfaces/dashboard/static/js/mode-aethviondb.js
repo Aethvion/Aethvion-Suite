@@ -156,6 +156,7 @@
 
     function _switchTab(tab) {
         _currentTab = tab;
+        try { localStorage.setItem('adb_last_subtab', tab); } catch {}
         document.querySelectorAll('.adb-nav-tab').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.tab === tab);
         });
@@ -5201,6 +5202,8 @@
 
     // ── Init ──────────────────────────────────────────────────────────────────
 
+    const _VALID_SUBTABS = new Set(['databases', 'tools', 'bake', 'explorer', 'graph', 'api']);
+
     function init() {
         const root = _el('aethviondb-root');
         if (!root || root.dataset.adbInit) return;
@@ -5221,6 +5224,12 @@
             }
         } catch { /* ignore bad storage */ }
 
+        // Restore last active sub-tab (databases / tools / bake / explorer / graph / api)
+        try {
+            const savedTab = localStorage.getItem('adb_last_subtab');
+            if (savedTab && _VALID_SUBTABS.has(savedTab)) _currentTab = savedTab;
+        } catch { /* ignore */ }
+
         _updateDbIndicator();
         _wire();
         _graphWire();
@@ -5234,6 +5243,7 @@
         _fdCheckExistingJob();      // restore folder-distill progress view if a job exists
         _bakeCheckExisting();       // restore bake result panel if a bake exists
         _vecCheckExisting();        // restore vector status if a job exists
+        _switchTab(_currentTab);    // apply sub-tab visibility (uses restored or default value)
         _loadEntityList('all', 0);
     }
 
