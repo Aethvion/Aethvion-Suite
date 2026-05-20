@@ -604,9 +604,10 @@ class Validator:
         dup_ids = {eid for g in dup_groups for eid in g["ids"]}
 
         results: list[ValidationResult] = []
-        stub_mismatches:       list[dict[str, str]]  = []
-        entities_with_errors:  list[dict[str, Any]]  = []
-        warning_counts:        dict[str, int]         = {}
+        stub_mismatches:       list[dict[str, str]]         = []
+        entities_with_errors:  list[dict[str, Any]]         = []
+        warning_counts:        dict[str, int]               = {}
+        warning_entities:      dict[str, list[dict]]        = {}  # check → [{id, name, message}]
 
         for entity in entities:
             r = self.validate(entity["id"])
@@ -635,9 +636,15 @@ class Validator:
                     ],
                 })
 
-            # Warning counts grouped by check name (for compact summary display)
+            # Warning counts + per-entity breakdown (so the UI can show which
+            # entities are affected for each warning type, not just totals).
             for i in r.warnings:
                 warning_counts[i.check] = warning_counts.get(i.check, 0) + 1
+                warning_entities.setdefault(i.check, []).append({
+                    "id":      entity["id"],
+                    "name":    entity.get("name", entity["id"]),
+                    "message": i.message,
+                })
 
         total_errors   = sum(len(r.errors)   for r in results)
         total_warnings = sum(len(r.warnings) for r in results)
@@ -645,9 +652,10 @@ class Validator:
 
         warning_summary = [
             {
-                "check": check,
-                "count": count,
-                "label": self._CHECK_LABELS.get(check, check),
+                "check":    check,
+                "count":    count,
+                "label":    self._CHECK_LABELS.get(check, check),
+                "entities": warning_entities.get(check, []),
             }
             for check, count in sorted(warning_counts.items(), key=lambda x: -x[1])
         ]

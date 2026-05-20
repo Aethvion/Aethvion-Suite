@@ -980,6 +980,52 @@ async def fix_duplicates(
     return await asyncio.to_thread(_run)
 
 
+@router.post("/validate/fix-timeline-sort")
+async def fix_timeline_sort(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """
+    Sort each entity's timeline events into chronological order by parsed year.
+    Events with unparseable or missing dates are moved to the end, preserving
+    their relative order.  Only entities whose timeline ordering actually changes
+    are written.
+
+    Returns {fixed: N, events_sorted: M} where N is entities reordered and
+    M is the total number of events across those entities.
+    """
+    def _run():
+        from .validator import _parse_year
+        writer = _get_writer(db, path)
+        fixed         = 0
+        events_sorted = 0
+        for entity in writer.list_all():
+            timeline = entity.get("sections", {}).get("timeline", [])
+            if len(timeline) < 2:
+                continue
+            def _sort_key(ev, _py=_parse_year):
+                if not isinstance(ev, dict):
+                    return (1, 0)
+                yr = _py(ev.get("date", ""))
+                return (0, yr) if yr is not None else (1, 0)
+            sorted_tl = sorted(timeline, key=_sort_key)
+            if sorted_tl != timeline:
+                writer.update(
+                    entity["id"],
+                    {"sections": {"timeline": sorted_tl}},
+                    merge_sections=False,
+                )
+                fixed         += 1
+                events_sorted += len(sorted_tl)
+        logger.info(
+            f"[AethvionDB] fix-timeline-sort: reordered {fixed} entities "
+            f"({events_sorted} total events)"
+        )
+        return {"fixed": fixed, "events_sorted": events_sorted}
+
+    return await asyncio.to_thread(_run)
+
+
 @router.get("/validate/{entity_id}")
 async def validate_entity(
     entity_id: str,

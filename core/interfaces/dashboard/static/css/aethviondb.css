@@ -4633,3 +4633,157 @@
     flex-shrink: 0;
     opacity: 0.7;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Validation — Collapsible issue sections
+   ══════════════════════════════════════════════════════════════ */
+
+/* Clickable header that toggles the section */
+.adb-val-collapse-hdr {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.12s;
+}
+.adb-val-collapse-hdr:hover { background: rgba(255, 255, 255, 0.025); }
+
+/* Body that hides/shows */
+.adb-val-collapsible[data-collapsed="true"] .adb-val-collapse-body {
+    display: none;
+}
+
+/* Chevron rotates when expanded */
+.adb-val-collapse-chevron {
+    flex-shrink: 0;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    transition: transform 0.18s ease;
+    margin-left: 0.35rem;
+}
+.adb-val-collapsible:not([data-collapsed="true"]) .adb-val-collapse-chevron {
+    transform: rotate(180deg);
+}
+
+/* Sub-count chips row in the dup section header */
+.adb-val-collapse-chips {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+    flex: 1;
+    margin-left: 0.45rem;
+    min-width: 0;
+}
+
+.adb-val-cc-chip {
+    font-size: 0.69rem;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 1px 7px;
+    border: 1px solid;
+    white-space: nowrap;
+}
+
+/* Clear winner — green */
+.adb-val-cc-auto {
+    background: rgba(34, 197, 94, 0.08);
+    border-color: rgba(34, 197, 94, 0.25);
+    color: #4ade80;
+}
+
+/* Stub duplicates — slate */
+.adb-val-cc-stub {
+    background: rgba(148, 163, 184, 0.08);
+    border-color: rgba(148, 163, 184, 0.2);
+    color: #94a3b8;
+}
+
+/* Needs manual review — orange */
+.adb-val-cc-choose {
+    background: rgba(251, 146, 60, 0.08);
+    border-color: rgba(251, 146, 60, 0.25);
+    color: #fb923c;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Validation — Warnings expandable entity list
+   ══════════════════════════════════════════════════════════════ */
+
+/* Each warning type is its own collapsible group */
+.adb-val-warn-group {
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+/* The clickable summary row */
+.adb-val-warn-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.45rem;
+    border-radius: 5px;
+    font-size: 0.78rem;
+    transition: background 0.12s;
+    cursor: pointer;
+    user-select: none;
+}
+.adb-val-warn-row:hover { background: rgba(251,191,36,0.06); }
+
+/* Chevron inside the warning row */
+.adb-val-warn-chevron {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-left: auto;
+    flex-shrink: 0;
+    transition: transform 0.18s ease;
+}
+.adb-val-warn-group:not([data-collapsed="true"]) .adb-val-warn-chevron {
+    transform: rotate(180deg);
+}
+
+/* Entity list — hidden when group is collapsed */
+.adb-val-warn-entity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 0.2rem 0.4rem 0.35rem 1.1rem;
+    border-left: 2px solid rgba(251,191,36,0.15);
+    margin: 0 0.35rem 0.2rem;
+}
+
+/* Single entity row in the warning entity list */
+.adb-val-warn-entity {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    padding: 0.2rem 0.3rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.12s;
+    font-size: 0.75rem;
+    flex-wrap: wrap;
+}
+.adb-val-warn-entity:hover,
+.adb-val-warn-entity:focus-visible { background: rgba(251,191,36,0.06); outline: none; }
+
+.adb-val-warn-entity-name {
+    font-weight: 500;
+    color: var(--text-primary);
+    flex-shrink: 0;
+}
+
+.adb-val-warn-entity-msg {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    flex: 1;
+    min-width: 0;
+}
+
+/* "… and N more" overflow notice */
+.adb-val-warn-more {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 0.15rem 0.3rem;
+}

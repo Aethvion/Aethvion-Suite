@@ -2507,6 +2507,9 @@
             const warnSummary      = data.warning_summary        || [];
             const autoGroups       = dupGroups.filter(g => g.action === 'auto');
             const stubDupGroups    = dupGroups.filter(g => g.action === 'stub_auto');
+            const chooseGroups     = dupGroups.filter(g => g.action === 'choose');
+            const timelineWarn     = warnSummary.find(w => w.check === 'temporal');
+            const timelineCount    = timelineWarn ? timelineWarn.count : 0;
 
             // ── Control panel (overview + fix toggles) ───────────────────────
             const sumEl = _el('adb-val-summary');
@@ -2521,9 +2524,10 @@
 
                 // Build fix-toggle rows — one per auto-fixable action type
                 const fixRows = [];
-                if (autoGroups.length)    fixRows.push({ id: 'adb-vfix-dups',      label: 'Auto-fix clear-winner duplicates', desc: 'keeps the active entity, removes stubs, updates all refs',   count: autoGroups.length });
-                if (stubDupGroups.length) fixRows.push({ id: 'adb-vfix-stub-dups', label: 'Fix duplicate stubs',              desc: 'removes lower-ranked stub, updates referenced IDs',           count: stubDupGroups.length });
-                if (mismatches.length)    fixRows.push({ id: 'adb-vfix-mm',        label: 'Promote status mismatches',        desc: 'stub with non-empty summary → mark as active',                count: mismatches.length });
+                if (autoGroups.length)    fixRows.push({ id: 'adb-vfix-dups',      label: 'Auto-fix clear-winner duplicates', desc: 'keeps the active entity, removes stubs, updates all refs',       count: autoGroups.length });
+                if (stubDupGroups.length) fixRows.push({ id: 'adb-vfix-stub-dups', label: 'Fix duplicate stubs',              desc: 'removes lower-ranked stub, updates referenced IDs',               count: stubDupGroups.length });
+                if (mismatches.length)    fixRows.push({ id: 'adb-vfix-mm',        label: 'Promote status mismatches',        desc: 'stub with non-empty summary → mark as active',                    count: mismatches.length });
+                if (timelineCount)        fixRows.push({ id: 'adb-vfix-timeline',  label: 'Sort timeline events',             desc: 'orders events chronologically, unparseable dates moved to end',   count: timelineCount });
 
                 const fixBox = fixRows.length ? `
                     <div class="adb-val-fixbox">
@@ -2588,14 +2592,21 @@
             // ── 1. Duplicate groups ──────────────────────────────────────────
             if (dupGroups.length) {
                 html += `
-                <div class="adb-val-dup-group">
-                    <div class="adb-val-mm-header">
+                <div class="adb-val-dup-group adb-val-collapsible" data-collapsed="true">
+                    <div class="adb-val-mm-header adb-val-collapse-hdr" role="button" tabindex="0">
                         <div class="adb-val-mm-title">
                             <i class="fas fa-copy"></i>
                             Duplicate Entities
                             <span class="adb-val-mm-badge adb-val-mm-badge-dup">${dupGroups.length}</span>
                         </div>
+                        <div class="adb-val-collapse-chips">
+                            ${autoGroups.length   ? `<span class="adb-val-cc-chip adb-val-cc-auto">${autoGroups.length} clear winner${autoGroups.length!==1?'s':''}</span>` : ''}
+                            ${stubDupGroups.length ? `<span class="adb-val-cc-chip adb-val-cc-stub">${stubDupGroups.length} stub dup${stubDupGroups.length!==1?'s':''}</span>` : ''}
+                            ${chooseGroups.length  ? `<span class="adb-val-cc-chip adb-val-cc-choose">${chooseGroups.length} need review</span>` : ''}
+                        </div>
+                        <i class="fas fa-chevron-down adb-val-collapse-chevron"></i>
                     </div>
+                    <div class="adb-val-collapse-body">
                     <p class="adb-val-mm-desc">Entities sharing the same name or alias. The recommended action is pre-selected — review then confirm.</p>
                     <div class="adb-val-dup-clusters">
                         ${dupGroups.map((g, gi) => {
@@ -2644,6 +2655,7 @@
                             </div>`;
                         }).join('')}
                     </div>
+                    </div>
                 </div>`;
             }
 
@@ -2651,12 +2663,14 @@
             if (errEntities.length) {
                 if (dupGroups.length) html += '<div class="adb-val-section-sep"></div>';
                 html += `
-                <div class="adb-val-issue-group adb-val-issue-group-err">
-                    <div class="adb-val-issue-header">
+                <div class="adb-val-issue-group adb-val-issue-group-err adb-val-collapsible" data-collapsed="true">
+                    <div class="adb-val-issue-header adb-val-collapse-hdr" role="button" tabindex="0">
                         <i class="fas fa-exclamation-circle"></i>
                         Integrity Errors
-                        <span class="adb-val-issue-badge adb-val-issue-badge-err">${errEntities.length}</span>
+                        <span class="adb-val-issue-badge adb-val-issue-badge-err">${errEntities.length} entit${errEntities.length!==1?'ies':'y'}</span>
+                        <i class="fas fa-chevron-down adb-val-collapse-chevron"></i>
                     </div>
+                    <div class="adb-val-collapse-body">
                     <div class="adb-val-issue-list">
                         ${errEntities.map(e => `
                             <div class="adb-val-err-entity" data-id="${e.id}" role="button" tabindex="0">
@@ -2673,6 +2687,7 @@
                                 ).join('')}
                             </div>`).join('')}
                     </div>
+                    </div>
                 </div>`;
             }
 
@@ -2680,24 +2695,58 @@
             if (warnSummary.length) {
                 if (dupGroups.length || errEntities.length) html += '<div class="adb-val-section-sep"></div>';
                 html += `
-                <div class="adb-val-issue-group adb-val-issue-group-warn">
-                    <div class="adb-val-issue-header">
+                <div class="adb-val-issue-group adb-val-issue-group-warn adb-val-collapsible" data-collapsed="true">
+                    <div class="adb-val-issue-header adb-val-collapse-hdr" role="button" tabindex="0">
                         <i class="fas fa-triangle-exclamation"></i>
                         Warnings
                         <span class="adb-val-issue-badge adb-val-issue-badge-warn">${data.total_warnings ?? 0} total</span>
+                        <i class="fas fa-chevron-down adb-val-collapse-chevron"></i>
                     </div>
+                    <div class="adb-val-collapse-body">
                     <div class="adb-val-warn-list">
-                        ${warnSummary.map(w => `
-                            <div class="adb-val-warn-row">
-                                <span class="adb-val-warn-cnt">${w.count}</span>
-                                <span class="adb-val-warn-label">${w.label}</span>
-                                <span class="adb-val-warn-check">${w.check}</span>
-                            </div>`).join('')}
+                        ${warnSummary.map(w => {
+                            const ents   = w.entities || [];
+                            const limit  = 60;
+                            const shown  = ents.slice(0, limit);
+                            const extra  = ents.length - shown.length;
+                            return `
+                            <div class="adb-val-warn-group" data-collapsed="true">
+                                <div class="adb-val-warn-row adb-val-collapse-hdr" role="button" tabindex="0">
+                                    <span class="adb-val-warn-cnt">${w.count}</span>
+                                    <span class="adb-val-warn-label">${w.label}</span>
+                                    <span class="adb-val-warn-check">${w.check}</span>
+                                    <i class="fas fa-chevron-down adb-val-warn-chevron"></i>
+                                </div>
+                                <div class="adb-val-warn-entity-list adb-val-collapse-body">
+                                    ${shown.map(e => `
+                                        <div class="adb-val-warn-entity" data-id="${e.id}" role="button" tabindex="0">
+                                            <span class="adb-val-warn-entity-name">${e.name || e.id}</span>
+                                            <code class="adb-val-mm-id">${e.id}</code>
+                                            <span class="adb-val-warn-entity-msg">${e.message}</span>
+                                        </div>`).join('')}
+                                    ${extra > 0 ? `<div class="adb-val-warn-more">… and ${extra} more</div>` : ''}
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
                     </div>
                 </div>`;
             }
 
             issueEl.innerHTML = html;
+
+            // Wire: collapse/expand — any hdr inside any [data-collapsed] container
+            issueEl.querySelectorAll('.adb-val-collapse-hdr').forEach(hdr => {
+                const section = hdr.closest('[data-collapsed]');
+                if (!section) return;
+                const toggle = () => {
+                    section.dataset.collapsed = section.dataset.collapsed === 'true' ? 'false' : 'true';
+                };
+                hdr.addEventListener('click', toggle);
+                hdr.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+                });
+            });
 
             // Wire: dup entity rows → open entity
             issueEl.querySelectorAll('.adb-val-dup-entity[data-id]').forEach(row => {
@@ -2745,15 +2794,22 @@
                 row.addEventListener('keydown', e => { if (e.key === 'Enter') _loadEntity(row.dataset.id); });
             });
 
+            // Wire: warning entity rows → open entity
+            issueEl.querySelectorAll('.adb-val-warn-entity[data-id]').forEach(row => {
+                row.addEventListener('click', e => { e.stopPropagation(); _loadEntity(row.dataset.id); });
+                row.addEventListener('keydown', e => { if (e.key === 'Enter') { e.stopPropagation(); _loadEntity(row.dataset.id); }});
+            });
+
             // Wire: Fix Selected button (control panel)
             _el('adb-val-fix-all-btn')?.addEventListener('click', async () => {
                 const btn      = _el('adb-val-fix-all-btn');
                 const fixDups     = _el('adb-vfix-dups')?.checked      ?? false;
                 const fixStubDups = _el('adb-vfix-stub-dups')?.checked ?? false;
                 const fixMm       = _el('adb-vfix-mm')?.checked        ?? false;
-                if (!fixDups && !fixStubDups && !fixMm) { _toast('Nothing selected to fix', 'info'); return; }
+                const fixTimeline = _el('adb-vfix-timeline')?.checked  ?? false;
+                if (!fixDups && !fixStubDups && !fixMm && !fixTimeline) { _toast('Nothing selected to fix', 'info'); return; }
                 if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Working…'; }
-                let dupFixed = 0, mmFixed = 0;
+                let dupFixed = 0, mmFixed = 0, timelineFixed = 0;
                 try {
                     if (fixDups || fixStubDups) {
                         const groupsToFix = [
@@ -2776,9 +2832,15 @@
                         const mmData = await mmRes.json();
                         mmFixed = mmData.fixed ?? 0;
                     }
+                    if (fixTimeline && timelineCount) {
+                        const tlRes  = await fetch(`${API}/validate/fix-timeline-sort?${_dbParam()}`, { method: 'POST' });
+                        const tlData = await tlRes.json();
+                        timelineFixed = tlData.fixed ?? 0;
+                    }
                     const parts = [];
-                    if (dupFixed) parts.push(`fixed ${dupFixed} duplicate group${dupFixed!==1?'s':''}`);
-                    if (mmFixed)  parts.push(`promoted ${mmFixed} stub${mmFixed!==1?'s':''}`);
+                    if (dupFixed)      parts.push(`fixed ${dupFixed} duplicate group${dupFixed!==1?'s':''}`);
+                    if (mmFixed)       parts.push(`promoted ${mmFixed} stub${mmFixed!==1?'s':''}`);
+                    if (timelineFixed) parts.push(`sorted timelines in ${timelineFixed} entit${timelineFixed!==1?'ies':'y'}`);
                     _toast(parts.join(', ') || 'Done', 'success');
                     await _validateAll();
                 } catch (err) {
