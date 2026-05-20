@@ -93,28 +93,51 @@ def _normalize_name(name: str) -> str:
 
 # ── Date helpers ──────────────────────────────────────────────────────────────
 
-_YEAR_RE  = re.compile(r"^~?(\d{1,4})(?:\s*(?:BC|BCE|AD|CE))?$", re.IGNORECASE)
-_DATE_RE  = re.compile(r"^~?(\d{4})-(\d{2})-(\d{2})$")
+_BCE_RE    = re.compile(r"\bBC(E)?\b",             re.IGNORECASE)
+_BCE_STRIP = re.compile(r"\s*(?:AD|CE|BC|BCE)\s*$", re.IGNORECASE)
+# Full ISO date — supports negative years for geological time (e.g. -66000000-01-01)
+_ISO_FULL  = re.compile(r"^(-?\d+)-(\d{2})-(\d{2})$")
+# Partial ISO date without day component (e.g. 2025-10)
+_ISO_PART  = re.compile(r"^(-?\d+)-(\d{2})$")
+# Plain integer year — any digit count, sign allowed (e.g. -250000000, 950, 1810)
+_YEAR_INT  = re.compile(r"^(-?\d+)$")
 
 
 def _parse_year(date_str: str) -> Optional[int]:
     """
     Extract a year integer from a date string.
-    Returns None if unparseable.
-    Negative = BCE.
+    Returns None if unparseable.  Negative values = BCE / geological past.
+
+    Handles:
+      ~0950             →    950    (Old English attested)
+      ~1810             →   1810    (modern era)
+      2025-10           →   2025    (partial ISO, year-month only)
+      2025-10-15        →   2025    (full ISO)
+      ~-250000000       → -250000000  (geological, ~250 Ma ago)
+      ~-66000000        →  -66000000  (K-Pg boundary)
+      250 BC / 250 BCE  →   -250    (explicit BCE suffix)
     """
     s = date_str.strip()
-    is_bce = bool(re.search(r"\bBC(E)?\b", s, re.IGNORECASE))
 
-    m = _DATE_RE.match(s)
-    if m:
-        year = int(m.group(1))
-        return -year if is_bce else year
+    # Strip leading approximate marker
+    if s.startswith("~"):
+        s = s[1:]
 
-    m = _YEAR_RE.match(s)
-    if m:
-        year = int(m.group(1))
-        return -year if is_bce else year
+    # Detect explicit BCE suffix *before* stripping it
+    is_bce = bool(_BCE_RE.search(s))
+
+    # Remove trailing era label so numeric patterns match cleanly
+    s = _BCE_STRIP.sub("", s).strip()
+
+    for pat in (_ISO_FULL, _ISO_PART, _YEAR_INT):
+        m = pat.match(s)
+        if m:
+            year = int(m.group(1))
+            # A leading minus already encodes "past" (geological convention).
+            # An explicit BC/BCE suffix on a *positive* number also means past.
+            if is_bce and year > 0:
+                year = -year
+            return year
 
     return None
 
