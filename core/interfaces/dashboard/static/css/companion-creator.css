@@ -210,21 +210,79 @@
 }
 .cc-list-item { align-items: center; }
 
-/* ── Builtin notice ── */
+/* ── Sidebar icon image ── */
+.cc-list-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+/* ── Builtin notice (locked) ── */
 .cc-builtin-notice {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(99, 102, 241, 0.1);
-    border: 1px solid rgba(99, 102, 241, 0.3);
+    background: rgba(100, 116, 139, 0.1);
+    border: 1px solid rgba(100, 116, 139, 0.28);
     border-radius: 7px;
     padding: 0.5rem 0.75rem;
     font-size: 0.8rem;
     color: var(--text-secondary);
     margin-bottom: 1rem;
 }
-.cc-builtin-notice i { color: #818cf8; flex-shrink: 0; }
+.cc-builtin-notice i { color: #64748b; flex-shrink: 0; }
 .cc-builtin-notice.hidden { display: none; }
+
+/* ── Icon picker ── */
+.cc-icon-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.cc-icon-thumb {
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+    border: 1px dashed rgba(148, 163, 184, 0.3);
+    background: rgba(148, 163, 184, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.cc-icon-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 9px;
+}
+.cc-icon-img.hidden { display: none; }
+.cc-icon-ph {
+    font-size: 1.4rem;
+    color: var(--text-muted);
+    opacity: 0.4;
+}
+.cc-icon-upload-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.cc-icon-btns {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.cc-icon-btns.hidden { display: none; }
+.cc-icon-upload-lbl { cursor: pointer; }
+.cc-icon-save-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+.cc-icon-save-hint.hidden { display: none; }
 
 /* ── Import dialog ── */
 .cc-import-dialog {

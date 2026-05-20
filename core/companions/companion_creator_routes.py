@@ -15,7 +15,8 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from core.utils.logger import get_logger
@@ -28,9 +29,12 @@ router = APIRouter(prefix="/api/companion-creator", tags=["companion-creator"])
 _CUSTOM_DIR = COMPANIONS
 _CUSTOM_DIR.mkdir(parents=True, exist_ok=True)
 
-# Built-in companions managed by core/companions/configs/ — editable but not deletable
+# Built-in companions managed by core/companions/configs/ — view-only, not editable
 _BUILTIN_IDS = {"misaka_cipher", "axiom", "lyra"}
 _CORE_CONFIG_DIR = Path(__file__).parent / "configs"
+
+_ALLOWED_ICON_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+_MAX_ICON_BYTES    = 2 * 1024 * 1024   # 2 MB
 
 
 # ── Schema ─────────────────────────────────────────────────────────────────────
@@ -267,81 +271,101 @@ async def import_companion(req: ImportRequest):
 
 @router.put("/builtin/{companion_id}")
 async def update_builtin_companion(companion_id: str, req: BuiltinUpdateRequest):
-    """
-    Override personality fields for a built-in companion.
-    Writes a merged config to data/companions/{id}/config.json so the
-    registry picks it up on force_reload() — no restart needed.
-    """
+    """Built-in companions are fully locked — returns 403 for all."""
     _validate_companion_id(companion_id)
     if companion_id not in _BUILTIN_IDS:
         raise HTTPException(status_code=400, detail=f"'{companion_id}' is not a built-in companion.")
-    if companion_id == "misaka_cipher":
-        raise HTTPException(status_code=403, detail="Misaka Cipher's config cannot be edited here.")
+    raise HTTPException(status_code=403, detail="Built-in companions are locked and cannot be edited.")
 
-    # Load the canonical core config as base
-    core_path = _CORE_CONFIG_DIR / f"{companion_id}.json"
-    if not core_path.exists():
-        raise HTTPException(status_code=404, detail=f"Core config for '{companion_id}' not found.")
-    base = json.loads(core_path.read_text(encoding="utf-8"))
 
-    # Merge editable fields
-    if req.personality:
-        base["personality"] = req.personality
-    if req.speech_style:
-        base["speech_style"] = req.speech_style
-    if req.quirks is not None:
-        base["quirks"] = req.quirks
-    if req.likes is not None:
-        base["likes"] = req.likes
-    if req.dislikes is not None:
-        base["dislikes"] = req.dislikes
-    if req.accent_color:
-        base["accent_color"] = req.accent_color
-    if req.avatar_symbol:
-        base["avatar_symbol"] = req.avatar_symbol
-    # Extended fields
-    base["behavior"] = {
-        "temperature":           req.behavior.temperature,
-        "initiate_temperature":  req.behavior.initiate_temperature,
-        "change_susceptibility": req.behavior.change_susceptibility,
-        "default_mood":          req.behavior.default_mood,
-    }
-    base["capabilities"] = {
-        "tools_enabled":          req.capabilities.tools_enabled,
-        "workspace_access":       req.capabilities.workspace_access,
-        "memory_updates_enabled": req.capabilities.memory_updates_enabled,
-        "internet_search":        req.capabilities.internet_search,
-    }
-    if req.prompts.chat_system or req.prompts.initiate_system:
-        base.setdefault("prompts", {})
-        if req.prompts.chat_system:
-            base["prompts"]["chat_system"] = req.prompts.chat_system
-        if req.prompts.initiate_system:
-            base["prompts"]["initiate_system"] = req.prompts.initiate_system
+# ── Icon endpoints (must come before /{companion_id} catch-all) ───────────────
+
+def _find_icon(companion_dir: Path) -> Path | None:
+    """Return the icon file path if one exists, else None."""
+    for ext in _ALLOWED_ICON_EXTS:
+        p = companion_dir / f"icon{ext}"
+        if p.exists():
+            return p
+    return None
+
+
+@router.get("/{companion_id}/icon")
+async def get_companion_icon(companion_id: str):
+    """Serve the companion's icon image, or 404 if none uploaded."""
+    _validate_companion_id(companion_id)
+    companion_dir = _CUSTOM_DIR / companion_id
+    icon = _find_icon(companion_dir)
+    if not icon:
+        raise HTTPException(status_code=404, detail="No icon found for this companion.")
+    return FileResponse(str(icon))
+
+
+@router.post("/{companion_id}/icon")
+async def upload_companion_icon(companion_id: str, file: UploadFile = File(...)):
+    """Upload or replace a companion's icon image (PNG/JPG/GIF/WebP, max 2 MB)."""
+    _validate_companion_id(companion_id)
+    if companion_id in _BUILTIN_IDS:
+        raise HTTPException(status_code=403, detail="Cannot set icons for built-in companions.")
 
     companion_dir = _CUSTOM_DIR / companion_id
-    companion_dir.mkdir(parents=True, exist_ok=True)
-    (companion_dir / "history").mkdir(exist_ok=True)
+    if not companion_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Companion '{companion_id}' not found.")
 
-    _atomic_write_json(companion_dir / "config.json", base)
+    suffix = Path(file.filename or "").suffix.lower() or ".png"
+    if suffix not in _ALLOWED_ICON_EXTS:
+        raise HTTPException(status_code=400,
+            detail=f"Unsupported image type '{suffix}'. Use: PNG, JPG, GIF or WebP.")
 
-    # Also update base_info.json
-    base_info_path = companion_dir / "base_info.json"
-    base_info = json.loads(base_info_path.read_text(encoding="utf-8")) if base_info_path.exists() else {}
-    base_info.update({
-        "name":          base["name"],
-        "core_identity": base.get("description", ""),
-        "personality":   req.personality or base.get("personality", ""),
-        "speech_style":  req.speech_style or base.get("speech_style", ""),
-        "quirks":        req.quirks,
-        "likes":         req.likes,
-        "dislikes":      req.dislikes,
-    })
-    _atomic_write_json(base_info_path, base_info)
+    data = await file.read()
+    if len(data) > _MAX_ICON_BYTES:
+        raise HTTPException(status_code=400, detail="Icon too large — maximum is 2 MB.")
+
+    # Remove any existing icon before writing the new one
+    for ext in _ALLOWED_ICON_EXTS:
+        old = companion_dir / f"icon{ext}"
+        if old.exists():
+            old.unlink()
+
+    icon_path = companion_dir / f"icon{suffix}"
+    icon_path.write_bytes(data)
+
+    # Record in config so list endpoints can expose has_icon without a file scan
+    config_path = companion_dir / "config.json"
+    if config_path.exists():
+        cfg = json.loads(config_path.read_text(encoding="utf-8"))
+        cfg["has_icon"] = True
+        cfg["icon_ext"] = suffix
+        _atomic_write_json(config_path, cfg)
 
     CompanionRegistry.force_reload()
-    logger.info(f"Built-in companion updated: {companion_id}")
-    return {"success": True, "id": companion_id, "message": f"'{base['name']}' updated successfully."}
+    logger.info(f"[CompanionCreator] Icon uploaded for {companion_id} ({suffix}, {len(data)} bytes)")
+    return {"success": True, "icon_url": f"/api/companion-creator/{companion_id}/icon"}
+
+
+@router.delete("/{companion_id}/icon")
+async def delete_companion_icon(companion_id: str):
+    """Remove a companion's icon image."""
+    _validate_companion_id(companion_id)
+    if companion_id in _BUILTIN_IDS:
+        raise HTTPException(status_code=403, detail="Cannot modify built-in companions.")
+
+    companion_dir = _CUSTOM_DIR / companion_id
+    removed = False
+    for ext in _ALLOWED_ICON_EXTS:
+        p = companion_dir / f"icon{ext}"
+        if p.exists():
+            p.unlink()
+            removed = True
+
+    config_path = companion_dir / "config.json"
+    if config_path.exists():
+        cfg = json.loads(config_path.read_text(encoding="utf-8"))
+        cfg.pop("has_icon", None)
+        cfg.pop("icon_ext",  None)
+        _atomic_write_json(config_path, cfg)
+
+    CompanionRegistry.force_reload()
+    return {"success": True, "removed": removed}
 
 
 @router.get("/{companion_id}/memory")

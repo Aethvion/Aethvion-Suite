@@ -56,8 +56,8 @@ const CompanionCreator = (() => {
 
       <form id="cc-form" class="cc-form" style="display:none">
         <div id="cc-builtin-notice" class="cc-builtin-notice hidden">
-          <i class="fas fa-shield-halved"></i>
-          Built-in companion — name and ID are locked. Personality edits take effect immediately.
+          <i class="fas fa-lock"></i>
+          Built-in companion — view only. All fields are locked. Create a new companion to build something custom.
         </div>
 
         <!-- ── Identity ─────────────────────────────────────── -->
@@ -99,8 +99,29 @@ const CompanionCreator = (() => {
             </div>
           </div>
           <div class="cc-field" id="cc-symbol-field">
-            <label>Avatar Symbol <span class="cc-hint">(emoji or char)</span></label>
+            <label>Avatar Symbol <span class="cc-hint">(emoji or char — used when no icon is set)</span></label>
             <input type="text" id="cc-avatar-symbol" placeholder="✦" maxlength="2" style="font-size:1.4em;width:60px;text-align:center;">
+          </div>
+          <div class="cc-field cc-field-full" id="cc-icon-field">
+            <label>Icon <span class="cc-hint">(PNG · JPG · GIF · WebP · max 2 MB)</span></label>
+            <div class="cc-icon-row">
+              <div class="cc-icon-thumb" id="cc-icon-thumb">
+                <img id="cc-icon-img" src="" alt="" class="cc-icon-img hidden">
+                <i id="cc-icon-ph" class="fas fa-image cc-icon-ph"></i>
+              </div>
+              <div class="cc-icon-upload-col">
+                <div class="cc-icon-btns" id="cc-icon-btns">
+                  <label class="cc-btn cc-btn-ghost cc-btn-sm cc-icon-upload-lbl" for="cc-icon-file">
+                    <i class="fas fa-upload"></i> Upload image
+                  </label>
+                  <input type="file" id="cc-icon-file" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none">
+                  <button type="button" id="cc-icon-remove-btn" class="cc-btn cc-btn-ghost cc-btn-sm hidden">
+                    <i class="fas fa-trash"></i> Remove
+                  </button>
+                </div>
+                <span id="cc-icon-save-hint" class="cc-hint cc-icon-save-hint hidden">Save the companion first to add an icon.</span>
+              </div>
+            </div>
           </div>
           <div class="cc-field" id="cc-model-field">
             <label>Default Model</label>
@@ -334,11 +355,14 @@ const CompanionCreator = (() => {
     }
 
     function _listItemHTML(c, isBuiltin) {
-        const active = _editingId === c.id ? 'active' : '';
-        const lock   = isBuiltin ? '<i class="fas fa-lock cc-list-lock"></i>' : '';
+        const active  = _editingId === c.id ? 'active' : '';
+        const lock    = isBuiltin ? '<i class="fas fa-lock cc-list-lock"></i>' : '';
+        const avatar  = c.has_icon
+            ? `<img class="cc-list-icon" src="${API}/${c.id}/icon?t=${Date.now()}" alt="${c.name}">`
+            : `<span class="cc-list-symbol" style="color:${c.accent_color || '#6366f1'}">${c.avatar_symbol || '✦'}</span>`;
         return `
         <div class="cc-list-item ${active}" data-id="${c.id}" data-builtin="${isBuiltin}" role="button" tabindex="0">
-          <span class="cc-list-symbol" style="color:${c.accent_color || '#6366f1'}">${c.avatar_symbol || '✦'}</span>
+          ${avatar}
           <span class="cc-list-name">${c.name}</span>
           ${lock}
         </div>`;
@@ -370,18 +394,51 @@ const CompanionCreator = (() => {
         const notice = document.getElementById('cc-builtin-notice');
         notice.classList.toggle('hidden', !isBuiltin);
 
-        // Lock name/description for builtins
-        const nameInput = document.getElementById('cc-name');
-        const descInput = document.getElementById('cc-description');
-        nameInput.readOnly = isBuiltin;
-        descInput.readOnly = isBuiltin;
-        nameInput.style.opacity = isBuiltin ? '0.5' : '';
-        descInput.style.opacity = isBuiltin ? '0.5' : '';
+        // Lock ALL fields for built-ins; unlock for custom
+        form.querySelectorAll('input:not([type="file"]):not([type="color"]), textarea, select').forEach(el => {
+            el.disabled      = isBuiltin;
+            el.style.opacity = isBuiltin ? '0.5' : '';
+        });
+        // Color picker needs separate handling (disabled attr behaves oddly on <input type=color>)
+        const colorPicker = document.getElementById('cc-accent-color');
+        if (colorPicker) { colorPicker.disabled = isBuiltin; colorPicker.style.pointerEvents = isBuiltin ? 'none' : ''; }
 
-        // Show/hide delete & export
-        document.getElementById('cc-delete-btn').style.display = (!isBuiltin && fillData) ? '' : 'none';
+        // Save button hidden for built-ins; delete/export hidden for built-ins and new forms
+        document.getElementById('cc-save-btn').style.display        = isBuiltin ? 'none' : '';
+        document.getElementById('cc-delete-btn').style.display      = (!isBuiltin && fillData) ? '' : 'none';
         const exportBtn = document.getElementById('cc-export-btn');
         exportBtn.classList.toggle('hidden', isBuiltin || !fillData);
+
+        // Icon section — upload/remove only for existing custom companions
+        const iconBtns     = document.getElementById('cc-icon-btns');
+        const iconSaveHint = document.getElementById('cc-icon-save-hint');
+        if (isBuiltin) {
+            // Built-in: hide all icon controls
+            iconBtns?.classList.add('hidden');
+            iconSaveHint?.classList.add('hidden');
+        } else if (!fillData) {
+            // New companion: show "save first" hint instead of upload controls
+            iconBtns?.classList.add('hidden');
+            iconSaveHint?.classList.remove('hidden');
+        } else {
+            iconBtns?.classList.remove('hidden');
+            iconSaveHint?.classList.add('hidden');
+        }
+
+        // Load icon state
+        const iconImg = document.getElementById('cc-icon-img');
+        const iconPh  = document.getElementById('cc-icon-ph');
+        const iconRem = document.getElementById('cc-icon-remove-btn');
+        const cid     = fillData?.id;
+        if (fillData?.has_icon && cid) {
+            if (iconImg) { iconImg.src = `${API}/${cid}/icon?t=${Date.now()}`; iconImg.classList.remove('hidden'); }
+            if (iconPh)  iconPh.classList.add('hidden');
+            if (iconRem) iconRem.classList.remove('hidden');
+        } else {
+            if (iconImg) { iconImg.src = ''; iconImg.classList.add('hidden'); }
+            if (iconPh)  iconPh?.classList.remove('hidden');
+            if (iconRem) iconRem.classList.add('hidden');
+        }
 
         document.getElementById('cc-form-msg').style.display = 'none';
 
@@ -581,9 +638,15 @@ const CompanionCreator = (() => {
             if (!res.ok) throw new Error(data.detail || 'Request failed');
 
             _setMsg(`✓ ${data.message}`);
-            if (!_editingId) _editingId = data.id;
+            const isNew = !_editingId;
+            if (isNew) _editingId = data.id;
             await _loadList();
             if (typeof showToast === 'function') showToast(data.message, 'success');
+            // After creating a new companion, reload its form so icon controls appear
+            if (isNew) {
+                const fresh = await fetch(`${API}/${_editingId}`);
+                if (fresh.ok) _showForm(await fresh.json(), false);
+            }
             window.dispatchEvent(new CustomEvent('customCompanionCreated', { detail: { id: _editingId } }));
         } catch (err) {
             _setMsg(`Error: ${err.message}`, true);
@@ -712,6 +775,47 @@ const CompanionCreator = (() => {
         document.getElementById('cc-import-btn')?.addEventListener('click', _showImportDialog);
         document.getElementById('cc-import-close')?.addEventListener('click', _hideImportDialog);
         document.getElementById('cc-import-submit')?.addEventListener('click', _submitImport);
+
+        // Icon upload
+        document.getElementById('cc-icon-file')?.addEventListener('change', async e => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (!file || !_editingId) return;
+            const fd = new FormData();
+            fd.append('file', file);
+            try {
+                const res  = await fetch(`${API}/${_editingId}/icon`, { method: 'POST', body: fd });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Upload failed');
+                const url = `${API}/${_editingId}/icon?t=${Date.now()}`;
+                const img = document.getElementById('cc-icon-img');
+                if (img) { img.src = url; img.classList.remove('hidden'); }
+                document.getElementById('cc-icon-ph')?.classList.add('hidden');
+                document.getElementById('cc-icon-remove-btn')?.classList.remove('hidden');
+                if (typeof showToast === 'function') showToast('Icon uploaded!', 'success');
+                await _loadList();
+            } catch (err) {
+                if (typeof showToast === 'function') showToast(`Icon upload failed: ${err.message}`, 'error');
+            }
+        });
+
+        // Icon remove
+        document.getElementById('cc-icon-remove-btn')?.addEventListener('click', async () => {
+            if (!_editingId) return;
+            try {
+                const res  = await fetch(`${API}/${_editingId}/icon`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Remove failed');
+                const img = document.getElementById('cc-icon-img');
+                if (img) { img.src = ''; img.classList.add('hidden'); }
+                document.getElementById('cc-icon-ph')?.classList.remove('hidden');
+                document.getElementById('cc-icon-remove-btn')?.classList.add('hidden');
+                if (typeof showToast === 'function') showToast('Icon removed.', 'success');
+                await _loadList();
+            } catch (err) {
+                if (typeof showToast === 'function') showToast(`Failed to remove icon: ${err.message}`, 'error');
+            }
+        });
 
         // Live preview
         ['cc-accent-color', 'cc-avatar-symbol', 'cc-name'].forEach(id => {
