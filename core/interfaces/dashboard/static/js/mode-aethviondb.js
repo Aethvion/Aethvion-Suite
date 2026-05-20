@@ -3316,14 +3316,79 @@
 
         const deepenBtn = _el('adb-graph-card-deepen');
         if (deepenBtn) {
-            deepenBtn.innerHTML = d.status === 'stub'
+            const isStub = d.status === 'stub';
+            deepenBtn.innerHTML = isStub
                 ? '<i class="fas fa-wand-sparkles"></i> Expand'
                 : '<i class="fas fa-wand-sparkles"></i> Deepen';
+
             deepenBtn.onclick = async () => {
-                _hide('adb-graph-card');
-                _closeGraph();
-                await _loadEntity(d.id);
-                _deepenCurrent();
+                // Snapshot current node IDs so we can highlight what's new after reload
+                const prevNodeIds = new Set(_graphSim ? _graphSim.nodes().map(n => n.id) : []);
+
+                deepenBtn.disabled = true;
+                deepenBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+
+                try {
+                    if (isStub) {
+                        // ── Expand stub directly ───────────────────────────
+                        const res = await fetch(`${API}/entities/${d.id}/expand?${_dbParam()}`, { method: 'POST' });
+                        if (!res.ok) {
+                            let msg; try { msg = (await res.json()).detail; } catch { msg = `HTTP ${res.status}`; }
+                            throw new Error(msg);
+                        }
+                    } else {
+                        // ── Deepen active entity directly ──────────────────
+                        const res = await fetch(`${API}/entities/${d.id}/deepen?${_dbParam({ max_stubs: 5 })}`, { method: 'POST' });
+                        if (!res.ok) {
+                            let msg; try { msg = (await res.json()).detail; } catch { msg = `HTTP ${res.status}`; }
+                            throw new Error(msg);
+                        }
+                    }
+
+                    _hide('adb-graph-card');
+
+                    // Reload graph centred on this entity — new nodes animate in
+                    await _graphLoad(d.id);
+
+                    // Identify and flash new nodes so additions are immediately obvious
+                    if (_graphNodeSel && prevNodeIds.size) {
+                        const newEls = _graphNodeSel.filter(n => !prevNodeIds.has(n.id));
+                        if (!newEls.empty()) {
+                            // Cyan ring flash
+                            newEls
+                                .attr('stroke',         '#22d3ee')
+                                .attr('stroke-width',   4)
+                                .attr('stroke-opacity', 1);
+                            setTimeout(() => {
+                                newEls.transition().duration(1400)
+                                    .attr('stroke',         n => _gNodeColor(n.type))
+                                    .attr('stroke-width',   1.5)
+                                    .attr('stroke-opacity', n => n.status === 'stub' ? 0.5 : 0.7);
+                            }, 1800);
+                            const n = newEls.size();
+                            _toast(
+                                isStub
+                                    ? `Expanded — ${n} new node${n !== 1 ? 's' : ''} added to graph`
+                                    : `Deepened — ${n} new node${n !== 1 ? 's' : ''} added to graph`,
+                                'success'
+                            );
+                        } else {
+                            _toast(
+                                isStub ? `"${d.name}" is already fully expanded` : `No new sub-topics found for "${d.name}"`,
+                                'info'
+                            );
+                        }
+                    } else {
+                        _toast(isStub ? `"${d.name}" expanded` : `"${d.name}" deepened`, 'success');
+                    }
+
+                } catch (err) {
+                    _toast(`Failed: ${err.message}`, 'error');
+                    deepenBtn.disabled = false;
+                    deepenBtn.innerHTML = isStub
+                        ? '<i class="fas fa-wand-sparkles"></i> Expand'
+                        : '<i class="fas fa-wand-sparkles"></i> Deepen';
+                }
             };
         }
 
