@@ -3013,8 +3013,11 @@
 
         svg.selectAll('*').remove();
 
-        // ── Defs: arrowhead marker ──
-        svg.append('defs').append('marker')
+        // ── Defs: arrowhead markers + edge glow filter ──
+        const defs = svg.append('defs');
+
+        // Default arrow (muted)
+        defs.append('marker')
             .attr('id', 'adb-graph-arrow')
             .attr('viewBox', '0 -4 8 8')
             .attr('refX', 14).attr('refY', 0)
@@ -3023,6 +3026,30 @@
             .append('path')
             .attr('d', 'M0,-4L8,0L0,4')
             .attr('fill', 'rgba(100,116,139,0.45)');
+
+        // Hover arrow (bright)
+        defs.append('marker')
+            .attr('id', 'adb-graph-arrow-hover')
+            .attr('viewBox', '0 -4 8 8')
+            .attr('refX', 14).attr('refY', 0)
+            .attr('markerWidth', 5).attr('markerHeight', 5)
+            .attr('orient', 'auto')
+            .append('path')
+            .attr('d', 'M0,-4L8,0L0,4')
+            .attr('fill', 'rgba(226,232,240,0.92)');
+
+        // Glow filter applied to highlighted edges
+        const glowF = defs.append('filter')
+            .attr('id',     'adb-graph-edge-glow')
+            .attr('x',      '-40%').attr('y',      '-40%')
+            .attr('width',  '180%').attr('height', '180%');
+        glowF.append('feGaussianBlur')
+            .attr('in', 'SourceGraphic')
+            .attr('stdDeviation', '3')
+            .attr('result', 'blur');
+        const glowMerge = glowF.append('feMerge');
+        glowMerge.append('feMergeNode').attr('in', 'blur');
+        glowMerge.append('feMergeNode').attr('in', 'SourceGraphic');
 
         // ── Zoom / pan ──
         const g    = svg.append('g');
@@ -3156,13 +3183,23 @@
         if (!_graphNodeSel || !_graphLinkSel) return;
 
         if (!on || !focusId) {
-            _graphNodeSel .attr('opacity', 1);
-            _graphLinkSel .attr('opacity', 1);
+            // ── Reset to baseline ──────────────────────────────────────────
+            _graphNodeSel
+                .attr('opacity',        1)
+                .attr('stroke',         d => _gNodeColor(d.type))
+                .attr('stroke-width',   d => d.id === _graphFocusId ? 3 : 1.5)
+                .attr('stroke-opacity', d => d.status === 'stub' ? 0.5 : 0.7);
+            _graphLinkSel
+                .attr('stroke-opacity', 0.55)
+                .attr('stroke-width',   1.5)
+                .attr('stroke',         d => _gEdgeColor(d.kind))
+                .attr('filter',         null)
+                .attr('marker-end',     'url(#adb-graph-arrow)');
             _graphLabelSel?.attr('opacity', 1);
             return;
         }
 
-        // Collect all IDs directly connected to focusId
+        // ── Build neighbour sets ───────────────────────────────────────────
         const connected = new Set([focusId]);
         (_graphLinkData || []).forEach(d => {
             const s = typeof d.source === 'object' ? d.source.id : d.source;
@@ -3171,13 +3208,30 @@
             if (t === focusId) connected.add(s);
         });
 
-        _graphNodeSel .attr('opacity', d => connected.has(d.id) ? 1 : 0.1);
-        _graphLinkSel .attr('opacity', d => {
+        const _isHot = d => {
             const s = typeof d.source === 'object' ? d.source.id : d.source;
             const t = typeof d.target === 'object' ? d.target.id : d.target;
-            return (s === focusId || t === focusId) ? 1 : 0.05;
-        });
-        _graphLabelSel?.attr('opacity', d => connected.has(d.id) ? 1 : 0.06);
+            return s === focusId || t === focusId;
+        };
+
+        // ── Nodes: no dimming — white ring on hovered node, slightly bolder ──
+        // ring on direct neighbours; everything else stays fully visible.
+        _graphNodeSel
+            .attr('opacity',        1)
+            .attr('stroke',         d => d.id === focusId ? '#ffffff' : _gNodeColor(d.type))
+            .attr('stroke-width',   d => d.id === focusId ? 3.5 : connected.has(d.id) ? 2 : 1.5)
+            .attr('stroke-opacity', d => d.id === focusId ? 1 : d.status === 'stub' ? 0.5 : 0.7);
+
+        // ── Edges: connected ones glow; others fade to nearly invisible ───
+        _graphLinkSel
+            .attr('stroke-opacity', d => _isHot(d) ? 1.0  : 0.04)
+            .attr('stroke-width',   d => _isHot(d) ? 3.0  : 1.0)
+            .attr('stroke',         d => _isHot(d) ? 'rgba(226,232,240,0.9)' : _gEdgeColor(d.kind))
+            .attr('filter',         d => _isHot(d) ? 'url(#adb-graph-edge-glow)' : null)
+            .attr('marker-end',     d => _isHot(d) ? 'url(#adb-graph-arrow-hover)' : 'url(#adb-graph-arrow)');
+
+        // ── Labels: fully visible at all times ───────────────────────────
+        _graphLabelSel?.attr('opacity', 1);
     }
 
     // ── Node selection card ───────────────────────────────────────────────────
