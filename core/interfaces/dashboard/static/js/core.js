@@ -1085,9 +1085,11 @@ async function setDashboardMode(mode, save = true, _tab = null) {
 // On refresh/restore the saved tab is respected exactly as-is; this only
 // fires on an explicit user click of the AI button.
 function goToAIHub() {
-    const _noSidebar = new Set(['suite-home', 'chat', 'aethviondb']);
+    const _noSidebar = new Set(['suite-home', 'chat', 'aethviondb',
+        'companion-creator', 'misaka-cipher', 'axiom', 'lyra']);
     // Already on a sidebar-capable AI tab — nothing to do.
-    if (dashboardMode === 'ai' && !_noSidebar.has(currentMainTab)) return;
+    const _isOnCompanion = currentMainTab.startsWith('custom-companion-');
+    if (dashboardMode === 'ai' && !_noSidebar.has(currentMainTab) && !_isOnCompanion) return;
     // Navigate to the last sidebar tab the user visited, or fall back to 'agents'.
     const target = localStorage.getItem('_last_ai_hub_tab') || 'agents';
     // Pass target directly so setDashboardMode doesn't restore a different saved tab.
@@ -1355,11 +1357,16 @@ async function switchMainTab(tabName, save = true) {
     });
 
     // ── Update header primary nav active state ───────────────────────────────
+    // Companion tabs (no sidebar, accessed via Companions nav) map to the 'companions' button.
+    const _COMPANION_TABS = new Set(['companion-creator', 'misaka-cipher', 'axiom', 'lyra']);
     const _hdrBtns = document.querySelectorAll('#hdr-nav .hdr-nav-btn');
     if (_hdrBtns.length) {
         _hdrBtns.forEach(btn => btn.classList.remove('active'));
-        // Direct tab match (e.g. chat → Chat btn, aethviondb → AethvionDB btn)
-        const _directBtn = document.querySelector(`#hdr-nav .hdr-nav-btn[data-nav="${actualTabName}"]`);
+        // Remap companion tabs (incl. custom-companion-*) → 'companions' nav button
+        const _isCompanionTab = _COMPANION_TABS.has(actualTabName) || actualTabName.startsWith('custom-companion-');
+        const _navTarget = _isCompanionTab ? 'companions' : actualTabName;
+        // Direct tab match (e.g. chat → Chat btn, aethviondb → AethvionDB btn, companions → Companions btn)
+        const _directBtn = document.querySelector(`#hdr-nav .hdr-nav-btn[data-nav="${_navTarget}"]`);
         if (_directBtn) {
             _directBtn.classList.add('active');
         } else {
@@ -1370,9 +1377,10 @@ async function switchMainTab(tabName, save = true) {
         }
     }
 
-    // ── Sidebar suppression — no sidebar on Home, Chat, AethvionDB ───────────
-    const _NO_SIDEBAR = new Set(['suite-home', 'chat', 'aethviondb']);
-    const _suppress = _NO_SIDEBAR.has(actualTabName);
+    // ── Sidebar suppression — no sidebar on Home, Chat, AethvionDB, Companions ─
+    const _NO_SIDEBAR = new Set(['suite-home', 'chat', 'aethviondb',
+        'companion-creator', 'misaka-cipher', 'axiom', 'lyra']);
+    const _suppress = _NO_SIDEBAR.has(actualTabName) || actualTabName.startsWith('custom-companion-');
     const _sidebarEl     = document.getElementById('sidebar-nav');
     const _toggleBtn     = document.getElementById('sidebar-toggle');
     const _hideToggleBtn = document.getElementById('sidebar-hide-toggle');

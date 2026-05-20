@@ -380,6 +380,10 @@
                                 onclick="setDashboardMode('ai', true, 'chat');">
                             <i class="fas fa-comments"></i><span>Chat</span>
                         </button>
+                        <button class="hdr-nav-btn" data-nav="companions"
+                                onclick="setDashboardMode('ai', true, 'companion-creator');">
+                            <i class="fas fa-users"></i><span>Companions</span>
+                        </button>
                         <button class="hdr-nav-btn" data-nav="ai"
                                 onclick="goToAIHub();">
                             <i class="fas fa-robot"></i><span>AI</span>
@@ -837,7 +841,7 @@
     </script>
 
     <script>
-        // ── Custom Companions: Sidebar + Settings Dynamic Loader ──────────────────────
+        // ── Custom Companions: Panel + Settings Dynamic Loader ────────────────────────
         async function loadCustomCompanionsSidebar() {
             try {
                 const res = await fetch('/api/companions/list');
@@ -845,35 +849,20 @@
                 const data = await res.json();
                 const companions = (data.companions || []).filter(c => !['misakacipher', 'axiom', 'lyra'].includes(c.id));
 
-                // ── Sidebar + panels ──────────────────────────────────────────────
-                const sidebarContainer = document.getElementById('custom-companions-sidebar');
-                if (sidebarContainer) {
-                    sidebarContainer.innerHTML = '';
-                    document.querySelectorAll('.custom-companion-panel').forEach(el => el.remove());
+                // ── Panels only (companions are accessed via the Companions nav tab) ─────
+                document.querySelectorAll('.custom-companion-panel').forEach(el => el.remove());
 
-                    companions.forEach(c => {
-                        const tabId = `custom-companion-${c.id}`;
-                        const color = c.accent_color || '#6366f1';
+                companions.forEach(c => {
+                    const tabId = `custom-companion-${c.id}`;
+                    const color = c.accent_color || '#6366f1';
 
-                        // Sidebar button — attach click directly so it works even though
-                        // initializeUI() already ran and won't see this dynamic element.
-                        const btn = document.createElement('button');
-                        btn.className = 'main-tab mode-ai';
-                        btn.setAttribute('data-maintab', tabId);
-                        btn.setAttribute('data-tooltip', c.description || c.name);
-                        btn.innerHTML = `<span class="tab-icon" style="color:${color}">${c.avatar_symbol || '✦'}</span><span class="tab-label">${c.name}</span>`;
-                        btn.addEventListener('click', () => {
-                            if (typeof switchMainTab === 'function') switchMainTab(tabId);
-                        });
-                        sidebarContainer.appendChild(btn);
-
-                        // Panel — must use class 'main-tab-panel' so switchMainTab's
-                        // querySelectorAll('.main-tab-panel') hides it when leaving.
-                        if (!document.getElementById(`${tabId}-panel`)) {
-                            const panel = document.createElement('div');
-                            panel.id = `${tabId}-panel`;
-                            panel.className = 'main-tab-panel custom-companion-panel';
-                            panel.innerHTML = `
+                    // Panel — must use class 'main-tab-panel' so switchMainTab's
+                    // querySelectorAll('.main-tab-panel') hides it when leaving.
+                    if (!document.getElementById(`${tabId}-panel`)) {
+                        const panel = document.createElement('div');
+                        panel.id = `${tabId}-panel`;
+                        panel.className = 'main-tab-panel custom-companion-panel';
+                        panel.innerHTML = `
 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:1.5rem;padding:2rem;text-align:center;">
     <div style="font-size:3.5rem;line-height:1;">${c.avatar_symbol || '✦'}</div>
     <div style="font-size:1.4rem;font-weight:600;color:${color};">${c.name}</div>
@@ -882,14 +871,13 @@
         Custom companion chat requires a server restart after creation.
     </div>
     <button class="settings-open-chat-btn" onclick="if(typeof switchMainTab==='function') switchMainTab('companion-creator')" style="margin-top:0.5rem;">
-        <i class="fas fa-pencil-alt"></i> Edit in Companion Creator
+        <i class="fas fa-pencil-alt"></i> Edit in Companions
     </button>
 </div>`;
-                            const mainContent = document.querySelector('.main-content') || document.body;
-                            mainContent.appendChild(panel);
-                        }
-                    });
-                }
+                        const mainContent = document.querySelector('.main-content') || document.body;
+                        mainContent.appendChild(panel);
+                    }
+                });
 
                 // ── Settings panel: inject custom companion accordions ────────────────
                 const settingsPanel = document.getElementById('settings-panel-companions');

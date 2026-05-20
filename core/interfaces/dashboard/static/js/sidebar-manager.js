@@ -33,10 +33,7 @@
         { id: 'explained',         label: 'Explained',        icon: 'fas fa-lightbulb',          mode: ['ai']   },
         { id: 'aethviondb',        label: 'AethvionDB',       icon: 'fas fa-circle-nodes',       mode: ['ai']   },
         { id: 'worldsim',          label: 'WorldSim',         icon: 'fas fa-globe',              mode: ['ai']   },
-        { id: 'misaka-cipher',     label: 'Misaka Cipher',    icon: 'fas fa-wand-magic-sparkles',mode: ['ai']   },
-        { id: 'axiom',             label: 'Axiom',            icon: 'fas fa-atom',               mode: ['ai']   },
-        { id: 'lyra',              label: 'Lyra',             icon: 'fas fa-music',              mode: ['ai']   },
-        { id: 'companion-creator', label: 'Create Companion', icon: 'fas fa-plus-circle',        mode: ['ai']   },
+        // Companion tabs are now top-level nav items (Companions button) — not in sidebar
         { id: 'games-center',      label: 'Games Center',     icon: 'fas fa-gamepad',            mode: ['ai']   },
         { id: 'memory',            label: 'Memory',           icon: 'fas fa-book',               mode: ['ai']   },
         { id: 'persistent-memory', label: 'Persistent',       icon: 'fas fa-brain',              mode: ['ai']   },
@@ -110,15 +107,13 @@
             name: 'Companion Hub',
             icon: 'fas fa-heart',
             accent: '#a855f7',
-            description: 'Personal AI companions, entertainment, and memory in one focused layout.',
-            highlights: ['Misaka Cipher', 'Axiom', 'Lyra', 'Games', 'Memory'],
+            description: 'Companions, entertainment, and memory — use the Companions tab for your AI companions.',
+            highlights: ['Companions Tab', 'Games', 'Memory'],
             folders: [
-                { name: 'Companions',    expanded: true,  tabs: ['misaka-cipher', 'axiom', 'lyra', 'companion-creator'] },
-                { name: 'Entertainment', expanded: false, tabs: ['games-center'] },
+                { name: 'Entertainment', expanded: true,  tabs: ['games-center'] },
                 { name: 'Memory',        expanded: false, tabs: ['memory'] },
             ],
-            enabled: new Set(['suite-home', 'misaka-cipher', 'axiom', 'lyra',
-                              'companion-creator', 'games-center', 'memory']),
+            enabled: new Set(['suite-home', 'games-center', 'memory']),
         },
         {
             id: 'full',
@@ -146,12 +141,12 @@
     function defaultProfileData(name = 'Default') {
         return {
             name,
-            // chat and aethviondb live in the header nav — keep them out of the sidebar
-            hidden: { chat: true, aethviondb: true },
+            // chat, aethviondb, and companions live in the header nav — keep them out of the sidebar
+            hidden: { chat: true, aethviondb: true,
+                      'misaka-cipher': true, axiom: true, lyra: true, 'companion-creator': true },
             folders: {
                 'f-workspace':  { name: 'Workspace',    expanded: true  },
                 'f-research':   { name: 'Research',     expanded: false },
-                'f-companions': { name: 'Companions',   expanded: false },
                 'f-fun':        { name: 'Entertainment',expanded: false },
                 'f-memory':     { name: 'Memory',       expanded: false },
                 'f-storage':    { name: 'Storage',      expanded: false },
@@ -162,7 +157,6 @@
                 { type: 'tab',    id: 'suite-home' },
                 { type: 'folder', id: 'f-workspace',  children: ['agents','agent-corp','schedule','photo','audio','3d-gen'] },
                 { type: 'folder', id: 'f-research',   children: ['advaiconv','researchboard','arena','aiconv','explained'] },
-                { type: 'folder', id: 'f-companions', children: ['misaka-cipher','axiom','lyra','companion-creator'] },
                 { type: 'folder', id: 'f-fun',        children: ['games-center'] },
                 { type: 'folder', id: 'f-memory',     children: ['memory','persistent-memory','sched-overview'] },
                 { type: 'folder', id: 'f-storage',    children: ['output','screenshots','camera','uploads'] },
@@ -215,20 +209,27 @@
             if (raw) {
                 const saved = JSON.parse(raw);
                 if (saved?.profiles) {
+                    const _NAV_TABS = ['chat', 'aethviondb',
+                        'misaka-cipher', 'axiom', 'lyra', 'companion-creator'];
                     Object.values(saved.profiles).forEach(profile => {
-                        // Migration: Chat and AethvionDB are header-nav items — hide from sidebar
+                        // Migration: header-nav items (Chat, AethvionDB, Companions) are not in sidebar
                         profile.hidden = profile.hidden || {};
-                        profile.hidden['chat']       = true;
-                        profile.hidden['aethviondb'] = true;
+                        _NAV_TABS.forEach(id => { profile.hidden[id] = true; });
                         // Remove from any folder children so they don't clutter edit mode either
                         if (profile.order) {
                             profile.order.forEach(entry => {
                                 if (entry.type === 'folder' && Array.isArray(entry.children)) {
                                     entry.children = entry.children.filter(
-                                        id => id !== 'chat' && id !== 'aethviondb'
+                                        id => !_NAV_TABS.includes(id)
                                     );
                                 }
                             });
+                            // Remove the companions folder itself (f-companions) if present
+                            const fcompIdx = profile.order.findIndex(
+                                e => e.type === 'folder' && e.id === 'f-companions'
+                            );
+                            if (fcompIdx >= 0) profile.order.splice(fcompIdx, 1);
+                            if (profile.folders) delete profile.folders['f-companions'];
                         }
                         surfaceNewTabs(profile);
                     });
@@ -799,14 +800,7 @@
 
         for (const tabId of children) {
             const tabEl = renderTab(tabId, entry.id, mode);
-            if (tabEl) {
-                body.appendChild(tabEl);
-                if (tabId === 'lyra') {
-                    const customDiv = document.createElement('div');
-                    customDiv.id = 'custom-companions-sidebar';
-                    body.appendChild(customDiv);
-                }
-            }
+            if (tabEl) body.appendChild(tabEl);
         }
 
         wrapper.appendChild(body);
