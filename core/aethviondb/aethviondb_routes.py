@@ -980,6 +980,51 @@ async def fix_duplicates(
     return await asyncio.to_thread(_run)
 
 
+@router.post("/validate/fix-orphan-stubs")
+async def fix_orphan_stubs(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """
+    Soft-delete all stub entities that have no outgoing relations and are
+    not referenced by any other entity (via relations or timeline ref_ids).
+
+    These are empty placeholder stubs that carry no useful information and
+    are fully disconnected from the knowledge graph.
+
+    Returns {fixed: N, entities: [{id, name}]}.
+    """
+    def _run():
+        writer = _get_writer(db, path)
+        all_entities = writer.list_all()
+
+        # Build the set of all entity IDs referenced by others
+        referenced_ids: set[str] = set()
+        for entity in all_entities:
+            for rel in entity.get("sections", {}).get("relations", []):
+                if isinstance(rel, dict) and rel.get("target_id"):
+                    referenced_ids.add(rel["target_id"])
+            for ev in entity.get("sections", {}).get("timeline", []):
+                if isinstance(ev, dict):
+                    for ref_id in ev.get("ref_ids", []):
+                        referenced_ids.add(ref_id)
+
+        fixed: list[dict[str, str]] = []
+        for entity in all_entities:
+            if entity.get("status") != "stub":
+                continue
+            has_outgoing  = bool(entity.get("sections", {}).get("relations", []))
+            is_referenced = entity["id"] in referenced_ids
+            if not has_outgoing and not is_referenced:
+                writer.delete(entity["id"], soft=True)
+                fixed.append({"id": entity["id"], "name": entity.get("name", entity["id"])})
+
+        logger.info(f"[AethvionDB] fix-orphan-stubs: removed {len(fixed)} orphan stubs")
+        return {"fixed": len(fixed), "entities": fixed}
+
+    return await asyncio.to_thread(_run)
+
+
 @router.post("/validate/fix-timeline-sort")
 async def fix_timeline_sort(
     db:   str = Query("default"),

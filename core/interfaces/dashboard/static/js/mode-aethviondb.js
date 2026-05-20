@@ -2505,6 +2505,7 @@
             const dupGroups        = data.duplicate_groups       || [];
             const errEntities      = data.entities_with_errors   || [];
             const warnSummary      = data.warning_summary        || [];
+            const orphanStubs      = data.orphan_stubs           || [];
             const autoGroups       = dupGroups.filter(g => g.action === 'auto');
             const stubDupGroups    = dupGroups.filter(g => g.action === 'stub_auto');
             const chooseGroups     = dupGroups.filter(g => g.action === 'choose');
@@ -2518,16 +2519,18 @@
                     { icon: 'fa-check-circle',         cls: 'ok',   val: data.clean ?? 0,          label: 'clean' },
                     { icon: 'fa-exclamation-circle',   cls: 'err',  val: data.with_errors ?? 0,    label: 'with errors' },
                     { icon: 'fa-triangle-exclamation', cls: 'warn', val: data.total_warnings ?? 0, label: 'warnings' },
-                    ...(dupGroups.length  ? [{ icon: 'fa-copy', cls: 'dup',  val: dupGroups.length,  label: `duplicate group${dupGroups.length !== 1 ? 's' : ''}` }] : []),
-                    ...(mismatches.length ? [{ icon: 'fa-tag',  cls: 'warn', val: mismatches.length, label: `status mismatch${mismatches.length !== 1 ? 'es' : ''}` }] : []),
+                    ...(dupGroups.length   ? [{ icon: 'fa-copy',      cls: 'dup',  val: dupGroups.length,   label: `duplicate group${dupGroups.length !== 1 ? 's' : ''}` }] : []),
+                    ...(mismatches.length  ? [{ icon: 'fa-tag',       cls: 'warn', val: mismatches.length,  label: `status mismatch${mismatches.length !== 1 ? 'es' : ''}` }] : []),
+                    ...(orphanStubs.length ? [{ icon: 'fa-link-slash', cls: 'warn', val: orphanStubs.length, label: `orphan stub${orphanStubs.length !== 1 ? 's' : ''}` }] : []),
                 ];
 
                 // Build fix-toggle rows — one per auto-fixable action type
                 const fixRows = [];
-                if (autoGroups.length)    fixRows.push({ id: 'adb-vfix-dups',      label: 'Auto-fix clear-winner duplicates', desc: 'keeps the active entity, removes stubs, updates all refs',       count: autoGroups.length });
-                if (stubDupGroups.length) fixRows.push({ id: 'adb-vfix-stub-dups', label: 'Fix duplicate stubs',              desc: 'removes lower-ranked stub, updates referenced IDs',               count: stubDupGroups.length });
-                if (mismatches.length)    fixRows.push({ id: 'adb-vfix-mm',        label: 'Promote status mismatches',        desc: 'stub with non-empty summary → mark as active',                    count: mismatches.length });
-                if (timelineCount)        fixRows.push({ id: 'adb-vfix-timeline',  label: 'Sort timeline events',             desc: 'orders events chronologically, unparseable dates moved to end',   count: timelineCount });
+                if (autoGroups.length)    fixRows.push({ id: 'adb-vfix-dups',      label: 'Auto-fix clear-winner duplicates', desc: 'keeps the active entity, removes stubs, updates all refs',             count: autoGroups.length });
+                if (stubDupGroups.length) fixRows.push({ id: 'adb-vfix-stub-dups', label: 'Fix duplicate stubs',              desc: 'removes lower-ranked stub, updates referenced IDs',                   count: stubDupGroups.length });
+                if (orphanStubs.length)   fixRows.push({ id: 'adb-vfix-orphans',   label: 'Remove orphan stubs',              desc: 'stubs with no content and no connections — safe to delete',          count: orphanStubs.length });
+                if (mismatches.length)    fixRows.push({ id: 'adb-vfix-mm',        label: 'Promote status mismatches',        desc: 'stub with non-empty summary → mark as active',                        count: mismatches.length });
+                if (timelineCount)        fixRows.push({ id: 'adb-vfix-timeline',  label: 'Sort timeline events',             desc: 'orders events chronologically, unparseable dates moved to end',       count: timelineCount });
 
                 const fixBox = fixRows.length ? `
                     <div class="adb-val-fixbox">
@@ -2565,7 +2568,7 @@
             const issueEl = _el('adb-val-issues');
             if (!issueEl) return;
 
-            const hasAnything = dupGroups.length || errEntities.length || warnSummary.length || mismatches.length;
+            const hasAnything = dupGroups.length || errEntities.length || warnSummary.length || mismatches.length || orphanStubs.length;
             if (!hasAnything) {
                 issueEl.innerHTML = '<div class="adb-empty-hint"><i class="fas fa-check-circle"></i> All entities passed checks.</div>';
                 return;
@@ -2733,6 +2736,30 @@
                 </div>`;
             }
 
+            // ── 4. Orphan stubs ──────────────────────────────────────────────
+            if (orphanStubs.length) {
+                if (dupGroups.length || errEntities.length || warnSummary.length) html += '<div class="adb-val-section-sep"></div>';
+                html += `
+                <div class="adb-val-issue-group adb-val-issue-group-orphan adb-val-collapsible" data-collapsed="true">
+                    <div class="adb-val-issue-header adb-val-collapse-hdr" role="button" tabindex="0">
+                        <i class="fas fa-link-slash"></i>
+                        Orphan Stubs
+                        <span class="adb-val-issue-badge adb-val-issue-badge-orphan">${orphanStubs.length} stub${orphanStubs.length!==1?'s':''}</span>
+                        <i class="fas fa-chevron-down adb-val-collapse-chevron"></i>
+                    </div>
+                    <div class="adb-val-collapse-body">
+                    <p class="adb-val-mm-desc">Stubs with no outgoing relations and not referenced by any other entity. They carry no information and are safe to delete.</p>
+                    <div class="adb-val-issue-list">
+                        ${orphanStubs.map(e => `
+                            <div class="adb-val-orphan-entity" data-id="${e.id}" role="button" tabindex="0">
+                                <span class="adb-val-orphan-name">${e.name || e.id}</span>
+                                <code class="adb-val-mm-id">${e.id}</code>
+                            </div>`).join('')}
+                    </div>
+                    </div>
+                </div>`;
+            }
+
             issueEl.innerHTML = html;
 
             // Wire: collapse/expand — any hdr inside any [data-collapsed] container
@@ -2800,16 +2827,23 @@
                 row.addEventListener('keydown', e => { if (e.key === 'Enter') { e.stopPropagation(); _loadEntity(row.dataset.id); }});
             });
 
+            // Wire: orphan stub rows → open entity
+            issueEl.querySelectorAll('.adb-val-orphan-entity[data-id]').forEach(row => {
+                row.addEventListener('click', () => _loadEntity(row.dataset.id));
+                row.addEventListener('keydown', e => { if (e.key === 'Enter') _loadEntity(row.dataset.id); });
+            });
+
             // Wire: Fix Selected button (control panel)
             _el('adb-val-fix-all-btn')?.addEventListener('click', async () => {
                 const btn      = _el('adb-val-fix-all-btn');
                 const fixDups     = _el('adb-vfix-dups')?.checked      ?? false;
                 const fixStubDups = _el('adb-vfix-stub-dups')?.checked ?? false;
+                const fixOrphans  = _el('adb-vfix-orphans')?.checked   ?? false;
                 const fixMm       = _el('adb-vfix-mm')?.checked        ?? false;
                 const fixTimeline = _el('adb-vfix-timeline')?.checked  ?? false;
-                if (!fixDups && !fixStubDups && !fixMm && !fixTimeline) { _toast('Nothing selected to fix', 'info'); return; }
+                if (!fixDups && !fixStubDups && !fixOrphans && !fixMm && !fixTimeline) { _toast('Nothing selected to fix', 'info'); return; }
                 if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Working…'; }
-                let dupFixed = 0, mmFixed = 0, timelineFixed = 0;
+                let dupFixed = 0, orphanFixed = 0, mmFixed = 0, timelineFixed = 0;
                 try {
                     if (fixDups || fixStubDups) {
                         const groupsToFix = [
@@ -2827,6 +2861,11 @@
                             if (r.ok) dupFixed++;
                         }
                     }
+                    if (fixOrphans && orphanStubs.length) {
+                        const orRes  = await fetch(`${API}/validate/fix-orphan-stubs?${_dbParam()}`, { method: 'POST' });
+                        const orData = await orRes.json();
+                        orphanFixed = orData.fixed ?? 0;
+                    }
                     if (fixMm && mismatches.length) {
                         const mmRes  = await fetch(`${API}/validate/fix-status-mismatches?${_dbParam()}`, { method: 'POST' });
                         const mmData = await mmRes.json();
@@ -2839,6 +2878,7 @@
                     }
                     const parts = [];
                     if (dupFixed)      parts.push(`fixed ${dupFixed} duplicate group${dupFixed!==1?'s':''}`);
+                    if (orphanFixed)   parts.push(`removed ${orphanFixed} orphan stub${orphanFixed!==1?'s':''}`);
                     if (mmFixed)       parts.push(`promoted ${mmFixed} stub${mmFixed!==1?'s':''}`);
                     if (timelineFixed) parts.push(`sorted timelines in ${timelineFixed} entit${timelineFixed!==1?'ies':'y'}`);
                     _toast(parts.join(', ') || 'Done', 'success');

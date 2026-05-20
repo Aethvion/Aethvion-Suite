@@ -603,6 +603,26 @@ class Validator:
         dup_issues, dup_groups = _collect_duplicate_groups(entities)
         dup_ids = {eid for g in dup_groups for eid in g["ids"]}
 
+        # Orphan stub detection — stubs with no outgoing relations and not
+        # referenced by any other entity (via relations or timeline ref_ids).
+        _referenced_ids: set[str] = set()
+        for _e in entities:
+            for _rel in _e.get("sections", {}).get("relations", []):
+                if isinstance(_rel, dict) and _rel.get("target_id"):
+                    _referenced_ids.add(_rel["target_id"])
+            for _ev in _e.get("sections", {}).get("timeline", []):
+                if isinstance(_ev, dict):
+                    for _ref in _ev.get("ref_ids", []):
+                        _referenced_ids.add(_ref)
+
+        orphan_stubs: list[dict[str, Any]] = [
+            {"id": _e["id"], "name": _e.get("name", _e["id"])}
+            for _e in entities
+            if _e.get("status") == "stub"
+            and not _e.get("sections", {}).get("relations", [])
+            and _e["id"] not in _referenced_ids
+        ]
+
         results: list[ValidationResult] = []
         stub_mismatches:       list[dict[str, str]]         = []
         entities_with_errors:  list[dict[str, Any]]         = []
@@ -671,4 +691,5 @@ class Validator:
             "duplicate_groups":     dup_groups,            # each: {norm_name, ids, entities, …}
             "entities_with_errors": entities_with_errors,  # non-dup entities with actual errors
             "warning_summary":      warning_summary,       # [{check, count, label}] sorted by count
+            "orphan_stubs":         orphan_stubs,          # stubs with no connections or refs
         }
