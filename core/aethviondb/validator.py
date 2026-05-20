@@ -101,6 +101,12 @@ _ISO_FULL  = re.compile(r"^(-?\d+)-(\d{2})-(\d{2})$")
 _ISO_PART  = re.compile(r"^(-?\d+)-(\d{2})$")
 # Plain integer year — any digit count, sign allowed (e.g. -250000000, 950, 1810)
 _YEAR_INT  = re.compile(r"^(-?\d+)$")
+# Natural-language geological age: "4.54 billion years ago", "3.5 million years ago"
+_NATURAL_AGO_RE = re.compile(
+    r"^(\d+(?:\.\d+)?)\s+(billion|million|thousand)\s+years?\s+ago$",
+    re.IGNORECASE,
+)
+_NATURAL_MULTIPLIERS = {"billion": 1_000_000_000, "million": 1_000_000, "thousand": 1_000}
 
 
 def _parse_year(date_str: str) -> Optional[int]:
@@ -109,19 +115,28 @@ def _parse_year(date_str: str) -> Optional[int]:
     Returns None if unparseable.  Negative values = BCE / geological past.
 
     Handles:
-      ~0950             →    950    (Old English attested)
-      ~1810             →   1810    (modern era)
-      2025-10           →   2025    (partial ISO, year-month only)
-      2025-10-15        →   2025    (full ISO)
-      ~-250000000       → -250000000  (geological, ~250 Ma ago)
-      ~-66000000        →  -66000000  (K-Pg boundary)
-      250 BC / 250 BCE  →   -250    (explicit BCE suffix)
+      ~0950                    →         950  (Old English attested)
+      ~1810                    →        1810  (modern era)
+      2025-10                  →        2025  (partial ISO, year-month only)
+      2025-10-15               →        2025  (full ISO)
+      ~-250000000              → -250000000   (geological, ~250 Ma ago)
+      ~-66000000               →  -66000000   (K-Pg boundary)
+      250 BC / 250 BCE         →        -250  (explicit BCE suffix)
+      ~4.54 billion years ago  → -4540000000  (natural language geological age)
+      ~3.5 million years ago   →   -3500000   (natural language geological age)
     """
     s = date_str.strip()
 
     # Strip leading approximate marker
     if s.startswith("~"):
-        s = s[1:]
+        s = s[1:].strip()
+
+    # ── Natural-language geological age (checked before numeric patterns) ──────
+    m = _NATURAL_AGO_RE.match(s)
+    if m:
+        value      = float(m.group(1))
+        multiplier = _NATURAL_MULTIPLIERS[m.group(2).lower()]
+        return -int(value * multiplier)
 
     # Detect explicit BCE suffix *before* stripping it
     is_bce = bool(_BCE_RE.search(s))
@@ -703,6 +718,14 @@ class Validator:
             for check, count in sorted(warning_counts.items(), key=lambda x: -x[1])
         ]
 
+        # Soft-deleted entities still live on disk — surface them so the UI
+        # can offer a Purge action to permanently remove the files.
+        deleted_entities: list[dict[str, Any]] = [
+            {"id": e["id"], "name": e.get("name", e["id"])}
+            for e in self._writer.list_all(include_deleted=True)
+            if e.get("status") == "deleted"
+        ]
+
         return {
             "total_entities":       len(results),
             "clean":                sum(1 for r in results if r.ok),
@@ -715,4 +738,5 @@ class Validator:
             "entities_with_errors": entities_with_errors,  # non-dup entities with actual errors
             "warning_summary":      warning_summary,       # [{check, count, label}] sorted by count
             "orphan_stubs":         orphan_stubs,          # stubs with no connections or refs
+            "deleted_entities":     deleted_entities,      # soft-deleted files pending purge
         }

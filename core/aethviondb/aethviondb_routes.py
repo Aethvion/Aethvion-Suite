@@ -411,7 +411,9 @@ async def get_stats(
 ):
     writer = _get_writer(db, path)
     index  = _get_index(db, path)
-    all_e  = writer.list_all(include_deleted=True)
+    # Exclude soft-deleted entities — they are tombstones on disk but carry no
+    # useful information and should not inflate any user-visible count.
+    all_e  = writer.list_all(include_deleted=False)
 
     by_type:   dict[str, int] = {}
     by_status: dict[str, int] = {}
@@ -420,12 +422,13 @@ async def get_stats(
         by_type[t]   = by_type.get(t, 0) + 1
         by_status[s] = by_status.get(s, 0) + 1
 
-    # Total size of entity files — reads only OS metadata, not file contents
+    # Total size of *active* entity files — reads only OS metadata, not file contents
     total_size_bytes = 0
+    active_ids = {e["id"] for e in all_e}
     entities_dir = _db_root(db, path) / "entities"
     if entities_dir.exists():
         for f in entities_dir.iterdir():
-            if f.suffix == ".json":
+            if f.suffix == ".json" and f.stem in active_ids:
                 try:
                     total_size_bytes += f.stat().st_size
                 except OSError:
@@ -437,8 +440,6 @@ async def get_stats(
     stub_ids = {e["id"] for e in all_e if e.get("status") == "stub"}
     incoming: dict[str, int] = {sid: 0 for sid in stub_ids}
     for e in all_e:
-        if e.get("status") == "deleted":
-            continue
         for rel in (e.get("sections") or {}).get("relations", []):
             tid = rel.get("target_id")
             if tid in incoming:
@@ -1021,6 +1022,46 @@ async def fix_orphan_stubs(
 
         logger.info(f"[AethvionDB] fix-orphan-stubs: removed {len(fixed)} orphan stubs")
         return {"fixed": len(fixed), "entities": fixed}
+
+    return await asyncio.to_thread(_run)
+
+
+@router.post("/validate/purge-deleted")
+async def purge_deleted(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """
+    Permanently remove all soft-deleted entity files from disk and unregister
+    their names/aliases from the NameIndex.  This is irreversible — use with care.
+
+    Returns {purged: N, entities: [{id, name}]}.
+    """
+    def _run():
+        writer = _get_writer(db, path)
+        index  = _get_index(db, path)
+
+        purged: list[dict[str, str]] = []
+        for entity in writer.list_all(include_deleted=True):
+            if entity.get("status") != "deleted":
+                continue
+            eid     = entity["id"]
+            name    = entity.get("name", "")
+            aliases = entity.get("sections", {}).get("core", {}).get("aliases", [])
+
+            # Remove name and all aliases from the NameIndex so future
+            # look-ups don't resolve to a file that no longer exists.
+            if name:
+                index.unregister(name)
+            for alias in aliases:
+                index.unregister(alias)
+
+            # Hard-delete: remove the file from disk
+            writer.delete(eid, soft=False)
+            purged.append({"id": eid, "name": name})
+
+        logger.info(f"[AethvionDB] purge-deleted: permanently removed {len(purged)} entities")
+        return {"purged": len(purged), "entities": purged}
 
     return await asyncio.to_thread(_run)
 

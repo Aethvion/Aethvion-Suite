@@ -4521,6 +4521,42 @@
     color: #94a3b8;
 }
 
+/* Deleted files chip */
+.adb-val-chip-del {
+    background: rgba(239, 68, 68, 0.07);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+.adb-val-issue-badge-del {
+    background: rgba(239, 68, 68, 0.07);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+/* Deleted files issue group */
+.adb-val-issue-group-del > .adb-val-issue-header {
+    color: #f87171;
+}
+.adb-val-issue-group-del > .adb-val-issue-header i.fa-trash {
+    color: #b91c1c;
+}
+
+/* Deleted entity rows (non-clickable — no action to take per-entity) */
+.adb-val-del-entity {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.28rem 0.5rem;
+    border-radius: 5px;
+    opacity: 0.7;
+}
+.adb-val-del-name {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
 /* Orphan stub issue group */
 .adb-val-issue-group-orphan > .adb-val-issue-header {
     color: #94a3b8;
