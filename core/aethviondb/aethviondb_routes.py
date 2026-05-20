@@ -18,6 +18,7 @@ import asyncio
 import json
 import re
 import shutil
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -32,6 +33,11 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/aethviondb", tags=["aethviondb"])
 
 _SAFE_DB_RE = re.compile(r"^[a-zA-Z0-9_\-]{1,64}$")
+
+# Shared NameIndex instances per database path — prevents TOCTOU duplicates
+# when concurrent requests both attempt to create the same entity name.
+_INDEX_CACHE: dict[str, Any] = {}
+_INDEX_CACHE_LOCK = threading.Lock()
 
 
 # ── Database resolution ───────────────────────────────────────────────────────
@@ -49,16 +55,27 @@ def _db_root(db: str = "default", path: Optional[str] = None) -> Path:
     return resolve_db_root(db)
 
 
-def _get_writer(db: str = "default", path: Optional[str] = None):
-    from .entity_writer import EntityWriter
-    root = _db_root(db, path)
-    return EntityWriter(entities_dir=root / "entities")
-
-
 def _get_index(db: str = "default", path: Optional[str] = None):
+    """Return the shared NameIndex singleton for this database path.
+
+    A single instance is cached per resolved root path so that all concurrent
+    requests share the same threading.Lock — making get_or_create truly atomic
+    across threads and preventing duplicate-entity races.
+    """
     from .name_index import NameIndex
     root = _db_root(db, path)
-    return NameIndex(index_path=root / "name_index.json")
+    key = str(root)
+    with _INDEX_CACHE_LOCK:
+        if key not in _INDEX_CACHE:
+            _INDEX_CACHE[key] = NameIndex(index_path=root / "name_index.json")
+        return _INDEX_CACHE[key]
+
+
+def _get_writer(db: str = "default", path: Optional[str] = None):
+    """Return an EntityWriter wired to the shared NameIndex for this database."""
+    from .entity_writer import EntityWriter
+    root = _db_root(db, path)
+    return EntityWriter(entities_dir=root / "entities", index=_get_index(db, path))
 
 
 def _get_validator(db: str = "default", path: Optional[str] = None):
@@ -824,6 +841,143 @@ async def fix_status_mismatches(
             fixed.append({"id": entity["id"], "name": entity.get("name", entity["id"])})
     logger.info(f"[AethvionDB] fix-status-mismatches: promoted {len(fixed)} entities to active")
     return {"fixed": len(fixed), "entities": fixed}
+
+
+class _DuplicateFixBody(BaseModel):
+    primary_id:  str
+    remove_ids:  list[str]
+    merge:       bool = True   # copy content from losers into winner before removing
+
+
+@router.post("/validate/fix-duplicates")
+async def fix_duplicates(
+    body: _DuplicateFixBody,
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """
+    Resolve a duplicate-entity cluster.
+
+    1. Optionally merge content from ``remove_ids`` entities into ``primary_id``.
+    2. Rewrite every relation / timeline reference that points at a removed entity
+       to point at the primary instead.
+    3. Remap every removed entity's name and aliases in the NameIndex to the
+       primary ID so future look-ups still resolve correctly.
+    4. Soft-delete each removed entity.
+    """
+    def _run():
+        writer = _get_writer(db, path)
+        index  = _get_index(db, path)
+        remove_set = set(body.remove_ids)
+
+        primary = writer.get(body.primary_id)
+        if not primary:
+            raise HTTPException(404, f"Primary entity {body.primary_id!r} not found")
+
+        merged_count = 0
+
+        # ── 1. Merge content from losers into winner ──────────────────────────
+        if body.merge:
+            for rid in body.remove_ids:
+                removed = writer.get(rid)
+                if not removed:
+                    continue
+
+                r_sections = removed.get("sections", {})
+                p_sections = primary.get("sections", {})
+                r_core     = r_sections.get("core", {})
+                p_core     = p_sections.get("core", {})
+
+                mutations: dict[str, Any] = {"sections": {}}
+
+                # Summary — take remove's if primary is empty
+                if not p_core.get("summary") and r_core.get("summary"):
+                    mutations["sections"].setdefault("core", {})["summary"] = r_core["summary"]
+
+                # Aliases — add remove entity's primary name + its aliases
+                p_aliases   = set(p_core.get("aliases", []))
+                new_aliases = list(p_aliases)
+                for candidate in [removed.get("name", ""), *r_core.get("aliases", [])]:
+                    if candidate and candidate != primary.get("name") and candidate not in p_aliases:
+                        new_aliases.append(candidate)
+                        p_aliases.add(candidate)
+                if new_aliases != list(p_core.get("aliases", [])):
+                    mutations["sections"].setdefault("core", {})["aliases"] = new_aliases
+
+                # Timeline, relations, properties — writer.update deduplicates lists
+                for sec in ("timeline", "relations"):
+                    if r_sections.get(sec):
+                        mutations["sections"][sec] = r_sections[sec]
+                r_props = r_sections.get("properties") or {}
+                p_props = p_sections.get("properties") or {}
+                new_props = {k: v for k, v in r_props.items() if k not in p_props}
+                if new_props:
+                    mutations["sections"]["properties"] = new_props
+
+                if mutations["sections"]:
+                    primary = writer.update(body.primary_id, mutations)
+                    merged_count += 1
+
+        # ── 2. Rewrite references in every other entity ───────────────────────
+        ref_updates = 0
+        for entity in writer.list_all(include_deleted=True):
+            eid = entity["id"]
+            if eid == body.primary_id or eid in remove_set:
+                continue
+
+            sections   = entity.get("sections", {})
+            changed    = False
+            new_rels   = []
+
+            for rel in sections.get("relations", []):
+                if isinstance(rel, dict) and rel.get("target_id") in remove_set:
+                    rel     = {**rel, "target_id": body.primary_id}
+                    changed = True
+                new_rels.append(rel)
+
+            new_timeline = []
+            for ev in sections.get("timeline", []):
+                if isinstance(ev, dict):
+                    old_refs = ev.get("ref_ids", [])
+                    new_refs = [body.primary_id if r in remove_set else r for r in old_refs]
+                    if new_refs != old_refs:
+                        ev      = {**ev, "ref_ids": new_refs}
+                        changed = True
+                new_timeline.append(ev)
+
+            if changed:
+                mutations = {"sections": {}}
+                if new_rels     != sections.get("relations", []):
+                    mutations["sections"]["relations"] = new_rels
+                if new_timeline != sections.get("timeline", []):
+                    mutations["sections"]["timeline"]  = new_timeline
+                writer.update(eid, mutations, merge_sections=False)
+                ref_updates += 1
+
+        # ── 3. Remap NameIndex entries & soft-delete losers ───────────────────
+        for rid in body.remove_ids:
+            removed = writer.get(rid)
+            if removed:
+                r_name    = removed.get("name", "")
+                r_aliases = removed.get("sections", {}).get("core", {}).get("aliases", [])
+                if r_name:
+                    index.register(r_name, body.primary_id)
+                if r_aliases:
+                    index.register_aliases(body.primary_id, r_aliases)
+            writer.delete(rid, soft=True)
+
+        logger.info(
+            f"[AethvionDB] fix-duplicates: kept={body.primary_id} "
+            f"removed={body.remove_ids} merged={merged_count} refs={ref_updates}"
+        )
+        return {
+            "primary_id":  body.primary_id,
+            "removed":     body.remove_ids,
+            "merged":      merged_count,
+            "ref_updates": ref_updates,
+        }
+
+    return await asyncio.to_thread(_run)
 
 
 @router.get("/validate/{entity_id}")

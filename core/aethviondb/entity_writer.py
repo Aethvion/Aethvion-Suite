@@ -119,15 +119,23 @@ class EntityWriter:
         Returns (entity_dict, was_created).
         was_created=False means the entity already existed in the index.
         """
-        # Check for existing
-        existing_id = self._index.get(name)
-        if existing_id and self.exists(existing_id):
-            logger.debug(f"[EntityWriter] '{name}' already exists as {existing_id}")
-            return self.get(existing_id), False  # type: ignore[return-value]
+        # Atomically claim the name — prevents duplicates under concurrent writes.
+        # get_or_create holds the NameIndex lock across both the check and the
+        # registration, so two threads racing on the same name will only create
+        # one entity: the second caller gets was_new=False and returns early.
+        candidate_id = _new_id()
+        entity_id, was_new = self._index.get_or_create(name, candidate_id)
 
-        # Generate ID and register in index first
-        entity_id = _new_id()
-        self._index.register(name, entity_id)
+        if not was_new:
+            if self.exists(entity_id):
+                logger.debug(f"[EntityWriter] '{name}' already exists as {entity_id}")
+                return self.get(entity_id), False  # type: ignore[return-value]
+            # Edge case: index entry points to a missing file — fall through and
+            # recreate the file under the already-registered entity_id.
+            logger.warning(
+                f"[EntityWriter] Index entry for '{name}' → {entity_id} exists "
+                "but file is missing; recreating."
+            )
 
         entity = make_empty(name, entity_type, source, entity_id)
 

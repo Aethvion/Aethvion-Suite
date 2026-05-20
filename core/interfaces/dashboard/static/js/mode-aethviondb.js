@@ -148,6 +148,7 @@
 
     function _showValidation() {
         _hide('adb-explorer-header');
+        _hide('adb-bulk-bar');
         _hide('adb-list-pane');
         _hide('adb-entity-detail');
         _hide('adb-deepen-preview');
@@ -2500,29 +2501,59 @@
             const data = await res.json();
             _showValidation();
 
-            const mismatches = data.stub_mismatches || [];
-            const failed     = data.failed_ids      || [];
+            const mismatches       = data.stub_mismatches       || [];
+            const dupGroups        = data.duplicate_groups       || [];
+            const errEntities      = data.entities_with_errors   || [];
+            const warnSummary      = data.warning_summary        || [];
+            const autoGroups       = dupGroups.filter(g => g.action === 'auto');
+            const stubDupGroups    = dupGroups.filter(g => g.action === 'stub_auto');
 
-            // ── Summary chips ────────────────────────────────────────────────
+            // ── Control panel (overview + fix toggles) ───────────────────────
             const sumEl = _el('adb-val-summary');
             if (sumEl) {
-                const mmChip = mismatches.length
-                    ? `<span class="adb-val-chip adb-val-chip-warn">
-                           <i class="fas fa-tag"></i> ${mismatches.length} status mismatch${mismatches.length !== 1 ? 'es' : ''}
-                       </span>`
-                    : '';
+                const chips = [
+                    { icon: 'fa-check-circle',         cls: 'ok',   val: data.clean ?? 0,          label: 'clean' },
+                    { icon: 'fa-exclamation-circle',   cls: 'err',  val: data.with_errors ?? 0,    label: 'with errors' },
+                    { icon: 'fa-triangle-exclamation', cls: 'warn', val: data.total_warnings ?? 0, label: 'warnings' },
+                    ...(dupGroups.length  ? [{ icon: 'fa-copy', cls: 'dup',  val: dupGroups.length,  label: `duplicate group${dupGroups.length !== 1 ? 's' : ''}` }] : []),
+                    ...(mismatches.length ? [{ icon: 'fa-tag',  cls: 'warn', val: mismatches.length, label: `status mismatch${mismatches.length !== 1 ? 'es' : ''}` }] : []),
+                ];
+
+                // Build fix-toggle rows — one per auto-fixable action type
+                const fixRows = [];
+                if (autoGroups.length)    fixRows.push({ id: 'adb-vfix-dups',      label: 'Auto-fix clear-winner duplicates', desc: 'keeps the active entity, removes stubs, updates all refs',   count: autoGroups.length });
+                if (stubDupGroups.length) fixRows.push({ id: 'adb-vfix-stub-dups', label: 'Fix duplicate stubs',              desc: 'removes lower-ranked stub, updates referenced IDs',           count: stubDupGroups.length });
+                if (mismatches.length)    fixRows.push({ id: 'adb-vfix-mm',        label: 'Promote status mismatches',        desc: 'stub with non-empty summary → mark as active',                count: mismatches.length });
+
+                const fixBox = fixRows.length ? `
+                    <div class="adb-val-fixbox">
+                        <div class="adb-val-fixbox-title"><i class="fas fa-bolt"></i> Quick Fix</div>
+                        <div class="adb-val-fixbox-rows">
+                            ${fixRows.map(r => `
+                                <label class="adb-val-fixrow">
+                                    <input type="checkbox" id="${r.id}" class="adb-val-fixtick" checked>
+                                    <span class="adb-val-fixrow-label">${r.label}</span>
+                                    <em class="adb-val-fixrow-desc">${r.desc}</em>
+                                    <span class="adb-val-fixrow-cnt">${r.count}</span>
+                                </label>`).join('')}
+                        </div>
+                        <button id="adb-val-fix-all-btn" class="adb-btn adb-btn-accent adb-btn-sm">
+                            <i class="fas fa-wand-sparkles"></i> Fix Selected
+                        </button>
+                    </div>` : '';
+
                 sumEl.innerHTML = `
-                    <div class="adb-val-chips">
-                        <span class="adb-val-chip adb-val-chip-ok">
-                            <i class="fas fa-check-circle"></i> ${data.clean ?? 0} clean
-                        </span>
-                        <span class="adb-val-chip adb-val-chip-err">
-                            <i class="fas fa-exclamation-circle"></i> ${data.with_errors ?? 0} with errors
-                        </span>
-                        <span class="adb-val-chip">
-                            <i class="fas fa-triangle-exclamation"></i> ${data.total_warnings ?? 0} warnings
-                        </span>
-                        ${mmChip}
+                    <div class="adb-val-ctrl">
+                        <div class="adb-val-summary-row">
+                            <div class="adb-val-chips">
+                                ${chips.map(o =>
+                                    `<span class="adb-val-chip adb-val-chip-${o.cls}">
+                                        <i class="fas ${o.icon}"></i> <strong>${o.val}</strong>&nbsp;${o.label}
+                                     </span>`
+                                ).join('')}
+                            </div>
+                        </div>
+                        ${fixBox}
                     </div>`;
             }
 
@@ -2530,79 +2561,229 @@
             const issueEl = _el('adb-val-issues');
             if (!issueEl) return;
 
-            if (!mismatches.length && !failed.length) {
+            const hasAnything = dupGroups.length || errEntities.length || warnSummary.length || mismatches.length;
+            if (!hasAnything) {
                 issueEl.innerHTML = '<div class="adb-empty-hint"><i class="fas fa-check-circle"></i> All entities passed checks.</div>';
                 return;
             }
 
+            // ── Helpers shared by sections ───────────────────────────────────
+            const _statusBadge = s => {
+                const cls = s === 'active' ? 'adb-val-dup-badge-active'
+                          : s === 'stub'   ? 'adb-val-dup-badge-stub'
+                          :                  'adb-val-dup-badge-other';
+                return `<span class="adb-val-dup-badge ${cls}">${s}</span>`;
+            };
+            const _statLine = e => {
+                const parts = [];
+                if (e.relation_count) parts.push(`${e.relation_count} rel`);
+                if (e.timeline_count) parts.push(`${e.timeline_count} events`);
+                if (e.alias_count)    parts.push(`${e.alias_count} aliases`);
+                parts.push(`v${e.version}`);
+                return parts.join(' · ');
+            };
+
             let html = '';
 
-            // Status-mismatch group with Fix All button
-            if (mismatches.length) {
+            // ── 1. Duplicate groups ──────────────────────────────────────────
+            if (dupGroups.length) {
                 html += `
-                <div class="adb-val-mm-group">
+                <div class="adb-val-dup-group">
                     <div class="adb-val-mm-header">
                         <div class="adb-val-mm-title">
-                            <i class="fas fa-tag"></i>
-                            Status Mismatches
-                            <span class="adb-val-mm-badge">${mismatches.length}</span>
+                            <i class="fas fa-copy"></i>
+                            Duplicate Entities
+                            <span class="adb-val-mm-badge adb-val-mm-badge-dup">${dupGroups.length}</span>
                         </div>
-                        <button id="adb-val-fix-btn" class="adb-btn adb-btn-accent adb-btn-sm">
-                            <i class="fas fa-wand-sparkles"></i> Fix All
-                        </button>
                     </div>
-                    <p class="adb-val-mm-desc">
-                        These entities have a summary but are still marked as <code>stub</code>.
-                        Their status should be <code>active</code>.
-                    </p>
-                    <div class="adb-val-mm-list">
-                        ${mismatches.map(m => `
-                            <div class="adb-val-mm-item" data-id="${m.id}" role="button" tabindex="0">
-                                <i class="fas fa-circle-dot adb-val-mm-dot"></i>
-                                <span class="adb-val-mm-name">${m.name}</span>
-                                <code class="adb-val-mm-id">${m.id}</code>
+                    <p class="adb-val-mm-desc">Entities sharing the same name or alias. The recommended action is pre-selected — review then confirm.</p>
+                    <div class="adb-val-dup-clusters">
+                        ${dupGroups.map((g, gi) => {
+                            const primary = g.recommended_primary;
+                            const isAuto  = g.action === 'auto' || g.action === 'stub_auto';
+                            const entityRows = (g.entities || []).map((e, ei) => {
+                                const isWinner = e.id === primary;
+                                return `
+                                <div class="adb-val-dup-entity${isWinner ? ' adb-val-dup-winner' : ''}" data-id="${e.id}" role="button" tabindex="0" title="Open entity">
+                                    <div class="adb-val-dup-entity-top">
+                                        ${_statusBadge(e.status)}
+                                        <span class="adb-val-dup-entity-name">${e.name || e.id}</span>
+                                        <code class="adb-val-mm-id">${e.id}</code>
+                                        ${isWinner ? '<span class="adb-val-dup-keep-tag">keep</span>' : '<span class="adb-val-dup-remove-tag">remove</span>'}
+                                    </div>
+                                    ${e.has_summary ? `<div class="adb-val-dup-entity-summary">${e.summary}${e.summary && e.summary.length >= 120 ? '…' : ''}</div>` : ''}
+                                    <div class="adb-val-dup-entity-meta">${_statLine(e)}</div>
+                                </div>`;
+                            }).join('');
+                            const actionBtns = isAuto
+                                ? `<button class="adb-btn adb-btn-sm adb-val-dup-fix-btn adb-val-dup-auto-btn"
+                                           data-gi="${gi}" data-primary="${primary}" data-remove="${(g.recommended_remove||[]).join(',')}" data-merge="true">
+                                       <i class="fas fa-wand-sparkles"></i> Auto-fix
+                                   </button>`
+                                : `<button class="adb-btn adb-btn-sm adb-val-dup-fix-btn adb-val-dup-merge-btn"
+                                           data-gi="${gi}" data-primary="${primary}" data-remove="${(g.recommended_remove||[]).join(',')}" data-merge="true">
+                                       <i class="fas fa-object-group"></i> Merge
+                                   </button>
+                                   ${(g.entities||[]).map((e,ei) => {
+                                       const others = (g.entities||[]).filter(x=>x.id!==e.id).map(x=>x.id).join(',');
+                                       return `<button class="adb-btn adb-btn-sm adb-btn-ghost adb-val-dup-fix-btn adb-val-dup-keep-btn"
+                                                       data-gi="${gi}" data-primary="${e.id}" data-remove="${others}" data-merge="false"
+                                                       title="Keep only ${e.name||e.id}">Keep ${ei===0?'A':ei===1?'B':'C'}</button>`;
+                                   }).join('')}`;
+                            return `
+                            <div class="adb-val-dup-cluster" data-gi="${gi}">
+                                <div class="adb-val-dup-label">
+                                    <i class="fas fa-link"></i>
+                                    <span class="adb-val-dup-norm">"${g.norm_name}"</span>
+                                    ${isAuto
+                                        ? '<span class="adb-val-dup-auto-tag"><i class="fas fa-bolt"></i> clear winner</span>'
+                                        : '<span class="adb-val-dup-choose-tag"><i class="fas fa-scale-balanced"></i> needs review</span>'}
+                                </div>
+                                <div class="adb-val-dup-entities">${entityRows}</div>
+                                <div class="adb-val-dup-actions">${actionBtns}</div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }
+
+            // ── 2. Integrity errors ──────────────────────────────────────────
+            if (errEntities.length) {
+                if (dupGroups.length) html += '<div class="adb-val-section-sep"></div>';
+                html += `
+                <div class="adb-val-issue-group adb-val-issue-group-err">
+                    <div class="adb-val-issue-header">
+                        <i class="fas fa-exclamation-circle"></i>
+                        Integrity Errors
+                        <span class="adb-val-issue-badge adb-val-issue-badge-err">${errEntities.length}</span>
+                    </div>
+                    <div class="adb-val-issue-list">
+                        ${errEntities.map(e => `
+                            <div class="adb-val-err-entity" data-id="${e.id}" role="button" tabindex="0">
+                                <div class="adb-val-err-entity-top">
+                                    <span class="adb-val-err-entity-name">${e.name || e.id}</span>
+                                    <code class="adb-val-mm-id">${e.id}</code>
+                                </div>
+                                ${(e.issues||[]).map(i =>
+                                    `<div class="adb-val-err-msg">
+                                        <i class="fas fa-xmark"></i>
+                                        <span class="adb-val-err-check">${i.check}</span>
+                                        ${i.message}
+                                     </div>`
+                                ).join('')}
                             </div>`).join('')}
                     </div>
                 </div>`;
             }
 
-            // Regular integrity issues
-            if (failed.length) {
-                if (mismatches.length) html += '<div class="adb-val-section-sep"></div>';
-                html += `<div class="adb-val-section-label">Integrity Issues</div>`;
-                html += failed.map(id =>
-                    `<div class="adb-val-item" data-id="${id}" role="button" tabindex="0">
-                        <i class="fas fa-exclamation-triangle"></i> <code>${id}</code>
-                    </div>`).join('');
+            // ── 3. Warnings summary (grouped by check type) ──────────────────
+            if (warnSummary.length) {
+                if (dupGroups.length || errEntities.length) html += '<div class="adb-val-section-sep"></div>';
+                html += `
+                <div class="adb-val-issue-group adb-val-issue-group-warn">
+                    <div class="adb-val-issue-header">
+                        <i class="fas fa-triangle-exclamation"></i>
+                        Warnings
+                        <span class="adb-val-issue-badge adb-val-issue-badge-warn">${data.total_warnings ?? 0} total</span>
+                    </div>
+                    <div class="adb-val-warn-list">
+                        ${warnSummary.map(w => `
+                            <div class="adb-val-warn-row">
+                                <span class="adb-val-warn-cnt">${w.count}</span>
+                                <span class="adb-val-warn-label">${w.label}</span>
+                                <span class="adb-val-warn-check">${w.check}</span>
+                            </div>`).join('')}
+                    </div>
+                </div>`;
             }
 
             issueEl.innerHTML = html;
 
-            // Wire mismatch item clicks → open entity
-            issueEl.querySelectorAll('.adb-val-mm-item[data-id]').forEach(item => {
-                item.addEventListener('click', () => _loadEntity(item.dataset.id));
-                item.addEventListener('keydown', e => { if (e.key === 'Enter') _loadEntity(item.dataset.id); });
+            // Wire: dup entity rows → open entity
+            issueEl.querySelectorAll('.adb-val-dup-entity[data-id]').forEach(row => {
+                row.addEventListener('click', () => _loadEntity(row.dataset.id));
+                row.addEventListener('keydown', e => { if (e.key === 'Enter') _loadEntity(row.dataset.id); });
             });
 
-            // Wire regular issue clicks → open entity
-            issueEl.querySelectorAll('.adb-val-item[data-id]').forEach(item => {
-                item.addEventListener('click', () => _loadEntity(item.dataset.id));
-                item.addEventListener('keydown', e => { if (e.key === 'Enter') _loadEntity(item.dataset.id); });
+            // Wire: dup fix buttons (auto-fix / merge / keep-X)
+            issueEl.querySelectorAll('.adb-val-dup-fix-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const primaryId = btn.dataset.primary;
+                    const removeIds = btn.dataset.remove ? btn.dataset.remove.split(',').filter(Boolean) : [];
+                    const doMerge   = btn.dataset.merge !== 'false';
+                    const clusterEl = btn.closest('.adb-val-dup-cluster');
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+                    try {
+                        const res = await fetch(`${API}/validate/fix-duplicates?${_dbParam()}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ primary_id: primaryId, remove_ids: removeIds, merge: doMerge }),
+                        });
+                        if (!res.ok) throw new Error(await res.text());
+                        const d = await res.json();
+                        _toast(`${doMerge ? 'Merged' : 'Resolved'}: kept ${primaryId}, removed ${d.removed?.length??0}, rewired ${d.ref_updates??0} refs`, 'success');
+                        if (clusterEl) {
+                            clusterEl.style.opacity = '0.4';
+                            clusterEl.style.pointerEvents = 'none';
+                            clusterEl.querySelector('.adb-val-dup-actions').innerHTML =
+                                '<span class="adb-val-dup-resolved"><i class="fas fa-check"></i> Resolved</span>';
+                        }
+                    } catch (err) {
+                        _toast(`Fix failed: ${err.message}`, 'error');
+                        btn.disabled = false;
+                        btn.innerHTML = btn.classList.contains('adb-val-dup-auto-btn') ? '<i class="fas fa-wand-sparkles"></i> Auto-fix'
+                                      : btn.classList.contains('adb-val-dup-merge-btn') ? '<i class="fas fa-object-group"></i> Merge'
+                                      : btn.textContent.trim();
+                    }
+                });
             });
 
-            // Fix All button — promotes all mismatched entities, then re-runs validation
-            _el('adb-val-fix-btn')?.addEventListener('click', async () => {
-                const btn = _el('adb-val-fix-btn');
-                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Fixing…'; }
+            // Wire: error entity rows → open entity
+            issueEl.querySelectorAll('.adb-val-err-entity[data-id]').forEach(row => {
+                row.addEventListener('click', () => _loadEntity(row.dataset.id));
+                row.addEventListener('keydown', e => { if (e.key === 'Enter') _loadEntity(row.dataset.id); });
+            });
+
+            // Wire: Fix Selected button (control panel)
+            _el('adb-val-fix-all-btn')?.addEventListener('click', async () => {
+                const btn      = _el('adb-val-fix-all-btn');
+                const fixDups     = _el('adb-vfix-dups')?.checked      ?? false;
+                const fixStubDups = _el('adb-vfix-stub-dups')?.checked ?? false;
+                const fixMm       = _el('adb-vfix-mm')?.checked        ?? false;
+                if (!fixDups && !fixStubDups && !fixMm) { _toast('Nothing selected to fix', 'info'); return; }
+                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Working…'; }
+                let dupFixed = 0, mmFixed = 0;
                 try {
-                    const fixRes  = await fetch(`${API}/validate/fix-status-mismatches?${_dbParam()}`, { method: 'POST' });
-                    const fixData = await fixRes.json();
-                    const n = fixData.fixed ?? 0;
-                    _toast(`Promoted ${n} ${n === 1 ? 'entity' : 'entities'} to active`, 'success');
-                    await _validateAll(); // refresh the view
-                } catch {
-                    _toast('Fix failed', 'error');
-                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Fix All'; }
+                    if (fixDups || fixStubDups) {
+                        const groupsToFix = [
+                            ...(fixDups     ? autoGroups    : []),
+                            ...(fixStubDups ? stubDupGroups : []),
+                        ];
+                        for (const g of groupsToFix) {
+                            const removeIds = g.recommended_remove || [];
+                            if (!removeIds.length) continue;
+                            const r = await fetch(`${API}/validate/fix-duplicates?${_dbParam()}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ primary_id: g.recommended_primary, remove_ids: removeIds, merge: true }),
+                            });
+                            if (r.ok) dupFixed++;
+                        }
+                    }
+                    if (fixMm && mismatches.length) {
+                        const mmRes  = await fetch(`${API}/validate/fix-status-mismatches?${_dbParam()}`, { method: 'POST' });
+                        const mmData = await mmRes.json();
+                        mmFixed = mmData.fixed ?? 0;
+                    }
+                    const parts = [];
+                    if (dupFixed) parts.push(`fixed ${dupFixed} duplicate group${dupFixed!==1?'s':''}`);
+                    if (mmFixed)  parts.push(`promoted ${mmFixed} stub${mmFixed!==1?'s':''}`);
+                    _toast(parts.join(', ') || 'Done', 'success');
+                    await _validateAll();
+                } catch (err) {
+                    _toast(`Fix failed: ${err.message}`, 'error');
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Fix Selected'; }
                 }
             });
 

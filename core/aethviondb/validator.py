@@ -22,6 +22,7 @@ Checks
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
@@ -78,6 +79,16 @@ class ValidationResult:
                 for i in self.issues
             ],
         }
+
+
+# ── Name helpers ─────────────────────────────────────────────────────────────
+
+_WHITESPACE = re.compile(r"\s+")
+
+
+def _normalize_name(name: str) -> str:
+    """Canonical form for duplicate comparison — matches NameIndex normalization."""
+    return _WHITESPACE.sub(" ", name.strip()).lower()
 
 
 # ── Date helpers ──────────────────────────────────────────────────────────────
@@ -317,14 +328,15 @@ def _check_type_consistency(entity: dict[str, Any]) -> list[Issue]:
     props   = entity["sections"].get("properties", {})
     summary = entity["sections"]["core"].get("summary", "")
 
-    if not summary:
+    # Only warn about missing summary for active entities; stubs are expected to be incomplete.
+    if not summary and entity.get("status") == "active":
         issues.append(Issue(
             Severity.WARNING, "type_consistency",
             "core.summary is empty — entity has no description",
             entity["id"], "sections.core.summary",
         ))
 
-    if etype == "person":
+    if etype == "person" and entity.get("status") == "active":
         if not props.get("birth_date") and not props.get("birth_year") and not props.get("born"):
             issues.append(Issue(
                 Severity.INFO, "type_consistency",
@@ -355,6 +367,156 @@ def _check_type_consistency(entity: dict[str, Any]) -> list[Issue]:
             ))
 
     return issues
+
+
+# ── Cross-entity duplicate detection ─────────────────────────────────────────
+
+def _entity_score(entity: dict[str, Any]) -> int:
+    """
+    Content-richness score used to pick the preferred entity in a duplicate
+    cluster.  Higher = more developed; that entity becomes the recommended
+    primary (the one we keep).
+    """
+    score = {"active": 20, "stub": 5, "deleted": 0}.get(entity.get("status", "stub"), 5)
+    sections = entity.get("sections", {})
+    core     = sections.get("core", {})
+    summary  = core.get("summary", "") or ""
+    score += min(len(summary) // 50, 10)               # up to +10 for long summary
+    score += min(len(core.get("aliases", [])), 5)
+    score += min(len(sections.get("timeline",  [])) * 2, 20)
+    score += min(len(sections.get("relations", [])) * 2, 20)
+    score += min(len(sections.get("properties", {}) or {}), 10)
+    score += min(entity.get("version", 1), 10)         # more edit rounds = more developed
+    return score
+
+
+def _collect_duplicate_groups(
+    entities: list[dict[str, Any]],
+) -> tuple[dict[str, list[Issue]], list[dict[str, Any]]]:
+    """
+    Scan all entities for name / alias collisions.
+
+    Two entities are considered duplicates when their primary name *or* any
+    alias normalises to the same string.
+
+    Returns
+    -------
+    issues_by_id
+        entity_id → [Issue] for every entity that participates in at least one
+        duplicate group.  Each Issue carries Severity.ERROR so the entity shows
+        up in ``failed_ids`` in the summary.
+    groups
+        List of dicts suitable for the API response.  Each entry:
+        ``{norm_name, ids, names, entities, recommended_primary,
+           recommended_remove, action}``
+        where ``action`` is ``"auto"`` when there is a clear winner (e.g. one
+        active + N stubs) or ``"choose"`` when human judgment is needed.
+        Each entry in ``entities`` is sorted by score descending.
+    """
+    # Aliases shorter than this many characters are element symbols / scientific
+    # abbreviations (e.g. "N", "Sm", "Fe") that cause false-positive duplicate
+    # matches.  Primary names are always checked regardless of length.
+    _MIN_ALIAS_LEN = 4
+
+    # Build normalised-name → [entity_id, ...] map (primary name + all aliases)
+    name_to_ids: dict[str, list[str]] = defaultdict(list)
+    id_to_entity: dict[str, dict[str, Any]] = {}
+
+    for entity in entities:
+        eid          = entity["id"]
+        id_to_entity[eid] = entity
+        primary_name = entity.get("name", "")
+        aliases      = entity["sections"]["core"].get("aliases", [])
+
+        for raw in [primary_name, *aliases]:
+            if not raw:
+                continue
+            key       = _normalize_name(raw)
+            is_alias  = (raw != primary_name)
+            # Short aliases (< _MIN_ALIAS_LEN chars after normalisation) are
+            # abbreviations / symbols that match unrelated entities.
+            if is_alias and len(key) < _MIN_ALIAS_LEN:
+                continue
+            name_to_ids[key].append(eid)
+
+    issues_by_id: dict[str, list[Issue]] = {}
+    groups: list[dict[str, Any]] = []
+    # Deduplicate: same set of entity IDs may match via multiple shared names.
+    seen_clusters: set[frozenset] = set()
+
+    for norm_name, ids in name_to_ids.items():
+        unique_ids = list(dict.fromkeys(ids))   # preserve first-seen order
+        if len(unique_ids) < 2:
+            continue
+        cluster_key = frozenset(unique_ids)
+        if cluster_key in seen_clusters:
+            continue
+        seen_clusters.add(cluster_key)
+
+        # Sort by richness score so the recommended primary is first
+        scored_ids = sorted(unique_ids, key=lambda i: _entity_score(id_to_entity[i]), reverse=True)
+        primary_id  = scored_ids[0]
+        remove_ids  = scored_ids[1:]
+
+        # Build per-entity summary cards (rich enough to drive UI decisions)
+        entity_cards: list[dict[str, Any]] = []
+        for eid in scored_ids:
+            e        = id_to_entity[eid]
+            sections = e.get("sections", {})
+            core     = sections.get("core", {})
+            summary  = (core.get("summary") or "")[:120]
+            entity_cards.append({
+                "id":             eid,
+                "name":           e.get("name", eid),
+                "status":         e.get("status", "stub"),
+                "summary":        summary,
+                "has_summary":    bool(core.get("summary")),
+                "alias_count":    len(core.get("aliases", [])),
+                "relation_count": len(sections.get("relations", [])),
+                "timeline_count": len(sections.get("timeline", [])),
+                "version":        e.get("version", 1),
+                "score":          _entity_score(e),
+            })
+
+        # action:
+        #   "auto"      — clear winner: at least one active entity, rest are stubs
+        #   "stub_auto" — all entities are stubs; safe to auto-remove lower-scored ones
+        #   "choose"    — all active or mixed non-stub; needs human judgment
+        statuses   = [c["status"] for c in entity_cards]
+        has_active = "active" in statuses
+        all_active = all(s == "active" for s in statuses)
+        all_stubs  = all(s == "stub"   for s in statuses)
+        action = ("auto"      if (has_active and not all_active)
+             else "stub_auto" if all_stubs
+             else "choose")
+
+        groups.append({
+            "norm_name":          norm_name,
+            # Legacy flat lists kept for backward compatibility
+            "ids":                unique_ids,
+            "names":              [id_to_entity[i].get("name", i) for i in unique_ids],
+            # Rich resolution data
+            "entities":           entity_cards,
+            "recommended_primary": primary_id,
+            "recommended_remove":  remove_ids,
+            "action":             action,
+        })
+
+        for eid in unique_ids:
+            others_str = ", ".join(
+                f"{id_to_entity.get(i, {}).get('name', i)} ({i})"
+                for i in unique_ids
+                if i != eid
+            )
+            issues_by_id.setdefault(eid, []).append(Issue(
+                Severity.ERROR,
+                "duplicate_entity",
+                f"Name/alias {norm_name!r} is shared with: {others_str}",
+                eid,
+                "name",
+            ))
+
+    return issues_by_id, groups
 
 
 # ── Main Validator class ──────────────────────────────────────────────────────
@@ -406,38 +568,99 @@ class Validator:
         return result
 
     def validate_all(self, include_deleted: bool = False) -> list[ValidationResult]:
-        """Run all checks on every entity in the store."""
+        """Run all checks on every entity in the store (including duplicate detection)."""
         entities = self._writer.list_all(include_deleted=include_deleted)
-        results  = []
+        dup_issues, _ = _collect_duplicate_groups(entities)
+        results: list[ValidationResult] = []
         for entity in entities:
-            results.append(self.validate(entity["id"]))
+            r = self.validate(entity["id"])
+            # Duplicate issues are cross-entity so they can't be raised by the
+            # single-entity validate() path — inject them here at the front so
+            # they appear first in the issue list.
+            if entity["id"] in dup_issues:
+                r.issues = dup_issues[entity["id"]] + r.issues
+            results.append(r)
         return results
+
+    # Human-readable label for each check name (used in warning_summary)
+    _CHECK_LABELS: dict[str, str] = {
+        "type_consistency":    "Missing or incomplete descriptions",
+        "temporal":            "Timeline ordering issues",
+        "lifespan":            "Lifespan integrity issues",
+        "self_reference":      "Self-referencing relations",
+        "reference_integrity": "Broken entity references",
+        "containment_cycle":   "Containment cycles",
+        "status_mismatch":     "Status-summary mismatches",
+        "not_found":           "Missing entity files",
+        "duplicate_entity":    "Duplicate names / aliases",
+    }
 
     def summary(self) -> dict[str, Any]:
         """Return aggregate statistics for all entities."""
         entities = self._writer.list_all()
+
+        # Cross-entity duplicate detection (done once for all entities)
+        dup_issues, dup_groups = _collect_duplicate_groups(entities)
+        dup_ids = {eid for g in dup_groups for eid in g["ids"]}
+
         results: list[ValidationResult] = []
-        stub_mismatches: list[dict[str, str]] = []
+        stub_mismatches:       list[dict[str, str]]  = []
+        entities_with_errors:  list[dict[str, Any]]  = []
+        warning_counts:        dict[str, int]         = {}
 
         for entity in entities:
             r = self.validate(entity["id"])
+            if entity["id"] in dup_issues:
+                r.issues = dup_issues[entity["id"]] + r.issues
             results.append(r)
-            # Collect status-mismatch entities with their human-readable name
+
+            # Status-mismatch list (fixable via /validate/fix-status-mismatches)
             if entity.get("status") == "stub" and entity["sections"]["core"].get("summary"):
                 stub_mismatches.append({
                     "id":   entity["id"],
                     "name": entity.get("name", entity["id"]),
                 })
 
+            # Per-entity error detail — strip pure duplicate_entity issues since those
+            # already appear in the dedicated Duplicate Groups section.  Include every
+            # entity that has remaining real errors, even if it's also in a dup group.
+            real_errors = [i for i in r.errors if i.check != "duplicate_entity"]
+            if real_errors:
+                entities_with_errors.append({
+                    "id":     entity["id"],
+                    "name":   entity.get("name", entity["id"]),
+                    "issues": [
+                        {"check": i.check, "message": i.message}
+                        for i in real_errors
+                    ],
+                })
+
+            # Warning counts grouped by check name (for compact summary display)
+            for i in r.warnings:
+                warning_counts[i.check] = warning_counts.get(i.check, 0) + 1
+
         total_errors   = sum(len(r.errors)   for r in results)
         total_warnings = sum(len(r.warnings) for r in results)
         failed = [r.entity_id for r in results if not r.ok]
+
+        warning_summary = [
+            {
+                "check": check,
+                "count": count,
+                "label": self._CHECK_LABELS.get(check, check),
+            }
+            for check, count in sorted(warning_counts.items(), key=lambda x: -x[1])
+        ]
+
         return {
-            "total_entities":  len(results),
-            "clean":           sum(1 for r in results if r.ok),
-            "with_errors":     len(failed),
-            "total_errors":    total_errors,
-            "total_warnings":  total_warnings,
-            "failed_ids":      failed,
-            "stub_mismatches": stub_mismatches,   # fixable via /validate/fix-status-mismatches
+            "total_entities":       len(results),
+            "clean":                sum(1 for r in results if r.ok),
+            "with_errors":          len(failed),
+            "total_errors":         total_errors,
+            "total_warnings":       total_warnings,
+            "failed_ids":           failed,
+            "stub_mismatches":      stub_mismatches,      # fixable via /validate/fix-status-mismatches
+            "duplicate_groups":     dup_groups,            # each: {norm_name, ids, entities, …}
+            "entities_with_errors": entities_with_errors,  # non-dup entities with actual errors
+            "warning_summary":      warning_summary,       # [{check, count, label}] sorted by count
         }
