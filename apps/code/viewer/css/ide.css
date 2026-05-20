@@ -1136,9 +1136,11 @@ input:focus, textarea:focus { border-color: var(--accent); }
   background: rgba(100,116,139,0.15); border-color: #64748b; color: #94a3b8;
 }
 .exec-action-btn.skip:hover { background: rgba(100,116,139,0.25); }
-/* Auto-exec shield toggle */
+/* Auto-exec shield toggle & Auto-save toggle */
 #autoExecToggle.auto-exec-on  { color: #22c55e; }
 #autoExecToggle.auto-exec-off { color: #f59e0b; }
+#autoSaveToggle.auto-save-on  { color: #22c55e; }
+#autoSaveToggle.auto-save-off { color: var(--text-dim); }
 .exec-code {
   margin: 0;
   padding: 10px 12px;
@@ -1371,3 +1373,23 @@ input:focus, textarea:focus { border-color: var(--accent); }
   transition: background 0.15s;
 }
 .btn-save-ctx:hover { background: var(--accent-hover); }
+
+/* Problems list styling */
+.problem-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  transition: background 0.1s;
+}
+.problem-item:hover { background: var(--bg-hover); }
+.problem-item i { flex-shrink: 0; }
+.problem-item.problem-error i { color: var(--error); }
+.problem-item.problem-warn i { color: var(--warning); }
+.problem-item-msg { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.problem-item-loc { font-family: var(--font-code); color: var(--text-dim); font-size: 11px; }
+

@@ -27,6 +27,8 @@ const state = {
   editor:           null,
   moveTargetDir:    null,     // selected folder in move picker
   autoExec:         true,     // if false, python-exec blocks need manual approval
+  autoSave:         false,
+  problemsMap:      new Map(),
 };
 
 // ── Settings persistence (localStorage) ─────────────────────────────────────
@@ -35,6 +37,7 @@ function saveSettings() {
     localStorage.setItem('ide_settings', JSON.stringify({
       selectedModel:  state.selectedModel,
       autoExec:       state.autoExec,
+      autoSave:       state.autoSave,
       includeFile:    state.includeFile,
       filetreeW:      document.documentElement.style.getPropertyValue('--filetree-w') || '',
       aipanelW:       document.documentElement.style.getPropertyValue('--aipanel-w')  || '',
@@ -47,6 +50,7 @@ function loadSettings() {
     const s = JSON.parse(localStorage.getItem('ide_settings') || '{}');
     if (s.selectedModel) state.selectedModel = s.selectedModel;
     state.autoExec    = s.autoExec    !== false;
+    state.autoSave    = s.autoSave    === true;
     state.includeFile = s.includeFile === true;
     if (s.filetreeW) document.documentElement.style.setProperty('--filetree-w', s.filetreeW);
     if (s.aipanelW)  document.documentElement.style.setProperty('--aipanel-w',  s.aipanelW);
@@ -162,6 +166,116 @@ async function streamSSE(path, body, onChunk, signal = null) {
   return full;
 }
 
+// ── Debounce & Linting Helpers ────────────────────────────────────────────────
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+async function runSyntaxValidation(path) {
+  const model = state.monacoModels.get(path);
+  if (!model) return;
+  const tab = state.tabs.find(t => t.path === path);
+  if (!tab) return;
+  
+  const content = model.getValue();
+  try {
+    const data = await api('/api/code/validate', {
+      method: 'POST',
+      body: JSON.stringify({ code: content, path, language: tab.language }),
+    });
+    
+    const markers = [];
+    const problems = [];
+    
+    if (data.errors && data.errors.length > 0) {
+      data.errors.forEach(err => {
+        markers.push({
+          severity: window.monaco.MarkerSeverity.Error,
+          message: err.message,
+          startLineNumber: err.line,
+          startColumn: err.column,
+          endLineNumber: err.line,
+          endColumn: err.column + 2,
+        });
+        
+        problems.push({
+          name: tab.name,
+          line: err.line,
+          column: err.column,
+          message: err.message,
+          severity: err.severity,
+        });
+      });
+    }
+    
+    window.monaco.editor.setModelMarkers(model, 'syntax', markers);
+    if (problems.length > 0) {
+      state.problemsMap.set(path, problems);
+    } else {
+      state.problemsMap.delete(path);
+    }
+    updateProblemsPanel();
+  } catch (e) {
+    console.error('Validation failed', e);
+  }
+}
+
+function updateProblemsPanel() {
+  const container = $('problemsList');
+  if (!container) return;
+  
+  const allProblems = [];
+  for (const [path, list] of state.problemsMap.entries()) {
+    list.forEach(p => allProblems.push({ ...p, path }));
+  }
+  
+  if (!allProblems.length) {
+    container.innerHTML = '<span class="no-problems">No problems detected.</span>';
+    return;
+  }
+  
+  container.innerHTML = '';
+  allProblems.forEach(p => {
+    const el = document.createElement('div');
+    el.className = `problem-item problem-${p.severity}`;
+    el.innerHTML = `
+      <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>
+      <span class="problem-item-msg" title="${escHtml(p.message)}">${escHtml(p.message)}</span>
+      <span class="problem-item-loc">${escHtml(p.name)}:${p.line}:${p.column}</span>
+    `;
+    el.addEventListener('click', () => {
+      activateTab(p.path);
+      if (state.editor) {
+        state.editor.setPosition({ lineNumber: p.line, column: p.column });
+        state.editor.revealLineInCenter(p.line);
+        state.editor.focus();
+      }
+    });
+    container.appendChild(el);
+  });
+}
+
+const triggerValidation = debounce((path) => {
+  runSyntaxValidation(path);
+}, 600);
+
+const triggerAutoSave = debounce((path) => {
+  if (state.autoSave && state.activeTab === path) {
+    const tab = state.tabs.find(t => t.path === path);
+    if (tab && tab.dirty) {
+      saveActiveFile();
+    }
+  }
+}, 1500);
+
 // ── AI streaming state helpers ────────────────────────────────────────────────
 function _updateChatInputState() {
   const sendBtn = $('btnSendChat');
@@ -245,13 +359,21 @@ async function loadProviders() {
 // ── Project persistence ───────────────────────────────────────────────────────
 async function saveProjectState() {
   if (!state.workspace) return;
+  if (state.activeTab && state.editor) {
+    state.viewStates.set(state.activeTab, state.editor.saveViewState());
+  }
+  const viewStatesObj = {};
+  for (const [p, vs] of state.viewStates.entries()) {
+    if (vs) viewStatesObj[p] = vs;
+  }
   try {
     await api('/api/project', {
       method: 'POST',
       body: JSON.stringify({
-        workspace:  state.workspace,
-        open_tabs:  state.tabs.map(t => t.path),
-        active_tab: state.activeTab || null,
+        workspace:   state.workspace,
+        open_tabs:   state.tabs.map(t => t.path),
+        active_tab:  state.activeTab || null,
+        view_states: viewStatesObj,
       }),
     });
   } catch { /* silent — persistence is best-effort */ }
@@ -260,6 +382,11 @@ async function saveProjectState() {
 async function restoreProjectState(workspace) {
   try {
     const proj = await api(`/api/project?workspace=${encodeURIComponent(workspace)}`);
+    if (proj.view_states) {
+      for (const [p, vs] of Object.entries(proj.view_states)) {
+        state.viewStates.set(p, vs);
+      }
+    }
     // Restore open tabs (skip any that fail to load)
     if (proj.open_tabs?.length) {
       for (const path of proj.open_tabs) {
@@ -294,6 +421,8 @@ async function loadWorkspace(path = '') {
     state.chatHistory = [];
     state.currentThreadId = null;
     if (state.editor) state.editor.setModel(null);
+    state.problemsMap.clear();
+    updateProblemsPanel();
     dom.welcomeScreen.style.display   = '';
     dom.monacoContainer.style.display = 'none';
     renderTabs();
@@ -429,8 +558,13 @@ function openFile(path, silent = false) {
         let model = state.monacoModels.get(data.path);
         if (!model) {
           model = window.monaco.editor.createModel(data.content, data.language, uri);
-          model.onDidChangeContent(() => markDirty(data.path));
+          model.onDidChangeContent(() => {
+            markDirty(data.path);
+            triggerAutoSave(data.path);
+            triggerValidation(data.path);
+          });
           state.monacoModels.set(data.path, model);
+          runSyntaxValidation(data.path);
         }
       }
       renderTabs();
@@ -480,6 +614,8 @@ function closeTab(path) {
   state.monacoModels.get(path)?.dispose();
   state.monacoModels.delete(path);
   state.viewStates.delete(path);
+  state.problemsMap.delete(path);
+  updateProblemsPanel();
 
   if (state.activeTab === path) {
     state.activeTab = null;
@@ -519,6 +655,15 @@ function renderTabs() {
     el.addEventListener('click', e => {
       if (!e.target.closest('.tab-close')) activateTab(tab.path);
     });
+    el.addEventListener('mousedown', e => {
+      if (e.button === 1) e.preventDefault();
+    });
+    el.addEventListener('auxclick', e => {
+      if (e.button === 1) {
+        e.stopPropagation();
+        closeTab(tab.path);
+      }
+    });
     el.querySelector('.tab-close').addEventListener('click', e => {
       e.stopPropagation(); closeTab(tab.path);
     });
@@ -540,6 +685,7 @@ async function saveActiveFile() {
     await api('/api/fs/write', { method: 'POST', body: JSON.stringify({ path: state.activeTab, content }) });
     markClean(state.activeTab);
     toast('Saved', 'success', 1800);
+    runSyntaxValidation(state.activeTab);
   } catch (e) { toast(`Save failed: ${e.message}`, 'error'); }
 }
 
@@ -1849,7 +1995,7 @@ function _renderPaletteResults(query) {
   _paletteActive = 0;
 }
 
-$('paletteInput').addEventListener('input', e => _renderPaletteResults(e.target.value));
+$('paletteInput').addEventListener('input', debounce(() => _renderPaletteResults($('paletteInput').value), 100));
 $('paletteInput').addEventListener('keydown', e => {
   const items = $('paletteResults').querySelectorAll('.palette-item');
   if (!items.length) return;
@@ -2231,6 +2377,36 @@ $('autoExecToggle').addEventListener('click', () => {
   saveSettings();
   _applyAutoExecUI();
   toast(state.autoExec ? 'Scripts auto-execute' : 'Scripts need approval', 'info', 2000);
+});
+
+// Auto-save toggle
+function _applyAutoSaveUI() {
+  const btn = $('autoSaveToggle');
+  if (!btn) return;
+  if (state.autoSave) {
+    btn.classList.replace('auto-save-off', 'auto-save-on');
+    btn.title = 'Files save automatically — click to disable';
+    btn.setAttribute('aria-pressed', 'true');
+  } else {
+    btn.classList.replace('auto-save-on', 'auto-save-off');
+    btn.title = 'Manual save required — click to auto-save';
+    btn.setAttribute('aria-pressed', 'false');
+  }
+}
+_applyAutoSaveUI();
+$('autoSaveToggle').addEventListener('click', () => {
+  state.autoSave = !state.autoSave;
+  saveSettings();
+  _applyAutoSaveUI();
+  toast(state.autoSave ? 'Auto-Save enabled' : 'Auto-Save disabled', 'info', 2000);
+});
+
+// Double click tabBar empty space -> New File
+$('tabBar').addEventListener('dblclick', e => {
+  if (e.target === $('tabBar') || e.target === $('tabsScroll') || e.target === $('tabsContainer')) {
+    e.preventDefault();
+    $('btnNewFile').click();
+  }
 });
 
 // Refactor modal close

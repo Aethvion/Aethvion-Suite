@@ -83,6 +83,27 @@ def _ensure_data_dirs():
 
 _ensure_data_dirs()
 
+def _is_safe_path(path: str | Path) -> bool:
+    """Check if the resolved path is within allowed boundaries."""
+    try:
+        target = Path(path).resolve()
+        # Allowed roots: PROJECT_ROOT, user home directory, and dynamic last_workspace
+        allowed = [Path(PROJECT_ROOT).resolve(), Path.home().resolve()]
+        settings = _read_settings()
+        last_ws = settings.get("last_workspace")
+        if last_ws:
+            try:
+                allowed.append(Path(last_ws).resolve())
+            except Exception:
+                pass
+        
+        for root in allowed:
+            if root in target.parents or target == root:
+                return True
+        return False
+    except Exception:
+        return False
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -119,6 +140,7 @@ def _read_project(workspace: str) -> dict:
         "active_tab":  None,
         "structure":   [],
         "ai_context":  "",
+        "view_states": {},
     }
 
 def _write_project(data: dict):
@@ -499,6 +521,7 @@ class ProjectSaveReq(BaseModel):
     active_tab: Optional[str]       = None
     ai_context: Optional[str]       = None
     name:       Optional[str]       = None
+    view_states:Optional[dict]      = None
 
 @app.post("/api/project")
 async def save_project(req: ProjectSaveReq):
@@ -507,10 +530,43 @@ async def save_project(req: ProjectSaveReq):
     if req.active_tab is not None: data["active_tab"] = req.active_tab
     if req.ai_context is not None: data["ai_context"] = req.ai_context
     if req.name       is not None: data["name"]        = req.name
+    if req.view_states is not None: data["view_states"] = req.view_states
     # Always refresh structure on save
     data["structure"] = _scan_structure(req.workspace)
     _write_project(data)
     return JSONResponse({"status": "ok"})
+
+class ValidateReq(BaseModel):
+    code: str
+    path: str
+    language: str
+
+@app.post("/api/code/validate")
+async def validate_code(req: ValidateReq):
+    errors = []
+    lang = req.language.lower()
+    if lang == "python":
+        import ast
+        try:
+            ast.parse(req.code, filename=req.path)
+        except SyntaxError as e:
+            errors.append({
+                "line": e.lineno or 1,
+                "column": e.offset or 1,
+                "message": e.msg,
+                "severity": "error"
+            })
+    elif lang == "json":
+        try:
+            json.loads(req.code)
+        except json.JSONDecodeError as e:
+            errors.append({
+                "line": e.lineno,
+                "column": e.colno,
+                "message": e.msg,
+                "severity": "error"
+            })
+    return JSONResponse({"errors": errors})
 
 @app.post("/api/project/scan")
 async def scan_project(req: ProjectSaveReq):
@@ -620,6 +676,8 @@ async def fs_browse():
 @app.get("/api/fs/tree")
 async def fs_tree(path: str = ""):
     base = Path(path) if path else WORKSPACE
+    if not _is_safe_path(base):
+        raise HTTPException(403, "Access denied")
     if not base.exists():
         raise HTTPException(404, "Path not found.")
     if not base.is_dir():
@@ -630,6 +688,8 @@ async def fs_tree(path: str = ""):
 
 @app.get("/api/fs/read")
 async def fs_read(path: str):
+    if not _is_safe_path(path):
+        raise HTTPException(403, "Access denied")
     target = Path(path)
     if not target.exists():
         raise HTTPException(404, "File not found.")
@@ -655,6 +715,8 @@ class WriteReq(BaseModel):
 
 @app.post("/api/fs/write")
 async def fs_write(req: WriteReq):
+    if not _is_safe_path(req.path):
+        raise HTTPException(403, "Access denied")
     target = Path(req.path)
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -669,6 +731,8 @@ class MkdirReq(BaseModel):
 
 @app.post("/api/fs/mkdir")
 async def fs_mkdir(req: MkdirReq):
+    if not _is_safe_path(req.path):
+        raise HTTPException(403, "Access denied")
     try:
         Path(req.path).mkdir(parents=True, exist_ok=True)
     except Exception as exc:
@@ -682,6 +746,8 @@ class RenameReq(BaseModel):
 
 @app.post("/api/fs/rename")
 async def fs_rename(req: RenameReq):
+    if not _is_safe_path(req.old_path) or not _is_safe_path(req.new_path):
+        raise HTTPException(403, "Access denied")
     src, dst = Path(req.old_path), Path(req.new_path)
     if not src.exists():
         raise HTTPException(404, "Source not found.")
@@ -698,6 +764,8 @@ class MoveReq(BaseModel):
 
 @app.post("/api/fs/move")
 async def fs_move(req: MoveReq):
+    if not _is_safe_path(req.src) or not _is_safe_path(req.dst_dir):
+        raise HTTPException(403, "Access denied")
     src = Path(req.src)
     dst_dir = Path(req.dst_dir)
     if not src.exists():
@@ -719,6 +787,8 @@ class ExecReq(BaseModel):
 async def fs_exec(req: ExecReq):
     """Execute a Python snippet in the workspace directory and return stdout/stderr."""
     workspace = req.workspace or str(WORKSPACE)
+    if not _is_safe_path(workspace):
+        raise HTTPException(403, "Access denied")
     import tempfile
     # Write a temp script that chdirs into workspace first
     with tempfile.NamedTemporaryFile(suffix=".py", mode="w", encoding="utf-8", delete=False) as f:
@@ -751,6 +821,8 @@ class RevealReq(BaseModel):
 @app.post("/api/fs/reveal")
 async def fs_reveal(req: RevealReq):
     """Open the file/folder in the OS file explorer."""
+    if not _is_safe_path(req.path):
+        raise HTTPException(403, "Access denied")
     target = Path(req.path)
     if not target.exists():
         raise HTTPException(404, "Path not found.")
@@ -775,6 +847,8 @@ class DuplicateReq(BaseModel):
 
 @app.post("/api/fs/duplicate")
 async def fs_duplicate(req: DuplicateReq):
+    if not _is_safe_path(req.path):
+        raise HTTPException(403, "Access denied")
     src = Path(req.path)
     if not src.exists():
         raise HTTPException(404, "Source not found.")
@@ -797,6 +871,8 @@ class DeleteReq(BaseModel):
 
 @app.delete("/api/fs/delete")
 async def fs_delete(req: DeleteReq):
+    if not _is_safe_path(req.path):
+        raise HTTPException(403, "Access denied")
     target = Path(req.path)
     if not target.exists():
         raise HTTPException(404, "Not found.")
@@ -819,6 +895,8 @@ class RunReq(BaseModel):
 
 @app.post("/api/code/run")
 async def run_code(req: RunReq):
+    if req.path and not _is_safe_path(req.path):
+        raise HTTPException(403, "Access denied")
     lang = req.language.lower()
     tmp_path: Optional[Path] = None
 
@@ -959,6 +1037,8 @@ async def _run_sse(cmd: list, cwd: str, timeout: int,
 @app.post("/api/code/run/stream")
 async def run_code_stream(req: RunReq):
     """Like /api/code/run but streams output line-by-line as SSE."""
+    if req.path and not _is_safe_path(req.path):
+        raise HTTPException(403, "Access denied")
     lang = req.language.lower()
     tmp_path: Optional[Path] = None
 
