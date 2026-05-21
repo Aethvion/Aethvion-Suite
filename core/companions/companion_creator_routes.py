@@ -139,6 +139,15 @@ def _slug(name: str) -> str:
     return s or "companion"
 
 
+def _augment_icon_status(data: dict, companion_dir: Path) -> dict:
+    """Ensure has_icon reflects the actual file on disk (repairs missing flag)."""
+    if not data.get("has_icon"):
+        icon = _find_icon(companion_dir)
+        if icon:
+            data["has_icon"] = True
+    return data
+
+
 def _list_custom_companions() -> list[dict]:
     configs = []
     for config_file in sorted(_CUSTOM_DIR.glob("*/config.json")):
@@ -146,6 +155,7 @@ def _list_custom_companions() -> list[dict]:
             data = json.loads(config_file.read_text(encoding="utf-8"))
             # Skip built-ins that may have override configs in the data dir
             if data.get("id") not in _BUILTIN_IDS:
+                _augment_icon_status(data, config_file.parent)
                 configs.append(data)
         except Exception as e:
             logger.warning(f"Could not read {config_file}: {e}")
@@ -153,20 +163,30 @@ def _list_custom_companions() -> list[dict]:
 
 
 def _list_builtin_companions() -> list[dict]:
-    """Return built-in companion configs (data/ override takes priority)."""
+    """Return built-in companion configs (data/ override takes priority).
+    Uses the companion's actual id (from the JSON 'id' field) to locate the
+    data-dir override — avoids the misaka_cipher vs misakacipher slug mismatch.
+    """
     builtins = []
-    for cid in ("axiom", "lyra", "misaka_cipher"):
-        # Data override takes priority
-        override = _CUSTOM_DIR / cid / "config.json"
-        core = _CORE_CONFIG_DIR / f"{cid}.json"
-        src = override if override.exists() else core
-        if src.exists():
-            try:
-                data = json.loads(src.read_text(encoding="utf-8"))
-                data["_builtin"] = True
-                builtins.append(data)
-            except Exception as e:
-                logger.warning(f"Could not read builtin config {cid}: {e}")
+    for filename in ("axiom", "lyra", "misaka_cipher"):
+        core = _CORE_CONFIG_DIR / f"{filename}.json"
+        if not core.exists():
+            continue
+        try:
+            # Read core config to get the canonical id (e.g. "misakacipher")
+            core_data = json.loads(core.read_text(encoding="utf-8"))
+            cid = core_data.get("id", filename)
+            # Data-dir override uses the canonical id, not the filename slug
+            override = _CUSTOM_DIR / cid / "config.json"
+            if override.exists():
+                data = json.loads(override.read_text(encoding="utf-8"))
+            else:
+                data = core_data
+            data["_builtin"] = True
+            _augment_icon_status(data, _CUSTOM_DIR / cid)
+            builtins.append(data)
+        except Exception as e:
+            logger.warning(f"Could not read builtin config {filename}: {e}")
     return builtins
 
 

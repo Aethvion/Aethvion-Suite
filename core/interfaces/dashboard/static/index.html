@@ -829,7 +829,8 @@
         // ── Custom Companions: Panel + Settings Dynamic Loader ────────────────────────
         async function loadCustomCompanionsSidebar() {
             try {
-                const res = await fetch('/api/companions/list');
+                // Use companion-creator endpoint — returns raw configs with has_icon at top level
+                const res = await fetch('/api/companion-creator/list');
                 if (!res.ok) return;
                 const data = await res.json();
                 const companions = (data.companions || []).filter(c => !['misakacipher', 'axiom', 'lyra'].includes(c.id));
@@ -840,6 +841,9 @@
                 companions.forEach(c => {
                     const tabId = `custom-companion-${c.id}`;
                     const color = c.accent_color || '#6366f1';
+                    const panelAvatarHtml = c.has_icon
+                        ? `<div style="width:88px;height:88px;border-radius:18px;overflow:hidden;margin:0 auto;flex-shrink:0"><img src="/api/companion-creator/${c.id}/icon?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover"></div>`
+                        : `<div style="font-size:3.5rem;line-height:1;">${c.avatar_symbol || '✦'}</div>`;
 
                     // Panel — must use class 'main-tab-panel' so switchMainTab's
                     // querySelectorAll('.main-tab-panel') hides it when leaving.
@@ -849,7 +853,7 @@
                         panel.className = 'main-tab-panel custom-companion-panel';
                         panel.innerHTML = `
 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:1.5rem;padding:2rem;text-align:center;">
-    <div style="font-size:3.5rem;line-height:1;">${c.avatar_symbol || '✦'}</div>
+    ${panelAvatarHtml}
     <div style="font-size:1.4rem;font-weight:600;color:${color};">${c.name}</div>
     <div style="color:var(--text-secondary);max-width:480px;">${c.description || ''}</div>
     <div style="color:var(--text-tertiary);font-size:0.85rem;border:1px solid var(--border);border-radius:8px;padding:0.75rem 1.25rem;">
@@ -874,6 +878,9 @@
                         const pk = `custom_companion.${id}`;   // prefs key prefix
                         const color = c.accent_color || '#6366f1';
                         const esc = c.name.replace(/'/g, "\\'");
+                        const miniAvHtml = c.has_icon
+                            ? `<span class="companion-avatar-mini" style="background:transparent;padding:0;overflow:hidden"><img src="/api/companion-creator/${id}/icon?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></span>`
+                            : `<span class="companion-avatar-mini" style="background:${color};color:#fff;">${c.avatar_symbol || '✦'}</span>`;
 
                         const card = document.createElement('div');
                         card.className = 'setting-card companions-accordion custom-companion-card';
@@ -881,7 +888,7 @@
                         card.innerHTML = `
 <div class="card-header companions-accordion-header" onclick="toggleCompanionAccordion('custom-${id}')">
     <div class="header-title">
-        <span class="companion-avatar-mini" style="background:${color};color:#fff;">${c.avatar_symbol || '✦'}</span>
+        ${miniAvHtml}
         <span>${c.name}</span>
         <span class="companion-tag">custom</span>
     </div>
@@ -1047,16 +1054,37 @@
             }
         }
 
+        // ── Update built-in companion avatar minis in Settings with real icons ───
+        async function _loadBuiltinCompanionIcons() {
+            try {
+                const res = await fetch('/api/companion-creator/all');
+                if (!res.ok) return;
+                const data = await res.json();
+                const builtins = (data.companions || []).filter(c => c._builtin && c.has_icon);
+                const idToCardMap = { misakacipher: 'card-companion-misaka', axiom: 'card-companion-axiom', lyra: 'card-companion-lyra' };
+                for (const c of builtins) {
+                    const cardId = idToCardMap[c.id];
+                    if (!cardId) continue;
+                    const miniEl = document.querySelector(`#${cardId} .companion-avatar-mini`);
+                    if (!miniEl) continue;
+                    miniEl.textContent = '';
+                    miniEl.style.cssText += ';background:transparent!important;padding:0;overflow:hidden';
+                    miniEl.innerHTML = `<img src="/api/companion-creator/${c.id}/icon?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+                }
+            } catch { /* non-fatal */ }
+        }
+
         // Re-run settings-panel injection when the settings partial is lazy-loaded
         document.addEventListener('panelLoaded', (e) => {
             if (e.detail && e.detail.tabName === 'settings') {
                 loadCustomCompanionsSidebar();
+                _loadBuiltinCompanionIcons();
             }
         });
 
         // Load on DOMContentLoaded and also after systemReady
-        document.addEventListener('DOMContentLoaded', loadCustomCompanionsSidebar);
-        document.addEventListener('systemReady', loadCustomCompanionsSidebar);
+        document.addEventListener('DOMContentLoaded', () => { loadCustomCompanionsSidebar(); _loadBuiltinCompanionIcons(); });
+        document.addEventListener('systemReady',       () => { loadCustomCompanionsSidebar(); _loadBuiltinCompanionIcons(); });
         // Refresh after companion-creator tab operations
         window.addEventListener('customCompanionCreated', loadCustomCompanionsSidebar);
         window.addEventListener('customCompanionDeleted', loadCustomCompanionsSidebar);
