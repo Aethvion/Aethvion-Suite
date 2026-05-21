@@ -20,10 +20,10 @@ const CompanionCreator = (() => {
 
     function _renderShell() {
         _root.innerHTML = `
-<div class="cc-hub">
+<div class="cc-hub" id="cc-hub">
 
   <!-- ── Left roster panel ────────────────────────────────────────────── -->
-  <div class="cc-roster">
+  <div class="cc-roster" id="cc-roster">
     <div class="cc-roster-hdr">
       <div class="cc-roster-title">
         <i class="fas fa-users"></i>
@@ -35,6 +35,9 @@ const CompanionCreator = (() => {
         </button>
         <button id="cc-new-btn" class="cc-icon-btn cc-icon-btn-primary" title="New companion">
           <i class="fas fa-plus"></i>
+        </button>
+        <button id="cc-roster-toggle" class="cc-icon-btn" title="Collapse sidebar">
+          <i class="fas fa-chevron-left"></i>
         </button>
       </div>
     </div>
@@ -715,6 +718,8 @@ const CompanionCreator = (() => {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             _activeData = data;
+            // Persist selection so refresh restores it
+            try { localStorage.setItem('cc_last_companion', JSON.stringify({ id, isBuiltin })); } catch {}
             _loadList(); // refresh card active state
             _selectCompanion(data, isBuiltin);
         } catch (e) {
@@ -1219,9 +1224,33 @@ const CompanionCreator = (() => {
         _root.dataset.ccInit = '1';
 
         _renderShell();
-        _loadList();
+
+        // ── Restore collapsed roster state ────────────────────────────────────
+        if (localStorage.getItem('cc_roster_collapsed') === '1') {
+            document.getElementById('cc-hub')?.classList.add('roster-collapsed');
+            const icon = document.querySelector('#cc-roster-toggle i');
+            if (icon) icon.className = 'fas fa-chevron-right';
+        }
+
+        // ── Load list, then restore last selected companion ───────────────────
+        _loadList().then(() => {
+            try {
+                const saved = JSON.parse(localStorage.getItem('cc_last_companion') || 'null');
+                if (saved?.id) _editCompanion(saved.id, !!saved.isBuiltin);
+            } catch {}
+        });
+
         // Populate model select with the same categorized options used everywhere else in the suite
         if (typeof window.loadChatModels === 'function') window.loadChatModels();
+
+        // Roster collapse toggle
+        document.getElementById('cc-roster-toggle')?.addEventListener('click', () => {
+            const hub       = document.getElementById('cc-hub');
+            const collapsed = hub.classList.toggle('roster-collapsed');
+            const icon      = document.querySelector('#cc-roster-toggle i');
+            if (icon) icon.className = collapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
+            try { localStorage.setItem('cc_roster_collapsed', collapsed ? '1' : '0'); } catch {}
+        });
 
         // New companion buttons (roster header + empty-state)
         document.getElementById('cc-new-btn')?.addEventListener('click', _startNewCompanion);
