@@ -80,6 +80,19 @@
                 "capture_image": "Capture a photo from specified camera (index=0 for default)."
             },
             "settings": []
+        },
+        {
+            "id": "web_search",
+            "name": "Web Search",
+            "description": "Search the internet and return a summary of the top results (powered by DuckDuckGo, no API key required).",
+            "module_path": "core.bridges.web_search_bridge",
+            "requires_auth": false,
+            "is_authorized": true,
+            "capability_gate": "internet_search",
+            "available_commands": {
+                "web_search": "Search the web for any query. Takes 'query' (required) and optional 'count' (default 5, max 10) arguments."
+            },
+            "settings": []
         }
     ]
 }

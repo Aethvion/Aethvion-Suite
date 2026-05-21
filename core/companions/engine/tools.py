@@ -161,7 +161,7 @@ def _execute_one(tool_name: str, attrs: dict[str, str], workspaces: list[dict]) 
 
         # bridge explicit: [tool:bridge module="..." cmd="..."]
         if tool_name == "bridge":
-            from core.bridge import bridge_manager
+            from core.bridges import bridge_manager
             module_id = attrs.get("module", "")
             cmd = attrs.get("cmd", "")
             args = {k: v for k, v in attrs.items() if k not in ("module", "cmd")}
@@ -170,7 +170,7 @@ def _execute_one(tool_name: str, attrs: dict[str, str], workspaces: list[dict]) 
 
         # bridge auto-route: tool_name matches a registered module id
         try:
-            from core.bridge import bridge_manager
+            from core.bridges import bridge_manager
             registry = bridge_manager.get_registry()
             mod = next((m for m in registry.get("modules", []) if m["id"] == tool_name), None)
             if mod:

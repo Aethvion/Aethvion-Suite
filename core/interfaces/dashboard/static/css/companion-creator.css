@@ -465,6 +465,24 @@
 .cc-msg-streaming { opacity: 0.6; font-style: italic; }
 .cc-msg-error-text { color: #f87171 !important; font-style: italic; }
 
+/* Tool-use indicator — shown between first and second response */
+.cc-tool-indicator {
+    display: flex; align-items: center; gap: 0.45rem;
+    font-size: 0.78rem; color: var(--text-secondary);
+    padding: 0.3rem 0.75rem;
+    margin: 0.2rem 0 0.2rem 2.6rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    width: fit-content;
+    animation: cc-tool-pulse 1.4s ease-in-out infinite;
+}
+.cc-tool-indicator i { font-size: 0.72rem; opacity: 0.7; }
+@keyframes cc-tool-pulse {
+    0%, 100% { opacity: 0.65; }
+    50%       { opacity: 1; }
+}
+
 /* Markdown inside companion bubbles */
 .cc-msg-md { line-height: 1.6; }
 .cc-msg-md p { margin: 0 0 0.55em; }

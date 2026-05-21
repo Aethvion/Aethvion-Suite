@@ -855,7 +855,9 @@ const CompanionCreator = (() => {
                 document.getElementById('cc-chat-hint')?.remove();
                 msgsEl.scrollTop = msgsEl.scrollHeight;
             }
-        } catch { /* history load is non-critical */ }
+        } catch (err) {
+            console.warn('[CompanionCreator] History load failed:', err);
+        }
     }
 
     function _appendMessage(role, text, id = null) {
@@ -881,6 +883,42 @@ const CompanionCreator = (() => {
 
     function _escHtml(str) {
         return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    }
+
+    // Strip [tool:...] blocks and <expression>/<mood> tags from text before display.
+    // Tool blocks can span multiple lines and may have nested brackets inside quoted values,
+    // so we handle them with a bracket-depth counter mirroring the Python parse_tool_blocks.
+    function _stripToolTags(text) {
+        if (!text) return '';
+        let out = '';
+        let i = 0;
+        while (i < text.length) {
+            // Look for [tool: prefix
+            const idx = text.indexOf('[tool:', i);
+            if (idx === -1) {
+                out += text.slice(i);
+                break;
+            }
+            // Keep everything before the tool block
+            out += text.slice(i, idx);
+            // Walk forward counting bracket depth
+            let depth = 0;
+            let j = idx;
+            while (j < text.length) {
+                if (text[j] === '[') depth++;
+                else if (text[j] === ']') { depth--; if (depth === 0) { j++; break; } }
+                j++;
+            }
+            // Skip the block entirely; continue after it
+            i = j;
+        }
+        // Also strip expression, mood, and break tags
+        return out
+            .replace(/<expression>[\s\S]*?<\/expression>/gi, '')
+            .replace(/<mood>[\s\S]*?<\/mood>/gi, '')
+            .replace(/<break\s*\/?>/gi, '')
+            .replace(/[ \t]{2,}/g, ' ')
+            .trim();
     }
 
     // Render companion text as markdown (marked + optional hljs highlight)
@@ -926,14 +964,30 @@ const CompanionCreator = (() => {
         const color  = _activeData?.accent_color || '#6366f1';
         const symbol = _activeData?.avatar_symbol || '✦';
         const msgsEl = document.getElementById('cc-chat-msgs');
-        const bubble = document.createElement('div');
-        bubble.className = 'cc-msg cc-msg-companion';
-        bubble.innerHTML = `
-          <div class="cc-msg-avatar" style="background:${color}22;color:${color}">${symbol}</div>
-          <div class="cc-msg-bubble cc-msg-streaming">…</div>`;
-        msgsEl?.appendChild(bubble);
-        const bubbleText = bubble.querySelector('.cc-msg-bubble');
-        msgsEl.scrollTop = msgsEl.scrollHeight;
+
+        function _makeBubble(streaming = true) {
+            const b = document.createElement('div');
+            b.className = 'cc-msg cc-msg-companion';
+            b.innerHTML = `
+              <div class="cc-msg-avatar" style="background:${color}22;color:${color}">${symbol}</div>
+              <div class="cc-msg-bubble${streaming ? ' cc-msg-streaming' : ''}">…</div>`;
+            msgsEl?.appendChild(b);
+            if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+            return b;
+        }
+
+        function _makeToolIndicator(toolName) {
+            const el = document.createElement('div');
+            el.className = 'cc-tool-indicator';
+            el.innerHTML = `<i class="fas fa-plug"></i> Using <strong>${_escHtml(toolName)}</strong>…`;
+            msgsEl?.appendChild(el);
+            if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+            return el;
+        }
+
+        let currentBubble    = _makeBubble(true);
+        let currentBubbleText = currentBubble.querySelector('.cc-msg-bubble');
+        let toolIndicator    = null;
 
         const histForApi = _chatHistory.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
 
@@ -945,10 +999,11 @@ const CompanionCreator = (() => {
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-            const reader  = res.body.getReader();
-            const decoder = new TextDecoder();
-            let fullText  = '';
-            let finalText = '';  // from 'done' or 'final_cleaned' events
+            const reader    = res.body.getReader();
+            const decoder   = new TextDecoder();
+            let fullText    = '';
+            let finalText   = '';
+            let finalParts  = [];   // populated when companion uses <break>
 
             while (true) {
                 const { value, done } = await reader.read();
@@ -959,16 +1014,50 @@ const CompanionCreator = (() => {
                     if (!raw) continue;
                     try {
                         const evt = JSON.parse(raw);
+
                         if (evt.type === 'message' && evt.content) {
                             fullText += evt.content;
-                            if (bubbleText) { bubbleText.innerHTML = _renderMd(fullText); bubbleText.classList.remove('cc-msg-streaming'); }
+                            if (currentBubbleText) {
+                                // Strip tool call blocks and expression tags from the live display
+                                const displayText = _stripToolTags(fullText);
+                                if (displayText) {
+                                    currentBubbleText.innerHTML = _renderMd(displayText);
+                                    currentBubbleText.classList.remove('cc-msg-streaming');
+                                }
+                            }
+
+                        } else if (evt.type === 'tool_start') {
+                            // Finalize the first bubble with clean text, then show the indicator
+                            const cleanedFirst = _stripToolTags(fullText);
+                            if (currentBubbleText) {
+                                currentBubbleText.classList.add('cc-msg-md');
+                                currentBubbleText.classList.remove('cc-msg-streaming');
+                                currentBubbleText.innerHTML = cleanedFirst ? _renderMd(cleanedFirst) : '';
+                            }
+                            _applyHighlight(currentBubble);
+                            toolIndicator = _makeToolIndicator(evt.tool || 'tool');
+
+                        } else if (evt.type === 'tool_response_start') {
+                            // Remove tool indicator, reset accumulator, open a new bubble
+                            toolIndicator?.remove();
+                            toolIndicator = null;
+                            fullText = '';
+                            currentBubble     = _makeBubble(true);
+                            currentBubbleText = currentBubble.querySelector('.cc-msg-bubble');
+
                         } else if (evt.type === 'final_cleaned' && evt.content) {
                             finalText = evt.content;
+
                         } else if (evt.type === 'error' && evt.message) {
                             finalText = evt.message;
-                            if (bubbleText) { bubbleText.classList.add('cc-msg-error-text'); bubbleText.classList.remove('cc-msg-streaming'); }
+                            if (currentBubbleText) {
+                                currentBubbleText.classList.add('cc-msg-error-text');
+                                currentBubbleText.classList.remove('cc-msg-streaming');
+                            }
+
                         } else if (evt.type === 'done') {
-                            if (evt.content) finalText = evt.content;
+                            if (evt.content)  finalText  = evt.content;
+                            if (evt.parts)    finalParts = evt.parts;
                             if (evt.expression) _updatePortraitExpression(evt.expression);
                         }
                     } catch { /* non-JSON chunk */ }
@@ -976,13 +1065,37 @@ const CompanionCreator = (() => {
                 if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
             }
 
-            const saved = finalText || fullText || '(no response)';
-            if (bubbleText) { bubbleText.classList.add('cc-msg-md'); bubbleText.innerHTML = _renderMd(saved); }
-            _applyHighlight(bubble);
-            _chatHistory.push({ role: 'assistant', content: saved });
+            // finalText from server is already cleaned; fullText is the raw stream fallback.
+            // finalParts is set when the companion used <break> to split its response.
+            const primaryText = finalText || _stripToolTags(fullText) || '(no response)';
+            const parts       = finalParts.length > 1 ? finalParts : null;
+            const firstPart   = parts ? parts[0] : primaryText;
+
+            // Render the first (or only) part into the current bubble
+            if (currentBubbleText) {
+                currentBubbleText.classList.add('cc-msg-md');
+                currentBubbleText.classList.remove('cc-msg-streaming');
+                currentBubbleText.innerHTML = _renderMd(firstPart);
+            }
+            _applyHighlight(currentBubble);
+            _chatHistory.push({ role: 'assistant', content: firstPart });
+
+            // Render subsequent <break> parts as new bubbles with natural delays
+            if (parts) {
+                for (let i = 1; i < parts.length; i++) {
+                    ((part, delay) => {
+                        setTimeout(() => {
+                            const nb = _appendMessage('companion', part);
+                            if (nb) _applyHighlight(nb);
+                            _chatHistory.push({ role: 'assistant', content: part });
+                            if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+                        }, delay);
+                    })(parts[i], i * 420);
+                }
+            }
 
         } catch (err) {
-            if (bubbleText) { bubbleText.textContent = 'Failed to get a response.'; bubbleText.classList.add('cc-msg-error-text'); }
+            if (currentBubbleText) { currentBubbleText.textContent = 'Failed to get a response.'; currentBubbleText.classList.add('cc-msg-error-text'); }
         } finally {
             _chatStreaming = false;
             if (input)   { input.disabled   = false; input.focus(); }
