@@ -31,7 +31,7 @@ CONFIG         = DATA / "config"
 LOGS           = DATA / "logs"
 SYSTEM         = DATA / "system"
 MODES          = DATA / "modes"
-COMPANIONS     = MODES / "companions"
+COMPANIONS     = DATA / "companions"   # Top-level — not a mode subdir
 DEFAULT_OUTPUT = DATA / "default_output"
 
 # ── Modes (Tab-specific state & history) ──────────────────────────────────────
@@ -42,11 +42,11 @@ MODE_AI_CONV      = MODES / "ai_conversations"
 MODE_ADV_AICONV   = MODES / "advanced_ai_conversations"
 MODE_EXPLAINED    = MODES / "explained"
 EXPLAINED         = MODE_EXPLAINED
-MODE_COMPANIONS   = COMPANIONS
 MODE_WORKSPACES   = MODES / "workspaces"
 MODE_SCHEDULE     = MODES / "schedule"
 MODE_WORLDSIM     = MODES / "worldsim"
 WORLDSIM          = MODE_WORLDSIM   # kept for WorldSim (separate product)
+MODE_COMPANIONS   = COMPANIONS      # Alias kept for backward compatibility
 
 # ── AethvionDB data root ──────────────────────────────────────────────────────
 AETHVIONDB        = DATA / "aethviondb"
@@ -158,7 +158,7 @@ def ensure_all() -> None:
         APP_GAMES, APP_HARDWARE, APP_BRIDGES, APP_PHOTO, APP_TRACKING, APP_VTUBER,
         # Modes
         MODE_CHAT, MODE_AGENTS, MODE_AGENT_CORP, MODE_AI_CONV, MODE_ADV_AICONV,
-        MODE_EXPLAINED, MODE_COMPANIONS, MODE_WORKSPACES, MODE_WORLDSIM,
+        MODE_EXPLAINED, MODE_WORKSPACES, MODE_WORLDSIM,
         AETHVIONDB,
         # Sub-directories
         LOGS_USAGE, LOGS_NOTIFICATIONS,

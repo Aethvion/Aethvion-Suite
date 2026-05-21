@@ -1433,15 +1433,6 @@ async function switchMainTab(tabName, save = true) {
     else if (actualTabName === 'audio' && typeof initializeAudioStudio === 'function') {
         initializeAudioStudio();
     }
-    else if (actualTabName === 'misaka-cipher' && typeof initializeMisakaCipher === 'function') {
-        initializeMisakaCipher();
-    }
-    else if (actualTabName === 'axiom' && typeof initializeAxiom === 'function') {
-        initializeAxiom();
-    }
-    else if (actualTabName === 'lyra' && typeof initializeLyra === 'function') {
-        initializeLyra();
-    }
     else if (actualTabName === 'companion-creator' && typeof initializeCompanionCreator === 'function') {
         initializeCompanionCreator();
     }
@@ -1753,16 +1744,6 @@ async function loadInitialData() {
         if (typeof loadThreads === 'function') loadThreads();
     }, { once: true });
 
-    if (currentMainTab === 'misaka-cipher' && typeof initializeMisakaCipher === 'function') {
-        initializeMisakaCipher();
-    }
-    if (currentMainTab === 'axiom' && typeof initializeAxiom === 'function') {
-        initializeAxiom();
-    }
-    if (currentMainTab === 'lyra' && typeof initializeLyra === 'function') {
-        initializeLyra();
-    }
-
     if (typeof loadSystemStatus === 'function') {
         setInterval(() => {
             if (!document.hidden) loadSystemStatus();
@@ -1873,7 +1854,8 @@ async function loadChatModels() {
         document.getElementById('setting-axiom-model'),
         document.getElementById('setting-lyra-model'),
         document.getElementById('setting-info-model'),
-        document.getElementById('overlay-model')
+        document.getElementById('overlay-model'),
+        document.getElementById('cc-model'),
     ].filter(Boolean);
 
     // If no selects found, we still might want to fetch and cache the data

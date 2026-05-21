@@ -93,48 +93,50 @@ class CompanionEngine:
 
     @staticmethod
     async def chat_response(config: CompanionConfig, message: str, chat_history: List[Any]):
-        raw = config._raw_config
-        behavior = raw.get("behavior", {})
-        capabilities = raw.get("capabilities", {})
-        prompts = raw.get("prompts", {})
-        memory = CompanionMemory(config.data_dir, raw.get("personality_defaults", {}))
-        history = CompanionHistory(config.history_dir, config.name, 
-                                   lambda s: format_time_diff(s, raw.get("time_context", {})))
-        
-        memory.initialize()
-        mem_data = memory.load()
-        bridges_block = build_bridges_capabilities() if capabilities.get("tools_enabled") else ""
-        
-        workspace_block = ""
-        if capabilities.get("workspace_access"):
-            workspaces = load_workspaces(config.id)
-            workspace_block = build_workspace_block(workspaces)
-
-        system_prompt = prompts.get("chat_system", "").format(
-            base_info=json.dumps(mem_data["base_info"], indent=2),
-            memory=json.dumps(mem_data["memory"], indent=2),
-            datetime_ctx=datetime.datetime.now().strftime("%A, %d %B %Y — %H:%M"),
-            time_since=history.time_since_last(),
-            workspace_block=workspace_block,
-            bridges_block=bridges_block
-        )
-
-        model = get_preferences_manager().get(config.id, {}).get("model", config.default_model)
-        pm = ProviderManager()
-        trace_id = f"{config.id}-chat-{uuid.uuid4().hex[:8]}"
-
-        full_content = ""
-        actual_model = model
-
-        # Convert Frontend chat_history to Provider messages
-        messages = []
-        for turn in chat_history:
-            role = "user" if turn.get("role") == "user" else "assistant"
-            messages.append({"role": role, "content": turn.get("content", "")})
-
         try:
+            raw = config._raw_config
+            behavior = raw.get("behavior", {})
+            capabilities = raw.get("capabilities", {})
+            prompts = raw.get("prompts", {})
+            memory = CompanionMemory(config.data_dir, raw.get("personality_defaults", {}))
+            history = CompanionHistory(config.history_dir, config.name,
+                                       lambda s: format_time_diff(s, raw.get("time_context", {})))
+
+            memory.initialize()
+            mem_data = memory.load()
+            bridges_block = build_bridges_capabilities() if capabilities.get("tools_enabled") else ""
+
+            workspace_block = ""
+            if capabilities.get("workspace_access"):
+                workspaces = load_workspaces(config.id)
+                workspace_block = build_workspace_block(workspaces)
+
+            system_prompt = prompts.get("chat_system", "").format(
+                base_info=json.dumps(mem_data["base_info"], indent=2),
+                memory=json.dumps(mem_data["memory"], indent=2),
+                datetime_ctx=datetime.datetime.now().strftime("%A, %d %B %Y — %H:%M"),
+                time_since=history.time_since_last(),
+                workspace_block=workspace_block,
+                bridges_block=bridges_block
+            )
+
+            model = get_preferences_manager().get(config.id, {}).get("model", config.default_model)
+            pm = ProviderManager()
+            trace_id = f"{config.id}-chat-{uuid.uuid4().hex[:8]}"
+
+            full_content = ""
+            actual_model = model
+
+            # Convert frontend chat_history to provider messages
+            # Handles both Pydantic model objects (attr access) and plain dicts (.get)
+            messages = []
+            for turn in chat_history:
+                r = turn.role    if hasattr(turn, "role")    else turn.get("role", "user")
+                c = turn.content if hasattr(turn, "content") else turn.get("content", "")
+                messages.append({"role": "user" if r == "user" else "assistant", "content": c})
+
             # 1. Stream primary LLM response
-            async for chunk in pm.call_with_failover_stream(
+            for chunk in pm.call_with_failover_stream(
                 prompt=message,
                 system_prompt=system_prompt,
                 messages=messages,
@@ -149,7 +151,6 @@ class CompanionEngine:
             results = []
             final_content = full_content
             if capabilities.get("tools_enabled", True):
-                from core.workspace.workspace_utils import load_workspaces
                 workspaces = load_workspaces(config.id)
                 
                 async for tool_event in execute_tools_stream(full_content, workspaces):
@@ -201,5 +202,5 @@ class CompanionEngine:
             }) + "\n"
         except Exception as e:
             logger.error(f"Chat response error: {e}", exc_info=True)
-            yield json.dumps({"type": "error", "message": "Something went wrong. Please try again."}) + "\n"
+            yield json.dumps({"type": "error", "message": f"[{type(e).__name__}] {e}"}) + "\n"
             yield json.dumps({"type": "done"}) + "\n"

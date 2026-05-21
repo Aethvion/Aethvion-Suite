@@ -30,7 +30,8 @@ _CUSTOM_DIR = COMPANIONS
 _CUSTOM_DIR.mkdir(parents=True, exist_ok=True)
 
 # Built-in companions managed by core/companions/configs/ — view-only, not editable
-_BUILTIN_IDS = {"misaka_cipher", "axiom", "lyra"}
+# Actual companion IDs (as in config "id" field, not filenames)
+_BUILTIN_IDS = {"misakacipher", "axiom", "lyra"}
 _CORE_CONFIG_DIR = Path(__file__).parent / "configs"
 
 _ALLOWED_ICON_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
@@ -72,6 +73,7 @@ class CompanionCreateRequest(BaseModel):
     default_expression: str = "default"
     expressions: list[str] = []
     moods: list[str] = []
+    icon_mode: bool = False
     behavior: BehaviorConfig = BehaviorConfig()
     capabilities: CapabilitiesConfig = CapabilitiesConfig()
     prompts: PromptsConfig = PromptsConfig()
@@ -177,6 +179,16 @@ def _load_config(companion_id: str) -> dict:
         return json.loads(data_path.read_text(encoding="utf-8"))
     if core_path.exists():
         return json.loads(core_path.read_text(encoding="utf-8"))
+    # Scan core configs by internal "id" field — handles cases where filename ≠ id
+    # (e.g. misaka_cipher.json has id="misakacipher")
+    if _CORE_CONFIG_DIR.exists():
+        for cfg_file in _CORE_CONFIG_DIR.glob("*.json"):
+            try:
+                data = json.loads(cfg_file.read_text(encoding="utf-8"))
+                if data.get("id") == companion_id:
+                    return data
+            except Exception:
+                pass
     raise HTTPException(status_code=404, detail=f"Companion '{companion_id}' not found")
 
 
@@ -271,11 +283,11 @@ async def import_companion(req: ImportRequest):
 
 @router.put("/builtin/{companion_id}")
 async def update_builtin_companion(companion_id: str, req: BuiltinUpdateRequest):
-    """Built-in companions are fully locked — returns 403 for all."""
-    _validate_companion_id(companion_id)
-    if companion_id not in _BUILTIN_IDS:
-        raise HTTPException(status_code=400, detail=f"'{companion_id}' is not a built-in companion.")
-    raise HTTPException(status_code=403, detail="Built-in companions are locked and cannot be edited.")
+    """Deprecated — use PUT /{companion_id} instead. Built-in edits are now supported there."""
+    raise HTTPException(
+        status_code=410,
+        detail="Use PUT /api/companion-creator/{id} to edit any companion, including built-ins.",
+    )
 
 
 # ── Icon endpoints (must come before /{companion_id} catch-all) ───────────────
@@ -304,12 +316,13 @@ async def get_companion_icon(companion_id: str):
 async def upload_companion_icon(companion_id: str, file: UploadFile = File(...)):
     """Upload or replace a companion's icon image (PNG/JPG/GIF/WebP, max 2 MB)."""
     _validate_companion_id(companion_id)
-    if companion_id in _BUILTIN_IDS:
-        raise HTTPException(status_code=403, detail="Cannot set icons for built-in companions.")
-
     companion_dir = _CUSTOM_DIR / companion_id
+    # Built-ins: create override dir on first write; custom: must already exist
     if not companion_dir.exists():
-        raise HTTPException(status_code=404, detail=f"Companion '{companion_id}' not found.")
+        if companion_id in _BUILTIN_IDS:
+            companion_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            raise HTTPException(status_code=404, detail=f"Companion '{companion_id}' not found.")
 
     suffix = Path(file.filename or "").suffix.lower() or ".png"
     if suffix not in _ALLOWED_ICON_EXTS:
@@ -333,9 +346,15 @@ async def upload_companion_icon(companion_id: str, file: UploadFile = File(...))
     config_path = companion_dir / "config.json"
     if config_path.exists():
         cfg = json.loads(config_path.read_text(encoding="utf-8"))
-        cfg["has_icon"] = True
-        cfg["icon_ext"] = suffix
-        _atomic_write_json(config_path, cfg)
+    else:
+        # Built-in without an override yet — seed from base config
+        try:
+            cfg = _load_config(companion_id)
+        except Exception:
+            cfg = {}
+    cfg["has_icon"] = True
+    cfg["icon_ext"] = suffix
+    _atomic_write_json(config_path, cfg)
 
     CompanionRegistry.force_reload()
     logger.info(f"[CompanionCreator] Icon uploaded for {companion_id} ({suffix}, {len(data)} bytes)")
@@ -346,9 +365,6 @@ async def upload_companion_icon(companion_id: str, file: UploadFile = File(...))
 async def delete_companion_icon(companion_id: str):
     """Remove a companion's icon image."""
     _validate_companion_id(companion_id)
-    if companion_id in _BUILTIN_IDS:
-        raise HTTPException(status_code=403, detail="Cannot modify built-in companions.")
-
     companion_dir = _CUSTOM_DIR / companion_id
     removed = False
     for ext in _ALLOWED_ICON_EXTS:
@@ -362,6 +378,112 @@ async def delete_companion_icon(companion_id: str):
         cfg = json.loads(config_path.read_text(encoding="utf-8"))
         cfg.pop("has_icon", None)
         cfg.pop("icon_ext",  None)
+        _atomic_write_json(config_path, cfg)
+
+    CompanionRegistry.force_reload()
+    return {"success": True, "removed": removed}
+
+
+# ── Expression image endpoints ────────────────────────────────────────────────
+
+_SAFE_EXPR_RE = re.compile(r"^[a-z0-9_]{1,32}$")
+_MAX_EXPR_BYTES = 5 * 1024 * 1024   # 5 MB
+
+
+def _validate_expression_name(name: str) -> None:
+    if not _SAFE_EXPR_RE.match(name):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid expression name {name!r}. Use only lowercase letters, digits, and underscores.",
+        )
+
+
+def _find_expression_image(companion_dir: Path, expression: str) -> Path | None:
+    """Return the expression image path if one exists, else None."""
+    for ext in _ALLOWED_ICON_EXTS:
+        p = companion_dir / "expressions" / f"{expression}{ext}"
+        if p.exists():
+            return p
+    return None
+
+
+@router.get("/{companion_id}/expression/{expression_name}")
+async def get_expression_image(companion_id: str, expression_name: str):
+    """Serve a companion expression image."""
+    _validate_companion_id(companion_id)
+    _validate_expression_name(expression_name)
+    img = _find_expression_image(_CUSTOM_DIR / companion_id, expression_name)
+    if not img:
+        raise HTTPException(status_code=404, detail="No image for this expression.")
+    return FileResponse(str(img))
+
+
+@router.post("/{companion_id}/expression/{expression_name}")
+async def upload_expression_image(companion_id: str, expression_name: str, file: UploadFile = File(...)):
+    """Upload or replace an expression image (PNG/JPG/GIF/WebP, max 5 MB)."""
+    _validate_companion_id(companion_id)
+    _validate_expression_name(expression_name)
+
+    companion_dir = _CUSTOM_DIR / companion_id
+    companion_dir.mkdir(parents=True, exist_ok=True)
+
+    suffix = Path(file.filename or "").suffix.lower() or ".png"
+    if suffix not in _ALLOWED_ICON_EXTS:
+        raise HTTPException(status_code=400,
+            detail=f"Unsupported image type '{suffix}'. Use: PNG, JPG, GIF or WebP.")
+
+    data = await file.read()
+    if len(data) > _MAX_EXPR_BYTES:
+        raise HTTPException(status_code=400, detail="Image too large — maximum is 5 MB.")
+
+    expr_dir = companion_dir / "expressions"
+    expr_dir.mkdir(exist_ok=True)
+
+    # Remove any existing image for this expression name
+    for ext in _ALLOWED_ICON_EXTS:
+        old = expr_dir / f"{expression_name}{ext}"
+        if old.exists():
+            old.unlink()
+
+    (expr_dir / f"{expression_name}{suffix}").write_bytes(data)
+
+    # Record in config
+    config_path = companion_dir / "config.json"
+    if config_path.exists():
+        cfg = json.loads(config_path.read_text(encoding="utf-8"))
+    else:
+        try:
+            cfg = _load_config(companion_id)
+        except Exception:
+            cfg = {}
+    cfg.setdefault("expression_images", {})[expression_name] = suffix
+    cfg["icon_mode"] = True
+    _atomic_write_json(config_path, cfg)
+
+    CompanionRegistry.force_reload()
+    logger.info(f"[CompanionCreator] Expression image uploaded: {companion_id}/{expression_name}{suffix}")
+    return {"success": True, "expression": expression_name, "ext": suffix}
+
+
+@router.delete("/{companion_id}/expression/{expression_name}")
+async def delete_expression_image(companion_id: str, expression_name: str):
+    """Delete a companion expression image."""
+    _validate_companion_id(companion_id)
+    _validate_expression_name(expression_name)
+
+    companion_dir = _CUSTOM_DIR / companion_id
+    expr_dir = companion_dir / "expressions"
+    removed = False
+    for ext in _ALLOWED_ICON_EXTS:
+        p = expr_dir / f"{expression_name}{ext}"
+        if p.exists():
+            p.unlink()
+            removed = True
+
+    config_path = companion_dir / "config.json"
+    if config_path.exists():
+        cfg = json.loads(config_path.read_text(encoding="utf-8"))
+        cfg.get("expression_images", {}).pop(expression_name, None)
         _atomic_write_json(config_path, cfg)
 
     CompanionRegistry.force_reload()
@@ -447,6 +569,7 @@ async def create_companion(req: CompanionCreateRequest):
         },
         "route_prefix":  f"/api/custom/{companion_id}",
         "type":          "custom",
+        "icon_mode":     req.icon_mode,
     }
 
     _atomic_write_json(companion_dir / "config.json", config)
@@ -479,14 +602,10 @@ async def create_companion(req: CompanionCreateRequest):
 
 @router.put("/{companion_id}")
 async def update_companion(companion_id: str, req: CompanionUpdateRequest):
-    """Update an existing custom companion's config."""
-    if companion_id in _BUILTIN_IDS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Use PUT /builtin/{companion_id} to edit built-in companions."
-        )
+    """Update a companion's config. Built-in edits are stored as data-dir overrides."""
     existing = _load_config(companion_id)
     companion_dir = _CUSTOM_DIR / companion_id
+    companion_dir.mkdir(parents=True, exist_ok=True)   # creates override dir for built-ins
 
     expressions = req.expressions or existing.get("expressions", ["default", "happy", "thinking"])
     moods       = req.moods       or existing.get("moods", ["calm", "happy", "reflective"])
@@ -522,6 +641,8 @@ async def update_companion(companion_id: str, req: CompanionUpdateRequest):
             "chat_system":    req.prompts.chat_system,
             "initiate_system": req.prompts.initiate_system,
         },
+        # icon_mode from the form; expression_images preserved via **existing spread above
+        "icon_mode": req.icon_mode,
     }
     _atomic_write_json(companion_dir / "config.json", config)
 

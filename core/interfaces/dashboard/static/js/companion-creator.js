@@ -8,56 +8,124 @@
 
 const CompanionCreator = (() => {
     const API = '/api/companion-creator';
+    const CHAT_API = '/api/companions';
     let _root = null;
     let _editingId = null;
     let _isBuiltin = false;
+    let _activeData = null;   // full companion data for the currently open pane
+    let _chatHistory = [];    // [{role, content}] for the current chat session
+    let _chatStreaming = false;
 
     // ── Shell ─────────────────────────────────────────────────────────────────
 
     function _renderShell() {
         _root.innerHTML = `
-<div class="cc-wrap">
-  <div class="cc-header">
-    <div class="cc-header-left">
-      <h2 class="cc-title"><i class="fas fa-user-astronaut"></i> Companion Builder</h2>
-      <p class="cc-subtitle">Craft unique AI companions. Changes are live immediately.</p>
+<div class="cc-hub">
+
+  <!-- ── Left roster panel ────────────────────────────────────────────── -->
+  <div class="cc-roster">
+    <div class="cc-roster-hdr">
+      <div class="cc-roster-title">
+        <i class="fas fa-users"></i>
+        <span>Companions</span>
+      </div>
+      <div class="cc-roster-hdr-actions">
+        <button id="cc-import-btn" class="cc-icon-btn" title="Import companion JSON">
+          <i class="fas fa-file-import"></i>
+        </button>
+        <button id="cc-new-btn" class="cc-icon-btn cc-icon-btn-primary" title="New companion">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
     </div>
-    <div class="cc-header-actions">
-      <button id="cc-import-btn" class="cc-btn cc-btn-ghost cc-btn-sm" title="Import a shared companion JSON">
-        <i class="fas fa-file-import"></i> Import
-      </button>
+
+    <div class="cc-search-wrap">
+      <i class="fas fa-search cc-search-icon"></i>
+      <input type="text" id="cc-search" class="cc-search-input" placeholder="Search companions…" autocomplete="off">
+    </div>
+
+    <div class="cc-roster-scroll">
+      <div class="cc-roster-section">
+        <div class="cc-roster-section-label">Built-in</div>
+        <div id="cc-builtin-list" class="cc-card-list">
+          <div class="cc-card-loading"><i class="fas fa-spinner fa-spin"></i></div>
+        </div>
+      </div>
+      <div class="cc-roster-section">
+        <div class="cc-roster-section-label">Your Companions</div>
+        <div id="cc-custom-list" class="cc-card-list">
+          <div class="cc-card-empty">No companions yet — hit <strong>+</strong> to create one.</div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="cc-layout">
-    <div class="cc-sidebar">
-      <div class="cc-sidebar-group">
-        <div class="cc-section-label">Built-in</div>
-        <div id="cc-builtin-list" class="cc-list">
-          <div class="cc-list-loading"><i class="fas fa-spinner fa-spin"></i></div>
-        </div>
-      </div>
-      <div class="cc-sidebar-group">
-        <div class="cc-section-label">Custom</div>
-        <div id="cc-custom-list" class="cc-list">
-          <div class="cc-list-empty">No custom companions yet.</div>
-        </div>
-      </div>
-      <button id="cc-new-btn" class="cc-btn cc-btn-primary cc-btn-full cc-btn-sm" style="margin-top:auto">
+  <!-- ── Right panel ──────────────────────────────────────────────────── -->
+  <div class="cc-detail" id="cc-detail">
+
+    <!-- Empty state (no companion selected) -->
+    <div class="cc-empty-state" id="cc-empty-state">
+      <i class="fas fa-users cc-empty-icon"></i>
+      <p class="cc-empty-title">Select a companion</p>
+      <p class="cc-empty-sub">Choose from the list to start chatting, or create a new one.</p>
+      <button id="cc-empty-new-btn" class="cc-btn cc-btn-primary cc-btn-sm" style="margin-top:0.75rem">
         <i class="fas fa-plus"></i> New Companion
       </button>
     </div>
 
-    <div class="cc-form-area" id="cc-form-area">
-      <div class="cc-empty-state" id="cc-empty-state">
-        <i class="fas fa-user-astronaut cc-empty-icon"></i>
-        <p>Select a companion to edit, or click <strong>New Companion</strong> to create one.</p>
+    <!-- Active companion pane (shown when a companion is selected) -->
+    <div class="cc-active-pane hidden" id="cc-active-pane">
+
+      <!-- Pane header: avatar + name + Chat/Settings tabs -->
+      <div class="cc-pane-hdr">
+        <div class="cc-pane-identity">
+          <div class="cc-pane-avatar" id="cc-pane-avatar">✦</div>
+          <div class="cc-pane-meta">
+            <span class="cc-pane-name" id="cc-pane-name"></span>
+            <span class="cc-pane-sub"  id="cc-pane-sub"></span>
+          </div>
+        </div>
+        <div class="cc-pane-tabs">
+          <button class="cc-ptab cc-ptab-active" id="cc-ptab-chat">
+            <i class="fas fa-comment-dots"></i> Chat
+          </button>
+          <button class="cc-ptab" id="cc-ptab-settings">
+            <i class="fas fa-sliders"></i> Settings
+          </button>
+        </div>
       </div>
 
-      <form id="cc-form" class="cc-form" style="display:none">
+      <!-- Chat view (default) -->
+      <div class="cc-chat-view" id="cc-chat-view">
+        <!-- Portrait panel (left) -->
+        <div class="cc-chat-portrait" id="cc-chat-portrait">
+          <div class="cc-portrait-avatar" id="cc-portrait-avatar">✦</div>
+          <div class="cc-portrait-name" id="cc-portrait-name"></div>
+          <div class="cc-portrait-sub" id="cc-portrait-sub"></div>
+        </div>
+        <!-- Chat column (right) -->
+        <div class="cc-chat-col">
+          <div class="cc-chat-msgs" id="cc-chat-msgs">
+            <div class="cc-chat-hint" id="cc-chat-hint">
+              <i class="fas fa-comment-dots"></i>
+              <span>Start a conversation with <strong id="cc-chat-cname">your companion</strong></span>
+            </div>
+          </div>
+          <div class="cc-chat-bar">
+            <textarea id="cc-chat-input" class="cc-chat-input" placeholder="Message…" rows="1" autocomplete="off"></textarea>
+            <button id="cc-chat-send" class="cc-chat-send-btn" title="Send">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings view (shown when Settings tab is active) -->
+      <div class="cc-settings-view hidden" id="cc-settings-view">
+        <form id="cc-form" class="cc-form">
         <div id="cc-builtin-notice" class="cc-builtin-notice hidden">
-          <i class="fas fa-lock"></i>
-          Built-in companion — view only. All fields are locked. Create a new companion to build something custom.
+          <i class="fas fa-circle-info"></i>
+          Built-in companion — your changes are saved as overrides and don't modify core files.
         </div>
 
         <!-- ── Identity ─────────────────────────────────────── -->
@@ -125,14 +193,8 @@ const CompanionCreator = (() => {
           </div>
           <div class="cc-field" id="cc-model-field">
             <label>Default Model</label>
-            <select id="cc-model">
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-              <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-              <option value="gpt-4o-mini">GPT-4o Mini</option>
-              <option value="gpt-4o">GPT-4o</option>
-              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
-              <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+            <select id="cc-model" class="control-select" style="width:100%">
+              <option value="">Loading models…</option>
             </select>
           </div>
         </div>
@@ -271,6 +333,27 @@ const CompanionCreator = (() => {
                   <input type="text" id="cc-default-expression" placeholder="default" maxlength="32">
                 </div>
               </div>
+
+              <!-- Icon mode toggle -->
+              <div style="margin-top:0.9rem;border-top:1px solid var(--border);padding-top:0.9rem">
+                <label class="cc-toggle-row" for="cc-icon-mode" style="border:none;padding:0">
+                  <div>
+                    <div class="cc-cap-label">Icon Mode</div>
+                    <div class="cc-cap-desc">Assign an image to each expression — the portrait shows the active one</div>
+                  </div>
+                  <span class="cc-toggle-wrap">
+                    <input type="checkbox" id="cc-icon-mode" class="cc-toggle-input">
+                    <span class="cc-toggle-thumb"></span>
+                  </span>
+                </label>
+              </div>
+
+              <!-- Expression images grid -->
+              <div id="cc-expr-images-wrap" class="cc-expr-images-wrap hidden">
+                <div class="cc-section-label" style="margin-top:0.9rem;margin-bottom:0.25rem">Expression Images</div>
+                <p class="cc-hint" style="margin:0 0 0.6rem">Save the companion first, then upload one image per expression.</p>
+                <div id="cc-expr-images-grid" class="cc-expr-images-grid"></div>
+              </div>
             </div>
           </div>
 
@@ -297,11 +380,14 @@ const CompanionCreator = (() => {
           </button>
         </div>
         <div id="cc-form-msg" class="cc-form-msg" style="display:none"></div>
-      </form>
-    </div>
-  </div>
+        </form>
+      </div><!-- /.cc-settings-view -->
 
-  <!-- Hidden import dialog -->
+    </div><!-- /.cc-active-pane -->
+
+  </div><!-- /.cc-detail -->
+
+  <!-- Import dialog (fixed overlay, outside layout flow) -->
   <div id="cc-import-dialog" class="cc-import-dialog hidden">
     <div class="cc-import-inner">
       <div class="cc-import-header">
@@ -316,7 +402,8 @@ const CompanionCreator = (() => {
       <div id="cc-import-msg" class="cc-form-msg" style="display:none"></div>
     </div>
   </div>
-</div>`;
+
+</div><!-- /.cc-hub -->`;
     }
 
     // ── List rendering ────────────────────────────────────────────────────────
@@ -336,35 +423,64 @@ const CompanionCreator = (() => {
 
             builtinEl.innerHTML = builtins.length
                 ? builtins.map(c => _listItemHTML(c, true)).join('')
-                : '<div class="cc-list-empty">None</div>';
+                : '<div class="cc-card-empty">None found.</div>';
 
             customEl.innerHTML = customs.length
                 ? customs.map(c => _listItemHTML(c, false)).join('')
-                : '<div class="cc-list-empty">No custom companions yet.</div>';
+                : '<div class="cc-card-empty">No companions yet — hit <strong>+</strong> to create one.</div>';
 
-            document.querySelectorAll('.cc-list-item').forEach(item => {
+            // Wire up card click handlers
+            document.querySelectorAll('.cc-companion-card').forEach(item => {
                 item.addEventListener('click', () =>
                     _editCompanion(item.dataset.id, item.dataset.builtin === 'true'));
                 item.addEventListener('keydown', e => {
                     if (e.key === 'Enter') _editCompanion(item.dataset.id, item.dataset.builtin === 'true');
                 });
             });
+
+            // Wire up search filter
+            _initSearch(all);
+
         } catch (e) {
-            if (builtinEl) builtinEl.innerHTML = `<div class="cc-list-error">Error: ${e.message}</div>`;
+            if (builtinEl) builtinEl.innerHTML = `<div class="cc-card-empty" style="color:#f87171">Error: ${e.message}</div>`;
         }
     }
 
+    function _initSearch(allCompanions) {
+        const searchEl = document.getElementById('cc-search');
+        if (!searchEl) return;
+        searchEl.addEventListener('input', () => {
+            const q = searchEl.value.toLowerCase().trim();
+            document.querySelectorAll('.cc-companion-card').forEach(card => {
+                const name = (card.querySelector('.cc-card-name')?.textContent || '').toLowerCase();
+                card.style.display = (!q || name.includes(q)) ? '' : 'none';
+            });
+        });
+    }
+
     function _listItemHTML(c, isBuiltin) {
-        const active  = _editingId === c.id ? 'active' : '';
-        const lock    = isBuiltin ? '<i class="fas fa-lock cc-list-lock"></i>' : '';
-        const avatar  = c.has_icon
-            ? `<img class="cc-list-icon" src="${API}/${c.id}/icon?t=${Date.now()}" alt="${c.name}">`
-            : `<span class="cc-list-symbol" style="color:${c.accent_color || '#6366f1'}">${c.avatar_symbol || '✦'}</span>`;
+        const active   = _editingId === c.id ? 'active' : '';
+        const color    = c.accent_color || '#6366f1';
+        const desc     = c.description ? `<span class="cc-card-desc">${c.description}</span>` : '';
+        const badge    = isBuiltin
+            ? `<span class="cc-card-badge cc-card-badge-builtin"><i class="fas fa-lock"></i> Built-in</span>`
+            : '';
+        // Sidebar avatar: expression image (icon mode) > main icon > symbol
+        const exprImgs = c.expression_images || {};
+        const defExpr  = c.default_expression || 'default';
+        const avatar = (c.icon_mode && exprImgs[defExpr])
+            ? `<img class="cc-card-avatar cc-card-avatar-img" src="${API}/${c.id}/expression/${defExpr}?t=${Date.now()}" alt="${c.name}">`
+            : c.has_icon
+            ? `<img class="cc-card-avatar cc-card-avatar-img" src="${API}/${c.id}/icon?t=${Date.now()}" alt="${c.name}">`
+            : `<div class="cc-card-avatar" style="background:${color}22;color:${color}">${c.avatar_symbol || '✦'}</div>`;
         return `
-        <div class="cc-list-item ${active}" data-id="${c.id}" data-builtin="${isBuiltin}" role="button" tabindex="0">
+        <div class="cc-companion-card ${active}" data-id="${c.id}" data-builtin="${isBuiltin}" role="button" tabindex="0">
           ${avatar}
-          <span class="cc-list-name">${c.name}</span>
-          ${lock}
+          <div class="cc-card-body">
+            <span class="cc-card-name">${c.name}</span>
+            ${desc}
+            ${badge}
+          </div>
         </div>`;
     }
 
@@ -386,37 +502,32 @@ const CompanionCreator = (() => {
 
     function _showForm(fillData = null, isBuiltin = false) {
         _isBuiltin = isBuiltin;
-        document.getElementById('cc-empty-state').style.display = 'none';
+        // Note: visibility of the pane/views is managed by _selectCompanion / _switchView.
+        // _showForm only fills in field values and handles field locking.
         const form = document.getElementById('cc-form');
-        form.style.display = '';
+        if (!form) return;
 
         // Builtin notice
         const notice = document.getElementById('cc-builtin-notice');
         notice.classList.toggle('hidden', !isBuiltin);
 
-        // Lock ALL fields for built-ins; unlock for custom
+        // All form fields are editable — built-in changes are saved as overrides
         form.querySelectorAll('input:not([type="file"]):not([type="color"]), textarea, select').forEach(el => {
-            el.disabled      = isBuiltin;
-            el.style.opacity = isBuiltin ? '0.5' : '';
+            el.disabled = false; el.style.opacity = '';
         });
-        // Color picker needs separate handling (disabled attr behaves oddly on <input type=color>)
         const colorPicker = document.getElementById('cc-accent-color');
-        if (colorPicker) { colorPicker.disabled = isBuiltin; colorPicker.style.pointerEvents = isBuiltin ? 'none' : ''; }
+        if (colorPicker) { colorPicker.disabled = false; colorPicker.style.pointerEvents = ''; }
 
-        // Save button hidden for built-ins; delete/export hidden for built-ins and new forms
-        document.getElementById('cc-save-btn').style.display        = isBuiltin ? 'none' : '';
-        document.getElementById('cc-delete-btn').style.display      = (!isBuiltin && fillData) ? '' : 'none';
+        // Save always shown; delete/export only for existing custom companions
+        document.getElementById('cc-save-btn').style.display   = '';
+        document.getElementById('cc-delete-btn').style.display = (!isBuiltin && fillData) ? '' : 'none';
         const exportBtn = document.getElementById('cc-export-btn');
         exportBtn.classList.toggle('hidden', isBuiltin || !fillData);
 
-        // Icon section — upload/remove only for existing custom companions
+        // Icon section — for any existing companion; "save first" hint for new ones
         const iconBtns     = document.getElementById('cc-icon-btns');
         const iconSaveHint = document.getElementById('cc-icon-save-hint');
-        if (isBuiltin) {
-            // Built-in: hide all icon controls
-            iconBtns?.classList.add('hidden');
-            iconSaveHint?.classList.add('hidden');
-        } else if (!fillData) {
+        if (!fillData) {
             // New companion: show "save first" hint instead of upload controls
             iconBtns?.classList.add('hidden');
             iconSaveHint?.classList.remove('hidden');
@@ -456,7 +567,16 @@ const CompanionCreator = (() => {
             set('cc-dislikes', (fillData.dislikes || []).join('\n'));
             set('cc-accent-color',  fillData.accent_color  || '#6366f1');
             set('cc-avatar-symbol', fillData.avatar_symbol || '✦');
-            set('cc-model',         fillData.default_model || 'gemini-1.5-flash');
+            // Model — use the shared helper so options match the registry
+            const modelSel = document.getElementById('cc-model');
+            const modelVal = fillData.default_model || 'gemini-1.5-flash';
+            if (modelSel) {
+                if (typeof window._populateModelSelect === 'function') {
+                    window._populateModelSelect(modelSel, modelVal);
+                } else {
+                    modelSel.value = modelVal;
+                }
+            }
 
             // Behavior
             const beh = fillData.behavior || {};
@@ -483,6 +603,15 @@ const CompanionCreator = (() => {
             set('cc-moods',             (fillData.moods       || []).join('\n'));
             set('cc-default-expression', fillData.default_expression || 'default');
 
+            // Icon mode
+            const iconModeToggle = document.getElementById('cc-icon-mode');
+            if (iconModeToggle) iconModeToggle.checked = !!(fillData.icon_mode);
+            const exprImgWrap = document.getElementById('cc-expr-images-wrap');
+            if (exprImgWrap) exprImgWrap.classList.toggle('hidden', !fillData.icon_mode);
+            if (fillData.icon_mode && _editingId) {
+                _renderExpressionImages(fillData.expressions || [], fillData.expression_images || {});
+            }
+
         } else {
             form.reset();
             set('cc-accent-color',  '#6366f1');
@@ -499,6 +628,10 @@ const CompanionCreator = (() => {
             set('cc-moods',       'calm\nhappy\nreflective\nintense');
             set('cc-default-expression', 'default');
             set('cc-default-mood', 'calm');
+            // Icon mode off for new companions
+            const iconModeEl = document.getElementById('cc-icon-mode');
+            if (iconModeEl) iconModeEl.checked = false;
+            document.getElementById('cc-expr-images-wrap')?.classList.add('hidden');
         }
         _updatePreview();
     }
@@ -568,6 +701,7 @@ const CompanionCreator = (() => {
             expressions:        lines('cc-expressions'),
             moods:              lines('cc-moods'),
             default_expression: document.getElementById('cc-default-expression')?.value?.trim() || 'default',
+            icon_mode:          chk('cc-icon-mode'),
         };
     }
 
@@ -575,30 +709,275 @@ const CompanionCreator = (() => {
 
     async function _editCompanion(id, isBuiltin = false) {
         _editingId = id;
+        _isBuiltin = isBuiltin;
         try {
             const res  = await fetch(`${API}/${id}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            _showForm(data, isBuiltin);
-            _loadList();
+            _activeData = data;
+            _loadList(); // refresh card active state
+            _selectCompanion(data, isBuiltin);
         } catch (e) {
             if (typeof showToast === 'function') showToast(`Failed to load companion: ${e.message}`, 'error');
         }
+    }
+
+    // ── View orchestration ────────────────────────────────────────────────────
+
+    function _selectCompanion(data, isBuiltin) {
+        // Show the active pane and update header
+        document.getElementById('cc-empty-state').classList.add('hidden');
+        document.getElementById('cc-active-pane').classList.remove('hidden');
+        _updatePaneHeader(data, isBuiltin);
+        // Default to chat view; for truly new (unsaved) companions switch to settings
+        _switchView(data ? 'chat' : 'settings');
+        if (data) _loadHistory(data.id);
+    }
+
+    function _startNewCompanion() {
+        _editingId = null;
+        _isBuiltin = false;
+        _activeData = null;
+        // Update card active states
+        document.querySelectorAll('.cc-companion-card').forEach(c => c.classList.remove('active'));
+        // Update pane header for "new companion" mode
+        _updatePaneHeader(null, false, true);
+        document.getElementById('cc-empty-state').classList.add('hidden');
+        document.getElementById('cc-active-pane').classList.remove('hidden');
+        // Go straight to settings (create form)
+        _switchView('settings');
+        _showForm(null, false);
+        _loadList();
+    }
+
+    function _switchView(view) {
+        const chatView     = document.getElementById('cc-chat-view');
+        const settingsView = document.getElementById('cc-settings-view');
+        const chatTab      = document.getElementById('cc-ptab-chat');
+        const settingsTab  = document.getElementById('cc-ptab-settings');
+
+        if (view === 'chat') {
+            chatView?.classList.remove('hidden');
+            settingsView?.classList.add('hidden');
+            chatTab?.classList.add('cc-ptab-active');
+            settingsTab?.classList.remove('cc-ptab-active');
+        } else {
+            chatView?.classList.add('hidden');
+            settingsView?.classList.remove('hidden');
+            chatTab?.classList.remove('cc-ptab-active');
+            settingsTab?.classList.add('cc-ptab-active');
+            // Fill form with current companion data (or blank for new)
+            _showForm(_activeData, _isBuiltin);
+        }
+    }
+
+    function _updatePaneHeader(data, isBuiltin, isNew = false) {
+        const avatarEl   = document.getElementById('cc-pane-avatar');
+        const nameEl     = document.getElementById('cc-pane-name');
+        const subEl      = document.getElementById('cc-pane-sub');
+        const chatTab    = document.getElementById('cc-ptab-chat');
+        const portAvEl   = document.getElementById('cc-portrait-avatar');
+        const portNameEl = document.getElementById('cc-portrait-name');
+        const portSubEl  = document.getElementById('cc-portrait-sub');
+
+        if (isNew || !data) {
+            if (avatarEl) { avatarEl.textContent = '✦'; avatarEl.style.background = 'rgba(99,102,241,0.15)'; avatarEl.style.color = '#818cf8'; }
+            if (nameEl) nameEl.textContent = 'New Companion';
+            if (subEl)  subEl.textContent  = 'Fill in the settings below to create';
+            if (chatTab) { chatTab.disabled = true; chatTab.title = 'Save the companion first to start chatting'; }
+            if (portAvEl)   { portAvEl.textContent = '✦'; portAvEl.style.background = 'rgba(99,102,241,0.15)'; portAvEl.style.color = '#818cf8'; }
+            if (portNameEl) portNameEl.textContent = '';
+            if (portSubEl)  portSubEl.textContent  = '';
+            return;
+        }
+
+        if (chatTab) { chatTab.disabled = false; chatTab.title = ''; }
+        const color = data.accent_color || '#6366f1';
+
+        // Header avatar
+        if (data.has_icon && data.id) {
+            if (avatarEl) avatarEl.innerHTML = `<img src="${API}/${data.id}/icon?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover;border-radius:11px">`;
+            if (avatarEl) { avatarEl.style.background = ''; avatarEl.style.color = ''; }
+        } else {
+            if (avatarEl) { avatarEl.textContent = data.avatar_symbol || '✦'; avatarEl.style.background = `${color}22`; avatarEl.style.color = color; }
+        }
+        if (nameEl) nameEl.textContent = data.name || '';
+        if (subEl)  subEl.textContent  = isBuiltin ? 'Built-in' : (data.description || '');
+
+        // Portrait panel — priority: expression image > icon > symbol
+        const defExpr  = data.default_expression || 'default';
+        const exprImgs = data.expression_images || {};
+        if (data.icon_mode && exprImgs[defExpr] && data.id) {
+            const exprUrl = `${API}/${data.id}/expression/${defExpr}?t=${Date.now()}`;
+            if (portAvEl) { portAvEl.innerHTML = `<img src="${exprUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:20px">`; portAvEl.style.background = ''; portAvEl.style.color = ''; }
+        } else if (data.has_icon && data.id) {
+            if (portAvEl) { portAvEl.innerHTML = `<img src="${API}/${data.id}/icon?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover;border-radius:20px">`; portAvEl.style.background = ''; portAvEl.style.color = ''; }
+        } else {
+            if (portAvEl) { portAvEl.textContent = data.avatar_symbol || '✦'; portAvEl.style.background = `${color}22`; portAvEl.style.color = color; }
+        }
+        if (portNameEl) portNameEl.textContent = data.name || '';
+        if (portSubEl)  portSubEl.textContent  = isBuiltin ? 'Built-in' : '';
+    }
+
+    // ── Chat ──────────────────────────────────────────────────────────────────
+
+    async function _loadHistory(companionId) {
+        const msgsEl = document.getElementById('cc-chat-msgs');
+        if (!msgsEl) return;
+        _chatHistory = [];
+        // Reset to hint
+        msgsEl.innerHTML = `
+          <div class="cc-chat-hint" id="cc-chat-hint">
+            <i class="fas fa-comment-dots"></i>
+            <span>Start a conversation with <strong id="cc-chat-cname">${_activeData?.name || 'your companion'}</strong></span>
+          </div>`;
+        try {
+            const res  = await fetch(`${CHAT_API}/${companionId}/history?offset_days=0&limit_days=1`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const days = data.history || [];
+            let loaded = 0;
+            for (const day of days) {
+                for (const msg of (day.messages || [])) {
+                    _chatHistory.push({ role: msg.role, content: msg.content });
+                    _appendMessage(msg.role === 'user' ? 'user' : 'companion', msg.content);
+                    loaded++;
+                }
+            }
+            if (loaded > 0) {
+                document.getElementById('cc-chat-hint')?.remove();
+                msgsEl.scrollTop = msgsEl.scrollHeight;
+            }
+        } catch { /* history load is non-critical */ }
+    }
+
+    function _appendMessage(role, text, id = null) {
+        const msgsEl = document.getElementById('cc-chat-msgs');
+        if (!msgsEl) return null;
+        const bubble = document.createElement('div');
+        bubble.className = `cc-msg cc-msg-${role}`;
+        if (id) bubble.id = id;
+        const color  = _activeData?.accent_color || '#6366f1';
+        const symbol = _activeData?.avatar_symbol || '✦';
+        if (role === 'companion') {
+            bubble.innerHTML = `
+              <div class="cc-msg-avatar" style="background:${color}22;color:${color}">${symbol}</div>
+              <div class="cc-msg-bubble">${_escHtml(text)}</div>`;
+        } else {
+            bubble.innerHTML = `<div class="cc-msg-bubble">${_escHtml(text)}</div>`;
+        }
+        msgsEl.appendChild(bubble);
+        msgsEl.scrollTop = msgsEl.scrollHeight;
+        return bubble;
+    }
+
+    function _escHtml(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    }
+
+    async function _sendMessage() {
+        if (_chatStreaming) return;
+        const input = document.getElementById('cc-chat-input');
+        const message = (input?.value || '').trim();
+        if (!message || !_editingId) return;
+
+        input.value = '';
+        _autoResizeInput(input);
+
+        // Remove the "start chatting" hint
+        document.getElementById('cc-chat-hint')?.remove();
+
+        // Push user message
+        _appendMessage('user', message);
+        _chatHistory.push({ role: 'user', content: message });
+
+        // Streaming lock + disable UI
+        _chatStreaming = true;
+        const sendBtn = document.getElementById('cc-chat-send');
+        if (input)   input.disabled   = true;
+        if (sendBtn) sendBtn.disabled = true;
+
+        // Create companion bubble (streaming placeholder)
+        const color  = _activeData?.accent_color || '#6366f1';
+        const symbol = _activeData?.avatar_symbol || '✦';
+        const msgsEl = document.getElementById('cc-chat-msgs');
+        const bubble = document.createElement('div');
+        bubble.className = 'cc-msg cc-msg-companion';
+        bubble.innerHTML = `
+          <div class="cc-msg-avatar" style="background:${color}22;color:${color}">${symbol}</div>
+          <div class="cc-msg-bubble cc-msg-streaming">…</div>`;
+        msgsEl?.appendChild(bubble);
+        const bubbleText = bubble.querySelector('.cc-msg-bubble');
+        msgsEl.scrollTop = msgsEl.scrollHeight;
+
+        const histForApi = _chatHistory.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
+
+        try {
+            const res = await fetch(`${CHAT_API}/${_editingId}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message, history: histForApi })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const reader  = res.body.getReader();
+            const decoder = new TextDecoder();
+            let fullText  = '';
+            let finalText = '';  // from 'done' or 'final_cleaned' events
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                const lines = decoder.decode(value).split('\n');
+                for (const line of lines) {
+                    const raw = line.trim();
+                    if (!raw) continue;
+                    try {
+                        const evt = JSON.parse(raw);
+                        if (evt.type === 'message' && evt.content) {
+                            fullText += evt.content;
+                            if (bubbleText) { bubbleText.innerHTML = _escHtml(fullText); bubbleText.classList.remove('cc-msg-streaming'); }
+                        } else if (evt.type === 'final_cleaned' && evt.content) {
+                            finalText = evt.content;
+                        } else if (evt.type === 'error' && evt.message) {
+                            finalText = evt.message;
+                            if (bubbleText) { bubbleText.classList.add('cc-msg-error-text'); bubbleText.classList.remove('cc-msg-streaming'); }
+                        } else if (evt.type === 'done') {
+                            if (evt.content) finalText = evt.content;
+                            if (evt.expression) _updatePortraitExpression(evt.expression);
+                        }
+                    } catch { /* non-JSON chunk */ }
+                }
+                if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+            }
+
+            const saved = finalText || fullText || '(no response)';
+            if (bubbleText) bubbleText.innerHTML = _escHtml(saved);
+            _chatHistory.push({ role: 'assistant', content: saved });
+
+        } catch (err) {
+            if (bubbleText) { bubbleText.textContent = 'Failed to get a response.'; bubbleText.classList.add('cc-msg-error-text'); }
+        } finally {
+            _chatStreaming = false;
+            if (input)   { input.disabled   = false; input.focus(); }
+            if (sendBtn)   sendBtn.disabled  = false;
+            if (msgsEl)    msgsEl.scrollTop  = msgsEl.scrollHeight;
+        }
+    }
+
+    function _autoResizeInput(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 120) + 'px';
     }
 
     async function _saveCompanion(e) {
         e.preventDefault();
         const payload = _collectForm();
 
-        if (_isBuiltin) {
-            if (!payload.personality) {
-                _setMsg('Personality is required.', true);
-                return;
-            }
-        } else {
-            if (!payload.name || !payload.description || !payload.personality) {
-                _setMsg('Name, description, and personality are required.', true);
-                return;
-            }
+        if (!payload.name || !payload.description || !payload.personality) {
+            _setMsg('Name, description, and personality are required.', true);
+            return;
         }
 
         const saveBtn = document.getElementById('cc-save-btn');
@@ -608,22 +987,7 @@ const CompanionCreator = (() => {
         try {
             let url, method, body;
 
-            if (_isBuiltin) {
-                url    = `${API}/builtin/${_editingId}`;
-                method = 'PUT';
-                body   = JSON.stringify({
-                    personality:   payload.personality,
-                    speech_style:  payload.speech_style,
-                    quirks:        payload.quirks,
-                    likes:         payload.likes,
-                    dislikes:      payload.dislikes,
-                    accent_color:  payload.accent_color,
-                    avatar_symbol: payload.avatar_symbol,
-                    behavior:      payload.behavior,
-                    capabilities:  payload.capabilities,
-                    prompts:       payload.prompts,
-                });
-            } else if (_editingId) {
+            if (_editingId) {
                 url    = `${API}/${_editingId}`;
                 method = 'PUT';
                 body   = JSON.stringify(payload);
@@ -640,13 +1004,16 @@ const CompanionCreator = (() => {
             _setMsg(`✓ ${data.message}`);
             const isNew = !_editingId;
             if (isNew) _editingId = data.id;
-            await _loadList();
             if (typeof showToast === 'function') showToast(data.message, 'success');
-            // After creating a new companion, reload its form so icon controls appear
-            if (isNew) {
-                const fresh = await fetch(`${API}/${_editingId}`);
-                if (fresh.ok) _showForm(await fresh.json(), false);
+            // Reload fresh data (includes has_icon, etc.)
+            const freshRes = await fetch(`${API}/${_editingId}`);
+            if (freshRes.ok) {
+                const freshData = await freshRes.json();
+                _activeData = freshData;
+                _updatePaneHeader(freshData, _isBuiltin);
+                _showForm(freshData, _isBuiltin);
             }
+            await _loadList();
             window.dispatchEvent(new CustomEvent('customCompanionCreated', { detail: { id: _editingId } }));
         } catch (err) {
             _setMsg(`Error: ${err.message}`, true);
@@ -666,8 +1033,9 @@ const CompanionCreator = (() => {
             if (!res.ok) throw new Error(data.detail || 'Delete failed');
             _editingId = null;
             _isBuiltin = false;
-            document.getElementById('cc-form').style.display = 'none';
-            document.getElementById('cc-empty-state').style.display = '';
+            _activeData = null;
+            document.getElementById('cc-active-pane')?.classList.add('hidden');
+            document.getElementById('cc-empty-state')?.classList.remove('hidden');
             await _loadList();
             if (typeof showToast === 'function') showToast(data.message, 'success');
             window.dispatchEvent(new CustomEvent('customCompanionDeleted'));
@@ -744,6 +1112,105 @@ const CompanionCreator = (() => {
         }
     }
 
+    // ── Expression images ─────────────────────────────────────────────────────
+
+    function _renderExpressionImages(expressions, exprImages) {
+        const grid = document.getElementById('cc-expr-images-grid');
+        if (!grid) return;
+        if (!expressions.length) {
+            grid.innerHTML = '<p class="cc-hint" style="margin:0">No expressions defined — add some in the fields above.</p>';
+            return;
+        }
+        grid.innerHTML = expressions.map(expr => {
+            const hasImg = !!(exprImages && exprImages[expr]);
+            const imgUrl = hasImg ? `${API}/${_editingId}/expression/${expr}?t=${Date.now()}` : null;
+            return `
+            <div class="cc-expr-slot" data-expr="${expr}">
+              <div class="cc-expr-slot-thumb">
+                ${hasImg
+                    ? `<img class="cc-expr-slot-img" src="${imgUrl}" alt="${expr}">`
+                    : `<i class="fas fa-image cc-expr-slot-ph"></i>`}
+              </div>
+              <div class="cc-expr-slot-info">
+                <div class="cc-expr-slot-name">${expr}</div>
+                <div class="cc-expr-slot-btns">
+                  <label class="cc-btn cc-btn-ghost cc-btn-sm cc-expr-upload-lbl" for="cc-expr-file-${expr}" title="Upload image">
+                    <i class="fas fa-upload"></i>
+                  </label>
+                  <input type="file" id="cc-expr-file-${expr}" data-expr="${expr}" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" class="cc-expr-file-input">
+                  ${hasImg ? `<button type="button" class="cc-btn cc-btn-ghost cc-btn-sm cc-expr-delete-btn" data-expr="${expr}" title="Remove image"><i class="fas fa-trash"></i></button>` : ''}
+                </div>
+              </div>
+            </div>`;
+        }).join('');
+
+        // Wire up file inputs
+        grid.querySelectorAll('.cc-expr-file-input').forEach(input => {
+            input.addEventListener('change', async e => {
+                const file = e.target.files?.[0];
+                const exprName = e.target.dataset.expr;
+                e.target.value = '';
+                if (!file || !exprName || !_editingId) return;
+                await _uploadExpressionImage(exprName, file);
+            });
+        });
+
+        // Wire up delete buttons
+        grid.querySelectorAll('.cc-expr-delete-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const exprName = btn.dataset.expr;
+                if (!exprName || !_editingId) return;
+                await _deleteExpressionImage(exprName);
+            });
+        });
+    }
+
+    async function _uploadExpressionImage(expressionName, file) {
+        const fd = new FormData();
+        fd.append('file', file);
+        try {
+            const res  = await fetch(`${API}/${_editingId}/expression/${expressionName}`, { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Upload failed');
+            if (_activeData) {
+                if (!_activeData.expression_images) _activeData.expression_images = {};
+                _activeData.expression_images[expressionName] = data.ext;
+                _activeData.icon_mode = true;
+            }
+            if (typeof showToast === 'function') showToast('Expression image uploaded!', 'success');
+            _renderExpressionImages(_activeData?.expressions || [], _activeData?.expression_images || {});
+        } catch (err) {
+            if (typeof showToast === 'function') showToast(`Upload failed: ${err.message}`, 'error');
+        }
+    }
+
+    async function _deleteExpressionImage(expressionName) {
+        try {
+            const res  = await fetch(`${API}/${_editingId}/expression/${expressionName}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Delete failed');
+            if (_activeData?.expression_images) {
+                delete _activeData.expression_images[expressionName];
+            }
+            if (typeof showToast === 'function') showToast('Expression image removed.', 'success');
+            _renderExpressionImages(_activeData?.expressions || [], _activeData?.expression_images || {});
+        } catch (err) {
+            if (typeof showToast === 'function') showToast(`Failed to remove: ${err.message}`, 'error');
+        }
+    }
+
+    function _updatePortraitExpression(expression) {
+        if (!_activeData?.icon_mode || !expression || !_editingId) return;
+        const exprImages = _activeData?.expression_images || {};
+        if (!exprImages[expression]) return;
+        const portAvEl = document.getElementById('cc-portrait-avatar');
+        if (!portAvEl) return;
+        const exprUrl = `${API}/${_editingId}/expression/${expression}?t=${Date.now()}`;
+        portAvEl.innerHTML = `<img src="${exprUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:20px">`;
+        portAvEl.style.background = '';
+        portAvEl.style.color = '';
+    }
+
     // ── Init ──────────────────────────────────────────────────────────────────
 
     function init() {
@@ -753,21 +1220,35 @@ const CompanionCreator = (() => {
 
         _renderShell();
         _loadList();
+        // Populate model select with the same categorized options used everywhere else in the suite
+        if (typeof window.loadChatModels === 'function') window.loadChatModels();
 
-        // Sidebar / form actions
-        document.getElementById('cc-new-btn')?.addEventListener('click', () => {
-            _editingId = null;
-            _isBuiltin = false;
-            _loadList();
-            _showForm(null, false);
-        });
+        // New companion buttons (roster header + empty-state)
+        document.getElementById('cc-new-btn')?.addEventListener('click', _startNewCompanion);
+        document.getElementById('cc-empty-new-btn')?.addEventListener('click', _startNewCompanion);
+
+        // Cancel — go back to chat if editing an existing companion, else empty state
         document.getElementById('cc-cancel-btn')?.addEventListener('click', () => {
-            _editingId = null;
-            _isBuiltin = false;
-            document.getElementById('cc-form').style.display = 'none';
-            document.getElementById('cc-empty-state').style.display = '';
-            _loadList();
+            if (_editingId) {
+                _switchView('chat');
+            } else {
+                _activeData = null;
+                document.getElementById('cc-active-pane')?.classList.add('hidden');
+                document.getElementById('cc-empty-state')?.classList.remove('hidden');
+                _loadList();
+            }
         });
+
+        // Chat/Settings tab buttons
+        document.getElementById('cc-ptab-chat')?.addEventListener('click', () => _switchView('chat'));
+        document.getElementById('cc-ptab-settings')?.addEventListener('click', () => _switchView('settings'));
+
+        // Chat input: auto-resize + Enter to send
+        document.getElementById('cc-chat-input')?.addEventListener('input', e => _autoResizeInput(e.target));
+        document.getElementById('cc-chat-input')?.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _sendMessage(); }
+        });
+        document.getElementById('cc-chat-send')?.addEventListener('click', _sendMessage);
         document.getElementById('cc-delete-btn')?.addEventListener('click', _deleteCompanion);
         document.getElementById('cc-export-btn')?.addEventListener('click', _exportCompanion);
         document.getElementById('cc-form')?.addEventListener('submit', _saveCompanion);
@@ -793,6 +1274,7 @@ const CompanionCreator = (() => {
                 document.getElementById('cc-icon-ph')?.classList.add('hidden');
                 document.getElementById('cc-icon-remove-btn')?.classList.remove('hidden');
                 if (typeof showToast === 'function') showToast('Icon uploaded!', 'success');
+                if (_activeData) { _activeData.has_icon = true; _activeData.icon_ext = data.ext; _updatePaneHeader(_activeData, _isBuiltin); }
                 await _loadList();
             } catch (err) {
                 if (typeof showToast === 'function') showToast(`Icon upload failed: ${err.message}`, 'error');
@@ -811,9 +1293,29 @@ const CompanionCreator = (() => {
                 document.getElementById('cc-icon-ph')?.classList.remove('hidden');
                 document.getElementById('cc-icon-remove-btn')?.classList.add('hidden');
                 if (typeof showToast === 'function') showToast('Icon removed.', 'success');
+                if (_activeData) { _activeData.has_icon = false; _updatePaneHeader(_activeData, _isBuiltin); }
                 await _loadList();
             } catch (err) {
                 if (typeof showToast === 'function') showToast(`Failed to remove icon: ${err.message}`, 'error');
+            }
+        });
+
+        // Icon mode toggle — show/hide expression images grid
+        document.getElementById('cc-icon-mode')?.addEventListener('change', e => {
+            const on  = e.target.checked;
+            const wrap = document.getElementById('cc-expr-images-wrap');
+            if (wrap) wrap.classList.toggle('hidden', !on);
+            if (on && _editingId) {
+                _renderExpressionImages(_activeData?.expressions || [], _activeData?.expression_images || {});
+            }
+        });
+
+        // Re-render expression slots when expressions list changes (if icon mode is on)
+        document.getElementById('cc-expressions')?.addEventListener('input', () => {
+            if (document.getElementById('cc-icon-mode')?.checked && _editingId) {
+                const exprs = (document.getElementById('cc-expressions')?.value || '')
+                    .split('\n').map(s => s.trim()).filter(Boolean);
+                _renderExpressionImages(exprs, _activeData?.expression_images || {});
             }
         });
 
