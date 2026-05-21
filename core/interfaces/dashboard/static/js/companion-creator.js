@@ -867,7 +867,8 @@ const CompanionCreator = (() => {
         if (role === 'companion') {
             bubble.innerHTML = `
               <div class="cc-msg-avatar" style="background:${color}22;color:${color}">${symbol}</div>
-              <div class="cc-msg-bubble">${_escHtml(text)}</div>`;
+              <div class="cc-msg-bubble cc-msg-md">${_renderMd(text)}</div>`;
+            _applyHighlight(bubble);
         } else {
             bubble.innerHTML = `<div class="cc-msg-bubble">${_escHtml(text)}</div>`;
         }
@@ -878,6 +879,23 @@ const CompanionCreator = (() => {
 
     function _escHtml(str) {
         return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    }
+
+    // Render companion text as markdown (marked + optional hljs highlight)
+    function _renderMd(text) {
+        if (!text) return '';
+        if (typeof marked !== 'undefined' && marked.parse) {
+            try { return marked.parse(text); } catch { /* fall through */ }
+        }
+        return _escHtml(text);
+    }
+
+    // Run hljs on any code blocks inside a container element
+    function _applyHighlight(container) {
+        if (typeof hljs === 'undefined' || !container) return;
+        container.querySelectorAll('pre code:not([data-highlighted])').forEach(
+            block => hljs.highlightElement(block)
+        );
     }
 
     async function _sendMessage() {
@@ -941,7 +959,7 @@ const CompanionCreator = (() => {
                         const evt = JSON.parse(raw);
                         if (evt.type === 'message' && evt.content) {
                             fullText += evt.content;
-                            if (bubbleText) { bubbleText.innerHTML = _escHtml(fullText); bubbleText.classList.remove('cc-msg-streaming'); }
+                            if (bubbleText) { bubbleText.innerHTML = _renderMd(fullText); bubbleText.classList.remove('cc-msg-streaming'); }
                         } else if (evt.type === 'final_cleaned' && evt.content) {
                             finalText = evt.content;
                         } else if (evt.type === 'error' && evt.message) {
@@ -957,7 +975,8 @@ const CompanionCreator = (() => {
             }
 
             const saved = finalText || fullText || '(no response)';
-            if (bubbleText) bubbleText.innerHTML = _escHtml(saved);
+            if (bubbleText) { bubbleText.classList.add('cc-msg-md'); bubbleText.innerHTML = _renderMd(saved); }
+            _applyHighlight(bubble);
             _chatHistory.push({ role: 'assistant', content: saved });
 
         } catch (err) {
