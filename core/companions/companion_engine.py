@@ -120,6 +120,45 @@ class CompanionEngine:
                 bridges_block=bridges_block
             )
 
+            # ── Fallback system prompt for companions without one ──────────────
+            # Custom companions created via the UI typically have no chat_system set.
+            # Build a sensible prompt from their stored base_info so they know who they are.
+            if not system_prompt.strip():
+                bi  = mem_data.get("base_info", {})
+                mem = mem_data.get("memory", {})
+                parts = [f"You are {config.name}, an AI companion."]
+                if bi.get("core_identity"):
+                    parts.append(f"\n\nIdentity: {bi['core_identity']}")
+                if bi.get("personality"):
+                    parts.append(f"\n\nPersonality: {bi['personality']}")
+                if bi.get("speech_style"):
+                    parts.append(f"\n\nSpeech style: {bi['speech_style']}")
+                if bi.get("quirks"):
+                    parts.append(f"\n\nQuirks: {'; '.join(bi['quirks'])}")
+                if mem:
+                    parts.append(f"\n\nWhat you know about the user:\n{json.dumps(mem, indent=2)}")
+                parts.append(f"\n\nCurrent time: {datetime.datetime.now().strftime('%A, %d %B %Y — %H:%M')}")
+                system_prompt = "".join(parts)
+
+            # ── Expression awareness ──────────────────────────────────────────
+            # Always tell the companion what expressions it has and how to signal them.
+            # The engine strips <expression>...</expression> tags from the final content
+            # and uses them to update the portrait image shown in the UI.
+            expressions = config.expressions or []
+            if expressions:
+                expr_list   = ", ".join(expressions)
+                default_exp = raw.get("default_expression", expressions[0])
+                system_prompt += (
+                    f"\n\n## Visual Expressions"
+                    f"\nYou have a visual portrait that changes based on your expression."
+                    f"\nAvailable expressions: {expr_list}"
+                    f"\nDefault expression: {default_exp}"
+                    f"\nTo change your expression, embed the tag <expression>name</expression> anywhere in your response."
+                    f"\nExample: 'Let me think... <expression>thinking</expression> Here is my answer.'"
+                    f"\nOnly use expression names from the list above. Use at most one per response."
+                    f"\nChoose the expression that best matches your current emotional state or the tone of your reply."
+                )
+
             model = get_preferences_manager().get(config.id, {}).get("model", config.default_model)
             pm = ProviderManager()
             trace_id = f"{config.id}-chat-{uuid.uuid4().hex[:8]}"
@@ -202,5 +241,5 @@ class CompanionEngine:
             }) + "\n"
         except Exception as e:
             logger.error(f"Chat response error: {e}", exc_info=True)
-            yield json.dumps({"type": "error", "message": f"[{type(e).__name__}] {e}"}) + "\n"
+            yield json.dumps({"type": "error", "message": "Something went wrong. Please try again."}) + "\n"
             yield json.dumps({"type": "done"}) + "\n"

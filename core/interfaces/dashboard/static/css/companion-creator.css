@@ -388,20 +388,20 @@
 
 /* Portrait panel (left side) */
 .cc-chat-portrait {
-    width: 180px; min-width: 180px;
+    width: 220px; min-width: 220px;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     gap: 0.75rem;
     border-right: 1px solid var(--border);
     background: var(--bg-secondary);
-    padding: 1.5rem 1rem;
+    padding: 1.5rem 1.25rem;
     flex-shrink: 0;
 }
 .cc-portrait-avatar {
-    width: 96px; height: 96px;
+    width: 148px; height: 148px;
     border-radius: 20px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 2.75rem; overflow: hidden; flex-shrink: 0;
+    font-size: 3.5rem; overflow: hidden; flex-shrink: 0;
 }
 .cc-portrait-name {
     font-size: 0.9rem; font-weight: 700;
