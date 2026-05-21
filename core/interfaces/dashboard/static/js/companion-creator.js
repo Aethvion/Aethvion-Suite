@@ -810,8 +810,10 @@ const CompanionCreator = (() => {
         if (subEl)  subEl.textContent  = isBuiltin ? 'Built-in' : (data.description || '');
 
         // Portrait panel — priority: expression image > icon > symbol
-        const defExpr  = data.default_expression || 'default';
-        const exprImgs = data.expression_images || {};
+        // Use the last remembered expression if it still has an image, otherwise fall back to default
+        const exprImgs   = data.expression_images || {};
+        const storedExpr = (() => { try { return data.id ? localStorage.getItem(`cc_last_expr_${data.id}`) : null; } catch { return null; } })();
+        const defExpr    = (storedExpr && exprImgs[storedExpr]) ? storedExpr : (data.default_expression || 'default');
         if (data.icon_mode && exprImgs[defExpr] && data.id) {
             const exprUrl = `${API}/${data.id}/expression/${defExpr}?t=${Date.now()}`;
             if (portAvEl) { portAvEl.innerHTML = `<img src="${exprUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:20px">`; portAvEl.style.background = ''; portAvEl.style.color = ''; }
@@ -1233,6 +1235,8 @@ const CompanionCreator = (() => {
         portAvEl.innerHTML = `<img src="${exprUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:20px">`;
         portAvEl.style.background = '';
         portAvEl.style.color = '';
+        // Persist so the portrait survives a page refresh
+        try { localStorage.setItem(`cc_last_expr_${_editingId}`, expression); } catch {}
     }
 
     // ── Init ──────────────────────────────────────────────────────────────────
