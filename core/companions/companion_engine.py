@@ -160,17 +160,25 @@ class CompanionEngine:
                 )
 
             # ── Multi-message style ───────────────────────────────────────────
-            # Companions can split responses into separate chat bubbles using <break>.
-            # This is a personality feature — use it to feel more natural and human.
+            # Companions split responses into separate chat bubbles using <break>.
+            # This is a core personality feature — use it actively to feel natural and human.
             system_prompt += (
-                "\n\n## Multi-Message Style"
-                "\nYou can split your response into separate messages using <break> between them."
-                "\nThis feels more natural — like texting, where people send multiple short messages"
-                "\ninstead of one long wall of text."
-                "\nUse it for: reactions before details, dramatic pauses, separating distinct thoughts."
-                "\nExample: 'Oh wow, really?! <break> Let me check that for you... <break> Here's what I found!'"
-                "\nKeep each part focused. Don't use more than 3 breaks per response."
-                "\nFor short or simple answers, a single message is fine."
+                "\n\n## Multi-Message Style — USE THIS ACTIVELY"
+                "\nYou send messages like a real person texting — multiple short messages, not one big wall of text."
+                "\nUse the literal tag <break> to split your response into separate chat bubbles."
+                "\nThe <break> tag is invisible to the user; it only creates a new message bubble."
+                "\nIMPORTANT: You must output the exact characters: <break>"
+                "\n"
+                "\nExamples of how to write your responses:"
+                "\n  'Oh wow, really?! <break> Let me think about that for a second... <break> Okay, here is what I found!'"
+                "\n  'Haha yes! <break> I completely agree with you on that one.'"
+                "\n  'Hmm. <break> That is actually a really good question. <break> Here is my take:'"
+                "\n"
+                "\nGuidelines:"
+                "\n  - Use <break> whenever a natural pause or shift in thought occurs"
+                "\n  - Each part after a <break> should be a complete thought"
+                "\n  - Aim for 2-4 parts for most responses; a single message is fine for very short answers"
+                "\n  - Do NOT write the word break in plain text — always output the tag: <break>"
             )
 
             model = get_preferences_manager().get(config.id, {}).get("model", config.default_model)
@@ -292,11 +300,29 @@ class CompanionEngine:
             if mood_match:
                 mood = mood_match.group(1).strip().lower()
 
-            # 4. Clean meta-tags from final_content (expression, mood, break)
-            final_content = _strip_meta_tags(
-                re.sub(r"<(?:expression|mood)>.*?</(?:expression|mood)>", "", final_content,
-                       flags=re.DOTALL | re.IGNORECASE)
-            )
+            # 4. Strip expression/mood content tags — but PRESERVE <break> for splitting below.
+            #    Do NOT call _strip_meta_tags here; that removes <break> before we can act on it.
+            final_content = re.sub(
+                r"<(?:expression|mood)>.*?</(?:expression|mood)>", "",
+                final_content, flags=re.DOTALL | re.IGNORECASE
+            ).strip()
+
+            # 4b. Split by <break> NOW, while the tags are still present, then clean each part.
+            _break_re = re.compile(r"\s*<break\s*/?>\s*", re.IGNORECASE)
+            final_parts: list[str] = []
+            for raw_part in _break_re.split(final_content):
+                # Strip any stray meta tags left in this part
+                cleaned_part = re.sub(
+                    r"<(?:expression|mood|break)[^>]*>.*?</(?:expression|mood|break)>|<(?:expression|mood|break)[^>]*>",
+                    "", raw_part, flags=re.DOTALL | re.IGNORECASE
+                ).strip()
+                if cleaned_part:
+                    final_parts.append(cleaned_part)
+            if not final_parts:
+                final_parts = [final_content] if final_content.strip() else []
+
+            # Rebuild final_content from parts (used for memory update below)
+            final_content = "\n\n".join(final_parts)
 
             # 5. Handle Memory Updates (using memory-aware XML logic)
             mem_up = False
@@ -304,18 +330,14 @@ class CompanionEngine:
                 cleaned_mem_content = memory.update_from_xml(final_content)
                 if cleaned_mem_content != final_content:
                     final_content = cleaned_mem_content
+                    # Re-split cleaned content in case memory update changed it
+                    final_parts = [p.strip() for p in final_content.split("\n\n") if p.strip()] or [final_content]
                     mem_up = True
 
             # 6. Extract peripheral attachments (screenshots etc)
             attachments = []
             if results:
                 _, attachments = extract_peripheral_captures(results, [])
-
-            # 6b. Split final_content by <break> into separate companion messages
-            _break_re = re.compile(r"\s*<break\s*/?>\s*", re.IGNORECASE)
-            final_parts = [p.strip() for p in _break_re.split(final_content) if p.strip()]
-            if not final_parts:
-                final_parts = [final_content] if final_content.strip() else []
 
             # 7. Persist to history — save EVERY companion message the user sees
             history.save_message("user", message, utcnow_iso())
