@@ -171,6 +171,7 @@
         if (tab === 'databases') { _dbmView('adb-dbm-list'); _dbmLoadList(); }
         if (tab === 'bake') _bakeLoadList();
         if (tab === 'api')  { _apiRenderTree(); _apiLoadKeys(); }
+        if (tab === 'tools') _testLoadChunks();
         if (tab === 'test') _testOnEnter();
         if (tab === 'graph') {
             _openGraph();
@@ -3057,13 +3058,14 @@
     };
 
     // Graph state
-    let _graphSim      = null;   // d3 force simulation
-    let _graphFocusId  = null;   // entity ID of the focused node (null = full graph)
-    let _graphNodeSel  = null;   // d3 node circle selection
-    let _graphLinkSel  = null;   // d3 edge line selection
-    let _graphLabelSel = null;   // d3 label text selection
-    let _graphLinkData = null;   // raw link array (after d3 resolves source/target)
-    let _graphFitDone  = false;  // true after the initial auto-fit; prevents re-fits on drag
+    let _graphSim        = null;   // d3 force simulation
+    let _graphFocusId    = null;   // entity ID of the focused node (null = full graph)
+    let _graphNodeSel    = null;   // d3 node circle selection
+    let _graphLinkSel    = null;   // d3 edge line selection
+    let _graphLabelSel   = null;   // d3 label text selection
+    let _graphLinkData   = null;   // raw link array (after d3 resolves source/target)
+    let _graphFitDone    = false;  // true after the initial auto-fit; prevents re-fits on drag
+    let _pendingChunkId  = null;   // chunk to select once the graph dropdown is populated
 
     function _gNodeColor(type)  { return _GRAPH_COLORS[type] || '#9ca3af'; }
     function _gNodeRadius(d)    { return Math.max(5, Math.min(22, 5 + (d.rel_count || 0) * 1.8)); }
@@ -3089,7 +3091,7 @@
         _hide('adb-graph-card');
         try {
             await _graphLoadD3();
-            _graphLoadChunkOptions();   // populate chunk dropdown (non-blocking)
+            await _graphLoadChunkOptions();   // populate chunk dropdown first (resolves _pendingChunkId)
             await _graphLoad();
         } catch(e) {
             _toast(`Graph load failed: ${e.message}`, 'error');
@@ -3600,8 +3602,9 @@
             const res  = await fetch(`${API}/chunks?${_dbParam()}`);
             const data = await res.json();
             const chunks = data.chunks || [];
-            // Keep the current value if possible
-            const prev = sel.value;
+            // Prefer a pending chunk set via "View in Graph", otherwise keep the current value
+            const target = _pendingChunkId || sel.value;
+            _pendingChunkId = null;
             // Rebuild options
             sel.innerHTML = '<option value="">All chunks</option>';
             chunks.forEach(c => {
@@ -3612,7 +3615,7 @@
                 opt.textContent = c.label.length > 38 ? c.label.slice(0, 36) + '…' : c.label;
                 sel.appendChild(opt);
             });
-            if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+            if (target && [...sel.options].some(o => o.value === target)) sel.value = target;
         } catch { /* non-fatal — chunk dropdown stays as "All" */ }
     }
 
@@ -5730,12 +5733,85 @@
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // Test tab — Speed Benchmark + Smart Chunk Manager
+    // Test tab — Speed Benchmark
     // ══════════════════════════════════════════════════════════════════════════
+
+    let _benchBakeOptions = [];   // [{name, format, size_fmt, include_vectors}, …]
 
     /** Called when the Test tab becomes active. */
     function _testOnEnter() {
-        _testLoadChunks();
+        _testLoadBakes();
+    }
+
+    // ── Bake rows ─────────────────────────────────────────────────────────────
+
+    /** Fetch the list of completed bakes and initialise the first bake row. */
+    async function _testLoadBakes() {
+        const rowsEl = _el('adb-bench-bake-rows');
+        if (!rowsEl) return;
+
+        try {
+            const res  = await fetch(`${API}/bake/list?${_dbParam()}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            _benchBakeOptions = (data.bakes || []).filter(b => b.status === 'done');
+        } catch {
+            _benchBakeOptions = [];
+        }
+
+        // If no bake rows yet, add one default row
+        if (!rowsEl.querySelector('.adb-bench-bake-row')) {
+            _testAddBakeRow();
+        } else {
+            // Refresh options in existing selects
+            rowsEl.querySelectorAll('.adb-bench-bake-row select').forEach(_testFillBakeSelect);
+        }
+    }
+
+    /** Fill a <select> with the current bake options. */
+    function _testFillBakeSelect(sel) {
+        const prev = sel.value;
+        sel.innerHTML = '<option value="">— none —</option>';
+        _benchBakeOptions.forEach(b => {
+            const opt   = document.createElement('option');
+            opt.value   = b.name;
+            const vecs  = b.include_vectors ? ' · vectors' : '';
+            opt.textContent = `${b.name}  (${b.format}${vecs} · ${b.size_fmt || '?'})`;
+            sel.appendChild(opt);
+        });
+        if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+        else if (_benchBakeOptions.length > 0) sel.value = _benchBakeOptions[0].name;
+    }
+
+    /** Add a new bake-row to the list. */
+    function _testAddBakeRow() {
+        const rowsEl = _el('adb-bench-bake-rows');
+        if (!rowsEl) return;
+
+        // Remove empty-state hint if present
+        const hint = rowsEl.querySelector('.adb-bench-bake-empty');
+        if (hint) hint.remove();
+
+        const row = document.createElement('div');
+        row.className = 'adb-bench-bake-row';
+
+        const sel = document.createElement('select');
+        _testFillBakeSelect(sel);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'adb-btn adb-btn-ghost adb-btn-xs adb-bench-bake-remove';
+        removeBtn.title = 'Remove';
+        removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+        removeBtn.addEventListener('click', () => {
+            row.remove();
+            if (!rowsEl.querySelector('.adb-bench-bake-row')) {
+                rowsEl.innerHTML = '<div class="adb-bench-bake-empty">No bakes configured.</div>';
+            }
+        });
+
+        row.appendChild(sel);
+        row.appendChild(removeBtn);
+        rowsEl.appendChild(row);
     }
 
     // ── Benchmark ─────────────────────────────────────────────────────────────
@@ -5743,10 +5819,16 @@
     async function _testRunBench() {
         const btn   = _el('adb-bench-run-btn');
         const query = _el('adb-bench-query')?.value?.trim() || 'a';
+
+        // Collect selected bake names from the rows
+        const bakeNames = [...(_el('adb-bench-bake-rows')?.querySelectorAll('.adb-bench-bake-row select') || [])]
+            .map(s => s.value)
+            .filter(Boolean);
+
         if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running…'; }
 
         try {
-            const params = new URLSearchParams(_dbParam({ query }));
+            const params = new URLSearchParams(_dbParam({ query, bakes: bakeNames.join(',') }));
             const res    = await fetch(`${API}/benchmark?${params}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
@@ -5766,17 +5848,25 @@
 
         if (metaEl) metaEl.textContent = `Database: ${data.db || 'default'} · Query: "${data.query}"`;
 
-        const rows   = data.results || [];
-        let lastCat  = null;
-        let html     = '';
-        const cats   = { raw: 'Raw Files', baked: 'Baked Snapshot', chunks: 'Chunk Index' };
+        const rows  = data.results || [];
+        let lastCat = null;
+        let html    = '';
+
+        // User-readable category label
+        function _catLabel(cat) {
+            if (cat === 'raw')    return 'Raw Files';
+            if (cat === 'baked')  return 'Baked Snapshot';
+            if (cat === 'chunks') return 'Chunk Index';
+            if (cat.startsWith('bake:')) return `Bake — ${cat.slice(5)}`;
+            return cat;
+        }
 
         rows.forEach(r => {
             if (r.category !== lastCat) {
                 lastCat = r.category;
-                html += `<tr class="adb-bench-cat-row"><td colspan="3">${cats[r.category] || r.category}</td></tr>`;
+                html += `<tr class="adb-bench-cat-row"><td colspan="3">${_escHtml(_catLabel(r.category))}</td></tr>`;
             }
-            const ms   = r.ms;
+            const ms = r.ms;
             let timeHtml;
             if (ms === null || ms === undefined) {
                 timeHtml = `<td class="adb-bench-td-time adb-bench-na">—</td>`;
@@ -5796,7 +5886,9 @@
         resultsEl.classList.remove('hidden');
     }
 
-    // ── Chunk manager ──────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+    // Smart Chunks (lives in Tools tab)
+    // ══════════════════════════════════════════════════════════════════════════
 
     async function _testBuildChunks() {
         const btn = _el('adb-chunk-build-btn');
@@ -5810,8 +5902,7 @@
             const data = await res.json();
             _toast(`Built ${data.chunk_count} chunks in ${data.elapsed_ms} ms`, 'success');
             _testRenderChunks(data);
-            // Refresh chunk dropdown in graph tab
-            _graphLoadChunkOptions();
+            _graphLoadChunkOptions();   // refresh graph dropdown
         } catch (e) {
             _toast(`Chunk build failed: ${e.message}`, 'error');
             if (statusEl) statusEl.classList.add('hidden');
@@ -5823,15 +5914,11 @@
     async function _testLoadChunks() {
         const listEl = _el('adb-chunk-list');
         if (!listEl) return;
-
         try {
             const res  = await fetch(`${API}/chunks?${_dbParam()}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            _testRenderChunks(data);
-        } catch (e) {
-            /* non-fatal — keep empty state */
-        }
+            _testRenderChunks(await res.json());
+        } catch { /* non-fatal */ }
     }
 
     function _testRenderChunks(data) {
@@ -5847,8 +5934,13 @@
             return;
         }
 
-        const strategyLabels = { type: 'Type', property: 'Prop', tag: 'Tag', alpha: 'A–Z' };
-        const strategyClasses = { type: 'adb-chunk-strategy-type', property: 'adb-chunk-strategy-property', tag: 'adb-chunk-strategy-tag', alpha: 'adb-chunk-strategy-alpha' };
+        const strategyLabels  = { type: 'Type', property: 'Prop', tag: 'Tag', alpha: 'A–Z' };
+        const strategyClasses = {
+            type:     'adb-chunk-strategy-type',
+            property: 'adb-chunk-strategy-property',
+            tag:      'adb-chunk-strategy-tag',
+            alpha:    'adb-chunk-strategy-alpha',
+        };
 
         listEl.innerHTML = chunks.map(c => `
             <div class="adb-chunk-row" title="${_escHtml(c.label)}">
@@ -5863,17 +5955,16 @@
                 </button>
             </div>`).join('');
 
-        // Wire "view in graph" buttons
         listEl.querySelectorAll('.adb-chunk-graph-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                const cid = btn.dataset.chunkId;
-                const sel = _el('adb-graph-chunk-sel');
-                if (sel) sel.value = cid;
+                // Store the desired chunk ID so _graphLoadChunkOptions can apply it
+                // after the dropdown is populated (setting sel.value before options
+                // exist causes the browser to silently revert it to "").
+                _pendingChunkId = btn.dataset.chunkId;
                 _switchTab('graph');
             });
         });
 
-        // Update status line
         if (statusEl) {
             const builtAt = data.built_at ? new Date(data.built_at).toLocaleString() : '—';
             statusEl.innerHTML = `
@@ -5884,10 +5975,11 @@
     }
 
     function _testWire() {
-        _el('adb-bench-run-btn')?.addEventListener('click', _testRunBench);
-        _el('adb-chunk-build-btn')?.addEventListener('click', _testBuildChunks);
+        _el('adb-bench-run-btn')   ?.addEventListener('click', _testRunBench);
+        _el('adb-bench-add-bake')  ?.addEventListener('click', _testAddBakeRow);
+        _el('adb-chunk-build-btn') ?.addEventListener('click', _testBuildChunks);
         _el('adb-chunk-refresh-btn')?.addEventListener('click', _testLoadChunks);
-        _el('adb-bench-query')?.addEventListener('keydown', e => { if (e.key === 'Enter') _testRunBench(); });
+        _el('adb-bench-query')     ?.addEventListener('keydown', e => { if (e.key === 'Enter') _testRunBench(); });
     }
 
     // ── Wiring ────────────────────────────────────────────────────────────────

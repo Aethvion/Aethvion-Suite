@@ -315,6 +315,32 @@
                 <div id="adb-import-result" class="hidden"></div>
             </div>
 
+            <!-- ── Smart Chunks ── -->
+            <div class="adb-panel" id="adb-chunk-panel">
+                <div class="adb-panel-header">
+                    <i class="fas fa-layer-group"></i> Smart Chunks
+                    <div class="adb-panel-header-actions">
+                        <button id="adb-chunk-build-btn" class="adb-btn adb-btn-accent adb-btn-xs">
+                            <i class="fas fa-wand-sparkles"></i> Rebuild Chunks
+                        </button>
+                        <button id="adb-chunk-refresh-btn" class="adb-btn adb-btn-ghost adb-btn-xs" title="Refresh chunk list">
+                            <i class="fas fa-rotate-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <p class="adb-panel-desc">
+                    Groups entities automatically by type, shared properties, tags, or alphabetically.
+                    Chunks power fast index search and the chunk filter in the Graph tab.
+                    Individual entity files are never modified.
+                </p>
+
+                <div id="adb-chunk-status" class="adb-chunk-status hidden"></div>
+
+                <div id="adb-chunk-list" class="adb-chunk-list">
+                    <div class="adb-empty-hint">No chunks yet — click Rebuild Chunks to analyse this database.</div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -940,73 +966,55 @@
 
     <!-- ══════════════════════════════════════════════════════
          Tab — Test
-         Speed benchmarks (raw vs baked vs chunk index) + smart
-         chunk manager.
+         Speed benchmarks: raw files vs baked snapshots vs chunk index.
     ══════════════════════════════════════════════════════ -->
     <div id="adb-tab-pane-test" class="adb-tab-pane hidden">
         <div class="adb-test-layout">
 
-            <!-- ── Left: Speed Benchmark ── -->
-            <div class="adb-test-col">
-                <div class="adb-panel">
-                    <div class="adb-panel-header">
-                        <i class="fas fa-stopwatch"></i> Speed Benchmark
-                    </div>
-                    <p class="adb-panel-desc">
-                        Compare raw file reads, baked snapshots, and chunk index lookups side by side.
-                        Results show real server-side wall-clock timings.
-                    </p>
-
-                    <div class="adb-field">
-                        <label title="Search query used for the name-search and chunk-search tests">Test query</label>
-                        <input type="text" id="adb-bench-query" class="adb-input" value="a" placeholder="e.g. carbon, Zed, Kant…">
-                    </div>
-
-                    <button id="adb-bench-run-btn" class="adb-primary-btn">
-                        <i class="fas fa-play"></i> Run Benchmark
-                    </button>
-
-                    <div id="adb-bench-results" class="adb-bench-results hidden">
-                        <div class="adb-bench-meta" id="adb-bench-meta"></div>
-                        <table class="adb-bench-table">
-                            <thead>
-                                <tr>
-                                    <th>Test</th>
-                                    <th class="adb-bench-th-time">Time</th>
-                                    <th>Details</th>
-                                </tr>
-                            </thead>
-                            <tbody id="adb-bench-tbody"></tbody>
-                        </table>
-                    </div>
+            <div class="adb-panel adb-test-panel">
+                <div class="adb-panel-header">
+                    <i class="fas fa-stopwatch"></i> Speed Benchmark
                 </div>
-            </div>
+                <p class="adb-panel-desc">
+                    Compare raw file reads, baked snapshots, and chunk index lookups side by side.
+                    All timings are real server-side wall-clock measurements.
+                </p>
 
-            <!-- ── Right: Smart Chunks ── -->
-            <div class="adb-test-col">
-                <div class="adb-panel">
-                    <div class="adb-panel-header">
-                        <i class="fas fa-layer-group"></i> Smart Chunks
-                        <div class="adb-panel-header-actions">
-                            <button id="adb-chunk-build-btn" class="adb-btn adb-btn-accent adb-btn-xs">
-                                <i class="fas fa-wand-sparkles"></i> Rebuild Chunks
-                            </button>
-                            <button id="adb-chunk-refresh-btn" class="adb-btn adb-btn-ghost adb-btn-xs" title="Refresh chunk list">
-                                <i class="fas fa-rotate-right"></i>
-                            </button>
+                <!-- Test query -->
+                <div class="adb-field">
+                    <label title="Used for name-search and chunk-search tests">Test query</label>
+                    <input type="text" id="adb-bench-query" class="adb-input" value="a" placeholder="e.g. carbon, Zed, Kant…">
+                </div>
+
+                <!-- Baked snapshots to test -->
+                <div class="adb-field">
+                    <label>Baked snapshots to benchmark</label>
+                    <div id="adb-bench-bake-rows" class="adb-bench-bake-rows">
+                        <div class="adb-bench-bake-empty">
+                            <i class="fas fa-spinner fa-spin"></i> Loading bakes…
                         </div>
                     </div>
-                    <p class="adb-panel-desc">
-                        Smart chunks group entities automatically by type, shared properties, tags, or
-                        alphabetically. Use the dropdown in the Graph tab to filter the graph to any chunk.
-                        Individual entity files are never modified.
-                    </p>
+                    <button id="adb-bench-add-bake" class="adb-btn adb-btn-ghost adb-btn-sm" style="margin-top:.45rem">
+                        <i class="fas fa-plus"></i> Add bake
+                    </button>
+                </div>
 
-                    <div id="adb-chunk-status" class="adb-chunk-status hidden"></div>
+                <button id="adb-bench-run-btn" class="adb-primary-btn" style="margin-top:.2rem">
+                    <i class="fas fa-play"></i> Run Benchmark
+                </button>
 
-                    <div id="adb-chunk-list" class="adb-chunk-list">
-                        <div class="adb-empty-hint">No chunks yet — click Rebuild Chunks to analyse this database.</div>
-                    </div>
+                <div id="adb-bench-results" class="adb-bench-results hidden">
+                    <div class="adb-bench-meta" id="adb-bench-meta"></div>
+                    <table class="adb-bench-table">
+                        <thead>
+                            <tr>
+                                <th>Test</th>
+                                <th class="adb-bench-th-time">Time</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adb-bench-tbody"></tbody>
+                    </table>
                 </div>
             </div>
 

@@ -1799,110 +1799,157 @@ async def search_chunks_endpoint(
 async def run_benchmark(
     db:    str = Query("default"),
     path:  Optional[str] = Query(None),
-    query: str = Query("a", description="Name / keyword to use for search benchmarks"),
+    query: str = Query("a",  description="Name / keyword to use for search benchmarks"),
+    bakes: str = Query("",   description="Comma-separated list of bake names to test. Empty = first available JSONL bake."),
 ):
     """
     Time common database operations and return the results.
 
+    ``bakes`` accepts a comma-separated list of bake names.
+    Each named bake gets its own load + name-search pair in the results.
+    If empty, the first available JSONL bake is used (backwards-compatible).
+
     All timings are wall-clock milliseconds measured server-side.
     """
     import time as _time
-    from .baker import bake_dir, list_bakes
+    from .baker import list_bakes, read_bake_meta, bake_output_path
     from .chunker import read_manifest, search_chunks
 
     results: list[dict] = []
     root   = _db_root(db, path)
     writer = _get_writer(db, path)
 
-    # 1 — Load all entities (raw file scan)
+    # ── 1. Load all entities (raw) ────────────────────────────────────────────
     t0 = _time.perf_counter()
     all_e = writer.list_all(include_deleted=False)
     results.append({
-        "test":    "Load all entities (raw)",
-        "ms":      round(((_time.perf_counter() - t0) * 1000), 2),
-        "note":    f"{len(all_e)} entities",
+        "test":     "Load all entities (raw)",
+        "ms":       round((_time.perf_counter() - t0) * 1000, 2),
+        "note":     f"{len(all_e)} entities",
         "category": "raw",
     })
 
-    # 2 — Get single entity by ID (raw)
+    # ── 2. Get entity by ID (raw) ─────────────────────────────────────────────
     sample_id = all_e[0]["id"] if all_e else None
     if sample_id:
         t0 = _time.perf_counter()
         writer.get(sample_id)
         results.append({
-            "test":    "Get entity by ID (raw)",
-            "ms":      round(((_time.perf_counter() - t0) * 1000), 2),
-            "note":    f"ws_{sample_id[:8]}…",
+            "test":     "Get entity by ID (raw)",
+            "ms":       round((_time.perf_counter() - t0) * 1000, 2),
+            "note":     f"ws_{sample_id[:8]}…",
             "category": "raw",
         })
 
-    # 3 — Name search (raw — scans all entity files)
+    # ── 3. Name search (raw) ──────────────────────────────────────────────────
     t0 = _time.perf_counter()
-    q_lower = query.lower()
+    q_lower      = query.lower()
     name_matches = [e for e in all_e if q_lower in e.get("name", "").lower()]
     results.append({
-        "test":    "Name search (raw)",
-        "ms":      round(((_time.perf_counter() - t0) * 1000), 2),
-        "note":    f"{len(name_matches)} match(es) for '{query}'",
+        "test":     "Name search (raw)",
+        "ms":       round((_time.perf_counter() - t0) * 1000, 2),
+        "note":     f"{len(name_matches)} match(es) for '{query}'",
         "category": "raw",
     })
 
-    # 4 — Load baked JSONL (if a bake exists)
-    bakes = list_bakes(root)
-    jsonl_bake = next((b for b in bakes if b.get("format") == "jsonl" and b.get("status") == "done"), None)
-    if jsonl_bake:
-        bake_path = Path(jsonl_bake.get("output_path", ""))
-        if bake_path.exists():
-            t0 = _time.perf_counter()
-            lines = bake_path.read_text(encoding="utf-8").splitlines()
-            parsed = [json.loads(l) for l in lines if l.strip()]
+    # ── 4+. Baked snapshot tests ──────────────────────────────────────────────
+    all_bakes     = list_bakes(root)
+    bake_name_map = {b["name"]: b for b in all_bakes if b.get("status") == "done"}
+
+    # Determine which bake names to test
+    requested_names: list[str] = [n.strip() for n in bakes.split(",") if n.strip()]
+    if not requested_names:
+        # Default: first available JSONL bake
+        first_jsonl = next((b for b in all_bakes if b.get("format") == "jsonl" and b.get("status") == "done"), None)
+        if first_jsonl:
+            requested_names = [first_jsonl["name"]]
+
+    if requested_names:
+        for bake_name in requested_names:
+            meta = bake_name_map.get(bake_name)
+            if not meta:
+                results.append({
+                    "test":     f"Load bake: {bake_name}",
+                    "ms":       None,
+                    "note":     "Bake not found or not completed",
+                    "category": f"bake:{bake_name}",
+                })
+                continue
+
+            bake_path = Path(meta.get("output_path", ""))
+            if not bake_path.exists():
+                results.append({
+                    "test":     f"Load bake: {bake_name}",
+                    "ms":       None,
+                    "note":     "Output file missing — re-bake first",
+                    "category": f"bake:{bake_name}",
+                })
+                continue
+
+            fmt = meta.get("format", "jsonl")
+            t0  = _time.perf_counter()
+            raw_content = bake_path.read_text(encoding="utf-8")
+
+            if fmt == "jsonl":
+                bake_entities = [json.loads(l) for l in raw_content.splitlines() if l.strip()]
+            elif fmt == "json":
+                bake_entities = json.loads(raw_content).get("entities", [])
+            else:
+                # markdown / txt: no structured entity list, just measure load time
+                bake_entities = []
+
+            load_ms = round((_time.perf_counter() - t0) * 1000, 2)
+            entity_info = f"{len(bake_entities)} entities" if bake_entities else meta.get("size_fmt", "")
+            vectors_info = " · vectors" if meta.get("include_vectors") else ""
             results.append({
-                "test":    "Load baked JSONL",
-                "ms":      round(((_time.perf_counter() - t0) * 1000), 2),
-                "note":    f"{len(parsed)} entities — {jsonl_bake.get('size_fmt', '?')}",
-                "category": "baked",
+                "test":     f"Load bake: {bake_name}",
+                "ms":       load_ms,
+                "note":     f"{entity_info} — {fmt}{vectors_info} · {meta.get('size_fmt', '?')}",
+                "category": f"bake:{bake_name}",
             })
-            # 5 — Name search in baked data
-            t0 = _time.perf_counter()
-            bake_matches = [e for e in parsed if q_lower in e.get("name", "").lower()]
-            results.append({
-                "test":    "Name search (baked)",
-                "ms":      round(((_time.perf_counter() - t0) * 1000), 2),
-                "note":    f"{len(bake_matches)} match(es) for '{query}'",
-                "category": "baked",
-            })
+
+            if bake_entities:
+                t0 = _time.perf_counter()
+                bk_matches = [e for e in bake_entities if q_lower in e.get("name", "").lower()]
+                results.append({
+                    "test":     f"Name search: {bake_name}",
+                    "ms":       round((_time.perf_counter() - t0) * 1000, 2),
+                    "note":     f"{len(bk_matches)} match(es) for '{query}'",
+                    "category": f"bake:{bake_name}",
+                })
     else:
         results.append({
-            "test":    "Load baked JSONL",
-            "ms":      None,
-            "note":    "No JSONL bake found — run a bake first",
+            "test":     "Baked snapshot",
+            "ms":       None,
+            "note":     "No bakes configured — run a bake first",
             "category": "baked",
         })
 
-    # 6 — Chunk search via inverted index
+    # ── 5. Chunk index search ─────────────────────────────────────────────────
     manifest = read_manifest(root)
     if manifest:
         t0 = _time.perf_counter()
         chunk_results = search_chunks(root, query, top_k=20)
         results.append({
-            "test":    "Chunk index search",
-            "ms":      round(((_time.perf_counter() - t0) * 1000), 2),
-            "note":    f"{len(chunk_results)} match(es) for '{query}'",
+            "test":     "Chunk index search",
+            "ms":       round((_time.perf_counter() - t0) * 1000, 2),
+            "note":     f"{len(chunk_results)} match(es) for '{query}'",
             "category": "chunks",
         })
     else:
         results.append({
-            "test":    "Chunk index search",
-            "ms":      None,
-            "note":    "No chunks built — click 'Rebuild Chunks' first",
+            "test":     "Chunk index search",
+            "ms":       None,
+            "note":     "No chunks built — use Smart Chunks in the Tools tab",
             "category": "chunks",
         })
 
     return {
-        "db":       db,
-        "path":     path,
-        "query":    query,
-        "results":  results,
+        "db":      db,
+        "path":    path,
+        "query":   query,
+        "bakes":   requested_names,
+        "results": results,
     }
 
 
