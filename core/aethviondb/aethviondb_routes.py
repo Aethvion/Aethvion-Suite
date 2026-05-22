@@ -1797,36 +1797,36 @@ async def search_chunks_endpoint(
 
 @router.get("/benchmark")
 async def run_benchmark(
-    db:    str = Query("default"),
-    path:  Optional[str] = Query(None),
-    query: str = Query("a",  description="Name / keyword to use for search benchmarks"),
-    bakes: str = Query("",   description="Comma-separated list of bake names to test. Empty = first available JSONL bake."),
+    db:        str = Query("default"),
+    path:      Optional[str] = Query(None),
+    query:     str = Query("a",  description="Name / keyword to use for search benchmarks"),
+    bakes:     str = Query("",   description="Comma-separated bake names to test. Empty = first available JSONL bake."),
+    vec_model: str = Query("",   description="Embedding model for vector search test. Empty = skip."),
 ):
     """
     Time common database operations and return the results.
 
-    ``bakes`` accepts a comma-separated list of bake names.
-    Each named bake gets its own load + name-search pair in the results.
-    If empty, the first available JSONL bake is used (backwards-compatible).
-
-    All timings are wall-clock milliseconds measured server-side.
+    Order: raw files → chunk index → vector search (optional) → baked snapshots.
+    All tests run sequentially; timings are isolated wall-clock measurements.
     """
+    import math as _math
     import time as _time
-    from .baker import list_bakes, read_bake_meta, bake_output_path
+    from .baker import list_bakes, bake_output_path
     from .chunker import read_manifest, search_chunks
 
     results: list[dict] = []
-    root   = _db_root(db, path)
-    writer = _get_writer(db, path)
+    root    = _db_root(db, path)
+    writer  = _get_writer(db, path)
+    q_lower = query.lower()
 
     # ── 1. Load all entities (raw) ────────────────────────────────────────────
-    t0 = _time.perf_counter()
+    t0    = _time.perf_counter()
     all_e = writer.list_all(include_deleted=False)
     results.append({
-        "test":     "Load all entities (raw)",
+        "category": "raw",
+        "test":     "Load all entities",
         "ms":       round((_time.perf_counter() - t0) * 1000, 2),
         "note":     f"{len(all_e)} entities",
-        "category": "raw",
     })
 
     # ── 2. Get entity by ID (raw) ─────────────────────────────────────────────
@@ -1835,31 +1835,92 @@ async def run_benchmark(
         t0 = _time.perf_counter()
         writer.get(sample_id)
         results.append({
-            "test":     "Get entity by ID (raw)",
-            "ms":       round((_time.perf_counter() - t0) * 1000, 2),
-            "note":     f"ws_{sample_id[:8]}…",
             "category": "raw",
+            "test":     "Get by ID",
+            "ms":       round((_time.perf_counter() - t0) * 1000, 2),
+            "note":     f"id={sample_id[:8]}…",
         })
 
     # ── 3. Name search (raw) ──────────────────────────────────────────────────
-    t0 = _time.perf_counter()
-    q_lower      = query.lower()
+    t0           = _time.perf_counter()
     name_matches = [e for e in all_e if q_lower in e.get("name", "").lower()]
     results.append({
-        "test":     "Name search (raw)",
+        "category": "raw",
+        "test":     "Name search",
         "ms":       round((_time.perf_counter() - t0) * 1000, 2),
         "note":     f"{len(name_matches)} match(es) for '{query}'",
-        "category": "raw",
     })
 
-    # ── 4+. Baked snapshot tests ──────────────────────────────────────────────
+    # ── 4. Chunk index search ─────────────────────────────────────────────────
+    manifest = read_manifest(root)
+    if manifest:
+        t0 = _time.perf_counter()
+        chunk_hits = search_chunks(root, query, top_k=20)
+        results.append({
+            "category": "chunks",
+            "test":     "Chunk index search",
+            "ms":       round((_time.perf_counter() - t0) * 1000, 2),
+            "note":     f"{len(chunk_hits)} match(es) for '{query}' across {manifest.get('chunk_count', '?')} chunks",
+        })
+    else:
+        results.append({
+            "category": "chunks",
+            "test":     "Chunk index search",
+            "ms":       None,
+            "note":     "No chunks built — use Smart Chunks in the Tools tab",
+        })
+
+    # ── 5. Vector search (optional) ───────────────────────────────────────────
+    if vec_model:
+        from .vectorizer import _embed, EMBEDDING_MODELS
+
+        def _cosine(a: list, b: list) -> float:
+            dot = sum(x * y for x, y in zip(a, b))
+            na  = _math.sqrt(sum(x * x for x in a))
+            nb  = _math.sqrt(sum(y * y for y in b))
+            return dot / (na * nb) if na and nb else 0.0
+
+        if vec_model not in EMBEDDING_MODELS:
+            results.append({
+                "category": "vectors",
+                "test":     f"Vector search ({vec_model})",
+                "ms":       None,
+                "note":     "Unknown embedding model",
+            })
+        else:
+            t0 = _time.perf_counter()
+            try:
+                query_vec = await _embed(query, vec_model)
+                scored: list[tuple[float, str]] = []
+                for e in all_e:
+                    vecs  = (e.get("sections") or {}).get("vectors", {})
+                    vdata = vecs.get(vec_model)
+                    emb   = vdata.get("embedding") if isinstance(vdata, dict) else None
+                    if emb:
+                        scored.append((_cosine(query_vec, emb), e.get("id", "")))
+                scored.sort(key=lambda x: x[0], reverse=True)
+                top_k = scored[:10]
+                embed_ms = round((_time.perf_counter() - t0) * 1000, 2)
+                results.append({
+                    "category": "vectors",
+                    "test":     f"Semantic search ({vec_model})",
+                    "ms":       embed_ms,
+                    "note":     f"{len(scored)} entities searched · {len(top_k)} results · includes API embed latency",
+                })
+            except Exception as exc:
+                results.append({
+                    "category": "vectors",
+                    "test":     f"Semantic search ({vec_model})",
+                    "ms":       None,
+                    "note":     f"Error: {exc}",
+                })
+
+    # ── 6+. Baked snapshot tests ──────────────────────────────────────────────
     all_bakes     = list_bakes(root)
     bake_name_map = {b["name"]: b for b in all_bakes if b.get("status") == "done"}
 
-    # Determine which bake names to test
     requested_names: list[str] = [n.strip() for n in bakes.split(",") if n.strip()]
     if not requested_names:
-        # Default: first available JSONL bake
         first_jsonl = next((b for b in all_bakes if b.get("format") == "jsonl" and b.get("status") == "done"), None)
         if first_jsonl:
             requested_names = [first_jsonl["name"]]
@@ -1869,25 +1930,25 @@ async def run_benchmark(
             meta = bake_name_map.get(bake_name)
             if not meta:
                 results.append({
-                    "test":     f"Load bake: {bake_name}",
+                    "category": f"bake:{bake_name}",
+                    "test":     "Load bake",
                     "ms":       None,
                     "note":     "Bake not found or not completed",
-                    "category": f"bake:{bake_name}",
                 })
                 continue
 
             bake_path = Path(meta.get("output_path", ""))
             if not bake_path.exists():
                 results.append({
-                    "test":     f"Load bake: {bake_name}",
+                    "category": f"bake:{bake_name}",
+                    "test":     "Load bake",
                     "ms":       None,
                     "note":     "Output file missing — re-bake first",
-                    "category": f"bake:{bake_name}",
                 })
                 continue
 
-            fmt = meta.get("format", "jsonl")
-            t0  = _time.perf_counter()
+            fmt         = meta.get("format", "jsonl")
+            t0          = _time.perf_counter()
             raw_content = bake_path.read_text(encoding="utf-8")
 
             if fmt == "jsonl":
@@ -1895,61 +1956,42 @@ async def run_benchmark(
             elif fmt == "json":
                 bake_entities = json.loads(raw_content).get("entities", [])
             else:
-                # markdown / txt: no structured entity list, just measure load time
                 bake_entities = []
 
-            load_ms = round((_time.perf_counter() - t0) * 1000, 2)
-            entity_info = f"{len(bake_entities)} entities" if bake_entities else meta.get("size_fmt", "")
+            load_ms      = round((_time.perf_counter() - t0) * 1000, 2)
+            entity_info  = f"{len(bake_entities)} entities" if bake_entities else meta.get("size_fmt", "")
             vectors_info = " · vectors" if meta.get("include_vectors") else ""
             results.append({
-                "test":     f"Load bake: {bake_name}",
+                "category": f"bake:{bake_name}",
+                "test":     "Load snapshot",
                 "ms":       load_ms,
                 "note":     f"{entity_info} — {fmt}{vectors_info} · {meta.get('size_fmt', '?')}",
-                "category": f"bake:{bake_name}",
             })
 
             if bake_entities:
                 t0 = _time.perf_counter()
                 bk_matches = [e for e in bake_entities if q_lower in e.get("name", "").lower()]
                 results.append({
-                    "test":     f"Name search: {bake_name}",
+                    "category": f"bake:{bake_name}",
+                    "test":     "Name search",
                     "ms":       round((_time.perf_counter() - t0) * 1000, 2),
                     "note":     f"{len(bk_matches)} match(es) for '{query}'",
-                    "category": f"bake:{bake_name}",
                 })
     else:
         results.append({
+            "category": "baked",
             "test":     "Baked snapshot",
             "ms":       None,
             "note":     "No bakes configured — run a bake first",
-            "category": "baked",
-        })
-
-    # ── 5. Chunk index search ─────────────────────────────────────────────────
-    manifest = read_manifest(root)
-    if manifest:
-        t0 = _time.perf_counter()
-        chunk_results = search_chunks(root, query, top_k=20)
-        results.append({
-            "test":     "Chunk index search",
-            "ms":       round((_time.perf_counter() - t0) * 1000, 2),
-            "note":     f"{len(chunk_results)} match(es) for '{query}'",
-            "category": "chunks",
-        })
-    else:
-        results.append({
-            "test":     "Chunk index search",
-            "ms":       None,
-            "note":     "No chunks built — use Smart Chunks in the Tools tab",
-            "category": "chunks",
         })
 
     return {
-        "db":      db,
-        "path":    path,
-        "query":   query,
-        "bakes":   requested_names,
-        "results": results,
+        "db":        db,
+        "path":      path,
+        "query":     query,
+        "bakes":     requested_names,
+        "vec_model": vec_model,
+        "results":   results,
     }
 
 

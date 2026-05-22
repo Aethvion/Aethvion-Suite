@@ -976,19 +976,64 @@
                     <i class="fas fa-stopwatch"></i> Speed Benchmark
                 </div>
                 <p class="adb-panel-desc">
-                    Compare raw file reads, baked snapshots, and chunk index lookups side by side.
-                    All timings are real server-side wall-clock measurements.
+                    Tests run sequentially — each timing is an isolated server-side wall-clock measurement.
                 </p>
 
                 <!-- Test query -->
                 <div class="adb-field">
-                    <label title="Used for name-search and chunk-search tests">Test query</label>
+                    <label title="Used for name-search, chunk, and vector-search tests">Test query</label>
                     <input type="text" id="adb-bench-query" class="adb-input" value="a" placeholder="e.g. carbon, Zed, Kant…">
+                </div>
+
+                <!-- Always-included tests -->
+                <div class="adb-field">
+                    <label>Always included</label>
+                    <div class="adb-bench-fixed-tests">
+                        <div class="adb-bench-fixed-tag">
+                            <i class="fas fa-database"></i>
+                            <span class="adb-bench-fixed-label">Raw Files</span>
+                            <span class="adb-bench-fixed-detail">load all · get by ID · name search</span>
+                        </div>
+                        <div class="adb-bench-fixed-tag">
+                            <i class="fas fa-layer-group"></i>
+                            <span class="adb-bench-fixed-label">Chunk Index</span>
+                            <span class="adb-bench-fixed-detail">full-text search (build chunks first)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Optional: vector search -->
+                <div class="adb-field">
+                    <label>
+                        Vector search
+                        <span class="adb-bench-opt-tag">optional</span>
+                    </label>
+                    <label class="adb-checkbox-row">
+                        <input type="checkbox" id="adb-bench-vec-cb">
+                        <span>Include semantic vector search</span>
+                    </label>
+                    <div id="adb-bench-vec-wrap" class="adb-bench-vec-wrap hidden">
+                        <select id="adb-bench-vec-model" class="adb-input">
+                            <optgroup label="OpenAI">
+                                <option value="text-embedding-3-small">text-embedding-3-small</option>
+                                <option value="text-embedding-3-large">text-embedding-3-large</option>
+                                <option value="text-embedding-ada-002">text-embedding-ada-002</option>
+                            </optgroup>
+                            <optgroup label="Google">
+                                <option value="text-embedding-004">text-embedding-004</option>
+                                <option value="embedding-001">embedding-001</option>
+                            </optgroup>
+                        </select>
+                        <span class="adb-bench-vec-note">
+                            <i class="fas fa-triangle-exclamation"></i>
+                            Timing includes real API embed latency. Generate embeddings first.
+                        </span>
+                    </div>
                 </div>
 
                 <!-- Baked snapshots to test -->
                 <div class="adb-field">
-                    <label>Baked snapshots to benchmark</label>
+                    <label>Baked snapshots</label>
                     <div id="adb-bench-bake-rows" class="adb-bench-bake-rows">
                         <div class="adb-bench-bake-empty">
                             <i class="fas fa-spinner fa-spin"></i> Loading bakes…

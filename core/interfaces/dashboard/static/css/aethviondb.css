@@ -4921,6 +4921,79 @@
     max-width: 680px;
 }
 
+/* ── Always-included tests ── */
+
+.adb-bench-fixed-tests {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.2rem;
+}
+
+.adb-bench-fixed-tag {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.28rem 0.6rem;
+    background: rgba(34, 211, 238, 0.05);
+    border: 1px solid rgba(34, 211, 238, 0.12);
+    border-radius: 5px;
+    font-size: 0.78rem;
+}
+
+.adb-bench-fixed-tag > i {
+    color: #22d3ee;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+    width: 12px;
+    text-align: center;
+}
+
+.adb-bench-fixed-label {
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.adb-bench-fixed-detail {
+    color: var(--text-muted);
+    font-size: 0.74rem;
+}
+
+/* ── Optional vector search ── */
+
+.adb-bench-opt-tag {
+    font-size: 0.68rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.05rem 0.35rem;
+    vertical-align: middle;
+    margin-left: 0.3rem;
+}
+
+.adb-bench-vec-wrap {
+    margin-top: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.adb-bench-vec-note {
+    font-size: 0.73rem;
+    color: #fb923c;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.adb-bench-vec-note i {
+    font-size: 0.68rem;
+    flex-shrink: 0;
+}
+
 /* ── Bake rows ── */
 
 .adb-bench-bake-rows {
@@ -5049,6 +5122,11 @@
     color: #22d3ee;
     padding: 0.2rem 0.6rem;
     border-bottom: none !important;
+}
+.adb-bench-cat-row td i {
+    margin-right: 0.35rem;
+    font-size: 0.65rem;
+    opacity: 0.8;
 }
 
 /* ── Chunk list ── */

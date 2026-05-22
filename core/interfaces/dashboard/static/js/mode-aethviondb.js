@@ -5741,6 +5741,7 @@
     /** Called when the Test tab becomes active. */
     function _testOnEnter() {
         _testLoadBakes();
+        _testLoadVecModels();
     }
 
     // ── Bake rows ─────────────────────────────────────────────────────────────
@@ -5814,11 +5815,37 @@
         rowsEl.appendChild(row);
     }
 
+    // ── Vec model discovery ───────────────────────────────────────────────────
+
+    /** Fetch embedded models for this DB and pre-select in the dropdown. */
+    async function _testLoadVecModels() {
+        const sel = _el('adb-bench-vec-model');
+        if (!sel) return;
+        try {
+            const res  = await fetch(`${API}/vectors/models?${_dbParam()}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const models = data.models || [];
+            if (!models.length) return;
+            // Mark options that exist in the DB with a star; select first available
+            let firstMatch = null;
+            [...sel.options].forEach(opt => {
+                if (models.includes(opt.value)) {
+                    opt.textContent = opt.value + ' ✓';
+                    if (!firstMatch) firstMatch = opt.value;
+                }
+            });
+            if (firstMatch) sel.value = firstMatch;
+        } catch { /* non-fatal */ }
+    }
+
     // ── Benchmark ─────────────────────────────────────────────────────────────
 
     async function _testRunBench() {
-        const btn   = _el('adb-bench-run-btn');
-        const query = _el('adb-bench-query')?.value?.trim() || 'a';
+        const btn      = _el('adb-bench-run-btn');
+        const query    = _el('adb-bench-query')?.value?.trim() || 'a';
+        const vecCb    = _el('adb-bench-vec-cb');
+        const vecModel = vecCb?.checked ? (_el('adb-bench-vec-model')?.value || '') : '';
 
         // Collect selected bake names from the rows
         const bakeNames = [...(_el('adb-bench-bake-rows')?.querySelectorAll('.adb-bench-bake-row select') || [])]
@@ -5828,7 +5855,9 @@
         if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running…'; }
 
         try {
-            const params = new URLSearchParams(_dbParam({ query, bakes: bakeNames.join(',') }));
+            const paramObj = { query, bakes: bakeNames.join(',') };
+            if (vecModel) paramObj.vec_model = vecModel;
+            const params = new URLSearchParams(_dbParam(paramObj));
             const res    = await fetch(`${API}/benchmark?${params}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
@@ -5846,25 +5875,28 @@
         const metaEl    = _el('adb-bench-meta');
         if (!resultsEl || !tbodyEl) return;
 
-        if (metaEl) metaEl.textContent = `Database: ${data.db || 'default'} · Query: "${data.query}"`;
+        const parts = [`DB: ${data.db || 'default'}`, `Query: "${data.query}"`];
+        if (data.vec_model) parts.push(`Vector model: ${data.vec_model}`);
+        if (metaEl) metaEl.textContent = parts.join(' · ');
 
         const rows  = data.results || [];
         let lastCat = null;
         let html    = '';
 
-        // User-readable category label
+        // User-readable category label + icon
         function _catLabel(cat) {
-            if (cat === 'raw')    return 'Raw Files';
-            if (cat === 'baked')  return 'Baked Snapshot';
-            if (cat === 'chunks') return 'Chunk Index';
-            if (cat.startsWith('bake:')) return `Bake — ${cat.slice(5)}`;
-            return cat;
+            if (cat === 'raw')     return '<i class="fas fa-database"></i> Raw Files';
+            if (cat === 'baked')   return '<i class="fas fa-box-archive"></i> Baked Snapshot';
+            if (cat === 'chunks')  return '<i class="fas fa-layer-group"></i> Chunk Index';
+            if (cat === 'vectors') return '<i class="fas fa-microchip"></i> Vector Search';
+            if (cat.startsWith('bake:')) return `<i class="fas fa-box-archive"></i> Bake — ${_escHtml(cat.slice(5))}`;
+            return _escHtml(cat);
         }
 
         rows.forEach(r => {
             if (r.category !== lastCat) {
                 lastCat = r.category;
-                html += `<tr class="adb-bench-cat-row"><td colspan="3">${_escHtml(_catLabel(r.category))}</td></tr>`;
+                html += `<tr class="adb-bench-cat-row"><td colspan="3">${_catLabel(r.category)}</td></tr>`;
             }
             const ms = r.ms;
             let timeHtml;
@@ -5975,11 +6007,14 @@
     }
 
     function _testWire() {
-        _el('adb-bench-run-btn')   ?.addEventListener('click', _testRunBench);
-        _el('adb-bench-add-bake')  ?.addEventListener('click', _testAddBakeRow);
-        _el('adb-chunk-build-btn') ?.addEventListener('click', _testBuildChunks);
+        _el('adb-bench-run-btn')    ?.addEventListener('click', _testRunBench);
+        _el('adb-bench-add-bake')   ?.addEventListener('click', _testAddBakeRow);
+        _el('adb-chunk-build-btn')  ?.addEventListener('click', _testBuildChunks);
         _el('adb-chunk-refresh-btn')?.addEventListener('click', _testLoadChunks);
-        _el('adb-bench-query')     ?.addEventListener('keydown', e => { if (e.key === 'Enter') _testRunBench(); });
+        _el('adb-bench-query')      ?.addEventListener('keydown', e => { if (e.key === 'Enter') _testRunBench(); });
+        _el('adb-bench-vec-cb')     ?.addEventListener('change', e => {
+            _el('adb-bench-vec-wrap')?.classList.toggle('hidden', !e.target.checked);
+        });
     }
 
     // ── Wiring ────────────────────────────────────────────────────────────────
