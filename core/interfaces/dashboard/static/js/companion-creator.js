@@ -411,6 +411,29 @@ const CompanionCreator = (() => {
 
     // ── List rendering ────────────────────────────────────────────────────────
 
+    /** Format a "YYYY-MM-DD HH:MM:SS" timestamp into a human-readable "X ago" string. */
+    function _timeSince(tsStr) {
+        try {
+            const ts    = new Date(tsStr.replace(' ', 'T'));
+            const delta = Math.floor((Date.now() - ts.getTime()) / 1000);
+            if (delta < 120)    return 'Just now';
+            if (delta < 3600)   return `${Math.floor(delta / 60)}m ago`;
+            if (delta < 86400)  return `${Math.floor(delta / 3600)}h ago`;
+            if (delta < 172800) return 'Yesterday';
+            return `${Math.floor(delta / 86400)}d ago`;
+        } catch { return null; }
+    }
+
+    /** Sort companions by last_interaction_ts descending; no-interaction goes to end. */
+    function _sortByLastInteraction(list) {
+        return [...list].sort((a, b) => {
+            if (!a.last_interaction_ts && !b.last_interaction_ts) return 0;
+            if (!a.last_interaction_ts) return 1;
+            if (!b.last_interaction_ts) return -1;
+            return b.last_interaction_ts.localeCompare(a.last_interaction_ts);
+        });
+    }
+
     async function _loadList() {
         const builtinEl = document.getElementById('cc-builtin-list');
         const customEl  = document.getElementById('cc-custom-list');
@@ -421,8 +444,8 @@ const CompanionCreator = (() => {
             const data = await res.json();
             const all  = data.companions || [];
 
-            const builtins = all.filter(c => c._builtin);
-            const customs  = all.filter(c => !c._builtin);
+            const builtins = _sortByLastInteraction(all.filter(c =>  c._builtin));
+            const customs  = _sortByLastInteraction(all.filter(c => !c._builtin));
 
             builtinEl.innerHTML = builtins.length
                 ? builtins.map(c => _listItemHTML(c, true)).join('')
@@ -468,6 +491,10 @@ const CompanionCreator = (() => {
         const badge    = isBuiltin
             ? `<span class="cc-card-badge cc-card-badge-builtin"><i class="fas fa-lock"></i> Built-in</span>`
             : '';
+        // Last interaction timestamp
+        const lastLabel = c.last_interaction_ts
+            ? `<span class="cc-card-last"><i class="fas fa-clock"></i>${_timeSince(c.last_interaction_ts)}</span>`
+            : `<span class="cc-card-last cc-card-last-none">No chats yet</span>`;
         // Sidebar avatar: expression image (icon mode) > main icon > symbol
         const exprImgs = c.expression_images || {};
         const defExpr  = c.default_expression || 'default';
@@ -482,7 +509,10 @@ const CompanionCreator = (() => {
           <div class="cc-card-body">
             <span class="cc-card-name">${c.name}</span>
             ${desc}
-            ${badge}
+            <div class="cc-card-footer">
+              ${badge}
+              ${lastLabel}
+            </div>
           </div>
         </div>`;
     }

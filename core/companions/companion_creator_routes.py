@@ -148,6 +148,26 @@ def _augment_icon_status(data: dict, companion_dir: Path) -> dict:
     return data
 
 
+def _get_last_ts(companion_dir: Path) -> str | None:
+    """Return the timestamp string of the most recent chat message, or None."""
+    history_dir = companion_dir / "history"
+    if not history_dir.exists():
+        return None
+    # glob across all month subdirs, pick the newest file
+    files = sorted(history_dir.glob("**/chat_*.json"), reverse=True)
+    if not files:
+        return None
+    try:
+        msgs = json.loads(files[0].read_text(encoding="utf-8"))
+        for m in reversed(msgs):
+            ts = m.get("timestamp")
+            if ts:
+                return ts
+    except Exception:
+        pass
+    return None
+
+
 def _list_custom_companions() -> list[dict]:
     configs = []
     for config_file in sorted(_CUSTOM_DIR.glob("*/config.json")):
@@ -156,6 +176,7 @@ def _list_custom_companions() -> list[dict]:
             # Skip built-ins that may have override configs in the data dir
             if data.get("id") not in _BUILTIN_IDS:
                 _augment_icon_status(data, config_file.parent)
+                data["last_interaction_ts"] = _get_last_ts(config_file.parent)
                 configs.append(data)
         except Exception as e:
             logger.warning(f"Could not read {config_file}: {e}")
@@ -184,6 +205,7 @@ def _list_builtin_companions() -> list[dict]:
                 data = core_data
             data["_builtin"] = True
             _augment_icon_status(data, _CUSTOM_DIR / cid)
+            data["last_interaction_ts"] = _get_last_ts(_CUSTOM_DIR / cid)
             builtins.append(data)
         except Exception as e:
             logger.warning(f"Could not read builtin config {filename}: {e}")
