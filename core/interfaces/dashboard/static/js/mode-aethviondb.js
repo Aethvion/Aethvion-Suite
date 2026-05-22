@@ -167,9 +167,11 @@
         _el('adb-tab-pane-explorer') ?.classList.toggle('hidden', tab !== 'explorer');
         _el('adb-tab-pane-graph')    ?.classList.toggle('hidden', tab !== 'graph');
         _el('adb-tab-pane-api')      ?.classList.toggle('hidden', tab !== 'api');
+        _el('adb-tab-pane-test')     ?.classList.toggle('hidden', tab !== 'test');
         if (tab === 'databases') { _dbmView('adb-dbm-list'); _dbmLoadList(); }
         if (tab === 'bake') _bakeLoadList();
         if (tab === 'api')  { _apiRenderTree(); _apiLoadKeys(); }
+        if (tab === 'test') _testOnEnter();
         if (tab === 'graph') {
             _openGraph();
         } else {
@@ -3087,6 +3089,7 @@
         _hide('adb-graph-card');
         try {
             await _graphLoadD3();
+            _graphLoadChunkOptions();   // populate chunk dropdown (non-blocking)
             await _graphLoad();
         } catch(e) {
             _toast(`Graph load failed: ${e.message}`, 'error');
@@ -3109,9 +3112,11 @@
         const backBtn = _el('adb-graph-back-btn');
         if (backBtn) backBtn.classList.toggle('hidden', !entityId);
 
-        const depth  = _el('adb-graph-depth')?.value || '2';
-        const params = new URLSearchParams(_dbParam({ limit: 500 }));
+        const depth   = _el('adb-graph-depth')?.value || '2';
+        const chunkId = _el('adb-graph-chunk-sel')?.value || '';
+        const params  = new URLSearchParams(_dbParam({ limit: 500 }));
         if (entityId) { params.set('entity_id', entityId); params.set('depth', depth); }
+        else if (chunkId) { params.set('chunk_id', chunkId); }
 
         try {
             const res  = await fetch(`${API}/graph?${params}`);
@@ -3576,9 +3581,39 @@
         _el('adb-graph-search')    ?.addEventListener('keydown', e => { if (e.key === 'Enter') _graphFocusSearch(); });
         _el('adb-graph-card-close')?.addEventListener('click',   () => _hide('adb-graph-card'));
         _el('adb-graph-depth')     ?.addEventListener('change',  () => { if (_graphFocusId) _graphLoad(_graphFocusId); });
+        _el('adb-graph-chunk-sel') ?.addEventListener('change',  () => {
+            // Reset focus when switching chunks
+            _graphFocusId = null;
+            const si = _el('adb-graph-search'); if (si) si.value = '';
+            _graphLoad(null);
+        });
         _el('adb-graph-labels-cb') ?.addEventListener('change',  e => {
             _graphLabelSel?.attr('display', e.target.checked ? null : 'none');
         });
+    }
+
+    /** Populate the chunk filter dropdown in the graph toolbar. */
+    async function _graphLoadChunkOptions() {
+        const sel = _el('adb-graph-chunk-sel');
+        if (!sel) return;
+        try {
+            const res  = await fetch(`${API}/chunks?${_dbParam()}`);
+            const data = await res.json();
+            const chunks = data.chunks || [];
+            // Keep the current value if possible
+            const prev = sel.value;
+            // Rebuild options
+            sel.innerHTML = '<option value="">All chunks</option>';
+            chunks.forEach(c => {
+                const opt   = document.createElement('option');
+                opt.value   = c.id;
+                opt.title   = c.label;
+                // Truncate long labels for the dropdown
+                opt.textContent = c.label.length > 38 ? c.label.slice(0, 36) + '…' : c.label;
+                sel.appendChild(opt);
+            });
+            if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+        } catch { /* non-fatal — chunk dropdown stays as "All" */ }
     }
 
     // ── Folder distillation ───────────────────────────────────────────────────
@@ -5694,6 +5729,167 @@
         });
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    // Test tab — Speed Benchmark + Smart Chunk Manager
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /** Called when the Test tab becomes active. */
+    function _testOnEnter() {
+        _testLoadChunks();
+    }
+
+    // ── Benchmark ─────────────────────────────────────────────────────────────
+
+    async function _testRunBench() {
+        const btn   = _el('adb-bench-run-btn');
+        const query = _el('adb-bench-query')?.value?.trim() || 'a';
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running…'; }
+
+        try {
+            const params = new URLSearchParams(_dbParam({ query }));
+            const res    = await fetch(`${API}/benchmark?${params}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            _testRenderBench(data);
+        } catch (e) {
+            _toast(`Benchmark failed: ${e.message}`, 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i> Run Benchmark'; }
+        }
+    }
+
+    function _testRenderBench(data) {
+        const resultsEl = _el('adb-bench-results');
+        const tbodyEl   = _el('adb-bench-tbody');
+        const metaEl    = _el('adb-bench-meta');
+        if (!resultsEl || !tbodyEl) return;
+
+        if (metaEl) metaEl.textContent = `Database: ${data.db || 'default'} · Query: "${data.query}"`;
+
+        const rows   = data.results || [];
+        let lastCat  = null;
+        let html     = '';
+        const cats   = { raw: 'Raw Files', baked: 'Baked Snapshot', chunks: 'Chunk Index' };
+
+        rows.forEach(r => {
+            if (r.category !== lastCat) {
+                lastCat = r.category;
+                html += `<tr class="adb-bench-cat-row"><td colspan="3">${cats[r.category] || r.category}</td></tr>`;
+            }
+            const ms   = r.ms;
+            let timeHtml;
+            if (ms === null || ms === undefined) {
+                timeHtml = `<td class="adb-bench-td-time adb-bench-na">—</td>`;
+            } else {
+                const cls = ms < 5 ? 'adb-bench-fast' : ms < 50 ? 'adb-bench-mid' : 'adb-bench-slow';
+                timeHtml = `<td class="adb-bench-td-time ${cls}">${ms.toFixed(1)} ms</td>`;
+            }
+            html += `
+                <tr>
+                    <td class="adb-bench-td-test">${_escHtml(r.test)}</td>
+                    ${timeHtml}
+                    <td class="adb-bench-td-note">${_escHtml(r.note || '')}</td>
+                </tr>`;
+        });
+
+        tbodyEl.innerHTML = html;
+        resultsEl.classList.remove('hidden');
+    }
+
+    // ── Chunk manager ──────────────────────────────────────────────────────────
+
+    async function _testBuildChunks() {
+        const btn = _el('adb-chunk-build-btn');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Building…'; }
+        const statusEl = _el('adb-chunk-status');
+        if (statusEl) { statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analysing database…'; statusEl.classList.remove('hidden'); }
+
+        try {
+            const res  = await fetch(`${API}/chunks/build?${_dbParam()}`, { method: 'POST' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            _toast(`Built ${data.chunk_count} chunks in ${data.elapsed_ms} ms`, 'success');
+            _testRenderChunks(data);
+            // Refresh chunk dropdown in graph tab
+            _graphLoadChunkOptions();
+        } catch (e) {
+            _toast(`Chunk build failed: ${e.message}`, 'error');
+            if (statusEl) statusEl.classList.add('hidden');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Rebuild Chunks'; }
+        }
+    }
+
+    async function _testLoadChunks() {
+        const listEl = _el('adb-chunk-list');
+        if (!listEl) return;
+
+        try {
+            const res  = await fetch(`${API}/chunks?${_dbParam()}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            _testRenderChunks(data);
+        } catch (e) {
+            /* non-fatal — keep empty state */
+        }
+    }
+
+    function _testRenderChunks(data) {
+        const listEl   = _el('adb-chunk-list');
+        const statusEl = _el('adb-chunk-status');
+        if (!listEl) return;
+
+        const chunks = data.chunks || [];
+
+        if (chunks.length === 0) {
+            listEl.innerHTML = '<div class="adb-empty-hint">No chunks yet — click Rebuild Chunks to analyse this database.</div>';
+            if (statusEl) statusEl.classList.add('hidden');
+            return;
+        }
+
+        const strategyLabels = { type: 'Type', property: 'Prop', tag: 'Tag', alpha: 'A–Z' };
+        const strategyClasses = { type: 'adb-chunk-strategy-type', property: 'adb-chunk-strategy-property', tag: 'adb-chunk-strategy-tag', alpha: 'adb-chunk-strategy-alpha' };
+
+        listEl.innerHTML = chunks.map(c => `
+            <div class="adb-chunk-row" title="${_escHtml(c.label)}">
+                <span class="adb-chunk-strategy ${strategyClasses[c.strategy] || 'adb-chunk-strategy-type'}">
+                    ${strategyLabels[c.strategy] || c.strategy}
+                </span>
+                <span class="adb-chunk-label">${_escHtml(c.label)}</span>
+                <span class="adb-chunk-count">${c.entity_count} entities</span>
+                <button class="adb-btn adb-btn-ghost adb-btn-xs adb-chunk-graph-btn"
+                        data-chunk-id="${_escHtml(c.id)}" title="View in Graph">
+                    <i class="fas fa-diagram-project"></i>
+                </button>
+            </div>`).join('');
+
+        // Wire "view in graph" buttons
+        listEl.querySelectorAll('.adb-chunk-graph-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const cid = btn.dataset.chunkId;
+                const sel = _el('adb-graph-chunk-sel');
+                if (sel) sel.value = cid;
+                _switchTab('graph');
+            });
+        });
+
+        // Update status line
+        if (statusEl) {
+            const builtAt = data.built_at ? new Date(data.built_at).toLocaleString() : '—';
+            statusEl.innerHTML = `
+                <i class="fas fa-check-circle" style="color:#4ade80"></i>
+                ${chunks.length} chunks · ${data.entity_count || 0} entities · Built ${builtAt}`;
+            statusEl.classList.remove('hidden');
+        }
+    }
+
+    function _testWire() {
+        _el('adb-bench-run-btn')?.addEventListener('click', _testRunBench);
+        _el('adb-chunk-build-btn')?.addEventListener('click', _testBuildChunks);
+        _el('adb-chunk-refresh-btn')?.addEventListener('click', _testLoadChunks);
+        _el('adb-bench-query')?.addEventListener('keydown', e => { if (e.key === 'Enter') _testRunBench(); });
+    }
+
     // ── Wiring ────────────────────────────────────────────────────────────────
 
     function _wire() {
@@ -5793,7 +5989,7 @@
 
     // ── Init ──────────────────────────────────────────────────────────────────
 
-    const _VALID_SUBTABS = new Set(['databases', 'tools', 'bake', 'explorer', 'graph', 'api']);
+    const _VALID_SUBTABS = new Set(['databases', 'tools', 'bake', 'explorer', 'graph', 'api', 'test']);
 
     function init() {
         const root = _el('aethviondb-root');
@@ -5829,6 +6025,7 @@
         _bakeWire();
         _importWire();
         _apiWire();
+        _testWire();
         _fetchModels();
         _loadCachedInfo();          // populate stats from AethvionDB.INFO instantly
         _fdCheckExistingJob();      // restore folder-distill progress view if a job exists

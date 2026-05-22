@@ -4901,3 +4901,192 @@
     font-style: italic;
     padding: 0.15rem 0.3rem;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Test tab — Speed Benchmark + Smart Chunks
+   ══════════════════════════════════════════════════════════════ */
+
+.adb-test-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    height: 100%;
+    overflow-y: auto;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .adb-test-layout { grid-template-columns: 1fr; }
+}
+
+.adb-test-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* ── Benchmark table ── */
+
+.adb-bench-results {
+    margin-top: 1rem;
+}
+
+.adb-bench-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+}
+
+.adb-bench-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+.adb-bench-table thead th {
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    padding: 0.25rem 0.6rem 0.4rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.adb-bench-th-time {
+    text-align: right;
+    white-space: nowrap;
+    width: 5rem;
+}
+
+.adb-bench-table tbody tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background 0.12s;
+}
+.adb-bench-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.adb-bench-table td {
+    padding: 0.45rem 0.6rem;
+    color: var(--text-secondary);
+    vertical-align: middle;
+}
+
+.adb-bench-td-test {
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.adb-bench-td-time {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.adb-bench-td-time.adb-bench-fast  { color: #4ade80; }
+.adb-bench-td-time.adb-bench-mid   { color: #facc15; }
+.adb-bench-td-time.adb-bench-slow  { color: #f87171; }
+.adb-bench-td-time.adb-bench-na    { color: var(--text-muted); font-weight: 400; }
+
+.adb-bench-td-note {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+/* Category row separators */
+.adb-bench-cat-row td {
+    background: rgba(34, 211, 238, 0.04);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #22d3ee;
+    padding: 0.2rem 0.6rem;
+    border-bottom: none !important;
+}
+
+/* ── Chunk list ── */
+
+.adb-chunk-status {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.adb-chunk-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 480px;
+    overflow-y: auto;
+}
+
+.adb-chunk-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.42rem 0.6rem;
+    border-radius: 6px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    font-size: 0.8rem;
+    transition: border-color 0.13s, background 0.13s;
+    cursor: default;
+}
+.adb-chunk-row:hover {
+    border-color: rgba(34, 211, 238, 0.3);
+    background: rgba(34, 211, 238, 0.04);
+}
+
+.adb-chunk-strategy {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1px 5px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.adb-chunk-strategy-type     { background: rgba(34,211,238,0.1); color: #22d3ee; border: 1px solid rgba(34,211,238,0.2); }
+.adb-chunk-strategy-property { background: rgba(168,85,247,0.1); color: #c084fc; border: 1px solid rgba(168,85,247,0.2); }
+.adb-chunk-strategy-tag      { background: rgba(251,191,36,0.1); color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
+.adb-chunk-strategy-alpha    { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+
+.adb-chunk-label {
+    flex: 1;
+    font-weight: 500;
+    color: var(--text-primary);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.adb-chunk-count {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.adb-chunk-graph-btn {
+    font-size: 0.68rem;
+    padding: 0.12rem 0.45rem;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.adb-chunk-row:hover .adb-chunk-graph-btn {
+    opacity: 1;
+}

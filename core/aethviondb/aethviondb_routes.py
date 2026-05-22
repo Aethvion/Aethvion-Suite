@@ -1246,6 +1246,7 @@ async def get_graph(
     db:        str = Query("default"),
     path:      Optional[str] = Query(None),
     entity_id: Optional[str] = Query(None, description="Focus node — returns BFS neighbourhood"),
+    chunk_id:  Optional[str] = Query(None, description="Restrict graph to entities in this chunk"),
     depth:     int = Query(2, ge=1, le=4),
     limit:     int = Query(500, le=2000),
 ):
@@ -1260,6 +1261,15 @@ async def get_graph(
 
     if entity_id:
         included = await asyncio.to_thread(_graph_bfs, writer, entity_id, depth)
+    elif chunk_id:
+        # Restrict graph to the entities belonging to a specific chunk
+        from .chunker import get_chunk
+        root  = _db_root(db, path)
+        chunk = await asyncio.to_thread(get_chunk, root, chunk_id)
+        if chunk:
+            included = set(chunk["entity_ids"])
+        else:
+            included = {e["id"] for e in all_e[:limit]}
     else:
         included = {e["id"] for e in all_e[:limit]}
 
@@ -1716,6 +1726,184 @@ async def download_bake(
         "txt":      "text/plain",
     }.get(meta.get("format", ""), "application/octet-stream")
     return FileResponse(path=str(out_path), media_type=media, filename=out_path.name)
+
+
+# ── Chunks ───────────────────────────────────────────────────────────────────
+
+class ChunkSearchRequest(BaseModel):
+    query:    str
+    chunk_id: Optional[str] = None
+    top_k:    int           = 20
+
+
+@router.post("/chunks/build")
+async def build_chunks_endpoint(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """Build (or rebuild) the smart chunk manifest and per-chunk inverted index files."""
+    from .chunker import build_chunks
+    root   = _db_root(db, path)
+    writer = _get_writer(db, path)
+    result = await asyncio.to_thread(build_chunks, root, writer)
+    return result
+
+
+@router.get("/chunks")
+async def list_chunks_endpoint(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """Return the chunk manifest (chunk list + build metadata)."""
+    from .chunker import read_manifest
+    manifest = read_manifest(_db_root(db, path))
+    if not manifest:
+        return {"chunks": [], "built_at": None, "entity_count": 0, "chunk_count": 0}
+    return manifest
+
+
+@router.get("/chunks/{chunk_id}")
+async def get_chunk_endpoint(
+    chunk_id:      str,
+    include_index: bool = Query(False, description="Include the full inverted index in the response"),
+    db:            str  = Query("default"),
+    path:          Optional[str] = Query(None),
+):
+    """Return entity IDs (and optionally the inverted index) for one chunk."""
+    from .chunker import get_chunk
+    chunk = await asyncio.to_thread(get_chunk, _db_root(db, path), chunk_id)
+    if not chunk:
+        raise HTTPException(404, f"Chunk {chunk_id!r} not found. Run /chunks/build first.")
+    if not include_index:
+        chunk = {k: v for k, v in chunk.items() if k != "index"}
+    return chunk
+
+
+@router.post("/chunks/search")
+async def search_chunks_endpoint(
+    req:  ChunkSearchRequest,
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """BM25-style full-text search across one chunk or all chunks."""
+    from .chunker import search_chunks
+    results = await asyncio.to_thread(
+        search_chunks, _db_root(db, path), req.query, req.chunk_id, req.top_k
+    )
+    return {"results": results, "total": len(results), "query": req.query}
+
+
+# ── Speed benchmark ───────────────────────────────────────────────────────────
+
+@router.get("/benchmark")
+async def run_benchmark(
+    db:    str = Query("default"),
+    path:  Optional[str] = Query(None),
+    query: str = Query("a", description="Name / keyword to use for search benchmarks"),
+):
+    """
+    Time common database operations and return the results.
+
+    All timings are wall-clock milliseconds measured server-side.
+    """
+    import time as _time
+    from .baker import bake_dir, list_bakes
+    from .chunker import read_manifest, search_chunks
+
+    results: list[dict] = []
+    root   = _db_root(db, path)
+    writer = _get_writer(db, path)
+
+    # 1 — Load all entities (raw file scan)
+    t0 = _time.perf_counter()
+    all_e = writer.list_all(include_deleted=False)
+    results.append({
+        "test":    "Load all entities (raw)",
+        "ms":      round(((_time.perf_counter() - t0) * 1000), 2),
+        "note":    f"{len(all_e)} entities",
+        "category": "raw",
+    })
+
+    # 2 — Get single entity by ID (raw)
+    sample_id = all_e[0]["id"] if all_e else None
+    if sample_id:
+        t0 = _time.perf_counter()
+        writer.get(sample_id)
+        results.append({
+            "test":    "Get entity by ID (raw)",
+            "ms":      round(((_time.perf_counter() - t0) * 1000), 2),
+            "note":    f"ws_{sample_id[:8]}…",
+            "category": "raw",
+        })
+
+    # 3 — Name search (raw — scans all entity files)
+    t0 = _time.perf_counter()
+    q_lower = query.lower()
+    name_matches = [e for e in all_e if q_lower in e.get("name", "").lower()]
+    results.append({
+        "test":    "Name search (raw)",
+        "ms":      round(((_time.perf_counter() - t0) * 1000), 2),
+        "note":    f"{len(name_matches)} match(es) for '{query}'",
+        "category": "raw",
+    })
+
+    # 4 — Load baked JSONL (if a bake exists)
+    bakes = list_bakes(root)
+    jsonl_bake = next((b for b in bakes if b.get("format") == "jsonl" and b.get("status") == "done"), None)
+    if jsonl_bake:
+        bake_path = Path(jsonl_bake.get("output_path", ""))
+        if bake_path.exists():
+            t0 = _time.perf_counter()
+            lines = bake_path.read_text(encoding="utf-8").splitlines()
+            parsed = [json.loads(l) for l in lines if l.strip()]
+            results.append({
+                "test":    "Load baked JSONL",
+                "ms":      round(((_time.perf_counter() - t0) * 1000), 2),
+                "note":    f"{len(parsed)} entities — {jsonl_bake.get('size_fmt', '?')}",
+                "category": "baked",
+            })
+            # 5 — Name search in baked data
+            t0 = _time.perf_counter()
+            bake_matches = [e for e in parsed if q_lower in e.get("name", "").lower()]
+            results.append({
+                "test":    "Name search (baked)",
+                "ms":      round(((_time.perf_counter() - t0) * 1000), 2),
+                "note":    f"{len(bake_matches)} match(es) for '{query}'",
+                "category": "baked",
+            })
+    else:
+        results.append({
+            "test":    "Load baked JSONL",
+            "ms":      None,
+            "note":    "No JSONL bake found — run a bake first",
+            "category": "baked",
+        })
+
+    # 6 — Chunk search via inverted index
+    manifest = read_manifest(root)
+    if manifest:
+        t0 = _time.perf_counter()
+        chunk_results = search_chunks(root, query, top_k=20)
+        results.append({
+            "test":    "Chunk index search",
+            "ms":      round(((_time.perf_counter() - t0) * 1000), 2),
+            "note":    f"{len(chunk_results)} match(es) for '{query}'",
+            "category": "chunks",
+        })
+    else:
+        results.append({
+            "test":    "Chunk index search",
+            "ms":      None,
+            "note":    "No chunks built — click 'Rebuild Chunks' first",
+            "category": "chunks",
+        })
+
+    return {
+        "db":       db,
+        "path":     path,
+        "query":    query,
+        "results":  results,
+    }
 
 
 @router.get("/stubs")
