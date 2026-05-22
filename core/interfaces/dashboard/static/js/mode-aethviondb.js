@@ -5869,52 +5869,182 @@
         }
     }
 
+    // User-readable category label + icon (used by render + any future callers)
+    function _catLabel(cat) {
+        if (cat === 'raw')     return '<i class="fas fa-database"></i> Raw Files';
+        if (cat === 'baked')   return '<i class="fas fa-box-archive"></i> Baked Snapshot';
+        if (cat === 'chunks')  return '<i class="fas fa-layer-group"></i> Chunk Index';
+        if (cat === 'vectors') return '<i class="fas fa-microchip"></i> Vector Search';
+        if (cat.startsWith('bake:')) return `<i class="fas fa-box-archive"></i> Bake — ${_escHtml(cat.slice(5))}`;
+        return _escHtml(cat);
+    }
+
+    // Paginated match list block — returns a DOM element
+    function _benchCreateMatchBlock(matches, totalMatches) {
+        const pageSize = 10;
+        let page       = 0;
+        const total    = matches.length;   // up to 20 from server
+
+        const wrap = document.createElement('div');
+        wrap.className = 'adb-bench-match-block';
+
+        const list = document.createElement('div');
+        list.className = 'adb-bench-match-list';
+
+        const nav = document.createElement('div');
+        nav.className = 'adb-bench-match-nav';
+
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'adb-btn adb-btn-ghost adb-btn-xs';
+        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'adb-btn adb-btn-ghost adb-btn-xs';
+        nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+
+        const pageInfo = document.createElement('span');
+        pageInfo.className = 'adb-bench-match-page-info';
+
+        nav.appendChild(prevBtn);
+        nav.appendChild(pageInfo);
+        nav.appendChild(nextBtn);
+
+        function render() {
+            const start = page * pageSize;
+            const end   = Math.min(start + pageSize, total);
+            const slice = matches.slice(start, end);
+
+            list.innerHTML = slice.map(m => {
+                const t         = (m.type || 'other').toLowerCase();
+                const typeClass = `adb-type-${t}`;
+                const score     = m.score !== undefined
+                    ? `<span class="adb-bench-match-score">${typeof m.score === 'number' ? m.score.toFixed(3) : m.score}</span>`
+                    : '';
+                return `<div class="adb-bench-match-item">
+                    <span class="adb-type-badge ${typeClass}">${_escHtml(t)}</span>
+                    <span class="adb-bench-match-name">${_escHtml(m.name || m.id || '—')}</span>
+                    ${score}
+                </div>`;
+            }).join('');
+
+            // Page info: "1–10 of 20 (47 total)" or "1–10 of 20"
+            let info = `${start + 1}–${end}`;
+            if (total > pageSize) info += ` of ${total}`;
+            if (totalMatches != null && totalMatches > total) info += ` (${totalMatches} total)`;
+            pageInfo.textContent = info;
+
+            prevBtn.disabled = page === 0;
+            nextBtn.disabled = end >= total;
+            nav.classList.toggle('hidden', total <= pageSize);
+        }
+
+        prevBtn.addEventListener('click', () => { if (page > 0)                    { page--; render(); } });
+        nextBtn.addEventListener('click', () => { if ((page + 1) * pageSize < total) { page++; render(); } });
+
+        render();
+        wrap.appendChild(list);
+        wrap.appendChild(nav);
+        return wrap;
+    }
+
     function _testRenderBench(data) {
-        const resultsEl = _el('adb-bench-results');
-        const tbodyEl   = _el('adb-bench-tbody');
-        const metaEl    = _el('adb-bench-meta');
-        if (!resultsEl || !tbodyEl) return;
+        const resultsEl  = _el('adb-bench-results');
+        const sectionsEl = _el('adb-bench-sections');
+        const metaEl     = _el('adb-bench-meta');
+        if (!resultsEl || !sectionsEl) return;
 
         const parts = [`DB: ${data.db || 'default'}`, `Query: "${data.query}"`];
         if (data.vec_model) parts.push(`Vector model: ${data.vec_model}`);
         if (metaEl) metaEl.textContent = parts.join(' · ');
 
-        const rows  = data.results || [];
-        let lastCat = null;
-        let html    = '';
-
-        // User-readable category label + icon
-        function _catLabel(cat) {
-            if (cat === 'raw')     return '<i class="fas fa-database"></i> Raw Files';
-            if (cat === 'baked')   return '<i class="fas fa-box-archive"></i> Baked Snapshot';
-            if (cat === 'chunks')  return '<i class="fas fa-layer-group"></i> Chunk Index';
-            if (cat === 'vectors') return '<i class="fas fa-microchip"></i> Vector Search';
-            if (cat.startsWith('bake:')) return `<i class="fas fa-box-archive"></i> Bake — ${_escHtml(cat.slice(5))}`;
-            return _escHtml(cat);
-        }
-
-        rows.forEach(r => {
-            if (r.category !== lastCat) {
-                lastCat = r.category;
-                html += `<tr class="adb-bench-cat-row"><td colspan="3">${_catLabel(r.category)}</td></tr>`;
+        // Group rows by category (preserving order of first appearance)
+        const cats   = [];
+        const catMap = {};
+        (data.results || []).forEach(r => {
+            if (!catMap[r.category]) {
+                const obj = { cat: r.category, rows: [] };
+                catMap[r.category] = obj;
+                cats.push(obj);
             }
-            const ms = r.ms;
-            let timeHtml;
-            if (ms === null || ms === undefined) {
-                timeHtml = `<td class="adb-bench-td-time adb-bench-na">—</td>`;
-            } else {
-                const cls = ms < 5 ? 'adb-bench-fast' : ms < 50 ? 'adb-bench-mid' : 'adb-bench-slow';
-                timeHtml = `<td class="adb-bench-td-time ${cls}">${ms.toFixed(1)} ms</td>`;
-            }
-            html += `
-                <tr>
-                    <td class="adb-bench-td-test">${_escHtml(r.test)}</td>
-                    ${timeHtml}
-                    <td class="adb-bench-td-note">${_escHtml(r.note || '')}</td>
-                </tr>`;
+            catMap[r.category].rows.push(r);
         });
 
-        tbodyEl.innerHTML = html;
+        sectionsEl.innerHTML = '';
+
+        cats.forEach(({ cat, rows: catRows }) => {
+            // ── Section container ──
+            const section = document.createElement('div');
+            section.className = 'adb-bench-section';
+            section.dataset.collapsed = 'false';
+
+            // ── Clickable header ──
+            const hdr = document.createElement('div');
+            hdr.className = 'adb-bench-section-hdr';
+            hdr.innerHTML = `
+                <i class="fas fa-chevron-down adb-bench-chevron"></i>
+                <span class="adb-bench-section-title">${_catLabel(cat)}</span>
+                <span class="adb-bench-section-badge">${catRows.length} test${catRows.length !== 1 ? 's' : ''}</span>
+            `;
+            hdr.addEventListener('click', () => {
+                section.dataset.collapsed = section.dataset.collapsed === 'true' ? 'false' : 'true';
+            });
+
+            // ── Section body ──
+            const body = document.createElement('div');
+            body.className = 'adb-bench-section-body';
+
+            catRows.forEach(r => {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'adb-bench-test-row';
+
+                const ms = r.ms;
+                let timePart;
+                if (ms === null || ms === undefined) {
+                    timePart = `<span class="adb-bench-test-time adb-bench-na">—</span>`;
+                } else {
+                    const cls = ms < 5 ? 'adb-bench-fast' : ms < 50 ? 'adb-bench-mid' : 'adb-bench-slow';
+                    timePart = `<span class="adb-bench-test-time ${cls}">${ms.toFixed(1)} ms</span>`;
+                }
+
+                rowEl.innerHTML = `
+                    <div class="adb-bench-test-top">
+                        <span class="adb-bench-test-name">${_escHtml(r.test)}</span>
+                        ${timePart}
+                    </div>
+                    ${r.note ? `<div class="adb-bench-test-note">${_escHtml(r.note)}</div>` : ''}
+                `;
+
+                // Append collapsible match block if matches were returned
+                if (r.matches && r.matches.length > 0) {
+                    const count     = r.total_matches ?? r.matches.length;
+                    const matchWrap = document.createElement('div');
+                    matchWrap.className = 'adb-bench-match-wrap';
+
+                    const toggle = document.createElement('button');
+                    toggle.className = 'adb-bench-match-toggle';
+                    toggle.innerHTML = `<i class="fas fa-chevron-right adb-bench-match-chevron"></i><span>${count} match${count !== 1 ? 'es' : ''}</span>`;
+
+                    const block = _benchCreateMatchBlock(r.matches, r.total_matches);
+                    block.classList.add('hidden');   // collapsed by default
+
+                    toggle.addEventListener('click', () => {
+                        const nowHidden = block.classList.toggle('hidden');
+                        toggle.querySelector('.adb-bench-match-chevron').style.transform = nowHidden ? '' : 'rotate(90deg)';
+                    });
+
+                    matchWrap.appendChild(toggle);
+                    matchWrap.appendChild(block);
+                    rowEl.appendChild(matchWrap);
+                }
+
+                body.appendChild(rowEl);
+            });
+
+            section.appendChild(hdr);
+            section.appendChild(body);
+            sectionsEl.appendChild(section);
+        });
+
         resultsEl.classList.remove('hidden');
     }
 

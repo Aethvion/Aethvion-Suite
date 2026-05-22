@@ -1829,6 +1829,9 @@ async def run_benchmark(
         "note":     f"{len(all_e)} entities",
     })
 
+    # Build a fast id→entity map for resolving chunk/vector hit names
+    entity_map: dict[str, dict] = {e["id"]: e for e in all_e}
+
     # ── 2. Get entity by ID (raw) ─────────────────────────────────────────────
     sample_id = all_e[0]["id"] if all_e else None
     if sample_id:
@@ -1849,18 +1852,28 @@ async def run_benchmark(
         "test":     "Name search",
         "ms":       round((_time.perf_counter() - t0) * 1000, 2),
         "note":     f"{len(name_matches)} match(es) for '{query}'",
+        "matches":  [{"id": e["id"], "name": e.get("name", ""), "type": e.get("type", "other")}
+                     for e in name_matches[:20]],
+        "total_matches": len(name_matches),
     })
 
     # ── 4. Chunk index search ─────────────────────────────────────────────────
     manifest = read_manifest(root)
     if manifest:
-        t0 = _time.perf_counter()
+        t0         = _time.perf_counter()
         chunk_hits = search_chunks(root, query, top_k=20)
+        chunk_ms   = round((_time.perf_counter() - t0) * 1000, 2)
         results.append({
             "category": "chunks",
             "test":     "Chunk index search",
-            "ms":       round((_time.perf_counter() - t0) * 1000, 2),
+            "ms":       chunk_ms,
             "note":     f"{len(chunk_hits)} match(es) for '{query}' across {manifest.get('chunk_count', '?')} chunks",
+            "matches":  [{"id":    h["entity_id"],
+                          "name":  entity_map.get(h["entity_id"], {}).get("name", h["entity_id"]),
+                          "type":  entity_map.get(h["entity_id"], {}).get("type", "other"),
+                          "score": h["score"]}
+                         for h in chunk_hits],
+            "total_matches": len(chunk_hits),
         })
     else:
         results.append({
@@ -1899,13 +1912,19 @@ async def run_benchmark(
                     if emb:
                         scored.append((_cosine(query_vec, emb), e.get("id", "")))
                 scored.sort(key=lambda x: x[0], reverse=True)
-                top_k = scored[:10]
                 embed_ms = round((_time.perf_counter() - t0) * 1000, 2)
+                top20 = scored[:20]
                 results.append({
                     "category": "vectors",
                     "test":     f"Semantic search ({vec_model})",
                     "ms":       embed_ms,
-                    "note":     f"{len(scored)} entities searched · {len(top_k)} results · includes API embed latency",
+                    "note":     f"{len(scored)} entities searched · includes API embed latency",
+                    "matches":  [{"id":    eid,
+                                  "name":  entity_map.get(eid, {}).get("name", eid),
+                                  "type":  entity_map.get(eid, {}).get("type", "other"),
+                                  "score": round(sc, 4)}
+                                 for sc, eid in top20],
+                    "total_matches": len(scored),
                 })
             except Exception as exc:
                 results.append({
@@ -1969,13 +1988,16 @@ async def run_benchmark(
             })
 
             if bake_entities:
-                t0 = _time.perf_counter()
+                t0         = _time.perf_counter()
                 bk_matches = [e for e in bake_entities if q_lower in e.get("name", "").lower()]
                 results.append({
-                    "category": f"bake:{bake_name}",
-                    "test":     "Name search",
-                    "ms":       round((_time.perf_counter() - t0) * 1000, 2),
-                    "note":     f"{len(bk_matches)} match(es) for '{query}'",
+                    "category":     f"bake:{bake_name}",
+                    "test":         "Name search",
+                    "ms":           round((_time.perf_counter() - t0) * 1000, 2),
+                    "note":         f"{len(bk_matches)} match(es) for '{query}'",
+                    "matches":      [{"name": e.get("name", ""), "type": e.get("type", "other")}
+                                     for e in bk_matches[:20]],
+                    "total_matches": len(bk_matches),
                 })
     else:
         results.append({
