@@ -159,6 +159,34 @@ class CompanionEngine:
                     f"\nChoose the expression that best matches your current emotional state or the tone of your reply."
                 )
 
+            # ── Persistent memory instructions ───────────────────────────────
+            # Only appended when memory updates are enabled for this companion.
+            # Tells the LLM exactly how to persist data so update_from_xml can find it.
+            if capabilities.get("memory_updates_enabled", True):
+                system_prompt += (
+                    "\n\n## Persistent Memory"
+                    "\nYou have a memory system that persists between conversations."
+                    "\nWhenever you learn something meaningful about the user — their name, age, location,"
+                    " job, preferences, goals, important events — save it immediately by embedding this"
+                    " exact structure anywhere in your response:"
+                    "\n"
+                    "\n<memory_update>"
+                    "\n{"
+                    "\n  \"user_info\": { \"descriptive_key\": \"value\" },"
+                    "\n  \"recent_observations\": [\"One short factual sentence.\"]"
+                    "\n}"
+                    "\n</memory_update>"
+                    "\n"
+                    "\nRules:"
+                    "\n  - The block is completely invisible to the user — it is stripped before display"
+                    "\n  - Only include fields you are actually updating (omit unchanged fields)"
+                    "\n  - user_info keys should be descriptive: \"name\", \"age\", \"city\", \"hobby\", \"job\""
+                    "\n  - Observations must be concise and factual (e.g. \"User lives in Apeldoorn, Netherlands\")"
+                    "\n  - Emit the block whenever new information is shared — do not wait to be asked"
+                    "\n  - Never mention the memory_update tags in your visible response"
+                    "\n  - Do not emit the block just to confirm something you already knew"
+                )
+
             # ── Multi-message style ───────────────────────────────────────────
             # Companions split responses into separate chat bubbles using <break>.
             # This is a core personality feature — use it actively to feel natural and human.

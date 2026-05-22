@@ -92,6 +92,9 @@ const CompanionCreator = (() => {
           <button class="cc-ptab cc-ptab-active" id="cc-ptab-chat">
             <i class="fas fa-comment-dots"></i> Chat
           </button>
+          <button class="cc-ptab" id="cc-ptab-memory">
+            <i class="fas fa-brain"></i> Memory
+          </button>
           <button class="cc-ptab" id="cc-ptab-settings">
             <i class="fas fa-sliders"></i> Settings
           </button>
@@ -385,6 +388,15 @@ const CompanionCreator = (() => {
         <div id="cc-form-msg" class="cc-form-msg" style="display:none"></div>
         </form>
       </div><!-- /.cc-settings-view -->
+
+      <!-- Memory view (shown when Memory tab is active) -->
+      <div class="cc-memory-view hidden" id="cc-memory-view">
+        <div class="cc-mem-scroll" id="cc-mem-scroll">
+          <div id="cc-mem-content" class="cc-mem-content">
+            <div class="cc-mem-loading"><i class="fas fa-spinner fa-spin"></i> Loading memory…</div>
+          </div>
+        </div>
+      </div>
 
     </div><!-- /.cc-active-pane -->
 
@@ -788,22 +800,134 @@ const CompanionCreator = (() => {
     function _switchView(view) {
         const chatView     = document.getElementById('cc-chat-view');
         const settingsView = document.getElementById('cc-settings-view');
+        const memoryView   = document.getElementById('cc-memory-view');
         const chatTab      = document.getElementById('cc-ptab-chat');
         const settingsTab  = document.getElementById('cc-ptab-settings');
+        const memoryTab    = document.getElementById('cc-ptab-memory');
+
+        // Hide all views, deactivate all tabs
+        chatView?.classList.add('hidden');
+        settingsView?.classList.add('hidden');
+        memoryView?.classList.add('hidden');
+        chatTab?.classList.remove('cc-ptab-active');
+        settingsTab?.classList.remove('cc-ptab-active');
+        memoryTab?.classList.remove('cc-ptab-active');
 
         if (view === 'chat') {
             chatView?.classList.remove('hidden');
-            settingsView?.classList.add('hidden');
             chatTab?.classList.add('cc-ptab-active');
-            settingsTab?.classList.remove('cc-ptab-active');
+        } else if (view === 'memory') {
+            memoryView?.classList.remove('hidden');
+            memoryTab?.classList.add('cc-ptab-active');
+            if (_editingId) _loadMemory(_editingId);
         } else {
-            chatView?.classList.add('hidden');
             settingsView?.classList.remove('hidden');
-            chatTab?.classList.remove('cc-ptab-active');
             settingsTab?.classList.add('cc-ptab-active');
             // Fill form with current companion data (or blank for new)
             _showForm(_activeData, _isBuiltin);
         }
+    }
+
+    // ── Memory view ───────────────────────────────────────────────────────────
+
+    async function _loadMemory(companionId) {
+        const contentEl = document.getElementById('cc-mem-content');
+        if (!contentEl) return;
+        contentEl.innerHTML = '<div class="cc-mem-loading"><i class="fas fa-spinner fa-spin"></i> Loading memory…</div>';
+        try {
+            const res  = await fetch(`/api/companions/${companionId}/memory`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            _renderMemory(contentEl, data);
+        } catch (e) {
+            contentEl.innerHTML = `<div class="cc-mem-empty"><i class="fas fa-exclamation-triangle"></i> Could not load memory: ${e.message}</div>`;
+        }
+    }
+
+    function _esc(s) {
+        return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function _renderMemory(el, data) {
+        const bi  = data.base_info || {};
+        const mem = data.memory    || {};
+
+        const userInfo  = mem.user_info            || {};
+        const obs       = mem.recent_observations  || [];
+        const synth     = mem.synthesis_notes      || [];
+        const lastUpd   = mem.last_updated         || bi.last_updated || null;
+        const lastSynth = mem.last_synthesis        || null;
+
+        function section(icon, title, bodyHtml) {
+            return `
+            <div class="cc-mem-section">
+              <div class="cc-mem-section-hdr"><i class="fas ${icon}"></i>${title}</div>
+              <div class="cc-mem-section-body">${bodyHtml}</div>
+            </div>`;
+        }
+
+        function emptyState(msg) {
+            return `<div class="cc-mem-none">${msg}</div>`;
+        }
+
+        // ── About (base_info) ──
+        const aboutRows = [
+            ['Core identity', bi.core_identity],
+            ['Personality',   bi.personality],
+            ['Speech style',  bi.speech_style],
+            ['Autonomy',      bi.autonomy_level],
+        ].filter(([, v]) => v);
+
+        const quirks = bi.quirks   || [];
+        const likes  = bi.likes    || [];
+        const dislikes = bi.dislikes || [];
+
+        let aboutHtml = aboutRows.map(([k, v]) => `
+            <div class="cc-mem-kv">
+              <span class="cc-mem-key">${_esc(k)}</span>
+              <span class="cc-mem-val">${_esc(v)}</span>
+            </div>`).join('');
+
+        if (quirks.length)    aboutHtml += `<div class="cc-mem-kv"><span class="cc-mem-key">Quirks</span><span class="cc-mem-val">${quirks.map(q => `<span class="cc-mem-tag">${_esc(q)}</span>`).join('')}</span></div>`;
+        if (likes.length)     aboutHtml += `<div class="cc-mem-kv"><span class="cc-mem-key">Likes</span><span class="cc-mem-val">${likes.map(l => `<span class="cc-mem-tag cc-mem-tag-like">${_esc(l)}</span>`).join('')}</span></div>`;
+        if (dislikes.length)  aboutHtml += `<div class="cc-mem-kv"><span class="cc-mem-key">Dislikes</span><span class="cc-mem-val">${dislikes.map(d => `<span class="cc-mem-tag cc-mem-tag-dislike">${_esc(d)}</span>`).join('')}</span></div>`;
+        if (!aboutHtml)       aboutHtml  = emptyState('No identity data yet.');
+
+        // ── User info ──
+        const uiEntries = Object.entries(userInfo);
+        const uiHtml = uiEntries.length
+            ? uiEntries.map(([k, v]) => `
+                <div class="cc-mem-kv">
+                  <span class="cc-mem-key">${_esc(k)}</span>
+                  <span class="cc-mem-val">${_esc(typeof v === 'object' ? JSON.stringify(v) : v)}</span>
+                </div>`).join('')
+            : emptyState('Nothing recorded yet — keep chatting!');
+
+        // ── Observations ──
+        const obsHtml = obs.length
+            ? obs.map(o => `<div class="cc-mem-obs-item"><i class="fas fa-circle-dot"></i>${_esc(o)}</div>`).join('')
+            : emptyState('No observations yet.');
+
+        // ── Synthesis notes ──
+        const synthHtml = synth.length
+            ? synth.map(s => `<div class="cc-mem-obs-item cc-mem-synth-item"><i class="fas fa-lightbulb"></i>${_esc(s)}</div>`).join('')
+            : emptyState('No synthesis run yet.');
+
+        // ── Footer timestamps ──
+        let footer = '';
+        if (lastUpd || lastSynth) {
+            footer = `<div class="cc-mem-footer">`;
+            if (lastUpd)   footer += `<span><i class="fas fa-clock"></i>Updated ${_esc(lastUpd)}</span>`;
+            if (lastSynth) footer += `<span><i class="fas fa-wand-sparkles"></i>Synthesised ${_esc(lastSynth)}</span>`;
+            footer += `</div>`;
+        }
+
+        el.innerHTML =
+            section('fa-id-card',    'Identity',                aboutHtml) +
+            section('fa-user',       'What I know about you',   uiHtml)    +
+            section('fa-eye',        'Recent Observations',     obsHtml)   +
+            section('fa-lightbulb',  'Synthesis Notes',         synthHtml) +
+            footer;
     }
 
     function _updatePaneHeader(data, isBuiltin, isNew = false) {
@@ -815,18 +939,21 @@ const CompanionCreator = (() => {
         const portNameEl = document.getElementById('cc-portrait-name');
         const portSubEl  = document.getElementById('cc-portrait-sub');
 
+        const memoryTab  = document.getElementById('cc-ptab-memory');
         if (isNew || !data) {
             if (avatarEl) { avatarEl.textContent = '✦'; avatarEl.style.background = 'rgba(99,102,241,0.15)'; avatarEl.style.color = '#818cf8'; }
             if (nameEl) nameEl.textContent = 'New Companion';
             if (subEl)  subEl.textContent  = 'Fill in the settings below to create';
-            if (chatTab) { chatTab.disabled = true; chatTab.title = 'Save the companion first to start chatting'; }
+            if (chatTab)   { chatTab.disabled   = true; chatTab.title   = 'Save the companion first to start chatting'; }
+            if (memoryTab) { memoryTab.disabled = true; memoryTab.title = 'Save the companion first to view memory'; }
             if (portAvEl)   { portAvEl.textContent = '✦'; portAvEl.style.background = 'rgba(99,102,241,0.15)'; portAvEl.style.color = '#818cf8'; }
             if (portNameEl) portNameEl.textContent = '';
             if (portSubEl)  portSubEl.textContent  = '';
             return;
         }
 
-        if (chatTab) { chatTab.disabled = false; chatTab.title = ''; }
+        if (chatTab)   { chatTab.disabled   = false; chatTab.title   = ''; }
+        if (memoryTab) { memoryTab.disabled = false; memoryTab.title = ''; }
         const color = data.accent_color || '#6366f1';
 
         // Header avatar
@@ -1434,8 +1561,9 @@ const CompanionCreator = (() => {
             }
         });
 
-        // Chat/Settings tab buttons
-        document.getElementById('cc-ptab-chat')?.addEventListener('click', () => _switchView('chat'));
+        // Chat / Memory / Settings tab buttons
+        document.getElementById('cc-ptab-chat')    ?.addEventListener('click', () => _switchView('chat'));
+        document.getElementById('cc-ptab-memory')  ?.addEventListener('click', () => _switchView('memory'));
         document.getElementById('cc-ptab-settings')?.addEventListener('click', () => _switchView('settings'));
 
         // Chat input: auto-resize + Enter to send
