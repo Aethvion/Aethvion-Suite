@@ -2668,6 +2668,18 @@
             // ── 2. Integrity errors ──────────────────────────────────────────
             if (errEntities.length) {
                 if (dupGroups.length) html += '<div class="adb-val-section-sep"></div>';
+
+                // Detect which entities have fixable broken-relation errors
+                const brokenRelEntities = errEntities.filter(e =>
+                    (e.issues || []).some(i => i.check === 'reference_integrity')
+                );
+                const fixAllRelBtn = brokenRelEntities.length
+                    ? `<button class="adb-val-quick-fix-btn adb-val-fix-all-rels"
+                               title="Remove all broken relation targets across all affected entities">
+                           <i class="fas fa-wand-magic-sparkles"></i> Fix All Broken Relations (${brokenRelEntities.length})
+                       </button>`
+                    : '';
+
                 html += `
                 <div class="adb-val-issue-group adb-val-issue-group-err adb-val-collapsible" data-collapsed="true">
                     <div class="adb-val-issue-header adb-val-collapse-hdr" role="button" tabindex="0">
@@ -2677,12 +2689,23 @@
                         <i class="fas fa-chevron-down adb-val-collapse-chevron"></i>
                     </div>
                     <div class="adb-val-collapse-body">
+                    ${fixAllRelBtn ? `<div class="adb-val-quick-fix-row">${fixAllRelBtn}</div>` : ''}
                     <div class="adb-val-issue-list">
-                        ${errEntities.map(e => `
+                        ${errEntities.map(e => {
+                            const hasRelErr = (e.issues || []).some(i => i.check === 'reference_integrity');
+                            const fixBtn = hasRelErr
+                                ? `<button class="adb-val-quick-fix-btn adb-val-fix-rel-btn"
+                                           data-entity-id="${e.id}"
+                                           title="Remove broken relations from this entity">
+                                       <i class="fas fa-scissors"></i> Fix
+                                   </button>`
+                                : '';
+                            return `
                             <div class="adb-val-err-entity" data-id="${e.id}" role="button" tabindex="0">
                                 <div class="adb-val-err-entity-top">
                                     <span class="adb-val-err-entity-name">${e.name || e.id}</span>
                                     <code class="adb-val-mm-id">${e.id}</code>
+                                    ${fixBtn}
                                 </div>
                                 ${(e.issues||[]).map(i =>
                                     `<div class="adb-val-err-msg">
@@ -2691,7 +2714,8 @@
                                         ${i.message}
                                      </div>`
                                 ).join('')}
-                            </div>`).join('')}
+                            </div>`;
+                        }).join('')}
                     </div>
                     </div>
                 </div>`;
@@ -2924,6 +2948,46 @@
                     _toast(`Fix failed: ${err.message}`, 'error');
                     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Fix Selected'; }
                 }
+            });
+
+            // ── Quick fix: Fix All Broken Relations ──────────────────────────
+            issueEl.querySelector('.adb-val-fix-all-rels')?.addEventListener('click', async (ev) => {
+                ev.stopPropagation();
+                const btn = ev.currentTarget;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Fixing…';
+                try {
+                    const res  = await fetch(`${API}/validate/fix-broken-relations?${_dbParam()}`, { method: 'POST' });
+                    const data = await res.json();
+                    const n    = data.removed_relations ?? 0;
+                    _toast(`Removed ${n} broken relation${n !== 1 ? 's' : ''} across ${data.fixed} entit${data.fixed !== 1 ? 'ies' : 'y'}`, 'success');
+                    await _validateAll();
+                } catch (err) {
+                    _toast(`Fix failed: ${err.message}`, 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Fix All Broken Relations';
+                }
+            });
+
+            // ── Quick fix: Fix Broken Relations for a single entity ───────────
+            issueEl.querySelectorAll('.adb-val-fix-rel-btn').forEach(btn => {
+                btn.addEventListener('click', async (ev) => {
+                    ev.stopPropagation();
+                    const entityId = btn.dataset.entityId;
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+                    try {
+                        const res  = await fetch(`${API}/validate/fix-broken-relations?${_dbParam()}&entity_id=${encodeURIComponent(entityId)}`, { method: 'POST' });
+                        const data = await res.json();
+                        const n    = data.removed_relations ?? 0;
+                        _toast(`Removed ${n} broken relation${n !== 1 ? 's' : ''} from "${data.entities?.[0]?.name || entityId}"`, 'success');
+                        await _validateAll();
+                    } catch (err) {
+                        _toast(`Fix failed: ${err.message}`, 'error');
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-scissors"></i> Fix';
+                    }
+                });
             });
 
         } catch (e) {

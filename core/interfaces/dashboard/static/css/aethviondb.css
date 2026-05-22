@@ -4650,6 +4650,51 @@
 }
 
 /* ---------------------------------------------------------------
+   Validation — Quick-fix buttons inside error rows
+   -------------------------------------------------------------- */
+
+/* Row above the entity list, used for "Fix All" scope buttons */
+.adb-val-quick-fix-row {
+    padding: 0.5rem 0.75rem 0.25rem;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* Shared button style for all inline quick-fix buttons */
+.adb-val-quick-fix-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.73rem;
+    font-weight: 600;
+    padding: 0.22rem 0.6rem;
+    border-radius: 5px;
+    border: 1px solid rgba(250, 204, 21, 0.35);
+    background: rgba(250, 204, 21, 0.08);
+    color: #facc15;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+}
+.adb-val-quick-fix-btn:hover:not(:disabled) {
+    background: rgba(250, 204, 21, 0.18);
+    border-color: rgba(250, 204, 21, 0.6);
+}
+.adb-val-quick-fix-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Per-entity fix button — smaller, pushed to the right */
+.adb-val-fix-rel-btn {
+    margin-left: auto;
+    font-size: 0.68rem;
+    padding: 0.15rem 0.5rem;
+}
+
+/* ---------------------------------------------------------------
    Validation — Warnings grouped list
    -------------------------------------------------------------- */
 

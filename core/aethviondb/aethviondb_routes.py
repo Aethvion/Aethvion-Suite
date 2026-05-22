@@ -1112,6 +1112,89 @@ async def fix_timeline_sort(
     return await asyncio.to_thread(_run)
 
 
+@router.post("/validate/fix-broken-relations")
+async def fix_broken_relations(
+    db:        str           = Query("default"),
+    path:      Optional[str] = Query(None),
+    entity_id: Optional[str] = Query(None),
+):
+    """
+    Remove every relation (and timeline ref_id) whose target does not exist.
+
+    When *entity_id* is supplied only that entity is repaired; otherwise the
+    entire store is scanned.
+
+    Returns {fixed: N, removed_relations: M, entities: [{id, name, removed}]}.
+    """
+    def _run():
+        writer   = _get_writer(db, path)
+        entities = ([writer.get(entity_id)] if entity_id else writer.list_all())
+        entities = [e for e in entities if e]
+
+        fixed:            list[dict] = []
+        total_removed:    int        = 0
+
+        for entity in entities:
+            eid       = entity["id"]
+            sections  = entity.get("sections", {})
+            relations = sections.get("relations", [])
+            timeline  = sections.get("timeline",  [])
+
+            # ── Relations ─────────────────────────────────────────────────────
+            clean_rels   = [
+                rel for rel in relations
+                if not isinstance(rel, dict)
+                or not rel.get("target_id")
+                or writer.exists(rel["target_id"])
+            ]
+            removed_rels = len(relations) - len(clean_rels)
+
+            # ── Timeline ref_ids ──────────────────────────────────────────────
+            clean_timeline = []
+            removed_refs   = 0
+            for ev in timeline:
+                if not isinstance(ev, dict):
+                    clean_timeline.append(ev)
+                    continue
+                ref_ids      = ev.get("ref_ids", [])
+                clean_refs   = [r for r in ref_ids if not r or writer.exists(r)]
+                removed_refs += len(ref_ids) - len(clean_refs)
+                if len(clean_refs) != len(ref_ids):
+                    ev = {**ev, "ref_ids": clean_refs}
+                clean_timeline.append(ev)
+
+            total_removed_here = removed_rels + removed_refs
+            if total_removed_here == 0:
+                continue
+
+            # Build section patch — only include changed sections
+            patch: dict = {}
+            if removed_rels:
+                patch["relations"] = clean_rels
+            if removed_refs:
+                patch["timeline"]  = clean_timeline
+
+            writer.update(eid, {"sections": patch}, merge_sections=False)
+            total_removed += total_removed_here
+            fixed.append({
+                "id":      eid,
+                "name":    entity.get("name", eid),
+                "removed": total_removed_here,
+            })
+
+        logger.info(
+            f"[AethvionDB] fix-broken-relations: "
+            f"repaired {len(fixed)} entities, removed {total_removed} broken references"
+        )
+        return {
+            "fixed":             len(fixed),
+            "removed_relations": total_removed,
+            "entities":          fixed,
+        }
+
+    return await asyncio.to_thread(_run)
+
+
 @router.get("/validate/{entity_id}")
 async def validate_entity(
     entity_id: str,

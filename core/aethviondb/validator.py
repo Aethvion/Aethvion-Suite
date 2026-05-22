@@ -689,7 +689,7 @@ class Validator:
                     "id":     entity["id"],
                     "name":   entity.get("name", entity["id"]),
                     "issues": [
-                        {"check": i.check, "message": i.message}
+                        {"check": i.check, "message": i.message, "field": i.field}
                         for i in real_errors
                     ],
                 })
