@@ -1788,6 +1788,7 @@
             execClose.addEventListener('click', function () {
                 var p = document.getElementById('at-exec-panel');
                 if (p) p.classList.remove('at-open');
+                _clearExecState(); // reset node borders / badges back to edit mode
             });
         }
         var execTabs = document.querySelectorAll('.at-exec-tab');

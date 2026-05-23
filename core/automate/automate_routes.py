@@ -75,7 +75,7 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-hand-pointer",
         "color": "#22d3ee",
         "inputs": [],
-        "outputs": [{"name": "out", "label": "Trigger"}],
+        "outputs": [{"name": "trigger", "label": "Trigger"}],
         "properties": [],
     },
     {

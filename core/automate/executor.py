@@ -217,7 +217,9 @@ class WorkflowExecutor:
 
         # ── Triggers ──────────────────────────────────────────────────────
         if t == "trigger.manual":
-            return {"out": inputs.get("in", "")}
+            # Fire the chain without passing data (consistent with trigger.schedule's
+            # "trigger" port — returning None means _gather_inputs skips it).
+            return {"trigger": None}
 
         if t == "trigger.schedule":
             # "trigger" fires the chain (no payload); "data" carries the timestamp
