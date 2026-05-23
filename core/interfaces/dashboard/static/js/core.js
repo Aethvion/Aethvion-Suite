@@ -1086,7 +1086,7 @@ async function setDashboardMode(mode, save = true, _tab = null) {
 // On refresh/restore the saved tab is respected exactly as-is; this only
 // fires on an explicit user click of the AI button.
 function goToAIHub() {
-    const _noSidebar = new Set(['chat', 'aethviondb', 'automate',
+    const _noSidebar = new Set(['chat', 'agents', 'aethviondb', 'automate',
         'companion-creator', 'misaka-cipher', 'axiom', 'lyra']);
     // Already on a sidebar-capable AI tab — nothing to do.
     const _isOnCompanion = currentMainTab.startsWith('custom-companion-');
@@ -1382,8 +1382,8 @@ async function switchMainTab(tabName, save = true) {
         }
     }
 
-    // ── Sidebar suppression — no sidebar on Chat, AethvionDB, Companions, Automate ─
-    const _NO_SIDEBAR = new Set(['chat', 'aethviondb', 'automate',
+    // ── Sidebar suppression — no sidebar on Chat, Code, AethvionDB, Companions, Automate ─
+    const _NO_SIDEBAR = new Set(['chat', 'agents', 'aethviondb', 'automate',
         'companion-creator', 'misaka-cipher', 'axiom', 'lyra']);
     const _suppress = _NO_SIDEBAR.has(actualTabName) || actualTabName.startsWith('custom-companion-');
     const _sidebarEl     = document.getElementById('sidebar-nav');

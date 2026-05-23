@@ -20,7 +20,7 @@
     const TAB_INFO = {
         'suite-home':        { label: 'Home',              icon: 'fas fa-house' },
         'chat':              { label: 'Chat',              icon: 'fas fa-comments' },
-        'agents':            { label: 'Agents',            icon: 'fas fa-robot' },
+        'agents':            { label: 'Code',              icon: 'fas fa-code' },
         'agent-corp':        { label: 'Agent Corp',        icon: 'fas fa-building' },
         'schedule':          { label: 'Schedule',          icon: 'fas fa-calendar-alt' },
         'photo':             { label: 'Photo',             icon: 'fas fa-image' },
@@ -58,10 +58,10 @@
     // ── Per-preset hero content ───────────────────────────────────────────────
     const PRESET_INFO = {
         professional: {
-            subtitle: 'Professional workspace active — agents, scheduling, and system management at your fingertips.',
+            subtitle: 'Professional workspace active — code, scheduling, and system management at your fingertips.',
             ctas: [
                 { label: 'Open Workspace', icon: 'fas fa-briefcase', tab: 'chat',   mode: 'home' },
-                { label: 'Launch Agents',  icon: 'fas fa-robot',     tab: 'agents', mode: 'home' },
+                { label: 'Launch Code',    icon: 'fas fa-code',      tab: 'agents', mode: 'home' },
             ],
         },
         creative: {
@@ -89,7 +89,7 @@
             subtitle: 'Full suite access — every tool and every tab is available.',
             ctas: [
                 { label: 'Open Workspace', icon: 'fas fa-layer-group', tab: 'chat',   mode: 'home' },
-                { label: 'Launch Agents',  icon: 'fas fa-robot',       tab: 'agents', mode: 'home' },
+                { label: 'Launch Code',    icon: 'fas fa-code',        tab: 'agents', mode: 'home' },
             ],
         },
         custom: {

@@ -2685,7 +2685,7 @@ function loadNotificationSettings() {
 
     // Based on SOURCE_ICONS in notifications.js
     const sources = [
-        { id: 'agents',   label: 'Agents',   icon: '🤖' },
+        { id: 'agents',   label: 'Code',     icon: '💻' },
         { id: 'schedule', label: 'Schedule', icon: '🗓️' },
         { id: 'system',   label: 'System',   icon: '⚙️' },
         { id: 'chat',     label: 'Chat',     icon: '💬' },

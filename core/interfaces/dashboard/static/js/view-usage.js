@@ -543,7 +543,7 @@ function _renderRecentTable(entries, filter = '') {
     const SOURCE_LABELS = {
         'worldsim':  'AethvionDB',
         'chat':      'Chat',
-        'agents':    'Agents',
+        'agents':    'Code',
         'code_ide':  'Code IDE',
         'explained': 'Explained',
         'companions':'Companions',

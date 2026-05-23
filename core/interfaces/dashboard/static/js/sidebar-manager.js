@@ -21,7 +21,7 @@
     const TABS = [
         { id: 'suite-home',        label: 'Home',             icon: 'fas fa-house',              mode: ['home'] },
         { id: 'chat',              label: 'Chat',             icon: 'fas fa-comments',            mode: ['home'] },
-        { id: 'agents',            label: 'Agents',           icon: 'fas fa-robot',              mode: ['home'] },
+        { id: 'agents',            label: 'Code',             icon: 'fas fa-code',               mode: ['home'] },
         { id: 'agent-corp',        label: 'Agent Corp',       icon: 'fas fa-building',           mode: ['home'] },
         { id: 'schedule',          label: 'Schedule',         icon: 'fas fa-calendar-alt',       mode: ['home'] },
         { id: 'photo',             label: 'Photo',            icon: 'fas fa-image',              mode: ['home'] },
@@ -64,14 +64,14 @@
             name: 'Professional',
             icon: 'fas fa-briefcase',
             accent: '#6366f1',
-            description: 'Productivity workspace with agents, scheduling, and system management.',
-            highlights: ['Chat & Agents', 'Schedule', 'Model Hub', 'System'],
+            description: 'Productivity workspace with code, scheduling, and system management.',
+            highlights: ['Chat & Code', 'Schedule', 'Model Hub', 'System'],
             folders: [
-                { name: 'Workspace', expanded: true,  tabs: ['agents', 'agent-corp', 'schedule'] },
+                { name: 'Workspace', expanded: true,  tabs: ['agent-corp', 'schedule'] },
                 { name: 'Models',    expanded: false, tabs: ['local-models', 'api-providers'] },
                 { name: 'System',    expanded: false, tabs: ['logs', 'status', 'ports'] },
             ],
-            enabled: new Set(['suite-home', 'agents', 'agent-corp', 'schedule',
+            enabled: new Set(['suite-home', 'agent-corp', 'schedule',
                               'local-models', 'api-providers', '3d-models', 'logs', 'status', 'ports']),
         },
         {
@@ -141,8 +141,8 @@
     function defaultProfileData(name = 'Default') {
         return {
             name,
-            // chat, aethviondb, and companions live in the header nav — keep them out of the sidebar
-            hidden: { chat: true, aethviondb: true,
+            // chat, agents, aethviondb, and companions live in the header nav — keep them out of the sidebar
+            hidden: { chat: true, agents: true, aethviondb: true,
                       'misaka-cipher': true, axiom: true, lyra: true, 'companion-creator': true },
             folders: {
                 'f-workspace':  { name: 'Workspace',    expanded: true  },
@@ -155,7 +155,7 @@
             },
             order: [
                 { type: 'tab',    id: 'suite-home' },
-                { type: 'folder', id: 'f-workspace',  children: ['agents','agent-corp','schedule','photo','audio','3d-gen'] },
+                { type: 'folder', id: 'f-workspace',  children: ['agent-corp','schedule','photo','audio','3d-gen'] },
                 { type: 'folder', id: 'f-research',   children: ['advaiconv','researchboard','arena','aiconv','explained'] },
                 { type: 'folder', id: 'f-fun',        children: ['games-center'] },
                 { type: 'folder', id: 'f-memory',     children: ['memory','persistent-memory','sched-overview'] },
@@ -209,7 +209,7 @@
             if (raw) {
                 const saved = JSON.parse(raw);
                 if (saved?.profiles) {
-                    const _NAV_TABS = ['chat', 'aethviondb',
+                    const _NAV_TABS = ['chat', 'agents', 'aethviondb',
                         'misaka-cipher', 'axiom', 'lyra', 'companion-creator'];
                     Object.values(saved.profiles).forEach(profile => {
                         // Migration: header-nav items (Chat, AethvionDB, Companions) are not in sidebar
