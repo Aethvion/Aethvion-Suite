@@ -1,0 +1,84 @@
+{
+  "name": "Scheduled Web Brief",
+  "description": "Runs on a schedule, scrapes a webpage, and sends a desktop notification with an AI summary.",
+  "tags": ["automation", "schedule", "advanced"],
+  "nodes": [
+    {
+      "id": "ex_n1",
+      "type": "trigger.schedule",
+      "label": "Every Morning",
+      "x": 60,
+      "y": 220,
+      "properties": {
+        "schedules": [
+          {
+            "id": "s_example_1",
+            "enabled": true,
+            "date": "2026-01-01",
+            "time": "09:00",
+            "rule": "every_day",
+            "param": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "ex_n2",
+      "type": "action.web_scrape",
+      "label": "Scrape HN",
+      "x": 360,
+      "y": 200,
+      "properties": {
+        "url": "https://news.ycombinator.com",
+        "output": "markdown",
+        "timeout": 15
+      }
+    },
+    {
+      "id": "ex_n3",
+      "type": "ai.summarize",
+      "label": "Summarize",
+      "x": 660,
+      "y": 200,
+      "properties": {
+        "model": "",
+        "length": "short",
+        "style": "bullets"
+      }
+    },
+    {
+      "id": "ex_n4",
+      "type": "action.notify",
+      "label": "Desktop Alert",
+      "x": 960,
+      "y": 220,
+      "properties": {
+        "title": "Morning Brief",
+        "icon": "info"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "ex_c1",
+      "sourceNodeId": "ex_n1",
+      "sourcePort": "trigger",
+      "targetNodeId": "ex_n2",
+      "targetPort": "__trigger__"
+    },
+    {
+      "id": "ex_c2",
+      "sourceNodeId": "ex_n2",
+      "sourcePort": "out",
+      "targetNodeId": "ex_n3",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c3",
+      "sourceNodeId": "ex_n3",
+      "sourcePort": "out",
+      "targetNodeId": "ex_n4",
+      "targetPort": "in"
+    }
+  ]
+}

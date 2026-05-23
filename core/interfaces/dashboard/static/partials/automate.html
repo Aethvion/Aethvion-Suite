@@ -30,6 +30,13 @@
             <button class="at-btn at-btn-run" id="at-btn-run" title="Run workflow" disabled>
                 <i class="fas fa-play"></i><span>Run</span>
             </button>
+            <div class="at-toolbar-sep"></div>
+            <button class="at-btn at-btn-ghost" id="at-btn-export" title="Export workflow as JSON" disabled>
+                <i class="fas fa-download"></i><span>Export</span>
+            </button>
+            <button class="at-btn at-btn-ghost" id="at-btn-share" title="Share workflow" disabled>
+                <i class="fas fa-share-nodes"></i><span>Share</span>
+            </button>
         </div>
 
         <div class="at-toolbar-right">
@@ -56,9 +63,17 @@
             <div class="at-explorer" id="at-explorer">
                 <div class="at-sidebar-hdr">
                     <span>Workflows</span>
-                    <button class="at-sidebar-add" id="at-sidebar-add" title="New workflow">
-                        <i class="fas fa-plus"></i>
-                    </button>
+                    <div class="at-sidebar-hdr-actions">
+                        <button class="at-sidebar-add" id="at-btn-examples" title="Example workflows">
+                            <i class="fas fa-layer-group"></i>
+                        </button>
+                        <button class="at-sidebar-add" id="at-btn-import" title="Import workflow">
+                            <i class="fas fa-upload"></i>
+                        </button>
+                        <button class="at-sidebar-add" id="at-sidebar-add" title="New workflow">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="at-wf-list" id="at-wf-list">
                     <div class="at-wf-empty" id="at-wf-empty">
@@ -175,5 +190,98 @@
 
     <!-- Toast -->
     <div class="at-toast" id="at-toast" style="display:none"></div>
+
+    <!-- ══ Examples Modal ════════════════════════════════════════════════ -->
+    <div class="at-modal-overlay" id="at-examples-overlay" style="display:none">
+        <div class="at-modal">
+            <div class="at-modal-hdr">
+                <div class="at-modal-hdr-left">
+                    <i class="fas fa-layer-group"></i>
+                    <span>Example Workflows</span>
+                </div>
+                <button class="at-modal-close" id="at-examples-close">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <p class="at-modal-sub">
+                Choose a template to get started — a copy is created that you can freely edit.
+            </p>
+            <div class="at-examples-grid" id="at-examples-grid">
+                <!-- populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ Share Modal ════════════════════════════════════════════════════ -->
+    <div class="at-modal-overlay" id="at-share-overlay" style="display:none">
+        <div class="at-modal at-share-modal">
+            <div class="at-modal-hdr">
+                <div class="at-modal-hdr-left">
+                    <i class="fas fa-share-nodes"></i>
+                    <span>Share Workflow</span>
+                </div>
+                <button class="at-modal-close" id="at-share-close">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <p class="at-modal-sub">
+                Share this code with a teammate. They can import it using the
+                <strong>Import → From code</strong> option.
+            </p>
+            <div class="at-share-code-wrap">
+                <span class="at-share-code" id="at-share-code">········</span>
+                <button class="at-btn at-btn-accent" id="at-share-copy-btn" title="Copy code">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ Import Modal ═══════════════════════════════════════════════════ -->
+    <div class="at-modal-overlay" id="at-import-overlay" style="display:none">
+        <div class="at-modal at-import-modal">
+            <div class="at-modal-hdr">
+                <div class="at-modal-hdr-left">
+                    <i class="fas fa-upload"></i>
+                    <span>Import Workflow</span>
+                </div>
+                <button class="at-modal-close" id="at-import-close">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="at-import-tabs">
+                <button class="at-import-tab active" data-import-tab="file">
+                    <i class="fas fa-file-arrow-up"></i> From File
+                </button>
+                <button class="at-import-tab" data-import-tab="code">
+                    <i class="fas fa-hashtag"></i> From Code
+                </button>
+            </div>
+
+            <div id="at-import-file-section">
+                <p class="at-modal-sub">Select a previously exported workflow JSON file.</p>
+                <button class="at-btn at-btn-accent" id="at-import-file-btn">
+                    <i class="fas fa-folder-open"></i> Choose File…
+                </button>
+                <input type="file" id="at-import-file-input" accept=".json" style="display:none">
+            </div>
+
+            <div id="at-import-code-section" style="display:none">
+                <p class="at-modal-sub">Enter the 8-character share code to load a shared workflow.</p>
+                <div class="at-import-code-row">
+                    <input type="text" class="at-prop-input at-import-code-input"
+                           id="at-import-code-input"
+                           placeholder="e.g. AB3X9KPQ"
+                           maxlength="16"
+                           autocomplete="off"
+                           spellcheck="false">
+                    <button class="at-btn at-btn-accent" id="at-import-code-btn">
+                        <i class="fas fa-cloud-arrow-down"></i> Load
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 </div>

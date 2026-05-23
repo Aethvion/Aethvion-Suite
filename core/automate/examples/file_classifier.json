@@ -1,0 +1,71 @@
+{
+  "name": "File Classifier",
+  "description": "Upload a text file and let the AI classify its content into a category.",
+  "tags": ["ai", "files", "intermediate"],
+  "nodes": [
+    {
+      "id": "ex_n1",
+      "type": "input.file",
+      "label": "Upload File",
+      "x": 60,
+      "y": 220,
+      "properties": {
+        "accept": ".txt,.md,.csv,.json"
+      }
+    },
+    {
+      "id": "ex_n2",
+      "type": "ai.classify",
+      "label": "Classify",
+      "x": 360,
+      "y": 200,
+      "properties": {
+        "model": "",
+        "categories": "work, personal, finance, technology, health, other",
+        "style": "single",
+        "show_result": true
+      }
+    },
+    {
+      "id": "ex_n3",
+      "type": "data.template",
+      "label": "Format Result",
+      "x": 660,
+      "y": 200,
+      "properties": {
+        "template": "Category: {in}"
+      }
+    },
+    {
+      "id": "ex_n4",
+      "type": "output.display",
+      "label": "Classification",
+      "x": 960,
+      "y": 220,
+      "properties": {}
+    }
+  ],
+  "connections": [
+    {
+      "id": "ex_c1",
+      "sourceNodeId": "ex_n1",
+      "sourcePort": "out",
+      "targetNodeId": "ex_n2",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c2",
+      "sourceNodeId": "ex_n2",
+      "sourcePort": "out",
+      "targetNodeId": "ex_n3",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c3",
+      "sourceNodeId": "ex_n3",
+      "sourcePort": "out",
+      "targetNodeId": "ex_n4",
+      "targetPort": "in"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "name": "CSV Data Pipeline",
+  "description": "Paste CSV text, parse it into structured rows, filter them, and display the results.",
+  "tags": ["data", "csv", "beginner"],
+  "nodes": [
+    {
+      "id": "ex_n1",
+      "type": "input.text",
+      "label": "CSV Input",
+      "x": 60,
+      "y": 220,
+      "properties": {
+        "label": "CSV Data",
+        "default": "name,age,city\nAlice,30,New York\nBob,25,Los Angeles\nCarla,35,New York\nDave,28,Chicago"
+      }
+    },
+    {
+      "id": "ex_n2",
+      "type": "data.csv_parse",
+      "label": "Parse CSV",
+      "x": 360,
+      "y": 200,
+      "properties": {
+        "delimiter": ",",
+        "has_header": true,
+        "output_as": "objects",
+        "skip_empty_rows": true
+      }
+    },
+    {
+      "id": "ex_n3",
+      "type": "data.filter",
+      "label": "Filter Rows",
+      "x": 660,
+      "y": 200,
+      "properties": {
+        "condition": "len(value) > 2",
+        "mode": "pass_all"
+      }
+    },
+    {
+      "id": "ex_n4",
+      "type": "output.display",
+      "label": "Results",
+      "x": 960,
+      "y": 220,
+      "properties": {}
+    }
+  ],
+  "connections": [
+    {
+      "id": "ex_c1",
+      "sourceNodeId": "ex_n1",
+      "sourcePort": "out",
+      "targetNodeId": "ex_n2",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c2",
+      "sourceNodeId": "ex_n2",
+      "sourcePort": "out",
+      "targetNodeId": "ex_n3",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c3",
+      "sourceNodeId": "ex_n3",
+      "sourcePort": "out",
+      "targetNodeId": "ex_n4",
+      "targetPort": "in"
+    }
+  ]
+}

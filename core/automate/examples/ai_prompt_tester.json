@@ -1,0 +1,55 @@
+{
+  "name": "AI Prompt Tester",
+  "description": "Type a prompt and see the AI's response instantly.",
+  "tags": ["ai", "beginner"],
+  "nodes": [
+    {
+      "id": "ex_n1",
+      "type": "input.text",
+      "label": "Your Prompt",
+      "x": 80,
+      "y": 220,
+      "properties": {
+        "label": "Your Prompt",
+        "default": "Explain quantum entanglement in simple terms."
+      }
+    },
+    {
+      "id": "ex_n2",
+      "type": "ai.any",
+      "label": "AI Response",
+      "x": 380,
+      "y": 220,
+      "properties": {
+        "model": "",
+        "system_prompt": "You are a helpful assistant.",
+        "temperature": 0.7,
+        "show_result": true
+      }
+    },
+    {
+      "id": "ex_n3",
+      "type": "output.display",
+      "label": "Result",
+      "x": 680,
+      "y": 220,
+      "properties": {}
+    }
+  ],
+  "connections": [
+    {
+      "id": "ex_c1",
+      "sourceNodeId": "ex_n1",
+      "sourcePort": "out",
+      "targetNodeId": "ex_n2",
+      "targetPort": "in"
+    },
+    {
+      "id": "ex_c2",
+      "sourceNodeId": "ex_n2",
+      "sourcePort": "out",
+      "targetNodeId": "ex_n3",
+      "targetPort": "in"
+    }
+  ]
+}

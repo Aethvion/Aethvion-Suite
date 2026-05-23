@@ -11,6 +11,7 @@
     flex-direction: column;
     height: 100%;
     overflow: hidden;
+    position: relative;  /* Required: modal overlays use position:absolute */
     background: var(--bg-primary, #0f1117);
     color: var(--text-primary, #e2e8f0);
     user-select: none;
@@ -1321,15 +1322,243 @@
 
 .at-wf-list::-webkit-scrollbar,
 .at-palette-list::-webkit-scrollbar,
-.at-inspector-body::-webkit-scrollbar { width: 4px; }
+.at-inspector-body::-webkit-scrollbar,
+.at-examples-grid::-webkit-scrollbar { width: 4px; }
 
 .at-wf-list::-webkit-scrollbar-track,
 .at-palette-list::-webkit-scrollbar-track,
-.at-inspector-body::-webkit-scrollbar-track { background: transparent; }
+.at-inspector-body::-webkit-scrollbar-track,
+.at-examples-grid::-webkit-scrollbar-track { background: transparent; }
 
 .at-wf-list::-webkit-scrollbar-thumb,
 .at-palette-list::-webkit-scrollbar-thumb,
-.at-inspector-body::-webkit-scrollbar-thumb {
+.at-inspector-body::-webkit-scrollbar-thumb,
+.at-examples-grid::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 2px;
+}
+
+/* ── Sidebar header action group ────────────────────────────────────────── */
+
+.at-sidebar-hdr-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* ── Modal overlay + container ──────────────────────────────────────────── */
+
+.at-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.62);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9000;
+    backdrop-filter: blur(2px);
+}
+
+.at-modal {
+    background: #13161f;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    width: 560px;
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100vh - 4rem);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+}
+
+.at-modal-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    flex-shrink: 0;
+}
+
+.at-modal-hdr-left {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+.at-modal-hdr-left i { color: #22d3ee; font-size: 0.85rem; }
+
+.at-modal-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted, #64748b);
+    font-size: 0.88rem;
+    padding: 4px 7px;
+    border-radius: 5px;
+    transition: color 0.14s, background 0.14s;
+    flex-shrink: 0;
+}
+.at-modal-close:hover { color: #e2e8f0; background: rgba(255,255,255,0.08); }
+
+.at-modal-sub {
+    margin: 0;
+    padding: 0.65rem 1rem 0;
+    font-size: 0.78rem;
+    color: var(--text-muted, #64748b);
+    line-height: 1.5;
+    flex-shrink: 0;
+}
+.at-modal-sub strong { color: var(--text-secondary, #94a3b8); font-weight: 500; }
+
+/* ── Examples grid ──────────────────────────────────────────────────────── */
+
+.at-examples-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.7rem;
+    padding: 0.85rem 1rem 1rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.at-example-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 0.85rem 0.9rem;
+    cursor: pointer;
+    transition: background 0.14s, border-color 0.14s, box-shadow 0.14s;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+.at-example-card:hover {
+    background: rgba(34, 211, 238, 0.06);
+    border-color: rgba(34, 211, 238, 0.25);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+.at-example-card-name {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+
+.at-example-card-desc {
+    font-size: 0.73rem;
+    color: var(--text-muted, #64748b);
+    line-height: 1.45;
+}
+
+.at-example-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.2rem;
+}
+
+.at-example-card-nodes {
+    font-size: 0.68rem;
+    color: var(--text-muted, #64748b);
+}
+
+.at-example-card-tags {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.at-example-tag {
+    font-size: 0.62rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 20px;
+    background: rgba(34, 211, 238, 0.08);
+    color: rgba(34, 211, 238, 0.65);
+    border: 1px solid rgba(34, 211, 238, 0.18);
+    white-space: nowrap;
+}
+
+/* ── Share modal ────────────────────────────────────────────────────────── */
+
+.at-share-modal { width: 420px; }
+
+.at-share-code-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem 1rem;
+}
+
+.at-share-code {
+    flex: 1;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.55rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    color: #22d3ee;
+    background: rgba(34, 211, 238, 0.06);
+    border: 1px solid rgba(34, 211, 238, 0.2);
+    border-radius: 8px;
+    padding: 0.55rem 0.85rem;
+    text-align: center;
+    user-select: all;
+}
+
+/* ── Import modal ───────────────────────────────────────────────────────── */
+
+.at-import-modal { width: 440px; }
+
+.at-import-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0.65rem 1rem 0;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.at-import-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 0.4rem 0.75rem;
+    margin-bottom: -1px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: var(--text-muted, #64748b);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: color 0.14s, border-color 0.14s;
+}
+.at-import-tab:hover { color: #e2e8f0; }
+.at-import-tab.active {
+    color: #22d3ee;
+    border-bottom-color: #22d3ee;
+}
+
+#at-import-file-section,
+#at-import-code-section {
+    padding: 0.75rem 1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.at-import-code-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.at-import-code-input {
+    flex: 1;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
 }

@@ -1421,6 +1421,941 @@ _NODE_TYPES: list[dict] = [
             },
         ],
     },
+    # ── Sprint 5: Triggers ────────────────────────────────────────────────────
+    {
+        "type": "trigger.app_event",
+        "label": "App Event",
+        "category": "Triggers",
+        "icon": "fa-bolt",
+        "color": "#22d3ee",
+        "inputs": [],
+        "outputs": [
+            {"name": "trigger",    "label": "Trigger"},
+            {"name": "event_type", "label": "Event Type"},
+            {"name": "source",     "label": "Source"},
+            {"name": "data",       "label": "Event Data"},
+        ],
+        "properties": [
+            {
+                "key": "event_type",
+                "label": "Event Type Filter",
+                "type": "select",
+                "default": "any",
+                "options": ["any", "companion.message", "agent.completed",
+                            "memory.written", "workflow.completed", "custom"],
+            },
+            {
+                "key": "source",
+                "label": "Source Filter",
+                "type": "text",
+                "default": "",
+                "placeholder": "(blank = all sources)",
+            },
+        ],
+    },
+    # ── Sprint 4: Triggers ────────────────────────────────────────────────────
+    {
+        "type": "trigger.file_watch",
+        "label": "File Watch",
+        "category": "Triggers",
+        "icon": "fa-folder-open",
+        "color": "#22d3ee",
+        "inputs": [],
+        "outputs": [
+            {"name": "trigger", "label": "Trigger"},
+            {"name": "path",    "label": "Changed Path"},
+            {"name": "event",   "label": "Event Type"},
+        ],
+        "properties": [
+            {
+                "key": "path",
+                "label": "Watch Path",
+                "type": "text",
+                "default": "",
+                "placeholder": "C:/path/to/folder or file",
+            },
+            {
+                "key": "watch_mode",
+                "label": "Watch Mode",
+                "type": "select",
+                "default": "directory",
+                "options": ["file", "directory"],
+            },
+            {
+                "key": "event_types",
+                "label": "Event Types",
+                "type": "text",
+                "default": "created,modified,deleted",
+                "placeholder": "created, modified, deleted",
+            },
+            {
+                "key": "recursive",
+                "label": "Watch Subdirectories",
+                "type": "toggle",
+                "default": False,
+            },
+        ],
+    },
+    # ── Sprint 4: Logic ───────────────────────────────────────────────────────
+    {
+        "type": "logic.repeat",
+        "label": "Repeat",
+        "category": "Logic",
+        "icon": "fa-repeat",
+        "color": "#a78bfa",
+        "inputs": [{"name": "in", "label": "Input"}],
+        "outputs": [
+            {"name": "out",   "label": "Repeated List"},
+            {"name": "count", "label": "Count"},
+        ],
+        "properties": [
+            {
+                "key": "count",
+                "label": "Repeat Count",
+                "type": "number",
+                "default": 3,
+            },
+        ],
+    },
+    # ── Sprint 4: Data ────────────────────────────────────────────────────────
+    {
+        "type": "data.csv_parse",
+        "label": "CSV Parse",
+        "category": "Data",
+        "icon": "fa-table",
+        "color": "#fb923c",
+        "inputs": [{"name": "in", "label": "CSV Text"}],
+        "outputs": [
+            {"name": "out",     "label": "Parsed Data"},
+            {"name": "rows",    "label": "Row Count"},
+            {"name": "headers", "label": "Headers"},
+            {"name": "error",   "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "delimiter",
+                "label": "Delimiter",
+                "type": "text",
+                "default": ",",
+                "placeholder": ", or ; or \\t",
+            },
+            {
+                "key": "has_header",
+                "label": "First Row is Header",
+                "type": "toggle",
+                "default": True,
+            },
+            {
+                "key": "output_as",
+                "label": "Output As",
+                "type": "select",
+                "default": "objects",
+                "options": ["objects", "arrays"],
+            },
+            {
+                "key": "skip_empty_rows",
+                "label": "Skip Empty Rows",
+                "type": "toggle",
+                "default": True,
+            },
+        ],
+    },
+    # ── Sprint 4: Actions ─────────────────────────────────────────────────────
+    {
+        "type": "action.run_command",
+        "label": "Run Command",
+        "category": "Actions",
+        "icon": "fa-square-terminal",
+        "color": "#34d399",
+        "inputs": [
+            {"name": "in",  "label": "Trigger"},
+            {"name": "cmd", "label": "Command Override"},
+        ],
+        "outputs": [
+            {"name": "out",       "label": "stdout"},
+            {"name": "stderr",    "label": "stderr"},
+            {"name": "exit_code", "label": "Exit Code"},
+            {"name": "error",     "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "command",
+                "label": "Command",
+                "type": "text",
+                "default": "",
+                "placeholder": "python script.py --arg value",
+            },
+            {
+                "key": "working_dir",
+                "label": "Working Directory",
+                "type": "text",
+                "default": "",
+                "placeholder": "C:/my/project (blank = current dir)",
+            },
+            {
+                "key": "shell",
+                "label": "Run via Shell",
+                "type": "toggle",
+                "default": False,
+            },
+            {
+                "key": "timeout",
+                "label": "Timeout (seconds)",
+                "type": "number",
+                "default": 30,
+            },
+        ],
+    },
+    {
+        "type": "action.file_list",
+        "label": "File List",
+        "category": "Actions",
+        "icon": "fa-folder-tree",
+        "color": "#34d399",
+        "inputs": [
+            {"name": "path", "label": "Folder Path Override"},
+        ],
+        "outputs": [
+            {"name": "out",   "label": "File List"},
+            {"name": "count", "label": "Count"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "path",
+                "label": "Folder Path",
+                "type": "text",
+                "default": "",
+                "placeholder": "C:/path/to/folder",
+            },
+            {
+                "key": "pattern",
+                "label": "File Pattern (glob)",
+                "type": "text",
+                "default": "*",
+                "placeholder": "*.txt or *.{jpg,png}",
+            },
+            {
+                "key": "recursive",
+                "label": "Search Recursively",
+                "type": "toggle",
+                "default": False,
+            },
+            {
+                "key": "include_dirs",
+                "label": "Include Directories",
+                "type": "toggle",
+                "default": False,
+            },
+            {
+                "key": "sort_by",
+                "label": "Sort By",
+                "type": "select",
+                "default": "name",
+                "options": ["name", "size", "modified"],
+            },
+            {
+                "key": "output_as",
+                "label": "Output As",
+                "type": "select",
+                "default": "paths",
+                "options": ["paths", "objects"],
+            },
+        ],
+    },
+    {
+        "type": "action.web_scrape",
+        "label": "Web Scrape",
+        "category": "Actions",
+        "icon": "fa-spider",
+        "color": "#34d399",
+        "inputs": [
+            {"name": "url", "label": "URL Override"},
+        ],
+        "outputs": [
+            {"name": "out",   "label": "Content"},
+            {"name": "title", "label": "Page Title"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "url",
+                "label": "URL",
+                "type": "text",
+                "default": "",
+                "placeholder": "https://example.com",
+            },
+            {
+                "key": "mode",
+                "label": "Output Mode",
+                "type": "select",
+                "default": "text",
+                "options": ["text", "markdown", "html"],
+            },
+            {
+                "key": "max_chars",
+                "label": "Max Characters (0 = unlimited)",
+                "type": "number",
+                "default": 0,
+            },
+            {
+                "key": "user_agent",
+                "label": "User Agent",
+                "type": "text",
+                "default": "Mozilla/5.0 (compatible; AethvionBot/1.0)",
+            },
+        ],
+    },
+    # ── Sprint 4: Integrations ────────────────────────────────────────────────
+    {
+        "type": "companion.ask",
+        "label": "Ask Companion",
+        "category": "Companions",
+        "icon": "fa-comments",
+        "color": "#f472b6",
+        "inputs": [
+            {"name": "in",     "label": "Prompt"},
+            {"name": "model",  "label": "Model Override"},
+            {"name": "system", "label": "System Prompt Override"},
+        ],
+        "outputs": [
+            {"name": "out",   "label": "Response"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "companion_id",
+                "label": "Companion",
+                "type": "companion_select",
+                "default": "",
+                "placeholder": "Select a companion…",
+            },
+            {
+                "key": "model",
+                "label": "Model Override",
+                "type": "model_select",
+                "source": "/api/automate/models",
+                "default": "",
+                "placeholder": "(blank = companion default)",
+            },
+            {
+                "key": "system_prompt",
+                "label": "System Prompt Override",
+                "type": "textarea",
+                "default": "",
+                "placeholder": "(blank = use companion's built-in persona)",
+            },
+            {
+                "key": "temperature",
+                "label": "Temperature",
+                "type": "number",
+                "default": 0.7,
+            },
+            {
+                "key": "show_result",
+                "label": "Show Result on Node",
+                "type": "toggle",
+                "default": True,
+            },
+        ],
+    },
+    {
+        "type": "integration.discord",
+        "label": "Discord",
+        "category": "Integrations",
+        "icon": "fa-discord",
+        "color": "#818cf8",
+        "inputs": [
+            {"name": "in",      "label": "Message"},
+            {"name": "title",   "label": "Embed Title"},
+            {"name": "webhook", "label": "Webhook URL Override"},
+        ],
+        "outputs": [
+            {"name": "out",   "label": "Pass-through"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "webhook_url",
+                "label": "Webhook URL",
+                "type": "text",
+                "default": "",
+                "placeholder": "https://discord.com/api/webhooks/…",
+            },
+            {
+                "key": "username",
+                "label": "Bot Username",
+                "type": "text",
+                "default": "Aethvion",
+            },
+            {
+                "key": "title",
+                "label": "Embed Title",
+                "type": "text",
+                "default": "",
+                "placeholder": "(blank = send as plain message)",
+            },
+            {
+                "key": "colour",
+                "label": "Embed Colour (hex int)",
+                "type": "number",
+                "default": 5793266,
+            },
+            {
+                "key": "avatar_url",
+                "label": "Avatar URL",
+                "type": "text",
+                "default": "",
+            },
+        ],
+    },
+    {
+        "type": "integration.slack",
+        "label": "Slack",
+        "category": "Integrations",
+        "icon": "fa-slack",
+        "color": "#818cf8",
+        "inputs": [
+            {"name": "in",      "label": "Message"},
+            {"name": "title",   "label": "Header Title"},
+            {"name": "webhook", "label": "Webhook URL Override"},
+        ],
+        "outputs": [
+            {"name": "out",   "label": "Pass-through"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "webhook_url",
+                "label": "Incoming Webhook URL",
+                "type": "text",
+                "default": "",
+                "placeholder": "https://hooks.slack.com/services/…",
+            },
+            {
+                "key": "title",
+                "label": "Header Title",
+                "type": "text",
+                "default": "",
+                "placeholder": "(blank = message only)",
+            },
+            {
+                "key": "icon_emoji",
+                "label": "Icon Emoji",
+                "type": "text",
+                "default": ":robot_face:",
+            },
+        ],
+    },
+    # ── Sprint 5: Actions ─────────────────────────────────────────────────────
+    {
+        "type": "action.screenshot",
+        "label": "Screenshot",
+        "category": "Actions",
+        "icon": "fa-camera",
+        "color": "#34d399",
+        "inputs": [
+            {"name": "path", "label": "Save Path Override"},
+        ],
+        "outputs": [
+            {"name": "out",    "label": "File Path"},
+            {"name": "path",   "label": "File Path"},
+            {"name": "width",  "label": "Width"},
+            {"name": "height", "label": "Height"},
+            {"name": "error",  "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "path",
+                "label": "Save Path",
+                "type": "text",
+                "default": "",
+                "placeholder": "(blank = auto-generated temp file)",
+            },
+            {
+                "key": "monitor",
+                "label": "Monitor Index",
+                "type": "number",
+                "default": 0,
+            },
+        ],
+    },
+    {
+        "type": "action.camera_capture",
+        "label": "Camera Capture",
+        "category": "Actions",
+        "icon": "fa-video",
+        "color": "#34d399",
+        "inputs": [
+            {"name": "path", "label": "Save Path Override"},
+        ],
+        "outputs": [
+            {"name": "out",    "label": "File Path"},
+            {"name": "path",   "label": "File Path"},
+            {"name": "width",  "label": "Width"},
+            {"name": "height", "label": "Height"},
+            {"name": "error",  "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "path",
+                "label": "Save Path",
+                "type": "text",
+                "default": "",
+                "placeholder": "(blank = auto-generated temp file)",
+            },
+            {
+                "key": "camera_index",
+                "label": "Camera Index",
+                "type": "number",
+                "default": 0,
+            },
+            {
+                "key": "width",
+                "label": "Capture Width",
+                "type": "number",
+                "default": 1280,
+            },
+            {
+                "key": "height",
+                "label": "Capture Height",
+                "type": "number",
+                "default": 720,
+            },
+        ],
+    },
+    {
+        "type": "action.run_agent",
+        "label": "Run Agent",
+        "category": "Actions",
+        "icon": "fa-microchip-ai",
+        "color": "#34d399",
+        "inputs": [
+            {"name": "in",    "label": "Goal / Prompt"},
+            {"name": "model", "label": "Model Override"},
+        ],
+        "outputs": [
+            {"name": "out",   "label": "Agent Output"},
+            {"name": "agent", "label": "Agent Name"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "model",
+                "label": "Model",
+                "type": "model_select",
+                "source": "/api/automate/models",
+                "default": "",
+                "placeholder": "Select a model…",
+            },
+            {
+                "key": "domain",
+                "label": "Domain",
+                "type": "text",
+                "default": "Automate",
+                "placeholder": "Analytics / Research / Writing…",
+            },
+            {
+                "key": "action",
+                "label": "Action",
+                "type": "text",
+                "default": "Execute",
+                "placeholder": "Generate / Analyze / Summarize…",
+            },
+            {
+                "key": "object",
+                "label": "Object",
+                "type": "text",
+                "default": "Task",
+                "placeholder": "Report / Email / Code…",
+            },
+            {
+                "key": "instructions",
+                "label": "Additional Instructions",
+                "type": "textarea",
+                "default": "",
+                "placeholder": "Extra constraints or context for the agent…",
+            },
+            {
+                "key": "temperature",
+                "label": "Temperature",
+                "type": "number",
+                "default": 0.7,
+            },
+            {
+                "key": "max_tokens",
+                "label": "Max Tokens (0 = default)",
+                "type": "number",
+                "default": 0,
+            },
+            {
+                "key": "show_result",
+                "label": "Show Result on Node",
+                "type": "toggle",
+                "default": True,
+            },
+        ],
+    },
+    # ── Sprint 5: AI ──────────────────────────────────────────────────────────
+    {
+        "type": "ai.analyze_image",
+        "label": "Analyze Image",
+        "category": "AI",
+        "icon": "fa-image",
+        "color": "#4ade80",
+        "inputs": [
+            {"name": "in",    "label": "Question / Prompt"},
+            {"name": "image", "label": "Image Path or Data URI"},
+            {"name": "model", "label": "Model Override"},
+        ],
+        "outputs": [
+            {"name": "out",   "label": "Analysis"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "model",
+                "label": "Model",
+                "type": "model_select",
+                "source": "/api/automate/models",
+                "default": "",
+                "placeholder": "Select a vision-capable model…",
+            },
+            {
+                "key": "image_path",
+                "label": "Image Path",
+                "type": "text",
+                "default": "",
+                "placeholder": "C:/path/to/image.jpg",
+            },
+            {
+                "key": "question",
+                "label": "Question",
+                "type": "textarea",
+                "default": "Describe this image in detail.",
+                "placeholder": "What does this image show?",
+            },
+            {
+                "key": "system_prompt",
+                "label": "System Prompt",
+                "type": "textarea",
+                "default": "You are a helpful vision assistant.",
+            },
+            {
+                "key": "temperature",
+                "label": "Temperature",
+                "type": "number",
+                "default": 0.3,
+            },
+            {
+                "key": "show_result",
+                "label": "Show Result on Node",
+                "type": "toggle",
+                "default": True,
+            },
+        ],
+    },
+    {
+        "type": "ai.generate_image",
+        "label": "Generate Image",
+        "category": "AI",
+        "icon": "fa-palette",
+        "color": "#4ade80",
+        "inputs": [
+            {"name": "in",   "label": "Prompt"},
+            {"name": "path", "label": "Save Path Override"},
+        ],
+        "outputs": [
+            {"name": "out",   "label": "Saved File Path"},
+            {"name": "path",  "label": "Saved File Path"},
+            {"name": "count", "label": "Images Generated"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "model",
+                "label": "Model",
+                "type": "text",
+                "default": "imagen-3.0-generate-002",
+                "placeholder": "imagen-3.0-generate-002",
+            },
+            {
+                "key": "aspect_ratio",
+                "label": "Aspect Ratio",
+                "type": "select",
+                "default": "1:1",
+                "options": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+            },
+            {
+                "key": "path",
+                "label": "Save Path",
+                "type": "text",
+                "default": "",
+                "placeholder": "(blank = auto-generated temp file)",
+            },
+        ],
+    },
+    {
+        "type": "ai.text_to_speech",
+        "label": "Text to Speech",
+        "category": "AI",
+        "icon": "fa-volume-high",
+        "color": "#4ade80",
+        "inputs": [
+            {"name": "in",   "label": "Text"},
+            {"name": "path", "label": "Save Path Override"},
+        ],
+        "outputs": [
+            {"name": "out",         "label": "Audio File Path"},
+            {"name": "path",        "label": "Audio File Path"},
+            {"name": "duration_ms", "label": "Duration (ms)"},
+            {"name": "error",       "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "model_id",
+                "label": "TTS Model",
+                "type": "text",
+                "default": "kokoro",
+                "placeholder": "kokoro / xtts / …",
+            },
+            {
+                "key": "voice_id",
+                "label": "Voice",
+                "type": "text",
+                "default": "",
+                "placeholder": "(blank = model default)",
+            },
+            {
+                "key": "language",
+                "label": "Language",
+                "type": "text",
+                "default": "en",
+                "placeholder": "en / nl / de / …",
+            },
+            {
+                "key": "speed",
+                "label": "Speed",
+                "type": "number",
+                "default": 1.0,
+            },
+            {
+                "key": "device",
+                "label": "Device",
+                "type": "select",
+                "default": "cpu",
+                "options": ["cpu", "cuda"],
+            },
+            {
+                "key": "path",
+                "label": "Save Path",
+                "type": "text",
+                "default": "",
+                "placeholder": "(blank = auto-generated temp file)",
+            },
+        ],
+    },
+    {
+        "type": "ai.speech_to_text",
+        "label": "Speech to Text",
+        "category": "AI",
+        "icon": "fa-microphone",
+        "color": "#4ade80",
+        "inputs": [
+            {"name": "path", "label": "Audio File Path Override"},
+        ],
+        "outputs": [
+            {"name": "out",      "label": "Transcription"},
+            {"name": "language", "label": "Detected Language"},
+            {"name": "error",    "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "path",
+                "label": "Audio File Path",
+                "type": "text",
+                "default": "",
+                "placeholder": "C:/path/to/audio.wav",
+            },
+            {
+                "key": "model_id",
+                "label": "STT Model",
+                "type": "text",
+                "default": "whisper",
+                "placeholder": "whisper",
+            },
+            {
+                "key": "language",
+                "label": "Language Hint",
+                "type": "text",
+                "default": "",
+                "placeholder": "(blank = auto-detect)",
+            },
+            {
+                "key": "device",
+                "label": "Device",
+                "type": "select",
+                "default": "cpu",
+                "options": ["cpu", "cuda"],
+            },
+        ],
+    },
+    # ── Sprint 5: Memory ──────────────────────────────────────────────────────
+    {
+        "type": "memory.search_semantic",
+        "label": "Memory Search",
+        "category": "Memory",
+        "icon": "fa-magnifying-glass-chart",
+        "color": "#f59e0b",
+        "inputs": [{"name": "in", "label": "Search Query"}],
+        "outputs": [
+            {"name": "out",   "label": "Results (JSON)"},
+            {"name": "count", "label": "Result Count"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "scope",
+                "label": "Scope",
+                "type": "select",
+                "default": "all",
+                "options": ["all", "global", "workflow"],
+            },
+            {
+                "key": "limit",
+                "label": "Max Results",
+                "type": "number",
+                "default": 5,
+            },
+            {
+                "key": "min_score",
+                "label": "Min Relevance Score (0–1)",
+                "type": "number",
+                "default": 0.0,
+            },
+        ],
+    },
+    # ── Sprint 5: Integrations ────────────────────────────────────────────────
+    {
+        "type": "aethviondb.search",
+        "label": "AethvionDB Search",
+        "category": "Integrations",
+        "icon": "fa-database",
+        "color": "#818cf8",
+        "inputs": [{"name": "in", "label": "Search Query"}],
+        "outputs": [
+            {"name": "out",   "label": "Results (JSON)"},
+            {"name": "count", "label": "Result Count"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "database",
+                "label": "Database Name",
+                "type": "text",
+                "default": "default",
+                "placeholder": "default",
+            },
+            {
+                "key": "bake_name",
+                "label": "Bake Name",
+                "type": "text",
+                "default": "default",
+                "placeholder": "(blank = use most recent bake)",
+            },
+            {
+                "key": "entity_type",
+                "label": "Entity Type Filter",
+                "type": "text",
+                "default": "",
+                "placeholder": "(blank = all types)",
+            },
+            {
+                "key": "limit",
+                "label": "Max Results",
+                "type": "number",
+                "default": 10,
+            },
+            {
+                "key": "min_score",
+                "label": "Min Relevance Score (0–1)",
+                "type": "number",
+                "default": 0.0,
+            },
+        ],
+    },
+    # ── Sprint 4+5 (placed here to keep categories together) ─────────────────
+    {
+        "type": "integration.email",
+        "label": "Send Email",
+        "category": "Integrations",
+        "icon": "fa-envelope",
+        "color": "#818cf8",
+        "inputs": [
+            {"name": "in",      "label": "Email Body"},
+            {"name": "to",      "label": "To Override"},
+            {"name": "subject", "label": "Subject Override"},
+        ],
+        "outputs": [
+            {"name": "out",   "label": "Pass-through"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "to",
+                "label": "To (recipient)",
+                "type": "text",
+                "default": "",
+                "placeholder": "recipient@example.com",
+            },
+            {
+                "key": "subject",
+                "label": "Subject",
+                "type": "text",
+                "default": "Aethvion Notification",
+            },
+            {
+                "key": "format",
+                "label": "Body Format",
+                "type": "select",
+                "default": "plain",
+                "options": ["plain", "html"],
+            },
+            {
+                "key": "smtp_host",
+                "label": "SMTP Host",
+                "type": "text",
+                "default": "",
+                "placeholder": "smtp.gmail.com",
+            },
+            {
+                "key": "smtp_port",
+                "label": "SMTP Port",
+                "type": "number",
+                "default": 587,
+            },
+            {
+                "key": "smtp_user",
+                "label": "SMTP Username",
+                "type": "text",
+                "default": "",
+                "placeholder": "your@email.com",
+            },
+            {
+                "key": "smtp_pass",
+                "label": "SMTP Password",
+                "type": "password",
+                "default": "",
+            },
+            {
+                "key": "from_addr",
+                "label": "From Address",
+                "type": "text",
+                "default": "",
+                "placeholder": "(blank = same as SMTP username)",
+            },
+        ],
+    },
 ]
 
 
@@ -1615,3 +2550,157 @@ async def run_workflow(wf_id: str):
     executor = WorkflowExecutor(wf)
     result   = await asyncio.to_thread(executor.execute)
     return result
+
+
+# ── Examples + Import/Export/Share ────────────────────────────────────────────
+
+_EXAMPLES_DIR = Path(__file__).parent / "examples"
+_SHARE_DIR    = Path(__file__).parent.parent.parent / "data" / "automate" / "shared"
+
+
+async def _import_workflow_data(data: dict, name_suffix: str = "") -> dict:
+    """Create a new workflow from a raw workflow dict (example load or JSON import)."""
+    _ensure_dir()
+    now    = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    new_id = uuid.uuid4().hex
+
+    # Remap every node to a fresh UUID so imported/example workflows don't share IDs
+    old_nodes: list[dict] = data.get("nodes", [])
+    id_map: dict[str, str] = {
+        nd["id"]: uuid.uuid4().hex
+        for nd in old_nodes
+        if isinstance(nd.get("id"), str)
+    }
+
+    new_nodes = []
+    for nd in old_nodes:
+        new_nd = dict(nd)
+        new_nd["id"] = id_map.get(str(nd.get("id", "")), uuid.uuid4().hex)
+        new_nodes.append(new_nd)
+
+    new_conns = []
+    for conn in data.get("connections", []):
+        new_conn = dict(conn)
+        new_conn["id"]           = uuid.uuid4().hex
+        new_conn["sourceNodeId"] = id_map.get(str(conn.get("sourceNodeId", "")),
+                                               str(conn.get("sourceNodeId", "")))
+        new_conn["targetNodeId"] = id_map.get(str(conn.get("targetNodeId", "")),
+                                               str(conn.get("targetNodeId", "")))
+        new_conns.append(new_conn)
+
+    base_name = str(data.get("name", "Imported Workflow")).strip()
+    wf = {
+        "id":          new_id,
+        "name":        base_name + name_suffix if name_suffix else base_name,
+        "created":     now,
+        "updated":     now,
+        "nodes":       new_nodes,
+        "connections": new_conns,
+    }
+    _atomic_write(_wf_path(new_id), wf)
+    return {"workflow": wf}
+
+
+@router.get("/examples")
+async def list_examples():
+    """Return metadata for all built-in example workflows."""
+    if not _EXAMPLES_DIR.exists():
+        return {"examples": []}
+    examples = []
+    for p in sorted(_EXAMPLES_DIR.glob("*.json")):
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            examples.append({
+                "id":          p.stem,
+                "name":        data.get("name", p.stem),
+                "description": data.get("description", ""),
+                "node_count":  len(data.get("nodes", [])),
+                "tags":        data.get("tags", []),
+            })
+        except Exception:
+            pass
+    return {"examples": examples}
+
+
+@router.post("/examples/{example_id}/load")
+async def load_example(example_id: str):
+    """Create a new editable workflow from a built-in example."""
+    # Sanitise path component
+    if "/" in example_id or "\\" in example_id or ".." in example_id:
+        raise HTTPException(400, "Invalid example ID")
+    p = _EXAMPLES_DIR / f"{example_id}.json"
+    if not p.exists():
+        raise HTTPException(404, "Example not found")
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise HTTPException(500, f"Failed to read example: {exc}")
+    return await _import_workflow_data(data)
+
+
+@router.get("/workflows/{wf_id}/export")
+async def export_workflow(wf_id: str):
+    """Download the workflow as a JSON file."""
+    p = _wf_path(wf_id)
+    if not p.exists():
+        raise HTTPException(404, "Workflow not found")
+    wf = json.loads(p.read_text(encoding="utf-8"))
+    from fastapi.responses import JSONResponse  # noqa: PLC0415
+    safe_name = (wf.get("name") or wf_id).replace(" ", "_")
+    filename  = safe_name + ".json"
+    return JSONResponse(
+        content=wf,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+class ImportBody(BaseModel):
+    workflow: dict[str, Any]
+
+
+@router.post("/workflows/import")
+async def import_workflow(body: ImportBody):
+    """Create a new workflow from an uploaded JSON payload."""
+    return await _import_workflow_data(body.workflow)
+
+
+def _share_path(code: str) -> Path:
+    return _SHARE_DIR / f"{code}.json"
+
+
+def _gen_share_code() -> str:
+    import random  # noqa: PLC0415
+    import string  # noqa: PLC0415
+    chars = string.ascii_uppercase + string.digits
+    for _ in range(100):
+        code = "".join(random.choices(chars, k=8))
+        if not _share_path(code).exists():
+            return code
+    raise RuntimeError("Could not generate a unique share code")
+
+
+@router.post("/workflows/{wf_id}/share")
+async def share_workflow(wf_id: str):
+    """Generate a short share code for the workflow."""
+    p = _wf_path(wf_id)
+    if not p.exists():
+        raise HTTPException(404, "Workflow not found")
+    wf   = json.loads(p.read_text(encoding="utf-8"))
+    code = _gen_share_code()
+    _SHARE_DIR.mkdir(parents=True, exist_ok=True)
+    _share_path(code).write_text(
+        json.dumps(wf, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    return {"code": code}
+
+
+@router.get("/share/{code}")
+async def get_shared_workflow(code: str):
+    """Fetch a workflow by share code."""
+    if not code.isalnum() or len(code) > 16:
+        raise HTTPException(400, "Invalid share code")
+    p = _share_path(code.upper())
+    if not p.exists():
+        raise HTTPException(404, "Share code not found")
+    wf = json.loads(p.read_text(encoding="utf-8"))
+    return {"workflow": wf}

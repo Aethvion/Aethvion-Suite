@@ -98,6 +98,27 @@
             inspectorNone:  _$('at-inspector-none'),
             inspectorClose: _$('at-inspector-close'),
             toast:          _$('at-toast'),
+            // Examples modal
+            btnExamples:        _$('at-btn-examples'),
+            examplesOverlay:    _$('at-examples-overlay'),
+            examplesGrid:       _$('at-examples-grid'),
+            examplesClose:      _$('at-examples-close'),
+            // Share modal
+            btnShare:           _$('at-btn-share'),
+            shareOverlay:       _$('at-share-overlay'),
+            shareCode:          _$('at-share-code'),
+            shareClose:         _$('at-share-close'),
+            shareCopyBtn:       _$('at-share-copy-btn'),
+            // Import modal
+            btnImport:          _$('at-btn-import'),
+            importOverlay:      _$('at-import-overlay'),
+            importClose:        _$('at-import-close'),
+            importFileBtn:      _$('at-import-file-btn'),
+            importFileInput:    _$('at-import-file-input'),
+            importCodeInput:    _$('at-import-code-input'),
+            importCodeBtn:      _$('at-import-code-btn'),
+            // Export button
+            btnExport:          _$('at-btn-export'),
         };
 
         // Load data then render
@@ -201,6 +222,202 @@
         _renderWfList();
         _showEmpty();
         _updateToolbar();
+    }
+
+    // ── Examples / Export / Import / Share API calls ──────────────────────────
+
+    async function _apiListExamples() {
+        const r = await fetch('/api/automate/examples');
+        if (!r.ok) throw new Error('list-examples ' + r.status);
+        return (await r.json()).examples || [];
+    }
+
+    async function _apiLoadExample(exampleId) {
+        const r = await fetch('/api/automate/examples/' + exampleId + '/load', { method: 'POST' });
+        if (!r.ok) throw new Error('load-example ' + r.status);
+        return (await r.json()).workflow;
+    }
+
+    function _apiExportWorkflow() {
+        if (!_active) return;
+        // Trigger browser download via a temporary link
+        var a = document.createElement('a');
+        a.href = '/api/automate/workflows/' + _active.id + '/export';
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    async function _apiImportWorkflowData(wfData) {
+        const r = await fetch('/api/automate/workflows/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workflow: wfData }),
+        });
+        if (!r.ok) throw new Error('import-workflow ' + r.status);
+        return (await r.json()).workflow;
+    }
+
+    async function _apiShareWorkflow() {
+        if (!_active) return null;
+        const r = await fetch('/api/automate/workflows/' + _active.id + '/share', { method: 'POST' });
+        if (!r.ok) throw new Error('share-workflow ' + r.status);
+        return (await r.json()).code;
+    }
+
+    async function _apiGetSharedWorkflow(code) {
+        const r = await fetch('/api/automate/share/' + code.toUpperCase());
+        if (!r.ok) throw new Error('get-share ' + r.status);
+        return (await r.json()).workflow;
+    }
+
+    // ── Examples modal ────────────────────────────────────────────────────────
+
+    function _openExamplesModal() {
+        _e.examplesGrid.innerHTML =
+            '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted,#64748b);font-size:0.8rem;">' +
+            '<i class="fas fa-spinner fa-spin"></i> Loading…</div>';
+        _e.examplesOverlay.style.display = '';
+        _apiListExamples().then(function (examples) {
+            _e.examplesGrid.innerHTML = '';
+            if (examples.length === 0) {
+                _e.examplesGrid.innerHTML =
+                    '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted,#64748b);">No examples found.</div>';
+                return;
+            }
+            examples.forEach(function (ex) {
+                var card = document.createElement('div');
+                card.className = 'at-example-card';
+                var tagsHtml = (ex.tags || []).map(function (t) {
+                    return '<span class="at-example-tag">' + _esc(t) + '</span>';
+                }).join('');
+                card.innerHTML =
+                    '<div class="at-example-card-name">' + _esc(ex.name) + '</div>' +
+                    '<div class="at-example-card-desc">' + _esc(ex.description || '') + '</div>' +
+                    '<div class="at-example-card-meta">' +
+                    '  <span class="at-example-card-nodes"><i class="fas fa-circle-nodes"></i> ' +
+                         _esc(String(ex.node_count || 0)) + ' nodes</span>' +
+                    '  <div class="at-example-card-tags">' + tagsHtml + '</div>' +
+                    '</div>';
+                card.addEventListener('click', function () { _doLoadExample(ex.id, ex.name); });
+                _e.examplesGrid.appendChild(card);
+            });
+        }).catch(function (e) {
+            _e.examplesGrid.innerHTML =
+                '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:#f87171;">Failed to load examples.</div>';
+            console.error('[Automate]', e);
+        });
+    }
+
+    function _closeExamplesModal() {
+        _e.examplesOverlay.style.display = 'none';
+    }
+
+    function _doLoadExample(exampleId, exampleName) {
+        _closeExamplesModal();
+        _apiLoadExample(exampleId).then(function (wf) {
+            _workflows.unshift({ id: wf.id, name: wf.name, node_count: wf.nodes.length, updated: wf.updated });
+            _renderWfList();
+            _openWorkflow(wf.id);
+            _toast('Loaded "' + (exampleName || wf.name) + '".');
+        }).catch(function (e) {
+            _toast('Failed to load example.', true);
+            console.error('[Automate]', e);
+        });
+    }
+
+    // ── Share modal ───────────────────────────────────────────────────────────
+
+    function _openShareModal(code) {
+        _e.shareCode.textContent = code;
+        _e.shareOverlay.style.display = '';
+    }
+
+    function _closeShareModal() {
+        _e.shareOverlay.style.display = 'none';
+    }
+
+    function _doShare() {
+        if (!_active) return;
+        // Auto-save first so the shared version is current
+        var doShare = function () {
+            _apiShareWorkflow().then(function (code) {
+                _openShareModal(code);
+            }).catch(function (e) {
+                _toast('Failed to generate share code.', true);
+                console.error('[Automate]', e);
+            });
+        };
+        if (_dirty) {
+            _apiSaveWorkflow().then(doShare).catch(doShare);
+        } else {
+            doShare();
+        }
+    }
+
+    // ── Import modal ──────────────────────────────────────────────────────────
+
+    function _openImportModal() {
+        // Reset to file tab
+        _setImportTab('file');
+        if (_e.importCodeInput) _e.importCodeInput.value = '';
+        _e.importOverlay.style.display = '';
+    }
+
+    function _closeImportModal() {
+        _e.importOverlay.style.display = 'none';
+    }
+
+    function _setImportTab(tab) {
+        var fileSec = document.getElementById('at-import-file-section');
+        var codeSec = document.getElementById('at-import-code-section');
+        var tabs    = document.querySelectorAll('.at-import-tab');
+        tabs.forEach(function (t) {
+            t.classList.toggle('active', t.dataset.importTab === tab);
+        });
+        if (fileSec) fileSec.style.display = tab === 'file' ? '' : 'none';
+        if (codeSec) codeSec.style.display = tab === 'code' ? '' : 'none';
+    }
+
+    function _doImportFile(file) {
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+            try {
+                var wfData = JSON.parse(ev.target.result);
+                _apiImportWorkflowData(wfData).then(function (wf) {
+                    _closeImportModal();
+                    _workflows.unshift({ id: wf.id, name: wf.name, node_count: (wf.nodes || []).length, updated: wf.updated });
+                    _renderWfList();
+                    _openWorkflow(wf.id);
+                    _toast('Imported "' + wf.name + '".');
+                }).catch(function (e) {
+                    _toast('Import failed: ' + e.message, true);
+                    console.error('[Automate]', e);
+                });
+            } catch (_) {
+                _toast('Invalid JSON file.', true);
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function _doImportByCode() {
+        var code = (_e.importCodeInput && _e.importCodeInput.value || '').trim().toUpperCase();
+        if (code.length < 4) { _toast('Enter a valid share code.', true); return; }
+        _apiGetSharedWorkflow(code).then(function (wfData) {
+            return _apiImportWorkflowData(wfData);
+        }).then(function (wf) {
+            _closeImportModal();
+            _workflows.unshift({ id: wf.id, name: wf.name, node_count: (wf.nodes || []).length, updated: wf.updated });
+            _renderWfList();
+            _openWorkflow(wf.id);
+            _toast('Imported "' + wf.name + '".');
+        }).catch(function (e) {
+            _toast('Could not load share code. Check it and try again.', true);
+            console.error('[Automate]', e);
+        });
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1338,6 +1555,8 @@
         _e.btnSave.disabled   = !has;
         _e.btnDelete.disabled = !has;
         _e.btnRun.disabled    = !has;
+        if (_e.btnExport) _e.btnExport.disabled = !has;
+        if (_e.btnShare)  _e.btnShare.disabled  = !has;
     }
 
     function _markDirty() {
@@ -1654,6 +1873,70 @@
         _e.sidebarAdd.addEventListener('click', _newWorkflow);
         if (_e.wfCreateFirst) _e.wfCreateFirst.addEventListener('click', _newWorkflow);
         if (_e.canvasNewBtn)  _e.canvasNewBtn .addEventListener('click', _newWorkflow);
+
+        // ── Examples / Import / Export / Share buttons ─────────────────────
+        if (_e.btnExamples) _e.btnExamples.addEventListener('click', _openExamplesModal);
+        if (_e.btnImport)   _e.btnImport  .addEventListener('click', _openImportModal);
+        if (_e.btnExport)   _e.btnExport  .addEventListener('click', _apiExportWorkflow);
+        if (_e.btnShare)    _e.btnShare   .addEventListener('click', _doShare);
+
+        // Examples modal
+        if (_e.examplesClose) _e.examplesClose.addEventListener('click', _closeExamplesModal);
+        if (_e.examplesOverlay) {
+            _e.examplesOverlay.addEventListener('click', function (e) {
+                if (e.target === _e.examplesOverlay) _closeExamplesModal();
+            });
+        }
+
+        // Share modal
+        if (_e.shareClose) _e.shareClose.addEventListener('click', _closeShareModal);
+        if (_e.shareOverlay) {
+            _e.shareOverlay.addEventListener('click', function (e) {
+                if (e.target === _e.shareOverlay) _closeShareModal();
+            });
+        }
+        if (_e.shareCopyBtn) {
+            _e.shareCopyBtn.addEventListener('click', function () {
+                var code = _e.shareCode ? _e.shareCode.textContent.trim() : '';
+                if (!code) return;
+                navigator.clipboard.writeText(code).then(function () {
+                    _toast('Share code copied!');
+                }).catch(function () {
+                    _toast('Copy failed — select the code manually.', true);
+                });
+            });
+        }
+
+        // Import modal
+        if (_e.importClose) _e.importClose.addEventListener('click', _closeImportModal);
+        if (_e.importOverlay) {
+            _e.importOverlay.addEventListener('click', function (e) {
+                if (e.target === _e.importOverlay) _closeImportModal();
+            });
+        }
+        // Import tabs
+        document.querySelectorAll('.at-import-tab').forEach(function (tab) {
+            tab.addEventListener('click', function () { _setImportTab(tab.dataset.importTab); });
+        });
+        // Import from file
+        if (_e.importFileBtn) {
+            _e.importFileBtn.addEventListener('click', function () {
+                if (_e.importFileInput) _e.importFileInput.click();
+            });
+        }
+        if (_e.importFileInput) {
+            _e.importFileInput.addEventListener('change', function () {
+                var file = this.files && this.files[0];
+                if (file) { _doImportFile(file); this.value = ''; }
+            });
+        }
+        // Import by code
+        if (_e.importCodeBtn) _e.importCodeBtn.addEventListener('click', _doImportByCode);
+        if (_e.importCodeInput) {
+            _e.importCodeInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') _doImportByCode();
+            });
+        }
 
         // ── Palette search ─────────────────────────────────────────────────
         _e.paletteSearch.addEventListener('input', function () {
