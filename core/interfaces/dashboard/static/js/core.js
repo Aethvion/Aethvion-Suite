@@ -595,6 +595,35 @@ async function pollStartupStatus() {
     let targetPercent = 0;
     let systemInitialized = false;
 
+    // Tips Rotation Logic
+    const tipText = document.getElementById('splash-tip-text');
+    const tips = [
+        "Tip: Connect nodes in the Automate tab to automate workflows, similar to blueprint visual scripting.",
+        "Tip: Select companions from the sidebar to chat, assign tasks, or configure personality parameters.",
+        "Tip: AethvionDB stores semantic memories and connections. Query it in the AethvionDB tab.",
+        "Tip: Audio Studio supports local speech-to-text and high-quality voice cloning.",
+        "Tip: Press Ctrl+` or click the Terminal icon to view direct logs and execution traces.",
+        "Tip: Use the Code tab to execute autonomous agents to build, research, or debug files."
+    ];
+    let currentTipIndex = 0;
+    let tipInterval = null;
+
+    if (tipText) {
+        tipText.style.transition = 'opacity 0.25s ease-in-out';
+        tipInterval = setInterval(() => {
+            if (systemInitialized) {
+                clearInterval(tipInterval);
+                return;
+            }
+            tipText.style.opacity = 0;
+            setTimeout(() => {
+                currentTipIndex = (currentTipIndex + 1) % tips.length;
+                tipText.textContent = tips[currentTipIndex];
+                tipText.style.opacity = 1;
+            }, 250);
+        }, 3800);
+    }
+
     // Animation frame logic to smoothly update display percentage
     const animateProgress = () => {
         if (systemInitialized) {
@@ -643,6 +672,7 @@ async function pollStartupStatus() {
 
                     if (data.initialized) {
                         systemInitialized = true;
+                        if (tipInterval) clearInterval(tipInterval);
 
                         // Wait for progress animation to hit 100% before starting fade-out
                         const checkComplete = () => {
