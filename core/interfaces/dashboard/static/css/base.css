@@ -538,15 +538,14 @@ select optgroup {
 
 .logo-glow {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 120%;
-    height: 120%;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, transparent 70%);
-    filter: blur(20px);
+    top: -15%;
+    left: -15%;
+    width: 130%;
+    height: 130%;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%);
+    filter: blur(25px);
     z-index: -1;
-    animation: pulse 3s infinite;
+    animation: logoGlowPulse 4s ease-in-out infinite;
 }
 
 .splash-logo-img {
@@ -1738,4 +1737,66 @@ body.stop-animations-global *,
 body.stop-animations-global *::before,
 body.stop-animations-global *::after {
     animation-play-state: paused !important;
+}
+
+/* ── System Shutdown Overlay ──────────────────────────────────────────────── */
+.shutdown-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(5, 5, 8, 0.92);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    animation: fadeIn 0.4s ease-out both;
+    user-select: none;
+}
+
+.shutdown-title {
+    font-family: 'Orbitron', sans-serif;
+    color: #f87171;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    text-shadow: 0 0 20px rgba(248, 113, 113, 0.3);
+}
+
+.shutdown-sub {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    opacity: 0.8;
+    max-width: 350px;
+    text-align: center;
+    line-height: 1.5;
+}
+
+.shutdown-loader {
+    margin-top: 2rem;
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(255, 255, 255, 0.05);
+    border-top-color: #f87171;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes logoGlowPulse {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.65;
+        transform: scale(1.1);
+    }
 }

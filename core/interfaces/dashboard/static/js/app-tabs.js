@@ -564,30 +564,49 @@ const ATB = (() => {
             btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> <span>Quitting...</span>`;
         }
 
+        const showOverlay = (title, msg) => {
+            document.body.innerHTML = `
+                <div class="shutdown-overlay">
+                    <div class="shutdown-title">${title}</div>
+                    <div class="shutdown-sub">${msg}</div>
+                    <div class="shutdown-loader"></div>
+                </div>
+            `;
+        };
+
         try {
+            showOverlay("Shutting Down...", "Closing Aethvion Suite and stopping background services gracefully...");
             const resp = await fetch('/api/system/shutdown', { method: 'POST' });
+            
             if (resp.ok) {
-                // Show a nice overlay or just wait for the connection to die
-                document.body.innerHTML = `
-                    <div style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#0a0a0b; color:#fff; font-family:sans-serif;">
-                        <h2 style="color:#f87171;">Shutting Down...</h2>
-                        <p style="opacity:0.7;">Aethvion Suite is closing. You can close this window now.</p>
-                    </div>
-                `;
+                setTimeout(() => {
+                    window.close();
+                    
+                    // Fallback message if window.close() is blocked by browser security
+                    setTimeout(() => {
+                        const subText = document.querySelector('.shutdown-sub');
+                        const loader = document.querySelector('.shutdown-loader');
+                        if (subText) subText.textContent = "All services stopped. You may now safely close this browser window.";
+                        if (loader) loader.style.display = 'none';
+                    }, 500);
+                }, 1500);
             } else {
                 alert("Shutdown failed. Check logs.");
                 location.reload();
             }
         } catch (err) {
-            console.error("Shutdown error:", err);
-            // If connection dies, it probably worked
+            console.error("Shutdown error (connection lost is expected):", err);
+            // If connection dies, it means the backend shutdown succeeded
             setTimeout(() => {
-                document.body.innerHTML = `
-                    <div style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#0a0a0b; color:#fff; font-family:sans-serif;">
-                        <h2 style="color:#f87171;">System Stopped</h2>
-                        <p style="opacity:0.7;">The backend has disconnected. You may close your browser.</p>
-                    </div>
-                `;
+                window.close();
+                
+                // Fallback message
+                setTimeout(() => {
+                    const subText = document.querySelector('.shutdown-sub');
+                    const loader = document.querySelector('.shutdown-loader');
+                    if (subText) subText.textContent = "All backend services disconnected. You may now safely close this browser window.";
+                    if (loader) loader.style.display = 'none';
+                }, 500);
             }, 1000);
         }
     }

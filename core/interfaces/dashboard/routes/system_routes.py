@@ -202,9 +202,21 @@ async def terminate_app_by_port(port: int, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/system/shutdown")
-async def shutdown_system():
+async def shutdown_system(request: Request):
     async def delayed_exit():
         await asyncio.sleep(1.0)
+        # Clean up any optional apps running under the dashboard process state
+        running_apps = getattr(request.app.state, 'RUNNING_APPS', {})
+        for app_name, pid in list(running_apps.items()):
+            try:
+                import psutil
+                if psutil.pid_exists(pid):
+                    parent = psutil.Process(pid)
+                    for child in parent.children(recursive=True):
+                        child.kill()
+                    parent.kill()
+            except Exception:
+                pass
         os._exit(0)
     asyncio.create_task(delayed_exit())
     return {"status": "success", "message": "System shutting down..."}
