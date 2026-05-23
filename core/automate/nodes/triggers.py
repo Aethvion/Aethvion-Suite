@@ -26,6 +26,24 @@ def trigger_webhook(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     return {"out": body, "body": body}
 
 
+def trigger_app_event(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    """
+    Fires when an internal Aethvion event occurs (companion message, agent
+    completion, memory write, etc.).  The event type and payload are injected
+    into inputs by the scheduler service; this handler just surfaces them.
+    """
+    p          = node.get("properties", {})
+    event_type = str(inputs.get("event_type") or p.get("event_type", "")).strip()
+    source     = str(inputs.get("source", "")).strip()
+    data       = inputs.get("data")
+    return {
+        "trigger":     None,
+        "event_type":  event_type,
+        "source":      source,
+        "data":        data,
+    }
+
+
 def trigger_file_watch(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """
     In the executor, file_watch behaves like a manual trigger — it fires the

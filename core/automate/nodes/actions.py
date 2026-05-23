@@ -14,7 +14,7 @@ import subprocess
 import sys
 from typing import Any
 
-from ._utils import _to_str, _now
+from ._utils import _to_str, _now, _get_pm
 
 
 def action_http(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
@@ -435,3 +435,55 @@ def action_web_scrape(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
         out = out[:max_chars]
 
     return {"out": out, "title": title, "error": ""}
+
+
+# ── Sprint 5: Run Agent ───────────────────────────────────────────────────────
+
+def action_run_agent(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    """
+    Lightweight autonomous agent node.
+
+    Uses the PM with request_type="agent_call" and a structured system prompt
+    built from domain / action / object to keep the executor self-contained
+    (no AetherCore instantiation required in the workflow context).
+    """
+    import uuid as _uuid  # noqa: PLC0415
+
+    p            = node.get("properties", {})
+    goal         = _to_str(inputs.get("in", "")).strip()
+    model_id     = _to_str(inputs.get("model") or p.get("model", "")).strip()
+    domain       = str(p.get("domain",       "Automate")).strip() or "Automate"
+    action       = str(p.get("action",       "Execute")).strip()  or "Execute"
+    obj          = str(p.get("object",       "Task")).strip()     or "Task"
+    instructions = str(p.get("instructions", "")).strip()
+    temperature  = float(p.get("temperature", 0.7))
+    max_tokens   = int(p.get("max_tokens", 0) or 0) or None
+
+    if not goal:
+        return {"out": "", "error": "action.run_agent: No goal/prompt provided"}
+    if not model_id:
+        return {"out": "", "error": "action.run_agent: No model selected"}
+
+    agent_name = f"{domain}_{action}_{obj}"
+    system = (
+        f"You are an autonomous AI agent named {agent_name}.\n"
+        f"Domain: {domain} | Action: {action} | Object: {obj}\n"
+        + (f"Additional instructions: {instructions}\n" if instructions else "")
+        + "Work through the task step by step. Be thorough and precise."
+    )
+
+    pm   = _get_pm()
+    resp = pm.call_with_failover(
+        prompt=goal,
+        trace_id=f"automate-agent-{_uuid.uuid4().hex[:8]}",
+        system_prompt=system,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        model=model_id,
+        request_type="agent_call",
+        source="automate-execution",
+    )
+
+    if not resp.success:
+        return {"out": "", "error": resp.error or "Agent call failed"}
+    return {"out": resp.content, "agent": agent_name, "error": ""}

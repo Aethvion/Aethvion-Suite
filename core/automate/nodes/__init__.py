@@ -15,13 +15,17 @@ from __future__ import annotations
 
 from typing import Callable
 
-from . import actions, ai, data, inputs_outputs, integrations, logic, memory, triggers
+from . import (
+    actions, aethviondb, ai, data,
+    inputs_outputs, integrations, logic, media, memory, triggers,
+)
 
 # ── Handler registry ──────────────────────────────────────────────────────────
 
 _REGISTRY: dict[str, Callable] = {
 
     # Triggers ─────────────────────────────────────────────────────────────────
+    "trigger.app_event":  triggers.trigger_app_event,
     "trigger.file_watch": triggers.trigger_file_watch,
     "trigger.manual":     triggers.trigger_manual,
     "trigger.schedule":   triggers.trigger_schedule,
@@ -52,27 +56,35 @@ _REGISTRY: dict[str, Callable] = {
     "transform.combine":  data.transform_combine,
 
     # Actions ──────────────────────────────────────────────────────────────────
-    "action.clipboard":    actions.action_clipboard,
-    "action.file_list":    actions.action_file_list,
-    "action.file_read":    actions.action_file_read,
-    "action.file_write":   actions.action_file_write,
-    "action.http":         actions.action_http,
-    "action.log":          actions.action_log,
-    "action.notify":       actions.action_notify,
-    "action.run_command":  actions.action_run_command,
-    "action.run_script":   actions.action_run_script,
-    "action.web_scrape":   actions.action_web_scrape,
+    "action.camera_capture": media.action_camera_capture,
+    "action.clipboard":      actions.action_clipboard,
+    "action.file_list":      actions.action_file_list,
+    "action.file_read":      actions.action_file_read,
+    "action.file_write":     actions.action_file_write,
+    "action.http":           actions.action_http,
+    "action.log":            actions.action_log,
+    "action.notify":         actions.action_notify,
+    "action.run_agent":      actions.action_run_agent,
+    "action.run_command":    actions.action_run_command,
+    "action.run_script":     actions.action_run_script,
+    "action.screenshot":     media.action_screenshot,
+    "action.web_scrape":     actions.action_web_scrape,
 
     # AI ───────────────────────────────────────────────────────────────────────
-    "ai.any":          ai.ai_model,
-    "ai.classify":     ai.ai_classify,
-    "ai.extract_data": ai.ai_extract_data,
-    "ai.google":       ai.ai_model,
-    "ai.summarize":    ai.ai_summarize,
+    "ai.analyze_image":   media.ai_analyze_image,
+    "ai.any":             ai.ai_model,
+    "ai.classify":        ai.ai_classify,
+    "ai.extract_data":    ai.ai_extract_data,
+    "ai.generate_image":  media.ai_generate_image,
+    "ai.google":          ai.ai_model,
+    "ai.speech_to_text":  media.ai_speech_to_text,
+    "ai.summarize":       ai.ai_summarize,
+    "ai.text_to_speech":  media.ai_text_to_speech,
 
     # Memory ───────────────────────────────────────────────────────────────────
-    "memory.retrieve": memory.memory_retrieve,
-    "memory.store":    memory.memory_store,
+    "memory.retrieve":        memory.memory_retrieve,
+    "memory.search_semantic": memory.memory_search_semantic,
+    "memory.store":           memory.memory_store,
 
     # Inputs ───────────────────────────────────────────────────────────────────
     "input.file":   inputs_outputs.input_file,
@@ -86,6 +98,7 @@ _REGISTRY: dict[str, Callable] = {
     "output.file":      inputs_outputs.output_file,
 
     # Integrations ─────────────────────────────────────────────────────────────
+    "aethviondb.search":    aethviondb.aethviondb_search,
     "companion.ask":        integrations.companion_ask,
     "integration.discord":  integrations.integration_discord,
     "integration.email":    integrations.integration_email,
