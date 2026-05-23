@@ -407,9 +407,22 @@
     background: rgba(34, 211, 238, 0.18);
     transform: scale(1.35);
 }
+/* Output port: has at least one outgoing connection */
 .at-port.at-connected {
     border-color: rgba(100, 116, 139, 0.8);
     background: rgba(100, 116, 139, 0.25);
+}
+
+/* Input port: property value is configured but no wire connected → blue */
+.at-port.at-input.at-port-valued {
+    border-color: rgba(96, 165, 250, 0.85);
+    background: rgba(96, 165, 250, 0.18);
+}
+
+/* Input port: actively wired from another node → green */
+.at-port.at-input.at-port-wired {
+    border-color: rgba(74, 222, 128, 0.85);
+    background: rgba(74, 222, 128, 0.18);
 }
 
 .at-port-label {
@@ -1216,6 +1229,29 @@
     color: #ef4444;
     background: rgba(239, 68, 68, 0.1);
 }
+
+/* ── Property field — wired/overridden state ────────────────────────────── */
+
+/* The field itself is dimmed but stays fully interactive */
+.at-prop-input.at-prop-overridden,
+.at-prop-textarea.at-prop-overridden,
+.at-prop-select.at-prop-overridden {
+    opacity: 0.55;
+    border-color: rgba(74, 222, 128, 0.35) !important;
+    box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.15);
+}
+
+/* Small badge shown below the field */
+.at-prop-overridden-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.64rem;
+    color: #4ade80;
+    margin-top: 0.12rem;
+    letter-spacing: 0.01em;
+}
+.at-prop-overridden-badge i { font-size: 0.6rem; flex-shrink: 0; }
 
 /* ── Scrollbars ─────────────────────────────────────────────────────────── */
 

@@ -649,26 +649,55 @@
                        tx + ' ' + ty;
     }
 
-    /** Add/remove .at-connected class on port dots based on current connections. */
+    /**
+     * Colour input port dots based on their state:
+     *   green  (.at-port-wired)  — an active wire is providing the value
+     *   blue   (.at-port-valued) — no wire, but property is configured
+     *   grey   (default)         — no wire and no property value
+     *
+     * Output port dots keep the existing .at-connected marker (grey fill).
+     */
     function _updatePortMarkers() {
         if (!_active) return;
-        // Clear all
+
+        // ── Reset all states ──────────────────────────────────────────────────
         _e.canvasInner.querySelectorAll('.at-port').forEach(function (p) {
-            p.classList.remove('at-connected');
+            p.classList.remove('at-connected', 'at-port-wired', 'at-port-valued');
         });
-        // Mark connected
+
+        // ── Build a set of wired input port keys ("nodeId:portName") ─────────
+        var wiredInputs = new Set();
         _active.connections.forEach(function (conn) {
+            // Output port: mark source dot with the classic "connected" indicator
             var srcRow = _e.canvasInner.querySelector(
-                '[data-node-id="' + conn.sourceNodeId + '"][data-port="' + conn.sourcePort + '"][data-port-type="output"]'
+                '[data-node-id="' + conn.sourceNodeId +
+                '"][data-port="' + conn.sourcePort + '"][data-port-type="output"]'
             );
             if (srcRow) { var d = srcRow.querySelector('.at-port'); if (d) d.classList.add('at-connected'); }
 
-            // '__trigger__' targets the node body — there's no input port dot to mark
+            // '__trigger__' wires target the node body — no input port dot to update
             if (conn.targetPort !== '__trigger__') {
-                var tgtRow = _e.canvasInner.querySelector(
-                    '[data-node-id="' + conn.targetNodeId + '"][data-port="' + conn.targetPort + '"][data-port-type="input"]'
-                );
-                if (tgtRow) { var d2 = tgtRow.querySelector('.at-port'); if (d2) d2.classList.add('at-connected'); }
+                wiredInputs.add(conn.targetNodeId + ':' + conn.targetPort);
+            }
+        });
+
+        // ── Colour every input port dot ───────────────────────────────────────
+        _e.canvasInner.querySelectorAll('.at-port-row.at-input').forEach(function (row) {
+            var nodeId = row.dataset.nodeId;
+            var port   = row.dataset.port;
+            var dot    = row.querySelector('.at-port');
+            if (!dot) return;
+
+            if (wiredInputs.has(nodeId + ':' + port)) {
+                // GREEN — live wire
+                dot.classList.add('at-port-wired');
+            } else {
+                // BLUE — property has a non-empty, non-default value configured
+                var nd  = _active.nodes.find(function (n) { return n.id === nodeId; });
+                var val = nd && nd.properties[port];
+                var hasVal = val !== undefined && val !== null && val !== '' &&
+                             !(Array.isArray(val) && val.length === 0);
+                if (hasVal) dot.classList.add('at-port-valued');
             }
         });
     }
@@ -801,6 +830,13 @@
     // ════════════════════════════════════════════════════════════════════════
     //  Properties panel
     // ════════════════════════════════════════════════════════════════════════
+
+    /** Returns true if an active connection is feeding into the given input port. */
+    function _isPortWired(nodeId, portKey) {
+        return !!(_active && _active.connections.some(function (c) {
+            return c.targetNodeId === nodeId && c.targetPort === portKey;
+        }));
+    }
 
     function _openProps(nodeId) {
         if (!_active) return;
@@ -938,10 +974,26 @@
                     const badge = _e.canvasInner.querySelector('[data-model-badge="' + nd.id + '"]');
                     if (badge) badge.textContent = newVal || 'no model';
                 }
+                // Refresh port dot colours so the blue "has value" state updates live
+                _updatePortMarkers();
             });
 
             field.innerHTML = '<span class="at-prop-label">' + _esc(prop.label) + '</span>';
             field.appendChild(inputEl);
+
+            // If a wire is currently connected to the matching input port, show an
+            // "overridden by connection" badge and dim the field (value is kept as
+            // fallback for when the wire is disconnected).
+            if (_isPortWired(nd.id, prop.key)) {
+                inputEl.classList.add('at-prop-overridden');
+                var overBadge = document.createElement('div');
+                overBadge.className = 'at-prop-overridden-badge';
+                overBadge.innerHTML =
+                    '<i class="fas fa-plug-circle-check"></i>' +
+                    'Connected — wired value used at runtime';
+                field.appendChild(overBadge);
+            }
+
             _e.propsBody.appendChild(field);
         });
 
