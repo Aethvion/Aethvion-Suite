@@ -544,6 +544,235 @@ _NODE_TYPES: list[dict] = [
             },
         ],
     },
+    # ── Sprint 1: Data ────────────────────────────────────────────────────────
+    {
+        "type": "data.template",
+        "label": "Template",
+        "category": "Data",
+        "icon": "fa-file-code",
+        "color": "#fb923c",
+        "inputs": [
+            {"name": "in",    "label": "Data Object"},
+            {"name": "var_a", "label": "Variable A"},
+            {"name": "var_b", "label": "Variable B"},
+            {"name": "var_c", "label": "Variable C"},
+        ],
+        "outputs": [
+            {"name": "out",   "label": "Rendered Text"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "template",
+                "label": "Template",
+                "type": "textarea",
+                "default": "",
+                "placeholder": "Hello {{name}}! You live in {{city|unknown}}.",
+            },
+        ],
+    },
+    {
+        "type": "data.extract_json",
+        "label": "Extract JSON",
+        "category": "Data",
+        "icon": "fa-magnifying-glass",
+        "color": "#fb923c",
+        "inputs": [{"name": "in", "label": "JSON Input"}],
+        "outputs": [
+            {"name": "out",   "label": "Value"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "key",
+                "label": "Key Path",
+                "type": "text",
+                "default": "",
+                "placeholder": "user.address.city",
+            },
+            {
+                "key": "default",
+                "label": "Default Value",
+                "type": "text",
+                "default": "",
+                "placeholder": "(empty = error if key missing)",
+            },
+            {
+                "key": "output_as",
+                "label": "Output As",
+                "type": "select",
+                "default": "auto",
+                "options": ["auto", "string", "json"],
+            },
+        ],
+    },
+    {
+        "type": "data.type_convert",
+        "label": "Type Convert",
+        "category": "Data",
+        "icon": "fa-arrows-left-right",
+        "color": "#fb923c",
+        "inputs": [{"name": "in", "label": "Input"}],
+        "outputs": [
+            {"name": "out",   "label": "Converted"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "to",
+                "label": "Convert To",
+                "type": "select",
+                "default": "string",
+                "options": ["string", "integer", "float", "boolean", "json"],
+            },
+            {
+                "key": "true_values",
+                "label": "True Values",
+                "type": "text",
+                "default": "true,yes,1,on",
+            },
+            {
+                "key": "false_values",
+                "label": "False Values",
+                "type": "text",
+                "default": "false,no,0,off",
+            },
+        ],
+    },
+    # ── Sprint 1: Actions ─────────────────────────────────────────────────────
+    {
+        "type": "action.file_read",
+        "label": "File Read",
+        "category": "Actions",
+        "icon": "fa-file-arrow-up",
+        "color": "#34d399",
+        "inputs": [
+            {"name": "in",   "label": "Trigger"},
+            {"name": "path", "label": "File Path"},
+        ],
+        "outputs": [
+            {"name": "out",   "label": "File Content"},
+            {"name": "path",  "label": "Resolved Path"},
+            {"name": "size",  "label": "File Size"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "path",
+                "label": "File Path",
+                "type": "text",
+                "default": "",
+                "placeholder": "C:/Users/me/document.txt",
+            },
+            {
+                "key": "encoding",
+                "label": "Encoding",
+                "type": "select",
+                "default": "utf-8",
+                "options": ["utf-8", "latin-1", "ascii", "binary"],
+            },
+            {
+                "key": "strip",
+                "label": "Strip Whitespace",
+                "type": "toggle",
+                "default": False,
+            },
+            {
+                "key": "max_bytes",
+                "label": "Max Size (bytes)",
+                "type": "number",
+                "default": 0,
+            },
+        ],
+    },
+    {
+        "type": "action.file_write",
+        "label": "File Write",
+        "category": "Actions",
+        "icon": "fa-file-arrow-down",
+        "color": "#34d399",
+        "inputs": [
+            {"name": "in",   "label": "Content"},
+            {"name": "path", "label": "File Path Override"},
+        ],
+        "outputs": [
+            {"name": "out",   "label": "Pass-through"},
+            {"name": "path",  "label": "Written Path"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "path",
+                "label": "File Path",
+                "type": "text",
+                "default": "",
+                "placeholder": "C:/Users/me/output.txt",
+            },
+            {
+                "key": "mode",
+                "label": "Write Mode",
+                "type": "select",
+                "default": "overwrite",
+                "options": ["overwrite", "append", "prepend"],
+            },
+            {
+                "key": "encoding",
+                "label": "Encoding",
+                "type": "select",
+                "default": "utf-8",
+                "options": ["utf-8", "latin-1", "ascii"],
+            },
+            {
+                "key": "newline",
+                "label": "Add Trailing Newline",
+                "type": "toggle",
+                "default": True,
+            },
+            {
+                "key": "create_dirs",
+                "label": "Create Missing Directories",
+                "type": "toggle",
+                "default": True,
+            },
+        ],
+    },
+    {
+        "type": "action.notify",
+        "label": "Notify",
+        "category": "Actions",
+        "icon": "fa-bell",
+        "color": "#34d399",
+        "inputs": [
+            {"name": "in",      "label": "Input"},
+            {"name": "title",   "label": "Title Override"},
+            {"name": "message", "label": "Message Override"},
+        ],
+        "outputs": [
+            {"name": "out",   "label": "Pass-through"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "title",
+                "label": "Notification Title",
+                "type": "text",
+                "default": "Aethvion",
+            },
+            {
+                "key": "message",
+                "label": "Message",
+                "type": "textarea",
+                "default": "Workflow completed.",
+                "placeholder": "Use {{input}} to include the input value.",
+            },
+            {
+                "key": "sound",
+                "label": "Play Sound",
+                "type": "toggle",
+                "default": False,
+            },
+        ],
+    },
 ]
 
 

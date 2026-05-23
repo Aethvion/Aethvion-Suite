@@ -257,6 +257,15 @@ class WorkflowExecutor:
         if t == "action.run_script":
             return self._exec_script(p, inputs)
 
+        if t == "action.file_read":
+            return self._exec_file_read(p, inputs)
+
+        if t == "action.file_write":
+            return self._exec_file_write(p, inputs)
+
+        if t == "action.notify":
+            return self._exec_notify(p, inputs)
+
         # ── Logic ─────────────────────────────────────────────────────────
         if t == "logic.if":
             in_val    = inputs.get("in", "")
@@ -328,6 +337,105 @@ class WorkflowExecutor:
             b   = _to_str(inputs.get("b", ""))
             sep = str(p.get("separator", "\\n")).replace("\\n", "\n").replace("\\t", "\t")
             return {"out": a + sep + b}
+
+        # ── Sprint 1: Data nodes ──────────────────────────────────────────────
+
+        if t == "data.template":
+            import re as _re  # noqa: PLC0415
+            template = str(p.get("template", ""))
+            in_val   = inputs.get("in", "")
+            variables: dict = {}
+            # Expand JSON input object into variables
+            if isinstance(in_val, dict):
+                variables.update({str(k): _to_str(v) for k, v in in_val.items()})
+            else:
+                raw_in = _to_str(in_val)
+                try:
+                    obj = json.loads(raw_in)
+                    if isinstance(obj, dict):
+                        variables.update({str(k): _to_str(v) for k, v in obj.items()})
+                except Exception:
+                    pass
+                variables["input"] = raw_in
+            # Named port overrides
+            for _port in ("var_a", "var_b", "var_c"):
+                _val = inputs.get(_port)
+                if _val is not None:
+                    variables[_port] = _to_str(_val)
+
+            def _tmpl_replacer(m):
+                parts   = m.group(1).split("|", 1)
+                key     = parts[0].strip()
+                default = parts[1] if len(parts) > 1 else ""
+                return variables.get(key, default)
+
+            result     = _re.sub(r"\{\{([^}]+)\}\}", _tmpl_replacer, template)
+            unresolved = _re.findall(r"\{\{[^}]+\}\}", result)
+            error      = f"Unresolved: {unresolved}" if unresolved else ""
+            return {"out": result, "error": error}
+
+        if t == "data.extract_json":
+            in_val = inputs.get("in", "")
+            if isinstance(in_val, str):
+                try:
+                    obj = json.loads(in_val)
+                except Exception as exc:
+                    return {"out": p.get("default", ""), "error": f"JSON parse error: {exc}"}
+            else:
+                obj = in_val
+            key_path = str(p.get("key", "")).strip()
+            if not key_path:
+                return {"out": obj, "error": ""}
+            try:
+                current = obj
+                for part in key_path.split("."):
+                    if isinstance(current, list):
+                        current = current[int(part)]
+                    elif isinstance(current, dict):
+                        current = current[part]
+                    else:
+                        raise KeyError(part)
+                mode = str(p.get("output_as", "auto"))
+                if mode == "string":
+                    out = _to_str(current)
+                elif mode == "json":
+                    out = json.dumps(current, ensure_ascii=False)
+                else:
+                    out = current
+                return {"out": out, "error": ""}
+            except (KeyError, IndexError, TypeError) as exc:
+                default = p.get("default", "")
+                if default != "":
+                    return {"out": default, "error": ""}
+                return {"out": "", "error": f"Key not found: {key_path} ({exc})"}
+
+        if t == "data.type_convert":
+            val = inputs.get("in", "")
+            to  = str(p.get("to", "string"))
+            try:
+                if to == "string":
+                    out = json.dumps(val, ensure_ascii=False) if isinstance(val, (dict, list)) else str(val)
+                elif to == "integer":
+                    out = int(float(str(val).strip()))
+                elif to == "float":
+                    out = float(str(val).strip())
+                elif to == "boolean":
+                    s          = str(val).strip().lower()
+                    true_vals  = [v.strip().lower() for v in str(p.get("true_values",  "true,yes,1,on")).split(",")]
+                    false_vals = [v.strip().lower() for v in str(p.get("false_values", "false,no,0,off")).split(",")]
+                    if s in true_vals:
+                        out = True
+                    elif s in false_vals:
+                        out = False
+                    else:
+                        out = bool(val)
+                elif to == "json":
+                    out = json.loads(val) if isinstance(val, str) else val
+                else:
+                    out = val
+                return {"out": out, "error": ""}
+            except Exception as exc:
+                return {"out": val, "error": f"Conversion to {to} failed: {exc}"}
 
         # ── Outputs ───────────────────────────────────────────────────────
         if t == "output.display":
@@ -419,6 +527,120 @@ class WorkflowExecutor:
             return {"out": local_ns.get("result", input_data), "error": ""}
         except Exception as exc:
             return {"out": "", "error": str(exc)}
+
+    def _exec_file_read(self, p: dict, inputs: dict[str, Any]) -> dict[str, Any]:
+        import os       # noqa: PLC0415
+        import base64   # noqa: PLC0415
+
+        file_path = str(inputs.get("path") or p.get("path", "")).strip()
+        if not file_path:
+            return {"out": "", "path": "", "size": 0, "error": "No file path configured"}
+
+        encoding  = str(p.get("encoding", "utf-8"))
+        strip     = bool(p.get("strip", False))
+        max_bytes = int(p.get("max_bytes", 0) or 0)
+
+        try:
+            size = os.path.getsize(file_path)
+            if max_bytes and size > max_bytes:
+                return {"out": "", "path": file_path, "size": size,
+                        "error": f"File too large: {size} bytes (max {max_bytes})"}
+            if encoding == "binary":
+                with open(file_path, "rb") as fh:
+                    content = base64.b64encode(fh.read()).decode("ascii")
+            else:
+                with open(file_path, "r", encoding=encoding, errors="replace") as fh:
+                    content = fh.read()
+            if strip:
+                content = content.strip()
+            return {"out": content, "path": file_path, "size": size, "error": ""}
+        except Exception as exc:
+            return {"out": "", "path": file_path, "size": 0, "error": str(exc)}
+
+    def _exec_file_write(self, p: dict, inputs: dict[str, Any]) -> dict[str, Any]:
+        import os  # noqa: PLC0415
+
+        file_path   = str(inputs.get("path") or p.get("path", "")).strip()
+        content     = _to_str(inputs.get("in", ""))
+        mode        = str(p.get("mode", "overwrite"))
+        encoding    = str(p.get("encoding", "utf-8"))
+        newline     = bool(p.get("newline", True))
+        create_dirs = bool(p.get("create_dirs", True))
+
+        if not file_path:
+            return {"out": content, "path": "", "error": "No file path configured"}
+
+        write_content = content
+        if newline and not write_content.endswith("\n"):
+            write_content += "\n"
+
+        try:
+            if create_dirs:
+                os.makedirs(os.path.dirname(os.path.abspath(file_path)), exist_ok=True)
+
+            if mode == "overwrite":
+                with open(file_path, "w", encoding=encoding) as fh:
+                    fh.write(write_content)
+            elif mode == "append":
+                with open(file_path, "a", encoding=encoding) as fh:
+                    fh.write(write_content)
+            elif mode == "prepend":
+                existing = ""
+                if os.path.exists(file_path):
+                    with open(file_path, "r", encoding=encoding) as fh:
+                        existing = fh.read()
+                with open(file_path, "w", encoding=encoding) as fh:
+                    fh.write(write_content + existing)
+
+            return {"out": content, "path": file_path, "error": ""}
+        except Exception as exc:
+            return {"out": content, "path": file_path, "error": str(exc)}
+
+    def _exec_notify(self, p: dict, inputs: dict[str, Any]) -> dict[str, Any]:
+        import subprocess  # noqa: PLC0415
+        import sys         # noqa: PLC0415
+
+        title   = _to_str(inputs.get("title")   or p.get("title",   "Aethvion"))
+        message = _to_str(inputs.get("message") or p.get("message", "Workflow completed."))
+        in_val  = _to_str(inputs.get("in", ""))
+        message = message.replace("{{input}}", in_val)
+
+        # Sanitise for shell embedding — strip quotes to avoid injection
+        title_safe   = title.replace('"', "'")
+        message_safe = message.replace('"', "'")
+
+        try:
+            if sys.platform == "win32":
+                try:
+                    from winotify import Notification  # noqa: PLC0415
+                    toast = Notification(app_id="Aethvion Suite", title=title_safe, msg=message_safe)
+                    toast.show()
+                except ImportError:
+                    ps_cmd = (
+                        "Add-Type -AssemblyName System.Windows.Forms; "
+                        "$n = New-Object System.Windows.Forms.NotifyIcon; "
+                        "$n.Icon = [System.Drawing.SystemIcons]::Information; "
+                        "$n.Visible = $true; "
+                        f'$n.ShowBalloonTip(5000, "{title_safe}", "{message_safe}", '
+                        "[System.Windows.Forms.ToolTipIcon]::Info); "
+                        "Start-Sleep 2; $n.Visible = $false"
+                    )
+                    subprocess.run(
+                        ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_cmd],
+                        timeout=15, check=False,
+                    )
+            elif sys.platform == "darwin":
+                subprocess.run(
+                    ["osascript", "-e",
+                     f'display notification "{message_safe}" with title "{title_safe}"'],
+                    timeout=10, check=False,
+                )
+            else:
+                subprocess.run(["notify-send", title_safe, message_safe], timeout=10, check=False)
+
+            return {"out": in_val, "error": ""}
+        except Exception as exc:
+            return {"out": in_val, "error": str(exc)}
 
     # ── Result builder ────────────────────────────────────────────────────────
 
