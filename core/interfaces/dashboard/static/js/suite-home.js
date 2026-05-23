@@ -60,42 +60,42 @@
         professional: {
             subtitle: 'Professional workspace active — agents, scheduling, and system management at your fingertips.',
             ctas: [
-                { label: 'Open Workspace', icon: 'fas fa-briefcase', tab: 'chat',   mode: 'ai' },
-                { label: 'Launch Agents',  icon: 'fas fa-robot',     tab: 'agents', mode: 'ai' },
+                { label: 'Open Workspace', icon: 'fas fa-briefcase', tab: 'chat',   mode: 'home' },
+                { label: 'Launch Agents',  icon: 'fas fa-robot',     tab: 'agents', mode: 'home' },
             ],
         },
         creative: {
             subtitle: 'Creative studio active — photo, audio, and AI tools ready for your next project.',
             ctas: [
-                { label: 'Open Studio', icon: 'fas fa-palette',  tab: 'photo', mode: 'ai' },
-                { label: 'Start Chat',  icon: 'fas fa-comments', tab: 'chat',  mode: 'ai' },
+                { label: 'Open Studio', icon: 'fas fa-palette',  tab: 'photo', mode: 'home' },
+                { label: 'Start Chat',  icon: 'fas fa-comments', tab: 'chat',  mode: 'home' },
             ],
         },
         researcher: {
             subtitle: 'Research environment loaded — deep analysis, model comparisons, and knowledge tools ready.',
             ctas: [
-                { label: 'Start Research', icon: 'fas fa-microscope',    tab: 'advaiconv', mode: 'ai' },
-                { label: 'Open Arena',     icon: 'fas fa-shield-halved', tab: 'arena',     mode: 'ai' },
+                { label: 'Start Research', icon: 'fas fa-microscope',    tab: 'advaiconv', mode: 'home' },
+                { label: 'Open Arena',     icon: 'fas fa-shield-halved', tab: 'arena',     mode: 'home' },
             ],
         },
         companion: {
             subtitle: 'Companion Hub active — your AI companions are ready and waiting.',
             ctas: [
-                { label: 'Open Companions', icon: 'fas fa-heart',   tab: 'misaka-cipher', mode: 'ai' },
-                { label: 'Games Center',    icon: 'fas fa-gamepad', tab: 'games-center',  mode: 'ai' },
+                { label: 'Open Companions', icon: 'fas fa-heart',   tab: 'misaka-cipher', mode: 'home' },
+                { label: 'Games Center',    icon: 'fas fa-gamepad', tab: 'games-center',  mode: 'home' },
             ],
         },
         full: {
             subtitle: 'Full suite access — every tool and every tab is available.',
             ctas: [
-                { label: 'Open Workspace', icon: 'fas fa-layer-group', tab: 'chat',   mode: 'ai' },
-                { label: 'Launch Agents',  icon: 'fas fa-robot',       tab: 'agents', mode: 'ai' },
+                { label: 'Open Workspace', icon: 'fas fa-layer-group', tab: 'chat',   mode: 'home' },
+                { label: 'Launch Agents',  icon: 'fas fa-robot',       tab: 'agents', mode: 'home' },
             ],
         },
         custom: {
             subtitle: 'Your custom layout is active — build and tailor your perfect workspace.',
             ctas: [
-                { label: 'Open AI',   icon: 'fas fa-brain',  tab: 'chat', mode: 'ai' },
+                { label: 'Open AI',   icon: 'fas fa-brain',  tab: 'chat', mode: 'home' },
                 { label: 'Customize', icon: 'fas fa-sliders', tab: null,  mode: null },
             ],
         },
@@ -104,7 +104,7 @@
     const DEFAULT_INFO = {
         subtitle: 'Welcome to your advanced AI operations center. Aethvion Suite is designed to orchestrate complex tasks, manage local models, and provide a unified interface for all your AI needs.',
         ctas: [
-            { label: 'Quick Start Chat', icon: 'fas fa-rocket',       tab: 'chat',          mode: 'ai' },
+            { label: 'Quick Start Chat', icon: 'fas fa-rocket',       tab: 'chat',          mode: 'home' },
             { label: 'Read Overview',    icon: 'fas fa-book-open',    tab: 'documentation', mode: null },
         ],
     };
@@ -300,7 +300,7 @@
             `;
 
             row.addEventListener('click', () => {
-                window.setDashboardMode?.('ai');
+                window.setDashboardMode?.('home');
                 window.switchMainTab?.('chat');
                 // We need to wait a tiny bit for the tab to switch before calling switchThread
                 setTimeout(() => {

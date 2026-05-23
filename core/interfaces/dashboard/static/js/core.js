@@ -987,7 +987,8 @@ async function updateSystemInfo() {
 //       switchMainTab() fires first but then setDashboardMode's async
 //       completion fires a second switchMainTab(savedTab) and overrides it.
 async function setDashboardMode(mode, save = true, _tab = null) {
-    if (mode !== 'home' && mode !== 'ai') return;
+    if (mode === 'ai') mode = 'home';
+    if (mode !== 'home') return;
     dashboardMode = mode;
 
     if (save) {
@@ -1085,7 +1086,7 @@ async function setDashboardMode(mode, save = true, _tab = null) {
 // On refresh/restore the saved tab is respected exactly as-is; this only
 // fires on an explicit user click of the AI button.
 function goToAIHub() {
-    const _noSidebar = new Set(['suite-home', 'chat', 'aethviondb', 'automate',
+    const _noSidebar = new Set(['chat', 'aethviondb', 'automate',
         'companion-creator', 'misaka-cipher', 'axiom', 'lyra']);
     // Already on a sidebar-capable AI tab — nothing to do.
     const _isOnCompanion = currentMainTab.startsWith('custom-companion-');
@@ -1381,8 +1382,8 @@ async function switchMainTab(tabName, save = true) {
         }
     }
 
-    // ── Sidebar suppression — no sidebar on Home, Chat, AethvionDB, Companions, Automate ─
-    const _NO_SIDEBAR = new Set(['suite-home', 'chat', 'aethviondb', 'automate',
+    // ── Sidebar suppression — no sidebar on Chat, AethvionDB, Companions, Automate ─
+    const _NO_SIDEBAR = new Set(['chat', 'aethviondb', 'automate',
         'companion-creator', 'misaka-cipher', 'axiom', 'lyra']);
     const _suppress = _NO_SIDEBAR.has(actualTabName) || actualTabName.startsWith('custom-companion-');
     const _sidebarEl     = document.getElementById('sidebar-nav');

@@ -378,29 +378,25 @@
                             <i class="fas fa-house"></i><span>Home</span>
                         </button>
                         <button class="hdr-nav-btn" data-nav="chat"
-                                onclick="setDashboardMode('ai', true, 'chat');">
+                                onclick="setDashboardMode('home', true, 'chat');">
                             <i class="fas fa-comments"></i><span>Chat</span>
                         </button>
                         <button class="hdr-nav-btn" data-nav="companions"
-                                onclick="setDashboardMode('ai', true, 'companion-creator');">
+                                onclick="setDashboardMode('home', true, 'companion-creator');">
                             <i class="fas fa-users"></i><span>Companions</span>
                         </button>
-                        <button class="hdr-nav-btn" data-nav="ai"
-                                onclick="goToAIHub();">
-                            <i class="fas fa-robot"></i><span>AI</span>
-                        </button>
                         <button class="hdr-nav-btn" data-nav="aethviondb"
-                                onclick="setDashboardMode('ai', true, 'aethviondb');">
+                                onclick="setDashboardMode('home', true, 'aethviondb');">
                             <i class="fas fa-circle-nodes"></i><span>AethvionDB</span>
                         </button>
                         <button class="hdr-nav-btn" data-nav="automate"
-                                onclick="setDashboardMode('ai', true, 'automate');">
+                                onclick="setDashboardMode('home', true, 'automate');">
                             <i class="fas fa-bolt"></i><span>Automate</span>
                         </button>
                     </nav>
                 </div>
                 <div class="header-right">
-                    <div class="compact-status" id="compact-status" onclick="setDashboardMode('ai', true, 'usage');" title="View Detailed Usage">
+                    <div class="compact-status" id="compact-status" onclick="setDashboardMode('home', true, 'usage');" title="View Detailed Usage">
                         <span title="Tokens Today">Tokens: <strong id="tokens-today">0</strong></span>
                         <span class="status-divider">|</span>
                         <span title="Cost Today">Cost: <strong id="cost-today">$0.00</strong></span>
@@ -420,7 +416,7 @@
         <div class="content-wrapper">
             <aside class="sidebar-nav" id="sidebar-nav">
                 <!-- Sidebar search -->
-                <div class="sidebar-search-wrap mode-ai">
+                <div class="sidebar-search-wrap mode-home">
                     <div class="sidebar-search-inner">
                         <i class="fas fa-search sidebar-search-icon"></i>
                         <input type="text" id="sidebar-search-input" class="sidebar-search-input" placeholder="Search…"
