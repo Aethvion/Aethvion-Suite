@@ -15,29 +15,34 @@ from __future__ import annotations
 
 from typing import Callable
 
-from . import actions, ai, data, inputs_outputs, logic, memory, triggers
+from . import actions, ai, data, inputs_outputs, integrations, logic, memory, triggers
 
 # ── Handler registry ──────────────────────────────────────────────────────────
 
 _REGISTRY: dict[str, Callable] = {
 
     # Triggers ─────────────────────────────────────────────────────────────────
-    "trigger.manual":   triggers.trigger_manual,
-    "trigger.schedule": triggers.trigger_schedule,
-    "trigger.webhook":  triggers.trigger_webhook,
+    "trigger.file_watch": triggers.trigger_file_watch,
+    "trigger.manual":     triggers.trigger_manual,
+    "trigger.schedule":   triggers.trigger_schedule,
+    "trigger.webhook":    triggers.trigger_webhook,
 
     # Logic ────────────────────────────────────────────────────────────────────
     "logic.delay":     logic.logic_delay,
     "logic.if":        logic.logic_if,
     "logic.loop":      logic.logic_loop,
     "logic.merge":     logic.logic_merge,
+    "logic.repeat":    logic.logic_repeat,
     "logic.switch":    logic.logic_switch,
     "logic.try_catch": logic.logic_try_catch,
 
     # Data ─────────────────────────────────────────────────────────────────────
+    "data.csv_parse":     data.data_csv_parse,
     "data.extract_json":  data.data_extract_json,
     "data.filter":        data.data_filter,
     "data.format_text":   data.data_format_text,
+    "data.list_item":     data.data_list_item,
+    "data.merge_objects": data.data_merge_objects,
     "data.parse_json":    data.data_parse_json,
     "data.regex":         data.data_regex,
     "data.set_variable":  data.data_set_variable,
@@ -47,13 +52,16 @@ _REGISTRY: dict[str, Callable] = {
     "transform.combine":  data.transform_combine,
 
     # Actions ──────────────────────────────────────────────────────────────────
-    "action.clipboard":  actions.action_clipboard,
-    "action.file_read":  actions.action_file_read,
-    "action.file_write": actions.action_file_write,
-    "action.http":       actions.action_http,
-    "action.log":        actions.action_log,
-    "action.notify":     actions.action_notify,
-    "action.run_script": actions.action_run_script,
+    "action.clipboard":    actions.action_clipboard,
+    "action.file_list":    actions.action_file_list,
+    "action.file_read":    actions.action_file_read,
+    "action.file_write":   actions.action_file_write,
+    "action.http":         actions.action_http,
+    "action.log":          actions.action_log,
+    "action.notify":       actions.action_notify,
+    "action.run_command":  actions.action_run_command,
+    "action.run_script":   actions.action_run_script,
+    "action.web_scrape":   actions.action_web_scrape,
 
     # AI ───────────────────────────────────────────────────────────────────────
     "ai.any":          ai.ai_model,
@@ -77,9 +85,11 @@ _REGISTRY: dict[str, Callable] = {
     "output.display":   inputs_outputs.output_display,
     "output.file":      inputs_outputs.output_file,
 
-    # Data (Sprint 3) ──────────────────────────────────────────────────────────
-    "data.list_item":     data.data_list_item,
-    "data.merge_objects": data.data_merge_objects,
+    # Integrations ─────────────────────────────────────────────────────────────
+    "companion.ask":        integrations.companion_ask,
+    "integration.discord":  integrations.integration_discord,
+    "integration.email":    integrations.integration_email,
+    "integration.slack":    integrations.integration_slack,
 
 }
 

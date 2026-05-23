@@ -24,3 +24,20 @@ def trigger_schedule(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
 def trigger_webhook(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     body = inputs.get("body", {})
     return {"out": body, "body": body}
+
+
+def trigger_file_watch(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    """
+    In the executor, file_watch behaves like a manual trigger — it fires the
+    downstream chain with the configured path and the event type that woke it.
+    The actual file-system polling/inotify is handled by the scheduler service;
+    this handler just surfaces whatever event info was injected into inputs.
+    """
+    p          = node.get("properties", {})
+    watch_path = str(inputs.get("path") or p.get("path", "")).strip()
+    event      = str(inputs.get("event", "modified"))   # injected by scheduler
+    return {
+        "trigger": None,
+        "path":    watch_path,
+        "event":   event,
+    }

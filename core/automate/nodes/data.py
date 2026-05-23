@@ -5,6 +5,8 @@ Handler functions for all data.* and transform.* node types.
 """
 from __future__ import annotations
 
+import csv
+import io
 import json
 import re
 from typing import Any
@@ -330,5 +332,52 @@ def data_regex(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
         "out":     out,
         "matches": json.dumps(all_m, ensure_ascii=False),
         "matched": str(matched).lower(),
+        "error":   "",
+    }
+
+
+def data_csv_parse(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    p         = node.get("properties", {})
+    raw       = _to_str(inputs.get("in", ""))
+    delimiter = str(p.get("delimiter", ","))
+    has_hdr   = bool(p.get("has_header", True))
+    output_as = str(p.get("output_as", "objects"))   # "objects" or "arrays"
+    skip_empty = bool(p.get("skip_empty_rows", True))
+
+    # Un-escape common escape sequences entered in a UI text field
+    delimiter = delimiter.replace("\\t", "\t")
+
+    try:
+        reader_args = {
+            "delimiter": delimiter,
+            "skipinitialspace": True,
+        }
+        reader_obj = csv.reader(io.StringIO(raw), **reader_args)
+        all_rows   = list(reader_obj)
+    except Exception as exc:
+        return {"out": "[]", "rows": 0, "headers": "[]", "error": str(exc)}
+
+    if skip_empty:
+        all_rows = [r for r in all_rows if any(cell.strip() for cell in r)]
+
+    if not all_rows:
+        return {"out": "[]", "rows": 0, "headers": "[]", "error": ""}
+
+    if has_hdr:
+        headers  = all_rows[0]
+        data_rows = all_rows[1:]
+    else:
+        headers   = []
+        data_rows = all_rows
+
+    if output_as == "objects" and has_hdr:
+        result = [dict(zip(headers, row)) for row in data_rows]
+    else:
+        result = data_rows
+
+    return {
+        "out":     json.dumps(result, ensure_ascii=False),
+        "rows":    len(data_rows),
+        "headers": json.dumps(headers, ensure_ascii=False),
         "error":   "",
     }

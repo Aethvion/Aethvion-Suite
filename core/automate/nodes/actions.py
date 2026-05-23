@@ -5,8 +5,11 @@ Handler functions for all action.* node types.
 """
 from __future__ import annotations
 
+import glob as _glob
+import html
 import json
 import os
+import re
 import subprocess
 import sys
 from typing import Any
@@ -251,3 +254,184 @@ def action_notify(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
         return {"out": in_val, "error": ""}
     except Exception as exc:
         return {"out": in_val, "error": str(exc)}
+
+
+# ── Sprint 4: shell / filesystem / web ───────────────────────────────────────
+
+def action_run_command(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    p       = node.get("properties", {})
+    cmd     = _to_str(inputs.get("cmd") or inputs.get("in", "") or p.get("command", "")).strip()
+    cwd     = str(p.get("working_dir", "")).strip() or None
+    timeout = float(p.get("timeout", 30) or 30)
+    use_shell = bool(p.get("shell", False))
+
+    if not cmd:
+        return {"out": "", "stderr": "", "exit_code": -1, "error": "No command configured"}
+
+    try:
+        result = subprocess.run(  # noqa: S603
+            cmd if use_shell else cmd.split(),
+            capture_output=True,
+            text=True,
+            shell=use_shell,           # noqa: S604
+            cwd=cwd,
+            timeout=timeout,
+        )
+        return {
+            "out":       result.stdout.rstrip("\n"),
+            "stderr":    result.stderr.rstrip("\n"),
+            "exit_code": result.returncode,
+            "error":     result.stderr.rstrip("\n") if result.returncode != 0 else "",
+        }
+    except subprocess.TimeoutExpired:
+        return {"out": "", "stderr": "", "exit_code": -1, "error": f"Command timed out after {timeout}s"}
+    except Exception as exc:
+        return {"out": "", "stderr": "", "exit_code": -1, "error": str(exc)}
+
+
+def action_file_list(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    p           = node.get("properties", {})
+    folder      = _to_str(inputs.get("path") or p.get("path", "")).strip()
+    pattern     = str(p.get("pattern", "*")).strip() or "*"
+    recursive   = bool(p.get("recursive", False))
+    incl_dirs   = bool(p.get("include_dirs", False))
+    sort_by     = str(p.get("sort_by", "name"))   # "name" | "size" | "modified"
+    output_mode = str(p.get("output_as", "paths")) # "paths" | "objects"
+
+    if not folder:
+        return {"out": "[]", "count": 0, "error": "No folder path configured"}
+    if not os.path.isdir(folder):
+        return {"out": "[]", "count": 0, "error": f"Not a directory: {folder}"}
+
+    try:
+        glob_pat = os.path.join(folder, "**", pattern) if recursive else os.path.join(folder, pattern)
+        raw_paths = _glob.glob(glob_pat, recursive=recursive)
+
+        entries = []
+        for p_str in raw_paths:
+            if os.path.isdir(p_str):
+                if not incl_dirs:
+                    continue
+            entries.append(p_str)
+
+        # Sort
+        if sort_by == "size":
+            entries.sort(key=lambda f: os.path.getsize(f) if os.path.isfile(f) else 0)
+        elif sort_by == "modified":
+            entries.sort(key=lambda f: os.path.getmtime(f))
+        else:
+            entries.sort()
+
+        if output_mode == "objects":
+            out_list = []
+            for e in entries:
+                stat = os.stat(e)
+                out_list.append({
+                    "path":     e,
+                    "name":     os.path.basename(e),
+                    "size":     stat.st_size,
+                    "modified": stat.st_mtime,
+                    "is_dir":   os.path.isdir(e),
+                })
+            out = json.dumps(out_list, ensure_ascii=False)
+        else:
+            out = json.dumps(entries, ensure_ascii=False)
+
+        return {"out": out, "count": len(entries), "error": ""}
+    except Exception as exc:
+        return {"out": "[]", "count": 0, "error": str(exc)}
+
+
+# ── Web scraper helpers ───────────────────────────────────────────────────────
+
+_TAG_RE   = re.compile(r"<[^>]+>")
+_HEAD_RE  = re.compile(r"<head[^>]*>.*?</head>", re.IGNORECASE | re.DOTALL)
+_TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+_SCRIPT_RE = re.compile(r"<(script|style)[^>]*>.*?</\1>", re.IGNORECASE | re.DOTALL)
+
+# Markdown conversion helpers
+_H_RE    = re.compile(r"<h([1-6])[^>]*>(.*?)</h\1>", re.IGNORECASE | re.DOTALL)
+_BOLD_RE = re.compile(r"<(b|strong)[^>]*>(.*?)</\1>", re.IGNORECASE | re.DOTALL)
+_LINK_RE = re.compile(r'<a[^>]+href="([^"]*)"[^>]*>(.*?)</a>', re.IGNORECASE | re.DOTALL)
+_P_RE    = re.compile(r"</?(p|br|div|li|tr)[^>]*>", re.IGNORECASE)
+
+
+def _html_to_text(html_str: str) -> str:
+    """Strip all tags and decode HTML entities → plain text."""
+    cleaned = _SCRIPT_RE.sub(" ", html_str)
+    cleaned = _P_RE.sub("\n", cleaned)
+    cleaned = _TAG_RE.sub("", cleaned)
+    cleaned = html.unescape(cleaned)
+    # Collapse excessive whitespace, keep paragraph breaks
+    lines = [ln.strip() for ln in cleaned.splitlines()]
+    return "\n".join(ln for ln in lines if ln)
+
+
+def _html_to_markdown(html_str: str) -> str:
+    """Convert a subset of HTML to Markdown."""
+    md = _SCRIPT_RE.sub("", html_str)
+    md = _HEAD_RE.sub("", md)
+    # Headings
+    md = _H_RE.sub(lambda m: "#" * int(m.group(1)) + " " + _TAG_RE.sub("", m.group(2)).strip() + "\n", md)
+    # Bold
+    md = _BOLD_RE.sub(lambda m: "**" + _TAG_RE.sub("", m.group(2)).strip() + "**", md)
+    # Links
+    md = _LINK_RE.sub(lambda m: f"[{_TAG_RE.sub('', m.group(2)).strip()}]({m.group(1)})", md)
+    # Block elements → newlines
+    md = _P_RE.sub("\n", md)
+    md = _TAG_RE.sub("", md)
+    md = html.unescape(md)
+    lines = [ln.strip() for ln in md.splitlines()]
+    # Collapse 3+ consecutive blank lines
+    result, blanks = [], 0
+    for ln in lines:
+        if not ln:
+            blanks += 1
+            if blanks <= 2:
+                result.append("")
+        else:
+            blanks = 0
+            result.append(ln)
+    return "\n".join(result).strip()
+
+
+def action_web_scrape(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    import urllib.request  # noqa: PLC0415
+
+    p         = node.get("properties", {})
+    url       = _to_str(inputs.get("url") or p.get("url", "")).strip()
+    mode      = str(p.get("mode", "text"))     # "text" | "html" | "markdown"
+    max_chars = int(p.get("max_chars", 0) or 0)
+    user_agent = str(p.get("user_agent", "Mozilla/5.0 (compatible; AethvionBot/1.0)"))
+
+    if not url:
+        return {"out": "", "title": "", "error": "No URL configured"}
+
+    req = urllib.request.Request(url, headers={"User-Agent": user_agent})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            raw_bytes = resp.read()
+            # Detect encoding from Content-Type header or fall back to utf-8
+            content_type = resp.headers.get("Content-Type", "")
+            charset_match = re.search(r"charset=([\w-]+)", content_type)
+            encoding = charset_match.group(1) if charset_match else "utf-8"
+            html_str = raw_bytes.decode(encoding, errors="replace")
+    except Exception as exc:
+        return {"out": "", "title": "", "error": str(exc)}
+
+    # Extract page title
+    title_match = _TITLE_RE.search(html_str)
+    title = html.unescape(_TAG_RE.sub("", title_match.group(1)).strip()) if title_match else ""
+
+    # Convert content according to mode
+    if mode == "html":
+        out = html_str
+    elif mode == "markdown":
+        out = _html_to_markdown(html_str)
+    else:
+        out = _html_to_text(html_str)
+
+    if max_chars and len(out) > max_chars:
+        out = out[:max_chars]
+
+    return {"out": out, "title": title, "error": ""}

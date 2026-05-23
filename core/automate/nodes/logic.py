@@ -90,6 +90,17 @@ def logic_switch(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     return result
 
 
+def logic_repeat(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    p      = node.get("properties", {})
+    in_val = inputs.get("in", "")
+    try:
+        count = max(1, min(500, int(p.get("count", 1))))
+    except (ValueError, TypeError):
+        count = 1
+    items = [in_val] * count
+    return {"out": items, "count": count}
+
+
 def logic_merge(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p    = node.get("properties", {})
     mode = str(p.get("mode", "first"))
