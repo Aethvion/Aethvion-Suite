@@ -462,7 +462,20 @@
     }
 
     function _openWorkflow(id) {
-        _apiGetWorkflow(id).then(function (wf) {
+        // Clicking the already-open workflow just returns to inspector — no reload
+        if (_active && _active.id === id) {
+            _showInspector();
+            return;
+        }
+
+        // Auto-save current workflow before switching away
+        var savePromise = (_dirty && _active)
+            ? _apiSaveWorkflow().catch(function (e) { console.error('[Automate] Auto-save failed:', e); })
+            : Promise.resolve();
+
+        savePromise.then(function () {
+            return _apiGetWorkflow(id);
+        }).then(function (wf) {
             _active      = wf;
             _dirty       = false;
             _placeOffset = wf.nodes.length;
@@ -1746,10 +1759,18 @@
         // ── Inspector close (deselect node) ───────────────────────────────
         _e.inspectorClose.addEventListener('click', function () { _deselectAll(); });
 
-        // ── Inspector back (return to explorer) ───────────────────────────
+        // ── Inspector back (return to explorer, auto-save if dirty) ──────
         _e.inspectorBack.addEventListener('click', function () {
             _deselectAll();
-            _showExplorer();
+            var go = function () { _showExplorer(); _renderWfList(); };
+            if (_dirty && _active) {
+                _apiSaveWorkflow().then(go).catch(function (e) {
+                    console.error('[Automate] Auto-save failed:', e);
+                    go(); // still navigate even if save failed
+                });
+            } else {
+                go();
+            }
         });
 
         // ── Inspector body delegation (test button) ────────────────────────
