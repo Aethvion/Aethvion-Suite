@@ -85,7 +85,10 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-clock",
         "color": "#22d3ee",
         "inputs": [],
-        "outputs": [{"name": "out", "label": "Trigger"}],
+        "outputs": [
+            {"name": "trigger", "label": "Trigger"},
+            {"name": "data",    "label": "Data"},
+        ],
         "properties": [
             {
                 "key": "schedules",
@@ -402,7 +405,14 @@ _NODE_TYPES: list[dict] = [
         "category": "AI",
         "icon": "fa-brain",
         "color": "#4ade80",
-        "inputs": [{"name": "in", "label": "Input Data"}],
+        "inputs": [
+            {"name": "in",            "label": "Input Data"},
+            {"name": "model",         "label": "Model"},
+            {"name": "system_prompt", "label": "System Prompt"},
+            {"name": "prompt_prefix", "label": "Prefix"},
+            {"name": "prompt_suffix", "label": "Suffix"},
+            {"name": "temperature",   "label": "Temperature"},
+        ],
         "outputs": [
             {"name": "out", "label": "Response"},
             {"name": "error", "label": "Error"},
@@ -457,7 +467,14 @@ _NODE_TYPES: list[dict] = [
         "category": "AI",
         "icon": "fa-robot",
         "color": "#60a5fa",
-        "inputs": [{"name": "in", "label": "Input Data"}],
+        "inputs": [
+            {"name": "in",            "label": "Input Data"},
+            {"name": "model",         "label": "Model"},
+            {"name": "system_prompt", "label": "System Prompt"},
+            {"name": "prompt_prefix", "label": "Prefix"},
+            {"name": "prompt_suffix", "label": "Suffix"},
+            {"name": "temperature",   "label": "Temperature"},
+        ],
         "outputs": [
             {"name": "out", "label": "Response"},
             {"name": "error", "label": "Error"},

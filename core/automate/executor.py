@@ -91,7 +91,22 @@ class WorkflowExecutor:
             self._warn("No nodes to execute.")
             return self._build_result()
 
+        # Only execute nodes that are reachable from a trigger node.
+        # Everything else is marked "skipped" so the UI can dim it.
+        reachable  = self._reachable_from_triggers()
+        run_order  = [nid for nid in order if nid in reachable]
+
         for node_id in order:
+            if node_id not in reachable:
+                label = self.nodes[node_id].get("label", node_id)
+                self._status[node_id] = "skipped"
+                self._info(f"⏭ {label} — skipped (not connected to a trigger)")
+
+        if not run_order:
+            self._warn("No nodes are connected to a trigger — nothing to execute.")
+            return self._build_result()
+
+        for node_id in run_order:
             node = self.nodes[node_id]
             label = node.get("label", node_id)
             ntype = node.get("type", "unknown")
@@ -124,6 +139,35 @@ class WorkflowExecutor:
         return self._build_result()
 
     # ── Graph traversal ───────────────────────────────────────────────────────
+
+    def _reachable_from_triggers(self) -> set[str]:
+        """
+        BFS forward from every trigger.* node.
+        Returns the set of node IDs that should actually be executed.
+        Trigger nodes themselves are always included in the result.
+        """
+        # Build forward adjacency: src → [tgt, …]
+        adj: dict[str, list[str]] = {nid: [] for nid in self.nodes}
+        for conn in self.connections:
+            src = conn.get("sourceNodeId")
+            tgt = conn.get("targetNodeId")
+            if src in self.nodes and tgt in self.nodes:
+                adj[src].append(tgt)
+
+        # Seed the BFS with every trigger node
+        seeds   = [nid for nid, n in self.nodes.items()
+                   if n.get("type", "").startswith("trigger.")]
+        visited = set(seeds)
+        queue   = list(seeds)
+
+        while queue:
+            nid = queue.pop(0)
+            for neighbour in adj[nid]:
+                if neighbour not in visited:
+                    visited.add(neighbour)
+                    queue.append(neighbour)
+
+        return visited
 
     def _topo_sort(self) -> list[str] | None:
         """Kahn's algorithm. Returns ordered node-id list, or None if a cycle exists."""
@@ -176,7 +220,8 @@ class WorkflowExecutor:
             return {"out": inputs.get("in", "")}
 
         if t == "trigger.schedule":
-            return {"out": datetime.now().isoformat()}
+            # "trigger" fires the chain (no payload); "data" carries the timestamp
+            return {"trigger": None, "data": datetime.now().isoformat()}
 
         if t == "trigger.webhook":
             body = inputs.get("body", {})
@@ -294,12 +339,24 @@ class WorkflowExecutor:
     # ── Node implementations ──────────────────────────────────────────────────
 
     def _exec_ai(self, p: dict, inputs: dict[str, Any]) -> dict[str, Any]:
-        model_id      = str(p.get("model", "")).strip()
-        system_prompt = str(p.get("system_prompt", "")).strip() or None
-        prefix        = str(p.get("prompt_prefix", "")).strip()
-        suffix        = str(p.get("prompt_suffix", "")).strip()
-        temperature   = float(p.get("temperature", 0.7))
+        # Input ports take priority over node property values when connected.
+        # An empty/missing port value falls through to the property default.
+        def _inp(port: str, prop_key: str, default: str = "") -> str:
+            wired = _to_str(inputs.get(port, "")).strip()
+            return wired if wired else str(p.get(prop_key, default)).strip()
+
+        model_id      = _inp("model",         "model")
+        system_prompt = _inp("system_prompt", "system_prompt", "") or None
+        prefix        = _inp("prompt_prefix", "prompt_prefix")
+        suffix        = _inp("prompt_suffix", "prompt_suffix")
         in_val        = _to_str(inputs.get("in", ""))
+
+        # Temperature: port overrides property, must be a float
+        _temp_raw = inputs.get("temperature")
+        try:
+            temperature = float(_temp_raw) if _temp_raw not in (None, "") else float(p.get("temperature", 0.7))
+        except (ValueError, TypeError):
+            temperature = float(p.get("temperature", 0.7))
 
         if not model_id:
             raise ValueError("No model selected — open node properties and pick a model.")

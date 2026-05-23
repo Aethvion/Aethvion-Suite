@@ -640,7 +640,7 @@
     transform: translateY(100%);
     transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 50;
-    max-height: 240px;
+    max-height: min(520px, 55vh);
     display: flex;
     flex-direction: column;
     box-shadow: 0 -6px 28px rgba(0, 0, 0, 0.5);
@@ -790,6 +790,10 @@
     border-color: rgba(248, 113, 113, 0.7);
     box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.15), 0 4px 24px rgba(0,0,0,0.45);
 }
+.at-node.at-exec-skipped {
+    opacity: 0.38;
+    filter: grayscale(0.7);
+}
 /* Status badge inside header */
 .at-node-exec-badge {
     font-size: 0.58rem;
@@ -799,8 +803,9 @@
     letter-spacing: 0.04em;
     flex-shrink: 0;
 }
-.at-node-exec-badge.done  { background: rgba(52,211,153,0.18); color: #34d399; }
-.at-node-exec-badge.error { background: rgba(248,113,113,0.18); color: #f87171; }
+.at-node-exec-badge.done    { background: rgba(52,211,153,0.18);  color: #34d399; }
+.at-node-exec-badge.error   { background: rgba(248,113,113,0.18); color: #f87171; }
+.at-node-exec-badge.skipped { background: rgba(100,116,139,0.15); color: #64748b; }
 
 /* Error pill below ports */
 .at-node-error-bar {
@@ -1045,6 +1050,8 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    flex: 0 0 100%;   /* always take the full width of the flex-wrap props body */
+    width: 100%;
 }
 
 .at-sched-form {
@@ -1074,7 +1081,7 @@
 
 .at-sched-row .at-prop-input { flex: 1; min-width: 0; }
 
-.at-sched-param-wrap { display: none; }
+.at-sched-param-wrap { /* visibility controlled via inline style by JS */ }
 .at-sched-param-wrap .at-prop-input { width: 100%; box-sizing: border-box; }
 
 .at-sched-add-btn {

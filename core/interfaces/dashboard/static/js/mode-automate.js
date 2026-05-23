@@ -238,7 +238,7 @@
     function _clearExecState() {
         if (!_e.canvasInner) return;
         _e.canvasInner.querySelectorAll('.at-node').forEach(function (el) {
-            el.classList.remove('at-exec-running', 'at-exec-done', 'at-exec-error', 'at-exec-pending');
+            el.classList.remove('at-exec-running', 'at-exec-done', 'at-exec-error', 'at-exec-skipped', 'at-exec-pending');
             var badge = el.querySelector('.at-node-exec-badge');
             if (badge) badge.remove();
             var errBar = el.querySelector('.at-node-error-bar');
@@ -249,7 +249,7 @@
     function _setNodeExecState(nodeId, state) {
         var el = _e.canvasInner && _e.canvasInner.querySelector('[data-node-id="' + nodeId + '"].at-node');
         if (!el) return;
-        el.classList.remove('at-exec-pending', 'at-exec-running', 'at-exec-done', 'at-exec-error');
+        el.classList.remove('at-exec-pending', 'at-exec-running', 'at-exec-done', 'at-exec-error', 'at-exec-skipped');
         el.classList.add('at-exec-' + state);
     }
 
@@ -277,8 +277,8 @@
             if (hdr) {
                 var badge = document.createElement('span');
                 badge.className = 'at-node-exec-badge ' + status;
-                badge.textContent = status === 'done' ? '✓' : '✗';
-                badge.title = status;
+                badge.textContent = status === 'done' ? '✓' : status === 'skipped' ? '—' : '✗';
+                badge.title = status === 'skipped' ? 'not connected to a trigger' : status;
                 // Insert before delete button
                 var del = hdr.querySelector('[data-del-node]');
                 if (del) hdr.insertBefore(badge, del);
@@ -869,8 +869,10 @@
 
             } else if (prop.type === 'schedule_list') {
                 // Rich schedule editor — build and append, then return early
+                // Give label full width so it doesn't share a row with the editor
                 const lbl = document.createElement('span');
                 lbl.className = 'at-prop-label';
+                lbl.style.flex = '0 0 100%';
                 lbl.textContent = prop.label;
                 _e.propsBody.appendChild(lbl);
                 _e.propsBody.appendChild(_buildSchedEditor(nd));
@@ -1404,12 +1406,13 @@
         form.appendChild(paramWrap);
 
         // Show/hide param input when rule changes
+        // NOTE: must use explicit 'block' — empty string defers to the CSS class which hides it
         function _syncParamVisibility() {
             var r = SCHEDULE_RULES.find(function (x) { return x.value === ruleSelect.value; });
-            paramWrap.style.display = (r && r.hasParam) ? '' : 'none';
+            paramWrap.style.display = (r && r.hasParam) ? 'block' : 'none';
             if (r && r.paramLabel) {
-                paramLabel.textContent   = r.paramLabel;
-                paramInput.placeholder   = r.paramLabel;
+                paramLabel.textContent = r.paramLabel;
+                paramInput.placeholder = r.paramLabel;
             }
         }
         ruleSelect.addEventListener('change', _syncParamVisibility);
