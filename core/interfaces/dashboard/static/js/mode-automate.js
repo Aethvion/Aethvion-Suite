@@ -24,7 +24,9 @@
     const BEZIER_MIN_CP = 70;    // minimum bezier control-point offset
 
     // ── State ────────────────────────────────────────────────────────────────
-    let _nodeTypes   = [];   // [{ type, label, category, icon, color, inputs, outputs, properties }]
+    let _nodeTypes      = [];   // [{ type, label, category, icon, color, inputs, outputs, properties }]
+    let _availModels    = [];   // [{ id, provider_id, provider_name, label, description }]
+    let _modelsBySource = {};   // cache: source-url → model list
     let _workflows   = [];   // [{ id, name, node_count, updated }]
     let _active      = null; // { id, name, nodes:[], connections:[] }  — full workflow
     let _selNodeId   = null; // selected node id
@@ -76,7 +78,7 @@
         };
 
         // Load data then render
-        Promise.all([_apiFetchNodeTypes(), _apiFetchWorkflows()]).then(function () {
+        Promise.all([_apiFetchNodeTypes(), _apiFetchWorkflows(), _apiFetchModels()]).then(function () {
             _renderPalette(null);
             _renderWfList();
         }).catch(function (err) {
@@ -106,6 +108,29 @@
         if (!r.ok) throw new Error('workflows ' + r.status);
         const d = await r.json();
         _workflows = d.workflows || [];
+    }
+
+    async function _apiFetchModels(source) {
+        const url = source || '/api/automate/models';
+        if (_modelsBySource[url]) return _modelsBySource[url];
+        try {
+            const r = await fetch(url);
+            if (!r.ok) return [];
+            const d = await r.json();
+            const list = d.models || [];
+            _modelsBySource[url] = list;
+            if (!source) _availModels = list;
+            return list;
+        } catch (_) { return []; }
+    }
+
+    async function _apiTestNode(node, inputData) {
+        const r = await fetch('/api/automate/node/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ node: node, input_data: inputData || '' }),
+        });
+        return r.json();
     }
 
     async function _apiGetWorkflow(id) {
@@ -276,6 +301,32 @@
             );
         }).join('');
 
+        const isAI = nd.type.startsWith('ai.');
+        const showResult = isAI && nd.properties['show_result'] !== false;
+
+        // AI extra bar: model badge + test button
+        const aiBarHtml = isAI
+            ? '<div class="at-node-ai-bar">' +
+              '  <span class="at-node-model-badge" data-model-badge="' + nd.id + '">' +
+                   _esc(nd.properties['model'] || 'no model') +
+              '  </span>' +
+              '  <button class="at-node-test-btn" data-test-node="' + nd.id + '" title="Test this node">' +
+              '    <i class="fas fa-bolt"></i> Test' +
+              '  </button>' +
+              '</div>'
+            : '';
+
+        // Result panel — hidden until a test returns data
+        const resultHtml = isAI
+            ? '<div class="at-node-result" data-node-result="' + nd.id + '" style="display:none">' +
+              '  <div class="at-node-result-hdr">' +
+              '    <span><i class="fas fa-sparkles"></i> Result</span>' +
+              '    <button class="at-node-result-close" data-close-result="' + nd.id + '">✕</button>' +
+              '  </div>' +
+              '  <div class="at-node-result-body" data-node-result-body="' + nd.id + '"></div>' +
+              '</div>'
+            : '';
+
         el.innerHTML =
             '<div class="at-node-hdr">' +
             '  <div class="at-node-icon" style="background:' + colorBg + ';color:' + color + '">' +
@@ -289,7 +340,9 @@
             '<div class="at-node-ports">' +
             '  <div class="at-node-inputs">'  + inputsHtml  + '</div>' +
             '  <div class="at-node-outputs">' + outputsHtml + '</div>' +
-            '</div>';
+            '</div>' +
+            aiBarHtml +
+            resultHtml;
 
         _e.canvasInner.insertBefore(el, _e.svg);
     }
@@ -532,14 +585,74 @@
             field.className = 'at-prop-field';
 
             let inputEl;
-            if (prop.type === 'select') {
+
+            if (prop.type === 'model_select') {
+                // Async-populated model selector
+                inputEl = document.createElement('select');
+                inputEl.className = 'at-prop-select at-prop-model-select';
+                const loadingOpt = document.createElement('option');
+                loadingOpt.value = '';
+                loadingOpt.textContent = 'Loading models…';
+                inputEl.appendChild(loadingOpt);
+
+                // Async-populate
+                _apiFetchModels(prop.source).then(function (models) {
+                    inputEl.innerHTML = '';
+                    const blank = document.createElement('option');
+                    blank.value = '';
+                    blank.textContent = prop.placeholder || 'Select model…';
+                    inputEl.appendChild(blank);
+                    models.forEach(function (m) {
+                        const o = document.createElement('option');
+                        o.value = m.id;
+                        o.textContent = m.label;
+                        o.title = m.description || '';
+                        o.selected = (m.id === String(val));
+                        inputEl.appendChild(o);
+                    });
+                    // If current val not in list, keep blank selected
+                    if (val && !models.find(function (m) { return m.id === val; })) {
+                        const miss = document.createElement('option');
+                        miss.value = String(val);
+                        miss.textContent = String(val) + ' (not found)';
+                        miss.selected = true;
+                        inputEl.appendChild(miss);
+                    }
+                });
+
+            } else if (prop.type === 'toggle') {
+                // Checkbox toggle rendered as a pill
+                const wrapper = document.createElement('label');
+                wrapper.className = 'at-prop-toggle';
+                const check = document.createElement('input');
+                check.type    = 'checkbox';
+                check.checked = val === true || val === 'true' || val === 1;
+                check.dataset.propKey = prop.key;
+                check.addEventListener('change', function () {
+                    nd.properties[prop.key] = check.checked;
+                    _markDirty();
+                    // Update show_result live on node
+                    if (prop.key === 'show_result') {
+                        _updateAINodeResult(nd.id, null, check.checked);
+                    }
+                });
+                const pill = document.createElement('span');
+                pill.className = 'at-prop-toggle-pill';
+                wrapper.appendChild(check);
+                wrapper.appendChild(pill);
+                field.innerHTML = '<span class="at-prop-label">' + _esc(prop.label) + '</span>';
+                field.appendChild(wrapper);
+                _e.propsBody.appendChild(field);
+                return; // handled fully above
+
+            } else if (prop.type === 'select') {
                 inputEl = document.createElement('select');
                 inputEl.className = 'at-prop-select';
                 (prop.options || []).forEach(function (opt) {
                     const o = document.createElement('option');
-                    o.value    = opt;
+                    o.value       = opt;
                     o.textContent = opt;
-                    o.selected = (opt === String(val));
+                    o.selected    = (opt === String(val));
                     inputEl.appendChild(o);
                 });
             } else if (prop.type === 'textarea' || prop.type === 'code') {
@@ -557,10 +670,16 @@
 
             inputEl.dataset.propKey = prop.key;
             inputEl.addEventListener('input', function () {
-                nd.properties[prop.key] = prop.type === 'number'
+                const newVal = prop.type === 'number'
                     ? parseFloat(inputEl.value) || 0
                     : inputEl.value;
+                nd.properties[prop.key] = newVal;
                 _markDirty();
+                // Live-update the model badge on the node card
+                if (prop.key === 'model') {
+                    const badge = _e.canvasInner.querySelector('[data-model-badge="' + nd.id + '"]');
+                    if (badge) badge.textContent = newVal || 'no model';
+                }
             });
 
             field.innerHTML = '<span class="at-prop-label">' + _esc(prop.label) + '</span>';
@@ -568,11 +687,98 @@
             _e.propsBody.appendChild(field);
         });
 
+        // Add "Test Node" button at bottom of props for AI nodes
+        if (nd.type.startsWith('ai.')) {
+            const sep = document.createElement('div');
+            sep.className = 'at-prop-sep';
+            _e.propsBody.appendChild(sep);
+
+            const testRow = document.createElement('div');
+            testRow.className = 'at-prop-test-row';
+            testRow.innerHTML =
+                '<div class="at-prop-test-input-wrap">' +
+                '  <input type="text" class="at-prop-input at-prop-test-input" ' +
+                '    id="at-prop-test-input-' + nd.id + '" placeholder="Test input (optional)…">' +
+                '</div>' +
+                '<button class="at-btn at-btn-accent at-prop-test-btn" data-prop-test-node="' + nd.id + '">' +
+                '  <i class="fas fa-bolt"></i> Test Node' +
+                '</button>';
+            _e.propsBody.appendChild(testRow);
+        }
+
         _e.propsPanel.classList.add('at-open');
     }
 
     function _closeProps() {
         _e.propsPanel.classList.remove('at-open');
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  AI node result display
+    // ════════════════════════════════════════════════════════════════════════
+
+    function _updateAINodeResult(nodeId, resultText, forceShow) {
+        const nd      = _active && _active.nodes.find(function (n) { return n.id === nodeId; });
+        const wrap    = _e.canvasInner.querySelector('[data-node-result="' + nodeId + '"]');
+        const badge   = _e.canvasInner.querySelector('[data-model-badge="' + nodeId + '"]');
+        if (!wrap) return;
+
+        const shouldShow = forceShow !== undefined
+            ? forceShow
+            : (nd && nd.properties['show_result'] !== false);
+
+        if (resultText !== null && resultText !== undefined) {
+            const body = wrap.querySelector('[data-node-result-body="' + nodeId + '"]');
+            if (body) body.textContent = resultText;
+            nd._result = resultText;
+        }
+        // Only show the panel if there's actual content
+        const hasContent = nd && nd._result;
+        wrap.style.display = (shouldShow && hasContent) ? '' : 'none';
+        if (badge && nd) badge.textContent = nd.properties['model'] || 'no model';
+    }
+
+    async function _testAINode(nodeId) {
+        const nd = _active && _active.nodes.find(function (n) { return n.id === nodeId; });
+        if (!nd) return;
+
+        const testInputEl = document.getElementById('at-prop-test-input-' + nodeId);
+        const inputData   = testInputEl ? testInputEl.value.trim() : '';
+
+        // Show loading state on node
+        const wrap = _e.canvasInner.querySelector('[data-node-result="' + nodeId + '"]');
+        const body = wrap && wrap.querySelector('[data-node-result-body="' + nodeId + '"]');
+        if (wrap) {
+            wrap.style.display = '';
+            wrap.classList.add('at-loading');
+        }
+        if (body) body.textContent = 'Running…';
+
+        // Flash test button
+        const testBtns = _e.canvasInner.querySelectorAll('[data-test-node="' + nodeId + '"]');
+        testBtns.forEach(function (b) { b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running'; });
+
+        try {
+            const resp = await _apiTestNode(nd, inputData);
+            if (resp.ok) {
+                _updateAINodeResult(nodeId, resp.result, true);
+                _toast('Test complete. ' + (resp.model ? '(' + resp.model + ')' : ''));
+            } else {
+                if (body) body.textContent = '⚠ ' + (resp.error || 'Unknown error');
+                if (wrap) wrap.style.display = '';
+                _toast(resp.error || 'Test failed.', true);
+            }
+        } catch (e) {
+            if (body) body.textContent = '⚠ ' + e.message;
+            if (wrap) wrap.style.display = '';
+            _toast('Test failed: ' + e.message, true);
+        } finally {
+            if (wrap) wrap.classList.remove('at-loading');
+            testBtns.forEach(function (b) {
+                b.disabled = false;
+                b.innerHTML = '<i class="fas fa-bolt"></i> Test';
+            });
+        }
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -831,6 +1037,22 @@
                 _deleteNode(delBtn.dataset.delNode);
                 return;
             }
+            // Test-node button (on the AI bar in the node card)
+            const testBtn = e.target.closest('[data-test-node]');
+            if (testBtn) {
+                e.stopPropagation();
+                _testAINode(testBtn.dataset.testNode);
+                return;
+            }
+            // Close result panel
+            const closeResult = e.target.closest('[data-close-result]');
+            if (closeResult) {
+                e.stopPropagation();
+                const nid = closeResult.dataset.closeResult;
+                const wrap = _e.canvasInner.querySelector('[data-node-result="' + nid + '"]');
+                if (wrap) wrap.style.display = 'none';
+                return;
+            }
             // Node body → select
             const nodeEl = e.target.closest('.at-node');
             if (nodeEl) {
@@ -875,6 +1097,15 @@
 
         // ── Props close ────────────────────────────────────────────────────
         _e.propsClose.addEventListener('click', function () { _deselectAll(); });
+
+        // ── Props body delegation (test button) ────────────────────────────
+        _e.propsBody.addEventListener('click', function (e) {
+            const btn = e.target.closest('[data-prop-test-node]');
+            if (btn) {
+                e.stopPropagation();
+                _testAINode(btn.dataset.propTestNode);
+            }
+        });
 
         // ── Global mouse move + up ─────────────────────────────────────────
         document.addEventListener('mousemove', function (e) {

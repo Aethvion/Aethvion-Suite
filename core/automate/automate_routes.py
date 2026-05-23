@@ -2,10 +2,10 @@
 core/automate/automate_routes.py
 ════════════════════════════════
 Isolated Automate module backend.
-Handles workflow CRUD and node type registry.
+Handles workflow CRUD, node type registry, model listing, and node test-execution.
 
-Intentionally self-contained — never imports from other Aethvion modules
-so changes elsewhere cannot break automation workflows.
+The AI execution endpoint (node/test) imports ProviderManager lazily — it uses only
+the call_with_failover() utility, sharing no workflow state with other modules.
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ import os
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -24,7 +24,18 @@ router = APIRouter(prefix="/api/automate", tags=["automate"])
 
 # ── Storage ───────────────────────────────────────────────────────────────────
 
-_DATA_DIR = Path(__file__).parent.parent.parent / "data" / "automate" / "workflows"
+_DATA_DIR      = Path(__file__).parent.parent.parent / "data" / "automate" / "workflows"
+_REGISTRY_PATH = Path(__file__).parent.parent.parent / "data" / "config" / "model_registry.json"
+
+# Lazy ProviderManager singleton — only initialised when an AI node is tested
+_pm = None
+
+def _get_pm():
+    global _pm
+    if _pm is None:
+        from core.providers.provider_manager import ProviderManager  # noqa: PLC0415
+        _pm = ProviderManager()
+    return _pm
 
 
 def _ensure_dir() -> None:
@@ -328,6 +339,193 @@ _NODE_TYPES: list[dict] = [
             },
         ],
     },
+    # ── Inputs ────────────────────────────────────────────────────────────────
+    {
+        "type": "input.text",
+        "label": "Text Input",
+        "category": "Inputs",
+        "icon": "fa-keyboard",
+        "color": "#94a3b8",
+        "inputs": [],
+        "outputs": [{"name": "out", "label": "Text"}],
+        "properties": [
+            {
+                "key": "value",
+                "label": "Text Value",
+                "type": "textarea",
+                "default": "",
+                "placeholder": "Enter text here…",
+            },
+        ],
+    },
+    {
+        "type": "input.number",
+        "label": "Number Input",
+        "category": "Inputs",
+        "icon": "fa-hashtag",
+        "color": "#94a3b8",
+        "inputs": [],
+        "outputs": [{"name": "out", "label": "Number"}],
+        "properties": [
+            {
+                "key": "value",
+                "label": "Value",
+                "type": "number",
+                "default": 0,
+            },
+        ],
+    },
+    # ── Outputs ───────────────────────────────────────────────────────────────
+    {
+        "type": "output.display",
+        "label": "Display",
+        "category": "Outputs",
+        "icon": "fa-eye",
+        "color": "#e879f9",
+        "inputs": [{"name": "in", "label": "Data"}],
+        "outputs": [],
+        "properties": [
+            {
+                "key": "label",
+                "label": "Display Label",
+                "type": "text",
+                "default": "Result",
+                "placeholder": "Result label…",
+            },
+        ],
+    },
+    # ── AI ────────────────────────────────────────────────────────────────────
+    {
+        "type": "ai.google",
+        "label": "Google AI",
+        "category": "AI",
+        "icon": "fa-brain",
+        "color": "#4ade80",
+        "inputs": [{"name": "in", "label": "Input Data"}],
+        "outputs": [
+            {"name": "out", "label": "Response"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "model",
+                "label": "Model",
+                "type": "model_select",
+                "source": "/api/automate/models?provider=google_ai",
+                "default": "",
+                "placeholder": "Select a Google AI model…",
+            },
+            {
+                "key": "system_prompt",
+                "label": "System Prompt",
+                "type": "textarea",
+                "default": "You are a helpful assistant.",
+                "placeholder": "System instructions for the AI…",
+            },
+            {
+                "key": "prompt_prefix",
+                "label": "Prompt Prefix",
+                "type": "textarea",
+                "default": "",
+                "placeholder": "Text added before the input data…",
+            },
+            {
+                "key": "prompt_suffix",
+                "label": "Prompt Suffix",
+                "type": "textarea",
+                "default": "",
+                "placeholder": "Text added after the input data…",
+            },
+            {
+                "key": "temperature",
+                "label": "Temperature",
+                "type": "number",
+                "default": 0.7,
+            },
+            {
+                "key": "show_result",
+                "label": "Show Result on Node",
+                "type": "toggle",
+                "default": True,
+            },
+        ],
+    },
+    {
+        "type": "ai.any",
+        "label": "AI Model",
+        "category": "AI",
+        "icon": "fa-robot",
+        "color": "#60a5fa",
+        "inputs": [{"name": "in", "label": "Input Data"}],
+        "outputs": [
+            {"name": "out", "label": "Response"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "model",
+                "label": "Model",
+                "type": "model_select",
+                "source": "/api/automate/models",
+                "default": "",
+                "placeholder": "Select any configured model…",
+            },
+            {
+                "key": "system_prompt",
+                "label": "System Prompt",
+                "type": "textarea",
+                "default": "",
+                "placeholder": "System instructions for the AI…",
+            },
+            {
+                "key": "prompt_prefix",
+                "label": "Prompt Prefix",
+                "type": "textarea",
+                "default": "",
+                "placeholder": "Text added before the input data…",
+            },
+            {
+                "key": "prompt_suffix",
+                "label": "Prompt Suffix",
+                "type": "textarea",
+                "default": "",
+                "placeholder": "Text added after the input data…",
+            },
+            {
+                "key": "temperature",
+                "label": "Temperature",
+                "type": "number",
+                "default": 0.7,
+            },
+            {
+                "key": "show_result",
+                "label": "Show Result on Node",
+                "type": "toggle",
+                "default": True,
+            },
+        ],
+    },
+    {
+        "type": "transform.combine",
+        "label": "Combine Text",
+        "category": "Data",
+        "icon": "fa-compress-arrows-alt",
+        "color": "#fb923c",
+        "inputs": [
+            {"name": "a", "label": "Text A"},
+            {"name": "b", "label": "Text B"},
+        ],
+        "outputs": [{"name": "out", "label": "Combined"}],
+        "properties": [
+            {
+                "key": "separator",
+                "label": "Separator",
+                "type": "text",
+                "default": "\\n",
+                "placeholder": "\\n or space or custom…",
+            },
+        ],
+    },
 ]
 
 
@@ -345,12 +543,95 @@ class WorkflowUpdate(BaseModel):
     connections: list[dict[str, Any]] | None = None
 
 
+class NodeTestRequest(BaseModel):
+    node: dict[str, Any]
+    input_data: str = ""
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.get("/node-types")
 async def get_node_types():
     """Return all available node type definitions."""
     return {"node_types": _NODE_TYPES}
+
+
+@router.get("/models")
+async def get_models(provider: Optional[str] = None):
+    """
+    Return configured chat-capable models from the model registry.
+    Pass ?provider=google_ai to filter to a specific provider.
+    """
+    try:
+        registry = json.loads(_REGISTRY_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {"models": []}
+
+    models = []
+    for prov_id, prov_data in registry.get("providers", {}).items():
+        if not prov_data.get("active", False):
+            continue
+        if provider and prov_id != provider:
+            continue
+        prov_name = prov_data.get("name", prov_id)
+        for model_id, model_data in prov_data.get("models", {}).items():
+            caps = [c.upper() for c in model_data.get("capabilities", [])]
+            if "CHAT" not in caps:
+                continue
+            models.append({
+                "id": model_id,
+                "provider_id": prov_id,
+                "provider_name": prov_name,
+                "label": model_id if provider else f"{model_id}  ({prov_name})",
+                "description": model_data.get("description", ""),
+            })
+
+    return {"models": models}
+
+
+@router.post("/node/test")
+async def test_node(body: NodeTestRequest):
+    """
+    Execute a single AI node with the provided input and return the result.
+    Only ai.* node types are supported for direct test execution.
+    """
+    node = body.node
+    node_type = node.get("type", "")
+    props = node.get("properties", {})
+
+    if not node_type.startswith("ai."):
+        raise HTTPException(400, "Only AI nodes (ai.*) can be tested directly.")
+
+    model_id = str(props.get("model", "")).strip()
+    if not model_id:
+        raise HTTPException(400, "No model selected. Open the node properties and pick a model first.")
+
+    system_prompt = str(props.get("system_prompt", "")).strip() or None
+    prefix        = str(props.get("prompt_prefix", "")).strip()
+    suffix        = str(props.get("prompt_suffix", "")).strip()
+    temperature   = float(props.get("temperature", 0.7))
+    input_data    = (body.input_data or "").strip()
+
+    # Build full prompt
+    parts = [p for p in [prefix, input_data, suffix] if p]
+    prompt = "\n\n".join(parts) if parts else "(no input)"
+
+    try:
+        pm   = _get_pm()
+        resp = pm.call_with_failover(
+            prompt=prompt,
+            trace_id=f"automate-test-{uuid.uuid4().hex[:8]}",
+            system_prompt=system_prompt,
+            temperature=temperature,
+            model=model_id,
+            request_type="generation",
+            source="automate-node-test",
+        )
+        if not resp.success:
+            return {"ok": False, "error": resp.error or "AI call failed"}
+        return {"ok": True, "result": resp.content, "model": model_id}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
 
 
 @router.get("/workflows")
