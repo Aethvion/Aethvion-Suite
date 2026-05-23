@@ -14,8 +14,12 @@ from __future__ import annotations
 import json
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
+
+# Persistent memory store shared across all workflow runs
+_MEMORY_PATH = Path(__file__).parent.parent.parent / "data" / "automate" / "memory.json"
 
 # ── Lazy ProviderManager ──────────────────────────────────────────────────────
 _pm = None
@@ -291,6 +295,58 @@ class WorkflowExecutor:
             first = items[0] if items else None
             return {"item": first, "done": items}
 
+        if t == "logic.try_catch":
+            in_val     = inputs.get("in", "")
+            error_val  = str(inputs.get("error_in", "") or "").strip()
+            filter_str = str(p.get("error_contains", "")).strip()
+            is_error   = bool(error_val)
+            if filter_str and is_error:
+                is_error = filter_str.lower() in error_val.lower()
+            if is_error:
+                return {"try": None, "catch": error_val, "always": error_val}
+            return {"try": in_val, "catch": None, "always": in_val}
+
+        if t == "logic.switch":
+            in_val = inputs.get("in", "")
+            key    = str(p.get("switch_on", "")).strip()
+            if key:
+                try:
+                    obj = json.loads(_to_str(in_val)) if isinstance(in_val, str) else in_val
+                    compare_val = str(obj.get(key, ""))
+                except Exception:
+                    compare_val = _to_str(in_val)
+            else:
+                compare_val = _to_str(in_val)
+            num     = max(1, min(4, int(p.get("num_cases", 2))))
+            result  = {f"case_{i}": None for i in range(1, 5)}
+            result["default"] = None
+            matched = False
+            for i in range(1, num + 1):
+                if not matched and compare_val == str(p.get(f"case_{i}", "")):
+                    result[f"case_{i}"] = in_val
+                    matched = True
+            if not matched:
+                result["default"] = in_val
+            return result
+
+        if t == "logic.merge":
+            mode = str(p.get("mode", "first"))
+            if mode == "all":
+                collected = {port: inputs[port] for port in ("a", "b", "c", "d") if inputs.get(port) is not None}
+                return {"out": collected, "source": "all"}
+            for port in ("a", "b", "c", "d"):
+                val = inputs.get(port)
+                if val is not None:
+                    return {"out": val, "source": port}
+            return {"out": None, "source": ""}
+
+        # ── Memory ────────────────────────────────────────────────────────
+        if t == "memory.store":
+            return self._exec_memory_store(p, inputs)
+
+        if t == "memory.retrieve":
+            return self._exec_memory_retrieve(p, inputs)
+
         # ── Data ──────────────────────────────────────────────────────────
         if t == "data.format_text":
             template = str(p.get("template", "{{input}}"))
@@ -436,6 +492,63 @@ class WorkflowExecutor:
                 return {"out": out, "error": ""}
             except Exception as exc:
                 return {"out": val, "error": f"Conversion to {to} failed: {exc}"}
+
+        if t == "data.split_text":
+            text         = _to_str(inputs.get("in", ""))
+            mode         = str(p.get("mode", "delimiter"))
+            trim         = bool(p.get("trim", True))
+            remove_empty = bool(p.get("remove_empty", True))
+            if mode == "lines":
+                parts = text.splitlines()
+            elif mode == "words":
+                parts = text.split()
+            elif mode == "chunks":
+                size  = max(1, int(p.get("chunk_size", 500) or 500))
+                parts = [text[i:i + size] for i in range(0, max(len(text), 1), size)]
+            else:  # delimiter
+                parts = text.split(str(p.get("delimiter", ",")))
+            if trim and mode != "chunks":
+                parts = [s.strip() for s in parts]
+            if remove_empty:
+                parts = [s for s in parts if s]
+            first = parts[0]  if parts else ""
+            last  = parts[-1] if parts else ""
+            return {"out": json.dumps(parts, ensure_ascii=False), "first": first, "last": last, "count": len(parts)}
+
+        if t == "data.regex":
+            import re as _re  # noqa: PLC0415
+            text     = _to_str(inputs.get("in", ""))
+            pattern  = _to_str(inputs.get("pattern") or p.get("pattern", ""))
+            mode     = str(p.get("mode", "extract"))
+            repl     = str(p.get("replacement", ""))
+            flag_str = str(p.get("flags", ""))
+            flags    = 0
+            if "i" in flag_str: flags |= _re.IGNORECASE
+            if "m" in flag_str: flags |= _re.MULTILINE
+            if "s" in flag_str: flags |= _re.DOTALL
+            try:
+                compiled = _re.compile(pattern, flags)
+            except _re.error as exc:
+                return {"out": "", "matches": "[]", "matched": "false", "error": str(exc)}
+            if mode == "match":
+                found = bool(compiled.search(text))
+                return {"out": str(found).lower(), "matches": "[]",
+                        "matched": str(found).lower(), "error": ""}
+            if mode == "replace":
+                result  = compiled.sub(repl, text)
+                matched = str(bool(compiled.search(text))).lower()
+                return {"out": result, "matches": "[]", "matched": matched, "error": ""}
+            # extract
+            raw_matches = compiled.findall(text)
+            # findall returns tuples when multiple groups — flatten each to a string
+            all_m = [(" ".join(m) if isinstance(m, tuple) else str(m)) for m in raw_matches]
+            matched = bool(all_m)
+            if p.get("all_matches", False):
+                out = json.dumps(all_m, ensure_ascii=False)
+            else:
+                out = all_m[0] if all_m else ""
+            return {"out": out, "matches": json.dumps(all_m, ensure_ascii=False),
+                    "matched": str(matched).lower(), "error": ""}
 
         # ── Outputs ───────────────────────────────────────────────────────
         if t == "output.display":
@@ -658,6 +771,66 @@ class WorkflowExecutor:
             return {"out": in_val, "error": ""}
         except Exception as exc:
             return {"out": in_val, "error": str(exc)}
+
+    def _exec_memory_store(self, p: dict, inputs: dict[str, Any]) -> dict[str, Any]:
+        key     = _to_str(inputs.get("key") or p.get("key", "")).strip()
+        scope   = str(p.get("scope", "global"))
+        ttl_hrs = float(p.get("ttl", 0) or 0)
+        in_val  = inputs.get("in", "")
+
+        if not key:
+            return {"out": in_val, "error": "No storage key configured"}
+
+        if scope == "workflow":
+            key = f"wf:{self.workflow.get('id', 'unknown')}:{key}"
+
+        try:
+            store: dict = json.loads(_MEMORY_PATH.read_text(encoding="utf-8")) if _MEMORY_PATH.exists() else {}
+        except Exception:
+            store = {}
+
+        entry: dict = {"value": in_val}
+        if ttl_hrs > 0:
+            entry["expires"] = (datetime.now() + timedelta(hours=ttl_hrs)).isoformat()
+
+        store[key] = entry
+
+        try:
+            _MEMORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+            _MEMORY_PATH.write_text(json.dumps(store, indent=2, ensure_ascii=False), encoding="utf-8")
+            return {"out": in_val, "error": ""}
+        except Exception as exc:
+            return {"out": in_val, "error": str(exc)}
+
+    def _exec_memory_retrieve(self, p: dict, inputs: dict[str, Any]) -> dict[str, Any]:
+        key     = str(p.get("key", "")).strip()
+        scope   = str(p.get("scope", "global"))
+        default = p.get("default", "")
+
+        if not key:
+            return {"out": default, "found": "false", "error": "No storage key configured"}
+
+        if scope == "workflow":
+            key = f"wf:{self.workflow.get('id', 'unknown')}:{key}"
+
+        try:
+            store: dict = json.loads(_MEMORY_PATH.read_text(encoding="utf-8")) if _MEMORY_PATH.exists() else {}
+        except Exception as exc:
+            return {"out": default, "found": "false", "error": str(exc)}
+
+        entry = store.get(key)
+        if entry is None:
+            return {"out": default, "found": "false", "error": ""}
+
+        expires = entry.get("expires")
+        if expires:
+            try:
+                if datetime.now() > datetime.fromisoformat(expires):
+                    return {"out": default, "found": "false", "error": ""}
+            except Exception:
+                pass
+
+        return {"out": entry.get("value", default), "found": "true", "error": ""}
 
     # ── Result builder ────────────────────────────────────────────────────────
 
