@@ -49,23 +49,53 @@
     <!-- ══ Body ══════════════════════════════════════════════════════════ -->
     <div class="at-body">
 
-        <!-- Workflow list sidebar (left) -->
+        <!-- Sidebar — switches between workflow explorer and node inspector -->
         <div class="at-sidebar">
-            <div class="at-sidebar-hdr">
-                <span>Workflows</span>
-                <button class="at-sidebar-add" id="at-sidebar-add" title="New workflow">
-                    <i class="fas fa-plus"></i>
-                </button>
-            </div>
-            <div class="at-wf-list" id="at-wf-list">
-                <div class="at-wf-empty" id="at-wf-empty">
-                    <i class="fas fa-bolt"></i>
-                    <span>No workflows yet</span>
-                    <button class="at-btn at-btn-ghost at-btn-sm" id="at-wf-create-first">
-                        <i class="fas fa-plus"></i> Create one
+
+            <!-- ── Workflow Explorer (default) ──────────────────────── -->
+            <div class="at-explorer" id="at-explorer">
+                <div class="at-sidebar-hdr">
+                    <span>Workflows</span>
+                    <button class="at-sidebar-add" id="at-sidebar-add" title="New workflow">
+                        <i class="fas fa-plus"></i>
                     </button>
                 </div>
+                <div class="at-wf-list" id="at-wf-list">
+                    <div class="at-wf-empty" id="at-wf-empty">
+                        <i class="fas fa-bolt"></i>
+                        <span>No workflows yet</span>
+                        <button class="at-btn at-btn-ghost at-btn-sm" id="at-wf-create-first">
+                            <i class="fas fa-plus"></i> Create one
+                        </button>
+                    </div>
+                </div>
             </div>
+
+            <!-- ── Node Inspector (shown when a workflow is open) ────── -->
+            <div class="at-inspector" id="at-inspector" style="display:none">
+                <div class="at-inspector-hdr">
+                    <button class="at-inspector-back" id="at-inspector-back" title="Back to all workflows">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="at-inspector-node-hd">
+                        <div class="at-inspector-icon" id="at-inspector-icon">
+                            <i class="fas fa-arrow-pointer"></i>
+                        </div>
+                        <span class="at-inspector-title" id="at-inspector-title">Inspector</span>
+                    </div>
+                    <button class="at-inspector-close" id="at-inspector-close"
+                            title="Deselect node" style="display:none">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="at-inspector-body" id="at-inspector-body">
+                    <div class="at-inspector-none" id="at-inspector-none">
+                        <i class="fas fa-arrow-pointer"></i>
+                        <span>Click a node to inspect it</span>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- Canvas -->
@@ -141,20 +171,6 @@
             <div class="at-exec-log-view" id="at-exec-log-view"></div>
             <div class="at-exec-out-view hidden" id="at-exec-out-view"></div>
         </div>
-    </div>
-
-    <!-- Properties panel — slides up from bottom when a node is selected -->
-    <div class="at-props-panel" id="at-props-panel">
-        <div class="at-props-hdr">
-            <div class="at-props-icon" id="at-props-icon">
-                <i class="fas fa-cube"></i>
-            </div>
-            <span class="at-props-title" id="at-props-title">Node Properties</span>
-            <button class="at-props-close" id="at-props-close" title="Close properties">
-                <i class="fas fa-xmark"></i>
-            </button>
-        </div>
-        <div class="at-props-body" id="at-props-body"></div>
     </div>
 
     <!-- Toast -->

@@ -87,14 +87,17 @@
             canvasNewBtn:  _$('at-canvas-new-btn'),
             canvasInner:   _$('at-canvas-inner'),
             svg:           _$('at-svg'),
-            paletteSearch: _$('at-palette-search'),
-            paletteList:   _$('at-palette-list'),
-            propsPanel:    _$('at-props-panel'),
-            propsIcon:     _$('at-props-icon'),
-            propsTitle:    _$('at-props-title'),
-            propsBody:     _$('at-props-body'),
-            propsClose:    _$('at-props-close'),
-            toast:         _$('at-toast'),
+            paletteSearch:  _$('at-palette-search'),
+            paletteList:    _$('at-palette-list'),
+            explorer:       _$('at-explorer'),
+            inspector:      _$('at-inspector'),
+            inspectorBack:  _$('at-inspector-back'),
+            inspectorIcon:  _$('at-inspector-icon'),
+            inspectorTitle: _$('at-inspector-title'),
+            inspectorBody:  _$('at-inspector-body'),
+            inspectorNone:  _$('at-inspector-none'),
+            inspectorClose: _$('at-inspector-close'),
+            toast:          _$('at-toast'),
         };
 
         // Load data then render
@@ -411,6 +414,22 @@
     //  Workflow list
     // ════════════════════════════════════════════════════════════════════════
 
+    function _relativeTime(iso) {
+        if (!iso) return '';
+        try {
+            const diff = Date.now() - new Date(iso).getTime();
+            const s  = Math.floor(diff / 1000);
+            const m  = Math.floor(s  / 60);
+            const h  = Math.floor(m  / 60);
+            const d  = Math.floor(h  / 24);
+            if (s  < 60)  return 'just now';
+            if (m  < 60)  return m  + ' min ago';
+            if (h  < 24)  return h  + ' hr ago';
+            if (d  < 7)   return d  + ' day' + (d  > 1 ? 's' : '') + ' ago';
+            return new Date(iso).toLocaleDateString();
+        } catch (_) { return ''; }
+    }
+
     function _renderWfList() {
         const list = _e.wfList;
         // Remove existing items (keep empty placeholder)
@@ -428,10 +447,15 @@
             const item = document.createElement('div');
             item.className = 'at-wf-item' + (_active && _active.id === wf.id ? ' active' : '');
             item.dataset.wfId = wf.id;
+            const nodeCount = wf.node_count || 0;
+            const meta = nodeCount + ' node' + (nodeCount !== 1 ? 's' : '') +
+                         (wf.updated ? ' · ' + _relativeTime(wf.updated) : '');
             item.innerHTML =
-                '<i class="fas fa-bolt"></i>' +
-                '<span class="at-wf-item-name">' + _esc(wf.name) + '</span>' +
-                '<span class="at-wf-item-count">' + (wf.node_count || 0) + '</span>';
+                '<div class="at-wf-item-icon"><i class="fas fa-bolt"></i></div>' +
+                '<div class="at-wf-item-info">' +
+                    '<span class="at-wf-item-name">' + _esc(wf.name) + '</span>' +
+                    '<span class="at-wf-item-meta">' + _esc(meta) + '</span>' +
+                '</div>';
             item.addEventListener('click', function () { _openWorkflow(wf.id); });
             list.insertBefore(item, _e.wfEmpty);
         });
@@ -446,6 +470,8 @@
             _renderCanvas();
             _updateToolbar();
             _renderWfList();
+            _showInspector();
+            _closeProps(); // reset to "click a node to inspect"
         }).catch(function (e) {
             _toast('Failed to open workflow.', true);
             console.error('[Automate]', e);
@@ -468,7 +494,17 @@
         _e.canvasInner.style.display    = 'none';
         _e.wfLabel.textContent          = 'No workflow selected';
         _e.wfRenameBtn.style.display    = 'none';
-        _closeProps();
+        _showExplorer();
+    }
+
+    function _showExplorer() {
+        _e.explorer.style.display  = '';
+        _e.inspector.style.display = 'none';
+    }
+
+    function _showInspector() {
+        _e.explorer.style.display  = 'none';
+        _e.inspector.style.display = '';
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -844,18 +880,22 @@
         if (!nd) return;
         const td = _typeDef(nd.type);
 
-        // Update header
-        const color = td.color || '#64748b';
-        _e.propsIcon.style.background = color + '20';
-        _e.propsIcon.style.color      = color;
-        _e.propsIcon.innerHTML        = '<i class="fas ' + (td.icon || 'fa-cube') + '"></i>';
-        _e.propsTitle.textContent     = nd.label || td.label;
+        // Make sure inspector panel is visible
+        _showInspector();
 
-        _e.propsBody.innerHTML = '';
+        // Update inspector header
+        const color = td.color || '#64748b';
+        _e.inspectorIcon.style.background = color + '20';
+        _e.inspectorIcon.style.color      = color;
+        _e.inspectorIcon.innerHTML        = '<i class="fas ' + (td.icon || 'fa-cube') + '"></i>';
+        _e.inspectorTitle.textContent     = nd.label || td.label;
+        _e.inspectorClose.style.display   = '';
+
+        // Clear body (this removes inspectorNone from DOM — that's intentional)
+        _e.inspectorBody.innerHTML = '';
 
         if (!td.properties || td.properties.length === 0) {
-            _e.propsBody.innerHTML = '<span class="at-props-none">No configurable properties.</span>';
-            _e.propsPanel.classList.add('at-open');
+            _e.inspectorBody.innerHTML = '<span class="at-props-none">No configurable properties.</span>';
             return;
         }
 
@@ -925,7 +965,7 @@
                 wrapper.appendChild(pill);
                 field.innerHTML = '<span class="at-prop-label">' + _esc(prop.label) + '</span>';
                 field.appendChild(wrapper);
-                _e.propsBody.appendChild(field);
+                _e.inspectorBody.appendChild(field);
                 return; // handled fully above
 
             } else if (prop.type === 'schedule_list') {
@@ -935,8 +975,8 @@
                 lbl.className = 'at-prop-label';
                 lbl.style.flex = '0 0 100%';
                 lbl.textContent = prop.label;
-                _e.propsBody.appendChild(lbl);
-                _e.propsBody.appendChild(_buildSchedEditor(nd));
+                _e.inspectorBody.appendChild(lbl);
+                _e.inspectorBody.appendChild(_buildSchedEditor(nd));
                 return; // handled fully above
 
             } else if (prop.type === 'select') {
@@ -994,14 +1034,14 @@
                 field.appendChild(overBadge);
             }
 
-            _e.propsBody.appendChild(field);
+            _e.inspectorBody.appendChild(field);
         });
 
         // Add "Test Node" button at bottom of props for AI nodes
         if (nd.type.startsWith('ai.')) {
             const sep = document.createElement('div');
             sep.className = 'at-prop-sep';
-            _e.propsBody.appendChild(sep);
+            _e.inspectorBody.appendChild(sep);
 
             const testRow = document.createElement('div');
             testRow.className = 'at-prop-test-row';
@@ -1013,14 +1053,19 @@
                 '<button class="at-btn at-btn-accent at-prop-test-btn" data-prop-test-node="' + nd.id + '">' +
                 '  <i class="fas fa-bolt"></i> Test Node' +
                 '</button>';
-            _e.propsBody.appendChild(testRow);
+            _e.inspectorBody.appendChild(testRow);
         }
-
-        _e.propsPanel.classList.add('at-open');
     }
 
     function _closeProps() {
-        _e.propsPanel.classList.remove('at-open');
+        // Reset inspector to "no node selected" state — don't hide the panel
+        _e.inspectorBody.innerHTML = '';
+        _e.inspectorBody.appendChild(_e.inspectorNone);
+        _e.inspectorClose.style.display   = 'none';
+        _e.inspectorTitle.textContent     = 'Inspector';
+        _e.inspectorIcon.style.background = 'rgba(100,116,139,0.15)';
+        _e.inspectorIcon.style.color      = 'var(--text-muted,#64748b)';
+        _e.inspectorIcon.innerHTML        = '<i class="fas fa-arrow-pointer"></i>';
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1698,11 +1743,17 @@
             }
         });
 
-        // ── Props close ────────────────────────────────────────────────────
-        _e.propsClose.addEventListener('click', function () { _deselectAll(); });
+        // ── Inspector close (deselect node) ───────────────────────────────
+        _e.inspectorClose.addEventListener('click', function () { _deselectAll(); });
 
-        // ── Props body delegation (test button) ────────────────────────────
-        _e.propsBody.addEventListener('click', function (e) {
+        // ── Inspector back (return to explorer) ───────────────────────────
+        _e.inspectorBack.addEventListener('click', function () {
+            _deselectAll();
+            _showExplorer();
+        });
+
+        // ── Inspector body delegation (test button) ────────────────────────
+        _e.inspectorBody.addEventListener('click', function (e) {
             const btn = e.target.closest('[data-prop-test-node]');
             if (btn) {
                 e.stopPropagation();
