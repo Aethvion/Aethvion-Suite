@@ -586,6 +586,46 @@ async function pollStartupStatus() {
             }).catch(e => console.warn("Could not load version for splash:", e));
     }
 
+    // Disable CSS transition on progress bar to let JS render updates with pixel precision
+    if (progressBar) {
+        progressBar.style.transition = 'none';
+    }
+
+    let currentPercent = 0;
+    let targetPercent = 0;
+    let systemInitialized = false;
+
+    // Animation frame logic to smoothly update display percentage
+    const animateProgress = () => {
+        if (systemInitialized) {
+            // Rapidly slide to 100% when backend is completely done
+            currentPercent += (100 - currentPercent) * 0.12 + 0.5;
+            if (currentPercent >= 100) {
+                currentPercent = 100;
+            }
+        } else {
+            if (currentPercent < targetPercent) {
+                // Lerp towards target milestone
+                let diff = targetPercent - currentPercent;
+                let step = diff * 0.03 + 0.05; // Decelerating step
+                currentPercent = Math.min(targetPercent, currentPercent + step);
+            } else if (currentPercent < 98) {
+                // Creep forward slowly (0.015% per frame) to signal activity even when stuck on a step
+                currentPercent = Math.min(98, currentPercent + 0.015);
+            }
+        }
+
+        if (progressBar) progressBar.style.width = `${currentPercent}%`;
+        if (percentText) percentText.textContent = `${Math.round(currentPercent)}%`;
+
+        if (currentPercent < 100 || !systemInitialized) {
+            requestAnimationFrame(animateProgress);
+        }
+    };
+
+    // Begin animation loop
+    requestAnimationFrame(animateProgress);
+
     return new Promise((resolve) => {
         const checkStatus = async () => {
             try {
@@ -593,25 +633,33 @@ async function pollStartupStatus() {
                 if (response.ok) {
                     const data = await response.json();
 
-                    if (progressBar) progressBar.style.width = `${data.progress}%`;
-                    if (percentText) percentText.textContent = `${Math.round(data.progress)}%`;
+                    if (data.progress !== undefined) {
+                        targetPercent = data.progress;
+                    }
 
                     if (statusText && data.status) {
                         statusText.textContent = data.status;
                     }
 
                     if (data.initialized) {
-                        if (progressBar) progressBar.style.width = `100%`;
-                        if (percentText) percentText.textContent = `100%`;
+                        systemInitialized = true;
 
-                        setTimeout(() => {
-                            splash.classList.add('fade-out');
-                            setTimeout(() => {
-                                splash.style.display = 'none';
-                                window.dispatchEvent(new CustomEvent('systemReady'));
-                                resolve();
-                            }, 1000);
-                        }, 800);
+                        // Wait for progress animation to hit 100% before starting fade-out
+                        const checkComplete = () => {
+                            if (currentPercent >= 100) {
+                                setTimeout(() => {
+                                    splash.classList.add('fade-out');
+                                    setTimeout(() => {
+                                        splash.style.display = 'none';
+                                        window.dispatchEvent(new CustomEvent('systemReady'));
+                                        resolve();
+                                    }, 1000);
+                                }, 800);
+                            } else {
+                                setTimeout(checkComplete, 50);
+                            }
+                        };
+                        checkComplete();
                         return;
                     }
 
