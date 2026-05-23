@@ -616,6 +616,9 @@ class WorkflowExecutor:
                     toast = Notification(app_id="Aethvion Suite", title=title_safe, msg=message_safe)
                     toast.show()
                 except ImportError:
+                    # PowerShell balloon toast — hidden window, fire-and-forget (no blocking).
+                    # ShowBalloonTip timeout is 5 s; Sleep 6 keeps the icon alive until it
+                    # self-dismisses, then hides. No CMD/PS window ever appears.
                     ps_cmd = (
                         "Add-Type -AssemblyName System.Windows.Forms; "
                         "$n = New-Object System.Windows.Forms.NotifyIcon; "
@@ -623,20 +626,34 @@ class WorkflowExecutor:
                         "$n.Visible = $true; "
                         f'$n.ShowBalloonTip(5000, "{title_safe}", "{message_safe}", '
                         "[System.Windows.Forms.ToolTipIcon]::Info); "
-                        "Start-Sleep 2; $n.Visible = $false"
+                        "Start-Sleep 6; $n.Visible = $false"
                     )
-                    subprocess.run(
-                        ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_cmd],
-                        timeout=15, check=False,
+                    subprocess.Popen(  # noqa: S603
+                        [
+                            "powershell",
+                            "-NoProfile", "-NonInteractive",
+                            "-WindowStyle", "Hidden",
+                            "-Command", ps_cmd,
+                        ],
+                        creationflags=0x08000000,  # CREATE_NO_WINDOW
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
                     )
+                    # Popen is fire-and-forget — execution continues immediately.
+
             elif sys.platform == "darwin":
-                subprocess.run(
+                subprocess.Popen(  # noqa: S603
                     ["osascript", "-e",
                      f'display notification "{message_safe}" with title "{title_safe}"'],
-                    timeout=10, check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
                 )
             else:
-                subprocess.run(["notify-send", title_safe, message_safe], timeout=10, check=False)
+                subprocess.Popen(  # noqa: S603
+                    ["notify-send", title_safe, message_safe],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
 
             return {"out": in_val, "error": ""}
         except Exception as exc:
