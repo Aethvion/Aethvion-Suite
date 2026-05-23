@@ -525,12 +525,35 @@
 .at-conn:hover { stroke: rgba(148, 163, 184, 0.85); stroke-width: 2.5; }
 .at-conn.at-conn-selected { stroke: #22d3ee; stroke-width: 2.5; marker-end: url(#at-arrow-sel); }
 
+/* Trigger connections — dashed cyan line, targets node body not a port */
+.at-conn.at-conn-trigger {
+    stroke: rgba(34, 211, 238, 0.5);
+    stroke-dasharray: 9 5;
+    marker-end: url(#at-arrow-trigger);
+}
+.at-conn.at-conn-trigger:hover {
+    stroke: rgba(34, 211, 238, 0.85);
+    stroke-width: 2.5;
+}
+.at-conn.at-conn-trigger.at-conn-selected {
+    stroke: #22d3ee;
+    stroke-width: 2.5;
+    stroke-dasharray: 9 5;
+    marker-end: url(#at-arrow-trigger);
+}
+
 .at-conn-temp {
     fill: none;
     stroke: rgba(34, 211, 238, 0.55);
     stroke-width: 2;
     stroke-dasharray: 7 4;
     pointer-events: none;
+}
+/* Trigger pending temp line — brighter and slightly thicker */
+.at-conn-temp.at-conn-temp-trigger {
+    stroke: rgba(34, 211, 238, 0.75);
+    stroke-width: 2.5;
+    stroke-dasharray: 10 5;
 }
 
 /* ── Palette (right) ────────────────────────────────────────────────────── */

@@ -586,13 +586,19 @@
         if (!_active) return;
 
         _active.connections.forEach(function (conn) {
-            const src = _portPos(conn.sourceNodeId, conn.sourcePort, 'output');
-            const tgt = _portPos(conn.targetNodeId, conn.targetPort, 'input');
+            var isTriggerConn = (conn.targetPort === '__trigger__');
+            var src = _portPos(conn.sourceNodeId, conn.sourcePort, 'output');
+            var tgt = isTriggerConn
+                ? _nodeCenterLeftPos(conn.targetNodeId)
+                : _portPos(conn.targetNodeId, conn.targetPort, 'input');
             if (!src || !tgt) return;
 
+            var isSelected = (conn.id === _selConnId);
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('class',
-                'at-conn' + (conn.id === _selConnId ? ' at-conn-selected' : ''));
+                'at-conn' +
+                (isTriggerConn ? ' at-conn-trigger' : '') +
+                (isSelected    ? ' at-conn-selected' : ''));
             path.setAttribute('d', _bezier(src.x, src.y, tgt.x, tgt.y));
             path.dataset.connId = conn.id;
             _e.svg.appendChild(path);
@@ -600,6 +606,21 @@
 
         // Update connected-port markers
         _updatePortMarkers();
+    }
+
+    /**
+     * Canvas-inner coordinates of the left-edge centre of a node.
+     * Used as the target point for trigger connections (no specific input port).
+     */
+    function _nodeCenterLeftPos(nodeId) {
+        var el = _e.canvasInner.querySelector('[data-node-id="' + nodeId + '"].at-node');
+        if (!el) return null;
+        var eRect = el.getBoundingClientRect();
+        var iRect = _e.canvasInner.getBoundingClientRect();
+        return {
+            x: (eRect.left - iRect.left) / _view.scale,
+            y: (eRect.top + eRect.height / 2 - iRect.top) / _view.scale,
+        };
     }
 
     /** Get canvas-inner coordinates of a port dot. */
@@ -640,11 +661,15 @@
             var srcRow = _e.canvasInner.querySelector(
                 '[data-node-id="' + conn.sourceNodeId + '"][data-port="' + conn.sourcePort + '"][data-port-type="output"]'
             );
-            var tgtRow = _e.canvasInner.querySelector(
-                '[data-node-id="' + conn.targetNodeId + '"][data-port="' + conn.targetPort + '"][data-port-type="input"]'
-            );
             if (srcRow) { var d = srcRow.querySelector('.at-port'); if (d) d.classList.add('at-connected'); }
-            if (tgtRow) { var d2 = tgtRow.querySelector('.at-port'); if (d2) d2.classList.add('at-connected'); }
+
+            // '__trigger__' targets the node body — there's no input port dot to mark
+            if (conn.targetPort !== '__trigger__') {
+                var tgtRow = _e.canvasInner.querySelector(
+                    '[data-node-id="' + conn.targetNodeId + '"][data-port="' + conn.targetPort + '"][data-port-type="input"]'
+                );
+                if (tgtRow) { var d2 = tgtRow.querySelector('.at-port'); if (d2) d2.classList.add('at-connected'); }
+            }
         });
     }
 
@@ -1026,14 +1051,23 @@
         if (!_pending) {
             // Start: only allow output ports as source
             if (portType !== 'output') return;
-            _pending = { nodeId, portName, portType };
+            var isTrig = (portName === 'trigger');
+            _pending = { nodeId, portName, portType, isTrigger: isTrig };
             var dot = portRow.querySelector('.at-port');
             if (dot) dot.classList.add('at-pending');
             _e.canvas.style.cursor = 'crosshair';
+            if (isTrig) _toast('Click any node to wire the trigger.');
             return;
         }
 
-        // Complete: must click an input port on a different node
+        // Trigger connections are completed by clicking a node body, not a port —
+        // clicking another output port just restarts, any input port is ignored.
+        if (_pending.isTrigger) {
+            if (portType === 'output') { _cancelPending(); _handlePortClick(portRow); }
+            return;
+        }
+
+        // Normal data connection completion: must click an input port on a different node
         if (portType !== 'input') { _cancelPending(); return; }
         if (nodeId === _pending.nodeId) {
             _cancelPending();
@@ -1053,6 +1087,33 @@
             sourcePort:   _pending.portName,
             targetNodeId: nodeId,
             targetPort:   portName,
+        });
+        _cancelPending();
+        _renderConns();
+        _markDirty();
+    }
+
+    /** Complete a trigger connection to targetNodeId (clicks on node body, not a port). */
+    function _createTriggerConn(targetNodeId) {
+        if (!_pending || !_active) { _cancelPending(); return; }
+        if (targetNodeId === _pending.nodeId) {
+            _cancelPending();
+            _toast('Cannot connect a node to itself.');
+            return;
+        }
+        var dup = _active.connections.find(function (c) {
+            return c.sourceNodeId === _pending.nodeId &&
+                   c.sourcePort   === _pending.portName &&
+                   c.targetNodeId === targetNodeId;
+        });
+        if (dup) { _cancelPending(); _toast('Trigger connection already exists.'); return; }
+
+        _active.connections.push({
+            id:           'c_' + Date.now(),
+            sourceNodeId: _pending.nodeId,
+            sourcePort:   _pending.portName,
+            targetNodeId: targetNodeId,
+            targetPort:   '__trigger__',   // sentinel — targets the node body, not a port
         });
         _cancelPending();
         _renderConns();
@@ -1539,11 +1600,15 @@
                 if (wrap) wrap.style.display = 'none';
                 return;
             }
-            // Node body → select
+            // Node body → select, or complete a trigger connection
             const nodeEl = e.target.closest('.at-node');
             if (nodeEl) {
                 e.stopPropagation();
-                _selectNode(nodeEl.dataset.nodeId);
+                if (_pending && _pending.isTrigger) {
+                    _createTriggerConn(nodeEl.dataset.nodeId);
+                } else {
+                    _selectNode(nodeEl.dataset.nodeId);
+                }
                 return;
             }
             // Canvas background
@@ -1647,7 +1712,8 @@
                     let tmp = _e.svg.querySelector('.at-conn-temp');
                     if (!tmp) {
                         tmp = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                        tmp.setAttribute('class', 'at-conn-temp');
+                        tmp.setAttribute('class',
+                            'at-conn-temp' + (_pending.isTrigger ? ' at-conn-temp-trigger' : ''));
                         _e.svg.appendChild(tmp);
                     }
                     tmp.setAttribute('d', _bezier(src.x, src.y, tx, ty));
