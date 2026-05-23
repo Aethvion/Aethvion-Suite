@@ -214,6 +214,79 @@ def data_split_text(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     }
 
 
+def data_merge_objects(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    p    = node.get("properties", {})
+    mode = str(p.get("merge_mode", "shallow"))
+
+    def _parse(val: Any) -> dict:
+        if isinstance(val, dict):
+            return val
+        if val is None:
+            return {}
+        try:
+            result = json.loads(_to_str(val))
+            return result if isinstance(result, dict) else {}
+        except Exception:
+            return {}
+
+    def _deep_merge(base: dict, override: dict) -> dict:
+        result = dict(base)
+        for k, v in override.items():
+            if k in result and isinstance(result[k], dict) and isinstance(v, dict):
+                result[k] = _deep_merge(result[k], v)
+            else:
+                result[k] = v
+        return result
+
+    merged: dict = {}
+    for port in ("a", "b", "c", "d"):
+        val = inputs.get(port)
+        if val is None:
+            continue
+        obj = _parse(val)
+        if mode == "deep":
+            merged = _deep_merge(merged, obj)
+        else:
+            merged.update(obj)
+
+    out_mode = str(p.get("output_as", "json_string"))
+    out = json.dumps(merged, ensure_ascii=False) if out_mode == "json_string" else merged
+    return {"out": out, "error": ""}
+
+
+def data_list_item(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    p      = node.get("properties", {})
+    in_val = inputs.get("in", "[]")
+
+    if isinstance(in_val, str):
+        try:
+            lst = json.loads(in_val)
+        except Exception as exc:
+            return {"out": "", "count": 0, "error": f"Not a valid list: {exc}"}
+    else:
+        lst = in_val
+
+    if not isinstance(lst, list):
+        return {"out": "", "count": 0, "error": "Input is not a list"}
+
+    try:
+        idx = int(inputs.get("index") or p.get("index", 0))
+    except (ValueError, TypeError):
+        idx = 0
+
+    slice_end = int(p.get("slice_end", 0) or 0)
+
+    try:
+        if slice_end != 0:
+            out = json.dumps(lst[idx:slice_end], ensure_ascii=False)
+        else:
+            out = lst[idx]
+        return {"out": out, "count": len(lst), "error": ""}
+    except IndexError:
+        return {"out": "", "count": len(lst),
+                "error": f"Index {idx} out of range (list has {len(lst)} items)"}
+
+
 def data_regex(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p        = node.get("properties", {})
     text     = _to_str(inputs.get("in", ""))

@@ -140,6 +140,66 @@ def action_file_write(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
         return {"out": content, "path": file_path, "error": str(exc)}
 
 
+def action_clipboard(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    p      = node.get("properties", {})
+    mode   = str(p.get("mode", "write"))
+    in_val = _to_str(inputs.get("in", ""))
+
+    try:
+        if mode == "write":
+            _clipboard_write(in_val)
+            out = in_val
+        elif mode.startswith("read"):
+            out = _clipboard_read()
+            if mode == "read_then_clear":
+                _clipboard_write("")
+        else:
+            out = in_val
+        return {"out": out, "error": ""}
+    except Exception as exc:
+        return {"out": in_val, "error": str(exc)}
+
+
+def _clipboard_write(text: str) -> None:
+    """Write *text* to the system clipboard (no visible window on any platform)."""
+    if sys.platform == "win32":
+        # clip.exe accepts stdin; UTF-16-LE is reliable on all modern Windows versions.
+        subprocess.run(  # noqa: S603
+            "clip",
+            input=text.encode("utf-16-le"),
+            creationflags=0x08000000,   # CREATE_NO_WINDOW
+            check=False, timeout=5,
+        )
+    elif sys.platform == "darwin":
+        subprocess.run(["pbcopy"], input=text.encode(), check=False, timeout=5)  # noqa: S603
+    else:
+        subprocess.run(  # noqa: S603
+            ["xclip", "-selection", "clipboard"],
+            input=text.encode(), check=False, timeout=5,
+        )
+
+
+def _clipboard_read() -> str:
+    """Read text from the system clipboard."""
+    if sys.platform == "win32":
+        r = subprocess.run(  # noqa: S603
+            ["powershell", "-NoProfile", "-NonInteractive",
+             "-WindowStyle", "Hidden", "-Command", "Get-Clipboard"],
+            capture_output=True, text=True,
+            creationflags=0x08000000, timeout=5, check=False,
+        )
+        return r.stdout.rstrip("\n")
+    elif sys.platform == "darwin":
+        r = subprocess.run(["pbpaste"], capture_output=True, timeout=5, check=False)  # noqa: S603
+        return r.stdout.decode("utf-8", errors="replace")
+    else:
+        r = subprocess.run(  # noqa: S603
+            ["xclip", "-selection", "clipboard", "-o"],
+            capture_output=True, timeout=5, check=False,
+        )
+        return r.stdout.decode("utf-8", errors="replace")
+
+
 def action_notify(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p       = node.get("properties", {})
     title   = _to_str(inputs.get("title")   or p.get("title",   "Aethvion"))

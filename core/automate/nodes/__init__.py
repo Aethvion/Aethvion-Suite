@@ -47,27 +47,39 @@ _REGISTRY: dict[str, Callable] = {
     "transform.combine":  data.transform_combine,
 
     # Actions ──────────────────────────────────────────────────────────────────
-    "action.file_read":   actions.action_file_read,
-    "action.file_write":  actions.action_file_write,
-    "action.http":        actions.action_http,
-    "action.log":         actions.action_log,
-    "action.notify":      actions.action_notify,
-    "action.run_script":  actions.action_run_script,
+    "action.clipboard":  actions.action_clipboard,
+    "action.file_read":  actions.action_file_read,
+    "action.file_write": actions.action_file_write,
+    "action.http":       actions.action_http,
+    "action.log":        actions.action_log,
+    "action.notify":     actions.action_notify,
+    "action.run_script": actions.action_run_script,
 
     # AI ───────────────────────────────────────────────────────────────────────
-    "ai.any":    ai.ai_model,
-    "ai.google": ai.ai_model,
+    "ai.any":          ai.ai_model,
+    "ai.classify":     ai.ai_classify,
+    "ai.extract_data": ai.ai_extract_data,
+    "ai.google":       ai.ai_model,
+    "ai.summarize":    ai.ai_summarize,
 
     # Memory ───────────────────────────────────────────────────────────────────
     "memory.retrieve": memory.memory_retrieve,
     "memory.store":    memory.memory_store,
 
     # Inputs ───────────────────────────────────────────────────────────────────
+    "input.file":   inputs_outputs.input_file,
+    "input.list":   inputs_outputs.input_list,
     "input.number": inputs_outputs.input_number,
     "input.text":   inputs_outputs.input_text,
 
     # Outputs ──────────────────────────────────────────────────────────────────
-    "output.display": inputs_outputs.output_display,
+    "output.clipboard": inputs_outputs.output_clipboard,
+    "output.display":   inputs_outputs.output_display,
+    "output.file":      inputs_outputs.output_file,
+
+    # Data (Sprint 3) ──────────────────────────────────────────────────────────
+    "data.list_item":     data.data_list_item,
+    "data.merge_objects": data.data_merge_objects,
 
 }
 
