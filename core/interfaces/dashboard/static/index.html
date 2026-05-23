@@ -64,6 +64,7 @@
     <link rel="stylesheet" href="/static/css/research-board.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/explained.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/aethviondb.css?v=__VNUM__">
+    <link rel="stylesheet" href="/static/css/automate.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/worldsim.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/audio-models.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/mode-3d-gen.css?v=__VNUM__">
@@ -392,6 +393,10 @@
                                 onclick="setDashboardMode('ai', true, 'aethviondb');">
                             <i class="fas fa-circle-nodes"></i><span>AethvionDB</span>
                         </button>
+                        <button class="hdr-nav-btn" data-nav="automate"
+                                onclick="setDashboardMode('ai', true, 'automate');">
+                            <i class="fas fa-bolt"></i><span>Automate</span>
+                        </button>
                     </nav>
                 </div>
                 <div class="header-right">
@@ -512,6 +517,11 @@
 
                 <!-- AethvionDB Tab -->
                 <div class="main-tab-panel" id="aethviondb-panel" data-partial="aethviondb">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Automate Tab -->
+                <div class="main-tab-panel" id="automate-panel" data-partial="automate">
                     <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
                 </div>
 

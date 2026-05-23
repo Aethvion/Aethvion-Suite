@@ -28,6 +28,7 @@
         'researchboard':    ['/static/js/mode-research-board.js'],
         'explained':        ['/static/js/mode-explained.js'],
         'aethviondb':       ['/static/js/mode-aethviondb.js'],
+        'automate':         ['/static/js/mode-automate.js'],
         'worldsim':         [],
         'misaka-cipher':    ['/static/js/mode-misakacipher.js'],
         'axiom':            ['/static/js/mode-axiom.js'],

@@ -1,0 +1,138 @@
+<div id="at-root" class="at-root">
+
+    <!-- ══ Toolbar ═══════════════════════════════════════════════════════ -->
+    <div class="at-toolbar">
+        <div class="at-toolbar-left">
+            <div class="at-brand">
+                <i class="fas fa-bolt"></i>
+                <span>Automate</span>
+            </div>
+            <div class="at-wf-name-wrap">
+                <span class="at-wf-label" id="at-wf-label">No workflow selected</span>
+                <button class="at-wf-rename-btn" id="at-wf-rename-btn" title="Rename workflow" style="display:none">
+                    <i class="fas fa-pen"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="at-toolbar-center">
+            <button class="at-btn at-btn-ghost" id="at-btn-new" title="New Workflow">
+                <i class="fas fa-plus"></i><span>New</span>
+            </button>
+            <button class="at-btn at-btn-ghost" id="at-btn-save" title="Save  (Ctrl+S)" disabled>
+                <i class="fas fa-floppy-disk"></i><span>Save</span>
+            </button>
+            <div class="at-toolbar-sep"></div>
+            <button class="at-btn at-btn-ghost at-btn-danger" id="at-btn-delete" title="Delete workflow" disabled>
+                <i class="fas fa-trash"></i><span>Delete</span>
+            </button>
+            <div class="at-toolbar-sep"></div>
+            <button class="at-btn at-btn-run" id="at-btn-run" title="Run workflow" disabled>
+                <i class="fas fa-play"></i><span>Run</span>
+            </button>
+        </div>
+
+        <div class="at-toolbar-right">
+            <button class="at-btn at-btn-ghost at-btn-icon" id="at-btn-fit" title="Fit to screen">
+                <i class="fas fa-maximize"></i>
+            </button>
+            <button class="at-btn at-btn-ghost at-btn-icon" id="at-btn-zoom-out" title="Zoom out">
+                <i class="fas fa-magnifying-glass-minus"></i>
+            </button>
+            <span class="at-zoom-label" id="at-zoom-label">100%</span>
+            <button class="at-btn at-btn-ghost at-btn-icon" id="at-btn-zoom-in" title="Zoom in">
+                <i class="fas fa-magnifying-glass-plus"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- ══ Body ══════════════════════════════════════════════════════════ -->
+    <div class="at-body">
+
+        <!-- Workflow list sidebar (left) -->
+        <div class="at-sidebar">
+            <div class="at-sidebar-hdr">
+                <span>Workflows</span>
+                <button class="at-sidebar-add" id="at-sidebar-add" title="New workflow">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div class="at-wf-list" id="at-wf-list">
+                <div class="at-wf-empty" id="at-wf-empty">
+                    <i class="fas fa-bolt"></i>
+                    <span>No workflows yet</span>
+                    <button class="at-btn at-btn-ghost at-btn-sm" id="at-wf-create-first">
+                        <i class="fas fa-plus"></i> Create one
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas -->
+        <div class="at-canvas-wrap" id="at-canvas">
+
+            <!-- Empty state (shown when no workflow open) -->
+            <div class="at-canvas-empty" id="at-canvas-empty">
+                <i class="fas fa-bolt"></i>
+                <h3>No workflow open</h3>
+                <p>Create a new workflow or select one from the sidebar to start building.</p>
+                <button class="at-btn at-btn-accent" id="at-canvas-new-btn">
+                    <i class="fas fa-plus"></i> Create Workflow
+                </button>
+            </div>
+
+            <!-- Canvas inner — nodes + SVG live here, transform applied for pan/zoom -->
+            <div class="at-canvas-inner" id="at-canvas-inner" style="display:none">
+                <!-- Node elements inserted by JS -->
+                <svg class="at-svg" id="at-svg" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <marker id="at-arrow" markerWidth="7" markerHeight="5"
+                                refX="5" refY="2.5" orient="auto">
+                            <polygon points="0 0, 7 2.5, 0 5" fill="rgba(100,116,139,0.7)"/>
+                        </marker>
+                        <marker id="at-arrow-sel" markerWidth="7" markerHeight="5"
+                                refX="5" refY="2.5" orient="auto">
+                            <polygon points="0 0, 7 2.5, 0 5" fill="#22d3ee"/>
+                        </marker>
+                    </defs>
+                    <!-- Connection paths inserted by JS -->
+                </svg>
+            </div>
+
+            <!-- Pan hint -->
+            <div class="at-canvas-hint" id="at-canvas-hint">
+                Middle-click or <kbd>Alt</kbd>+drag to pan &nbsp;·&nbsp; Scroll to zoom
+            </div>
+        </div>
+
+        <!-- Node palette sidebar (right) -->
+        <div class="at-palette">
+            <div class="at-palette-hdr">
+                <span>Nodes</span>
+                <input type="text" class="at-palette-search" id="at-palette-search" placeholder="Search nodes…">
+            </div>
+            <div class="at-palette-list" id="at-palette-list">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Properties panel — slides up from bottom when a node is selected -->
+    <div class="at-props-panel" id="at-props-panel">
+        <div class="at-props-hdr">
+            <div class="at-props-icon" id="at-props-icon">
+                <i class="fas fa-cube"></i>
+            </div>
+            <span class="at-props-title" id="at-props-title">Node Properties</span>
+            <button class="at-props-close" id="at-props-close" title="Close properties">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+        <div class="at-props-body" id="at-props-body"></div>
+    </div>
+
+    <!-- Toast -->
+    <div class="at-toast" id="at-toast" style="display:none"></div>
+
+</div>

@@ -66,6 +66,7 @@ async def register_all_routers(app: FastAPI):
         from core.companions.companion_creator_routes import router as companion_creator_router
         from core.aethviondb.aethviondb_routes import router as aethviondb_router
         from core.aethviondb.api_v1.router import router as aethviondb_v1_router
+        from core.automate.automate_routes import router as automate_router
         
         app.include_router(system_router)
         app.include_router(preferences_router)
@@ -101,6 +102,7 @@ async def register_all_routers(app: FastAPI):
         app.include_router(companion_creator_router)
         app.include_router(aethviondb_router)
         app.include_router(aethviondb_v1_router)
+        app.include_router(automate_router)
         
         logger.debug("All routers included successfully.")
     except Exception as e:
