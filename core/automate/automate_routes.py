@@ -88,11 +88,10 @@ _NODE_TYPES: list[dict] = [
         "outputs": [{"name": "out", "label": "Trigger"}],
         "properties": [
             {
-                "key": "cron",
-                "label": "Cron Expression",
-                "type": "text",
-                "default": "0 * * * *",
-                "placeholder": "0 * * * * (every hour)",
+                "key": "schedules",
+                "label": "Schedules",
+                "type": "schedule_list",
+                "default": [],
             },
         ],
     },

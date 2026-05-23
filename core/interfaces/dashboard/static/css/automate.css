@@ -998,6 +998,195 @@
 .at-prop-test-input-wrap { flex: 1; min-width: 0; }
 .at-prop-test-input { width: 100%; box-sizing: border-box; }
 
+/* ── Schedule node card (compact view) ──────────────────────────────────── */
+
+.at-node-schedules {
+    padding: 0.4rem 0.65rem 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 0.22rem;
+}
+
+.at-node-sched-none {
+    font-size: 0.67rem;
+    color: var(--text-muted, #64748b);
+    font-style: italic;
+}
+
+.at-node-sched-item {
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--text-secondary, #94a3b8);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+
+.at-node-sched-item i {
+    font-size: 0.6rem;
+    flex-shrink: 0;
+    color: rgba(100, 116, 139, 0.5);
+}
+
+.at-node-sched-item.at-sched-on i { color: #22d3ee; }
+
+.at-node-sched-item.at-sched-off {
+    opacity: 0.38;
+    text-decoration: line-through;
+}
+
+/* ── Schedule editor (properties panel) ─────────────────────────────────── */
+
+.at-sched-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.at-sched-form {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    padding: 0.75rem 0.75rem 0.65rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.38rem;
+}
+
+.at-sched-form-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-muted, #64748b);
+    text-transform: uppercase;
+    margin-bottom: 0.1rem;
+}
+
+.at-sched-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.at-sched-row .at-prop-input { flex: 1; min-width: 0; }
+
+.at-sched-param-wrap { display: none; }
+.at-sched-param-wrap .at-prop-input { width: 100%; box-sizing: border-box; }
+
+.at-sched-add-btn {
+    align-self: flex-end;
+    margin-top: 0.15rem;
+}
+
+/* ── Schedule entry list ─────────────────────────────────────────────────── */
+
+.at-sched-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.at-sched-list-hdr {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-muted, #64748b);
+    text-transform: uppercase;
+    padding: 0.1rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 0.1rem;
+}
+
+.at-sched-empty {
+    font-size: 0.75rem;
+    color: var(--text-muted, #64748b);
+    text-align: center;
+    padding: 0.6rem 0;
+    font-style: italic;
+}
+
+.at-sched-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 7px;
+    transition: opacity 0.18s;
+}
+
+.at-sched-entry-off { opacity: 0.42; }
+
+.at-sched-entry-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.at-sched-entry-rule {
+    font-size: 0.73rem;
+    font-weight: 500;
+    color: var(--text-primary, #e2e8f0);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.at-sched-entry-rule i {
+    font-size: 0.65rem;
+    color: #22d3ee;
+    flex-shrink: 0;
+}
+
+.at-sched-entry-when {
+    font-size: 0.67rem;
+    color: var(--text-muted, #64748b);
+    margin-top: 0.07rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.at-sched-entry-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+
+.at-sched-toggle {
+    /* scale down the shared toggle-pill slightly */
+    transform: scale(0.82);
+    transform-origin: center;
+    flex-shrink: 0;
+}
+
+.at-sched-del-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted, #64748b);
+    cursor: pointer;
+    padding: 0.2rem 0.28rem;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s, background 0.15s;
+}
+
+.at-sched-del-btn:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
 /* ── Scrollbars ─────────────────────────────────────────────────────────── */
 
 .at-wf-list::-webkit-scrollbar,

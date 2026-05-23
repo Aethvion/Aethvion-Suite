@@ -23,6 +23,26 @@
     const NODE_H_EST   = 90;     // estimated height for fit-to-screen
     const BEZIER_MIN_CP = 70;    // minimum bezier control-point offset
 
+    const SCHEDULE_RULES = [
+        { value: 'once',             label: 'Once (at date/time)',      hasParam: false },
+        { value: 'every_minute',     label: 'Every minute',             hasParam: false },
+        { value: 'every_x_minutes',  label: 'Every X minutes',          hasParam: true,  paramLabel: 'Minutes' },
+        { value: 'every_hour',       label: 'Every hour',               hasParam: false },
+        { value: 'every_x_hours',    label: 'Every X hours',            hasParam: true,  paramLabel: 'Hours' },
+        { value: 'every_day',        label: 'Every day',                hasParam: false },
+        { value: 'every_x_days',     label: 'Every X days',             hasParam: true,  paramLabel: 'Days' },
+        { value: 'every_week',       label: 'Every week (same day)',     hasParam: false },
+        { value: 'every_monday',     label: 'Every Monday',             hasParam: false },
+        { value: 'every_tuesday',    label: 'Every Tuesday',            hasParam: false },
+        { value: 'every_wednesday',  label: 'Every Wednesday',          hasParam: false },
+        { value: 'every_thursday',   label: 'Every Thursday',           hasParam: false },
+        { value: 'every_friday',     label: 'Every Friday',             hasParam: false },
+        { value: 'every_saturday',   label: 'Every Saturday',           hasParam: false },
+        { value: 'every_sunday',     label: 'Every Sunday',             hasParam: false },
+        { value: 'every_weekday',    label: 'Every weekday (Mon–Fri)',   hasParam: false },
+        { value: 'every_weekend',    label: 'Every weekend (Sat–Sun)',   hasParam: false },
+    ];
+
     // ── State ────────────────────────────────────────────────────────────────
     let _nodeTypes      = [];   // [{ type, label, category, icon, color, inputs, outputs, properties }]
     let _availModels    = [];   // [{ id, provider_id, provider_name, label, description }]
@@ -497,8 +517,9 @@
             );
         }).join('');
 
-        const isAI      = nd.type.startsWith('ai.');
-        const isDisplay = nd.type === 'output.display';
+        const isAI       = nd.type.startsWith('ai.');
+        const isDisplay  = nd.type === 'output.display';
+        const isSchedule = nd.type === 'trigger.schedule';
         const showResult = (isAI && nd.properties['show_result'] !== false) || isDisplay;
 
         // AI extra bar: model badge + test button
@@ -524,6 +545,9 @@
               '</div>'
             : '';
 
+        // Compact schedule list — shown on the node card for schedule nodes
+        const schedHtml = isSchedule ? _buildScheduleCardHtml(nd) : '';
+
         el.innerHTML =
             '<div class="at-node-hdr">' +
             '  <div class="at-node-icon" style="background:' + colorBg + ';color:' + color + '">' +
@@ -538,6 +562,7 @@
             '  <div class="at-node-inputs">'  + inputsHtml  + '</div>' +
             '  <div class="at-node-outputs">' + outputsHtml + '</div>' +
             '</div>' +
+            schedHtml +
             aiBarHtml +
             resultHtml;
 
@@ -840,6 +865,15 @@
                 field.innerHTML = '<span class="at-prop-label">' + _esc(prop.label) + '</span>';
                 field.appendChild(wrapper);
                 _e.propsBody.appendChild(field);
+                return; // handled fully above
+
+            } else if (prop.type === 'schedule_list') {
+                // Rich schedule editor — build and append, then return early
+                const lbl = document.createElement('span');
+                lbl.className = 'at-prop-label';
+                lbl.textContent = prop.label;
+                _e.propsBody.appendChild(lbl);
+                _e.propsBody.appendChild(_buildSchedEditor(nd));
                 return; // handled fully above
 
             } else if (prop.type === 'select') {
@@ -1165,6 +1199,258 @@
     function _isAutomate() {
         var p = document.getElementById('automate-panel');
         return p && p.offsetParent !== null;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Schedule node helpers
+    // ════════════════════════════════════════════════════════════════════════
+
+    function _todayStr() {
+        var d = new Date();
+        return d.getFullYear() + '-' +
+               String(d.getMonth() + 1).padStart(2, '0') + '-' +
+               String(d.getDate()).padStart(2, '0');
+    }
+
+    function _ruleLabel(rule, param) {
+        var r = SCHEDULE_RULES.find(function (x) { return x.value === rule; });
+        if (!r) return rule || 'Once';
+        if (r.hasParam && param) return r.label.replace('X', String(param));
+        return r.label;
+    }
+
+    function _scheduleWhenStr(entry) {
+        var parts = [];
+        if (entry.date) parts.push(entry.date);
+        if (entry.time) parts.push(entry.time);
+        return parts.join(' ') || '—';
+    }
+
+    /** Build the compact schedule card HTML for the node card. */
+    function _buildScheduleCardHtml(nd) {
+        var schedules = nd.properties['schedules'] || [];
+        if (schedules.length === 0) {
+            return '<div class="at-node-schedules">' +
+                   '<span class="at-node-sched-none">No schedules — open properties to add</span>' +
+                   '</div>';
+        }
+        var items = schedules.map(function (s) {
+            var onCls = s.enabled !== false ? 'at-sched-on' : 'at-sched-off';
+            return '<div class="at-node-sched-item ' + onCls + '">' +
+                   '<i class="fas fa-circle-dot"></i>' +
+                   _esc(_ruleLabel(s.rule, s.param)) +
+                   (s.time ? ' · ' + _esc(s.time) : '') +
+                   '</div>';
+        }).join('');
+        return '<div class="at-node-schedules">' + items + '</div>';
+    }
+
+    /** Re-render just the compact .at-node-schedules section on the node card. */
+    function _updateScheduleCard(nodeId) {
+        var nd = _active && _active.nodes.find(function (n) { return n.id === nodeId; });
+        if (!nd) return;
+        var nodeEl = _e.canvasInner.querySelector('[data-node-id="' + nodeId + '"].at-node');
+        if (!nodeEl) return;
+        var oldEl = nodeEl.querySelector('.at-node-schedules');
+        if (!oldEl) return;
+        var tmp = document.createElement('div');
+        tmp.innerHTML = _buildScheduleCardHtml(nd);
+        var newEl = tmp.firstElementChild;
+        if (newEl) oldEl.parentNode.replaceChild(newEl, oldEl);
+    }
+
+    /** Rebuild the entry list inside the props panel schedule editor. */
+    function _renderSchedList(nd, listEl) {
+        var schedules = nd.properties['schedules'] || [];
+        listEl.innerHTML = '';
+
+        if (schedules.length === 0) {
+            listEl.innerHTML = '<div class="at-sched-empty">No schedules yet — use the form above to add one.</div>';
+            return;
+        }
+
+        schedules.forEach(function (s) {
+            var item = document.createElement('div');
+            item.className = 'at-sched-entry' + (s.enabled !== false ? '' : ' at-sched-entry-off');
+
+            // Info block
+            var info = document.createElement('div');
+            info.className = 'at-sched-entry-info';
+
+            var ruleSpan = document.createElement('div');
+            ruleSpan.className = 'at-sched-entry-rule';
+            ruleSpan.innerHTML = '<i class="fas fa-calendar-clock"></i>' + _esc(_ruleLabel(s.rule, s.param));
+
+            var whenSpan = document.createElement('div');
+            whenSpan.className = 'at-sched-entry-when';
+            whenSpan.textContent = _scheduleWhenStr(s);
+
+            info.appendChild(ruleSpan);
+            info.appendChild(whenSpan);
+
+            // Actions block
+            var actions = document.createElement('div');
+            actions.className = 'at-sched-entry-actions';
+
+            // Toggle pill
+            var toggleLabel = document.createElement('label');
+            toggleLabel.className = 'at-prop-toggle at-sched-toggle';
+            var toggleCheck = document.createElement('input');
+            toggleCheck.type    = 'checkbox';
+            toggleCheck.checked = s.enabled !== false;
+            (function (entry, itemEl) {
+                toggleCheck.addEventListener('change', function () {
+                    entry.enabled = toggleCheck.checked;
+                    itemEl.classList.toggle('at-sched-entry-off', !entry.enabled);
+                    _markDirty();
+                    _updateScheduleCard(nd.id);
+                });
+            })(s, item);
+            var pill = document.createElement('span');
+            pill.className = 'at-prop-toggle-pill';
+            toggleLabel.appendChild(toggleCheck);
+            toggleLabel.appendChild(pill);
+
+            // Delete button
+            var delBtn = document.createElement('button');
+            delBtn.className = 'at-sched-del-btn';
+            delBtn.title = 'Remove this schedule';
+            delBtn.innerHTML = '<i class="fas fa-xmark"></i>';
+            (function (entryId, lEl) {
+                delBtn.addEventListener('click', function () {
+                    nd.properties['schedules'] = (nd.properties['schedules'] || []).filter(
+                        function (x) { return x.id !== entryId; }
+                    );
+                    _markDirty();
+                    _renderSchedList(nd, lEl);
+                    _updateScheduleCard(nd.id);
+                });
+            })(s.id, listEl);
+
+            actions.appendChild(toggleLabel);
+            actions.appendChild(delBtn);
+
+            item.appendChild(info);
+            item.appendChild(actions);
+            listEl.appendChild(item);
+        });
+    }
+
+    /** Build the full schedule editor widget used inside the props panel. */
+    function _buildSchedEditor(nd) {
+        var wrapper = document.createElement('div');
+        wrapper.className = 'at-sched-editor';
+
+        // ── Add form ────────────────────────────────────────────────────────
+        var form = document.createElement('div');
+        form.className = 'at-sched-form';
+
+        var formTitle = document.createElement('div');
+        formTitle.className = 'at-sched-form-title';
+        formTitle.textContent = 'Add Schedule Entry';
+        form.appendChild(formTitle);
+
+        // Date row
+        var dateLabel = document.createElement('span');
+        dateLabel.className = 'at-prop-label';
+        dateLabel.textContent = 'Date';
+        var dateInput = document.createElement('input');
+        dateInput.type      = 'date';
+        dateInput.className = 'at-prop-input';
+        dateInput.value     = _todayStr();
+        form.appendChild(dateLabel);
+        form.appendChild(dateInput);
+
+        // Time row
+        var timeLabel = document.createElement('span');
+        timeLabel.className = 'at-prop-label';
+        timeLabel.textContent = 'Time';
+        var timeInput = document.createElement('input');
+        timeInput.type      = 'time';
+        timeInput.className = 'at-prop-input';
+        timeInput.value     = '09:00';
+        form.appendChild(timeLabel);
+        form.appendChild(timeInput);
+
+        // Recurrence rule
+        var ruleLabel = document.createElement('span');
+        ruleLabel.className = 'at-prop-label';
+        ruleLabel.textContent = 'Recurrence';
+        var ruleSelect = document.createElement('select');
+        ruleSelect.className = 'at-prop-select';
+        SCHEDULE_RULES.forEach(function (r) {
+            var o = document.createElement('option');
+            o.value       = r.value;
+            o.textContent = r.label;
+            ruleSelect.appendChild(o);
+        });
+        form.appendChild(ruleLabel);
+        form.appendChild(ruleSelect);
+
+        // Param input (shown when rule.hasParam === true)
+        var paramWrap = document.createElement('div');
+        paramWrap.className = 'at-sched-param-wrap';
+        var paramLabel = document.createElement('span');
+        paramLabel.className = 'at-prop-label';
+        paramLabel.textContent = 'Amount';
+        var paramInput = document.createElement('input');
+        paramInput.type        = 'number';
+        paramInput.className   = 'at-prop-input';
+        paramInput.placeholder = 'Amount';
+        paramInput.min         = '1';
+        paramInput.value       = '2';
+        paramWrap.appendChild(paramLabel);
+        paramWrap.appendChild(paramInput);
+        form.appendChild(paramWrap);
+
+        // Show/hide param input when rule changes
+        function _syncParamVisibility() {
+            var r = SCHEDULE_RULES.find(function (x) { return x.value === ruleSelect.value; });
+            paramWrap.style.display = (r && r.hasParam) ? '' : 'none';
+            if (r && r.paramLabel) {
+                paramLabel.textContent   = r.paramLabel;
+                paramInput.placeholder   = r.paramLabel;
+            }
+        }
+        ruleSelect.addEventListener('change', _syncParamVisibility);
+        _syncParamVisibility();
+
+        // Add button
+        var addBtn = document.createElement('button');
+        addBtn.className = 'at-btn at-btn-accent at-btn-sm at-sched-add-btn';
+        addBtn.innerHTML = '<i class="fas fa-plus"></i> Add Entry';
+        form.appendChild(addBtn);
+        wrapper.appendChild(form);
+
+        // ── Entry list ──────────────────────────────────────────────────────
+        var listHdr = document.createElement('div');
+        listHdr.className = 'at-sched-list-hdr';
+        listHdr.textContent = 'Scheduled Entries';
+        wrapper.appendChild(listHdr);
+
+        var listEl = document.createElement('div');
+        listEl.className = 'at-sched-list';
+        _renderSchedList(nd, listEl);
+        wrapper.appendChild(listEl);
+
+        // Wire add button
+        addBtn.addEventListener('click', function () {
+            var ruleObj = SCHEDULE_RULES.find(function (r) { return r.value === ruleSelect.value; });
+            if (!nd.properties['schedules']) nd.properties['schedules'] = [];
+            nd.properties['schedules'].push({
+                id:      's_' + Date.now() + '_' + (Math.random() * 9999 | 0),
+                enabled: true,
+                date:    dateInput.value  || _todayStr(),
+                time:    timeInput.value  || '09:00',
+                rule:    ruleSelect.value || 'once',
+                param:   (ruleObj && ruleObj.hasParam) ? (paramInput.value || '2') : '',
+            });
+            _markDirty();
+            _renderSchedList(nd, listEl);
+            _updateScheduleCard(nd.id);
+        });
+
+        return wrapper;
     }
 
     // ════════════════════════════════════════════════════════════════════════
