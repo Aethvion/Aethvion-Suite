@@ -1091,7 +1091,11 @@ function goToAIHub() {
     const _isOnCompanion = currentMainTab.startsWith('custom-companion-');
     if (dashboardMode === 'ai' && !_noSidebar.has(currentMainTab) && !_isOnCompanion) return;
     // Navigate to the last sidebar tab the user visited, or fall back to 'agents'.
-    const target = localStorage.getItem('_last_ai_hub_tab') || 'agents';
+    let target = localStorage.getItem('_last_ai_hub_tab') || 'agents';
+    // Validate target is sidebar-capable; fallback to 'agents' if it is a sidebar-less tab
+    if (_noSidebar.has(target) || target.startsWith('custom-companion-')) {
+        target = 'agents';
+    }
     // Pass target directly so setDashboardMode doesn't restore a different saved tab.
     setDashboardMode('ai', true, target);
 }
