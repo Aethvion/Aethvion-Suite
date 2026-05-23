@@ -771,6 +771,172 @@
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+/* ── Execution node states ──────────────────────────────────────────────── */
+
+.at-node.at-exec-running {
+    border-color: rgba(34, 211, 238, 0.7);
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.15), 0 4px 24px rgba(0,0,0,0.45);
+    animation: at-pulse 1s ease-in-out infinite;
+}
+@keyframes at-pulse {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(34,211,238,0.15), 0 4px 24px rgba(0,0,0,0.45); }
+    50%       { box-shadow: 0 0 0 4px rgba(34,211,238,0.28), 0 4px 24px rgba(0,0,0,0.45); }
+}
+.at-node.at-exec-done {
+    border-color: rgba(52, 211, 153, 0.6);
+    box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.12), 0 4px 24px rgba(0,0,0,0.45);
+}
+.at-node.at-exec-error {
+    border-color: rgba(248, 113, 113, 0.7);
+    box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.15), 0 4px 24px rgba(0,0,0,0.45);
+}
+/* Status badge inside header */
+.at-node-exec-badge {
+    font-size: 0.58rem;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+}
+.at-node-exec-badge.done  { background: rgba(52,211,153,0.18); color: #34d399; }
+.at-node-exec-badge.error { background: rgba(248,113,113,0.18); color: #f87171; }
+
+/* Error pill below ports */
+.at-node-error-bar {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.3rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.67rem;
+    color: #f87171;
+    background: rgba(248,113,113,0.07);
+    border-top: 1px solid rgba(248,113,113,0.15);
+    border-radius: 0 0 9px 9px;
+    line-height: 1.4;
+    word-break: break-word;
+}
+.at-node-error-bar i { flex-shrink: 0; margin-top: 2px; }
+
+/* ── Execution log panel ─────────────────────────────────────────────────── */
+
+.at-exec-panel {
+    position: absolute;
+    bottom: 0;
+    left: 220px;
+    right: 195px;
+    background: rgba(8, 10, 18, 0.98);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    border-left: 1px solid rgba(255,255,255,0.06);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px 12px 0 0;
+    transform: translateY(100%);
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 60;
+    height: 220px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -6px 32px rgba(0,0,0,0.55);
+}
+.at-exec-panel.at-open { transform: translateY(0); }
+
+.at-exec-panel-hdr {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.85rem;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    flex-shrink: 0;
+}
+.at-exec-panel-status {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary, #94a3b8);
+}
+.at-exec-panel-status i { font-size: 0.75rem; }
+.at-exec-panel-status.ok    i, .at-exec-panel-status.ok    span { color: #34d399; }
+.at-exec-panel-status.error i, .at-exec-panel-status.error span { color: #f87171; }
+
+.at-exec-panel-tabs {
+    display: flex;
+    gap: 0.2rem;
+    flex: 1;
+}
+.at-exec-tab {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748b);
+    padding: 0.2rem 0.55rem;
+    border-radius: 5px;
+    transition: color 0.13s, background 0.13s;
+}
+.at-exec-tab:hover   { color: var(--text-secondary, #94a3b8); background: rgba(255,255,255,0.05); }
+.at-exec-tab.active  { color: #e2e8f0; background: rgba(255,255,255,0.08); }
+
+.at-exec-panel-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted, #64748b); font-size: 0.8rem; padding: 3px 6px;
+    border-radius: 4px; transition: color 0.13s;
+}
+.at-exec-panel-close:hover { color: #e2e8f0; }
+
+.at-exec-tab-body {
+    flex: 1; min-height: 0; overflow: hidden;
+    display: flex; flex-direction: column;
+}
+
+/* Log view */
+.at-exec-log-view {
+    flex: 1; overflow-y: auto;
+    padding: 0.5rem 0.85rem;
+    display: flex; flex-direction: column; gap: 0.18rem;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.73rem; line-height: 1.5;
+}
+.at-exec-log-entry { display: flex; gap: 0.55rem; align-items: baseline; }
+.at-exec-log-ts    { color: rgba(255,255,255,0.22); flex-shrink: 0; font-size: 0.65rem; }
+.at-exec-log-msg   { color: var(--text-secondary, #94a3b8); word-break: break-word; }
+.at-exec-log-entry.error .at-exec-log-msg   { color: #f87171; }
+.at-exec-log-entry.warning .at-exec-log-msg { color: #fbbf24; }
+.at-exec-log-entry.info .at-exec-log-msg    { color: var(--text-secondary, #94a3b8); }
+
+/* Outputs view */
+.at-exec-out-view {
+    flex: 1; overflow-y: auto;
+    padding: 0.5rem 0.85rem;
+    display: flex; flex-direction: column; gap: 0.6rem;
+}
+.at-exec-out-card {
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 7px;
+    overflow: hidden;
+}
+.at-exec-out-card-hdr {
+    display: flex; align-items: center; gap: 0.4rem;
+    padding: 0.3rem 0.6rem;
+    background: rgba(255,255,255,0.04);
+    font-size: 0.7rem; font-weight: 600;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.at-exec-out-card-hdr .at-exec-badge-ok    { color: #34d399; }
+.at-exec-out-card-hdr .at-exec-badge-err   { color: #f87171; }
+.at-exec-out-card-body {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.73rem; font-family: monospace;
+    color: var(--text-secondary, #94a3b8);
+    white-space: pre-wrap; word-break: break-word;
+    max-height: 80px; overflow-y: auto;
+    line-height: 1.5;
+}
+
+.hidden { display: none !important; }
+
 /* ── Toggle (checkbox pill) ─────────────────────────────────────────────── */
 
 .at-prop-toggle {

@@ -180,15 +180,211 @@
         _updateToolbar();
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    //  Workflow execution
+    // ════════════════════════════════════════════════════════════════════════
+
     async function _apiRunWorkflow() {
         if (!_active) return;
+
+        // Auto-save before running so the backend has current node config
+        if (_dirty) {
+            try { await _apiSaveWorkflow(); } catch (_) {}
+        }
+
+        // Reset previous execution visuals
+        _clearExecState();
+        _closeProps();
+
+        // Animate run button
+        _e.btnRun.disabled = true;
+        _e.btnRun.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Running…</span>';
+
+        // Mark all nodes as "pending"
+        _active.nodes.forEach(function (nd) { _setNodeExecState(nd.id, 'pending'); });
+
         try {
             const r = await fetch('/api/automate/workflows/' + _active.id + '/run', { method: 'POST' });
-            const d = await r.json();
-            _toast(d.message || 'Workflow started.');
+            const data = await r.json();
+            _applyExecResults(data);
         } catch (e) {
-            _toast('Run failed: ' + e.message, true);
+            _toast('Execution failed: ' + e.message, true);
+        } finally {
+            _e.btnRun.disabled = false;
+            _e.btnRun.innerHTML = '<i class="fas fa-play"></i><span>Run</span>';
         }
+    }
+
+    function _clearExecState() {
+        if (!_e.canvasInner) return;
+        _e.canvasInner.querySelectorAll('.at-node').forEach(function (el) {
+            el.classList.remove('at-exec-running', 'at-exec-done', 'at-exec-error', 'at-exec-pending');
+            var badge = el.querySelector('.at-node-exec-badge');
+            if (badge) badge.remove();
+            var errBar = el.querySelector('.at-node-error-bar');
+            if (errBar) errBar.remove();
+        });
+    }
+
+    function _setNodeExecState(nodeId, state) {
+        var el = _e.canvasInner && _e.canvasInner.querySelector('[data-node-id="' + nodeId + '"].at-node');
+        if (!el) return;
+        el.classList.remove('at-exec-pending', 'at-exec-running', 'at-exec-done', 'at-exec-error');
+        el.classList.add('at-exec-' + state);
+    }
+
+    function _applyExecResults(data) {
+        var statuses = data.node_status  || {};
+        var outputs  = data.node_outputs || {};
+        var errors   = data.node_errors  || {};
+
+        // Apply per-node states + outputs
+        Object.keys(statuses).forEach(function (nodeId) {
+            var status = statuses[nodeId];
+            _setNodeExecState(nodeId, status);
+
+            var el = _e.canvasInner && _e.canvasInner.querySelector('[data-node-id="' + nodeId + '"].at-node');
+            if (!el) return;
+
+            // Remove old badge / error bar
+            var old = el.querySelector('.at-node-exec-badge');
+            if (old) old.remove();
+            var oldErr = el.querySelector('.at-node-error-bar');
+            if (oldErr) oldErr.remove();
+
+            // Insert status badge in header
+            var hdr = el.querySelector('.at-node-hdr');
+            if (hdr) {
+                var badge = document.createElement('span');
+                badge.className = 'at-node-exec-badge ' + status;
+                badge.textContent = status === 'done' ? '✓' : '✗';
+                badge.title = status;
+                // Insert before delete button
+                var del = hdr.querySelector('[data-del-node]');
+                if (del) hdr.insertBefore(badge, del);
+                else hdr.appendChild(badge);
+            }
+
+            // Show error bar
+            if (status === 'error' && errors[nodeId]) {
+                var errBar = document.createElement('div');
+                errBar.className = 'at-node-error-bar';
+                errBar.innerHTML = '<i class="fas fa-triangle-exclamation"></i>' +
+                    '<span>' + _esc(errors[nodeId]) + '</span>';
+                el.appendChild(errBar);
+            }
+
+            // Show output on AI / display nodes
+            var nd = _active && _active.nodes.find(function (n) { return n.id === nodeId; });
+            if (!nd) return;
+            var outs = outputs[nodeId] || {};
+
+            if (nd.type.startsWith('ai.') && outs.out) {
+                _updateAINodeResult(nodeId, _to_str(outs.out), true);
+            }
+            if (nd.type === 'output.display') {
+                var val = outs._display !== undefined ? outs._display : outs.out;
+                _showDisplayOutput(nodeId, val);
+            }
+        });
+
+        // Render execution log panel
+        _renderExecPanel(data);
+    }
+
+    function _to_str(val) {
+        if (val === null || val === undefined) return '';
+        if (typeof val === 'string') return val;
+        if (typeof val === 'object') return JSON.stringify(val, null, 2);
+        return String(val);
+    }
+
+    function _showDisplayOutput(nodeId, val) {
+        // Display nodes reuse the result panel mechanism
+        var wrap = _e.canvasInner && _e.canvasInner.querySelector('[data-node-result="' + nodeId + '"]');
+        var body = wrap && wrap.querySelector('[data-node-result-body="' + nodeId + '"]');
+        if (!wrap || !body) return;
+        body.textContent = _to_str(val);
+        wrap.style.display = '';
+    }
+
+    // ── Execution log panel ───────────────────────────────────────────────────
+
+    function _renderExecPanel(data) {
+        var panel    = document.getElementById('at-exec-panel');
+        var logView  = document.getElementById('at-exec-log-view');
+        var outView  = document.getElementById('at-exec-out-view');
+        var statusEl = document.getElementById('at-exec-panel-status');
+        var textEl   = document.getElementById('at-exec-status-text');
+        if (!panel) return;
+
+        // Status header
+        var ok = data.ok !== false;
+        var errCount  = Object.keys(data.node_errors  || {}).length;
+        var doneCount = Object.values(data.node_status || {}).filter(function (s) { return s === 'done'; }).length;
+        statusEl.className = 'at-exec-panel-status ' + (ok ? 'ok' : 'error');
+        statusEl.querySelector('i').className = ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark';
+        textEl.textContent = ok
+            ? doneCount + ' node' + (doneCount !== 1 ? 's' : '') + ' completed'
+            : doneCount + ' done, ' + errCount + ' error' + (errCount !== 1 ? 's' : '');
+
+        // Log tab
+        var log = data.log || [];
+        logView.innerHTML = '';
+        log.forEach(function (entry) {
+            var row = document.createElement('div');
+            row.className = 'at-exec-log-entry ' + (entry.level || 'info');
+            row.innerHTML =
+                '<span class="at-exec-log-ts">' + _esc(entry.ts || '') + '</span>' +
+                '<span class="at-exec-log-msg">' + _esc(entry.msg || '') + '</span>';
+            logView.appendChild(row);
+        });
+        // Scroll to bottom
+        logView.scrollTop = logView.scrollHeight;
+
+        // Outputs tab
+        outView.innerHTML = '';
+        var outputs = data.node_outputs || {};
+        var statuses = data.node_status || {};
+        Object.keys(outputs).forEach(function (nodeId) {
+            var nd = _active && _active.nodes.find(function (n) { return n.id === nodeId; });
+            var label  = nd ? (nd.label || nd.type) : nodeId;
+            var status = statuses[nodeId] || 'done';
+            var outs   = outputs[nodeId] || {};
+            var hasOutput = Object.keys(outs).some(function (k) {
+                return !k.startsWith('_') && outs[k] !== null && outs[k] !== undefined && outs[k] !== '';
+            });
+            if (!hasOutput && status !== 'error') return;
+
+            var card = document.createElement('div');
+            card.className = 'at-exec-out-card';
+
+            var badgeCls = status === 'done' ? 'at-exec-badge-ok' : 'at-exec-badge-err';
+            var badgeIcon = status === 'done' ? 'fa-circle-check' : 'fa-circle-xmark';
+            card.innerHTML =
+                '<div class="at-exec-out-card-hdr">' +
+                '  <i class="fas ' + badgeIcon + ' ' + badgeCls + '"></i>' +
+                '  <span>' + _esc(label) + '</span>' +
+                '</div>';
+
+            // Show each output port's value
+            Object.keys(outs).forEach(function (port) {
+                if (port.startsWith('_')) return;
+                var val = outs[port];
+                if (val === null || val === undefined || val === '') return;
+                var body = document.createElement('div');
+                body.className = 'at-exec-out-card-body';
+                var prefix = Object.keys(outs).filter(function (k) { return !k.startsWith('_'); }).length > 1
+                    ? '[' + port + '] ' : '';
+                body.textContent = prefix + _to_str(val);
+                card.appendChild(body);
+            });
+
+            outView.appendChild(card);
+        });
+
+        // Open panel
+        panel.classList.add('at-open');
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -301,8 +497,9 @@
             );
         }).join('');
 
-        const isAI = nd.type.startsWith('ai.');
-        const showResult = isAI && nd.properties['show_result'] !== false;
+        const isAI      = nd.type.startsWith('ai.');
+        const isDisplay = nd.type === 'output.display';
+        const showResult = (isAI && nd.properties['show_result'] !== false) || isDisplay;
 
         // AI extra bar: model badge + test button
         const aiBarHtml = isAI
@@ -316,8 +513,8 @@
               '</div>'
             : '';
 
-        // Result panel — hidden until a test returns data
-        const resultHtml = isAI
+        // Result panel — hidden until test/execution returns data
+        const resultHtml = (isAI || isDisplay)
             ? '<div class="at-node-result" data-node-result="' + nd.id + '" style="display:none">' +
               '  <div class="at-node-result-hdr">' +
               '    <span><i class="fas fa-sparkles"></i> Result</span>' +
@@ -1105,6 +1302,27 @@
                 e.stopPropagation();
                 _testAINode(btn.dataset.propTestNode);
             }
+        });
+
+        // ── Execution log panel ────────────────────────────────────────────
+        var execClose = document.getElementById('at-exec-panel-close');
+        if (execClose) {
+            execClose.addEventListener('click', function () {
+                var p = document.getElementById('at-exec-panel');
+                if (p) p.classList.remove('at-open');
+            });
+        }
+        var execTabs = document.querySelectorAll('.at-exec-tab');
+        execTabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                execTabs.forEach(function (t) { t.classList.remove('active'); });
+                tab.classList.add('active');
+                var target = tab.dataset.execTab;
+                var logView = document.getElementById('at-exec-log-view');
+                var outView = document.getElementById('at-exec-out-view');
+                if (logView) logView.classList.toggle('hidden', target !== 'log');
+                if (outView) outView.classList.toggle('hidden', target !== 'outputs');
+            });
         });
 
         // ── Global mouse move + up ─────────────────────────────────────────

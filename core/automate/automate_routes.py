@@ -17,6 +17,8 @@ import uuid
 from pathlib import Path
 from typing import Any, Optional
 
+import asyncio
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -710,13 +712,13 @@ async def delete_workflow(wf_id: str):
 
 @router.post("/workflows/{wf_id}/run")
 async def run_workflow(wf_id: str):
-    """Trigger workflow execution (stub — execution engine coming in a future version)."""
+    """Execute a workflow and return the full result including per-node status and outputs."""
     p = _wf_path(wf_id)
     if not p.exists():
         raise HTTPException(404, "Workflow not found")
     wf = json.loads(p.read_text(encoding="utf-8"))
-    return {
-        "ok": True,
-        "message": f"Workflow '{wf['name']}' queued for execution. (Execution engine coming soon.)",
-        "workflow_id": wf_id,
-    }
+
+    from core.automate.executor import WorkflowExecutor  # noqa: PLC0415
+    executor = WorkflowExecutor(wf)
+    result   = await asyncio.to_thread(executor.execute)
+    return result

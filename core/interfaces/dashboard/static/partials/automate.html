@@ -118,6 +118,27 @@
 
     </div>
 
+    <!-- Execution log panel — slides up from bottom of canvas after a run -->
+    <div class="at-exec-panel" id="at-exec-panel">
+        <div class="at-exec-panel-hdr">
+            <div class="at-exec-panel-status" id="at-exec-panel-status">
+                <i class="fas fa-bolt"></i>
+                <span id="at-exec-status-text">Last run</span>
+            </div>
+            <div class="at-exec-panel-tabs">
+                <button class="at-exec-tab active" data-exec-tab="log">Log</button>
+                <button class="at-exec-tab" data-exec-tab="outputs">Outputs</button>
+            </div>
+            <button class="at-exec-panel-close" id="at-exec-panel-close">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+        <div class="at-exec-tab-body">
+            <div class="at-exec-log-view" id="at-exec-log-view"></div>
+            <div class="at-exec-out-view hidden" id="at-exec-out-view"></div>
+        </div>
+    </div>
+
     <!-- Properties panel — slides up from bottom when a node is selected -->
     <div class="at-props-panel" id="at-props-panel">
         <div class="at-props-hdr">
