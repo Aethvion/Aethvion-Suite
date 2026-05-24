@@ -1512,6 +1512,7 @@
             hasAny = true;
             var card = document.createElement('div');
             card.className = 'at-exec-out-card';
+            card.dataset.nodeId = nodeId;
 
             var badgeCls  = status === 'done' ? 'at-exec-badge-ok' : 'at-exec-badge-err';
             var badgeIcon = status === 'done' ? 'fa-circle-check' : 'fa-circle-xmark';
@@ -1519,6 +1520,7 @@
                 '<div class="at-exec-out-card-hdr">' +
                 '  <i class="fas ' + badgeIcon + ' ' + badgeCls + '"></i>' +
                 '  <span>' + _esc(label) + '</span>' +
+                '  <button class="at-exec-out-card-copy" title="Copy output"><i class="fas fa-copy"></i></button>' +
                 '</div>';
 
             var portKeys = Object.keys(outs).filter(function (k) { return !k.startsWith('_'); });
@@ -1536,6 +1538,35 @@
                     body.textContent = prefix + valStr;
                 }
                 card.appendChild(body);
+            });
+
+            // ── Copy button ───────────────────────────────────────────────
+            var copyBtn = card.querySelector('.at-exec-out-card-copy');
+            copyBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var parts = [];
+                card.querySelectorAll('.at-exec-out-card-body').forEach(function (b) {
+                    var t = b.textContent.trim();
+                    if (t) parts.push(t);
+                });
+                navigator.clipboard.writeText(parts.join('\n\n')).then(function () {
+                    copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+                    copyBtn.classList.add('at-copied');
+                    setTimeout(function () {
+                        copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+                        copyBtn.classList.remove('at-copied');
+                    }, 1500);
+                });
+            });
+
+            // ── Card hover → highlight canvas node ────────────────────────
+            card.addEventListener('mouseenter', function () {
+                var nodeEl = _e.canvasInner.querySelector('.at-node[data-node-id="' + nodeId + '"]');
+                if (nodeEl) nodeEl.classList.add('at-result-hover');
+            });
+            card.addEventListener('mouseleave', function () {
+                var nodeEl = _e.canvasInner.querySelector('.at-node[data-node-id="' + nodeId + '"]');
+                if (nodeEl) nodeEl.classList.remove('at-result-hover');
             });
 
             list.appendChild(card);
@@ -2222,6 +2253,27 @@
             e.preventDefault();
             _zoom(e.deltaY < 0 ? 1 : -1, e.clientX, e.clientY);
         }, { passive: false });
+
+        // ── Canvas node hover ↔ inspector result card linking ──────────────
+        _e.canvasInner.addEventListener('mouseover', function (e) {
+            if (_inspectorPage !== 'results') return;
+            var nodeEl = e.target.closest('.at-node');
+            if (!nodeEl) return;
+            var nid = nodeEl.dataset.nodeId;
+            _e.inspectorBody.querySelectorAll('.at-exec-out-card').forEach(function (c) {
+                c.classList.toggle('at-result-linked', c.dataset.nodeId === nid);
+            });
+        });
+        _e.canvasInner.addEventListener('mouseout', function (e) {
+            if (_inspectorPage !== 'results') return;
+            var nodeEl = e.target.closest('.at-node');
+            if (!nodeEl) return;
+            // Only clear when leaving the node element itself, not its children
+            if (nodeEl.contains(e.relatedTarget)) return;
+            _e.inspectorBody.querySelectorAll('.at-result-linked').forEach(function (c) {
+                c.classList.remove('at-result-linked');
+            });
+        });
 
         // ── Canvas-inner click delegation ──────────────────────────────────
         _e.canvasInner.addEventListener('click', function (e) {
