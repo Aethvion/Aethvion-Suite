@@ -2463,6 +2463,7 @@ class WorkflowUpdate(BaseModel):
     name: str | None = None
     nodes: list[dict[str, Any]] | None = None
     connections: list[dict[str, Any]] | None = None
+    viewport: dict[str, Any] | None = None
 
 
 class NodeTestRequest(BaseModel):
@@ -2642,6 +2643,8 @@ async def update_workflow(wf_id: str, body: WorkflowUpdate):
         wf["nodes"] = body.nodes
     if body.connections is not None:
         wf["connections"] = body.connections
+    if body.viewport is not None:
+        wf["viewport"] = body.viewport
     wf["updated"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     _atomic_write(p, wf)
     return {"workflow": wf}

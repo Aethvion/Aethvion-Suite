@@ -76,6 +76,7 @@
             btnSave:       _$('at-btn-save'),
             btnDelete:     _$('at-btn-delete'),
             btnRun:        _$('at-btn-run'),
+            btnResetView:  _$('at-btn-reset-view'),
             btnFit:        _$('at-btn-fit'),
             btnZoomIn:     _$('at-btn-zoom-in'),
             btnZoomOut:    _$('at-btn-zoom-out'),
@@ -224,6 +225,7 @@
                 name: _active.name,
                 nodes: _active.nodes,
                 connections: _active.connections,
+                viewport: { x: _view.x, y: _view.y, scale: _view.scale },
             }),
         });
         if (!r.ok) throw new Error('save-workflow ' + r.status);
@@ -701,8 +703,14 @@
             _active      = wf;
             _dirty       = false;
             _placeOffset = wf.nodes.length;
+            // Restore saved viewport, or default to origin
+            var vp = wf.viewport;
+            _view.x     = (vp && isFinite(vp.x))     ? vp.x     : 0;
+            _view.y     = (vp && isFinite(vp.y))     ? vp.y     : 0;
+            _view.scale = (vp && isFinite(vp.scale) && vp.scale > 0) ? vp.scale : 1;
             _showCanvas();
             _renderCanvas();
+            _applyTransform();
             _updateToolbar();
             _renderWfList();
             _showInspector();
@@ -2106,6 +2114,10 @@
         _e.btnSave  .addEventListener('click', _apiSaveWorkflow);
         _e.btnDelete.addEventListener('click', _apiDeleteWorkflow);
         _e.btnRun   .addEventListener('click', _apiRunWorkflow);
+        _e.btnResetView.addEventListener('click', function () {
+            _view.x = 0; _view.y = 0; _view.scale = 1;
+            _applyTransform();
+        });
         _e.btnFit   .addEventListener('click', _fitToScreen);
 
         _e.wfRenameBtn.addEventListener('click', _renameWorkflow);
