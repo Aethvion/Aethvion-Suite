@@ -6,8 +6,15 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor%20Us-30363D?logo=githubsponsors&logoColor=EA4AAA)](https://github.com/sponsors/Aethvion)
 
 [Documentation](https://github.com/Aethvion/Aethvion-Suite/tree/main/core/documentation) · [Quick Start Guide](https://github.com/Aethvion/Aethvion-Suite/blob/main/core/documentation/human/getting-started.md) · [Discussions](https://github.com/Aethvion/Aethvion-Suite/discussions)
+
+### ❤️ Sponsors
+
+Thank you to everyone supporting the development of Aethvion Suite!
+[Become a Sponsor](https://github.com/sponsors/Aethvion)
+*(No sponsors yet — be the first!)*
 
 </div>
 
