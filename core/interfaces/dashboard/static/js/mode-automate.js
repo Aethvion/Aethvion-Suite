@@ -171,6 +171,25 @@
         } catch (_) { return []; }
     }
 
+    async function _apiFetchAethvionDBs() {
+        try {
+            const r = await fetch('/api/automate/aethviondb/databases');
+            if (!r.ok) return ['default'];
+            const d = await r.json();
+            return (d.databases && d.databases.length) ? d.databases : ['default'];
+        } catch (_) { return ['default']; }
+    }
+
+    async function _apiFetchAethvionSnaps(dbName) {
+        if (!dbName) return [];
+        try {
+            const r = await fetch('/api/automate/aethviondb/snapshots?db=' + encodeURIComponent(dbName));
+            if (!r.ok) return [];
+            const d = await r.json();
+            return d.snapshots || [];
+        } catch (_) { return []; }
+    }
+
     async function _apiTestNode(node, inputData) {
         const r = await fetch('/api/automate/node/test', {
             method: 'POST',
@@ -1165,6 +1184,61 @@
                     }
                 });
 
+            } else if (prop.type === 'aethviondb_db') {
+                // Async-populated database selector
+                inputEl = document.createElement('select');
+                inputEl.className = 'at-prop-select at-prop-db-select';
+                inputEl.dataset.dbSelect = '1';
+                const dbLoading = document.createElement('option');
+                dbLoading.value = String(val || 'default');
+                dbLoading.textContent = 'Loading databases…';
+                inputEl.appendChild(dbLoading);
+
+                _apiFetchAethvionDBs().then(function (dbs) {
+                    inputEl.innerHTML = '';
+                    dbs.forEach(function (db) {
+                        const o = document.createElement('option');
+                        o.value = db;
+                        o.textContent = db;
+                        o.selected = (db === String(val || 'default'));
+                        inputEl.appendChild(o);
+                    });
+                    // Preserve current value even if not in registry
+                    if (val && !dbs.includes(String(val))) {
+                        const o = document.createElement('option');
+                        o.value = String(val);
+                        o.textContent = String(val) + ' (not in registry)';
+                        o.selected = true;
+                        inputEl.insertBefore(o, inputEl.firstChild);
+                    }
+                });
+
+            } else if (prop.type === 'aethviondb_snap') {
+                // Async-populated snapshot selector — depends on the database property
+                inputEl = document.createElement('select');
+                inputEl.className = 'at-prop-select at-prop-snap-select';
+                inputEl.dataset.snapSelect = '1';
+                inputEl.dataset.dbKey = prop.db_key || 'database';
+
+                const snapBlank = document.createElement('option');
+                snapBlank.value = '';
+                snapBlank.textContent = prop.placeholder || '(most recent)';
+                snapBlank.selected = !val;
+                inputEl.appendChild(snapBlank);
+
+                var snapDbVal = String(nd.properties[prop.db_key || 'database'] || 'default');
+                _apiFetchAethvionSnaps(snapDbVal).then(function (snaps) {
+                    // Keep the blank "(most recent)" option at the top
+                    while (inputEl.options.length > 1) inputEl.remove(1);
+                    snaps.forEach(function (sn) {
+                        const o = document.createElement('option');
+                        o.value = sn;
+                        o.textContent = sn;
+                        o.selected = (sn === String(val));
+                        inputEl.appendChild(o);
+                    });
+                });
+
             } else if (prop.type === 'toggle') {
                 // Checkbox toggle rendered as a pill
                 const wrapper = document.createElement('label');
@@ -1235,6 +1309,30 @@
                 if (prop.key === 'model') {
                     const badge = _e.canvasInner.querySelector('[data-model-badge="' + nd.id + '"]');
                     if (badge) badge.textContent = newVal || 'no model';
+                }
+                // When database changes, refresh any snapshot selector in the same inspector
+                if (prop.type === 'aethviondb_db') {
+                    const snapSel = _e.inspectorBody.querySelector('[data-snap-select]');
+                    if (snapSel) {
+                        snapSel.innerHTML = '';
+                        const lo = document.createElement('option');
+                        lo.value = ''; lo.textContent = 'Loading…';
+                        snapSel.appendChild(lo);
+                        _apiFetchAethvionSnaps(newVal).then(function (snaps) {
+                            snapSel.innerHTML = '';
+                            const bl = document.createElement('option');
+                            bl.value = ''; bl.textContent = '(most recent)'; bl.selected = true;
+                            snapSel.appendChild(bl);
+                            snaps.forEach(function (sn) {
+                                const o = document.createElement('option');
+                                o.value = sn; o.textContent = sn;
+                                snapSel.appendChild(o);
+                            });
+                            // Clear saved snapshot value since db changed
+                            const sk = snapSel.dataset.propKey;
+                            if (sk) { nd.properties[sk] = ''; _markDirty(); }
+                        });
+                    }
                 }
                 // Refresh port dot colours so the blue "has value" state updates live
                 _updatePortMarkers();
