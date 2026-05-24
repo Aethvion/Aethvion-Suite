@@ -530,7 +530,6 @@
     transition: color 0.14s;
 }
 .at-port-row:hover { color: var(--text-secondary, #94a3b8); }
-.at-port-row.at-output { flex-direction: row-reverse; }
 
 /* Port dot */
 .at-port {
