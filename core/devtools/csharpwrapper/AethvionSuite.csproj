@@ -12,9 +12,9 @@
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
 
     <!-- Version — bump this when the wrapper itself changes -->
-    <Version>1.0.0</Version>
-    <FileVersion>1.0.0.0</FileVersion>
-    <InformationalVersion>1.0.0</InformationalVersion>
+    <Version>16.0.0</Version>
+    <FileVersion>16.0.0.0</FileVersion>
+    <InformationalVersion>16.0.0</InformationalVersion>
 
     <!--
       Self-contained = no .NET runtime required on the user's machine.
