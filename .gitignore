@@ -58,3 +58,4 @@ LocalModels/*
 # Claude + ai reports
 .claude/*
 ai reports/*
+aireports/*
