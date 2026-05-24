@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>AethvionSuite</AssemblyName>
+    <RootNamespace>AethvionSuite</RootNamespace>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+
+    <!-- Version — bump this when the wrapper itself changes -->
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
+
+    <!--
+      Self-contained = no .NET runtime required on the user's machine.
+      The publish folder will be ~30 MB but needs nothing pre-installed.
+      Set to false + add RuntimeIdentifier if you prefer a tiny framework-
+      dependent build (requires .NET 8 Desktop Runtime on the target PC).
+    -->
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Microsoft.Web.WebView2 ships the tiny WebView2Loader.dll only.
+      The actual rendering engine is the Evergreen WebView2 Runtime that ships
+      with every modern Windows installation (part of Edge).  No bloat.
+    -->
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.*" />
+  </ItemGroup>
+
+</Project>

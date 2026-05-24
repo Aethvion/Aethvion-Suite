@@ -59,3 +59,7 @@ LocalModels/*
 .claude/*
 ai reports/*
 aireports/*
+
+# C# .exe Wrapper
+core/devtools/csharpwrapper/bin/*
+core/devtools/csharpwrapper/obj/*
