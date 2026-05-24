@@ -127,15 +127,46 @@ def data_extract_json(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
     if not key_path:
         return {"out": obj, "error": ""}
 
+    # ── Path resolver ─────────────────────────────────────────────────────────
+    # Supports dot-notation with optional bracket indices, e.g.:
+    #   name          → obj["name"]
+    #   0             → obj[0]          (root is a list)
+    #   [0]           → obj[0]          (bracket form, same result)
+    #   [0].name      → obj[0]["name"]
+    #   users[0].name → obj["users"][0]["name"]
+    #   a.b.c         → obj["a"]["b"]["c"]
+    _INDEX_RE   = re.compile(r'\[(\d+)\]')
+    _SEGMENT_RE = re.compile(r'^([^\[]*)((?:\[\d+\])*)$')
+
+    def _resolve(root, path):
+        current = root
+        for raw_seg in path.split("."):
+            seg = raw_seg.strip()
+            if not seg:
+                continue
+            m = _SEGMENT_RE.match(seg)
+            if not m:
+                raise KeyError(seg)
+            key_part   = m.group(1)   # text before any brackets, e.g. "users" or "0" or ""
+            idx_part   = m.group(2)   # bracket block, e.g. "[0][1]" or ""
+            # Apply the key / bare-integer lookup
+            if key_part:
+                if isinstance(current, list):
+                    current = current[int(key_part)]
+                elif isinstance(current, dict):
+                    current = current[key_part]
+                else:
+                    raise KeyError(key_part)
+            # Apply any bracket indices
+            for idx_str in _INDEX_RE.findall(idx_part):
+                if not isinstance(current, (list, tuple)):
+                    raise IndexError(f"[{idx_str}] on non-list")
+                current = current[int(idx_str)]
+        return current
+    # ─────────────────────────────────────────────────────────────────────────
+
     try:
-        current = obj
-        for part in key_path.split("."):
-            if isinstance(current, list):
-                current = current[int(part)]
-            elif isinstance(current, dict):
-                current = current[part]
-            else:
-                raise KeyError(part)
+        current = _resolve(obj, key_path)
 
         mode = str(p.get("output_as", "auto"))
         if mode == "string":
@@ -146,7 +177,7 @@ def data_extract_json(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
             out = current
         return {"out": out, "error": ""}
 
-    except (KeyError, IndexError, TypeError) as exc:
+    except (KeyError, IndexError, TypeError, ValueError) as exc:
         default = p.get("default", "")
         if default != "":
             return {"out": default, "error": ""}

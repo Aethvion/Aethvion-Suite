@@ -588,7 +588,7 @@ _NODE_TYPES: list[dict] = [
                 "label": "Key Path",
                 "type": "text",
                 "default": "",
-                "placeholder": "user.address.city",
+                "placeholder": "[0].name  or  user.address.city  or  results[0].score",
             },
             {
                 "key": "default",
