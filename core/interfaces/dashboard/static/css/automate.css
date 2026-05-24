@@ -656,6 +656,20 @@
     font-style: italic;
 }
 
+/* Image preview inside result panel (screenshot / camera / display) */
+.at-node-result-body:has(.at-node-result-img) {
+    padding: 0.3rem;
+}
+.at-node-result-img {
+    display: block;
+    max-width: 100%;
+    max-height: 220px;
+    width: auto;
+    height: auto;
+    border-radius: 5px;
+    object-fit: contain;
+}
+
 /* ── Connection paths (SVG) ─────────────────────────────────────────────── */
 
 .at-conn {

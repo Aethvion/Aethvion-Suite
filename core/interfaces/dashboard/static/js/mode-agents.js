@@ -22,6 +22,7 @@ let _agentsPollTimer = null;
 let _agentsCurrentTaskId = null;
 let _agentsIsPolling = false;
 let _agentsAttachedFiles = [];       // [{filename, path, is_image, mime_type, content, size, _previewUrl}]
+let _agentsCurrentReplayTimestamp = null;
 
 // ── DOM helpers ───────────────────────────────────────────────
 const _agEl = (id) => document.getElementById(id);
@@ -281,9 +282,11 @@ function _agentsAppendMessage(msg, scroll = true, isHistory = false) {
     // Agent step history — replay through the dashboard renderer
     if (msg.role === 'agent_steps') {
         _agLastMsgWasAgentSteps = true;
+        _agentsCurrentReplayTimestamp = msg.timestamp || null;
         for (const event of (msg.events || [])) {
             renderAgentStep(event, true); // isReplay = true
         }
+        _agentsCurrentReplayTimestamp = null;
         if (scroll) container.scrollTop = container.scrollHeight;
         return;
     }
@@ -727,9 +730,24 @@ function _agInitRender(isReplay = false) {
 }
 
 // ── Timeline (vertical, renders into left panel) ──────────────
-function _agPhaseAdd(id, icon, label) {
+function _agPhaseAdd(id, icon, label, event = null) {
     const s = _agentsRenderState;
     if (!s) return;
+    
+    let timeStr = '';
+    const rawTime = (event && (event.timestamp || event.time)) || _agentsCurrentReplayTimestamp || new Date();
+    try {
+        const d = new Date(rawTime);
+        if (!isNaN(d.getTime())) {
+            timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+        }
+    } catch (e) {
+        console.error(e);
+    }
+    if (!timeStr) {
+        timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    }
+
     const existing = s.phases.find(p => p.id === id);
     if (existing) {
         existing.label = label;
@@ -737,7 +755,7 @@ function _agPhaseAdd(id, icon, label) {
         return;
     }
     s.phases.forEach(p => { if (p.status === 'active') p.status = 'done'; });
-    s.phases.push({ id, icon, label, status: 'active' });
+    s.phases.push({ id, icon, label, status: 'active', time: timeStr });
     _agRenderTimeline();
 }
 
@@ -756,8 +774,8 @@ function _agRenderTimeline() {
                 ${i < s.phases.length - 1 ? '<span class="agent-vtl-line"></span>' : ''}
             </div>
             <div class="agent-vtl-label">
-                <span class="agent-vtl-icon">${ph.icon}</span>
-                <span>${ph.label}</span>
+                <span class="agent-vtl-time">${ph.time}</span>
+                <span class="agent-vtl-text">${ph.label}</span>
             </div>`;
         vtl.appendChild(item);
     });
@@ -887,7 +905,7 @@ function _agHandleThinking(event) {
     const s = _agentsRenderState;
     if (!s) return;
     _agFinalizeLiveToken(); // close streaming card before adding formatted thought
-    _agPhaseAdd('planning', '🧠', 'Planning');
+    _agPhaseAdd('planning', '🧠', 'Planning', event);
 
     const opMatch = (event.title || '').match(/\(([^)]+)\)/);
     const op = opMatch ? opMatch[1].trim() : '';
@@ -1088,7 +1106,7 @@ function _agHandleUsage(event) {
 function _agHandleObserve(event) {
     const s = _agentsRenderState;
     if (!s) return;
-    _agPhaseAdd('observe', '👁️', 'Observation');
+    _agPhaseAdd('observe', '👁️', 'Observation', event);
 
     const detail = event.detail || '';
     const item = document.createElement('div');
@@ -1165,7 +1183,7 @@ function _agHandleWriteFile(event) {
     const s = _agentsRenderState;
     if (!s) return;
     s.fileCount++;
-    _agPhaseAdd('files', '📄', `Files · ${s.fileCount}`);
+    _agPhaseAdd('files', '📄', `Files · ${s.fileCount}`, event);
     _agUpdateStats();
 
     const path      = event.path || (event.title || '').replace(/^Writing\s+/, '').trim();
@@ -1285,7 +1303,7 @@ function _agHandleCommand(event) {
     const result  = event.result || '';
     const failed  = result.trimStart().startsWith('(exit ');
     if (failed) s.cmdFail++; else s.cmdSuccess++;
-    _agPhaseAdd('commands', '⚡', `Commands · ${s.cmdCount}`);
+    _agPhaseAdd('commands', '⚡', `Commands · ${s.cmdCount}`, event);
     _agUpdateStats();
 
     const cmd     = (event.command || event.title || '').replace(/^\$\s*/, '');
@@ -1415,7 +1433,7 @@ function _agHandleSearch(event) {
     if (!s) return;
     const query  = event.query || event.title || '';
     s.searchCount = (s.searchCount || 0) + 1;
-    _agPhaseAdd('search', '🔍', `Web · ${s.searchCount}`);
+    _agPhaseAdd('search', '🔍', `Web · ${s.searchCount}`, event);
     const result = event.result || '';
     const item   = document.createElement('div');
     item.className = 'agent-act-item';
@@ -1560,7 +1578,7 @@ function _agHandleMoveFile(event) {
     const s = _agentsRenderState;
     if (!s) return;
     s.fileCount++;
-    _agPhaseAdd('files', '📄', `Files · ${s.fileCount}`);
+    _agPhaseAdd('files', '📄', `Files · ${s.fileCount}`, event);
     _agUpdateStats();
 
     const src = event.src || '';
@@ -1794,7 +1812,7 @@ function renderAgentStep(event, isReplay = false) {
     if (event.type === 'start') {
         _agentsHideTyping();
         _agInitRender(isReplay);
-        _agPhaseAdd('start', '🚀', 'Started');
+        _agPhaseAdd('start', '🚀', 'Started', event);
         const s = _agentsRenderState;
         if (s) {
             const ti = document.createElement('div');

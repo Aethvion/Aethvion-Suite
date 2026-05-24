@@ -526,6 +526,10 @@
                 var val = outs._display !== undefined ? outs._display : outs.out;
                 _showDisplayOutput(nodeId, val);
             }
+            // Screenshot / camera_capture — show image preview on the node card
+            if ((nd.type === 'action.screenshot' || nd.type === 'action.camera_capture') && outs.image) {
+                _showDisplayOutput(nodeId, outs.image);
+            }
         });
 
         // Render execution log panel
@@ -544,7 +548,18 @@
         var wrap = _e.canvasInner && _e.canvasInner.querySelector('[data-node-result="' + nodeId + '"]');
         var body = wrap && wrap.querySelector('[data-node-result-body="' + nodeId + '"]');
         if (!wrap || !body) return;
-        body.textContent = _to_str(val);
+        var str = _to_str(val);
+        if (str && str.startsWith('data:image/')) {
+            // Image data URI — render as a preview image
+            body.innerHTML = '';
+            var img = document.createElement('img');
+            img.className = 'at-node-result-img';
+            img.src = str;
+            img.alt = 'Preview';
+            body.appendChild(img);
+        } else {
+            body.textContent = str;
+        }
         wrap.style.display = '';
     }
 
@@ -785,6 +800,7 @@
 
         const isAI       = nd.type.startsWith('ai.');
         const isDisplay  = nd.type === 'output.display';
+        const isCapture  = nd.type === 'action.screenshot' || nd.type === 'action.camera_capture';
         const isSchedule = nd.type === 'trigger.schedule';
         const showResult = (isAI && nd.properties['show_result'] !== false) || isDisplay;
 
@@ -801,10 +817,12 @@
             : '';
 
         // Result panel — hidden until test/execution returns data
-        const resultHtml = (isAI || isDisplay)
+        // Also shown for screenshot / camera_capture so the image preview appears on the node card
+        const resultHtml = (isAI || isDisplay || isCapture)
             ? '<div class="at-node-result" data-node-result="' + nd.id + '" style="display:none">' +
               '  <div class="at-node-result-hdr">' +
-              '    <span><i class="fas fa-sparkles"></i> Result</span>' +
+              '    <span><i class="fas fa-' + (isCapture ? 'image' : 'sparkles') + '"></i> ' +
+                       (isCapture ? 'Preview' : 'Result') + '</span>' +
               '    <button class="at-node-result-close" data-close-result="' + nd.id + '">✕</button>' +
               '  </div>' +
               '  <div class="at-node-result-body" data-node-result-body="' + nd.id + '"></div>' +
