@@ -25,13 +25,15 @@ Whether you're a developer, creator, researcher, or just want a powerful persona
 
 - **AI Companions** — Persistent characters with memory, moods, tools, and workspace access; they remember who you are across every session
 - **Hybrid Intelligence** — Seamlessly mix cloud APIs (Gemini, GPT-4o, Claude, Grok) and local GGUF models with smart auto-routing and failover
-- **Powerful Agents** — Multi-step ReAct agents with file access, shell execution, and real-time streaming output
+- **Automate** — Visual node-based workflow builder; drag-and-drop 40+ nodes (AI, data, file, screen capture, OCR, web, notifications) into automated pipelines
+- **AethvionDB** — Personal knowledge database; distil and store structured entity data, query it semantically, visualize it as a graph, bake it into snapshot datasets
+- **Code IDE** — Monaco-based AI coding assistant with streaming execution, file search, revert, and autosave
 - **Agent Corp** — Create multi-worker AI organizations with specialized roles; assign complex projects and watch them collaborate
 - **Research Board** — Generate structured expert perspectives on any topic; debate mode lets experts argue across multiple rounds
 - **Creative Studio** — Image generation (DALL-E 3, Imagen 3, Stable Diffusion), Audio (TTS/STT with voice cloning), and 3D asset generation
 - **Bridges** — Live connections between companions and your environment: Spotify, weather, system stats, screen capture, webcam, and more
 - **Privacy First** — Intelligence Firewall scans and blocks sensitive data before it leaves your machine; all data stored locally
-- **One-Click Windows Launcher** — `Start_Aethvion_Suite.bat` handles venv creation, dependency installation, and launch
+- **One-Click Windows Launcher** — `Start_Aethvion.bat` handles venv creation, dependency installation, and launch; or use the native `.exe` wrapper
 
 ---
 
@@ -163,7 +165,9 @@ python -m core.main --test    # run verification tests
 - **Advanced Lab** — structured multi-persona conversations with custom participant profiles
 
 ### Agents & Automation
-- **Agent Workspaces** — create named workspaces; agents run multi-step ReAct loops (read/write/list/run_command); each step streams live to the dashboard
+- **Automate** — visual node-based workflow builder; 40+ nodes including AI nodes, AethvionDB search, OCR, file I/O, screen capture, web, and notifications; save/load workflows, camera state persisted per workflow
+- **AethvionDB** — structured knowledge database with entity distilling, semantic/vector search, graph view, baked snapshot datasets, import support, and a full CRUD editor
+- **Code IDE** — Monaco-based editor with AI copilot, streaming execution, file tree, revert options, and autosave; formerly the Agents tab
 - **Agent Corp** — build multi-worker AI organizations; assign complex projects across specialized roles
 - **Task Scheduler** — cron-based recurring AI tasks; completion triggers notifications with direct links to results
 - **Task Queue** — submit, cancel, and monitor background AI tasks with persistent state
@@ -175,8 +179,9 @@ python -m core.main --test    # run verification tests
 - **Local Model Hub** — browse, download, and manage GGUF models and audio models locally
 
 ### Games
-- Checkers, Blackjack, Sudoku, Word Search, Logic Quest — all with AI opponents or generation
+- Checkers, Blackjack, Sudoku, Word Search, Logic Quest, **Code Gold**, **Debug This** — all with AI opponents or generation
 - **Are You Smarter Than AI?** — gameshow-format trivia: AI Game Master generates questions, you and an AI opponent compete, the GM judges in real time
+- **Arena Gauntlet** — extended multi-round model battle mode with detailed result tracking
 
 ### System & Integrations
 - **External API** — OpenAI-compatible `/v1/chat/completions` endpoint; use Aethvion as a backend for other apps

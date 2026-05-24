@@ -15,9 +15,15 @@ lyra | Lyra | Direct chat interface with the Lyra companion. Creative, expressiv
 
 companion-creator | Create Companion | Companion creation wizard. Allows users to create new custom companions by defining personality, capabilities, system prompt template, and initial memory profile. [SwitchTab: companion-creator]
 
-agents | Agents | Dedicated interface for spawning and monitoring autonomous agents. Users can start agents on specific tasks, observe their step-by-step execution via real-time SSE streaming, and view results. ReAct-style loop: read_file / write_file / list_dir / run_command / done. [SwitchTab: agents]
+code | Code | AI-powered code IDE. Monaco-based editor with AI copilot, file tree, streaming code execution, revert options, and autosaving. View and search files created by the AI. Formerly called "Agents". [SwitchTab: code]
 
-agent-corp | Agent Corp | Multi-agent coordination hub. Manage and orchestrate multiple specialized agents working towards a shared goal. Higher-level than the individual Agents tab. [SwitchTab: agent-corp]
+agent-corp | Agent Corp | Multi-agent coordination hub. Manage and orchestrate multiple specialized agents working towards a shared goal. Higher-level than the individual Code tab. [SwitchTab: agent-corp]
+
+automate | Automate | Node-based visual workflow builder. Drag-and-drop canvas with 40+ nodes (triggers, AI, data, file, screen capture, OCR, web, notifications). Wire nodes together to create automated pipelines. Supports AethvionDB search nodes, import/export workflows, real-time execution results, and camera position saved per workflow. [SwitchTab: automate]
+
+aethviondb | AethvionDB | Dedicated knowledge database system. Distill, store, and query structured entity data from any source. Includes a file explorer, interactive graph view, vector embeddings and semantic search, baked snapshot datasets, import support, a validator with auto-fix, and a full CRUD editor. [SwitchTab: aethviondb]
+
+worldsim | WorldSim | World simulation environment. [SwitchTab: worldsim]
 
 researchboard | Research Board | Multi-director research environment. Multiple AI "director" personas collaborating on a research question, each contributing unique perspectives. Deep analysis through structured AI debate. Also labeled "Directors" in sidebar. [SwitchTab: researchboard]
 
@@ -29,7 +35,7 @@ aiconv | AI Conversation | Simplified two-party AI conversation mode. Two AI per
 
 explained | Explained | AI explanation mode. Produces step-by-step breakdowns of complex topics with visible reasoning chains. [SwitchTab: explained]
 
-games-center | Games Center | Games hub. Access all built-in games: Checkers (vs Aethvion AI), Are You Smarter Than AI? (quiz game), Sudoku, Blackjack, Word Search, and Logic Quest. [SwitchTab: games-center]
+games-center | Games Center | Games hub. Access all built-in games: Checkers (vs Aethvion AI), Are You Smarter Than AI? (quiz game), Sudoku, Blackjack, Word Search, Logic Quest, Code Gold, and Debug This. Arena has a Gauntlet mode for multi-round model battles. [SwitchTab: games-center]
 
 photo | Photo | AI-powered photo and image workspace. Upload, generate, and process images. [SwitchTab: photo]
 
@@ -80,7 +86,7 @@ settings | Settings | Core configuration hub. Companion settings (personality, m
 TAB SWITCHING
 If Dashboard Control is enabled in the assistant settings, the assistant can navigate the user to any tab.
 
-Valid main tab IDs: suite-home, chat, misaka-cipher, axiom, lyra, companion-creator, agents, agent-corp, researchboard, advaiconv, arena, aiconv, explained, games-center, photo, audio, schedule, sched-overview, memory, companion-memory, persistent-memory, output, screenshots, camera, uploads, local-models, image-models, audio-models, api-providers, 3d-models, 3d-gen, logs, documentation, usage, status, ports, settings
+Valid main tab IDs: suite-home, chat, misaka-cipher, axiom, lyra, companion-creator, code, agent-corp, automate, aethviondb, worldsim, researchboard, advaiconv, arena, aiconv, explained, games-center, photo, audio, schedule, sched-overview, memory, companion-memory, persistent-memory, output, screenshots, camera, uploads, local-models, image-models, audio-models, api-providers, 3d-models, 3d-gen, logs, documentation, usage, status, ports, settings
 
 Valid subtab IDs (inside settings): assistant (labeled 'Companion Settings'), system, env, providers, profiles, notifications
 

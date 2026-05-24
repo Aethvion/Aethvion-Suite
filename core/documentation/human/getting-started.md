@@ -1,6 +1,6 @@
 # Getting Started with Aethvion Suite
 
-**Note: This documentation was updated on 2026-04-19 to reflect the current Aethvion Suite (v1.4) state.**
+**Note: This documentation was updated on 2026-05-24 to reflect the current Aethvion Suite (v16) state.**
 
 ---
 
@@ -107,12 +107,12 @@ Each companion has a different personality suited to different tasks:
 
 ## Example Use Cases
 
-### Use Case 1: Agent Task — Analyze a Folder
+### Use Case 1: Code IDE — Analyze a Folder
 
 **Scenario:** You have a folder of Python files and want a summary of what they do.
 
 **Steps:**
-1. Open the **Agents** tab
+1. Open the **Code** tab
 2. Create a new workspace or select an existing folder
 3. Enter prompt: `Read all .py files in this workspace and write a summary of what each file does and how they connect`
 4. Click Run — watch the agent work in real time
@@ -267,11 +267,13 @@ For facts that all agents and companions should know (project names, architectur
 | Task | Best tool |
 |---|---|
 | Quick question | Companion chat |
-| Multi-file analysis | Agent (Agents tab) |
+| Multi-file analysis | Code tab (AI agent) |
 | Recurring tasks | Schedule |
 | Deep research | Research Board |
 | Model comparison | LLM Arena |
 | Creative generation | Companion + Photo/3D/Audio |
+| Visual automation pipeline | Automate (node canvas) |
+| Knowledge base queries | AethvionDB |
 
 ### 4. Start with the Right Companion
 
@@ -329,11 +331,14 @@ Check the **Usage** tab regularly. Smart routing (Flash for simple tasks, Pro fo
 
 | Category | Features |
 |---|---|
-| **Companions** | Misaka Cipher, Axiom, Lyra, Companion Creator |
-| **Agents** | Agent Workspaces, Agent Corp, Schedule |
+| **Companions** | Misaka Cipher, Axiom, Lyra, Companion Creator (dedicated tab with memory) |
+| **Code & Agents** | Code IDE, Agent Corp, Schedule |
+| **Automate** | Node-based workflow builder — 40+ nodes, visual canvas, AethvionDB integration |
+| **AethvionDB** | Knowledge database — distil, store, query, graph view, semantic search, snapshots |
+| **WorldSim** | World simulation environment |
 | **Research** | Research Board, Advanced AI Conversations, LLM Arena, AI Conversations, Explained |
 | **Creative** | Photo Studio, Image Models, Audio, Audio & Speech (TTS/STT), 3D Workspace, 3D Models |
-| **Games** | Checkers, Are You Smarter Than AI?, Sudoku, Blackjack, Word Search, Logic Quest |
+| **Games** | Checkers, Are You Smarter Than AI?, Sudoku, Blackjack, Word Search, Logic Quest, Code Gold, Debug This, Arena Gauntlet |
 | **Memory** | Companion Memory, Persistent Memory, Episodic Memory |
 | **Storage** | Output, Gallery, Camera, Uploads |
 | **Model Hub** | Text & Chat Models, Image Models, Audio & Speech, 3D Models, API Providers |
@@ -341,29 +346,32 @@ Check the **Usage** tab regularly. Smart routing (Flash for simple tasks, Pro fo
 
 ---
 
-## Current State (v1.4)
+## Current State (v16)
 
-- ✅ Companion system (Misaka Cipher, Axiom, Lyra) with persistent memory
+- ✅ Companion system (Misaka Cipher, Axiom, Lyra) with persistent memory and dedicated tab
 - ✅ Bridges system (6 active bridges with live context injection)
 - ✅ AetherCore AI gateway with failover and Intelligence Firewall
-- ✅ Agent Workspaces with real-time SSE streaming
+- ✅ **Automate** — node-based visual workflow builder with 40+ nodes
+- ✅ **AethvionDB** — knowledge database with graph view, semantic search, baked snapshots, and API
+- ✅ **WorldSim** — world simulation environment
+- ✅ Code IDE (AI copilot, streaming execution, autosave, revert, file search)
 - ✅ Agent Corp for multi-agent coordination
 - ✅ Research Board (multi-director AI debate)
 - ✅ Schedule & Notifications (cron-based with deep-link navigation)
 - ✅ Local Audio Models (Kokoro, XTTS-v2, Whisper)
-- ✅ 35+ configurable sidebar tabs with layout profiles
-- ✅ LLM Arena with leaderboard
+- ✅ 40+ configurable sidebar tabs with layout profiles
+- ✅ LLM Arena with leaderboard and Gauntlet mode
 - ✅ Advanced AI Conversations (human participant, pause/inject, shareable links)
-- ✅ Code IDE with streaming execution
 - ✅ Finance dashboard with AI market analysis
 - ✅ Persistent Memory knowledge hub
 - ✅ Companion Creator for custom companions
+- ✅ Games: Code Gold, Debug This (added alongside existing games)
+- ✅ Native .exe launcher (C# WebView2 wrapper, no runtime required)
 
 **Near-term roadmap:**
 - Ollama integration for local model management UI
 - Advanced multi-agent coordination reliability
 - Voice call mode (real-time audio in companion chat)
-- Suite Profiles (Work / Creative / Companion modes)
 
 ---
 
@@ -373,7 +381,7 @@ Check the **Usage** tab regularly. Smart routing (Flash for simple tasks, Pro fo
 python -m core.main
 ```
 
-**Last Updated:** 2026-04-19
+**Last Updated:** 2026-05-24
 
 ---
 

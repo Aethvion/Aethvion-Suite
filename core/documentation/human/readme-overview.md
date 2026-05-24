@@ -1,6 +1,6 @@
 # Aethvion Suite - System Overview
 
-**Note: This documentation was updated on 2026-04-19 to reflect the current Aethvion Suite (v1.4) state.**
+**Note: This documentation was updated on 2026-05-24 to reflect the current Aethvion Suite (v16) state.**
 
 ---
 
@@ -8,9 +8,10 @@
 
 Aethvion Suite is a self-hosted AI super-app built for people who want a deeply personal, capable AI system without paying a subscription or sending their data to someone else's cloud. It runs entirely on your machine, connects to the AI providers you choose, and grows smarter the more you use it.
 
-Think of it as three things at once:
+Think of it as four things at once:
 - **A companion platform** — AI personalities that remember you, your projects, and your preferences
 - **An agent engine** — autonomous AI workers that can read files, write code, run commands, and complete multi-step tasks
+- **An automation layer** — visual node-based workflow builder for creating automated AI pipelines
 - **A creative suite** — image generation, 3D models, audio, research, and more, unified in one dashboard
 
 ### What Makes It Different?
@@ -128,16 +129,17 @@ Aethvion Suite is organized into a configurable sidebar. Every tab can be shown 
 
 | Folder | Tabs |
 |---|---|
-| Workspace | Chat, Agents, Agent Corp, Schedule, Photo, Audio, 3D Workspace |
+| Workspace | Chat, Code, Agent Corp, Automate, Schedule, Photo, Audio, 3D Workspace |
 | Research | Adv. AI Conv., Research Board, Arena, AI Conv., Explained |
 | Companions | Misaka Cipher, Axiom, Lyra, Create Companion |
+| Data | AethvionDB, WorldSim |
 | Entertainment | Games Center |
 | Memory | Memory, Companion Memory, Persistent Memory, Schedule Overview |
 | Storage | Output, Gallery, Camera, Uploads |
 | Model Hub | Text & Chat Models, Image Models, Audio & Speech, 3D Models, API Providers |
 | System | Logs, Docs, Usage, Status, Ports |
 
-**Built-in games:** Checkers (vs Aethvion AI), Are You Smarter Than AI?, Sudoku, Blackjack, Word Search, Logic Quest
+**Built-in games:** Checkers (vs Aethvion AI), Are You Smarter Than AI?, Sudoku, Blackjack, Word Search, Logic Quest, Code Gold, Debug This, Arena Gauntlet
 
 **Creative tools:** AI image generation, 3D asset generation, AI photo studio, Kokoro TTS, XTTS-v2 voice cloning, Whisper STT
 
@@ -220,7 +222,7 @@ The goal is not to replace human creativity or judgment. It's to remove the fric
 
 ---
 
-**Last Updated:** 2026-04-19
+**Last Updated:** 2026-05-24
 
 **Need technical details?** → [AI Documentation](/core/documentation/ai/)
 

@@ -1,6 +1,6 @@
 # Aethvion Suite Documentation
 
-**Note: This documentation was updated on 2026-04-19 to reflect the Aethvion Suite (v1.4) architecture.**
+**Note: This documentation was updated on 2026-05-24 to reflect the Aethvion Suite (v16) architecture.**
 
 ---
 
@@ -66,6 +66,11 @@ Machine-readable specifications for AI agents operating within the system.
   - Companion Memory growth system
   - Tool Forge pipeline (legacy)
   - Self-improvement feedback loops
+
+- **[version-path.md](./ai/version-path.md)** - Version update checklist
+  - All files that contain hardcoded version numbers
+  - Exact search strings and line context for each file
+  - Grep command to verify nothing was missed
 
 ---
 
@@ -133,12 +138,19 @@ Machine-readable specifications for AI agents operating within the system.
   - Complete human tier guides
   - Machine-readable AI tier specs
   - Root README updated as landing page
-- **2026-04-19:** Major update to v1.4 state
+- **2026-04-19:** Major update to v15 state
   - Companions system documented (Misaka Cipher, Axiom, Lyra)
   - Bridges system documented (6 active bridges)
   - AetherCore replacing Nexus Core references
   - Full tab registry updated (35+ tabs)
   - Companion memory evolution added to evolution-logic.md
+- **2026-05-24:** Major update to v16 state
+  - Automate, AethvionDB, WorldSim documented across all files
+  - Agents tab renamed to Code in all references
+  - New games (Code Gold, Debug This, Arena Gauntlet) added
+  - Dashboard tab registry updated (40+ tabs)
+  - version-path.md added as a permanent version update checklist
+  - All date stamps and version numbers updated to v16
 
 ### Planned Enhancements
 - [ ] Video walkthroughs for Getting Started
@@ -266,7 +278,7 @@ This documentation follows a **dual-tier approach**:
 
 ---
 
-**Last Updated:** 2026-04-19
+**Last Updated:** 2026-05-24
 
 **Maintained By:** Agentic Sprint Cycles + Human Contributors
 

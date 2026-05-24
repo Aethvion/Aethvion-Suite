@@ -1,8 +1,8 @@
 AETHVION SUITE - SYSTEM SPECIFICATION
-Core architecture is consistent; companion configs, bridge modules, and tool implementations evolve during development sprints. Updated: 2026-04-19.
+Core architecture is consistent; companion configs, bridge modules, and tool implementations evolve during development sprints. Updated: 2026-05-24.
 
 SYSTEM IDENTITY
-Name: Aethvion Suite | Version: v1.4 | Language: Python 3.10+ | Purpose: Self-hosted local AI super-app with companions, agents, creative tools, and bridges — privacy-first, customizable, and self-evolving.
+Name: Aethvion Suite | Version: v16 | Language: Python 3.10+ | Purpose: Self-hosted local AI super-app with companions, agents, creative tools, automation, and bridges — privacy-first, customizable, and self-evolving.
 Primary AI companion: Misaka Cipher (misaka_cipher) | Other companions: Axiom (axiom), Lyra (lyra)
 
 DIRECTORY STRUCTURE
@@ -38,8 +38,14 @@ core/ — core system modules
       core/interfaces/dashboard/static/ — HTML/CSS/JS frontend
         core/interfaces/dashboard/static/index.html — single-page app shell; panel-home is the main home panel
         core/interfaces/dashboard/static/partials/ — per-tab HTML partials (lazy-loaded)
-        core/interfaces/dashboard/static/js/ — JavaScript modules (app-tabs.js, sidebar-manager.js, mode-*.js, view-*.js)
-      core/interfaces/dashboard/*_routes.py — route handler files (32 registered routers total)
+        core/interfaces/dashboard/static/js/ — JavaScript modules (app-tabs.js, sidebar-manager.js, mode-*.js, view-*.js, mode-automate.js)
+      core/interfaces/dashboard/*_routes.py — route handler files (35+ registered routers total)
+  core/automate/ — node-based visual workflow automation engine
+    core/automate/automate_routes.py — FastAPI routes; workflow CRUD, node execution, AethvionDB API endpoints
+    core/automate/nodes/ — node implementation modules (data.py, ai.py, file.py, screen.py, web.py, aethviondb.py, etc.)
+    core/automate/nodes/__init__.py — node registry mapping node type strings to handler functions
+  core/aethviondb/ — knowledge database system
+    (entity JSON files, baked snapshot datasets, vector embeddings, graph data stored under data/databases/)
   core/memory/ — memory subsystems
     core/memory/episodic_memory.py — ChromaDB vector store for raw interactions
     core/memory/identity_manager.py — reads/writes companion base_info.json and memory.json; uses PERSONA_MISAKA* legacy constants (deprecated, still in use)
@@ -239,11 +245,11 @@ Utilities: rich, click
 Full list: see pyproject.toml
 
 ROUTE HANDLERS (registered in server.py)
-32 routers registered: system, preferences, workspace, task, memory, registry, usage, arena, settings, photo, adv_aiconv, research_board, assistant, ollama, audio, corp, games, overlay, schedule, smarter_than_ai, three_d, agent_workspace, notification, explained, external_api (x2), persistent_memory, discord, logs, documentation, companion, companion_creator
+35+ routers registered: system, preferences, workspace, task, memory, registry, usage, arena, settings, photo, adv_aiconv, research_board, assistant, ollama, audio, corp, games, overlay, schedule, smarter_than_ai, three_d, agent_workspace, notification, explained, external_api (x2), persistent_memory, discord, logs, documentation, companion, companion_creator, automate, aethviondb, worldsim
 All routes verified reachable; no orphaned route files.
 
 DASHBOARD TAB SYSTEM
-Tab registry: core/interfaces/dashboard/static/js/sidebar-manager.js — TABS array with id, label, icon, mode; 35 registered tabs
+Tab registry: core/interfaces/dashboard/static/js/sidebar-manager.js — TABS array with id, label, icon, mode; 40+ registered tabs
 Sidebar profiles: named layouts saved to localStorage (sidebar_profiles_v1); 5 preset layouts (Professional, Creative, Researcher, Companion Hub, Full Suite) + Custom
 Panel switching: ATB.switchTo(panelId) for app panels; switchDashboardTab(tabId) for sidebar tabs
 SwitchTab tag: [SwitchTab: tab_id] in assistant response text triggers navigation; handled in assistant.js
@@ -266,10 +272,10 @@ PERSONA_MISAKA* constants in paths.py — deprecated; migrate identity_manager.p
 nexus.* localStorage key prefix — should migrate to bridges.* (requires one-time migration step)
 
 VERSION
-Current: v1.4 (April 2026)
-History: Sprint 1-3 (Foundation), v3-v8 (Apps ecosystem), v9 (Agent Workspaces + local models), v10 (Finance Dashboard), v11 (Nexus → Bridges rename + Companion Engine), v12 (Schedule + Notification Refactor), v13 (Companion Memory, Workspace Utils), v1.4 (Bridge cleanup, settings dynamic companion, workspace_utils finalized)
-Breaking changes: v9 data paths migrated to data/ root; v11 core/nexus/ renamed to core/bridges/, nexus_core.py renamed to aether_core.py, all Python imports updated; v1.4 data paths moved to data/modes/
+Current: v16 (May 2026)
+History: Sprint 1-3 (Foundation), v3-v8 (Apps ecosystem), v9 (Agent Workspaces + local models), v10 (Finance Dashboard), v11 (Nexus → Bridges rename + Companion Engine), v12 (Schedule + Notification Refactor), v13 (Companion Memory, Workspace Utils), v15 (Installer, 3D Models, Agent overhaul, Companions rework), v16 (Automate, AethvionDB, WorldSim, Companions dedicated tab, Games expansion, C# wrapper, Code IDE improvements)
+Breaking changes: v9 data paths migrated to data/ root; v11 core/nexus/ renamed to core/bridges/, nexus_core.py renamed to aether_core.py, all Python imports updated; v15 data paths moved to data/modes/; v16 Agents tab renamed to Code (tab id: code), AI tab merged into Home
 
-LAST UPDATED: 2026-04-19
+LAST UPDATED: 2026-05-24
 MAINTAINED BY: Agentic Sprint Cycles
 STABILITY: Core architecture stable; companion configs and bridge modules evolve with user needs
