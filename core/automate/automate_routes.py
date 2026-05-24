@@ -929,6 +929,7 @@ _NODE_TYPES: list[dict] = [
                 "type": "text",
                 "default": "",
                 "placeholder": "C:/Users/me/document.txt",
+                "picker": "file",
             },
             {
                 "key": "encoding",
@@ -973,6 +974,7 @@ _NODE_TYPES: list[dict] = [
                 "type": "text",
                 "default": "",
                 "placeholder": "C:/Users/me/output.txt",
+                "picker": "file",
             },
             {
                 "key": "mode",
@@ -1060,6 +1062,7 @@ _NODE_TYPES: list[dict] = [
                 "type": "text",
                 "default": "",
                 "placeholder": "C:/path/to/file.txt",
+                "picker": "file",
             },
             {
                 "key": "encoding",
@@ -1126,6 +1129,7 @@ _NODE_TYPES: list[dict] = [
                 "type": "text",
                 "default": "",
                 "placeholder": "C:/output/result_{{timestamp}}.txt",
+                "picker": "folder",
             },
             {
                 "key": "mode",
@@ -1473,6 +1477,7 @@ _NODE_TYPES: list[dict] = [
                 "type": "text",
                 "default": "",
                 "placeholder": "C:/path/to/folder or file",
+                "picker": "folder",
             },
             {
                 "key": "watch_mode",
@@ -1591,6 +1596,7 @@ _NODE_TYPES: list[dict] = [
                 "type": "text",
                 "default": "",
                 "placeholder": "C:/my/project (blank = current dir)",
+                "picker": "folder",
             },
             {
                 "key": "shell",
@@ -1627,6 +1633,7 @@ _NODE_TYPES: list[dict] = [
                 "type": "text",
                 "default": "",
                 "placeholder": "C:/path/to/folder",
+                "picker": "folder",
             },
             {
                 "key": "pattern",
@@ -1871,6 +1878,7 @@ _NODE_TYPES: list[dict] = [
                 "type": "text",
                 "default": "",
                 "placeholder": "(blank = auto-generated temp file)",
+                "picker": "folder",
             },
             {
                 "key": "monitor",
@@ -1903,6 +1911,7 @@ _NODE_TYPES: list[dict] = [
                 "type": "text",
                 "default": "",
                 "placeholder": "(blank = auto-generated temp file)",
+                "picker": "folder",
             },
             {
                 "key": "camera_index",
@@ -2092,6 +2101,7 @@ _NODE_TYPES: list[dict] = [
                 "type": "text",
                 "default": "",
                 "placeholder": "(blank = auto-generated temp file)",
+                "picker": "folder",
             },
         ],
     },
@@ -2152,6 +2162,7 @@ _NODE_TYPES: list[dict] = [
                 "type": "text",
                 "default": "",
                 "placeholder": "(blank = auto-generated temp file)",
+                "picker": "folder",
             },
         ],
     },
@@ -2176,6 +2187,7 @@ _NODE_TYPES: list[dict] = [
                 "type": "text",
                 "default": "",
                 "placeholder": "C:/path/to/audio.wav",
+                "picker": "file",
             },
             {
                 "key": "model_id",
@@ -2704,3 +2716,58 @@ async def get_shared_workflow(code: str):
         raise HTTPException(404, "Share code not found")
     wf = json.loads(p.read_text(encoding="utf-8"))
     return {"workflow": wf}
+
+
+@router.get("/pick")
+async def pick_path(
+    mode: str = "file",
+    initial: str = "",
+    title: str = "",
+):
+    """
+    Open the native OS file or folder picker dialog and return the chosen path.
+    mode="file"   → askopenfilename (pick an existing file)
+    mode="folder" → askdirectory   (pick a directory)
+    Returns { path, cancelled }.
+    """
+    from concurrent.futures import ThreadPoolExecutor  # noqa: PLC0415
+
+    def _open_dialog() -> str | None:
+        try:
+            import tkinter as tk           # noqa: PLC0415
+            from tkinter import filedialog  # noqa: PLC0415
+            root = tk.Tk()
+            root.withdraw()
+            root.wm_attributes("-topmost", True)
+            initial_dir = ""
+            if initial:
+                p = Path(initial)
+                initial_dir = str(p.parent) if p.is_file() else str(p) if p.is_dir() else str(Path.home())
+            else:
+                initial_dir = str(Path.home())
+
+            dlg_title = title or ("Select file" if mode == "file" else "Select folder")
+            if mode == "file":
+                result = filedialog.askopenfilename(
+                    parent=root,
+                    initialdir=initial_dir,
+                    title=dlg_title,
+                )
+            else:
+                result = filedialog.askdirectory(
+                    parent=root,
+                    initialdir=initial_dir,
+                    title=dlg_title,
+                )
+            root.destroy()
+            return result or None
+        except Exception:
+            return None
+
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        chosen = await loop.run_in_executor(pool, _open_dialog)
+
+    if chosen:
+        return {"path": str(Path(chosen)), "cancelled": False}
+    return {"path": None, "cancelled": True}

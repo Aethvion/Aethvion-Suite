@@ -1249,7 +1249,41 @@
             });
 
             field.innerHTML = '<span class="at-prop-label">' + _esc(prop.label) + '</span>';
-            field.appendChild(inputEl);
+
+            // ── Path picker button ──────────────────────────────────────────
+            if (prop.picker === 'file' || prop.picker === 'folder') {
+                var pathRow = document.createElement('div');
+                pathRow.className = 'at-prop-path-row';
+                pathRow.appendChild(inputEl);
+
+                var browseBtn = document.createElement('button');
+                browseBtn.className = 'at-btn at-prop-browse-btn';
+                browseBtn.title     = prop.picker === 'folder' ? 'Browse for folder…' : 'Browse for file…';
+                browseBtn.innerHTML = prop.picker === 'folder'
+                    ? '<i class="fas fa-folder-open"></i>'
+                    : '<i class="fas fa-file-arrow-up"></i>';
+
+                (function (inp, mode) {
+                    browseBtn.addEventListener('click', function () {
+                        browseBtn.disabled = true;
+                        fetch('/api/automate/pick?mode=' + mode + '&initial=' + encodeURIComponent(inp.value || ''))
+                            .then(function (r) { return r.json(); })
+                            .then(function (data) {
+                                if (!data.cancelled && data.path) {
+                                    inp.value = data.path;
+                                    inp.dispatchEvent(new Event('input'));
+                                }
+                            })
+                            .catch(function (e) { console.error('[Automate] pick error:', e); })
+                            .finally(function () { browseBtn.disabled = false; });
+                    });
+                })(inputEl, prop.picker);
+
+                pathRow.appendChild(browseBtn);
+                field.appendChild(pathRow);
+            } else {
+                field.appendChild(inputEl);
+            }
 
             // If a wire is currently connected to the matching input port, show an
             // "overridden by connection" badge and dim the field (value is kept as

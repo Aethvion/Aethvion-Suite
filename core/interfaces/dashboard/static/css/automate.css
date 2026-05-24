@@ -1338,6 +1338,45 @@
     border-radius: 2px;
 }
 
+/* ── Property path row (text input + browse button) ────────────────────── */
+
+.at-prop-path-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+}
+
+.at-prop-path-row .at-prop-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.at-prop-browse-btn {
+    flex-shrink: 0;
+    padding: 0.26rem 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted, #64748b);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: background 0.14s, color 0.14s, border-color 0.14s;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+.at-prop-browse-btn:hover {
+    background: rgba(34, 211, 238, 0.1);
+    color: #22d3ee;
+    border-color: rgba(34, 211, 238, 0.25);
+}
+.at-prop-browse-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+.at-prop-browse-btn i { pointer-events: none; }
+
 /* ── Sidebar header action group ────────────────────────────────────────── */
 
 .at-sidebar-hdr-actions {

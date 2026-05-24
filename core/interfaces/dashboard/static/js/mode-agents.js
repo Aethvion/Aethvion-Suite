@@ -370,7 +370,6 @@ function _agentsShowEmptyState(title, sub) {
     div.className = 'agents-empty-state';
     div.id = 'agents-empty-state';
     div.innerHTML = `
-        <div class="agents-empty-icon">🤖</div>
         <div class="agents-empty-title">${title}</div>
         <div class="agents-empty-sub">${sub}</div>
     `;
