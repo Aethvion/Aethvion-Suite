@@ -1182,6 +1182,32 @@
     text-decoration: line-through;
 }
 
+/* ── Text / value preview strip (input.text, input.number, input.list) ── */
+
+.at-node-value-preview {
+    padding: 0.3rem 0.65rem 0.38rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.67rem;
+    font-family: 'Consolas', 'Monaco', monospace;
+    color: var(--text-secondary, #94a3b8);
+    line-height: 1.45;
+    /* Cap at 2 visual lines */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: pre-wrap;
+    word-break: break-all;
+    min-height: 1.9em;
+    user-select: text;
+}
+.at-node-value-preview.at-preview-empty {
+    font-style: italic;
+    color: var(--text-muted, #64748b);
+    opacity: 0.55;
+    white-space: normal;
+}
+
 /* ── Schedule editor (properties panel) ─────────────────────────────────── */
 
 .at-sched-editor {

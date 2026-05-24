@@ -792,6 +792,7 @@
         const isDisplay  = nd.type === 'output.display';
         const isCapture  = nd.type === 'action.screenshot' || nd.type === 'action.camera_capture';
         const isSchedule = nd.type === 'trigger.schedule';
+        const isTextInput = nd.type === 'input.text' || nd.type === 'input.number' || nd.type === 'input.list';
         const showResult = (isAI && nd.properties['show_result'] !== false) || isDisplay;
 
         // AI extra bar: model badge + test button
@@ -822,6 +823,22 @@
         // Compact schedule list — shown on the node card for schedule nodes
         const schedHtml = isSchedule ? _buildScheduleCardHtml(nd) : '';
 
+        // Value preview strip — shown on text / number / list input nodes
+        const valuePreviewHtml = (function () {
+            if (!isTextInput) return '';
+            // Pick the right property key for each input type
+            // input.text and input.number both use 'value'; input.list uses 'items'
+            const propKey = nd.type === 'input.list' ? 'items' : 'value';
+            const raw   = String(nd.properties[propKey] !== undefined ? nd.properties[propKey] : '');
+            const empty = !raw.trim();
+            // Clip very long strings before putting them in the DOM
+            const display = raw.length > 240 ? raw.slice(0, 240) : raw;
+            return '<div class="at-node-value-preview' + (empty ? ' at-preview-empty' : '') +
+                   '" data-value-preview="' + nd.id + '">' +
+                   (empty ? 'No text set…' : _esc(display)) +
+                   '</div>';
+        }());
+
         el.innerHTML =
             '<div class="at-node-hdr">' +
             '  <div class="at-node-icon" style="background:' + colorBg + ';color:' + color + '">' +
@@ -837,6 +854,7 @@
             '  <div class="at-node-outputs">' + outputsHtml + '</div>' +
             '</div>' +
             schedHtml +
+            valuePreviewHtml +
             aiBarHtml +
             resultHtml;
 
@@ -1309,6 +1327,20 @@
                 if (prop.key === 'model') {
                     const badge = _e.canvasInner.querySelector('[data-model-badge="' + nd.id + '"]');
                     if (badge) badge.textContent = newVal || 'no model';
+                }
+                // Live-update the value preview on input nodes (only for the relevant property key)
+                if (nd.type === 'input.text' || nd.type === 'input.number' || nd.type === 'input.list') {
+                    const previewKey = nd.type === 'input.list' ? 'items' : 'value';
+                    if (prop.key === previewKey) {
+                        const preview = _e.canvasInner.querySelector('[data-value-preview="' + nd.id + '"]');
+                        if (preview) {
+                            const str   = String(newVal !== undefined ? newVal : '');
+                            const empty = !str.trim();
+                            const display = str.length > 240 ? str.slice(0, 240) : str;
+                            preview.textContent = empty ? 'No text set…' : display;
+                            preview.classList.toggle('at-preview-empty', empty);
+                        }
+                    }
                 }
                 // When database changes, refresh any snapshot selector in the same inspector
                 if (prop.type === 'aethviondb_db') {
