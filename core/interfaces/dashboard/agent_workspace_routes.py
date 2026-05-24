@@ -317,3 +317,150 @@ async def upload_agent_file(
         "content": text_content,
         "size": len(raw),
     }
+
+
+# ── Active Workspace Explorer & IDE Endpoints ─────────────────────────────────
+
+class FileSaveRequest(BaseModel):
+    path: str
+    content: str
+
+
+@router.get("/workspace/tree")
+async def get_workspace_tree(path: str):
+    """
+    Given an absolute path to a workspace folder, return a list of immediate 
+    files and directories to build a lazy-loaded directory tree.
+    """
+    try:
+        target = Path(path)
+        if not target.exists() or not target.is_dir():
+            raise HTTPException(status_code=404, detail="Workspace directory not found")
+        
+        entries = []
+        for item in sorted(target.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
+            # Skip hidden files/folders (starting with .)
+            if item.name.startswith('.'):
+                continue
+            
+            entries.append({
+                "name": item.name,
+                "path": str(item),
+                "is_dir": item.is_dir(),
+                "size": item.stat().st_size if item.is_file() else None,
+                "ext": item.suffix.lstrip('.').lower() if item.is_file() else None
+            })
+        return {"path": str(target), "entries": entries}
+    except Exception as e:
+        logger.error(f"get_workspace_tree error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/workspace/file-content")
+async def get_workspace_file_content(path: str):
+    """
+    Read the text content of a file within the workspace safely.
+    """
+    try:
+        target = Path(path)
+        if not target.exists() or not target.is_file():
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Read the file content (up to 2MB to prevent browser crash)
+        size = target.stat().st_size
+        if size > 2 * 1024 * 1024:
+            return {"content": f"[File too large to preview - size: {size / (1024*1024):.2f}MB]", "too_large": True}
+            
+        try:
+            content = target.read_text(encoding='utf-8', errors='ignore')
+            return {"content": content, "too_large": False}
+        except Exception:
+            return {"content": "[Binary file - preview not available]", "binary": True}
+    except Exception as e:
+        logger.error(f"get_workspace_file_content error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/workspace/file-save")
+async def save_workspace_file_content(request: FileSaveRequest):
+    """
+    Save manual edits to a file within the workspace safely.
+    """
+    try:
+        target = Path(request.path)
+        if not target.exists():
+            raise HTTPException(status_code=404, detail="File not found")
+        if not target.is_file():
+            raise HTTPException(status_code=400, detail="Path is not a file")
+        
+        # Write content as UTF-8
+        target.write_text(request.content, encoding='utf-8')
+        return {"status": "success", "written_bytes": len(request.content.encode('utf-8'))}
+    except Exception as e:
+        logger.error(f"save_workspace_file_content error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/workspace/search")
+async def search_workspace_content(path: str, query: str):
+    """
+    Search for a text query recursively in files inside the workspace path.
+    """
+    try:
+        target = Path(path)
+        if not target.exists() or not target.is_dir():
+            raise HTTPException(status_code=404, detail="Workspace directory not found")
+        
+        if len(query) < 2:
+            return {"results": []}
+            
+        results = []
+        max_results = 100
+        
+        # Walk directories and search file contents
+        for root, dirs, files in os.walk(str(target)):
+            # Skip hidden folders
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+            
+            for file in files:
+                if file.startswith('.'):
+                    continue
+                file_path = Path(root) / file
+                
+                # Skip large files (> 1MB) to prevent lockups
+                try:
+                    if file_path.stat().st_size > 1024 * 1024:
+                        continue
+                        
+                    content = file_path.read_text(encoding='utf-8', errors='ignore')
+                    if query.lower() in content.lower():
+                        # Find matching lines
+                        lines = content.split('\n')
+                        matches = []
+                        for i, line in enumerate(lines):
+                            if query.lower() in line.lower():
+                                matches.append({
+                                    "line_number": i + 1,
+                                    "content": line.strip()[:150]
+                                })
+                        
+                        results.append({
+                            "filename": file,
+                            "path": str(file_path),
+                            "rel_path": str(file_path.relative_to(target)),
+                            "matches": matches
+                        })
+                        
+                        if len(results) >= max_results:
+                            break
+                except Exception:
+                    continue
+            
+            if len(results) >= max_results:
+                break
+                
+        return {"query": query, "results": results}
+    except Exception as e:
+        logger.error(f"search_workspace_content error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+

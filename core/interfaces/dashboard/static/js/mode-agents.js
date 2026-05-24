@@ -117,6 +117,43 @@ async function _agentsOnWorkspaceSelectChange() {
         _agentsShowEmptyState('No workspace selected', 'Add or select a workspace to start working with agents');
     }
 
+    // Reset file tree and editor on workspace change
+    const rootEl = document.getElementById('agents-file-tree-root');
+    if (rootEl) {
+        if (ws) {
+            _agLoadWorkspaceTree();
+        } else {
+            rootEl.innerHTML = '<div class="agents-tree-empty">Select workspace first</div>';
+        }
+    }
+    
+    _agCurrentOpenFile = null;
+    const viewerEmpty = document.getElementById('agents-viewer-empty');
+    const codePre = document.getElementById('agents-code-pre');
+    const codeEditor = document.getElementById('agents-code-editor');
+    const activeTitle = document.getElementById('agents-active-file-title');
+    const activePath = document.getElementById('agents-active-file-path');
+    const saveBtn = document.getElementById('agents-file-save-btn');
+    
+    if (activeTitle) activeTitle.textContent = 'No file open';
+    if (activePath) activePath.textContent = '';
+    if (saveBtn) saveBtn.style.display = 'none';
+    if (viewerEmpty) viewerEmpty.style.display = 'flex';
+    if (codePre) codePre.style.display = 'none';
+    if (codeEditor) {
+        codeEditor.value = '';
+        codeEditor.style.display = 'none';
+        codeEditor.disabled = true;
+    }
+    
+    // Clear search results
+    const sInput = document.getElementById('agents-search-input');
+    const sList = document.getElementById('agents-search-results-list');
+    const sInfo = document.getElementById('agents-search-info');
+    if (sInput) sInput.value = '';
+    if (sList) sList.innerHTML = '';
+    if (sInfo) sInfo.textContent = 'Enter search query above';
+
     _agentsUpdateSubmitState();
 }
 
@@ -1292,6 +1329,16 @@ function _agHandleWriteFile(event) {
         s.fileCards[path] = { row, expand, sizeEl, writeCount: 1 };
         s.activity.appendChild(item);
     }
+
+    // Real-time update for currently open file in editor
+    if (_agCurrentOpenFile === path) {
+        _agOpenFile(path, filename);
+    }
+    // Refresh tree elements (to mark modification glows)
+    const fileTreeRoot = document.getElementById('agents-file-tree-root');
+    if (fileTreeRoot && fileTreeRoot.innerHTML !== '' && !fileTreeRoot.querySelector('.agents-tree-empty')) {
+        _agLoadWorkspaceTree();
+    }
 }
 
 // ── Command activity rows ──────────────────────────────────────
@@ -2456,6 +2503,338 @@ function agentsInitEventHandlers() {
             taskInput.style.height = 'auto';
             taskInput.style.height = Math.min(taskInput.scrollHeight, 200) + 'px';
         });
+    }
+
+    // Workspace IDE tabs switching click listener
+    const tabBtns = document.querySelectorAll('.agents-main-tab-btn');
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetTab = btn.getAttribute('data-tab');
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            const panels = document.querySelectorAll('.agents-tab-content-panel');
+            panels.forEach(p => p.classList.remove('active'));
+            
+            const targetPanel = document.getElementById(`agents-${targetTab}-tab-panel`);
+            if (targetPanel) targetPanel.classList.add('active');
+            
+            if (targetTab === 'files') {
+                _agLoadWorkspaceTree();
+            }
+        });
+    });
+
+    // Refresh explorer tree button
+    const treeRefreshBtn = document.getElementById('agents-tree-refresh-btn');
+    if (treeRefreshBtn) {
+        treeRefreshBtn.addEventListener('click', () => {
+            _agLoadWorkspaceTree();
+        });
+    }
+
+    // Save manual edits button
+    const fileSaveBtn = document.getElementById('agents-file-save-btn');
+    if (fileSaveBtn) {
+        fileSaveBtn.addEventListener('click', _agSaveCurrentFile);
+    }
+
+    // Workspace search button
+    const searchBtn = document.getElementById('agents-search-btn');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', _agSearchWorkspace);
+    }
+
+    // Search enter key trigger
+    const searchInput = document.getElementById('agents-search-input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                _agSearchWorkspace();
+            }
+        });
+    }
+}
+
+// ── Workspace IDE Tree & Editor Helpers ───────────────────────
+let _agCurrentOpenFile = null;
+
+async function _agLoadWorkspaceTree() {
+    const rootEl = document.getElementById('agents-file-tree-root');
+    if (!rootEl) return;
+    
+    if (!_agentsCurrentWorkspace || !_agentsCurrentWorkspace.path) {
+        rootEl.innerHTML = '<div class="agents-tree-empty">Select workspace first</div>';
+        return;
+    }
+    
+    const wsRoot = _agentsCurrentWorkspace.path;
+    _agFetchAndRenderFolder(wsRoot, rootEl);
+}
+
+async function _agFetchAndRenderFolder(dirPath, container) {
+    // If root container, show loading. If child folder, append spinner temporarily
+    const isRoot = container.id === 'agents-file-tree-root';
+    if (isRoot) {
+        container.innerHTML = '<div class="agents-tree-loading"><i class="fas fa-spinner fa-spin"></i> Loading tree...</div>';
+    }
+    
+    try {
+        const resp = await fetch(`/api/agents/workspace/tree?path=${encodeURIComponent(dirPath)}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        
+        container.innerHTML = '';
+        if (!data.entries || data.entries.length === 0) {
+            container.innerHTML = '<div class="agents-tree-empty-folder">Empty folder</div>';
+            return;
+        }
+        
+        data.entries.forEach(entry => {
+            const node = document.createElement('div');
+            node.className = `agents-tree-node ${entry.is_dir ? 'directory collapsed' : 'file'}`;
+            node.setAttribute('data-path', entry.path);
+            
+            const isModified = _agentsRenderState && _agentsRenderState.fileCards && _agentsRenderState.fileCards[entry.path];
+            const hasIndicator = isModified ? '<span class="agents-tree-file-indicator modified" title="Modified by Agent"></span>' : '';
+            
+            // Icon mapping
+            let iconClass = entry.is_dir ? 'fas fa-folder' : 'far fa-file-code';
+            if (!entry.is_dir) {
+                if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(entry.ext)) iconClass = 'far fa-file-image';
+                else if (['json', 'yaml', 'yml', 'toml'].includes(entry.ext)) iconClass = 'far fa-file-alt';
+                else if (['md', 'txt'].includes(entry.ext)) iconClass = 'far fa-file-lines';
+            }
+            
+            node.innerHTML = `
+                <div class="agents-tree-row">
+                    <i class="fas fa-chevron-right agents-tree-arrow" style="${entry.is_dir ? '' : 'visibility:hidden'}"></i>
+                    <i class="${iconClass} agents-tree-icon"></i>
+                    <span class="agents-tree-label">${_htmlEscape(entry.name)}</span>
+                    ${hasIndicator}
+                </div>
+                ${entry.is_dir ? '<div class="agents-tree-children"></div>' : ''}
+            `;
+            
+            const row = node.querySelector('.agents-tree-row');
+            row.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (entry.is_dir) {
+                    const children = node.querySelector('.agents-tree-children');
+                    const arrow = node.querySelector('.agents-tree-arrow');
+                    const folderIcon = node.querySelector('.agents-tree-icon');
+                    
+                    if (node.classList.contains('collapsed')) {
+                        node.classList.remove('collapsed');
+                        node.classList.add('expanded');
+                        arrow.className = 'fas fa-chevron-down agents-tree-arrow';
+                        folderIcon.className = 'fas fa-folder-open agents-tree-icon';
+                        if (children.children.length === 0) {
+                            _agFetchAndRenderFolder(entry.path, children);
+                        }
+                    } else {
+                        node.classList.remove('expanded');
+                        node.classList.add('collapsed');
+                        arrow.className = 'fas fa-chevron-right agents-tree-arrow';
+                        folderIcon.className = 'fas fa-folder agents-tree-icon';
+                    }
+                } else {
+                    // File selection
+                    document.querySelectorAll('.agents-tree-row').forEach(r => r.classList.remove('active'));
+                    row.classList.add('active');
+                    _agOpenFile(entry.path, entry.name);
+                }
+            });
+            
+            container.appendChild(node);
+        });
+    } catch (e) {
+        console.error(e);
+        container.innerHTML = `<div class="agents-tree-error">Failed to load: ${e.message || e}</div>`;
+    }
+}
+
+async function _agOpenFile(filePath, filename) {
+    _agCurrentOpenFile = filePath;
+    
+    const viewerEmpty = document.getElementById('agents-viewer-empty');
+    const codePre = document.getElementById('agents-code-pre');
+    const codeEditor = document.getElementById('agents-code-editor');
+    const activeTitle = document.getElementById('agents-active-file-title');
+    const activePath = document.getElementById('agents-active-file-path');
+    const saveBtn = document.getElementById('agents-file-save-btn');
+    
+    if (!activeTitle) return;
+    
+    activeTitle.textContent = filename || filePath.split(/[\\/]/).pop() || filePath;
+    activePath.textContent = filePath;
+    if (saveBtn) saveBtn.style.display = 'inline-flex';
+    
+    if (viewerEmpty) viewerEmpty.style.display = 'none';
+    if (codePre) codePre.style.display = 'none';
+    if (codeEditor) {
+        codeEditor.style.display = 'block';
+        codeEditor.value = 'Loading file content...';
+        codeEditor.disabled = true;
+    }
+    
+    try {
+        const resp = await fetch(`/api/agents/workspace/file-content?path=${encodeURIComponent(filePath)}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        
+        if (codeEditor) {
+            codeEditor.disabled = false;
+            if (data.too_large || data.binary) {
+                codeEditor.value = data.content;
+                codeEditor.disabled = true;
+                if (saveBtn) saveBtn.style.display = 'none';
+            } else {
+                codeEditor.value = data.content;
+            }
+        }
+    } catch (e) {
+        console.error(e);
+        if (codeEditor) {
+            codeEditor.value = `Error loading file: ${e.message || e}`;
+            codeEditor.disabled = true;
+            if (saveBtn) saveBtn.style.display = 'none';
+        }
+    }
+}
+
+async function _agSaveCurrentFile() {
+    if (!_agCurrentOpenFile) return;
+    
+    const codeEditor = document.getElementById('agents-code-editor');
+    const saveBtn = document.getElementById('agents-file-save-btn');
+    if (!codeEditor || codeEditor.disabled || !saveBtn) return;
+    
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    saveBtn.disabled = true;
+    
+    try {
+        const resp = await fetch('/api/agents/workspace/file-save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                path: _agCurrentOpenFile,
+                content: codeEditor.value
+            })
+        });
+        
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        
+        saveBtn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+        saveBtn.style.borderColor = '#10b981';
+        setTimeout(() => {
+            saveBtn.innerHTML = originalText;
+            saveBtn.style.borderColor = '';
+            saveBtn.disabled = false;
+        }, 1500);
+        
+        // Refresh explorer highlights
+        _agLoadWorkspaceTree();
+    } catch (e) {
+        console.error(e);
+        saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+        saveBtn.style.borderColor = '#ef4444';
+        setTimeout(() => {
+            saveBtn.innerHTML = originalText;
+            saveBtn.style.borderColor = '';
+            saveBtn.disabled = false;
+        }, 3000);
+    }
+}
+
+async function _agSearchWorkspace() {
+    const input = document.getElementById('agents-search-input');
+    const list = document.getElementById('agents-search-results-list');
+    const info = document.getElementById('agents-search-info');
+    
+    if (!input || !list || !info) return;
+    const query = input.value.trim();
+    if (!query) {
+        info.textContent = 'Please enter a search query';
+        list.innerHTML = '';
+        return;
+    }
+    
+    if (query.length < 2) {
+        info.textContent = 'Query must be at least 2 characters';
+        list.innerHTML = '';
+        return;
+    }
+    
+    if (!_agentsCurrentWorkspace || !_agentsCurrentWorkspace.path) {
+        info.textContent = 'Select workspace first';
+        list.innerHTML = '';
+        return;
+    }
+    
+    info.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching codebase...';
+    list.innerHTML = '';
+    
+    try {
+        const wsPath = _agentsCurrentWorkspace.path;
+        const resp = await fetch(`/api/agents/workspace/search?path=${encodeURIComponent(wsPath)}&query=${encodeURIComponent(query)}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        
+        if (!data.results || data.results.length === 0) {
+            info.textContent = `No matches found for "${query}"`;
+            return;
+        }
+        
+        info.textContent = `Found ${data.results.length} files matching "${query}":`;
+        
+        data.results.forEach(res => {
+            const card = document.createElement('div');
+            card.className = 'agent-search-result-card';
+            
+            let matchesHtml = '';
+            res.matches.forEach(m => {
+                matchesHtml += `
+                    <div class="agent-search-match-line" data-line="${m.line_number}">
+                        <span class="match-line-num">Line ${m.line_number}:</span>
+                        <code class="match-line-content">${_htmlEscape(m.content)}</code>
+                    </div>`;
+            });
+            
+            card.innerHTML = `
+                <div class="agent-search-result-header">
+                    <span class="search-result-file"><i class="far fa-file-code"></i> ${res.rel_path}</span>
+                </div>
+                <div class="agent-search-result-matches">
+                    ${matchesHtml}
+                </div>
+            `;
+            
+            card.querySelector('.agent-search-result-header').addEventListener('click', () => {
+                const filesTabBtn = document.getElementById('agents-tab-files-btn');
+                if (filesTabBtn) {
+                    filesTabBtn.click();
+                    _agOpenFile(res.path, res.filename);
+                }
+            });
+            
+            card.querySelectorAll('.agent-search-match-line').forEach(lineEl => {
+                lineEl.addEventListener('click', () => {
+                    const filesTabBtn = document.getElementById('agents-tab-files-btn');
+                    if (filesTabBtn) {
+                        filesTabBtn.click();
+                        _agOpenFile(res.path, res.filename);
+                    }
+                });
+            });
+            
+            list.appendChild(card);
+        });
+    } catch (e) {
+        console.error(e);
+        info.textContent = `Search failed: ${e.message || e}`;
     }
 }
 

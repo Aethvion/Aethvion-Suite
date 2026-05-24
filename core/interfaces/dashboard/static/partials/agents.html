@@ -117,10 +117,80 @@
 
                         <!-- Main content area -->
                         <div class="agents-dash-main">
-                            <div id="agents-messages" class="agents-messages">
-                                <div class="agents-empty-state" id="agents-empty-state">
-                                    <div class="agents-empty-title">No workspace selected</div>
-                                    <div class="agents-empty-sub">Add or select a workspace to start working with agents</div>
+                            <div class="agents-main-tabs">
+                                <button class="agents-main-tab-btn active" data-tab="chat">
+                                    <i class="fas fa-comments"></i> Chat & Activity
+                                </button>
+                                <button class="agents-main-tab-btn" data-tab="files" id="agents-tab-files-btn">
+                                    <i class="fas fa-folder-tree"></i> Files
+                                </button>
+                                <button class="agents-main-tab-btn" data-tab="search">
+                                    <i class="fas fa-search"></i> Search
+                                </button>
+                            </div>
+                            
+                            <!-- Tab Content: Chat -->
+                            <div id="agents-chat-tab-panel" class="agents-tab-content-panel active">
+                                <div id="agents-messages" class="agents-messages">
+                                    <div class="agents-empty-state" id="agents-empty-state">
+                                        <div class="agents-empty-title">No workspace selected</div>
+                                        <div class="agents-empty-sub">Add or select a workspace to start working with agents</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Tab Content: Files Split Explorer -->
+                            <div id="agents-files-tab-panel" class="agents-tab-content-panel">
+                                <div class="agents-files-split">
+                                    <div class="agents-file-tree-container">
+                                        <div class="agents-file-tree-header">
+                                            <span>Workspace Explorer</span>
+                                            <button id="agents-tree-refresh-btn" class="agents-tree-icon-btn" title="Refresh Explorer">
+                                                <i class="fas fa-sync-alt"></i>
+                                            </button>
+                                        </div>
+                                        <div class="agents-file-tree" id="agents-file-tree-root">
+                                            <div class="agents-tree-empty">Select workspace first</div>
+                                        </div>
+                                    </div>
+                                    <div class="agents-file-viewer-container">
+                                        <div class="agents-file-viewer-header" id="agents-file-header">
+                                            <div class="agents-file-header-left">
+                                                <i class="far fa-file-code" id="agents-file-icon"></i>
+                                                <span class="agents-active-file-name" id="agents-active-file-title">No file open</span>
+                                            </div>
+                                            <span class="agents-active-file-path" id="agents-active-file-path"></span>
+                                            <button id="agents-file-save-btn" class="agents-file-save-btn" style="display:none">
+                                                <i class="fas fa-save"></i> Save
+                                            </button>
+                                        </div>
+                                        <div class="agents-file-content-area">
+                                            <div class="agents-file-viewer-empty" id="agents-viewer-empty">
+                                                <i class="fas fa-code-fork"></i>
+                                                <span>Select a file from the explorer to preview or edit</span>
+                                            </div>
+                                            <pre class="agents-code-pre" id="agents-code-pre" style="display:none"><code id="agents-code-block" class="language-plaintext"></code></pre>
+                                            <textarea id="agents-code-editor" class="agents-code-editor" style="display:none" placeholder="Edit file content here..."></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Tab Content: Search -->
+                            <div id="agents-search-tab-panel" class="agents-tab-content-panel">
+                                <div class="agents-search-container">
+                                    <div class="agents-search-box">
+                                        <input type="text" id="agents-search-input" class="agents-search-input" placeholder="Search text in workspace files..." />
+                                        <button id="agents-search-btn" class="agents-search-btn">
+                                            <i class="fas fa-search"></i> Find
+                                        </button>
+                                    </div>
+                                    <div class="agents-search-results-container">
+                                        <div class="agents-search-results-info" id="agents-search-info">Enter search query above</div>
+                                        <div class="agents-search-results" id="agents-search-results-list">
+                                            <!-- Matching results list -->
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
