@@ -2301,17 +2301,9 @@ _NODE_TYPES: list[dict] = [
         "properties": [
             {
                 "key": "database",
-                "label": "Database Name",
-                "type": "text",
+                "label": "Database",
+                "type": "aethviondb_db",
                 "default": "default",
-                "placeholder": "default",
-            },
-            {
-                "key": "bake_name",
-                "label": "Bake Name",
-                "type": "text",
-                "default": "default",
-                "placeholder": "(blank = use most recent bake)",
             },
             {
                 "key": "entity_type",
@@ -2328,7 +2320,55 @@ _NODE_TYPES: list[dict] = [
             },
             {
                 "key": "min_score",
-                "label": "Min Relevance Score (0–1)",
+                "label": "Min Score (0–1)",
+                "type": "number",
+                "default": 0.0,
+            },
+        ],
+    },
+    {
+        "type": "aethviondb.snapshot_search",
+        "label": "AethvionDB Snapshot Search",
+        "category": "Integrations",
+        "icon": "fa-database",
+        "color": "#a78bfa",
+        "inputs": [{"name": "in", "label": "Search Query"}],
+        "outputs": [
+            {"name": "out",   "label": "Results (JSON)"},
+            {"name": "count", "label": "Result Count"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "database",
+                "label": "Database",
+                "type": "aethviondb_db",
+                "default": "default",
+            },
+            {
+                "key": "snapshot",
+                "label": "Snapshot",
+                "type": "aethviondb_snap",
+                "db_key": "database",
+                "default": "",
+                "placeholder": "(most recent)",
+            },
+            {
+                "key": "entity_type",
+                "label": "Entity Type Filter",
+                "type": "text",
+                "default": "",
+                "placeholder": "(blank = all types)",
+            },
+            {
+                "key": "limit",
+                "label": "Max Results",
+                "type": "number",
+                "default": 10,
+            },
+            {
+                "key": "min_score",
+                "label": "Min Score (0–1)",
                 "type": "number",
                 "default": 0.0,
             },
@@ -2467,6 +2507,33 @@ async def get_models(provider: Optional[str] = None):
             })
 
     return {"models": models}
+
+
+@router.get("/aethviondb/databases")
+async def get_aethviondb_databases():
+    """Return all registered AethvionDB database names."""
+    try:
+        from core.aethviondb.db_registry import list_dbs  # noqa: PLC0415
+        names = [d["name"] for d in list_dbs()]
+        if not names:
+            names = ["default"]
+    except Exception:
+        names = ["default"]
+    return {"databases": names}
+
+
+@router.get("/aethviondb/snapshots")
+async def get_aethviondb_snapshots(db: str = "default"):
+    """Return all snapshot names for a given AethvionDB database, newest-first."""
+    try:
+        from core.aethviondb.db_registry import resolve_db_root  # noqa: PLC0415
+        from core.aethviondb.baker import list_bakes              # noqa: PLC0415
+        root   = resolve_db_root(db)
+        bakes  = list_bakes(root)
+        names  = [b["name"] for b in bakes if b.get("name")]
+    except Exception:
+        names = []
+    return {"snapshots": names}
 
 
 @router.post("/node/test")
