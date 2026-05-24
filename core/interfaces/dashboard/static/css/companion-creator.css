@@ -479,8 +479,12 @@
     word-break: break-word;
 }
 .cc-msg-user .cc-msg-bubble {
-    background: var(--accent, #6366f1); color: #fff;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    color: var(--text-primary, #f4f4f5);
     border-radius: 14px 14px 3px 14px;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .cc-msg-companion .cc-msg-bubble {
     background: var(--bg-secondary); border: 1px solid var(--border);

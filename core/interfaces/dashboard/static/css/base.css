@@ -255,16 +255,18 @@ h6 {
 }
 
 .hdr-nav-btn:hover {
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--text-primary);
     background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.12);
+    border-color: color-mix(in srgb, var(--primary) 25%, rgba(255, 255, 255, 0.12));
+    transform: translateY(-1px);
 }
 
 .hdr-nav-btn.active {
     color: var(--primary);
     border-color: var(--primary);
-    background: rgba(255, 255, 255, 0.04);
-    box-shadow: 0 0 14px rgba(0, 0, 0, 0.15);
+    background: color-mix(in srgb, var(--primary) 6%, rgba(255, 255, 255, 0.03));
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 10px color-mix(in srgb, var(--primary) 25%, transparent);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--primary) 30%, transparent);
 }
 
 /* ── Header settings button ──────────────────────────────────────── */

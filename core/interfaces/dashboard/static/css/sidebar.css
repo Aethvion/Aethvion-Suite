@@ -726,9 +726,9 @@
 }
 
 .sidebar-nav .main-tab.active {
-    background: rgba(99, 102, 241, 0.08);
-    color: var(--primary, #6366f1);
-    border-color: rgba(99, 102, 241, 0.12);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    color: var(--primary);
+    border-color: color-mix(in srgb, var(--primary) 15%, transparent);
 }
 
 .sidebar-nav .main-tab.active::before { opacity: 1; }
@@ -817,9 +817,9 @@
 .cust-toggle-btn:hover i { opacity: 1; }
 
 .cust-toggle-btn.edit-active {
-    background: rgba(99, 102, 241, 0.1);
-    border-color: rgba(99, 102, 241, 0.22);
-    color: var(--primary, #6366f1);
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    border-color: color-mix(in srgb, var(--primary) 22%, transparent);
+    color: var(--primary);
 }
 .cust-toggle-btn.edit-active i { opacity: 1; }
 
@@ -866,9 +866,9 @@
 
 .sidebar-nav.sidebar-edit-mode .vis-toggle { display: flex; align-items: center; }
 .vis-toggle:hover {
-    background: rgba(99, 102, 241, 0.14);
-    border-color: rgba(99, 102, 241, 0.35);
-    color: var(--primary, #6366f1);
+    background: color-mix(in srgb, var(--primary) 15%, transparent);
+    border-color: color-mix(in srgb, var(--primary) 35%, transparent);
+    color: var(--primary);
 }
 
 /* Edit mode: highlight movable tabs */
@@ -883,8 +883,8 @@
 }
 
 .sidebar-nav.sidebar-edit-mode .main-tab.drop-target {
-    border-color: var(--primary, #6366f1);
-    background: rgba(99, 102, 241, 0.07);
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
 /* ══════════════════════════════════════════════════════════════

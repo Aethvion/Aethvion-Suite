@@ -756,19 +756,32 @@ document.addEventListener('visibilitychange', () => {
 });
 
 function updateConnectionStatus(connected) {
-    const indicator = document.getElementById('status-indicator');
+    const indicator = document.getElementById('home-status-indicator');
     if (!indicator) return;
     const dot = indicator.querySelector('.status-dot');
     const text = indicator.querySelector('.status-text');
 
-    if (connected) {
-        dot.classList.add('connected');
-        text.textContent = 'Connected';
-        indicator.title = 'Aethvion Suite is online and connected to local services.';
-    } else {
-        dot.classList.remove('connected');
-        text.textContent = 'Disconnected';
-        indicator.title = 'Aethvion Suite is offline. Some features may be unavailable.';
+    const color = connected ? 'var(--success)' : 'var(--error)';
+    const statusText = connected ? 'Online' : 'Offline';
+
+    if (dot) {
+        dot.style.backgroundColor = color;
+        if (connected) {
+            dot.style.boxShadow = `0 0 8px ${color}`;
+        } else {
+            dot.style.boxShadow = 'none';
+        }
+    }
+    if (indicator) {
+        indicator.style.borderColor = connected ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+        indicator.style.background = connected ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)';
+        indicator.style.color = color;
+        indicator.title = connected
+            ? 'Aethvion Suite is online and connected to local services.'
+            : 'Aethvion Suite is offline. Some features may be unavailable.';
+    }
+    if (text) {
+        text.textContent = statusText;
     }
 }
 
