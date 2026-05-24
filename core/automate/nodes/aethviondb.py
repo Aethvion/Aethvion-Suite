@@ -13,6 +13,7 @@ JSON file produced by the baker.
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from typing import Any
 
@@ -117,24 +118,26 @@ def aethviondb_search(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
     min_score   = float(p.get("min_score", 0.0) or 0.0)
 
     if not query:
-        return {"out": "[]", "count": 0, "error": "No search query provided"}
+        return {"out": "[]", "count": 0, "speed": "0ms", "error": "No search query provided"}
 
     try:
         from core.aethviondb.db_registry import resolve_db_root  # noqa: PLC0415
     except ImportError as exc:
-        return {"out": "[]", "count": 0,
+        return {"out": "[]", "count": 0, "speed": "0ms",
                 "error": f"AethvionDB not available: {exc}"}
 
     try:
         root = resolve_db_root(db_name)
     except Exception as exc:
-        return {"out": "[]", "count": 0,
+        return {"out": "[]", "count": 0, "speed": "0ms",
                 "error": f"Database '{db_name}' not found: {exc}"}
 
     entities_dir = root / "entities"
     if not entities_dir.exists():
-        return {"out": "[]", "count": 0,
+        return {"out": "[]", "count": 0, "speed": "0ms",
                 "error": f"Database '{db_name}' has no entities yet (entities/ folder missing)"}
+
+    _t0 = time.perf_counter()
 
     # Load all raw entity files
     entities: list[dict] = []
@@ -145,7 +148,7 @@ def aethviondb_search(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
             pass
 
     if not entities:
-        return {"out": "[]", "count": 0,
+        return {"out": "[]", "count": 0, "speed": "0ms",
                 "error": f"Database '{db_name}' is empty"}
 
     # Optional entity-type filter
@@ -169,9 +172,11 @@ def aethviondb_search(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
             "_score":  round(s, 3),
         })
 
+    elapsed_ms = round((time.perf_counter() - _t0) * 1000, 2)
     return {
         "out":   json.dumps(results, ensure_ascii=False),
         "count": len(results),
+        "speed": f"{elapsed_ms}ms",
         "error": "",
     }
 
@@ -191,19 +196,19 @@ def aethviondb_snapshot_search(node: dict, inputs: dict[str, Any], ctx) -> dict[
     min_score   = float(p.get("min_score", 0.0) or 0.0)
 
     if not query:
-        return {"out": "[]", "count": 0, "error": "No search query provided"}
+        return {"out": "[]", "count": 0, "speed": "0ms", "error": "No search query provided"}
 
     try:
         from core.aethviondb.db_registry import resolve_db_root  # noqa: PLC0415
         from core.aethviondb.baker import list_bakes              # noqa: PLC0415
     except ImportError as exc:
-        return {"out": "[]", "count": 0,
+        return {"out": "[]", "count": 0, "speed": "0ms",
                 "error": f"AethvionDB not available: {exc}"}
 
     try:
         root = resolve_db_root(db_name)
     except Exception as exc:
-        return {"out": "[]", "count": 0,
+        return {"out": "[]", "count": 0, "speed": "0ms",
                 "error": f"Database '{db_name}' not found: {exc}"}
 
     # Find the requested snapshot by name, fall back to the most recent one
@@ -212,8 +217,10 @@ def aethviondb_snapshot_search(node: dict, inputs: dict[str, Any], ctx) -> dict[
     if meta is None and bakes:
         meta = bakes[0]   # list_bakes returns newest-first
     if meta is None:
-        return {"out": "[]", "count": 0,
+        return {"out": "[]", "count": 0, "speed": "0ms",
                 "error": f"No snapshot found in database '{db_name}'"}
+
+    _t0 = time.perf_counter()
 
     entities = _load_snapshot_entities(meta)
 
@@ -230,8 +237,10 @@ def aethviondb_snapshot_search(node: dict, inputs: dict[str, Any], ctx) -> dict[
     for entity, s in scored[:limit]:
         results.append({**entity, "_score": round(s, 3)})
 
+    elapsed_ms = round((time.perf_counter() - _t0) * 1000, 2)
     return {
         "out":   json.dumps(results, ensure_ascii=False),
         "count": len(results),
+        "speed": f"{elapsed_ms}ms",
         "error": "",
     }

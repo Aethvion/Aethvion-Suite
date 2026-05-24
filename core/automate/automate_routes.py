@@ -2296,6 +2296,7 @@ _NODE_TYPES: list[dict] = [
         "outputs": [
             {"name": "out",   "label": "Results (JSON)"},
             {"name": "count", "label": "Result Count"},
+            {"name": "speed", "label": "Speed"},
             {"name": "error", "label": "Error"},
         ],
         "properties": [
@@ -2336,6 +2337,7 @@ _NODE_TYPES: list[dict] = [
         "outputs": [
             {"name": "out",   "label": "Results (JSON)"},
             {"name": "count", "label": "Result Count"},
+            {"name": "speed", "label": "Speed"},
             {"name": "error", "label": "Error"},
         ],
         "properties": [
