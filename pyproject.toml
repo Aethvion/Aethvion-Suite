@@ -67,6 +67,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# auto — installed automatically at startup by the self-repair system.
+# Add new optional node/feature packages here; existing installs self-heal.
+auto = [
+    "pytesseract",
+    "Pillow",
+]
+
+# The groups below are installed manually: pip install aethvion-suite[memory]
 memory = [
     "chromadb>=0.4.0",
     "sentence-transformers>=2.2.0",
@@ -81,6 +89,8 @@ dev = [
     "flake8>=6.0",
 ]
 all = [
+    "pytesseract",
+    "Pillow",
     "chromadb>=0.4.0",
     "sentence-transformers>=2.2.0",
     "networkx>=3.0",

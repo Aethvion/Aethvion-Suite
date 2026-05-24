@@ -12,6 +12,17 @@ import time
 import datetime
 import threading
 import subprocess
+
+# ── Package health check ───────────────────────────────────────────────────
+# Must run before any third-party imports so missing packages can be
+# installed before they are needed.  pkg_repair uses only the stdlib.
+try:
+    from core.utils.pkg_repair import repair as _repair_packages
+    _repair_packages()
+except Exception as _pkg_err:
+    print(f"  [pkg_repair] Health check skipped: {_pkg_err}")
+# ──────────────────────────────────────────────────────────────────────────
+
 from dotenv import load_dotenv
 
 # Load environment variables from project root

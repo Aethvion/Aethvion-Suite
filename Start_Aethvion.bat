@@ -19,6 +19,8 @@ if "!ALREADY_INSTALLED!"=="1" (
 
 :: ── 3. Optimized Execution Path ────────────────────────────
 if "!ALREADY_INSTALLED!"=="1" (
+    :: Package health check - detect and install any new/missing packages
+    ".venv\Scripts\python.exe" -c "import sys; sys.path.insert(0, '.'); from core.utils.pkg_repair import repair; repair()"
     :: Silent Background Launch
     start "" /b ".venv\Scripts\pythonw.exe" core\launcher.py --consumer --browser app
     exit

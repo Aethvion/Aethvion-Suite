@@ -512,7 +512,22 @@ def _monitor_dashboard(proc: subprocess.Popen, consumer: bool) -> None:
 
 def main() -> None:
     _log("Main function entered")
-    
+
+    # -- Package health check (silent; results written to diagnostic log) ------
+    try:
+        from core.utils.pkg_repair import repair as _repair_packages
+        _log("[pkg_repair] Starting package health check...")
+        _result = _repair_packages(verbose=False)
+        if _result["installed"]:
+            _log(f"[pkg_repair] Installed: {', '.join(_result['installed'])}")
+        if _result["failed"]:
+            _log(f"[pkg_repair] Failed: {[f['pip'] for f in _result['failed']]}")
+        if not _result["installed"] and not _result["failed"]:
+            _log("[pkg_repair] All packages OK")
+    except Exception as _pkg_e:
+        _log(f"[pkg_repair] Health check error: {_pkg_e}")
+    # --------------------------------------------------------------------------
+
     parser = argparse.ArgumentParser(
         description="Aethvion Suite Master Launcher",
         formatter_class=argparse.RawDescriptionHelpFormatter,
