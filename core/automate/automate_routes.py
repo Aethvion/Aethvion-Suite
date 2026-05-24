@@ -1866,7 +1866,7 @@ _NODE_TYPES: list[dict] = [
         ],
         "outputs": [
             {"name": "out",    "label": "File Path"},
-            {"name": "path",   "label": "File Path"},
+            {"name": "image",  "label": "Image Preview"},
             {"name": "width",  "label": "Width"},
             {"name": "height", "label": "Height"},
             {"name": "error",  "label": "Error"},
@@ -1899,7 +1899,7 @@ _NODE_TYPES: list[dict] = [
         ],
         "outputs": [
             {"name": "out",    "label": "File Path"},
-            {"name": "path",   "label": "File Path"},
+            {"name": "image",  "label": "Image Preview"},
             {"name": "width",  "label": "Width"},
             {"name": "height", "label": "Height"},
             {"name": "error",  "label": "Error"},

@@ -10,6 +10,7 @@ message if the required library is missing.
 """
 from __future__ import annotations
 
+import base64
 import sys
 import tempfile
 import uuid
@@ -18,6 +19,15 @@ from pathlib import Path
 from typing import Any
 
 from ._utils import _to_str, _get_pm
+
+
+def _file_to_data_uri(path: str, mime: str = "image/png") -> str:
+    """Read an image file and return a data URI suitable for an <img> src."""
+    try:
+        data = Path(path).read_bytes()
+        return f"data:{mime};base64," + base64.b64encode(data).decode()
+    except Exception:
+        return ""
 
 
 # ── Screenshot ────────────────────────────────────────────────────────────────
@@ -31,13 +41,13 @@ def action_screenshot(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
         import mss          # noqa: PLC0415
         import mss.tools    # noqa: PLC0415
     except ImportError:
-        return {"out": "", "path": "", "error": "mss not installed — run: pip install mss"}
+        return {"out": "", "image": "", "error": "mss not installed — run: pip install mss"}
 
     try:
         with mss.mss() as sct:
             monitors = sct.monitors
             if monitor < 0 or monitor >= len(monitors):
-                return {"out": "", "path": "",
+                return {"out": "", "image": "",
                         "error": f"Monitor {monitor} out of range (0–{len(monitors)-1})"}
 
             sct_img = sct.grab(monitors[monitor])
@@ -51,13 +61,13 @@ def action_screenshot(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
 
         return {
             "out":    save_path,
-            "path":   save_path,
+            "image":  _file_to_data_uri(save_path, "image/png"),
             "width":  sct_img.width,
             "height": sct_img.height,
             "error":  "",
         }
     except Exception as exc:
-        return {"out": "", "path": "", "width": 0, "height": 0, "error": str(exc)}
+        return {"out": "", "image": "", "width": 0, "height": 0, "error": str(exc)}
 
 
 # ── Camera capture ────────────────────────────────────────────────────────────
@@ -72,14 +82,14 @@ def action_camera_capture(node: dict, inputs: dict[str, Any], ctx) -> dict[str, 
     try:
         import cv2  # noqa: PLC0415
     except ImportError:
-        return {"out": "", "path": "", "width": 0, "height": 0,
+        return {"out": "", "image": "", "width": 0, "height": 0,
                 "error": "opencv-python not installed — run: pip install opencv-python"}
 
     try:
         flag = cv2.CAP_DSHOW if sys.platform == "win32" else 0
         cap  = cv2.VideoCapture(camera_index, flag)
         if not cap.isOpened():
-            return {"out": "", "path": "", "width": 0, "height": 0,
+            return {"out": "", "image": "", "width": 0, "height": 0,
                     "error": f"Could not open camera at index {camera_index}"}
 
         cap.set(cv2.CAP_PROP_FRAME_WIDTH,  width)
@@ -93,7 +103,7 @@ def action_camera_capture(node: dict, inputs: dict[str, Any], ctx) -> dict[str, 
         cap.release()
 
         if not ret or frame is None:
-            return {"out": "", "path": "", "width": 0, "height": 0,
+            return {"out": "", "image": "", "width": 0, "height": 0,
                     "error": "Failed to capture frame from camera"}
 
         if not save_path:
@@ -105,13 +115,13 @@ def action_camera_capture(node: dict, inputs: dict[str, Any], ctx) -> dict[str, 
 
         return {
             "out":    save_path,
-            "path":   save_path,
+            "image":  _file_to_data_uri(save_path, "image/jpeg"),
             "width":  frame.shape[1],
             "height": frame.shape[0],
             "error":  "",
         }
     except Exception as exc:
-        return {"out": "", "path": "", "width": 0, "height": 0, "error": str(exc)}
+        return {"out": "", "image": "", "width": 0, "height": 0, "error": str(exc)}
 
 
 # ── Vision — analyse image ────────────────────────────────────────────────────
