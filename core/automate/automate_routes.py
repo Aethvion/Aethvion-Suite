@@ -1934,6 +1934,44 @@ _NODE_TYPES: list[dict] = [
         ],
     },
     {
+        "type": "action.ocr",
+        "label": "OCR — Extract Text",
+        "category": "Actions",
+        "icon": "fa-glasses",
+        "color": "#34d399",
+        "inputs": [
+            {"name": "image", "label": "Image (path or data URI)"},
+        ],
+        "outputs": [
+            {"name": "out",   "label": "Extracted Text"},
+            {"name": "error", "label": "Error"},
+        ],
+        "properties": [
+            {
+                "key": "image_path",
+                "label": "Image Path",
+                "type": "text",
+                "default": "",
+                "placeholder": "Path to image file, or leave blank and wire an image input",
+                "picker": "file",
+            },
+            {
+                "key": "language",
+                "label": "Language",
+                "type": "text",
+                "default": "eng",
+                "placeholder": "eng, fra, deu, chi_sim, … (Tesseract lang code)",
+            },
+            {
+                "key": "config",
+                "label": "Tesseract Config",
+                "type": "text",
+                "default": "",
+                "placeholder": "e.g. --psm 6  (optional extra flags)",
+            },
+        ],
+    },
+    {
         "type": "action.run_agent",
         "label": "Run Agent",
         "category": "Actions",

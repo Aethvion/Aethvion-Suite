@@ -64,6 +64,7 @@ _REGISTRY: dict[str, Callable] = {
     "action.http":           actions.action_http,
     "action.log":            actions.action_log,
     "action.notify":         actions.action_notify,
+    "action.ocr":            media.action_ocr,
     "action.run_agent":      actions.action_run_agent,
     "action.run_command":    actions.action_run_command,
     "action.run_script":     actions.action_run_script,

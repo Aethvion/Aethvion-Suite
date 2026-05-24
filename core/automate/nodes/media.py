@@ -30,6 +30,50 @@ def _file_to_data_uri(path: str, mime: str = "image/png") -> str:
         return ""
 
 
+# ── OCR — extract text from image ────────────────────────────────────────────
+
+def action_ocr(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    """Extract text from an image using Tesseract OCR (pytesseract + Pillow).
+
+    Accepts either a file path or a base64 data URI on the ``image`` / ``path``
+    input.  Falls back to the ``image_path`` property if no wire is connected.
+    """
+    p           = node.get("properties", {})
+    image_input = _to_str(
+        inputs.get("image") or inputs.get("path") or p.get("image_path", "")
+    ).strip()
+    language    = str(p.get("language", "eng")).strip() or "eng"
+    config      = str(p.get("config", "")).strip()
+
+    if not image_input:
+        return {"out": "", "error": "OCR: no image path or data URI provided"}
+
+    try:
+        import pytesseract          # noqa: PLC0415
+        from PIL import Image       # noqa: PLC0415
+    except ImportError:
+        return {
+            "out": "",
+            "error": "pytesseract / Pillow not installed — run: pip install pytesseract Pillow",
+        }
+
+    try:
+        if image_input.startswith("data:"):
+            import io as _io            # noqa: PLC0415
+            import base64 as _b64       # noqa: PLC0415
+            _header, b64data = image_input.split(",", 1)
+            image_bytes = _b64.b64decode(b64data)
+            img = Image.open(_io.BytesIO(image_bytes))
+        else:
+            img = Image.open(image_input)
+
+        text = pytesseract.image_to_string(img, lang=language, config=config).strip()
+        return {"out": text, "error": ""}
+
+    except Exception as exc:
+        return {"out": "", "error": str(exc)}
+
+
 # ── Screenshot ────────────────────────────────────────────────────────────────
 
 def action_screenshot(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
