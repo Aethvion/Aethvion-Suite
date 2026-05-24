@@ -160,17 +160,28 @@
                                                 <span class="agents-active-file-name" id="agents-active-file-title">No file open</span>
                                             </div>
                                             <span class="agents-active-file-path" id="agents-active-file-path"></span>
-                                            <button id="agents-file-save-btn" class="agents-file-save-btn" style="display:none">
-                                                <i class="fas fa-save"></i> Save
-                                            </button>
+                                            <div class="agents-file-header-actions">
+                                                <!-- Markdown toggle: only shown for .md files -->
+                                                <button id="agents-md-toggle" class="agents-md-toggle-btn active" style="display:none" title="Toggle Markdown Preview">Markdown</button>
+                                                <!-- Save button: appears only when content has changed -->
+                                                <button id="agents-file-save-btn" class="agents-file-save-btn" style="display:none">
+                                                    <i class="fas fa-save"></i> Save
+                                                </button>
+                                            </div>
                                         </div>
                                         <div class="agents-file-content-area">
                                             <div class="agents-file-viewer-empty" id="agents-viewer-empty">
                                                 <i class="fas fa-code-fork"></i>
                                                 <span>Select a file from the explorer to preview or edit</span>
                                             </div>
-                                            <pre class="agents-code-pre" id="agents-code-pre" style="display:none"><code id="agents-code-block" class="language-plaintext"></code></pre>
-                                            <textarea id="agents-code-editor" class="agents-code-editor" style="display:none" placeholder="Edit file content here..."></textarea>
+                                            <!-- Markdown rendered preview (only for .md) -->
+                                            <div class="agents-md-preview" id="agents-md-preview" style="display:none"></div>
+                                            <!-- Code editor: layered highlight + textarea -->
+                                            <div class="agents-code-editor-wrap" id="agents-code-editor-wrap" style="display:none">
+                                                <!-- Highlight layer: plain div avoids pre UA styling that shifts caret -->
+                                                <div class="agents-code-highlight-layer" id="agents-code-pre" aria-hidden="true"><code id="agents-code-block" class="language-plaintext"></code></div>
+                                                <textarea id="agents-code-editor" class="agents-code-editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Edit file content here..."></textarea>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

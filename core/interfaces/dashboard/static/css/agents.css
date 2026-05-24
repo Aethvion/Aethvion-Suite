@@ -2453,36 +2453,230 @@
     text-align: center;
 }
 
-.agents-code-pre {
+.agents-file-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+/* Markdown toggle button — standalone, no container border interaction */
+.agents-md-toggle-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-family: inherit;
+    font-weight: 500;
+    padding: 0.28rem 0.6rem;
+    border-radius: 4px;
+    cursor: pointer;
+    /* Fixed width: wide enough for "Markdown" without jumping */
+    min-width: 76px;
+    text-align: center;
+    /* NO transitions — prevent layout shift */
+    transition: none;
+    line-height: 1;
+}
+
+.agents-md-toggle-btn:hover {
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.agents-md-toggle-btn.active {
+    /* Active = showing editor (Markdown label): primary-tinted, readable */
+    background: color-mix(in srgb, var(--primary) 12%, rgba(0,0,0,0.3));
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* Markdown rendered preview */
+.agents-md-preview {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem;
+    font-size: 0.87rem;
+    line-height: 1.7;
+    color: var(--text-primary);
+    background: rgba(10, 10, 15, 0.3);
+}
+
+.agents-md-preview h1,
+.agents-md-preview h2,
+.agents-md-preview h3,
+.agents-md-preview h4 {
+    margin: 1rem 0 0.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding-bottom: 0.25rem;
+}
+
+.agents-md-preview h1 { font-size: 1.4rem; }
+.agents-md-preview h2 { font-size: 1.15rem; }
+.agents-md-preview h3 { font-size: 0.98rem; }
+
+.agents-md-preview p { margin: 0.5rem 0; }
+
+.agents-md-preview code {
+    background: rgba(255, 255, 255, 0.07);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.85em;
+}
+
+.agents-md-preview pre {
+    background: rgba(5, 5, 10, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+    margin: 0.75rem 0;
+}
+
+.agents-md-preview pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.82rem;
+    line-height: 1.55;
+}
+
+.agents-md-preview a { color: var(--primary); text-decoration: none; }
+.agents-md-preview a:hover { text-decoration: underline; }
+
+.agents-md-preview blockquote {
+    border-left: 3px solid var(--primary);
+    margin: 0.5rem 0;
+    padding: 0.5rem 1rem;
+    background: rgba(255,255,255,0.02);
+    color: var(--text-secondary);
+    border-radius: 0 4px 4px 0;
+}
+
+.agents-md-preview ul,
+.agents-md-preview ol {
+    margin: 0.4rem 0 0.4rem 1.4rem;
+}
+
+.agents-md-preview table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.75rem 0;
+    font-size: 0.82rem;
+}
+
+.agents-md-preview th,
+.agents-md-preview td {
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 0.4rem 0.75rem;
+    text-align: left;
+}
+
+.agents-md-preview th {
+    background: rgba(255,255,255,0.04);
+    font-weight: 600;
+}
+
+/* ── Overlay layered code editor ─────────────────────────────── */
+.agents-code-editor-wrap {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    background: rgba(8, 8, 13, 0.5);
+}
+
+/*
+  Highlight layer: a plain <div> instead of <pre> avoids all <pre> UA styles
+  (margin, quirky vertical rhythm) that shift the caret away from the text.
+  Must match textarea metrics exactly.
+*/
+.agents-code-highlight-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    box-sizing: border-box;
     margin: 0;
     padding: 1rem;
+    border: none;
     overflow: auto;
-    flex: 1;
+    pointer-events: none;
     background: transparent;
-}
-
-.agents-code-pre code {
+    /* Match textarea exactly */
     font-family: 'Fira Code', Consolas, Monaco, monospace;
-    font-size: 0.8rem;
-    color: var(--text-primary);
-    line-height: 1.5;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    white-space: pre;
+    word-break: normal;
+    overflow-wrap: normal;
+    tab-size: 4;
+    z-index: 1;
 }
 
+.agents-code-highlight-layer code {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    tab-size: inherit;
+    white-space: inherit;
+    word-break: inherit;
+    background: none;
+    padding: 0;
+    margin: 0;
+    border: none;
+    color: inherit;
+    display: block;
+}
+
+/* The textarea sits on top — text is transparent so only the caret shows */
 .agents-code-editor {
-    flex: 1;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    box-sizing: border-box;
     width: 100%;
     height: 100%;
+    margin: 0;
     border: none;
     outline: none;
-    background: rgba(5, 5, 8, 0.2);
-    color: #e2e8f0;
+    background: transparent;
+    color: transparent;
+    caret-color: #e2e8f0;
+    /* Must match highlight layer exactly */
     font-family: 'Fira Code', Consolas, Monaco, monospace;
     font-size: 0.82rem;
     line-height: 1.55;
     padding: 1rem;
     resize: none;
     tab-size: 4;
+    z-index: 2;
+    white-space: pre;
+    overflow: auto;
+    word-break: normal;
+    overflow-wrap: normal;
+    -webkit-appearance: none;
+    appearance: none;
 }
+
+.agents-code-editor:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* Subtle focus ring on the outer wrapper */
+.agents-code-editor-wrap:focus-within {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
 
 /* Search Tab Container */
 .agents-search-container {

@@ -128,23 +128,22 @@ async function _agentsOnWorkspaceSelectChange() {
     }
     
     _agCurrentOpenFile = null;
-    const viewerEmpty = document.getElementById('agents-viewer-empty');
-    const codePre = document.getElementById('agents-code-pre');
-    const codeEditor = document.getElementById('agents-code-editor');
-    const activeTitle = document.getElementById('agents-active-file-title');
-    const activePath = document.getElementById('agents-active-file-path');
-    const saveBtn = document.getElementById('agents-file-save-btn');
-    
+    _agOriginalFileContent = null;
+    const viewerEmpty  = document.getElementById('agents-viewer-empty');
+    const editorWrap   = document.getElementById('agents-code-editor-wrap');
+    const mdPreview    = document.getElementById('agents-md-preview');
+    const mdToggle     = document.getElementById('agents-md-toggle');
+    const activeTitle  = document.getElementById('agents-active-file-title');
+    const activePath   = document.getElementById('agents-active-file-path');
+    const saveBtn      = document.getElementById('agents-file-save-btn');
+
     if (activeTitle) activeTitle.textContent = 'No file open';
     if (activePath) activePath.textContent = '';
     if (saveBtn) saveBtn.style.display = 'none';
+    if (mdToggle) mdToggle.style.display = 'none';
+    if (mdPreview) mdPreview.style.display = 'none';
+    if (editorWrap) editorWrap.style.display = 'none';
     if (viewerEmpty) viewerEmpty.style.display = 'flex';
-    if (codePre) codePre.style.display = 'none';
-    if (codeEditor) {
-        codeEditor.value = '';
-        codeEditor.style.display = 'none';
-        codeEditor.disabled = true;
-    }
     
     // Clear search results
     const sInput = document.getElementById('agents-search-input');
@@ -2542,6 +2541,12 @@ function agentsInitEventHandlers() {
         fileSaveBtn.addEventListener('click', _agSaveCurrentFile);
     }
 
+    // Markdown preview toggle
+    const mdToggleBtn = document.getElementById('agents-md-toggle');
+    if (mdToggleBtn) {
+        mdToggleBtn.addEventListener('click', _agToggleMarkdownPreview);
+    }
+
     // Workspace search button
     const searchBtn = document.getElementById('agents-search-btn');
     if (searchBtn) {
@@ -2658,52 +2663,230 @@ async function _agFetchAndRenderFolder(dirPath, container) {
     }
 }
 
+function _agDetectLanguage(filePath) {
+    const ext = filePath.split('.').pop().toLowerCase();
+    const map = {
+        'js': 'javascript',
+        'jsx': 'javascript',
+        'ts': 'typescript',
+        'tsx': 'typescript',
+        'py': 'python',
+        'html': 'xml',
+        'htm': 'xml',
+        'css': 'css',
+        'json': 'json',
+        'md': 'markdown',
+        'sh': 'bash',
+        'bash': 'bash',
+        'yml': 'yaml',
+        'yaml': 'yaml',
+        'sql': 'sql',
+        'ini': 'ini',
+        'toml': 'toml',
+        'xml': 'xml',
+    };
+    return map[ext] || 'plaintext';
+}
+
+// Track whether the markdown preview is currently active
+let _agMdPreviewActive = false;
+// Track original file content to detect dirty state
+let _agOriginalFileContent = null;
+
+function _agToggleMarkdownPreview() {
+    const mdPreview   = document.getElementById('agents-md-preview');
+    const editorWrap  = document.getElementById('agents-code-editor-wrap');
+    const mdToggleBtn = document.getElementById('agents-md-toggle');
+    if (!mdPreview || !editorWrap) return;
+
+    _agMdPreviewActive = !_agMdPreviewActive;
+
+    if (_agMdPreviewActive) {
+        // Render markdown from current textarea content
+        const codeEditor = document.getElementById('agents-code-editor');
+        const content = codeEditor ? codeEditor.value : '';
+        mdPreview.innerHTML = (typeof marked !== 'undefined')
+            ? marked.parse(content)
+            : `<pre>${_htmlEscape(content)}</pre>`;
+        // Apply hljs to code blocks inside markdown
+        if (typeof hljs !== 'undefined') {
+            mdPreview.querySelectorAll('pre code').forEach(b => {
+                b.removeAttribute('data-highlighted');
+                hljs.highlightElement(b);
+            });
+        }
+        mdPreview.style.display = 'block';
+        editorWrap.style.display = 'none';
+        if (mdToggleBtn) {
+            mdToggleBtn.textContent = 'Source';
+            mdToggleBtn.classList.remove('active');
+        }
+    } else {
+        mdPreview.style.display = 'none';
+        editorWrap.style.display = 'flex';
+        if (mdToggleBtn) {
+            mdToggleBtn.textContent = 'Markdown';
+            mdToggleBtn.classList.add('active');
+        }
+    }
+}
+
 async function _agOpenFile(filePath, filename) {
+    // Preserve open state reference
+    const oldFile = _agCurrentOpenFile;
     _agCurrentOpenFile = filePath;
+    // Reset dirty tracking
+    _agOriginalFileContent = null;
+    _agMdPreviewActive = false;
     
-    const viewerEmpty = document.getElementById('agents-viewer-empty');
-    const codePre = document.getElementById('agents-code-pre');
-    const codeEditor = document.getElementById('agents-code-editor');
-    const activeTitle = document.getElementById('agents-active-file-title');
-    const activePath = document.getElementById('agents-active-file-path');
-    const saveBtn = document.getElementById('agents-file-save-btn');
+    const viewerEmpty  = document.getElementById('agents-viewer-empty');
+    const editorWrap   = document.getElementById('agents-code-editor-wrap');
+    const mdPreview    = document.getElementById('agents-md-preview');
+    const codeEditor   = document.getElementById('agents-code-editor');
+    const codeBlock    = document.getElementById('agents-code-block');
+    const activeTitle  = document.getElementById('agents-active-file-title');
+    const activePath   = document.getElementById('agents-active-file-path');
+    const saveBtn      = document.getElementById('agents-file-save-btn');
+    const mdToggle     = document.getElementById('agents-md-toggle');
+    const mdToggleBtn  = mdToggle; // same element — button IS the toggle
     
     if (!activeTitle) return;
     
     activeTitle.textContent = filename || filePath.split(/[\\/]/).pop() || filePath;
-    activePath.textContent = filePath;
-    if (saveBtn) saveBtn.style.display = 'inline-flex';
+    if (activePath) activePath.textContent = filePath;
     
+    // Hide everything while loading
     if (viewerEmpty) viewerEmpty.style.display = 'none';
-    if (codePre) codePre.style.display = 'none';
-    if (codeEditor) {
-        codeEditor.style.display = 'block';
-        codeEditor.value = 'Loading file content...';
-        codeEditor.disabled = true;
+    if (saveBtn) saveBtn.style.display = 'none';
+    if (mdToggle) mdToggle.style.display = 'none';
+    if (mdPreview) mdPreview.style.display = 'none';
+    if (editorWrap) {
+        editorWrap.style.display = 'flex';
+        if (codeEditor) {
+            codeEditor.value = 'Loading…';
+            codeEditor.disabled = true;
+        }
+        if (codeBlock) codeBlock.textContent = 'Loading…';
     }
     
     try {
         const resp = await fetch(`/api/agents/workspace/file-content?path=${encodeURIComponent(filePath)}`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
+        const content = data.content || '';
         
-        if (codeEditor) {
-            codeEditor.disabled = false;
-            if (data.too_large || data.binary) {
-                codeEditor.value = data.content;
-                codeEditor.disabled = true;
-                if (saveBtn) saveBtn.style.display = 'none';
-            } else {
-                codeEditor.value = data.content;
+        // Determine if this is a markdown file
+        const isMd = filePath.toLowerCase().endsWith('.md');
+        const lang = _agDetectLanguage(filePath);
+        
+        // Populate the highlighted pre
+        if (codeBlock) {
+            codeBlock.textContent = content;
+            codeBlock.className = '';
+            codeBlock.classList.add(`language-${lang}`);
+            if (typeof hljs !== 'undefined') {
+                codeBlock.removeAttribute('data-highlighted');
+                hljs.highlightElement(codeBlock);
             }
         }
+        
+        // Populate the textarea
+        if (codeEditor) {
+            codeEditor.value = content;
+            codeEditor.disabled = !!(data.too_large || data.binary);
+            // Sync scroll between textarea and highlight pre
+            _agSyncEditorScroll();
+        }
+        
+        // Store baseline for dirty detection
+        _agOriginalFileContent = content;
+        
+        // Show MD toggle only for markdown files
+        if (isMd && mdToggle) {
+            mdToggle.style.display = 'inline-flex';
+            // Reset MD toggle to "Preview" state (show editor by default)
+            _agMdPreviewActive = false;
+            if (mdToggleBtn) {
+                mdToggleBtn.textContent = 'Markdown';
+                mdToggleBtn.classList.add('active');
+            }
+        }
+        
+        // Show editor (not md preview)
+        if (editorWrap) editorWrap.style.display = 'flex';
+        if (mdPreview) mdPreview.style.display = 'none';
+        
+        // Bind input handler for dirty tracking + live highlight sync
+        if (codeEditor && !codeEditor.disabled) {
+            // Remove previous listeners by replacing with clone
+            const fresh = codeEditor.cloneNode(true);
+            codeEditor.parentNode.replaceChild(fresh, codeEditor);
+            fresh.value = content;
+            fresh.addEventListener('input', _agOnEditorInput);
+            fresh.addEventListener('scroll', _agOnEditorScroll);
+            fresh.addEventListener('keydown', _agEditorKeydown);
+        }
+
     } catch (e) {
         console.error(e);
-        if (codeEditor) {
-            codeEditor.value = `Error loading file: ${e.message || e}`;
-            codeEditor.disabled = true;
-            if (saveBtn) saveBtn.style.display = 'none';
+        if (editorWrap) editorWrap.style.display = 'flex';
+        if (codeBlock) codeBlock.textContent = `Error loading file: ${e.message || e}`;
+        const ed = document.getElementById('agents-code-editor');
+        if (ed) {
+            ed.value = `Error loading file: ${e.message || e}`;
+            ed.disabled = true;
         }
+    }
+}
+
+// ── Editor helpers ─────────────────────────────────────────────
+
+function _agOnEditorInput() {
+    // Update highlight layer
+    const codeEditor = document.getElementById('agents-code-editor');
+    const codeBlock  = document.getElementById('agents-code-block');
+    const saveBtn    = document.getElementById('agents-file-save-btn');
+    if (!codeEditor || !codeBlock) return;
+
+    const content = codeEditor.value;
+
+    // Re-highlight
+    codeBlock.textContent = content;
+    if (typeof hljs !== 'undefined') {
+        codeBlock.removeAttribute('data-highlighted');
+        hljs.highlightElement(codeBlock);
+    }
+
+    // Smart save: only show when content has changed
+    if (saveBtn) {
+        const isDirty = content !== _agOriginalFileContent;
+        saveBtn.style.display = isDirty ? 'inline-flex' : 'none';
+    }
+}
+
+function _agOnEditorScroll() {
+    _agSyncEditorScroll();
+}
+
+function _agSyncEditorScroll() {
+    const codeEditor  = document.getElementById('agents-code-editor');
+    const codePre     = document.getElementById('agents-code-pre');
+    if (!codeEditor || !codePre) return;
+    codePre.scrollTop  = codeEditor.scrollTop;
+    codePre.scrollLeft = codeEditor.scrollLeft;
+}
+
+function _agEditorKeydown(e) {
+    // Tab key inserts spaces instead of blurring
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        const ta = e.currentTarget;
+        const start = ta.selectionStart;
+        const end   = ta.selectionEnd;
+        ta.value = ta.value.substring(0, start) + '    ' + ta.value.substring(end);
+        ta.selectionStart = ta.selectionEnd = start + 4;
+        // Trigger input event to sync highlight
+        ta.dispatchEvent(new Event('input'));
     }
 }
 
@@ -2714,7 +2897,7 @@ async function _agSaveCurrentFile() {
     const saveBtn = document.getElementById('agents-file-save-btn');
     if (!codeEditor || codeEditor.disabled || !saveBtn) return;
     
-    const originalText = saveBtn.innerHTML;
+    const originalHTML = saveBtn.innerHTML;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
     saveBtn.disabled = true;
     
@@ -2730,13 +2913,27 @@ async function _agSaveCurrentFile() {
         
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         
+        // Update baseline — file is no longer dirty
+        _agOriginalFileContent = codeEditor.value;
+        
         saveBtn.innerHTML = '<i class="fas fa-check"></i> Saved!';
         saveBtn.style.borderColor = '#10b981';
         setTimeout(() => {
-            saveBtn.innerHTML = originalText;
+            saveBtn.style.display = 'none'; // hide because content matches baseline
+            saveBtn.innerHTML = originalHTML;
             saveBtn.style.borderColor = '';
             saveBtn.disabled = false;
-        }, 1500);
+        }, 1200);
+        
+        // Update syntax-highlighted code block content
+        const codeBlock = document.getElementById('agents-code-block');
+        if (codeBlock) {
+            codeBlock.textContent = codeEditor.value;
+            if (typeof hljs !== 'undefined') {
+                codeBlock.removeAttribute('data-highlighted');
+                hljs.highlightElement(codeBlock);
+            }
+        }
         
         // Refresh explorer highlights
         _agLoadWorkspaceTree();
@@ -2745,7 +2942,7 @@ async function _agSaveCurrentFile() {
         saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
         saveBtn.style.borderColor = '#ef4444';
         setTimeout(() => {
-            saveBtn.innerHTML = originalText;
+            saveBtn.innerHTML = originalHTML;
             saveBtn.style.borderColor = '';
             saveBtn.disabled = false;
         }, 3000);
