@@ -350,14 +350,27 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.65rem;
     padding: 3rem 1rem;
     text-align: center;
     color: var(--text-muted, #64748b);
     font-size: 0.78rem;
-    pointer-events: none;
 }
-.at-inspector-none i { font-size: 1.5rem; opacity: 0.15; }
+.at-inspector-none i { font-size: 1.5rem; opacity: 0.15; pointer-events: none; }
+.at-inspector-none > span { pointer-events: none; }
+.at-inspector-results-btn {
+    margin-top: 0.5rem;
+    font-size: 0.75rem !important;
+    padding: 0.3rem 0.75rem !important;
+    border-color: rgba(255,255,255,0.1) !important;
+    color: var(--text-secondary, #94a3b8) !important;
+    gap: 0.35rem;
+}
+.at-inspector-results-btn:hover {
+    color: #22d3ee !important;
+    border-color: rgba(34,211,238,0.35) !important;
+    background: rgba(34,211,238,0.08) !important;
+}
 
 /* ── Canvas ─────────────────────────────────────────────────────────────── */
 
@@ -1013,7 +1026,7 @@
 
 /* Log view */
 .at-exec-log-view {
-    flex: 1; overflow-y: auto;
+    flex: 1; min-height: 0; overflow-y: auto;
     padding: 0.5rem 0.85rem;
     display: flex; flex-direction: column; gap: 0.18rem;
     font-family: 'Consolas', 'Monaco', monospace;
@@ -1028,7 +1041,7 @@
 
 /* Outputs view */
 .at-exec-out-view {
-    flex: 1; overflow-y: auto;
+    flex: 1; min-height: 0; overflow-y: auto;
     padding: 0.5rem 0.85rem;
     display: flex; flex-direction: column; gap: 0.6rem;
 }
@@ -1053,6 +1066,17 @@
     white-space: pre-wrap; word-break: break-word;
     max-height: 80px; overflow-y: auto;
     line-height: 1.5;
+}
+
+/* Inspector results list (output cards rendered in the inspector body) */
+.at-inspector-results-list {
+    flex: 0 0 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+.at-inspector-results-list .at-exec-out-card-body {
+    max-height: 120px; /* taller than bottom-panel version for better readability */
 }
 
 .hidden { display: none !important; }
@@ -1337,17 +1361,23 @@
 .at-wf-list::-webkit-scrollbar,
 .at-palette-list::-webkit-scrollbar,
 .at-inspector-body::-webkit-scrollbar,
-.at-examples-grid::-webkit-scrollbar { width: 4px; }
+.at-examples-grid::-webkit-scrollbar,
+.at-exec-log-view::-webkit-scrollbar,
+.at-exec-out-view::-webkit-scrollbar { width: 4px; }
 
 .at-wf-list::-webkit-scrollbar-track,
 .at-palette-list::-webkit-scrollbar-track,
 .at-inspector-body::-webkit-scrollbar-track,
-.at-examples-grid::-webkit-scrollbar-track { background: transparent; }
+.at-examples-grid::-webkit-scrollbar-track,
+.at-exec-log-view::-webkit-scrollbar-track,
+.at-exec-out-view::-webkit-scrollbar-track { background: transparent; }
 
 .at-wf-list::-webkit-scrollbar-thumb,
 .at-palette-list::-webkit-scrollbar-thumb,
 .at-inspector-body::-webkit-scrollbar-thumb,
-.at-examples-grid::-webkit-scrollbar-thumb {
+.at-examples-grid::-webkit-scrollbar-thumb,
+.at-exec-log-view::-webkit-scrollbar-thumb,
+.at-exec-out-view::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 2px;
 }

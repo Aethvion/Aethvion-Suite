@@ -58,6 +58,8 @@
     let _zTop        = 10;   // z-index counter for raised nodes
     let _placeOffset = 0;    // stagger offset for newly added nodes
     let _view        = { x: 0, y: 0, scale: 1 };
+    let _inspectorPage = 'workflow'; // 'workflow' | 'node' | 'results'
+    let _lastExecData  = null;       // most recent workflow execution result
 
     // ── DOM refs ─────────────────────────────────────────────────────────────
     let _e = {}; // filled by _init
@@ -96,7 +98,8 @@
             inspectorTitle: _$('at-inspector-title'),
             inspectorBody:  _$('at-inspector-body'),
             inspectorNone:  _$('at-inspector-none'),
-            inspectorClose: _$('at-inspector-close'),
+            inspectorClose:      _$('at-inspector-close'),
+            inspectorResultsBtn: _$('at-inspector-results-btn'),
             toast:          _$('at-toast'),
             // Examples modal
             btnExamples:        _$('at-btn-examples'),
@@ -474,6 +477,8 @@
     }
 
     function _applyExecResults(data) {
+        _lastExecData = data; // persist for inspector Results view
+
         var statuses = data.node_status  || {};
         var outputs  = data.node_outputs || {};
         var errors   = data.node_errors  || {};
@@ -532,8 +537,17 @@
             }
         });
 
-        // Render execution log panel
+        // Render execution log panel (log only — outputs live in inspector)
         _renderExecPanel(data);
+
+        // Refresh inspector Results view if it is currently open
+        if (_inspectorPage === 'results') {
+            _showInspectorResults();
+        }
+        // If inspector is on the workflow (empty) page, make the results button visible
+        if (_inspectorPage === 'workflow' && _e.inspectorResultsBtn) {
+            _e.inspectorResultsBtn.style.display = '';
+        }
     }
 
     function _to_str(val) {
@@ -568,7 +582,6 @@
     function _renderExecPanel(data) {
         var panel    = document.getElementById('at-exec-panel');
         var logView  = document.getElementById('at-exec-log-view');
-        var outView  = document.getElementById('at-exec-out-view');
         var statusEl = document.getElementById('at-exec-panel-status');
         var textEl   = document.getElementById('at-exec-status-text');
         if (!panel) return;
@@ -583,7 +596,7 @@
             ? doneCount + ' node' + (doneCount !== 1 ? 's' : '') + ' completed'
             : doneCount + ' done, ' + errCount + ' error' + (errCount !== 1 ? 's' : '');
 
-        // Log tab
+        // Log
         var log = data.log || [];
         logView.innerHTML = '';
         log.forEach(function (entry) {
@@ -594,49 +607,7 @@
                 '<span class="at-exec-log-msg">' + _esc(entry.msg || '') + '</span>';
             logView.appendChild(row);
         });
-        // Scroll to bottom
         logView.scrollTop = logView.scrollHeight;
-
-        // Outputs tab
-        outView.innerHTML = '';
-        var outputs = data.node_outputs || {};
-        var statuses = data.node_status || {};
-        Object.keys(outputs).forEach(function (nodeId) {
-            var nd = _active && _active.nodes.find(function (n) { return n.id === nodeId; });
-            var label  = nd ? (nd.label || nd.type) : nodeId;
-            var status = statuses[nodeId] || 'done';
-            var outs   = outputs[nodeId] || {};
-            var hasOutput = Object.keys(outs).some(function (k) {
-                return !k.startsWith('_') && outs[k] !== null && outs[k] !== undefined && outs[k] !== '';
-            });
-            if (!hasOutput && status !== 'error') return;
-
-            var card = document.createElement('div');
-            card.className = 'at-exec-out-card';
-
-            var badgeCls = status === 'done' ? 'at-exec-badge-ok' : 'at-exec-badge-err';
-            var badgeIcon = status === 'done' ? 'fa-circle-check' : 'fa-circle-xmark';
-            card.innerHTML =
-                '<div class="at-exec-out-card-hdr">' +
-                '  <i class="fas ' + badgeIcon + ' ' + badgeCls + '"></i>' +
-                '  <span>' + _esc(label) + '</span>' +
-                '</div>';
-
-            // Show each output port's value
-            Object.keys(outs).forEach(function (port) {
-                if (port.startsWith('_')) return;
-                var val = outs[port];
-                if (val === null || val === undefined || val === '') return;
-                var body = document.createElement('div');
-                body.className = 'at-exec-out-card-body';
-                var prefix = Object.keys(outs).filter(function (k) { return !k.startsWith('_'); }).length > 1
-                    ? '[' + port + '] ' : '';
-                body.textContent = prefix + _to_str(val);
-                card.appendChild(body);
-            });
-
-            outView.appendChild(card);
-        });
 
         // Open panel
         panel.classList.add('at-open');
@@ -1128,6 +1099,9 @@
         if (!nd) return;
         const td = _typeDef(nd.type);
 
+        // Track page state
+        _inspectorPage = 'node';
+
         // Make sure inspector panel is visible
         _showInspector();
 
@@ -1341,6 +1315,7 @@
 
     function _closeProps() {
         // Reset inspector to "no node selected" state — don't hide the panel
+        _inspectorPage = 'workflow';
         _e.inspectorBody.innerHTML = '';
         _e.inspectorBody.appendChild(_e.inspectorNone);
         _e.inspectorClose.style.display   = 'none';
@@ -1348,6 +1323,99 @@
         _e.inspectorIcon.style.background = 'rgba(100,116,139,0.15)';
         _e.inspectorIcon.style.color      = 'var(--text-muted,#64748b)';
         _e.inspectorIcon.innerHTML        = '<i class="fas fa-arrow-pointer"></i>';
+        // Show "View Results" button only when we have last-run data
+        if (_e.inspectorResultsBtn) {
+            _e.inspectorResultsBtn.style.display = _lastExecData ? '' : 'none';
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Inspector Results view
+    // ════════════════════════════════════════════════════════════════════════
+
+    function _showInspectorResults() {
+        _inspectorPage = 'results';
+        _showInspector();
+
+        // Update inspector header for results mode
+        _e.inspectorIcon.style.background = 'rgba(34,211,238,0.12)';
+        _e.inspectorIcon.style.color      = '#22d3ee';
+        _e.inspectorIcon.innerHTML        = '<i class="fas fa-chart-bar"></i>';
+        _e.inspectorTitle.textContent     = 'Results';
+        _e.inspectorClose.style.display   = 'none';
+
+        _e.inspectorBody.innerHTML = '';
+
+        if (!_lastExecData) {
+            var empty = document.createElement('div');
+            empty.className = 'at-inspector-none';
+            empty.innerHTML = '<i class="fas fa-chart-bar"></i><span>No results yet — run the workflow first.</span>';
+            _e.inspectorBody.appendChild(empty);
+            return;
+        }
+
+        var outputs  = _lastExecData.node_outputs || {};
+        var statuses = _lastExecData.node_status  || {};
+        var hasAny   = false;
+
+        var list = document.createElement('div');
+        list.className = 'at-inspector-results-list';
+
+        Object.keys(outputs).forEach(function (nodeId) {
+            var nd     = _active && _active.nodes.find(function (n) { return n.id === nodeId; });
+            var label  = nd ? (nd.label || nd.type) : nodeId;
+            var status = statuses[nodeId] || 'done';
+            var outs   = outputs[nodeId] || {};
+            var hasOutput = Object.keys(outs).some(function (k) {
+                return !k.startsWith('_') && outs[k] !== null && outs[k] !== undefined && outs[k] !== '';
+            });
+            if (!hasOutput && status !== 'error') return;
+
+            hasAny = true;
+            var card = document.createElement('div');
+            card.className = 'at-exec-out-card';
+
+            var badgeCls  = status === 'done' ? 'at-exec-badge-ok' : 'at-exec-badge-err';
+            var badgeIcon = status === 'done' ? 'fa-circle-check' : 'fa-circle-xmark';
+            card.innerHTML =
+                '<div class="at-exec-out-card-hdr">' +
+                '  <i class="fas ' + badgeIcon + ' ' + badgeCls + '"></i>' +
+                '  <span>' + _esc(label) + '</span>' +
+                '</div>';
+
+            var portKeys = Object.keys(outs).filter(function (k) { return !k.startsWith('_'); });
+            portKeys.forEach(function (port) {
+                var val = outs[port];
+                if (val === null || val === undefined || val === '') return;
+                var body = document.createElement('div');
+                body.className = 'at-exec-out-card-body';
+                var valStr = _to_str(val);
+                var prefix = portKeys.length > 1 ? '[' + port + '] ' : '';
+                if (valStr && valStr.startsWith('data:image/')) {
+                    body.innerHTML = '<img class="at-node-result-img" src="' +
+                        valStr + '" alt="' + _esc(port) + ' output">';
+                } else {
+                    body.textContent = prefix + valStr;
+                }
+                card.appendChild(body);
+            });
+
+            list.appendChild(card);
+        });
+
+        if (hasAny) {
+            _e.inspectorBody.appendChild(list);
+        } else {
+            var empty2 = document.createElement('div');
+            empty2.className = 'at-inspector-none';
+            var ok = _lastExecData.ok !== false;
+            empty2.innerHTML = ok
+                ? '<i class="fas fa-circle-check" style="color:#34d399;opacity:1"></i>' +
+                  '<span>Workflow completed — no output data to display.</span>'
+                : '<i class="fas fa-circle-xmark" style="color:#f87171;opacity:1"></i>' +
+                  '<span>Workflow had errors. Check the log for details.</span>';
+            _e.inspectorBody.appendChild(empty2);
+        }
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -2091,20 +2159,33 @@
             }
         });
 
-        // ── Inspector close (deselect node) ───────────────────────────────
+        // ── Inspector close (deselect node → back to workflow page) ─────
         _e.inspectorClose.addEventListener('click', function () { _deselectAll(); });
 
-        // ── Inspector back (return to explorer, auto-save if dirty) ──────
+        // ── Inspector results button ──────────────────────────────────────
+        if (_e.inspectorResultsBtn) {
+            _e.inspectorResultsBtn.addEventListener('click', _showInspectorResults);
+        }
+
+        // ── Inspector back — three-level navigation ───────────────────────
+        // node/results page → inspector workflow page
+        // workflow page     → explorer (workflows list, auto-save)
         _e.inspectorBack.addEventListener('click', function () {
-            _deselectAll();
-            var go = function () { _showExplorer(); _renderWfList(); };
-            if (_dirty && _active) {
-                _apiSaveWorkflow().then(go).catch(function (e) {
-                    console.error('[Automate] Auto-save failed:', e);
-                    go(); // still navigate even if save failed
-                });
+            if (_inspectorPage === 'node' || _inspectorPage === 'results') {
+                // Deselect any node and return to inspector empty state
+                _deselectAll();
+                // _deselectAll → _closeProps → _inspectorPage = 'workflow'
             } else {
-                go();
+                // From workflow page: save + show explorer
+                var go = function () { _showExplorer(); _renderWfList(); };
+                if (_dirty && _active) {
+                    _apiSaveWorkflow().then(go).catch(function (e) {
+                        console.error('[Automate] Auto-save failed:', e);
+                        go(); // still navigate even if save failed
+                    });
+                } else {
+                    go();
+                }
             }
         });
 
@@ -2126,18 +2207,6 @@
                 _clearExecState(); // reset node borders / badges back to edit mode
             });
         }
-        var execTabs = document.querySelectorAll('.at-exec-tab');
-        execTabs.forEach(function (tab) {
-            tab.addEventListener('click', function () {
-                execTabs.forEach(function (t) { t.classList.remove('active'); });
-                tab.classList.add('active');
-                var target = tab.dataset.execTab;
-                var logView = document.getElementById('at-exec-log-view');
-                var outView = document.getElementById('at-exec-out-view');
-                if (logView) logView.classList.toggle('hidden', target !== 'log');
-                if (outView) outView.classList.toggle('hidden', target !== 'outputs');
-            });
-        });
 
         // ── Global mouse move + up ─────────────────────────────────────────
         document.addEventListener('mousemove', function (e) {

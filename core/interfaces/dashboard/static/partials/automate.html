@@ -107,6 +107,10 @@
                     <div class="at-inspector-none" id="at-inspector-none">
                         <i class="fas fa-arrow-pointer"></i>
                         <span>Click a node to inspect it</span>
+                        <button class="at-btn at-btn-ghost at-btn-sm at-inspector-results-btn"
+                                id="at-inspector-results-btn" style="display:none">
+                            <i class="fas fa-chart-bar"></i> View Results
+                        </button>
                     </div>
                 </div>
             </div>
@@ -174,18 +178,11 @@
                 <i class="fas fa-bolt"></i>
                 <span id="at-exec-status-text">Last run</span>
             </div>
-            <div class="at-exec-panel-tabs">
-                <button class="at-exec-tab active" data-exec-tab="log">Log</button>
-                <button class="at-exec-tab" data-exec-tab="outputs">Outputs</button>
-            </div>
             <button class="at-exec-panel-close" id="at-exec-panel-close">
                 <i class="fas fa-xmark"></i>
             </button>
         </div>
-        <div class="at-exec-tab-body">
-            <div class="at-exec-log-view" id="at-exec-log-view"></div>
-            <div class="at-exec-out-view hidden" id="at-exec-out-view"></div>
-        </div>
+        <div class="at-exec-log-view" id="at-exec-log-view"></div>
     </div>
 
     <!-- Toast -->
