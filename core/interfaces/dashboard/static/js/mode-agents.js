@@ -402,8 +402,8 @@ function _agentsAppendMessage(msg, scroll = true, isHistory = false) {
 function _agentsShowEmptyState(title, sub) {
     const container = _agEl('agents-messages');
     if (!container) return;
-    // Remove existing messages
-    container.querySelectorAll('.agents-message').forEach(el => el.remove());
+    // Remove existing messages, runs, and typing indicators
+    container.querySelectorAll('.agents-message, .agent-run, .agent-typing-indicator').forEach(el => el.remove());
     // Remove existing empty state
     container.querySelectorAll('.agents-empty-state').forEach(el => el.remove());
     const div = document.createElement('div');
@@ -562,9 +562,12 @@ async function agentsSubmitTask() {
                         if (/^[A-Z][a-z]+ \d{1,2}, \d{4}( #\d+)?$/.test(curName)) {
                             const slug = prompt.replace(/\s+/g, ' ').trim();
                             const newName = slug.length > 52 ? slug.slice(0, 52) + '…' : slug;
-                            _agAutoRenameThread(_agentsCurrentWorkspace.id, _agentsCurrentThread.id, newName);
+                            _agAutoRenameThread(_agentsCurrentWorkspace.id, _agentsCurrentThread.id, newName).then(() => {
+                                agentsLoadThreads(_agentsCurrentWorkspace.id);
+                            });
+                        } else {
+                            agentsLoadThreads(_agentsCurrentWorkspace.id);
                         }
-                        agentsLoadThreads(_agentsCurrentWorkspace.id);
                     }
                     return;
                 }

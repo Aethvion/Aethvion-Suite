@@ -222,18 +222,13 @@ class TaskWorker:
                         from core.orchestrator.agent_events import create_task_store, push_event, mark_task_done
 
                         ws_info = None
-                        ws_info = None
                         current_mgr = None
                         try:
-                            if storage_root:
-                                from core.memory.agent_workspace_manager import AgentWorkspaceManager
-                                current_mgr = AgentWorkspaceManager(storage_path)
-                            else:
-                                from core.interfaces.dashboard.agent_workspace_routes import workspace_manager as _aws_mgr
-                                current_mgr = _aws_mgr
+                            from core.memory.agent_workspace_manager import AgentWorkspaceManager
+                            current_mgr = AgentWorkspaceManager(storage_path)
                             ws_info = current_mgr.get_workspace(ws_id)
-                        except Exception:
-                            pass
+                        except Exception as _ws_err:
+                            logger.error(f"[{task.id}] Failed to load workspace context: {_ws_err}", exc_info=True)
 
                         workspace_path = ws_info['path'] if ws_info else str(Path.home())
                         create_task_store(task.id)
@@ -259,7 +254,6 @@ class TaskWorker:
                         _bp_dir.mkdir(parents=True, exist_ok=True)
                         runner._blueprint_cache_path = _bp_dir / "_blueprint.txt"
                         summary = await loop.run_in_executor(None, runner.run)
-                        mark_task_done(task.id)
 
                         from core.orchestrator.master_orchestrator import ExecutionResult
                         result = ExecutionResult(
@@ -403,12 +397,8 @@ class TaskWorker:
                         try:
                             # Re-fetch local manager for saving
                             if not current_mgr:
-                                if storage_root:
-                                    from core.memory.agent_workspace_manager import AgentWorkspaceManager
-                                    current_mgr = AgentWorkspaceManager(storage_path)
-                                else:
-                                    from core.interfaces.dashboard.agent_workspace_routes import workspace_manager as _aws_mgr
-                                    current_mgr = _aws_mgr
+                                from core.memory.agent_workspace_manager import AgentWorkspaceManager
+                                current_mgr = AgentWorkspaceManager(storage_path)
                             
                             from core.orchestrator.agent_events import get_snapshot
                             _now_iso = utcnow_iso()
@@ -435,9 +425,11 @@ class TaskWorker:
                                     "model": result.model_id or task.metadata.get('actual_model', ''),
                                 },
                             ]
-                            current_mgr.append_messages(_ws_id2, _ag_tid2, _messages_to_save)
+                            ok = current_mgr.append_messages(_ws_id2, _ag_tid2, _messages_to_save)
+                            if not ok:
+                                logger.error(f"[{task.id}] append_messages returned False for workspace {_ws_id2}, thread {_ag_tid2}")
                         except Exception as _ag_save_err:
-                            logger.debug(f"[{task.id}] Agent thread save failed (non-critical): {_ag_save_err}")
+                            logger.error(f"[{task.id}] Agent thread save failed (critical): {_ag_save_err}", exc_info=True)
                     # ── End save messages to agent thread ──────────────────────────
 
                     logger.info(
@@ -464,6 +456,13 @@ class TaskWorker:
                         self.save_callback(task)
                 
                 finally:
+                    try:
+                        _ws_id = task.metadata.get('workspace_id')
+                        if _ws_id:
+                            from core.orchestrator.agent_events import mark_task_done
+                            mark_task_done(task.id)
+                    except Exception:
+                        pass
                     self.current_task = None
                     self.queue.task_done()
                     

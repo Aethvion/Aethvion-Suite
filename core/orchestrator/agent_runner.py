@@ -234,6 +234,7 @@ EFFICIENCY RULES:
 23. NAMING: Never name user projects, games, apps, or deliverables after the workspace directory path. Use the name the user specified, or a descriptive/generic name if none was given.
 24. NAVIGATE SMART: On any unfamiliar workspace, call get_project_blueprint FIRST — it gives the full folder/file tree instantly without a single list_dir. Use list_dir only for a targeted spot-check of one directory.
 25. FIND, DON'T READ: Use search_codebase(query, path) to locate a string, class, or link in seconds. Only call read_file after you know exactly which file and roughly which line you need.
+26. VERIFY YOUR CHANGES: Before calling done, always run appropriate verification commands (e.g. run tests, check compiling, check linting) if available in the project, to ensure your edits are correct and did not introduce regressions.
 """
 
 
@@ -1301,7 +1302,11 @@ class AgentRunner:
                 updated = content.replace(old, new, 1)
                 fp.write_text(updated, encoding="utf-8")
                 suffix = f" ({count} occurrences, replaced first)" if count > 1 else ""
-                return f"Patched {path}: {len(old):,}→{len(new):,} chars.{suffix}"
+                msg = f"Patched {path}: {len(old):,}→{len(new):,} chars.{suffix}"
+                syntax_err = self._validate_file_syntax(path)
+                if syntax_err:
+                    msg += f"\n\n[WARNING] Syntax validation failed:\n{syntax_err}"
+                return msg
 
             # ── Strategy 2: strip trailing whitespace per line ────────────
             # Covers the very common case where the LLM omits trailing spaces
@@ -1320,10 +1325,14 @@ class AgentRunner:
                 updated    = content.replace(orig_block, new, 1)
                 if updated != content:
                     fp.write_text(updated, encoding="utf-8")
-                    return (
+                    msg = (
                         f"Patched {path} (trailing-ws normalized): "
                         f"{len(orig_block):,}→{len(new):,} chars."
                     )
+                    syntax_err = self._validate_file_syntax(path)
+                    if syntax_err:
+                        msg += f"\n\n[WARNING] Syntax validation failed:\n{syntax_err}"
+                    return msg
 
             # ── Strategy 3: strip all whitespace per line (indentation-agnostic) ──
             # or vice-versa.  The original file's indentation is preserved — only
@@ -1342,10 +1351,14 @@ class AgentRunner:
                 updated    = content.replace(orig_block, new, 1)
                 if updated != content:
                     fp.write_text(updated, encoding="utf-8")
-                    return (
+                    msg = (
                         f"Patched {path} (whitespace-normalized): "
                         f"{len(orig_block):,}→{len(new):,} chars."
                     )
+                    syntax_err = self._validate_file_syntax(path)
+                    if syntax_err:
+                        msg += f"\n\n[WARNING] Syntax validation failed:\n{syntax_err}"
+                    return msg
 
             return (
                 f"patch_file FAILED: 'old' string not found in {path} "
@@ -1354,6 +1367,36 @@ class AgentRunner:
             )
         except Exception as e:
             return f"Error: {e}"
+
+    def _validate_file_syntax(self, path: str) -> Optional[str]:
+        """Validate syntax of Python and JSON files.
+        Returns a string error description if invalid, or None if valid or non-applicable.
+        """
+        try:
+            fp, err = self._safe_path(path)
+            if err or not fp or not fp.exists():
+                return None
+
+            content = fp.read_text(encoding="utf-8", errors="replace")
+
+            if path.endswith(".py"):
+                try:
+                    compile(content, path, "exec")
+                except SyntaxError as se:
+                    text_line = f"\nCode: {se.text.strip()}" if se.text else ""
+                    return f"Python SyntaxError: {se.msg} at line {se.lineno}, column {se.offset}{text_line}"
+                except Exception as e:
+                    return f"Python Compilation Error: {e}"
+            elif path.endswith(".json"):
+                try:
+                    json.loads(content)
+                except json.JSONDecodeError as jde:
+                    return f"JSON SyntaxError: {jde.msg} at line {jde.lineno}, column {jde.colno}"
+                except Exception as e:
+                    return f"JSON Parse Error: {e}"
+        except Exception as e:
+            return f"Syntax check failed: {e}"
+        return None
 
     # ── Path safety helper ────────────────────────────────────────────────
 
@@ -1383,7 +1426,11 @@ class AgentRunner:
                 return err
             fp.parent.mkdir(parents=True, exist_ok=True)
             fp.write_text(content, encoding="utf-8")
-            return f"Written {len(content.encode()):,} bytes"
+            msg = f"Written {len(content.encode()):,} bytes"
+            syntax_err = self._validate_file_syntax(path)
+            if syntax_err:
+                msg += f"\n\n[WARNING] Syntax validation failed:\n{syntax_err}"
+            return msg
         except Exception as e:
             return f"Error: {e}"
 
@@ -1398,7 +1445,11 @@ class AgentRunner:
                 if fp.stat().st_size > 0:
                     f.write("\n")
                 f.write(content)
-            return f"Appended {len(content.encode()):,} bytes to {path}"
+            msg = f"Appended {len(content.encode()):,} bytes to {path}"
+            syntax_err = self._validate_file_syntax(path)
+            if syntax_err:
+                msg += f"\n\n[WARNING] Syntax validation failed:\n{syntax_err}"
+            return msg
         except Exception as e:
             return f"Error: {e}"
 

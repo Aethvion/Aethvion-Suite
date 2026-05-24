@@ -68,7 +68,7 @@
 
 .agents-select {
     flex: 1;
-    background: rgba(255, 255, 255, 0.03);
+    background: #0f0f13;
     border: 1px solid rgba(255, 255, 255, 0.08);
     color: var(--text-primary);
     border-radius: 8px;
@@ -80,15 +80,20 @@
     min-width: 160px;
 }
 
+.agents-select option {
+    background-color: #0f0f13;
+    color: var(--text-primary);
+}
+
 .agents-select:hover:not(:disabled) {
     border-color: rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.05);
+    background: #15151c;
 }
 
 .agents-select:focus {
     border-color: var(--primary);
     box-shadow: 0 0 10px color-mix(in srgb, var(--primary) 20%, transparent);
-    background: rgba(255, 255, 255, 0.06);
+    background: #15151c;
 }
 
 .agents-select:disabled {

@@ -45,7 +45,7 @@ class AgentWorkspaceManager:
                 f = ws_dir / "workspace.json"
                 if f.exists():
                     try:
-                        result.append(json.loads(f.read_text()))
+                        result.append(json.loads(f.read_text(encoding="utf-8")))
                     except Exception as e:
                         logger.error(f"Failed to read workspace {ws_dir.name}: {e}")
         return sorted(result, key=lambda w: w.get("last_active", ""), reverse=True)
@@ -69,7 +69,7 @@ class AgentWorkspaceManager:
 
     def get_workspace(self, workspace_id: str) -> Optional[dict]:
         f = self._ws_file(workspace_id)
-        return json.loads(f.read_text()) if f.exists() else None
+        return json.loads(f.read_text(encoding="utf-8")) if f.exists() else None
 
     def update_workspace(self, workspace_id: str, name: str = None, path: str = None) -> Optional[dict]:
         ws = self.get_workspace(workspace_id)
@@ -97,8 +97,10 @@ class AgentWorkspaceManager:
             return []
         result = []
         for f in d.glob("*.json"):
+            if f.name.endswith("_state.json"):
+                continue
             try:
-                data = json.loads(f.read_text())
+                data = json.loads(f.read_text(encoding="utf-8"))
                 result.append({
                     "id": data["id"],
                     "workspace_id": data["workspace_id"],
@@ -135,7 +137,7 @@ class AgentWorkspaceManager:
 
     def get_thread(self, workspace_id: str, thread_id: str) -> Optional[dict]:
         f = self._thread_file(workspace_id, thread_id)
-        return json.loads(f.read_text()) if f.exists() else None
+        return json.loads(f.read_text(encoding="utf-8")) if f.exists() else None
 
     def delete_thread(self, workspace_id: str, thread_id: str) -> bool:
         f = self._thread_file(workspace_id, thread_id)
