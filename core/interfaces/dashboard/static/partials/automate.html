@@ -37,6 +37,10 @@
             <button class="at-btn at-btn-ghost" id="at-btn-share" title="Share workflow" disabled>
                 <i class="fas fa-share-nodes"></i><span>Share</span>
             </button>
+            <div class="at-toolbar-sep"></div>
+            <button class="at-btn at-btn-ghost" id="at-btn-compile" title="Compile workflow into standalone bundle" disabled>
+                <i class="fas fa-box-archive"></i><span>Compile</span>
+            </button>
         </div>
 
         <div class="at-toolbar-right">
@@ -196,6 +200,64 @@
 
     <!-- Toast -->
     <div class="at-toast" id="at-toast" style="display:none"></div>
+
+    <!-- ══ Compile Modal ════════════════════════════════════════════════════ -->
+    <div class="at-modal-overlay" id="at-compile-overlay" style="display:none">
+        <div class="at-modal at-compile-modal">
+            <div class="at-modal-hdr">
+                <div class="at-modal-hdr-left">
+                    <i class="fas fa-box-archive"></i>
+                    <span>Compile Workflow</span>
+                </div>
+                <button class="at-modal-close" id="at-compile-close">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+
+            <p class="at-modal-sub">
+                Creates a standalone zip bundle you can run on any machine —
+                no Aethvion Suite required.
+            </p>
+
+            <div class="at-compile-options">
+                <label class="at-compile-option">
+                    <input type="checkbox" id="at-compile-packages" checked>
+                    <div class="at-compile-option-body">
+                        <span class="at-compile-option-title">Include packages</span>
+                        <span class="at-compile-option-desc">
+                            Downloads pip wheels into a <code>packages/</code> folder so the
+                            bundle works offline. Recommended for sharing.
+                        </span>
+                    </div>
+                </label>
+                <label class="at-compile-option">
+                    <input type="checkbox" id="at-compile-apikey">
+                    <div class="at-compile-option-body">
+                        <span class="at-compile-option-title">Include API key</span>
+                        <span class="at-compile-option-desc">
+                            Embeds your configured API keys in the <code>.env</code> file.
+                            Only enable for personal use — do not share publicly.
+                        </span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="at-compile-actions">
+                <div class="at-compile-status" id="at-compile-status" style="display:none">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span id="at-compile-status-text">Compiling…</span>
+                </div>
+                <button class="at-btn at-btn-accent" id="at-compile-btn">
+                    <i class="fas fa-box-archive"></i> Build &amp; Download
+                </button>
+            </div>
+
+            <div class="at-compile-warn" id="at-compile-warn" style="display:none">
+                <i class="fas fa-triangle-exclamation"></i>
+                <span id="at-compile-warn-text"></span>
+            </div>
+        </div>
+    </div>
 
     <!-- ══ Examples Modal ════════════════════════════════════════════════ -->
     <div class="at-modal-overlay" id="at-examples-overlay" style="display:none">

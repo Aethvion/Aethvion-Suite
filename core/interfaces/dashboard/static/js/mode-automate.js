@@ -125,6 +125,17 @@
             importCodeBtn:      _$('at-import-code-btn'),
             // Export button
             btnExport:          _$('at-btn-export'),
+            // Compile modal
+            btnCompile:         _$('at-btn-compile'),
+            compileOverlay:     _$('at-compile-overlay'),
+            compileClose:       _$('at-compile-close'),
+            compileBtn:         _$('at-compile-btn'),
+            compilePkgs:        _$('at-compile-packages'),
+            compileApiKey:      _$('at-compile-apikey'),
+            compileStatus:      _$('at-compile-status'),
+            compileStatusText:  _$('at-compile-status-text'),
+            compileWarn:        _$('at-compile-warn'),
+            compileWarnText:    _$('at-compile-warn-text'),
         };
 
         // Load data then render
@@ -351,6 +362,93 @@
             _toast('Failed to load example.', true);
             console.error('[Automate]', e);
         });
+    }
+
+    // ── Compile modal ─────────────────────────────────────────────────────────
+
+    function _openCompileModal() {
+        if (!_active) return;
+        if (_e.compileWarn) _e.compileWarn.style.display = 'none';
+        if (_e.compileStatus) _e.compileStatus.style.display = 'none';
+        if (_e.compileBtn) _e.compileBtn.disabled = false;
+        _e.compileOverlay.style.display = '';
+    }
+
+    function _closeCompileModal() {
+        _e.compileOverlay.style.display = 'none';
+    }
+
+    function _doCompile() {
+        if (!_active) return;
+        var includePkgs   = _e.compilePkgs   ? _e.compilePkgs.checked   : true;
+        var includeApiKey = _e.compileApiKey  ? _e.compileApiKey.checked : false;
+
+        // Show spinner, disable button
+        if (_e.compileStatus) {
+            _e.compileStatus.style.display = '';
+            _e.compileStatusText.textContent = includePkgs
+                ? 'Compiling and downloading packages (may take a minute)…'
+                : 'Compiling…';
+        }
+        if (_e.compileBtn) _e.compileBtn.disabled = true;
+        if (_e.compileWarn) _e.compileWarn.style.display = 'none';
+
+        // Auto-save first
+        var doCompile = function () {
+            fetch('/api/automate/workflows/' + _active.id + '/compile', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({
+                    include_packages: includePkgs,
+                    include_api_key:  includeApiKey,
+                }),
+            }).then(function (resp) {
+                if (!resp.ok) {
+                    return resp.json().then(function (j) {
+                        throw new Error(j.detail || 'Compile failed');
+                    });
+                }
+                // Trigger download
+                var warnings = resp.headers.get('X-Compile-Warnings') || '';
+                return resp.blob().then(function (blob) {
+                    var wfName = _workflows.find(function (w) { return w.id === _active.id; });
+                    var filename = (wfName ? wfName.name.replace(/[^\w\-]/g, '_') : 'workflow') + '_standalone.zip';
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url; a.download = filename;
+                    document.body.appendChild(a); a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    // Done
+                    if (_e.compileStatus) _e.compileStatus.style.display = 'none';
+                    if (_e.compileBtn) _e.compileBtn.disabled = false;
+                    if (warnings) {
+                        if (_e.compileWarn) {
+                            _e.compileWarn.style.display = '';
+                            _e.compileWarnText.textContent = warnings;
+                        }
+                    } else {
+                        _toast('Bundle downloaded!');
+                        _closeCompileModal();
+                    }
+                });
+            }).catch(function (err) {
+                if (_e.compileStatus) _e.compileStatus.style.display = 'none';
+                if (_e.compileBtn) _e.compileBtn.disabled = false;
+                if (_e.compileWarn) {
+                    _e.compileWarn.style.display = '';
+                    _e.compileWarnText.textContent = 'Error: ' + err.message;
+                }
+                console.error('[Automate] compile error:', err);
+            });
+        };
+
+        // Save first if dirty
+        if (_dirty && _active && _active.id) {
+            _apiSaveWorkflow().then(doCompile).catch(doCompile);
+        } else {
+            doCompile();
+        }
     }
 
     // ── Share modal ───────────────────────────────────────────────────────────
@@ -1863,8 +1961,9 @@
         _e.btnSave.disabled   = !has;
         _e.btnDelete.disabled = !has;
         _e.btnRun.disabled    = !has;
-        if (_e.btnExport) _e.btnExport.disabled = !has;
-        if (_e.btnShare)  _e.btnShare.disabled  = !has;
+        if (_e.btnExport)   _e.btnExport.disabled   = !has;
+        if (_e.btnShare)    _e.btnShare.disabled    = !has;
+        if (_e.btnCompile)  _e.btnCompile.disabled  = !has;
     }
 
     function _markDirty() {
@@ -2191,6 +2290,7 @@
         if (_e.btnImport)   _e.btnImport  .addEventListener('click', _openImportModal);
         if (_e.btnExport)   _e.btnExport  .addEventListener('click', _apiExportWorkflow);
         if (_e.btnShare)    _e.btnShare   .addEventListener('click', _doShare);
+        if (_e.btnCompile)  _e.btnCompile .addEventListener('click', _openCompileModal);
 
         // Examples modal
         if (_e.examplesClose) _e.examplesClose.addEventListener('click', _closeExamplesModal);
@@ -2249,6 +2349,15 @@
                 if (e.key === 'Enter') _doImportByCode();
             });
         }
+
+        // Compile modal
+        if (_e.compileClose) _e.compileClose.addEventListener('click', _closeCompileModal);
+        if (_e.compileOverlay) {
+            _e.compileOverlay.addEventListener('click', function (e) {
+                if (e.target === _e.compileOverlay) _closeCompileModal();
+            });
+        }
+        if (_e.compileBtn) _e.compileBtn.addEventListener('click', _doCompile);
 
         // ── Palette search ─────────────────────────────────────────────────
         _e.paletteSearch.addEventListener('input', function () {

@@ -2881,3 +2881,60 @@ async def pick_path(
     if chosen:
         return {"path": str(Path(chosen)), "cancelled": False}
     return {"path": None, "cancelled": True}
+
+
+# ── Compile ───────────────────────────────────────────────────────────────────
+
+class CompileOptions(BaseModel):
+    include_packages: bool = True
+    include_api_key:  bool = False
+
+
+@router.post("/workflows/{wf_id}/compile")
+async def compile_workflow(wf_id: str, body: CompileOptions):
+    """
+    Compile a workflow into a standalone zip bundle.
+
+    The zip contains run.py (embedded executor + FastAPI server + web UI),
+    workflow.json, requirements.txt, .env, start.bat, start.sh, and
+    optionally a packages/ folder with pre-downloaded pip wheels.
+    """
+    p = _wf_path(wf_id)
+    if not p.exists():
+        raise HTTPException(404, "Workflow not found")
+
+    wf = json.loads(p.read_text(encoding="utf-8"))
+
+    try:
+        from core.automate.compiler import compile_workflow as _compile  # noqa: PLC0415
+    except ImportError as exc:
+        raise HTTPException(500, f"Compiler module not available: {exc}")
+
+    # Run in a thread — pip download can be slow
+    import re as _re
+    from fastapi.responses import Response  # noqa: PLC0415
+
+    def _run_compile():
+        return _compile(wf, {
+            "include_packages": body.include_packages,
+            "include_api_key":  body.include_api_key,
+        })
+
+    try:
+        zip_bytes, warnings = await asyncio.to_thread(_run_compile)
+    except Exception as exc:
+        raise HTTPException(500, f"Compilation failed: {exc}")
+
+    safe_name = _re.sub(r"[^\w\-]", "_", wf.get("name", "workflow"))
+    filename  = f"{safe_name}_standalone.zip"
+
+    headers: dict[str, str] = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "X-Compile-Warnings":  "; ".join(warnings)[:500] if warnings else "",
+    }
+
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers=headers,
+    )
