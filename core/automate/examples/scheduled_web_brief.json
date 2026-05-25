@@ -30,8 +30,8 @@
       "y": 200,
       "properties": {
         "url": "https://news.ycombinator.com",
-        "output": "markdown",
-        "timeout": 15
+        "mode": "markdown",
+        "max_chars": 6000
       }
     },
     {
@@ -43,7 +43,8 @@
       "properties": {
         "model": "",
         "length": "short",
-        "style": "bullets"
+        "style": "bullets",
+        "show_result": true
       }
     },
     {
@@ -54,7 +55,8 @@
       "y": 220,
       "properties": {
         "title": "Morning Brief",
-        "icon": "info"
+        "message": "{{input}}",
+        "sound": false
       }
     }
   ],

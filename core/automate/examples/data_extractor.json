@@ -4,25 +4,33 @@
   "tags": ["ai", "data", "beginner"],
   "nodes": [
     {
+      "id": "ex_t1",
+      "type": "trigger.manual",
+      "label": "Extract",
+      "x": 80,
+      "y": 100,
+      "properties": { "name": "Extract" }
+    },
+    {
       "id": "ex_n1",
       "type": "input.text",
       "label": "Input Text",
       "x": 80,
-      "y": 220,
+      "y": 300,
       "properties": {
-        "label": "Text to Analyze",
-        "default": "John Smith (john@example.com) called on March 5, 2024 about invoice #1234 for $499.99."
+        "value": "John Smith (john@example.com) called on March 5, 2024 about invoice #1234 for $499.99."
       }
     },
     {
       "id": "ex_n2",
       "type": "ai.extract_data",
       "label": "Extract Data",
-      "x": 380,
-      "y": 200,
+      "x": 420,
+      "y": 180,
       "properties": {
         "model": "",
-        "fields": "name, email, date, invoice_number, amount",
+        "fields": "name: Full name of the person\nemail: Email address\ndate: Date mentioned\ninvoice_number: Invoice or reference number\namount: Dollar amount",
+        "context": "Extract contact and billing details from the note.",
         "show_result": true
       }
     },
@@ -30,12 +38,19 @@
       "id": "ex_n3",
       "type": "output.display",
       "label": "Extracted Data",
-      "x": 680,
-      "y": 220,
+      "x": 720,
+      "y": 180,
       "properties": {}
     }
   ],
   "connections": [
+    {
+      "id": "ex_c0",
+      "sourceNodeId": "ex_t1",
+      "sourcePort": "trigger",
+      "targetNodeId": "ex_n2",
+      "targetPort": "__trigger__"
+    },
     {
       "id": "ex_c1",
       "sourceNodeId": "ex_n1",

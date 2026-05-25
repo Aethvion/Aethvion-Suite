@@ -4,34 +4,41 @@
   "tags": ["ai", "web", "intermediate"],
   "nodes": [
     {
+      "id": "ex_t1",
+      "type": "trigger.manual",
+      "label": "Run",
+      "x": 60,
+      "y": 100,
+      "properties": { "name": "Run" }
+    },
+    {
       "id": "ex_n1",
       "type": "input.text",
       "label": "URL",
       "x": 60,
-      "y": 220,
+      "y": 300,
       "properties": {
-        "label": "URL",
-        "default": "https://en.wikipedia.org/wiki/Artificial_intelligence"
+        "value": "https://en.wikipedia.org/wiki/Artificial_intelligence"
       }
     },
     {
       "id": "ex_n2",
       "type": "action.web_scrape",
       "label": "Scrape Page",
-      "x": 360,
-      "y": 200,
+      "x": 380,
+      "y": 180,
       "properties": {
         "url": "",
-        "output": "markdown",
-        "timeout": 10
+        "mode": "markdown",
+        "max_chars": 8000
       }
     },
     {
       "id": "ex_n3",
       "type": "ai.summarize",
       "label": "Summarize",
-      "x": 660,
-      "y": 200,
+      "x": 680,
+      "y": 180,
       "properties": {
         "model": "",
         "length": "medium",
@@ -43,12 +50,19 @@
       "id": "ex_n4",
       "type": "output.display",
       "label": "Summary",
-      "x": 960,
-      "y": 220,
+      "x": 980,
+      "y": 180,
       "properties": {}
     }
   ],
   "connections": [
+    {
+      "id": "ex_c0",
+      "sourceNodeId": "ex_t1",
+      "sourcePort": "trigger",
+      "targetNodeId": "ex_n2",
+      "targetPort": "__trigger__"
+    },
     {
       "id": "ex_c1",
       "sourceNodeId": "ex_n1",
