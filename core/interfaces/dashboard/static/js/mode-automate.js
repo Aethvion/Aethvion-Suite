@@ -1272,7 +1272,29 @@
             _zTop++;
             el.style.zIndex = _zTop;
         }
+
+        // Smart nav: when on Public Variables page, only switch to Inspector
+        // for non-variable nodes. Variable nodes are edited inline on this page.
+        if (_sidebarPage === 'pubvars') {
+            var clickedNd = _active && _active.nodes.find(function (n) { return n.id === nodeId; });
+            if (clickedNd && clickedNd.type === 'data.variable') {
+                // Stay on pubvars — highlight the matching card and scroll to it
+                _highlightPubvarCard(nodeId);
+                return;
+            }
+            // Non-variable node: fall through to Inspector
+        }
+
         _openProps(nodeId);
+    }
+
+    function _highlightPubvarCard(nodeId) {
+        if (!_e.pubvarsBody) return;
+        _e.pubvarsBody.querySelectorAll('.at-pubvar-card').forEach(function (c) {
+            c.classList.toggle('at-pubvar-selected', c.dataset.pubvarId === nodeId);
+        });
+        var sel = _e.pubvarsBody.querySelector('[data-pubvar-id="' + nodeId + '"]');
+        if (sel) sel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     function _selectConn(connId) {
@@ -1852,35 +1874,170 @@
         }
 
         pubNodes.forEach(function (nd) {
-            var p    = nd.properties || {};
-            var name = p['name']        || 'var';
-            var type = p['varType']     || 'string';
-            var def  = String(p['value'] !== undefined ? p['value'] : '');
-            var desc = p['description'] || '';
+            var p = nd.properties || {};
 
+            // ── Card shell ────────────────────────────────────────────────
             var card = document.createElement('div');
             card.className = 'at-pubvar-card';
-            card.title = 'Click to inspect this node';
+            card.dataset.pubvarId = nd.id;
 
-            var defPreview = def.length > 40 ? def.slice(0, 40) + '…' : (def || '(empty)');
+            // ── Header row ────────────────────────────────────────────────
+            var hdr = document.createElement('div');
+            hdr.className = 'at-pubvar-card-hdr';
 
-            card.innerHTML =
-                '<div class="at-pubvar-card-hdr">' +
-                '  <span class="at-pubvar-card-name">$' + _esc(name) + '</span>' +
-                '  <span class="at-pubvar-card-type">' + _esc(type) + '</span>' +
-                '</div>' +
-                (def !== '' ? '<div class="at-pubvar-card-default"><strong>default:</strong> ' + _esc(defPreview) + '</div>' : '') +
-                (desc ? '<div class="at-pubvar-card-desc">' + _esc(desc) + '</div>' : '') +
-                '<div class="at-pubvar-card-hint"><i class="fas fa-arrow-pointer"></i> Click to edit in Inspector</div>';
+            var nameDisplay = document.createElement('span');
+            nameDisplay.className = 'at-pubvar-card-name';
+            nameDisplay.textContent = '$' + (p['name'] || 'var');
 
-            card.addEventListener('click', function () {
-                // Select the node on canvas and open its inspector
-                _selectNode(nd.id);
-                _showPage('inspector');
+            var typeDisplay = document.createElement('span');
+            typeDisplay.className = 'at-pubvar-card-type';
+            typeDisplay.textContent = p['varType'] || 'string';
+
+            var inspBtn = document.createElement('button');
+            inspBtn.className = 'at-pubvar-insp-btn';
+            inspBtn.title = 'Open in Inspector';
+            inspBtn.innerHTML = '<i class="fas fa-arrow-up-right-from-square"></i>';
+            inspBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                // Select the node on canvas and open its Inspector
+                _deselectAll(false);
+                _selNodeId = nd.id;
+                var el = _e.canvasInner.querySelector('[data-node-id="' + nd.id + '"].at-node');
+                if (el) { el.classList.add('at-selected'); _zTop++; el.style.zIndex = _zTop; }
+                _openProps(nd.id); // _openProps calls _showInspector internally
             });
+
+            hdr.appendChild(nameDisplay);
+            hdr.appendChild(typeDisplay);
+            hdr.appendChild(inspBtn);
+            card.appendChild(hdr);
+
+            // ── Inline field helper ───────────────────────────────────────
+            function _makeField(label, el) {
+                var row = document.createElement('div');
+                row.className = 'at-pubvar-field';
+                var lb = document.createElement('label');
+                lb.className = 'at-pubvar-field-label';
+                lb.textContent = label;
+                row.appendChild(lb);
+                row.appendChild(el);
+                return row;
+            }
+
+            // Helper: sync the canvas var strip after any property change
+            function _syncStrip() {
+                var strip = _e.canvasInner.querySelector('[data-var-strip="' + nd.id + '"]');
+                if (!strip) return;
+                var vName    = p['name']    || 'var';
+                var vType    = p['varType'] || 'string';
+                var vDef     = String(p['value'] !== undefined ? p['value'] : '');
+                var vPreview = vDef.length > 30 ? vDef.slice(0, 30) + '…' : (vDef || '(empty)');
+                var pubBadge = p['public']
+                    ? '<span class="at-var-badge at-var-badge-pub">PUBLIC</span> ' : '';
+                strip.innerHTML = pubBadge +
+                    '<span class="at-var-name">$' + _esc(vName) + '</span>' +
+                    '<span class="at-var-type">' + _esc(vType) + '</span>' +
+                    '<span class="at-var-default">' + _esc(vPreview) + '</span>';
+            }
+
+            // ── Name field ────────────────────────────────────────────────
+            var nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'at-pubvar-input';
+            nameInput.value = p['name'] || '';
+            nameInput.placeholder = 'myVar';
+            nameInput.addEventListener('input', function () {
+                p['name'] = nameInput.value;
+                nd.properties['name'] = nameInput.value;
+                nameDisplay.textContent = '$' + (nameInput.value || 'var');
+                _syncStrip();
+                _markDirty();
+            });
+            card.appendChild(_makeField('Name', nameInput));
+
+            // ── Default value field ───────────────────────────────────────
+            var defInput = document.createElement('input');
+            defInput.type = 'text';
+            defInput.className = 'at-pubvar-input';
+            defInput.value = p['value'] !== undefined ? p['value'] : '';
+            defInput.placeholder = 'default value';
+            defInput.addEventListener('input', function () {
+                p['value'] = defInput.value;
+                nd.properties['value'] = defInput.value;
+                _syncStrip();
+                _markDirty();
+            });
+            card.appendChild(_makeField('Default', defInput));
+
+            // ── Type selector ─────────────────────────────────────────────
+            var typeSel = document.createElement('select');
+            typeSel.className = 'at-pubvar-select';
+            ['string', 'number', 'boolean'].forEach(function (t) {
+                var o = document.createElement('option');
+                o.value = t; o.textContent = t[0].toUpperCase() + t.slice(1);
+                if (t === (p['varType'] || 'string')) o.selected = true;
+                typeSel.appendChild(o);
+            });
+            typeSel.addEventListener('change', function () {
+                p['varType'] = typeSel.value;
+                nd.properties['varType'] = typeSel.value;
+                typeDisplay.textContent = typeSel.value;
+                _syncStrip();
+                _markDirty();
+            });
+            card.appendChild(_makeField('Type', typeSel));
+
+            // ── Description field ─────────────────────────────────────────
+            var descInput = document.createElement('input');
+            descInput.type = 'text';
+            descInput.className = 'at-pubvar-input';
+            descInput.value = p['description'] || '';
+            descInput.placeholder = 'What this variable does…';
+            descInput.addEventListener('input', function () {
+                p['description'] = descInput.value;
+                nd.properties['description'] = descInput.value;
+                _markDirty();
+            });
+            card.appendChild(_makeField('Description', descInput));
+
+            // ── Public toggle ─────────────────────────────────────────────
+            var pubRow = document.createElement('div');
+            pubRow.className = 'at-pubvar-field at-pubvar-field-pub';
+
+            var pubLabel = document.createElement('label');
+            pubLabel.className = 'at-pubvar-pub-label';
+
+            var pubCheck = document.createElement('input');
+            pubCheck.type = 'checkbox';
+            pubCheck.checked = true; // always true since we only render public vars
+            pubCheck.addEventListener('change', function () {
+                p['public'] = pubCheck.checked;
+                nd.properties['public'] = pubCheck.checked;
+                _syncStrip();
+                _updatePubvarsCount();
+                _markDirty();
+                // Re-render so the card disappears if unchecked
+                if (!pubCheck.checked) _renderPubVars();
+            });
+
+            var pubPill = document.createElement('span');
+            pubPill.className = 'at-prop-toggle-pill';
+
+            var pubHint = document.createElement('span');
+            pubHint.className = 'at-pubvar-pub-hint';
+            pubHint.textContent = 'Exposed via API & dashboard';
+
+            pubLabel.appendChild(pubCheck);
+            pubLabel.appendChild(pubPill);
+            pubRow.appendChild(pubLabel);
+            pubRow.appendChild(pubHint);
+            card.appendChild(pubRow);
 
             _e.pubvarsBody.appendChild(card);
         });
+
+        // Restore selection highlight if a var node is currently selected
+        if (_selNodeId) _highlightPubvarCard(_selNodeId);
     }
 
     // Update pubvars count badge without re-rendering the full panel
