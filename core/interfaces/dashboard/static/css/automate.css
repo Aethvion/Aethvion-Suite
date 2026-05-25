@@ -153,6 +153,45 @@
     overflow: hidden;
 }
 
+/* ── Sidebar tab switcher ───────────────────────────────────────────────── */
+
+.at-sidebar-tabs {
+    display: flex;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.at-sidebar-tab {
+    flex: 1;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted, #64748b);
+    cursor: pointer;
+    padding: 0.55rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+    user-select: none;
+}
+.at-sidebar-tab:hover:not(:disabled) {
+    color: #e2e8f0;
+}
+.at-sidebar-tab.at-tab-active {
+    color: #22d3ee;
+    border-bottom-color: #22d3ee;
+}
+.at-sidebar-tab:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
 .at-sidebar-hdr {
     display: flex;
     align-items: center;

@@ -94,8 +94,10 @@
             paletteList:    _$('at-palette-list'),
             explorer:       _$('at-explorer'),
             inspector:      _$('at-inspector'),
-            inspectorBack:  _$('at-inspector-back'),
+            tabWorkflows:   _$('at-tab-workflows'),
+            tabInspector:   _$('at-tab-inspector'),
             inspectorIcon:  _$('at-inspector-icon'),
+            // Note: at-inspector-back removed — navigation now uses the tab bar
             inspectorTitle: _$('at-inspector-title'),
             inspectorBody:  _$('at-inspector-body'),
             inspectorNone:  _$('at-inspector-none'),
@@ -737,17 +739,25 @@
         _e.canvasInner.style.display    = 'none';
         _e.wfLabel.textContent          = 'No workflow selected';
         _e.wfRenameBtn.style.display    = 'none';
+        // Disable inspector tab — nothing is open to inspect
+        _e.tabInspector.disabled = true;
         _showExplorer();
     }
 
     function _showExplorer() {
         _e.explorer.style.display  = '';
         _e.inspector.style.display = 'none';
+        _e.tabWorkflows.classList.add('at-tab-active');
+        _e.tabInspector.classList.remove('at-tab-active');
     }
 
     function _showInspector() {
         _e.explorer.style.display  = 'none';
         _e.inspector.style.display = '';
+        // Enable the inspector tab now that a workflow is open
+        _e.tabInspector.disabled = false;
+        _e.tabInspector.classList.add('at-tab-active');
+        _e.tabWorkflows.classList.remove('at-tab-active');
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1811,9 +1821,18 @@
     // ════════════════════════════════════════════════════════════════════════
 
     function _newWorkflow() {
-        const name = prompt('Workflow name:', 'New Workflow');
-        if (!name || !name.trim()) return;
-        _apiCreateWorkflow(name.trim()).then(function (wf) {
+        // Auto-generate an incremental name — no prompt, straight to the canvas.
+        // Scan existing names for the highest Workflow_N so deletions don't
+        // cause collisions (e.g. deleting Workflow_2 still yields Workflow_4 next).
+        const re = /^Workflow_(\d+)$/i;
+        let maxNum = 0;
+        _workflows.forEach(function (w) {
+            const m = re.exec(w.name);
+            if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10));
+        });
+        const name = 'Workflow_' + (maxNum + 1);
+
+        _apiCreateWorkflow(name).then(function (wf) {
             _workflows.unshift({ id: wf.id, name: wf.name, node_count: 0, updated: wf.updated });
             _renderWfList();
             _openWorkflow(wf.id);
@@ -2361,26 +2380,22 @@
             _e.inspectorResultsBtn.addEventListener('click', _showInspectorResults);
         }
 
-        // ── Inspector back — three-level navigation ───────────────────────
-        // node/results page → inspector workflow page
-        // workflow page     → explorer (workflows list, auto-save)
-        _e.inspectorBack.addEventListener('click', function () {
-            if (_inspectorPage === 'node' || _inspectorPage === 'results') {
-                // Deselect any node and return to inspector empty state
-                _deselectAll();
-                // _deselectAll → _closeProps → _inspectorPage = 'workflow'
+        // ── Sidebar tab switcher ──────────────────────────────────────────
+        _e.tabWorkflows.addEventListener('click', function () {
+            // Auto-save before leaving the canvas, then show the workflow list
+            var go = function () { _showExplorer(); _renderWfList(); };
+            if (_dirty && _active) {
+                _apiSaveWorkflow().then(go).catch(function (e) {
+                    console.error('[Automate] Auto-save failed:', e);
+                    go(); // still navigate even if save failed
+                });
             } else {
-                // From workflow page: save + show explorer
-                var go = function () { _showExplorer(); _renderWfList(); };
-                if (_dirty && _active) {
-                    _apiSaveWorkflow().then(go).catch(function (e) {
-                        console.error('[Automate] Auto-save failed:', e);
-                        go(); // still navigate even if save failed
-                    });
-                } else {
-                    go();
-                }
+                go();
             }
+        });
+        _e.tabInspector.addEventListener('click', function () {
+            if (!_active) return; // guard (tab is disabled, but belt-and-suspenders)
+            _showInspector();
         });
 
         // ── Inspector body delegation (test button) ────────────────────────
