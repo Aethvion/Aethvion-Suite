@@ -216,8 +216,9 @@ async def overlay_launch():
         env["PYTHONPATH"] = str(PROJECT_ROOT)
 
         # Always redirect stdout/stderr to a log file so crashes are never silent
-        log_path = OVERLAY_DIR / "overlay.log"
-        OVERLAY_DIR.mkdir(parents=True, exist_ok=True)
+        log_dir  = PROJECT_ROOT / "data" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = log_dir / "overlay.log"
         log_file = open(log_path, "a", encoding="utf-8")
 
         kwargs: dict = {
