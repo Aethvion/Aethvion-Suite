@@ -26,6 +26,34 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+# ── AethvionDB registry helper ────────────────────────────────────────────────
+# Reads _db_registry.json directly so compiler.py stays self-contained with no
+# cross-module imports.
+
+_SUITE_ROOT    = Path(__file__).parent.parent.parent
+_DB_REGISTRY   = _SUITE_ROOT / "data" / "aethviondb" / "_db_registry.json"
+_DEFAULT_DB_ROOT = _SUITE_ROOT / "data" / "aethviondb"
+
+
+def _resolve_db_root(db_name: str) -> Path:
+    """Return the filesystem root for a named AethvionDB database.
+
+    Reads the registry file to honour custom paths; falls back to the default
+    data/aethviondb/<db_name> location when the registry has no entry or the
+    registered path no longer exists on disk.
+    """
+    try:
+        raw = json.loads(_DB_REGISTRY.read_text(encoding="utf-8"))
+        entry = raw.get("databases", {}).get(db_name)
+        if entry and entry.get("path"):
+            p = Path(entry["path"])
+            if p.exists():
+                return p
+    except Exception:
+        pass
+    return _DEFAULT_DB_ROOT / db_name
+
+
 # ── Dependency map ────────────────────────────────────────────────────────────
 # node_type → pip packages, required env-var keys, whether AethvionDB reader
 # is needed, and whether AI calls are needed in standalone mode.
@@ -1331,6 +1359,48 @@ def _analyze_workflow(workflow: dict) -> dict:
     if "ai.google" in used_types or "ai.any" in used_types:
         needs_ai = True
 
+    # ── AethvionDB: distinguish live search vs. bundlable snapshot search ─────
+    has_live_db_search = False
+    snapshot_nodes: list[dict] = []
+
+    for node in workflow.get("nodes", []):
+        t = node.get("type", "")
+        if t == "aethviondb.search":
+            has_live_db_search = True
+        elif t == "aethviondb.snapshot_search":
+            props = node.get("properties", {})
+            db_name  = str(props.get("database", "default")).strip() or "default"
+            snap_name = str(props.get("snapshot", "")).strip()
+            # Locate the actual .jsonl file on disk (honours custom db paths)
+            baked_dir = _resolve_db_root(db_name) / "baked"
+            snap_path: Any = None
+            if baked_dir.exists():
+                if snap_name:
+                    candidate = baked_dir / f"{snap_name}.jsonl"
+                    if candidate.exists():
+                        snap_path = candidate
+                if snap_path is None:
+                    files = sorted(
+                        baked_dir.glob("*.jsonl"),
+                        key=lambda f: f.stat().st_mtime,
+                        reverse=True,
+                    )
+                    if files:
+                        snap_path = files[0]
+            size_bytes = int(snap_path.stat().st_size) if snap_path else 0
+            entry = {
+                "db":         db_name,
+                "snap_name":  snap_path.stem if snap_path else (snap_name or "unknown"),
+                "path":       str(snap_path) if snap_path else None,
+                "size_bytes": size_bytes,
+            }
+            # Deduplicate by (db, snap_name)
+            if not any(
+                s["db"] == entry["db"] and s["snap_name"] == entry["snap_name"]
+                for s in snapshot_nodes
+            ):
+                snapshot_nodes.append(entry)
+
     # Collect public variables (data.variable nodes where public=True)
     public_vars: list[dict] = []
     seen_names: set[str] = set()
@@ -1380,13 +1450,17 @@ def _analyze_workflow(workflow: dict) -> dict:
         })
 
     return {
-        "used_types":        sorted(used_types),
-        "pip_deps":          sorted(pip_deps),
-        "key_deps":          sorted(key_deps),
-        "needs_aethviondb":  needs_aethviondb,
-        "needs_ai":          needs_ai,
-        "public_vars":       public_vars,
-        "triggers":          triggers,
+        "used_types":          sorted(used_types),
+        "pip_deps":            sorted(pip_deps),
+        "key_deps":            sorted(key_deps),
+        "needs_aethviondb":    needs_aethviondb,
+        "needs_ai":            needs_ai,
+        "needs_api_key":       bool(key_deps),
+        "has_live_db_search":  has_live_db_search,
+        "has_snapshot_nodes":  bool(snapshot_nodes),
+        "snapshot_nodes":      snapshot_nodes,
+        "public_vars":         public_vars,
+        "triggers":            triggers,
     }
 
 
@@ -2336,19 +2410,29 @@ def compile_workflow(workflow: dict, options: dict) -> tuple[bytes, list[str]]:
     Compile *workflow* into a zip bundle.
 
     Options:
-        include_packages (bool, default True)  — pip download wheels into packages/
-        include_api_key  (bool, default False) — embed API keys from live .env
+        include_packages  (bool, default True)  — pip download wheels into packages/
+        include_api_key   (bool, default False) — embed API keys from live .env
+        include_snapshot  (bool, default False) — bundle AethvionDB snapshot .jsonl files
 
     Returns:
         (zip_bytes, warnings)  where warnings is a list of non-fatal messages.
     """
     include_packages = bool(options.get("include_packages", True))
     include_api_key  = bool(options.get("include_api_key",  False))
+    include_snapshot = bool(options.get("include_snapshot", False))
 
     analysis    = _analyze_workflow(workflow)
     wf_name     = workflow.get("name", "Workflow")
     safe_name   = re.sub(r"[^\w\-]", "_", wf_name)
     warnings: list[str] = []
+
+    # Warn about live AethvionDB Search nodes — they can't work in a bundle
+    if analysis.get("has_live_db_search"):
+        warnings.append(
+            "This workflow contains AethvionDB Search nodes — these require a live "
+            "database and will be skipped in the compiled bundle. "
+            "Use AethvionDB Snapshot Search instead for offline use."
+        )
 
     # Locate live .env for key extraction
     env_path = Path(__file__).parent.parent.parent / ".env"
@@ -2370,6 +2454,31 @@ def compile_workflow(workflow: dict, options: dict) -> tuple[bytes, list[str]]:
         zf.writestr(prefix + ".env",              env_content.encode("utf-8"))
         zf.writestr(prefix + "start.bat",         start_bat.encode("utf-8"))
         zf.writestr(prefix + "start.sh",          start_sh.encode("utf-8"))
+
+        if include_snapshot and analysis.get("snapshot_nodes"):
+            for snap in analysis["snapshot_nodes"]:
+                snap_path_str = snap.get("path")
+                if snap_path_str:
+                    snap_path = Path(snap_path_str)
+                    if snap_path.exists():
+                        arc_path = (
+                            prefix
+                            + "data/aethviondb/"
+                            + snap["db"]
+                            + "/baked/"
+                            + snap_path.name
+                        )
+                        zf.write(snap_path, arc_path)
+                    else:
+                        warnings.append(
+                            f"Snapshot '{snap['snap_name']}' for database '{snap['db']}' "
+                            "was not found on disk — it was not included in the bundle."
+                        )
+                else:
+                    warnings.append(
+                        f"No snapshot file found for database '{snap['db']}' "
+                        "— it was not included in the bundle."
+                    )
 
         if include_packages:
             with tempfile.TemporaryDirectory() as tmp:

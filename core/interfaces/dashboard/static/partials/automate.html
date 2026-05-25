@@ -272,13 +272,23 @@
                         </span>
                     </div>
                 </label>
-                <label class="at-compile-option">
+                <label class="at-compile-option" id="at-compile-apikey-row" style="display:none">
                     <input type="checkbox" id="at-compile-apikey">
                     <div class="at-compile-option-body">
                         <span class="at-compile-option-title">Include API key</span>
                         <span class="at-compile-option-desc">
                             Embeds your configured API keys in the <code>.env</code> file.
                             Only enable for personal use — do not share publicly.
+                        </span>
+                    </div>
+                </label>
+                <label class="at-compile-option" id="at-compile-snapshot-row" style="display:none">
+                    <input type="checkbox" id="at-compile-snapshot">
+                    <div class="at-compile-option-body">
+                        <span class="at-compile-option-title">Include AethvionDB Snapshot</span>
+                        <span class="at-compile-option-desc" id="at-compile-snapshot-desc">
+                            Bundles the database snapshot so the workflow runs offline without
+                            a live Aethvion Suite connection.
                         </span>
                     </div>
                 </label>

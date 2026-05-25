@@ -152,16 +152,20 @@
             // Export button
             btnExport:          _$('at-btn-export'),
             // Compile modal
-            btnCompile:         _$('at-btn-compile'),
-            compileOverlay:     _$('at-compile-overlay'),
-            compileClose:       _$('at-compile-close'),
-            compileBtn:         _$('at-compile-btn'),
-            compilePkgs:        _$('at-compile-packages'),
-            compileApiKey:      _$('at-compile-apikey'),
-            compileStatus:      _$('at-compile-status'),
-            compileStatusText:  _$('at-compile-status-text'),
-            compileWarn:        _$('at-compile-warn'),
-            compileWarnText:    _$('at-compile-warn-text'),
+            btnCompile:            _$('at-btn-compile'),
+            compileOverlay:        _$('at-compile-overlay'),
+            compileClose:          _$('at-compile-close'),
+            compileBtn:            _$('at-compile-btn'),
+            compilePkgs:           _$('at-compile-packages'),
+            compileApiKeyRow:      _$('at-compile-apikey-row'),
+            compileApiKey:         _$('at-compile-apikey'),
+            compileSnapshotRow:    _$('at-compile-snapshot-row'),
+            compileSnapshot:       _$('at-compile-snapshot'),
+            compileSnapshotDesc:   _$('at-compile-snapshot-desc'),
+            compileStatus:         _$('at-compile-status'),
+            compileStatusText:     _$('at-compile-status-text'),
+            compileWarn:           _$('at-compile-warn'),
+            compileWarnText:       _$('at-compile-warn-text'),
         };
 
         // Load data then render
@@ -397,7 +401,40 @@
         if (_e.compileWarn) _e.compileWarn.style.display = 'none';
         if (_e.compileStatus) _e.compileStatus.style.display = 'none';
         if (_e.compileBtn) _e.compileBtn.disabled = false;
+
+        // Reset conditional options to hidden while we fetch compile-info
+        if (_e.compileApiKeyRow)   _e.compileApiKeyRow.style.display   = 'none';
+        if (_e.compileSnapshotRow) _e.compileSnapshotRow.style.display = 'none';
+
         _e.compileOverlay.style.display = '';
+
+        // Fetch compile-info to conditionally show relevant options
+        fetch('/api/automate/workflows/' + _active.id + '/compile-info')
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (info) {
+                if (!info) return;
+
+                // API key option — only relevant when workflow uses AI / keyed nodes
+                if (_e.compileApiKeyRow) {
+                    _e.compileApiKeyRow.style.display = info.needs_api_key ? '' : 'none';
+                }
+
+                // Snapshot option — only when workflow has snapshot_search nodes
+                if (_e.compileSnapshotRow) {
+                    _e.compileSnapshotRow.style.display = info.has_snapshot_nodes ? '' : 'none';
+                    if (info.has_snapshot_nodes && _e.compileSnapshotDesc && info.snapshot_info && info.snapshot_info.length) {
+                        // Build a concise description: "snapshot_name (X KB)" per unique snapshot
+                        var parts = info.snapshot_info.map(function (s) {
+                            return '“' + s.snap_name + '” – ' + s.size_display
+                                + ' (db: ' + s.db + ')';
+                        });
+                        _e.compileSnapshotDesc.textContent =
+                            'Bundles the snapshot ' + parts.join(', ') +
+                            ' so the workflow runs offline without a live Aethvion Suite connection.';
+                    }
+                }
+            })
+            .catch(function () { /* silently ignore — options stay hidden */ });
     }
 
     function _closeCompileModal() {
@@ -406,8 +443,9 @@
 
     function _doCompile() {
         if (!_active) return;
-        var includePkgs   = _e.compilePkgs   ? _e.compilePkgs.checked   : true;
-        var includeApiKey = _e.compileApiKey  ? _e.compileApiKey.checked : false;
+        var includePkgs      = _e.compilePkgs      ? _e.compilePkgs.checked      : true;
+        var includeApiKey    = _e.compileApiKey    ? _e.compileApiKey.checked    : false;
+        var includeSnapshot  = _e.compileSnapshot  ? _e.compileSnapshot.checked  : false;
 
         // Show spinner, disable button
         if (_e.compileStatus) {
@@ -427,6 +465,7 @@
                 body:    JSON.stringify({
                     include_packages: includePkgs,
                     include_api_key:  includeApiKey,
+                    include_snapshot: includeSnapshot,
                 }),
             }).then(function (resp) {
                 if (!resp.ok) {

@@ -2950,6 +2950,59 @@ async def pick_path(
 class CompileOptions(BaseModel):
     include_packages: bool = True
     include_api_key:  bool = False
+    include_snapshot: bool = False
+
+
+def _human_size(n: int) -> str:
+    """Format a byte count as a human-readable string."""
+    for unit in ("B", "KB", "MB", "GB"):
+        if n < 1024:
+            return f"{n} {unit}"
+        n //= 1024
+    return f"{n} TB"
+
+
+@router.get("/workflows/{wf_id}/compile-info")
+async def get_compile_info(wf_id: str):
+    """
+    Return pre-flight information about what options are relevant for compiling
+    this workflow.  Used by the UI to conditionally show/hide compile options.
+
+    Returns:
+        needs_api_key      — True when the workflow contains nodes that use API keys
+        has_snapshot_nodes — True when the workflow contains aethviondb.snapshot_search nodes
+        has_live_db_search — True when the workflow contains aethviondb.search nodes
+        snapshot_info      — list of {db, snap_name, size_bytes, size_display} per unique snapshot
+    """
+    p = _wf_path(wf_id)
+    if not p.exists():
+        raise HTTPException(404, "Workflow not found")
+
+    wf = json.loads(p.read_text(encoding="utf-8"))
+
+    try:
+        from core.automate.compiler import _analyze_workflow  # noqa: PLC0415
+    except ImportError as exc:
+        raise HTTPException(500, f"Compiler module not available: {exc}")
+
+    analysis = _analyze_workflow(wf)
+
+    snapshot_info = [
+        {
+            "db":           s["db"],
+            "snap_name":    s["snap_name"],
+            "size_bytes":   s["size_bytes"],
+            "size_display": _human_size(s["size_bytes"]),
+        }
+        for s in analysis.get("snapshot_nodes", [])
+    ]
+
+    return {
+        "needs_api_key":      analysis.get("needs_api_key", False),
+        "has_snapshot_nodes": analysis.get("has_snapshot_nodes", False),
+        "has_live_db_search": analysis.get("has_live_db_search", False),
+        "snapshot_info":      snapshot_info,
+    }
 
 
 @router.post("/workflows/{wf_id}/compile")
@@ -2980,6 +3033,7 @@ async def compile_workflow(wf_id: str, body: CompileOptions):
         return _compile(wf, {
             "include_packages": body.include_packages,
             "include_api_key":  body.include_api_key,
+            "include_snapshot": body.include_snapshot,
         })
 
     try:
