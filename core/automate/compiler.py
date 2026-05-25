@@ -2252,20 +2252,43 @@ class WorkflowExecutor:
         return self._build_result()
 
     def _reachable_from_triggers(self) -> set[str]:
-        adj: dict[str, list[str]] = {{nid: [] for nid in self.nodes}}
+        # Three-phase algorithm: forward from active trigger, then backward from
+        # that set (stopping at other triggers' territory) to pull in data suppliers.
+        fwd: dict[str, list[str]] = {{nid: [] for nid in self.nodes}}
+        rev: dict[str, list[str]] = {{nid: [] for nid in self.nodes}}
         for c in self.connections:
             s, t = c.get("sourceNodeId"), c.get("targetNodeId")
-            if s in self.nodes and t in self.nodes: adj[s].append(t)
+            if s in self.nodes and t in self.nodes:
+                fwd[s].append(t); rev[t].append(s)
+        all_triggers = [nid for nid, n in self.nodes.items()
+                        if n.get("type", "").startswith("trigger.")]
+        def _fwd_bfs(seeds):
+            vis = set(seeds); q = list(seeds)
+            while q:
+                nid = q.pop(0)
+                for nb in fwd[nid]:
+                    if nb not in vis: vis.add(nb); q.append(nb)
+            return vis
+        # Phase 1: forward from active seeds
         if self._trigger_id:
-            seeds = [self._trigger_id] if self._trigger_id in self.nodes else []
+            active = [self._trigger_id] if self._trigger_id in self.nodes else []
         else:
-            seeds = [nid for nid, n in self.nodes.items() if n.get("type","").startswith("trigger.")]
-        visited = set(seeds); queue = list(seeds)
+            active = list(all_triggers)
+        forward = _fwd_bfs(active)
+        # Phase 2: other triggers' territory
+        other = set()
+        for t in all_triggers:
+            if t not in active: other |= _fwd_bfs([t])
+        # Phase 3: backward from forward set, blocked by triggers + other territory
+        blocked   = set(all_triggers) | other
+        reachable = set(forward)
+        queue     = [nid for nid in forward if nid not in set(all_triggers)]
         while queue:
             nid = queue.pop(0)
-            for nb in adj[nid]:
-                if nb not in visited: visited.add(nb); queue.append(nb)
-        return visited
+            for up in rev[nid]:
+                if up not in reachable and up not in blocked:
+                    reachable.add(up); queue.append(up)
+        return reachable
 
     def _topo_sort(self):
         in_deg = {{nid: 0 for nid in self.nodes}}
