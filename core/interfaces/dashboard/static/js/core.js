@@ -1996,6 +1996,20 @@ async function loadChatModels() {
             } else if (sel.id === 'model-select') {
                 const saved = localStorage.getItem('chat_model');
                 if (saved && sel.querySelector(`option[value="${saved}"]`)) sel.value = saved;
+            } else if (sel.id === 'overlay-model') {
+                // loadOverlaySettings stamps the saved model into data-saved-value before
+                // calling us, because the select is empty at that point.
+                const savedVal = sel.dataset.savedValue;
+                if (typeof savedVal === 'string') {
+                    // Called from loadOverlaySettings — use the stamped value
+                    if (savedVal && sel.querySelector(`option[value="${savedVal}"]`)) {
+                        sel.value = savedVal;
+                    } else {
+                        sel.value = '';  // default
+                    }
+                } else if (currentVal && sel.querySelector(`option[value="${currentVal}"]`)) {
+                    sel.value = currentVal;
+                }
             } else if (currentVal && sel.querySelector(`option[value="${currentVal}"]`)) {
                 sel.value = currentVal;
             }

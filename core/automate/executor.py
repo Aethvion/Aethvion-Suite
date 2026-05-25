@@ -36,7 +36,8 @@ class WorkflowExecutor:
         log          — [{level, msg, ts}, …]
     """
 
-    def __init__(self, workflow: dict, variables: dict | None = None) -> None:
+    def __init__(self, workflow: dict, variables: dict | None = None,
+                 trigger_id: str | None = None) -> None:
         self.workflow    = workflow
         self.nodes: dict[str, dict]          = {n["id"]: n for n in workflow.get("nodes", [])}
         self.connections: list[dict]         = workflow.get("connections", [])
@@ -47,6 +48,8 @@ class WorkflowExecutor:
         self._log:     list[dict]                = []
         # Pre-seed with injected variable values so data.variable nodes read them
         self._vars:    dict[str, Any]            = dict(variables or {})
+        # Optional: run only nodes reachable from this specific trigger node id
+        self._trigger_id: str | None             = trigger_id
 
     # ── Public entry point ────────────────────────────────────────────────────
 
@@ -111,15 +114,18 @@ class WorkflowExecutor:
     # ── Graph traversal ───────────────────────────────────────────────────────
 
     def _reachable_from_triggers(self) -> set[str]:
-        """BFS forward from every trigger.* node; returns reachable node IDs."""
+        """BFS forward from trigger node(s); returns reachable node IDs."""
         adj: dict[str, list[str]] = {nid: [] for nid in self.nodes}
         for conn in self.connections:
             src, tgt = conn.get("sourceNodeId"), conn.get("targetNodeId")
             if src in self.nodes and tgt in self.nodes:
                 adj[src].append(tgt)
 
-        seeds   = [nid for nid, n in self.nodes.items()
-                   if n.get("type", "").startswith("trigger.")]
+        if self._trigger_id:
+            seeds = [self._trigger_id] if self._trigger_id in self.nodes else []
+        else:
+            seeds = [nid for nid, n in self.nodes.items()
+                     if n.get("type", "").startswith("trigger.")]
         visited = set(seeds)
         queue   = list(seeds)
 

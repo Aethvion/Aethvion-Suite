@@ -1351,6 +1351,34 @@ def _analyze_workflow(workflow: dict) -> dict:
             "description": str(props.get("description", "")),
         })
 
+    # Collect named triggers (trigger.* nodes — always included, slug used for API routes)
+    triggers: list[dict] = []
+    seen_slugs: set[str] = set()
+    for node in workflow.get("nodes", []):
+        t = node.get("type", "")
+        if not t.startswith("trigger."):
+            continue
+        props = node.get("properties", {})
+        name = str(props.get("name", "")).strip()
+        if not name:
+            name = node.get("label", t)
+        # Build a URL-safe slug: lowercase, replace non-alphanum runs with dash
+        slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+        if not slug:
+            slug = "trigger"
+        # Deduplicate slugs
+        base_slug, n = slug, 1
+        while slug in seen_slugs:
+            n += 1
+            slug = f"{base_slug}-{n}"
+        seen_slugs.add(slug)
+        triggers.append({
+            "id":   node["id"],
+            "name": name,
+            "slug": slug,
+            "type": t,
+        })
+
     return {
         "used_types":        sorted(used_types),
         "pip_deps":          sorted(pip_deps),
@@ -1358,6 +1386,7 @@ def _analyze_workflow(workflow: dict) -> dict:
         "needs_aethviondb":  needs_aethviondb,
         "needs_ai":          needs_ai,
         "public_vars":       public_vars,
+        "triggers":          triggers,
     }
 
 
@@ -1467,7 +1496,12 @@ header h1{font-size:.92rem;font-weight:700;letter-spacing:.02em;flex:1}
 .field input,.field textarea,.field select{background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;padding:.38rem .5rem;font-size:.8rem;outline:none;resize:vertical;width:100%}
 .field input:focus,.field textarea:focus,.field select:focus{border-color:#22d3ee}
 .field input[type=checkbox]{width:auto;accent-color:#22d3ee}
-.run-btn{background:#22d3ee;color:#0f172a;border:none;border-radius:6px;padding:.55rem 1rem;font-size:.86rem;font-weight:700;cursor:pointer;margin:.2rem 1rem .8rem;transition:background .15s}
+.run-section{padding:.5rem 1rem .8rem;display:flex;flex-direction:column;gap:.5rem}
+.trig-sel-wrap{display:flex;flex-direction:column;gap:.22rem}
+.trig-sel-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569}
+.trig-sel{background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;padding:.35rem .5rem;font-size:.78rem;outline:none;width:100%}
+.trig-sel:focus{border-color:#22d3ee}
+.run-btn{background:#22d3ee;color:#0f172a;border:none;border-radius:6px;padding:.55rem 1rem;font-size:.86rem;font-weight:700;cursor:pointer;transition:background .15s;width:100%}
 .run-btn:hover{background:#67e8f9}
 .run-btn:disabled{opacity:.4;cursor:not-allowed}
 /* ── Content pane ── */
@@ -1538,7 +1572,14 @@ header h1{font-size:.92rem;font-weight:700;letter-spacing:.02em;flex:1}
     <!-- Input nodes section -->
     <div class="sb-hdr" id="inp-hdr" style="display:none">&#9776; Input Nodes</div>
     <div class="sb-section" id="inp-section" style="display:none"></div>
-    <button class="run-btn" id="run-btn" onclick="run()">&#9654; Run</button>
+    <!-- Trigger selector + Run button -->
+    <div class="run-section">
+      <div class="trig-sel-wrap" id="trig-sel-wrap" style="display:none">
+        <span class="trig-sel-label">&#9889; Trigger</span>
+        <select class="trig-sel" id="trig-sel"></select>
+      </div>
+      <button class="run-btn" id="run-btn" onclick="run()">&#9654; Run</button>
+    </div>
   </div>
   <!-- ── Content ── -->
   <div class="content">
@@ -1604,6 +1645,20 @@ async function loadVars(){
   });
 }
 
+// ── Sidebar: named triggers ───────────────────────────────────────────────────
+async function loadTriggers(){
+  const r=await fetch('/api/schema');const s=await r.json();
+  const trigs=(s.triggers||[]);
+  const wrap=document.getElementById('trig-sel-wrap');
+  const sel=document.getElementById('trig-sel');
+  if(trigs.length<=1){return;}  // only show selector when there are 2+ triggers
+  wrap.style.display='';
+  const all=document.createElement('option');all.value='';all.textContent='All triggers';sel.appendChild(all);
+  trigs.forEach(t=>{
+    const o=document.createElement('option');o.value=t.slug;o.textContent=t.name;sel.appendChild(o);
+  });
+}
+
 // ── Sidebar: input.* nodes ────────────────────────────────────────────────────
 async function loadInputs(){
   const r=await fetch('/inputs');const ins=await r.json();
@@ -1639,11 +1694,14 @@ async function run(){
   // Collect input-node overrides
   const ov={};
   document.querySelectorAll('[data-nid]').forEach(e=>ov[e.dataset.nid]=e.value);
+  // Use named trigger endpoint if one is selected
+  const trigSel=document.getElementById('trig-sel');
+  const trigSlug=trigSel?trigSel.value:'';
   const params=new URLSearchParams({
     variables:JSON.stringify(vars),
     overrides:JSON.stringify(ov)
   });
-  const es=new EventSource('/stream?'+params.toString());
+  const es=new EventSource((trigSlug?'/stream/'+trigSlug:'/stream')+'?'+params.toString());
   es.onmessage=e=>{
     const d=JSON.parse(e.data);
     if(d.done){
@@ -1720,7 +1778,7 @@ async function loadApiDocs(){
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
-Promise.all([loadVars(),loadInputs(),loadApiDocs()]);
+Promise.all([loadVars(),loadInputs(),loadTriggers(),loadApiDocs()]);
 </script>
 </body>
 </html>
@@ -1834,6 +1892,8 @@ def _extract_json_block(text: str) -> dict:
 
     public_vars      = analysis.get("public_vars", [])
     public_vars_json = json.dumps(public_vars, ensure_ascii=False)
+    triggers         = analysis.get("triggers", [])
+    triggers_json    = json.dumps(triggers, ensure_ascii=False)
     html_content     = _HTML_TEMPLATE.replace("%%NAME%%", wf_name)
 
     src = f'''\
@@ -1878,7 +1938,8 @@ def _ts() -> str:
 # ── WorkflowExecutor ──────────────────────────────────────────────────────────
 
 class WorkflowExecutor:
-    def __init__(self, workflow: dict, variables: dict | None = None) -> None:
+    def __init__(self, workflow: dict, variables: dict | None = None,
+                 trigger_id: str | None = None) -> None:
         self.workflow    = workflow
         self.nodes: dict[str, dict] = {{n["id"]: n for n in workflow.get("nodes", [])}}
         self.connections = workflow.get("connections", [])
@@ -1887,6 +1948,7 @@ class WorkflowExecutor:
         self._errors:  dict[str, str] = {{}}
         self._log:     list[dict]     = []
         self._vars:    dict[str, Any] = dict(variables or {{}})  # pre-seed with injected values
+        self._trigger_id: str | None  = trigger_id
 
     def execute(self) -> dict:
         name = self.workflow.get("name", "Workflow")
@@ -1936,7 +1998,10 @@ class WorkflowExecutor:
         for c in self.connections:
             s, t = c.get("sourceNodeId"), c.get("targetNodeId")
             if s in self.nodes and t in self.nodes: adj[s].append(t)
-        seeds = [nid for nid, n in self.nodes.items() if n.get("type","").startswith("trigger.")]
+        if self._trigger_id:
+            seeds = [self._trigger_id] if self._trigger_id in self.nodes else []
+        else:
+            seeds = [nid for nid, n in self.nodes.items() if n.get("type","").startswith("trigger.")]
         visited = set(seeds); queue = list(seeds)
         while queue:
             nid = queue.pop(0)
@@ -2004,6 +2069,10 @@ _INPUT_NODES = [n for n in _WORKFLOW.get("nodes", []) if n.get("type","").starts
 # Each entry: {{name, varType, default, description}}
 _PUBLIC_VARS: list[dict] = {public_vars_json}
 
+# ── Named triggers (baked in at compile time) ─────────────────────────────────
+# Each entry: {{id, name, slug, type}}
+_TRIGGERS: list[dict] = {triggers_json}
+
 # ── FastAPI server ────────────────────────────────────────────────────────────
 try:
     from fastapi import FastAPI, Request
@@ -2048,9 +2117,26 @@ async def api_variables():
 @app.get("/api/schema")
 async def api_schema():
     """Machine-readable description of every available endpoint."""
+    # Build per-trigger endpoint entries dynamically
+    trig_endpoints = []
+    for _t in _TRIGGERS:
+        trig_endpoints.append({{
+            "method": "POST", "path": "/run/" + _t["slug"],
+            "description": "Run from trigger: " + _t["name"],
+            "body": {{"variables": {{"<name>": "<value>"}}}},
+            "response": {{"ok": True, "log": [], "node_status": {{}}}},
+        }})
+        trig_endpoints.append({{
+            "method": "GET", "path": "/stream/" + _t["slug"],
+            "description": "SSE stream from trigger: " + _t["name"],
+            "query_params": {{"variables": "JSON object mapping variable names to values"}},
+            "events": [{{"level": "info|warning|error", "msg": "...", "ts": "..."}},
+                       {{"done": True, "ok": True}}],
+        }})
     schema = {{
         "workflow": {repr(wf_name)},
         "public_variables": _PUBLIC_VARS,
+        "triggers": _TRIGGERS,
         "endpoints": [
             {{
                 "method": "GET", "path": "/",
@@ -2058,7 +2144,7 @@ async def api_schema():
             }},
             {{
                 "method": "POST", "path": "/run",
-                "description": "Run the workflow and return the full result as JSON.",
+                "description": "Run the workflow from all triggers and return the full result as JSON.",
                 "body": {{
                     "variables": {{"<name>": "<value>", "...": "..."}},
                     "overrides": {{"<node_id>": "<value>", "...": "..."}},
@@ -2073,7 +2159,7 @@ async def api_schema():
             }},
             {{
                 "method": "GET", "path": "/stream",
-                "description": "Server-Sent Events stream — receive log lines in real time.",
+                "description": "Server-Sent Events stream — receive log lines in real time (all triggers).",
                 "query_params": {{
                     "variables": "JSON object mapping variable names to values",
                     "overrides": "JSON object mapping input-node IDs to values",
@@ -2083,6 +2169,7 @@ async def api_schema():
                     {{"done": True, "ok": True}},
                 ],
             }},
+        ] + trig_endpoints + [
             {{
                 "method": "GET", "path": "/outputs",
                 "description": "Outputs produced by output.display nodes in the last run.",
@@ -2109,7 +2196,8 @@ async def get_outputs():
 @app.get("/status")
 async def get_status():
     return JSONResponse({{"ready": True, "workflow": {repr(wf_name)},
-                          "public_vars": [v["name"] for v in _PUBLIC_VARS]}})
+                          "public_vars": [v["name"] for v in _PUBLIC_VARS],
+                          "triggers": [{{"name": t["name"], "slug": t["slug"]}} for t in _TRIGGERS]}})
 
 @app.get("/stream")
 async def stream_execution(overrides: str = "{{}}", variables: str = "{{}}"):
@@ -2147,6 +2235,49 @@ async def run_workflow(request: Request):
     result = ex.execute()
     return JSONResponse(result)
 
+@app.post("/run/{{trigger_slug}}")
+async def run_named_trigger(trigger_slug: str, request: Request):
+    """Run from a specific named trigger. Available slugs: see /api/schema."""
+    global _INPUT_OVERRIDES, _OUTPUT_RESULTS
+    trig = next((t for t in _TRIGGERS if t["slug"] == trigger_slug), None)
+    if trig is None:
+        from fastapi import HTTPException
+        raise HTTPException(404, "Unknown trigger slug: " + trigger_slug +
+                            ". Available: " + ", ".join(t["slug"] for t in _TRIGGERS))
+    body = {{}}
+    try: body = await request.json()
+    except Exception: pass
+    _INPUT_OVERRIDES = body.get("overrides", {{}})
+    _var_overrides   = body.get("variables", {{}})
+    _OUTPUT_RESULTS.clear()
+    ex = WorkflowExecutor(_WORKFLOW, variables=_var_overrides, trigger_id=trig["id"])
+    result = ex.execute()
+    return JSONResponse(result)
+
+@app.get("/stream/{{trigger_slug}}")
+async def stream_named_trigger(trigger_slug: str, variables: str = "{{}}"):
+    """SSE stream from a specific named trigger."""
+    global _OUTPUT_RESULTS
+    trig = next((t for t in _TRIGGERS if t["slug"] == trigger_slug), None)
+    if trig is None:
+        from fastapi import HTTPException
+        raise HTTPException(404, "Unknown trigger slug: " + trigger_slug)
+    try: _var_ov = json.loads(variables)
+    except Exception: _var_ov = {{}}
+    _OUTPUT_RESULTS.clear()
+    async def _named_ev():
+        loop = asyncio.get_event_loop()
+        def _run():
+            ex = WorkflowExecutor(_WORKFLOW, variables=_var_ov, trigger_id=trig["id"])
+            return ex, ex.execute()
+        executor, result = await loop.run_in_executor(None, _run)
+        for entry in executor._log:
+            yield f"data: {{json.dumps(entry)}}\\n\\n"
+            await asyncio.sleep(0)
+        yield f"data: {{json.dumps({{'done': True, 'ok': result['ok']}})}}\\n\\n"
+    return StreamingResponse(_named_ev(), media_type="text/event-stream",
+                             headers={{"Cache-Control":"no-cache","X-Accel-Buffering":"no"}})
+
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser(description={repr(wf_name)})
@@ -2158,6 +2289,10 @@ if __name__ == "__main__":
     print(f"  \\033[36mhttp://{{args.host}}:{{args.port}}\\033[0m")
     if _PUBLIC_VARS:
         print(f"  Public variables: {{', '.join(v['name'] for v in _PUBLIC_VARS)}}")
+    if _TRIGGERS:
+        print(f"  Triggers: {{', '.join(t['name'] for t in _TRIGGERS)}}")
+        for t in _TRIGGERS:
+            print(f"    POST /run/{{t['slug']}}  — {{t['name']}}")
     print(f"")
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 '''

@@ -27,9 +27,20 @@
                 <i class="fas fa-trash"></i><span>Delete</span>
             </button>
             <div class="at-toolbar-sep"></div>
-            <button class="at-btn at-btn-run" id="at-btn-run" title="Run workflow" disabled>
-                <i class="fas fa-play"></i><span>Run</span>
-            </button>
+            <div class="at-run-group" id="at-run-group">
+                <button class="at-btn at-btn-run" id="at-btn-run" title="Run workflow" disabled>
+                    <i class="fas fa-play"></i><span>Run</span>
+                </button>
+                <div class="at-trigger-drop" id="at-trigger-drop">
+                    <button class="at-trigger-drop-btn" id="at-trigger-drop-btn" disabled title="Select trigger to run">
+                        <span class="at-trigger-drop-label" id="at-trigger-drop-label">All</span>
+                        <i class="fas fa-chevron-down at-trigger-chevron" id="at-trigger-chevron"></i>
+                    </button>
+                    <div class="at-trigger-drop-menu" id="at-trigger-drop-menu">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
             <div class="at-toolbar-sep"></div>
             <button class="at-btn at-btn-ghost" id="at-btn-export" title="Export workflow as JSON" disabled>
                 <i class="fas fa-download"></i><span>Export</span>

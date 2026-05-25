@@ -61,6 +61,7 @@
     let _sidebarPage   = 'workflows'; // 'workflows' | 'inspector' | 'results' | 'pubvars'
     let _nodeSelected  = false;       // whether inspector currently shows a node
     let _lastExecData  = null;        // most recent workflow execution result
+    let _selTriggerId  = null;        // null = run all triggers; string = specific trigger node id
 
     // Nav page metadata
     var _NAV_META = {
@@ -84,8 +85,12 @@
             btnNew:        _$('at-btn-new'),
             btnSave:       _$('at-btn-save'),
             btnDelete:     _$('at-btn-delete'),
-            btnRun:        _$('at-btn-run'),
-            btnResetView:  _$('at-btn-reset-view'),
+            btnRun:            _$('at-btn-run'),
+            triggerDrop:       _$('at-trigger-drop'),
+            triggerDropBtn:    _$('at-trigger-drop-btn'),
+            triggerDropMenu:   _$('at-trigger-drop-menu'),
+            triggerDropLabel:  _$('at-trigger-drop-label'),
+            btnResetView:      _$('at-btn-reset-view'),
             btnFit:        _$('at-btn-fit'),
             btnZoomIn:     _$('at-btn-zoom-in'),
             btnZoomOut:    _$('at-btn-zoom-out'),
@@ -584,7 +589,13 @@
         _active.nodes.forEach(function (nd) { _setNodeExecState(nd.id, 'pending'); });
 
         try {
-            const r = await fetch('/api/automate/workflows/' + _active.id + '/run', { method: 'POST' });
+            const body = {};
+            if (_selTriggerId) body.trigger_id = _selTriggerId;
+            const r = await fetch('/api/automate/workflows/' + _active.id + '/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
             const data = await r.json();
             _applyExecResults(data);
         } catch (e) {
@@ -815,9 +826,11 @@
         savePromise.then(function () {
             return _apiGetWorkflow(id);
         }).then(function (wf) {
-            _active      = wf;
-            _dirty       = false;
-            _placeOffset = wf.nodes.length;
+            _active        = wf;
+            _dirty         = false;
+            _placeOffset   = wf.nodes.length;
+            _selTriggerId  = null;   // reset trigger selection for new workflow
+            if (_e.triggerDropLabel) _e.triggerDropLabel.textContent = 'All';
             // Restore saved viewport, or default to origin
             var vp = wf.viewport;
             _view.x     = (vp && isFinite(vp.x))     ? vp.x     : 0;
@@ -906,6 +919,8 @@
         _active.nodes.forEach(function (n) { _renderNode(n); });
         // Defer connections one frame so nodes have layout
         requestAnimationFrame(function () { _renderConns(); });
+        // Refresh the trigger dropdown to match current node list
+        _renderTriggerDropdown();
     }
 
     function _renderNode(nd) {
@@ -945,6 +960,7 @@
         const isSchedule  = nd.type === 'trigger.schedule';
         const isTextInput = nd.type === 'input.text' || nd.type === 'input.number' || nd.type === 'input.list';
         const isVariable  = nd.type === 'data.variable';
+        const isTrigger   = nd.type.startsWith('trigger.');
         const showResult  = (isAI && nd.properties['show_result'] !== false) || isDisplay;
 
         // AI extra bar: model badge + test button
@@ -1010,6 +1026,18 @@
                    '</div>';
         }());
 
+        // Trigger name strip — shown on trigger.* nodes when a name is set
+        const trigNameHtml = (function () {
+            if (!isTrigger) return '';
+            var tName = (nd.properties && nd.properties['name'])
+                ? nd.properties['name'].trim() : '';
+            return '<div class="at-node-trig-name" data-trig-name="' + nd.id + '"' +
+                   (tName ? '' : ' style="display:none"') + '>' +
+                   '<i class="fas fa-tag"></i>' +
+                   '<span>' + _esc(tName) + '</span>' +
+                   '</div>';
+        }());
+
         el.innerHTML =
             '<div class="at-node-hdr">' +
             '  <div class="at-node-icon" style="background:' + colorBg + ';color:' + color + '">' +
@@ -1027,6 +1055,7 @@
             schedHtml +
             valuePreviewHtml +
             variableHtml +
+            trigNameHtml +
             aiBarHtml +
             resultHtml;
 
@@ -1295,6 +1324,68 @@
         });
         var sel = _e.pubvarsBody.querySelector('[data-pubvar-id="' + nodeId + '"]');
         if (sel) sel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // ── Trigger selector dropdown ─────────────────────────────────────────────
+
+    function _closeTriggerDrop() {
+        if (_e.triggerDrop) _e.triggerDrop.classList.remove('at-drop-open');
+    }
+
+    function _renderTriggerDropdown() {
+        if (!_e.triggerDropMenu) return;
+        _e.triggerDropMenu.innerHTML = '';
+
+        // "All triggers" option
+        var allBtn = document.createElement('button');
+        allBtn.className = 'at-trigger-drop-item' + (_selTriggerId === null ? ' at-trig-active' : '');
+        allBtn.innerHTML = '<i class="fas fa-bolt"></i><span>All triggers</span>';
+        allBtn.addEventListener('click', function () {
+            _selTriggerId = null;
+            if (_e.triggerDropLabel) _e.triggerDropLabel.textContent = 'All';
+            _closeTriggerDrop();
+            _renderTriggerDropdown();
+        });
+        _e.triggerDropMenu.appendChild(allBtn);
+
+        if (!_active || !_active.nodes) return;
+
+        var triggers = _active.nodes.filter(function (n) {
+            return n.type && n.type.startsWith('trigger.');
+        });
+
+        if (triggers.length > 0) {
+            var sep = document.createElement('div');
+            sep.className = 'at-trigger-drop-sep';
+            _e.triggerDropMenu.appendChild(sep);
+        }
+
+        triggers.forEach(function (nd) {
+            var name = (nd.properties && nd.properties['name'])
+                ? nd.properties['name'].trim() : '';
+            var td = _typeDef(nd.type);
+            var displayName = name || td.label;
+
+            var btn = document.createElement('button');
+            btn.className = 'at-trigger-drop-item' + (_selTriggerId === nd.id ? ' at-trig-active' : '');
+            btn.innerHTML = '<i class="fas ' + (td.icon || 'fa-bolt') + '"></i><span>' + _esc(displayName) + '</span>';
+            btn.addEventListener('click', function () {
+                _selTriggerId = nd.id;
+                if (_e.triggerDropLabel) _e.triggerDropLabel.textContent = displayName;
+                _closeTriggerDrop();
+                _renderTriggerDropdown();
+            });
+            _e.triggerDropMenu.appendChild(btn);
+        });
+
+        // If the previously selected trigger no longer exists, reset to All
+        if (_selTriggerId !== null) {
+            var stillExists = _active.nodes.some(function (n) { return n.id === _selTriggerId; });
+            if (!stillExists) {
+                _selTriggerId = null;
+                if (_e.triggerDropLabel) _e.triggerDropLabel.textContent = 'All';
+            }
+        }
     }
 
     function _selectConn(connId) {
@@ -1571,6 +1662,23 @@
                             '<span class="at-var-name">$' + _esc(vName) + '</span>' +
                             '<span class="at-var-type">' + _esc(vType) + '</span>' +
                             '<span class="at-var-default">' + _esc(vPreview) + '</span>';
+                    }
+                }
+                // Live-update trigger name strip and dropdown label
+                if (nd.type && nd.type.startsWith('trigger.') && prop.key === 'name') {
+                    var trigEl = _e.canvasInner.querySelector('[data-trig-name="' + nd.id + '"]');
+                    if (trigEl) {
+                        var tName = (nd.properties['name'] || '').trim();
+                        trigEl.style.display = tName ? '' : 'none';
+                        trigEl.innerHTML = tName
+                            ? '<i class="fas fa-tag"></i><span>' + _esc(tName) + '</span>'
+                            : '';
+                    }
+                    // Refresh dropdown and update its label if this trigger is selected
+                    _renderTriggerDropdown();
+                    if (_selTriggerId === nd.id && _e.triggerDropLabel) {
+                        var td2 = _typeDef(nd.type);
+                        _e.triggerDropLabel.textContent = (nd.properties['name'] || '').trim() || td2.label;
                     }
                 }
                 // When database changes, refresh any snapshot selector in the same inspector
@@ -2294,6 +2402,7 @@
         _e.btnSave.disabled   = !has;
         _e.btnDelete.disabled = !has;
         _e.btnRun.disabled    = !has;
+        if (_e.triggerDropBtn) _e.triggerDropBtn.disabled = !has;
         if (_e.btnExport)   _e.btnExport.disabled   = !has;
         if (_e.btnShare)    _e.btnShare.disabled    = !has;
         if (_e.btnCompile)  _e.btnCompile.disabled  = !has;
@@ -2596,6 +2705,21 @@
         _e.btnSave  .addEventListener('click', _apiSaveWorkflow);
         _e.btnDelete.addEventListener('click', _apiDeleteWorkflow);
         _e.btnRun   .addEventListener('click', _apiRunWorkflow);
+
+        // ── Trigger selector dropdown ──────────────────────────────────────
+        if (_e.triggerDropBtn) {
+            _e.triggerDropBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                _e.triggerDrop.classList.toggle('at-drop-open');
+            });
+        }
+        // Close trigger dropdown on outside click
+        document.addEventListener('click', function (e) {
+            if (_e.triggerDrop && !_e.triggerDrop.contains(e.target)) {
+                _closeTriggerDrop();
+            }
+        });
+
         _e.btnResetView.addEventListener('click', function () {
             _view.x = 0; _view.y = 0; _view.scale = 1;
             _applyTransform();

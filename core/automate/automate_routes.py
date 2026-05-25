@@ -76,7 +76,9 @@ _NODE_TYPES: list[dict] = [
         "color": "#22d3ee",
         "inputs": [],
         "outputs": [{"name": "trigger", "label": "Trigger"}],
-        "properties": [],
+        "properties": [
+            {"key": "name", "label": "Name", "type": "text", "default": "", "placeholder": "e.g. Run Report"},
+        ],
     },
     {
         "type": "trigger.schedule",
@@ -90,6 +92,7 @@ _NODE_TYPES: list[dict] = [
             {"name": "data",    "label": "Data"},
         ],
         "properties": [
+            {"key": "name", "label": "Name", "type": "text", "default": "", "placeholder": "e.g. Daily Sync"},
             {
                 "key": "schedules",
                 "label": "Schedules",
@@ -110,6 +113,7 @@ _NODE_TYPES: list[dict] = [
             {"name": "body", "label": "Body"},
         ],
         "properties": [
+            {"key": "name", "label": "Name", "type": "text", "default": "", "placeholder": "e.g. Inbound Hook"},
             {
                 "key": "path",
                 "label": "Path",
@@ -1491,6 +1495,7 @@ _NODE_TYPES: list[dict] = [
             {"name": "data",       "label": "Event Data"},
         ],
         "properties": [
+            {"key": "name", "label": "Name", "type": "text", "default": "", "placeholder": "e.g. On Message"},
             {
                 "key": "event_type",
                 "label": "Event Type Filter",
@@ -1522,6 +1527,7 @@ _NODE_TYPES: list[dict] = [
             {"name": "event",   "label": "Event Type"},
         ],
         "properties": [
+            {"key": "name", "label": "Name", "type": "text", "default": "", "placeholder": "e.g. Watch Folder"},
             {
                 "key": "path",
                 "label": "Watch Path",
@@ -2712,7 +2718,8 @@ async def delete_workflow(wf_id: str):
 
 
 class RunWorkflowBody(BaseModel):
-    variables: Optional[dict] = None  # {name: value} — injected into data.variable nodes
+    variables:  Optional[dict] = None  # {name: value} — injected into data.variable nodes
+    trigger_id: Optional[str]  = None  # node id of the specific trigger to run from
 
 
 @router.post("/workflows/{wf_id}/run")
@@ -2724,7 +2731,7 @@ async def run_workflow(wf_id: str, body: RunWorkflowBody = RunWorkflowBody()):
     wf = json.loads(p.read_text(encoding="utf-8"))
 
     from core.automate.executor import WorkflowExecutor  # noqa: PLC0415
-    executor = WorkflowExecutor(wf, variables=body.variables or {})
+    executor = WorkflowExecutor(wf, variables=body.variables or {}, trigger_id=body.trigger_id)
     result   = await asyncio.to_thread(executor.execute)
     return result
 

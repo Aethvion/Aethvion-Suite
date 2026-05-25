@@ -123,6 +123,127 @@
 }
 .at-btn-run:not(:disabled):hover { background: rgba(52, 211, 153, 0.22); }
 
+/* ── Run split-button group ──────────────────────────────────────────────── */
+
+.at-run-group {
+    display: flex;
+    align-items: stretch;
+    position: relative;
+}
+
+.at-run-group .at-btn-run {
+    border-radius: 6px 0 0 6px;
+    border-right: none;
+}
+
+.at-trigger-drop {
+    position: relative;
+    display: flex;
+}
+
+.at-trigger-drop-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.28rem;
+    height: 100%;
+    padding: 0 0.55rem;
+    border: 1px solid rgba(52, 211, 153, 0.28);
+    border-left: 1px solid rgba(52, 211, 153, 0.15);
+    background: rgba(52, 211, 153, 0.08);
+    color: #34d399;
+    cursor: pointer;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.74rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+    min-width: 2.6rem;
+}
+
+.at-trigger-drop-btn:hover:not(:disabled) {
+    background: rgba(52, 211, 153, 0.22);
+}
+
+.at-trigger-drop-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.at-trigger-drop-label {
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+}
+
+.at-trigger-chevron {
+    font-size: 0.58rem;
+    opacity: 0.75;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+}
+
+.at-trigger-drop.at-drop-open .at-trigger-chevron {
+    transform: rotate(180deg);
+}
+
+.at-trigger-drop-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 5px);
+    background: #161b27;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    min-width: 170px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+    z-index: 300;
+    display: none;
+}
+
+.at-trigger-drop.at-drop-open .at-trigger-drop-menu {
+    display: block;
+}
+
+.at-trigger-drop-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 0.78rem;
+    text-align: left;
+    transition: background 0.12s, color 0.12s;
+}
+
+.at-trigger-drop-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #e2e8f0;
+}
+
+.at-trigger-drop-item.at-trig-active {
+    color: #34d399;
+    background: rgba(52, 211, 153, 0.08);
+}
+
+.at-trigger-drop-item i {
+    font-size: 0.68rem;
+    width: 13px;
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.at-trigger-drop-sep {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.07);
+    margin: 0.18rem 0;
+}
+
 .at-btn-danger:not(:disabled):hover {
     background: rgba(248, 113, 113, 0.13);
     color: #f87171;
@@ -1613,6 +1734,34 @@
     white-space: nowrap;
     max-width: 100px;
     flex: 1;
+}
+
+/* ── Trigger name strip ──────────────────────────────────────────────────── */
+
+.at-node-trig-name {
+    padding: 0.22rem 0.65rem 0.26rem;
+    border-top: 1px solid rgba(34, 211, 238, 0.12);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    color: #22d3ee;
+    opacity: 0.85;
+    overflow: hidden;
+}
+
+.at-node-trig-name i {
+    font-size: 0.6rem;
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.at-node-trig-name span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    letter-spacing: 0.01em;
 }
 
 /* ── Schedule editor (properties panel) ─────────────────────────────────── */
