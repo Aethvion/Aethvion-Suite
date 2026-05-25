@@ -58,8 +58,17 @@
     let _zTop        = 10;   // z-index counter for raised nodes
     let _placeOffset = 0;    // stagger offset for newly added nodes
     let _view        = { x: 0, y: 0, scale: 1 };
-    let _inspectorPage = 'workflow'; // 'workflow' | 'node' | 'results'
-    let _lastExecData  = null;       // most recent workflow execution result
+    let _sidebarPage   = 'workflows'; // 'workflows' | 'inspector' | 'results' | 'pubvars'
+    let _nodeSelected  = false;       // whether inspector currently shows a node
+    let _lastExecData  = null;        // most recent workflow execution result
+
+    // Nav page metadata
+    var _NAV_META = {
+        workflows: { label: 'Workflows',        icon: 'fa-bolt'        },
+        inspector: { label: 'Inspector',        icon: 'fa-sliders'     },
+        results:   { label: 'Results',          icon: 'fa-chart-bar'   },
+        pubvars:   { label: 'Public Variables', icon: 'fa-dollar-sign' },
+    };
 
     // ── DOM refs ─────────────────────────────────────────────────────────────
     let _e = {}; // filled by _init
@@ -94,15 +103,22 @@
             paletteList:    _$('at-palette-list'),
             explorer:       _$('at-explorer'),
             inspector:      _$('at-inspector'),
-            tabWorkflows:   _$('at-tab-workflows'),
-            tabInspector:   _$('at-tab-inspector'),
+            pubvars:        _$('at-pubvars'),
+            pubvarsBody:    _$('at-pubvars-body'),
+            // Sidebar nav dropdown
+            sidebarNav:         _$('at-sidebar-nav'),
+            sidebarNavBtn:      _$('at-sidebar-nav-btn'),
+            sidebarNavMenu:     _$('at-sidebar-nav-menu'),
+            navIcon:            _$('at-nav-icon'),
+            navLabel:           _$('at-nav-label'),
+            navChevron:         _$('at-nav-chevron'),
+            navResultsDot:      _$('at-nav-results-dot'),
+            navPubvarsCount:    _$('at-nav-pubvars-count'),
             inspectorIcon:  _$('at-inspector-icon'),
-            // Note: at-inspector-back removed — navigation now uses the tab bar
             inspectorTitle: _$('at-inspector-title'),
             inspectorBody:  _$('at-inspector-body'),
             inspectorNone:  _$('at-inspector-none'),
             inspectorClose:      _$('at-inspector-close'),
-            inspectorResultsBtn: _$('at-inspector-results-btn'),
             toast:          _$('at-toast'),
             // Examples modal
             btnExamples:        _$('at-btn-examples'),
@@ -661,13 +677,12 @@
         // Render execution log panel (log only — outputs live in inspector)
         _renderExecPanel(data);
 
-        // Refresh inspector Results view if it is currently open
-        if (_inspectorPage === 'results') {
-            _showInspectorResults();
-        }
-        // If inspector is on the workflow (empty) page, make the results button visible
-        if (_inspectorPage === 'workflow' && _e.inspectorResultsBtn) {
-            _e.inspectorResultsBtn.style.display = '';
+        // Refresh the Results page if it is currently open
+        if (_sidebarPage === 'results') {
+            _renderResults();
+        } else {
+            // Show new-results indicator dot on the Results nav item
+            if (_e.navResultsDot) _e.navResultsDot.style.display = '';
         }
     }
 
@@ -813,6 +828,7 @@
             _applyTransform();
             _updateToolbar();
             _renderWfList();
+            _updatePubvarsCount();
             _showInspector();
             _closeProps(); // reset to "click a node to inspect"
         }).catch(function (e) {
@@ -837,26 +853,45 @@
         _e.canvasInner.style.display    = 'none';
         _e.wfLabel.textContent          = 'No workflow selected';
         _e.wfRenameBtn.style.display    = 'none';
-        // Disable inspector tab — nothing is open to inspect
-        _e.tabInspector.disabled = true;
         _showExplorer();
     }
 
-    function _showExplorer() {
-        _e.explorer.style.display  = '';
-        _e.inspector.style.display = 'none';
-        _e.tabWorkflows.classList.add('at-tab-active');
-        _e.tabInspector.classList.remove('at-tab-active');
+    // ── Unified sidebar navigation ────────────────────────────────────────────
+
+    function _showPage(name) {
+        _sidebarPage = name;
+        var meta = _NAV_META[name] || _NAV_META.workflows;
+
+        // Update the nav button label + icon
+        if (_e.navIcon)  _e.navIcon.className  = 'fas ' + meta.icon + ' at-nav-icon';
+        if (_e.navLabel) _e.navLabel.textContent = meta.label;
+
+        // Close the dropdown
+        if (_e.sidebarNav) _e.sidebarNav.classList.remove('at-nav-open');
+
+        // Mark active nav item
+        if (_e.sidebarNavMenu) {
+            _e.sidebarNavMenu.querySelectorAll('.at-sidebar-nav-item').forEach(function (btn) {
+                btn.classList.toggle('at-nav-active', btn.dataset.nav === name);
+            });
+        }
+
+        // Panel visibility
+        if (_e.explorer)  _e.explorer.style.display  = name === 'workflows' ? '' : 'none';
+        if (_e.inspector) _e.inspector.style.display = (name === 'inspector' || name === 'results') ? '' : 'none';
+        if (_e.pubvars)   _e.pubvars.style.display   = name === 'pubvars' ? '' : 'none';
+
+        // Render content
+        if (name === 'results') {
+            _renderResults();
+        } else if (name === 'pubvars') {
+            _renderPubVars();
+        }
     }
 
-    function _showInspector() {
-        _e.explorer.style.display  = 'none';
-        _e.inspector.style.display = '';
-        // Enable the inspector tab now that a workflow is open
-        _e.tabInspector.disabled = false;
-        _e.tabInspector.classList.add('at-tab-active');
-        _e.tabWorkflows.classList.remove('at-tab-active');
-    }
+    // Shortcuts used by the rest of the code
+    function _showExplorer() { _showPage('workflows'); }
+    function _showInspector() { _showPage('inspector'); }
 
     // ════════════════════════════════════════════════════════════════════════
     //  Canvas / node rendering
@@ -1274,7 +1309,7 @@
         const td = _typeDef(nd.type);
 
         // Track page state
-        _inspectorPage = 'node';
+        _nodeSelected = true;
 
         // Make sure inspector panel is visible
         _showInspector();
@@ -1408,6 +1443,10 @@
                     // Update show_result live on node
                     if (prop.key === 'show_result') {
                         _updateAINodeResult(nd.id, null, check.checked);
+                    }
+                    // Update pubvars count badge in the nav
+                    if (nd.type === 'data.variable' && prop.key === 'public') {
+                        _updatePubvarsCount();
                     }
                     // Update variable strip public badge live
                     if (nd.type === 'data.variable' && prop.key === 'public') {
@@ -1614,8 +1653,8 @@
     }
 
     function _closeProps() {
-        // Reset inspector to "no node selected" state — don't hide the panel
-        _inspectorPage = 'workflow';
+        // Reset inspector to "no node selected" state — keep the panel visible
+        _nodeSelected = false;
         _e.inspectorBody.innerHTML = '';
         _e.inspectorBody.appendChild(_e.inspectorNone);
         _e.inspectorClose.style.display   = 'none';
@@ -1623,26 +1662,23 @@
         _e.inspectorIcon.style.background = 'rgba(100,116,139,0.15)';
         _e.inspectorIcon.style.color      = 'var(--text-muted,#64748b)';
         _e.inspectorIcon.innerHTML        = '<i class="fas fa-arrow-pointer"></i>';
-        // Show "View Results" button only when we have last-run data
-        if (_e.inspectorResultsBtn) {
-            _e.inspectorResultsBtn.style.display = _lastExecData ? '' : 'none';
-        }
     }
 
     // ════════════════════════════════════════════════════════════════════════
     //  Inspector Results view
     // ════════════════════════════════════════════════════════════════════════
 
-    function _showInspectorResults() {
-        _inspectorPage = 'results';
-        _showInspector();
-
+    // Called by _showPage('results') — renders results into the shared inspector panel
+    function _renderResults() {
         // Update inspector header for results mode
         _e.inspectorIcon.style.background = 'rgba(34,211,238,0.12)';
         _e.inspectorIcon.style.color      = '#22d3ee';
         _e.inspectorIcon.innerHTML        = '<i class="fas fa-chart-bar"></i>';
         _e.inspectorTitle.textContent     = 'Results';
         _e.inspectorClose.style.display   = 'none';
+
+        // Clear the new-results dot now that they've been seen
+        if (_e.navResultsDot) _e.navResultsDot.style.display = 'none';
 
         _e.inspectorBody.innerHTML = '';
 
@@ -1772,6 +1808,92 @@
         const hasContent = nd && nd._result;
         wrap.style.display = (shouldShow && hasContent) ? '' : 'none';
         if (badge && nd) badge.textContent = nd.properties['model'] || 'no model';
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  Public Variables panel
+    // ════════════════════════════════════════════════════════════════════════
+
+    function _renderPubVars() {
+        if (!_e.pubvarsBody) return;
+        _e.pubvarsBody.innerHTML = '';
+
+        // Gather public variable nodes from the active workflow
+        var pubNodes = [];
+        if (_active) {
+            pubNodes = _active.nodes.filter(function (n) {
+                return n.type === 'data.variable' && n.properties && n.properties['public'];
+            });
+        }
+
+        // Update the count badge on the nav item
+        if (_e.navPubvarsCount) {
+            _e.navPubvarsCount.textContent = pubNodes.length;
+            _e.navPubvarsCount.style.display = (pubNodes.length > 0 && _active) ? '' : 'none';
+        }
+
+        if (!_active) {
+            var noWf = document.createElement('div');
+            noWf.className = 'at-pubvar-none';
+            noWf.innerHTML = '<i class="fas fa-bolt"></i><span>Open a workflow to see its public variables.</span>';
+            _e.pubvarsBody.appendChild(noWf);
+            return;
+        }
+
+        if (pubNodes.length === 0) {
+            var none = document.createElement('div');
+            none.className = 'at-pubvar-none';
+            none.innerHTML =
+                '<i class="fas fa-dollar-sign"></i>' +
+                '<span>No public variables yet.<br>' +
+                'Add a <strong>Variable</strong> node from the palette and enable <em>Public</em> in its properties.</span>';
+            _e.pubvarsBody.appendChild(none);
+            return;
+        }
+
+        pubNodes.forEach(function (nd) {
+            var p    = nd.properties || {};
+            var name = p['name']        || 'var';
+            var type = p['varType']     || 'string';
+            var def  = String(p['value'] !== undefined ? p['value'] : '');
+            var desc = p['description'] || '';
+
+            var card = document.createElement('div');
+            card.className = 'at-pubvar-card';
+            card.title = 'Click to inspect this node';
+
+            var defPreview = def.length > 40 ? def.slice(0, 40) + '…' : (def || '(empty)');
+
+            card.innerHTML =
+                '<div class="at-pubvar-card-hdr">' +
+                '  <span class="at-pubvar-card-name">$' + _esc(name) + '</span>' +
+                '  <span class="at-pubvar-card-type">' + _esc(type) + '</span>' +
+                '</div>' +
+                (def !== '' ? '<div class="at-pubvar-card-default"><strong>default:</strong> ' + _esc(defPreview) + '</div>' : '') +
+                (desc ? '<div class="at-pubvar-card-desc">' + _esc(desc) + '</div>' : '') +
+                '<div class="at-pubvar-card-hint"><i class="fas fa-arrow-pointer"></i> Click to edit in Inspector</div>';
+
+            card.addEventListener('click', function () {
+                // Select the node on canvas and open its inspector
+                _selectNode(nd.id);
+                _showPage('inspector');
+            });
+
+            _e.pubvarsBody.appendChild(card);
+        });
+    }
+
+    // Update pubvars count badge without re-rendering the full panel
+    function _updatePubvarsCount() {
+        if (!_e.navPubvarsCount) return;
+        var count = 0;
+        if (_active) {
+            count = _active.nodes.filter(function (n) {
+                return n.type === 'data.variable' && n.properties && n.properties['public'];
+            }).length;
+        }
+        _e.navPubvarsCount.textContent = count;
+        _e.navPubvarsCount.style.display = (count > 0 && _active) ? '' : 'none';
     }
 
     async function _testAINode(nodeId) {
@@ -2438,7 +2560,7 @@
 
         // ── Canvas node hover ↔ inspector result card linking ──────────────
         _e.canvasInner.addEventListener('mouseover', function (e) {
-            if (_inspectorPage !== 'results') return;
+            if (_sidebarPage !== 'results') return;
             var nodeEl = e.target.closest('.at-node');
             if (!nodeEl) return;
             var nid = nodeEl.dataset.nodeId;
@@ -2447,7 +2569,7 @@
             });
         });
         _e.canvasInner.addEventListener('mouseout', function (e) {
-            if (_inspectorPage !== 'results') return;
+            if (_sidebarPage !== 'results') return;
             var nodeEl = e.target.closest('.at-node');
             if (!nodeEl) return;
             // Only clear when leaving the node element itself, not its children
@@ -2535,30 +2657,40 @@
             }
         });
 
-        // ── Inspector close (deselect node → back to workflow page) ─────
+        // ── Inspector close (deselect node) ──────────────────────────────
         _e.inspectorClose.addEventListener('click', function () { _deselectAll(); });
 
-        // ── Inspector results button ──────────────────────────────────────
-        if (_e.inspectorResultsBtn) {
-            _e.inspectorResultsBtn.addEventListener('click', _showInspectorResults);
-        }
-
-        // ── Sidebar tab switcher ──────────────────────────────────────────
-        _e.tabWorkflows.addEventListener('click', function () {
-            // Auto-save before leaving the canvas, then show the workflow list
-            var go = function () { _showExplorer(); _renderWfList(); };
-            if (_dirty && _active) {
-                _apiSaveWorkflow().then(go).catch(function (e) {
-                    console.error('[Automate] Auto-save failed:', e);
-                    go(); // still navigate even if save failed
-                });
-            } else {
-                go();
-            }
+        // ── Sidebar nav dropdown ──────────────────────────────────────────
+        _e.sidebarNavBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            _e.sidebarNav.classList.toggle('at-nav-open');
         });
-        _e.tabInspector.addEventListener('click', function () {
-            if (!_active) return; // guard (tab is disabled, but belt-and-suspenders)
-            _showInspector();
+
+        _e.sidebarNavMenu.querySelectorAll('.at-sidebar-nav-item').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var page = btn.dataset.nav;
+                if (page === 'workflows') {
+                    // Auto-save before showing workflow list
+                    var go = function () { _showPage('workflows'); _renderWfList(); };
+                    if (_dirty && _active) {
+                        _apiSaveWorkflow().then(go).catch(function (e) {
+                            console.error('[Automate] Auto-save failed:', e);
+                            go();
+                        });
+                    } else {
+                        go();
+                    }
+                } else {
+                    _showPage(page);
+                }
+            });
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            if (_e.sidebarNav && !_e.sidebarNav.contains(e.target)) {
+                _e.sidebarNav.classList.remove('at-nav-open');
+            }
         });
 
         // ── Inspector body delegation (test button) ────────────────────────
