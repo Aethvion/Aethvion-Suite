@@ -1518,13 +1518,24 @@
     display: flex; flex-direction: column; gap: 0.18rem;
     font-family: 'Consolas', 'Monaco', monospace;
     font-size: 0.73rem; line-height: 1.5;
+    user-select: text;
+    cursor: text;
 }
 .at-exec-log-entry { display: flex; gap: 0.55rem; align-items: baseline; }
-.at-exec-log-ts    { color: rgba(255,255,255,0.22); flex-shrink: 0; font-size: 0.65rem; }
-.at-exec-log-msg   { color: var(--text-secondary, #94a3b8); word-break: break-word; }
+.at-exec-log-ts    { color: rgba(255,255,255,0.22); flex-shrink: 0; font-size: 0.65rem; user-select: text; }
+.at-exec-log-msg   { color: var(--text-secondary, #94a3b8); word-break: break-word; user-select: text; }
 .at-exec-log-entry.error .at-exec-log-msg   { color: #f87171; }
 .at-exec-log-entry.warning .at-exec-log-msg { color: #fbbf24; }
 .at-exec-log-entry.info .at-exec-log-msg    { color: var(--text-secondary, #94a3b8); }
+
+.at-exec-panel-copy {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted, #64748b); font-size: 0.78rem; padding: 3px 6px;
+    border-radius: 4px; transition: color 0.13s;
+    margin-right: 2px;
+}
+.at-exec-panel-copy:hover          { color: #e2e8f0; }
+.at-exec-panel-copy.at-log-copied  { color: #34d399 !important; }
 
 /* Outputs view */
 .at-exec-out-view {

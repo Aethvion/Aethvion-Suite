@@ -3114,6 +3114,45 @@
             });
         }
 
+        var execCopy = document.getElementById('at-exec-panel-copy');
+        if (execCopy) {
+            execCopy.addEventListener('click', function () {
+                var logView = document.getElementById('at-exec-log-view');
+                if (!logView) return;
+                var lines = [];
+                logView.querySelectorAll('.at-exec-log-entry').forEach(function (row) {
+                    var ts  = (row.querySelector('.at-exec-log-ts')  || {}).textContent || '';
+                    var msg = (row.querySelector('.at-exec-log-msg') || {}).textContent || '';
+                    lines.push(ts ? ts + '  ' + msg : msg);
+                });
+                var text = lines.join('\n');
+                navigator.clipboard.writeText(text).then(function () {
+                    execCopy.classList.add('at-log-copied');
+                    execCopy.querySelector('i').className = 'fas fa-check';
+                    setTimeout(function () {
+                        execCopy.classList.remove('at-log-copied');
+                        execCopy.querySelector('i').className = 'fas fa-copy';
+                    }, 1500);
+                }).catch(function () {
+                    // Fallback for older browsers
+                    var ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity  = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    execCopy.classList.add('at-log-copied');
+                    execCopy.querySelector('i').className = 'fas fa-check';
+                    setTimeout(function () {
+                        execCopy.classList.remove('at-log-copied');
+                        execCopy.querySelector('i').className = 'fas fa-copy';
+                    }, 1500);
+                });
+            });
+        }
+
         // ── Global mouse move + up ─────────────────────────────────────────
         document.addEventListener('mousemove', function (e) {
             // Node drag
