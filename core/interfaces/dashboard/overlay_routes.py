@@ -211,20 +211,35 @@ async def overlay_launch():
         return {"status": "already_running"}
 
     try:
-        env  = __import__("os").environ.copy()
+        import os
+        env = os.environ.copy()
         env["PYTHONPATH"] = str(PROJECT_ROOT)
-        kwargs: dict = {"env": env, "cwd": str(PROJECT_ROOT)}
+
+        # Always redirect stdout/stderr to a log file so crashes are never silent
+        log_path = OVERLAY_DIR / "overlay.log"
+        OVERLAY_DIR.mkdir(parents=True, exist_ok=True)
+        log_file = open(log_path, "a", encoding="utf-8")
+
+        kwargs: dict = {
+            "env": env,
+            "cwd": str(PROJECT_ROOT),
+            "stdout": log_file,
+            "stderr": log_file,
+        }
+
         if sys.platform == "win32":
-            # pythonw.exe so no black console window
-            venv_pyw = PROJECT_ROOT / ".venv" / "Scripts" / "pythonw.exe"
-            py = str(venv_pyw) if venv_pyw.exists() else "pythonw"
+            # Use regular python.exe (not pythonw.exe) with CREATE_NO_WINDOW so
+            # there's no black console window but stderr is still captured to log.
+            venv_py = PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
+            py = str(venv_py) if venv_py.exists() else "python"
             kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
         else:
             venv_py = PROJECT_ROOT / ".venv" / "bin" / "python"
             py = str(venv_py) if venv_py.exists() else "python"
 
         subprocess.Popen([py, str(OVERLAY_SCRIPT)], **kwargs)
-        return {"status": "launched"}
+        logger.info(f"Overlay launched — log: {log_path}")
+        return {"status": "launched", "log": str(log_path)}
     except Exception as e:
         logger.error(f"Overlay launch error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

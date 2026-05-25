@@ -2856,7 +2856,12 @@ async function loadOverlaySettings() {
         if (hotkeyEl)    hotkeyEl.value      = cfg.hotkey           ?? 'ctrl+shift+space';
         if (autostartEl) autostartEl.checked = !!cfg.launch_with_suite;
 
-        // Load model dropdown via the shared helper (same source as all other dropdowns)
+        // Load model dropdown via the shared helper (same source as all other dropdowns).
+        // We stamp the saved value as a data attribute BEFORE calling loadChatModels so that
+        // loadChatModels can restore it even though the select is empty at call time.
+        if (modelEl) {
+            modelEl.dataset.savedValue = cfg.model || '';
+        }
         await loadChatModels();
 
         // After loadChatModels populates the options, restore the saved value
@@ -2867,6 +2872,7 @@ async function loadOverlaySettings() {
             } else {
                 modelEl.value = '';   // "Use Info Assistant (default)"
             }
+            delete modelEl.dataset.savedValue;
         }
 
         // Populate appearance sliders
