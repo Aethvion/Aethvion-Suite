@@ -1477,8 +1477,9 @@
     color: var(--text-secondary, #94a3b8);
 }
 .at-exec-panel-status i { font-size: 0.75rem; }
-.at-exec-panel-status.ok    i, .at-exec-panel-status.ok    span { color: #34d399; }
-.at-exec-panel-status.error i, .at-exec-panel-status.error span { color: #f87171; }
+.at-exec-panel-status.ok      i, .at-exec-panel-status.ok      span { color: #34d399; }
+.at-exec-panel-status.error   i, .at-exec-panel-status.error   span { color: #f87171; }
+.at-exec-panel-status.running i, .at-exec-panel-status.running span { color: #60a5fa; }
 
 .at-exec-panel-tabs {
     display: flex;

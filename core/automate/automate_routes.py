@@ -20,6 +20,7 @@ from typing import Any, Optional
 import asyncio
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/automate", tags=["automate"])
@@ -2857,6 +2858,59 @@ async def run_workflow(wf_id: str, body: RunWorkflowBody = RunWorkflowBody()):
     executor = WorkflowExecutor(wf, variables=body.variables or {}, trigger_id=body.trigger_id)
     result   = await asyncio.to_thread(executor.execute)
     return result
+
+
+@router.post("/workflows/{wf_id}/run-stream")
+async def run_workflow_stream(wf_id: str, body: RunWorkflowBody = RunWorkflowBody()):
+    """
+    Execute a workflow and stream node-level progress as SSE events.
+
+    Each event is a JSON object on a ``data:`` line followed by two newlines.
+    Event types:
+        {type: "node_status", node_id, status: "running"|"done"|"error"|"skipped",
+         outputs?, error?}
+        {type: "log", level: "info"|"warning"|"error", msg, ts}
+        {type: "done", result}   — last event; ``result`` is the full executor result dict
+    """
+    p = _wf_path(wf_id)
+    if not p.exists():
+        raise HTTPException(404, "Workflow not found")
+    wf = json.loads(p.read_text(encoding="utf-8"))
+
+    loop  = asyncio.get_event_loop()
+    queue: asyncio.Queue = asyncio.Queue()
+
+    def _emit(event: dict) -> None:
+        loop.call_soon_threadsafe(queue.put_nowait, event)
+
+    async def _generate():
+        from core.automate.executor import WorkflowExecutor  # noqa: PLC0415
+
+        async def _run_executor():
+            executor = WorkflowExecutor(
+                wf,
+                variables=body.variables or {},
+                trigger_id=body.trigger_id,
+                event_callback=_emit,
+            )
+            result = await asyncio.to_thread(executor.execute)
+            queue.put_nowait({"type": "done", "result": result})
+
+        task = asyncio.create_task(_run_executor())
+
+        while True:
+            event = await queue.get()
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            if event.get("type") == "done":
+                break
+
+        await task  # surface any unhandled exception
+
+    return StreamingResponse(
+        _generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 # ── Examples + Import/Export/Share ────────────────────────────────────────────

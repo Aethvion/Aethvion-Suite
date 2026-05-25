@@ -629,25 +629,87 @@
         _e.btnRun.disabled = true;
         _e.btnRun.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Running…</span>';
 
-        // Mark all nodes as "pending"
+        // Mark all nodes as "pending" and open the log panel immediately
         _active.nodes.forEach(function (nd) { _setNodeExecState(nd.id, 'pending'); });
+        _openExecPanelRunning();
 
         try {
-            const body = {};
-            if (_selTriggerId) body.trigger_id = _selTriggerId;
-            const r = await fetch('/api/automate/workflows/' + _active.id + '/run', {
+            const reqBody = {};
+            if (_selTriggerId) reqBody.trigger_id = _selTriggerId;
+
+            const r = await fetch('/api/automate/workflows/' + _active.id + '/run-stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
+                body: JSON.stringify(reqBody),
             });
-            const data = await r.json();
-            _applyExecResults(data);
+
+            if (!r.ok) {
+                throw new Error('Server error ' + r.status);
+            }
+
+            const reader  = r.body.getReader();
+            const decoder = new TextDecoder();
+            let   buf     = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                buf += decoder.decode(value, { stream: true });
+                const lines = buf.split('\n');
+                buf = lines.pop(); // keep incomplete last line
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    let ev;
+                    try { ev = JSON.parse(line.slice(6)); } catch (_) { continue; }
+
+                    if (ev.type === 'node_status') {
+                        _setNodeExecState(ev.node_id, ev.status);
+
+                    } else if (ev.type === 'log') {
+                        _appendExecLogEntry(ev);
+
+                    } else if (ev.type === 'done') {
+                        _applyExecResults(ev.result);
+                        break;
+                    }
+                }
+            }
         } catch (e) {
             _toast('Execution failed: ' + e.message, true);
         } finally {
             _e.btnRun.disabled = false;
             _e.btnRun.innerHTML = '<i class="fas fa-play"></i><span>Run</span>';
         }
+    }
+
+    /** Open the execution log panel immediately showing a "Running…" status. */
+    function _openExecPanelRunning() {
+        var panel    = document.getElementById('at-exec-panel');
+        var logView  = document.getElementById('at-exec-log-view');
+        var statusEl = document.getElementById('at-exec-panel-status');
+        var textEl   = document.getElementById('at-exec-status-text');
+        if (!panel) return;
+        statusEl.className = 'at-exec-panel-status running';
+        var icon = statusEl.querySelector('i');
+        if (icon) icon.className = 'fas fa-spinner fa-spin';
+        if (textEl) textEl.textContent = 'Running…';
+        if (logView) logView.innerHTML = '';
+        panel.classList.add('at-open');
+    }
+
+    /** Append a single log entry to the live execution log panel. */
+    function _appendExecLogEntry(entry) {
+        var logView = document.getElementById('at-exec-log-view');
+        if (!logView) return;
+        var row = document.createElement('div');
+        row.className = 'at-exec-log-entry ' + (entry.level || 'info');
+        row.innerHTML =
+            '<span class="at-exec-log-ts">'  + _esc(entry.ts  || '') + '</span>' +
+            '<span class="at-exec-log-msg">' + _esc(entry.msg || '') + '</span>';
+        logView.appendChild(row);
+        logView.scrollTop = logView.scrollHeight;
     }
 
     function _clearExecState() {

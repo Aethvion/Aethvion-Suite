@@ -37,7 +37,8 @@ class WorkflowExecutor:
     """
 
     def __init__(self, workflow: dict, variables: dict | None = None,
-                 trigger_id: str | None = None) -> None:
+                 trigger_id: str | None = None,
+                 event_callback=None) -> None:
         self.workflow    = workflow
         self.nodes: dict[str, dict]          = {n["id"]: n for n in workflow.get("nodes", [])}
         self.connections: list[dict]         = workflow.get("connections", [])
@@ -50,6 +51,8 @@ class WorkflowExecutor:
         self._vars:    dict[str, Any]            = dict(variables or {})
         # Optional: run only nodes reachable from this specific trigger node id
         self._trigger_id: str | None             = trigger_id
+        # Optional: callable(event: dict) fired for each node state change and log line
+        self._event_callback                     = event_callback
 
     # ── Public entry point ────────────────────────────────────────────────────
 
@@ -75,6 +78,7 @@ class WorkflowExecutor:
                 label = self.nodes[node_id].get("label", node_id)
                 self._status[node_id] = "skipped"
                 self._info(f"⏭ {label} — skipped (not connected to a trigger)")
+                self._emit({"type": "node_status", "node_id": node_id, "status": "skipped"})
 
         if not run_order:
             self._warn("No nodes are connected to a trigger — nothing to execute.")
@@ -86,6 +90,7 @@ class WorkflowExecutor:
             ntype = node.get("type", "unknown")
             self._status[node_id] = "running"
             self._info(f"▶ {label}  [{ntype}]")
+            self._emit({"type": "node_status", "node_id": node_id, "status": "running"})
 
             try:
                 inputs  = self._gather_inputs(node_id)
@@ -97,10 +102,14 @@ class WorkflowExecutor:
                     self._info(f"  ✓ {label}: {summary}")
                 else:
                     self._info(f"  ✓ {label}")
+                self._emit({"type": "node_status", "node_id": node_id,
+                            "status": "done", "outputs": outputs or {}, "error": None})
             except Exception as exc:
                 self._status[node_id] = "error"
                 self._errors[node_id] = str(exc)
                 self._error(f"  ✗ {label}: {exc}")
+                self._emit({"type": "node_status", "node_id": node_id,
+                            "status": "error", "outputs": {}, "error": str(exc)})
                 # Continue — other branches may still succeed
 
         errors = sum(1 for s in self._status.values() if s == "error")
@@ -200,16 +209,32 @@ class WorkflowExecutor:
             "log":          self._log,
         }
 
+    # ── Event emission ────────────────────────────────────────────────────────
+
+    def _emit(self, event: dict) -> None:
+        """Fire event_callback if one was supplied (non-blocking best-effort)."""
+        if self._event_callback is not None:
+            try:
+                self._event_callback(event)
+            except Exception:
+                pass  # never let callback errors kill the executor
+
     # ── Logging helpers ───────────────────────────────────────────────────────
 
     def _info(self, msg: str) -> None:
-        self._log.append({"level": "info",    "msg": msg, "ts": _ts()})
+        entry = {"level": "info",    "msg": msg, "ts": _ts()}
+        self._log.append(entry)
+        self._emit({"type": "log", **entry})
 
     def _warn(self, msg: str) -> None:
-        self._log.append({"level": "warning", "msg": msg, "ts": _ts()})
+        entry = {"level": "warning", "msg": msg, "ts": _ts()}
+        self._log.append(entry)
+        self._emit({"type": "log", **entry})
 
     def _error(self, msg: str) -> None:
-        self._log.append({"level": "error",   "msg": msg, "ts": _ts()})
+        entry = {"level": "error",   "msg": msg, "ts": _ts()}
+        self._log.append(entry)
+        self._emit({"type": "log", **entry})
 
 
 # ── Module-level helpers (not part of the executor class) ─────────────────────
