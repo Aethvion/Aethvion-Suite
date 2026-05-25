@@ -100,8 +100,10 @@ _REGISTRY: dict[str, Callable] = {
     "output.file":      inputs_outputs.output_file,
 
     # Integrations ─────────────────────────────────────────────────────────────
-    "aethviondb.search":          aethviondb.aethviondb_search,
-    "aethviondb.snapshot_search": aethviondb.aethviondb_snapshot_search,
+    "aethviondb.search":                    aethviondb.aethviondb_search,
+    "aethviondb.semantic_search":           aethviondb.aethviondb_semantic_search,
+    "aethviondb.snapshot_search":           aethviondb.aethviondb_snapshot_search,
+    "aethviondb.snapshot_semantic_search":  aethviondb.aethviondb_snapshot_semantic_search,
     "companion.ask":              integrations.companion_ask,
     "integration.discord":  integrations.integration_discord,
     "integration.email":    integrations.integration_email,

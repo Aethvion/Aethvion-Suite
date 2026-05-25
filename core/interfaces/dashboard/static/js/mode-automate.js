@@ -1647,9 +1647,15 @@
                 inputEl.className = 'at-prop-select';
                 (prop.options || []).forEach(function (opt) {
                     const o = document.createElement('option');
-                    o.value       = opt;
-                    o.textContent = opt;
-                    o.selected    = (opt === String(val));
+                    if (opt && typeof opt === 'object') {
+                        o.value       = String(opt.value);
+                        o.textContent = opt.label || opt.value;
+                        o.selected    = (String(opt.value) === String(val));
+                    } else {
+                        o.value       = String(opt);
+                        o.textContent = String(opt);
+                        o.selected    = (String(opt) === String(val));
+                    }
                     inputEl.appendChild(o);
                 });
             } else if (prop.type === 'textarea' || prop.type === 'code') {

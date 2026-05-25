@@ -118,8 +118,11 @@ NODE_DEPS: dict[str, dict] = {
     "output.display":     {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "output.file":        {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "output.clipboard":   {"pip": ["pyperclip"],                   "keys": [], "aethviondb": False, "ai": False},
-    "aethviondb.search":          {"pip": [],                      "keys": [], "aethviondb": True,  "ai": False},
-    "aethviondb.snapshot_search": {"pip": [],                      "keys": [], "aethviondb": True,  "ai": False},
+    "aethviondb.search":                   {"pip": [],  "keys": [], "aethviondb": True, "ai": False},
+    "aethviondb.semantic_search":          {"pip": [],  "keys": [], "aethviondb": True, "ai": False},
+    "aethviondb.snapshot_search":          {"pip": [],  "keys": [], "aethviondb": True, "ai": False},
+    # keys/pip added dynamically per-node in _analyze_workflow based on model property
+    "aethviondb.snapshot_semantic_search": {"pip": [],  "keys": [], "aethviondb": True, "ai": False},
     "companion.ask":      {"pip": ["google-generativeai"],         "keys": ["GOOGLE_AI_API_KEY"], "aethviondb": False, "ai": True},
     "integration.discord":{"pip": ["httpx"],                       "keys": [], "aethviondb": False, "ai": False},
     "integration.email":  {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
@@ -1232,6 +1235,16 @@ def _h_aethviondb_search(node, inputs, ctx):
     return {"out": json.dumps(results, ensure_ascii=False), "count": len(results), "speed": f"{elapsed}ms", "error": ""}
 """,
 
+"aethviondb.semantic_search": """\
+def _h_aethviondb_semantic_search(node, inputs, ctx):
+    # Semantic search requires a live Aethvion Suite instance (embedding API + entity files).
+    # It cannot run inside a compiled standalone bundle.
+    ctx._warn("AethvionDB Semantic Search was skipped: this node requires a live Aethvion Suite "
+              "instance and cannot run in a compiled bundle.")
+    return {"out": "[]", "count": 0, "speed": "0ms",
+            "error": "Not supported in compiled bundles — use inside Aethvion Suite Automate."}
+""",
+
 "aethviondb.snapshot_search": """\
 def _h_aethviondb_snapshot_search(node, inputs, ctx):
     import time as _time
@@ -1280,6 +1293,75 @@ def _h_aethviondb_snapshot_search(node, inputs, ctx):
     results = [{**e, "_score": round(s,3)} for e, s in scored[:limit]]
     elapsed = round((_time.perf_counter() - t0) * 1000, 2)
     return {"out": json.dumps(results, ensure_ascii=False), "count": len(results), "speed": f"{elapsed}ms", "error": ""}
+""",
+
+"aethviondb.snapshot_semantic_search": """\
+def _h_aethviondb_snapshot_semantic_search(node, inputs, ctx):
+    import time as _time, math as _math
+    p = node.get("properties", {})
+    query = _to_str(inputs.get("in", "")).strip()
+    db_name = str(p.get("database", "default")).strip() or "default"
+    snap_name = str(p.get("snapshot", "")).strip()
+    model = str(p.get("model", "text-embedding-004")).strip() or "text-embedding-004"
+    entity_type = str(p.get("entity_type", "")).strip()
+    limit = max(1, int(p.get("limit", 10) or 10))
+    min_score = float(p.get("min_score", 0.5) or 0.0)
+    if not query: return {"out": "[]", "count": 0, "speed": "0ms", "error": "No query"}
+    baked_dir = Path(__file__).parent / "data" / "aethviondb" / db_name / "baked"
+    if not baked_dir.exists():
+        return {"out": "[]", "count": 0, "speed": "0ms", "error": f"No snapshots for '{db_name}' in bundle"}
+    snap_files = sorted(baked_dir.glob("*.jsonl"), key=lambda f: f.stat().st_mtime, reverse=True)
+    if snap_name:
+        snap_files = [f for f in snap_files if f.stem == snap_name] or snap_files
+    if not snap_files:
+        return {"out": "[]", "count": 0, "speed": "0ms", "error": "No snapshot found"}
+    t0 = _time.perf_counter()
+    # ── Embed query ────────────────────────────────────────────────────────────
+    _openai_models = {"text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"}
+    try:
+        if model in _openai_models:
+            from openai import OpenAI as _OAI
+            _api_key = os.environ.get("OPENAI_API_KEY", "")
+            if not _api_key: raise RuntimeError("OPENAI_API_KEY is not set")
+            _resp = _OAI(api_key=_api_key).embeddings.create(model=model, input=query)
+            query_vec = _resp.data[0].embedding
+        else:
+            from google import genai as _genai
+            _api_key = os.environ.get("GOOGLE_AI_API_KEY", "")
+            if not _api_key: raise RuntimeError("GOOGLE_AI_API_KEY is not set")
+            _client = _genai.Client(api_key=_api_key, http_options={"api_version": "v1"})
+            _result = _client.models.embed_content(model=model, contents=query)
+            if not _result or not _result.embeddings:
+                raise RuntimeError("Empty embedding response")
+            query_vec = list(_result.embeddings[0].values)
+    except Exception as exc:
+        return {"out": "[]", "count": 0, "speed": "0ms", "error": f"Embedding failed ({model}): {exc}"}
+    # ── Load entities from snapshot ────────────────────────────────────────────
+    entities = []
+    for line in snap_files[0].read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            try: entities.append(json.loads(line))
+            except Exception: pass
+    if entity_type: entities = [e for e in entities if e.get("type") == entity_type]
+    # ── Cosine similarity (baked format: entity["vectors"][model]["embedding"]) ─
+    def _cosine(a, b):
+        dot = sum(x * y for x, y in zip(a, b))
+        ma = _math.sqrt(sum(x * x for x in a))
+        mb = _math.sqrt(sum(x * x for x in b))
+        return dot / (ma * mb) if ma and mb else 0.0
+    scored = []
+    no_vec = 0
+    for e in entities:
+        vd = (e.get("vectors") or {}).get(model)
+        emb = vd.get("embedding") if isinstance(vd, dict) else None
+        if not emb: no_vec += 1; continue
+        sc = _cosine(query_vec, emb)
+        if sc >= min_score: scored.append((e, sc))
+    scored.sort(key=lambda x: x[1], reverse=True)
+    results = [{**e, "_score": round(s, 4)} for e, s in scored[:limit]]
+    elapsed = round((_time.perf_counter() - t0) * 1000, 2)
+    warn = (f"{no_vec} entity/entities had no '{model}' embedding — bake with include_vectors=True." if no_vec else "")
+    return {"out": json.dumps(results, ensure_ascii=False), "count": len(results), "speed": f"{elapsed}ms", "error": warn}
 """,
 
 }  # end _HANDLER_CODE
@@ -1345,8 +1427,10 @@ _HANDLER_NAMES: dict[str, str] = {
     "output.display":             "_h_output_display",
     "output.file":                "_h_output_file",
     "output.clipboard":           "_h_output_clipboard",
-    "aethviondb.search":          "_h_aethviondb_search",
-    "aethviondb.snapshot_search": "_h_aethviondb_snapshot_search",
+    "aethviondb.search":                   "_h_aethviondb_search",
+    "aethviondb.semantic_search":          "_h_aethviondb_semantic_search",
+    "aethviondb.snapshot_search":          "_h_aethviondb_snapshot_search",
+    "aethviondb.snapshot_semantic_search": "_h_aethviondb_snapshot_semantic_search",
     "companion.ask":              "_h_companion_ask",
     "integration.discord":        "_h_integration_discord",
     "integration.email":          "_h_integration_email",
@@ -1388,10 +1472,52 @@ def _analyze_workflow(workflow: dict) -> dict:
     has_live_db_search = False
     snapshot_nodes: list[dict] = []
 
+    _OPENAI_EMBED_MODELS = {"text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"}
+
     for node in workflow.get("nodes", []):
         t = node.get("type", "")
-        if t == "aethviondb.search":
+        if t in ("aethviondb.search", "aethviondb.semantic_search"):
             has_live_db_search = True
+        elif t == "aethviondb.snapshot_semantic_search":
+            props     = node.get("properties", {})
+            db_name   = str(props.get("database", "default")).strip() or "default"
+            snap_name = str(props.get("snapshot", "")).strip()
+            model     = str(props.get("model", "text-embedding-004")).strip() or "text-embedding-004"
+            # Resolve API key / pip dep based on the selected embedding model
+            if model in _OPENAI_EMBED_MODELS:
+                key_deps.add("OPENAI_API_KEY")
+                pip_deps.add("openai")
+            else:
+                key_deps.add("GOOGLE_AI_API_KEY")
+                pip_deps.add("google-generativeai")
+            # Locate snapshot file on disk (honours custom db paths)
+            baked_dir = _resolve_db_root(db_name) / "baked"
+            snap_path: Any = None
+            if baked_dir.exists():
+                if snap_name:
+                    candidate = baked_dir / f"{snap_name}.jsonl"
+                    if candidate.exists():
+                        snap_path = candidate
+                if snap_path is None:
+                    files = sorted(
+                        baked_dir.glob("*.jsonl"),
+                        key=lambda f: f.stat().st_mtime,
+                        reverse=True,
+                    )
+                    if files:
+                        snap_path = files[0]
+            size_bytes = int(snap_path.stat().st_size) if snap_path else 0
+            entry = {
+                "db":         db_name,
+                "snap_name":  snap_path.stem if snap_path else (snap_name or "unknown"),
+                "path":       str(snap_path) if snap_path else None,
+                "size_bytes": size_bytes,
+            }
+            if not any(
+                s["db"] == entry["db"] and s["snap_name"] == entry["snap_name"]
+                for s in snapshot_nodes
+            ):
+                snapshot_nodes.append(entry)
         elif t == "aethviondb.snapshot_search":
             props = node.get("properties", {})
             db_name  = str(props.get("database", "default")).strip() or "default"
@@ -2035,16 +2161,32 @@ def _ts() -> str:
     return datetime.now().strftime("%H:%M:%S.%f")[:-3]
 
 def _output_summary(outputs: dict) -> str:
-    """Return a short log preview of the first non-empty, non-private output port."""
+    """Return a short log preview of the most informative non-private output port.
+
+    Pass 1: skip trivially-empty JSON (empty array/object) so nodes like
+            search that return no results don't hide the error/count ports.
+    Pass 2: if nothing useful was found in pass 1, fall back to any non-empty value.
+    """
     if not outputs:
         return ""
+    _TRIVIAL = frozenset({"[]", "{{}}", "null", "None"})
+    def _fmt(port, s):
+        preview = s[:80].replace("\\n", " ")
+        return '[%s] "%s%s"' % (port, preview, "\\u2026" if len(s) > 80 else "")
+    # Pass 1 — skip trivially-empty values
+    for port, val in outputs.items():
+        if port.startswith("_"):
+            continue
+        s = _to_str(val)
+        if s and s not in _TRIVIAL:
+            return _fmt(port, s)
+    # Pass 2 — anything non-empty (catches counts, speeds, etc.)
     for port, val in outputs.items():
         if port.startswith("_"):
             continue
         s = _to_str(val)
         if s:
-            preview = s[:80].replace("\\n", " ")
-            return '[%s] "%s%s"' % (port, preview, "\\u2026" if len(s) > 80 else "")
+            return _fmt(port, s)
     return ""
 
 # ── WorkflowExecutor ──────────────────────────────────────────────────────────

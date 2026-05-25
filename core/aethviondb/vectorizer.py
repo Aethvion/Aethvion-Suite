@@ -364,6 +364,38 @@ async def vectorize_all(
         _vec_tasks.pop(key, None)
 
 
+# ── Sync embedding (usable from sync node handlers / threads) ─────────────────
+
+def embed_sync(text: str, model: str) -> list[float]:
+    """Embed *text* synchronously using the given model.
+
+    Safe to call from a non-async context (e.g. a workflow node handler running
+    inside asyncio.to_thread).  Blocks the calling thread until the API responds.
+    """
+    provider = EMBEDDING_MODELS.get(model, {}).get("provider", "google")
+    if provider == "openai":
+        try:
+            from openai import OpenAI  # noqa: PLC0415
+        except ImportError:
+            raise RuntimeError("openai package is not installed. Run: pip install openai")
+        api_key = os.getenv("OPENAI_API_KEY", "")
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY is not set — add it to your .env file.")
+        client = OpenAI(api_key=api_key)
+        response = client.embeddings.create(model=model, input=text)
+        return response.data[0].embedding
+    else:
+        from google import genai  # noqa: PLC0415
+        api_key = os.getenv("GOOGLE_AI_API_KEY", "")
+        if not api_key:
+            raise RuntimeError("GOOGLE_AI_API_KEY is not set — add it to your .env file.")
+        client = genai.Client(api_key=api_key, http_options={"api_version": "v1"})
+        result = client.models.embed_content(model=model, contents=text)
+        if not result or not result.embeddings:
+            raise RuntimeError(f"Empty embedding response from model {model!r}")
+        return list(result.embeddings[0].values)
+
+
 # ── Cancel ─────────────────────────────────────────────────────────────────────
 
 def cancel_vectorize(db_root: Path) -> dict:

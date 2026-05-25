@@ -219,15 +219,35 @@ def _ts() -> str:
 
 
 def _output_summary(outputs: dict | None) -> str:
-    """Return a short log preview of the first non-empty output port."""
+    """Return a short log preview of the most informative non-private output port.
+
+    Pass 1: skip trivially-empty JSON ("[]", "{}") so nodes like search that
+            return empty results don't hide the error/count ports.
+    Pass 2: if nothing useful was found in pass 1, fall back to any non-empty value.
+    """
     if not outputs:
         return ""
     from core.automate.nodes._utils import _to_str  # noqa: PLC0415
+    _TRIVIAL = frozenset({"[]", "{}", "null", "None"})
+
+    def _fmt(port: str, s: str) -> str:
+        preview = s[:80].replace("\n", " ")
+        return f'[{port}] "{preview}{"…" if len(s) > 80 else ""}"'
+
+    # Pass 1 — skip trivially-empty values
+    for port, val in outputs.items():
+        if port.startswith("_"):
+            continue
+        s = _to_str(val)
+        if s and s not in _TRIVIAL:
+            return _fmt(port, s)
+
+    # Pass 2 — anything non-empty (catches counts, speeds, etc.)
     for port, val in outputs.items():
         if port.startswith("_"):
             continue
         s = _to_str(val)
         if s:
-            preview = s[:80].replace("\n", " ")
-            return f'[{port}] "{preview}{"…" if len(s) > 80 else ""}"'
+            return _fmt(port, s)
+
     return ""
