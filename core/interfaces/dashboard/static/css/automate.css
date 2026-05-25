@@ -1277,6 +1277,59 @@
     white-space: normal;
 }
 
+/* ── Variable node strip ─────────────────────────────────────────────────── */
+
+.at-node-var-strip {
+    padding: 0.3rem 0.65rem 0.38rem;
+    border-top: 1px solid rgba(167, 139, 250, 0.15);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    min-height: 1.9em;
+}
+
+.at-var-badge {
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 0.08rem 0.32rem;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.at-var-badge-pub {
+    background: rgba(167, 139, 250, 0.15);
+    color: #a78bfa;
+    border: 1px solid rgba(167, 139, 250, 0.35);
+}
+
+.at-var-name {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.72rem;
+    color: #a78bfa;
+    font-weight: 600;
+}
+
+.at-var-type {
+    font-size: 0.64rem;
+    color: #475569;
+    background: rgba(71, 85, 105, 0.2);
+    border-radius: 3px;
+    padding: 0.05rem 0.3rem;
+}
+
+.at-var-default {
+    font-size: 0.67rem;
+    color: #64748b;
+    font-family: 'Consolas', 'Monaco', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100px;
+    flex: 1;
+}
+
 /* ── Schedule editor (properties panel) ─────────────────────────────────── */
 
 .at-sched-editor {

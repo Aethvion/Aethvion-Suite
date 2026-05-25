@@ -904,12 +904,13 @@
             );
         }).join('');
 
-        const isAI       = nd.type.startsWith('ai.');
-        const isDisplay  = nd.type === 'output.display';
-        const isCapture  = nd.type === 'action.screenshot' || nd.type === 'action.camera_capture';
-        const isSchedule = nd.type === 'trigger.schedule';
+        const isAI        = nd.type.startsWith('ai.');
+        const isDisplay   = nd.type === 'output.display';
+        const isCapture   = nd.type === 'action.screenshot' || nd.type === 'action.camera_capture';
+        const isSchedule  = nd.type === 'trigger.schedule';
         const isTextInput = nd.type === 'input.text' || nd.type === 'input.number' || nd.type === 'input.list';
-        const showResult = (isAI && nd.properties['show_result'] !== false) || isDisplay;
+        const isVariable  = nd.type === 'data.variable';
+        const showResult  = (isAI && nd.properties['show_result'] !== false) || isDisplay;
 
         // AI extra bar: model badge + test button
         const aiBarHtml = isAI
@@ -955,6 +956,25 @@
                    '</div>';
         }());
 
+        // Variable info strip — shown on data.variable nodes
+        const variableHtml = (function () {
+            if (!isVariable) return '';
+            var varName = nd.properties['name'] || 'var';
+            var isPublic = nd.properties['public'];
+            var varType  = nd.properties['varType'] || 'string';
+            var defVal   = String(nd.properties['value'] !== undefined ? nd.properties['value'] : '');
+            var publicBadge = isPublic
+                ? '<span class="at-var-badge at-var-badge-pub" title="Exposed via API &amp; dashboard">PUBLIC</span> '
+                : '';
+            var preview = defVal.length > 30 ? defVal.slice(0, 30) + '…' : (defVal || '(empty)');
+            return '<div class="at-node-var-strip" data-var-strip="' + nd.id + '">' +
+                   publicBadge +
+                   '<span class="at-var-name">$' + _esc(varName) + '</span>' +
+                   '<span class="at-var-type">' + _esc(varType) + '</span>' +
+                   '<span class="at-var-default">' + _esc(preview) + '</span>' +
+                   '</div>';
+        }());
+
         el.innerHTML =
             '<div class="at-node-hdr">' +
             '  <div class="at-node-icon" style="background:' + colorBg + ';color:' + color + '">' +
@@ -971,6 +991,7 @@
             '</div>' +
             schedHtml +
             valuePreviewHtml +
+            variableHtml +
             aiBarHtml +
             resultHtml;
 
@@ -1388,6 +1409,22 @@
                     if (prop.key === 'show_result') {
                         _updateAINodeResult(nd.id, null, check.checked);
                     }
+                    // Update variable strip public badge live
+                    if (nd.type === 'data.variable' && prop.key === 'public') {
+                        var strip = _e.canvasInner.querySelector('[data-var-strip="' + nd.id + '"]');
+                        if (strip) {
+                            var vName    = nd.properties['name']    || 'var';
+                            var vType    = nd.properties['varType'] || 'string';
+                            var vDef     = String(nd.properties['value'] !== undefined ? nd.properties['value'] : '');
+                            var vPreview = vDef.length > 30 ? vDef.slice(0, 30) + '…' : (vDef || '(empty)');
+                            var pubBadge = check.checked
+                                ? '<span class="at-var-badge at-var-badge-pub">PUBLIC</span> ' : '';
+                            strip.innerHTML = pubBadge +
+                                '<span class="at-var-name">$' + _esc(vName) + '</span>' +
+                                '<span class="at-var-type">' + _esc(vType) + '</span>' +
+                                '<span class="at-var-default">' + _esc(vPreview) + '</span>';
+                        }
+                    }
                 });
                 const pill = document.createElement('span');
                 pill.className = 'at-prop-toggle-pill';
@@ -1456,6 +1493,23 @@
                             preview.textContent = empty ? 'No text set…' : display;
                             preview.classList.toggle('at-preview-empty', empty);
                         }
+                    }
+                }
+                // Live-update the variable strip on data.variable nodes
+                if (nd.type === 'data.variable' &&
+                    (prop.key === 'name' || prop.key === 'value' || prop.key === 'varType')) {
+                    var strip = _e.canvasInner.querySelector('[data-var-strip="' + nd.id + '"]');
+                    if (strip) {
+                        var vName    = nd.properties['name']    || 'var';
+                        var vType    = nd.properties['varType'] || 'string';
+                        var vDef     = String(nd.properties['value'] !== undefined ? nd.properties['value'] : '');
+                        var vPreview = vDef.length > 30 ? vDef.slice(0, 30) + '…' : (vDef || '(empty)');
+                        var pubBadge = nd.properties['public']
+                            ? '<span class="at-var-badge at-var-badge-pub">PUBLIC</span> ' : '';
+                        strip.innerHTML = pubBadge +
+                            '<span class="at-var-name">$' + _esc(vName) + '</span>' +
+                            '<span class="at-var-type">' + _esc(vType) + '</span>' +
+                            '<span class="at-var-default">' + _esc(vPreview) + '</span>';
                     }
                 }
                 // When database changes, refresh any snapshot selector in the same inspector

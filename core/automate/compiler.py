@@ -52,6 +52,7 @@ NODE_DEPS: dict[str, dict] = {
     "data.parse_json":    {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "data.regex":         {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "data.set_variable":  {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
+    "data.variable":      {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "data.split_text":    {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "data.template":      {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "data.type_convert":  {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
@@ -292,6 +293,26 @@ def _h_data_set_variable(node, inputs, ctx):
     val = inputs.get("in")
     ctx._vars[name] = val
     return {"out": val}
+""",
+
+"data.variable": """\
+def _h_data_variable(node, inputs, ctx):
+    p = node.get("properties", {})
+    name = str(p.get("name", "var")).strip() or "var"
+    default = p.get("value", "")
+    var_type = str(p.get("varType", "string"))
+    val = ctx._vars.get(name, default)
+    if var_type == "number":
+        try:
+            s = str(val)
+            val = float(s) if "." in s else int(s)
+        except (ValueError, TypeError):
+            pass
+    elif var_type == "boolean":
+        if isinstance(val, str):
+            val = val.lower() in ("true", "1", "yes")
+    ctx._vars[name] = val
+    return {"out": val, "value": val}
 """,
 
 "data.filter": """\
@@ -1234,6 +1255,7 @@ _HANDLER_NAMES: dict[str, str] = {
     "data.regex":                 "_h_data_regex",
     "data.set_variable":          "_h_data_set_variable",
     "data.split_text":            "_h_data_split_text",
+    "data.variable":              "_h_data_variable",
     "data.template":              "_h_data_template",
     "data.type_convert":          "_h_data_type_convert",
     "transform.combine":          "_h_transform_combine",
@@ -1309,12 +1331,33 @@ def _analyze_workflow(workflow: dict) -> dict:
     if "ai.google" in used_types or "ai.any" in used_types:
         needs_ai = True
 
+    # Collect public variables (data.variable nodes where public=True)
+    public_vars: list[dict] = []
+    seen_names: set[str] = set()
+    for node in workflow.get("nodes", []):
+        if node.get("type") != "data.variable":
+            continue
+        props = node.get("properties", {})
+        if not props.get("public"):
+            continue
+        name = str(props.get("name", "var")).strip() or "var"
+        if name in seen_names:
+            continue   # deduplicate by name
+        seen_names.add(name)
+        public_vars.append({
+            "name":        name,
+            "varType":     str(props.get("varType", "string")),
+            "default":     props.get("value", ""),
+            "description": str(props.get("description", "")),
+        })
+
     return {
         "used_types":        sorted(used_types),
         "pip_deps":          sorted(pip_deps),
         "key_deps":          sorted(key_deps),
         "needs_aethviondb":  needs_aethviondb,
         "needs_ai":          needs_ai,
+        "public_vars":       public_vars,
     }
 
 
@@ -1407,65 +1450,167 @@ _HTML_TEMPLATE = """\
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0f172a;color:#e2e8f0;font-family:system-ui,sans-serif;height:100vh;display:flex;flex-direction:column}
-header{background:#1e293b;border-bottom:1px solid #334155;padding:.75rem 1.5rem;display:flex;align-items:center;gap:.75rem}
-header h1{font-size:.95rem;font-weight:700;letter-spacing:.02em}
-.badge{background:#22d3ee1a;color:#22d3ee;border:1px solid #22d3ee44;border-radius:4px;font-size:.68rem;padding:.12rem .4rem;font-weight:700;letter-spacing:.06em}
+header{background:#1e293b;border-bottom:1px solid #334155;padding:.65rem 1.25rem;display:flex;align-items:center;gap:.75rem}
+header h1{font-size:.92rem;font-weight:700;letter-spacing:.02em;flex:1}
+.badge{background:#22d3ee1a;color:#22d3ee;border:1px solid #22d3ee44;border-radius:4px;font-size:.65rem;padding:.1rem .38rem;font-weight:700;letter-spacing:.06em;white-space:nowrap}
+.pub-badge{background:#a78bfa1a;color:#a78bfa;border:1px solid #a78bfa44;border-radius:4px;font-size:.65rem;padding:.1rem .38rem;font-weight:700;letter-spacing:.06em;white-space:nowrap}
 .main{display:flex;flex:1;overflow:hidden}
-.sidebar{width:270px;flex-shrink:0;background:#1e293b;border-right:1px solid #334155;padding:1rem;overflow-y:auto;display:flex;flex-direction:column;gap:.6rem}
-.sidebar h2{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:.2rem}
-.field{display:flex;flex-direction:column;gap:.25rem}
-.field label{font-size:.78rem;color:#94a3b8;font-weight:500}
-.field input,.field textarea{background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;padding:.4rem .55rem;font-size:.82rem;outline:none;resize:vertical;width:100%}
-.field input:focus,.field textarea:focus{border-color:#22d3ee}
-.run-btn{background:#22d3ee;color:#0f172a;border:none;border-radius:6px;padding:.6rem 1rem;font-size:.88rem;font-weight:700;cursor:pointer;margin-top:.4rem;width:100%;transition:background .15s}
+/* ── Sidebar ── */
+.sidebar{width:280px;flex-shrink:0;background:#1e293b;border-right:1px solid #334155;overflow-y:auto;display:flex;flex-direction:column}
+.sb-section{padding:.8rem 1rem;display:flex;flex-direction:column;gap:.5rem}
+.sb-section+.sb-section{border-top:1px solid #1e293b}
+.sb-sep{height:1px;background:#334155;margin:0 1rem}
+.sb-hdr{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;padding:.6rem 1rem .2rem;display:flex;align-items:center;gap:.4rem}
+.field{display:flex;flex-direction:column;gap:.22rem}
+.field label{font-size:.76rem;color:#94a3b8;font-weight:500;display:flex;align-items:center;gap:.35rem}
+.field .desc{font-size:.68rem;color:#475569;margin-top:.05rem}
+.field input,.field textarea,.field select{background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;padding:.38rem .5rem;font-size:.8rem;outline:none;resize:vertical;width:100%}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:#22d3ee}
+.field input[type=checkbox]{width:auto;accent-color:#22d3ee}
+.run-btn{background:#22d3ee;color:#0f172a;border:none;border-radius:6px;padding:.55rem 1rem;font-size:.86rem;font-weight:700;cursor:pointer;margin:.2rem 1rem .8rem;transition:background .15s}
 .run-btn:hover{background:#67e8f9}
 .run-btn:disabled{opacity:.4;cursor:not-allowed}
-.content{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:1rem;gap:.75rem}
-.outputs-area{display:flex;flex-direction:column;gap:.4rem}
-.outputs-area h2{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569}
-.output-item{background:#1e293b;border:1px solid #334155;border-radius:6px;padding:.45rem .7rem}
-.output-label{font-size:.7rem;color:#475569;font-weight:600;margin-bottom:.2rem}
-.output-val{font-size:.82rem;color:#e2e8f0;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto}
-.log-area{flex:1;background:#0f172a;border:1px solid #334155;border-radius:8px;overflow-y:auto;padding:.7rem;font-family:monospace;font-size:.78rem;min-height:100px}
-.log-line{padding:.08rem 0}
+/* ── Content pane ── */
+.content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.tab-bar{display:flex;border-bottom:1px solid #334155;background:#1e293b;flex-shrink:0}
+.tab-btn{background:none;border:none;color:#64748b;font-size:.78rem;font-weight:600;padding:.55rem .9rem;cursor:pointer;border-bottom:2px solid transparent;transition:color .15s}
+.tab-btn.active{color:#e2e8f0;border-bottom-color:#22d3ee}
+.tab-pane{display:none;flex:1;overflow:hidden}
+.tab-pane.active{display:flex;flex-direction:column}
+/* ── Run pane ── */
+.run-pane{flex:1;display:flex;flex-direction:column;padding:.8rem;gap:.7rem;overflow:hidden}
+.outputs-area{display:flex;flex-direction:column;gap:.35rem}
+.outputs-hdr{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569}
+.output-item{background:#1e293b;border:1px solid #334155;border-radius:6px;padding:.42rem .65rem}
+.output-label{font-size:.68rem;color:#475569;font-weight:600;margin-bottom:.18rem}
+.output-val{font-size:.8rem;color:#e2e8f0;white-space:pre-wrap;word-break:break-word;max-height:180px;overflow-y:auto}
+.log-area{flex:1;background:#0f172a;border:1px solid #334155;border-radius:8px;overflow-y:auto;padding:.65rem;font-family:monospace;font-size:.76rem;min-height:80px}
+.log-line{padding:.06rem 0;line-height:1.45}
 .log-line.info{color:#64748b}
 .log-line.warning{color:#fbbf24}
 .log-line.error{color:#f87171}
-.status-bar{background:#1e293b;border-top:1px solid #334155;padding:.35rem 1rem;font-size:.72rem;color:#475569;display:flex;gap:.6rem;align-items:center}
+/* ── API pane ── */
+.api-pane{flex:1;overflow-y:auto;padding:.9rem 1rem;display:flex;flex-direction:column;gap:1rem}
+.api-section-hdr{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:.4rem}
+.api-var-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.api-var-table th{text-align:left;color:#475569;font-size:.68rem;font-weight:600;padding:.28rem .5rem;border-bottom:1px solid #334155}
+.api-var-table td{padding:.3rem .5rem;color:#e2e8f0;border-bottom:1px solid #1e293b;vertical-align:top}
+.api-var-table td.type{color:#a78bfa;font-family:monospace;font-size:.74rem}
+.api-var-table td.name{font-family:monospace;color:#22d3ee}
+.api-var-table td.desc{color:#64748b;font-size:.74rem}
+.endpoint-card{background:#1e293b;border:1px solid #334155;border-radius:8px;overflow:hidden}
+.ep-hdr{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;cursor:pointer;user-select:none}
+.ep-method{font-family:monospace;font-size:.7rem;font-weight:700;padding:.1rem .32rem;border-radius:3px;flex-shrink:0}
+.ep-method.GET{background:#22d3ee22;color:#22d3ee}
+.ep-method.POST{background:#4ade8022;color:#4ade80}
+.ep-path{font-family:monospace;font-size:.8rem;color:#e2e8f0;flex:1}
+.ep-desc{font-size:.72rem;color:#64748b}
+.ep-body{padding:.5rem .75rem;border-top:1px solid #334155;display:none}
+.ep-body.open{display:block}
+.ep-body pre{font-size:.72rem;color:#94a3b8;white-space:pre-wrap;word-break:break-word;margin:0}
+.copy-btn{background:#334155;border:none;color:#94a3b8;font-size:.68rem;padding:.18rem .4rem;border-radius:4px;cursor:pointer;float:right;margin-left:.5rem}
+.copy-btn:hover{background:#475569;color:#e2e8f0}
+/* ── Status bar ── */
+.status-bar{background:#1e293b;border-top:1px solid #334155;padding:.3rem 1rem;font-size:.7rem;color:#475569;display:flex;gap:.5rem;align-items:center;flex-shrink:0}
 .dot{width:6px;height:6px;border-radius:50%;background:#334155;display:inline-block;flex-shrink:0}
 .dot.running{background:#22d3ee;animation:pulse 1s infinite}
 .dot.ok{background:#4ade80}
 .dot.error{background:#f87171}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.no-vars{color:#475569;font-size:.8rem;font-style:italic;padding:.2rem 0}
 </style>
 </head>
 <body>
 <header>
   <div class="badge">STANDALONE</div>
   <h1>%%NAME%%</h1>
+  <span id="pub-var-count" style="display:none" class="pub-badge"></span>
 </header>
 <div class="main">
+  <!-- ── Sidebar ── -->
   <div class="sidebar">
-    <div><h2>Inputs</h2></div>
-    <div id="inp"></div>
+    <!-- Public Variables section -->
+    <div class="sb-hdr" id="vars-hdr" style="display:none">
+      <i>&#x24;</i> Variables
+    </div>
+    <div class="sb-section" id="vars-section" style="display:none"></div>
+    <div class="sb-sep" id="vars-sep" style="display:none"></div>
+    <!-- Input nodes section -->
+    <div class="sb-hdr" id="inp-hdr" style="display:none">&#9776; Input Nodes</div>
+    <div class="sb-section" id="inp-section" style="display:none"></div>
     <button class="run-btn" id="run-btn" onclick="run()">&#9654; Run</button>
   </div>
+  <!-- ── Content ── -->
   <div class="content">
-    <div class="outputs-area" id="out-area" style="display:none">
-      <h2>Outputs</h2>
-      <div id="out-items"></div>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="showTab('run')">&#9654; Run</button>
+      <button class="tab-btn" onclick="showTab('api')">&#x2756; API</button>
     </div>
-    <div class="log-area" id="log"></div>
+    <div class="tab-pane active" id="pane-run">
+      <div class="run-pane">
+        <div class="outputs-area" id="out-area" style="display:none">
+          <div class="outputs-hdr">Outputs</div>
+          <div id="out-items"></div>
+        </div>
+        <div class="log-area" id="log"></div>
+      </div>
+    </div>
+    <div class="tab-pane" id="pane-api">
+      <div class="api-pane" id="api-pane"></div>
+    </div>
   </div>
 </div>
 <div class="status-bar">
   <span class="dot" id="dot"></span>
-  <span id="status">Ready — configure inputs and click Run</span>
+  <span id="status">Ready — configure variables and click Run</span>
 </div>
 <script>
+function esc(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function showTab(id){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['run','api'][i]===id));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pane-'+id).classList.add('active');
+}
+
+// ── Sidebar: public variables ─────────────────────────────────────────────────
+async function loadVars(){
+  const r=await fetch('/api/variables');
+  const vars=await r.json();
+  const sec=document.getElementById('vars-section');
+  const hdr=document.getElementById('vars-hdr');
+  const sep=document.getElementById('vars-sep');
+  const cnt=document.getElementById('pub-var-count');
+  if(vars.length){
+    hdr.style.display='';sep.style.display='';sec.style.display='';
+    cnt.style.display='';cnt.textContent=vars.length+' public var'+(vars.length>1?'s':'');
+  }
+  vars.forEach(v=>{
+    const d=document.createElement('div');d.className='field';
+    const lb=document.createElement('label');
+    lb.innerHTML='<span class="pub-badge" style="font-size:.6rem;padding:.05rem .3rem">PUBLIC</span> '+esc(v.name);
+    d.appendChild(lb);
+    if(v.description){const ds=document.createElement('div');ds.className='desc';ds.textContent=v.description;d.appendChild(ds);}
+    let el;
+    if(v.varType==='boolean'){
+      el=document.createElement('select');
+      el.innerHTML='<option value="true">true</option><option value="false">false</option>';
+      el.value=String(v.default).toLowerCase()==='false'?'false':'true';
+    } else if(v.varType==='number'){
+      el=document.createElement('input');el.type='number';el.value=v.default??0;
+    } else {
+      el=document.createElement('input');el.type='text';el.value=v.default??'';
+    }
+    el.dataset.varname=v.name;el.id='v_'+v.name;d.appendChild(el);sec.appendChild(d);
+  });
+}
+
+// ── Sidebar: input.* nodes ────────────────────────────────────────────────────
 async function loadInputs(){
   const r=await fetch('/inputs');const ins=await r.json();
-  const c=document.getElementById('inp');
+  if(!ins.length)return;
+  const sec=document.getElementById('inp-section');
+  document.getElementById('inp-hdr').style.display='';
+  sec.style.display='';
   ins.forEach(inp=>{
     const d=document.createElement('div');d.className='field';
     const lb=document.createElement('label');lb.textContent=inp.label||inp.id;
@@ -1474,10 +1619,11 @@ async function loadInputs(){
     if(inp.type==='number'){el=document.createElement('input');el.type='number';el.value=inp.default??0;}
     else if(inp.multiline||inp.type==='list'){el=document.createElement('textarea');el.rows=3;el.value=inp.default??'';}
     else{el=document.createElement('input');el.type='text';el.value=inp.default??'';}
-    el.id='i_'+inp.id;el.dataset.nid=inp.id;d.appendChild(el);c.appendChild(d);
+    el.id='i_'+inp.id;el.dataset.nid=inp.id;d.appendChild(el);sec.appendChild(d);
   });
 }
-function esc(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── Run ───────────────────────────────────────────────────────────────────────
 async function run(){
   const btn=document.getElementById('run-btn');
   const log=document.getElementById('log');
@@ -1486,17 +1632,32 @@ async function run(){
   const outArea=document.getElementById('out-area');
   const outItems=document.getElementById('out-items');
   btn.disabled=true;log.innerHTML='';outArea.style.display='none';outItems.innerHTML='';
-  dot.className='dot running';status.textContent='Running...';
-  const ov={};document.querySelectorAll('[data-nid]').forEach(e=>ov[e.dataset.nid]=e.value);
-  const es=new EventSource('/stream?overrides='+encodeURIComponent(JSON.stringify(ov)));
+  dot.className='dot running';status.textContent='Running…';
+  // Collect public-variable values
+  const vars={};
+  document.querySelectorAll('[data-varname]').forEach(e=>vars[e.dataset.varname]=e.value);
+  // Collect input-node overrides
+  const ov={};
+  document.querySelectorAll('[data-nid]').forEach(e=>ov[e.dataset.nid]=e.value);
+  const params=new URLSearchParams({
+    variables:JSON.stringify(vars),
+    overrides:JSON.stringify(ov)
+  });
+  const es=new EventSource('/stream?'+params.toString());
   es.onmessage=e=>{
     const d=JSON.parse(e.data);
-    if(d.done){es.close();btn.disabled=false;dot.className='dot '+(d.ok?'ok':'error');status.textContent=d.ok?'Completed':'Completed with errors';loadOutputs();return;}
+    if(d.done){
+      es.close();btn.disabled=false;
+      dot.className='dot '+(d.ok?'ok':'error');
+      status.textContent=d.ok?'Completed ✓':'Completed with errors ✗';
+      loadOutputs();return;
+    }
     const l=document.createElement('div');l.className='log-line '+(d.level||'info');
     l.textContent='['+(d.ts||'')+'] '+d.msg;log.appendChild(l);log.scrollTop=log.scrollHeight;
   };
   es.onerror=()=>{es.close();btn.disabled=false;dot.className='dot error';status.textContent='Connection error';};
 }
+
 async function loadOutputs(){
   const r=await fetch('/outputs');const outs=await r.json();
   if(!outs.length)return;
@@ -1509,7 +1670,57 @@ async function loadOutputs(){
     outItems.appendChild(item);
   });
 }
-loadInputs();
+
+// ── API docs pane ─────────────────────────────────────────────────────────────
+async function loadApiDocs(){
+  const r=await fetch('/api/schema');
+  const s=await r.json();
+  const pane=document.getElementById('api-pane');
+  // Variables table
+  if(s.public_variables&&s.public_variables.length){
+    const sec=document.createElement('div');
+    sec.innerHTML='<div class="api-section-hdr">Public Variables</div>';
+    const tbl=document.createElement('table');tbl.className='api-var-table';
+    tbl.innerHTML='<thead><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>';
+    const tb=document.createElement('tbody');
+    s.public_variables.forEach(v=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML='<td class="name">$'+esc(v.name)+'</td><td class="type">'+esc(v.varType)+'</td><td>'+esc(v.default)+'</td><td class="desc">'+esc(v.description)+'</td>';
+      tb.appendChild(tr);
+    });
+    tbl.appendChild(tb);sec.appendChild(tbl);pane.appendChild(sec);
+  }
+  // Endpoint cards
+  const epsHdr=document.createElement('div');epsHdr.innerHTML='<div class="api-section-hdr">Endpoints</div>';pane.appendChild(epsHdr);
+  s.endpoints.forEach(ep=>{
+    const card=document.createElement('div');card.className='endpoint-card';
+    const hdr=document.createElement('div');hdr.className='ep-hdr';
+    const hasBody=ep.body||ep.query_params||ep.response||ep.events;
+    hdr.innerHTML='<span class="ep-method '+ep.method+'">'+ep.method+'</span>'
+      +'<span class="ep-path">'+esc(ep.path)+'</span>'
+      +'<span class="ep-desc">'+esc(ep.description)+'</span>';
+    if(hasBody){hdr.innerHTML+='<span style="color:#475569;font-size:.8rem;margin-left:.4rem">&#9660;</span>';}
+    card.appendChild(hdr);
+    if(hasBody){
+      const body=document.createElement('div');body.className='ep-body';
+      let content='';
+      if(ep.body){content+='// Request body (JSON)\\n'+JSON.stringify(ep.body,null,2)+'\\n';}
+      if(ep.query_params){content+='// Query params\\n'+JSON.stringify(ep.query_params,null,2)+'\\n';}
+      if(ep.response){content+='// Response\\n'+JSON.stringify(ep.response,null,2)+'\\n';}
+      if(ep.events){content+='// SSE events\\n'+JSON.stringify(ep.events,null,2)+'\\n';}
+      const pre=document.createElement('pre');pre.textContent=content.trim();
+      const copyBtn=document.createElement('button');copyBtn.className='copy-btn';copyBtn.textContent='Copy';
+      copyBtn.onclick=(e)=>{e.stopPropagation();navigator.clipboard.writeText(content.trim()).then(()=>{copyBtn.textContent='Copied!';setTimeout(()=>copyBtn.textContent='Copy',1500);});};
+      body.appendChild(copyBtn);body.appendChild(pre);card.appendChild(body);
+      hdr.style.cursor='pointer';
+      hdr.addEventListener('click',()=>body.classList.toggle('open'));
+    }
+    pane.appendChild(card);
+  });
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+Promise.all([loadVars(),loadInputs(),loadApiDocs()]);
 </script>
 </body>
 </html>
@@ -1621,7 +1832,9 @@ def _extract_json_block(text: str) -> dict:
 
 '''
 
-    html_content = _HTML_TEMPLATE.replace("%%NAME%%", wf_name)
+    public_vars      = analysis.get("public_vars", [])
+    public_vars_json = json.dumps(public_vars, ensure_ascii=False)
+    html_content     = _HTML_TEMPLATE.replace("%%NAME%%", wf_name)
 
     src = f'''\
 #!/usr/bin/env python3
@@ -1665,7 +1878,7 @@ def _ts() -> str:
 # ── WorkflowExecutor ──────────────────────────────────────────────────────────
 
 class WorkflowExecutor:
-    def __init__(self, workflow: dict) -> None:
+    def __init__(self, workflow: dict, variables: dict | None = None) -> None:
         self.workflow    = workflow
         self.nodes: dict[str, dict] = {{n["id"]: n for n in workflow.get("nodes", [])}}
         self.connections = workflow.get("connections", [])
@@ -1673,7 +1886,7 @@ class WorkflowExecutor:
         self._status:  dict[str, str] = {{}}
         self._errors:  dict[str, str] = {{}}
         self._log:     list[dict]     = []
-        self._vars:    dict[str, Any] = {{}}
+        self._vars:    dict[str, Any] = dict(variables or {{}})  # pre-seed with injected values
 
     def execute(self) -> dict:
         name = self.workflow.get("name", "Workflow")
@@ -1787,6 +2000,10 @@ with open(Path(__file__).parent / "workflow.json", encoding="utf-8") as _f:
 
 _INPUT_NODES = [n for n in _WORKFLOW.get("nodes", []) if n.get("type","").startswith("input.")]
 
+# ── Public variables (baked in at compile time) ───────────────────────────────
+# Each entry: {{name, varType, default, description}}
+_PUBLIC_VARS: list[dict] = {public_vars_json}
+
 # ── FastAPI server ────────────────────────────────────────────────────────────
 try:
     from fastapi import FastAPI, Request
@@ -1796,7 +2013,7 @@ except ImportError:
     print("ERROR: FastAPI/uvicorn not installed.  Run: pip install -r requirements.txt")
     sys.exit(1)
 
-app = FastAPI(title={repr(wf_name)})
+app = FastAPI(title={repr(wf_name)}, docs_url=None, redoc_url=None)
 
 _HTML = {repr(html_content)}
 
@@ -1806,6 +2023,7 @@ async def index():
 
 @app.get("/inputs")
 async def get_inputs():
+    """Input nodes (input.text / input.number / input.list) — legacy endpoint."""
     result = []
     for n in _INPUT_NODES:
         ntype = n.get("type","")
@@ -1822,24 +2040,91 @@ async def get_inputs():
                          "default": default, "multiline": multiline}})
     return JSONResponse(result)
 
+@app.get("/api/variables")
+async def api_variables():
+    """List all public variables with their types, defaults and descriptions."""
+    return JSONResponse(_PUBLIC_VARS)
+
+@app.get("/api/schema")
+async def api_schema():
+    """Machine-readable description of every available endpoint."""
+    schema = {{
+        "workflow": {repr(wf_name)},
+        "public_variables": _PUBLIC_VARS,
+        "endpoints": [
+            {{
+                "method": "GET", "path": "/",
+                "description": "Web dashboard — run the workflow interactively in a browser.",
+            }},
+            {{
+                "method": "POST", "path": "/run",
+                "description": "Run the workflow and return the full result as JSON.",
+                "body": {{
+                    "variables": {{"<name>": "<value>", "...": "..."}},
+                    "overrides": {{"<node_id>": "<value>", "...": "..."}},
+                }},
+                "response": {{
+                    "ok": True,
+                    "node_status": {{"<node_id>": "done | error | skipped"}},
+                    "node_outputs": {{"<node_id>": {{"<port>": "<value>"}}}},
+                    "node_errors":  {{"<node_id>": "<error message>"}},
+                    "log": [{{"level": "info | warning | error", "msg": "...", "ts": "HH:MM:SS.mmm"}}],
+                }},
+            }},
+            {{
+                "method": "GET", "path": "/stream",
+                "description": "Server-Sent Events stream — receive log lines in real time.",
+                "query_params": {{
+                    "variables": "JSON object mapping variable names to values",
+                    "overrides": "JSON object mapping input-node IDs to values",
+                }},
+                "events": [
+                    {{"level": "info | warning | error", "msg": "...", "ts": "..."}},
+                    {{"done": True, "ok": True}},
+                ],
+            }},
+            {{
+                "method": "GET", "path": "/outputs",
+                "description": "Outputs produced by output.display nodes in the last run.",
+                "response": [{{"label": "...", "value": "..."}}],
+            }},
+            {{
+                "method": "GET", "path": "/api/variables",
+                "description": "List every public variable defined in this workflow.",
+                "response": [{{"name": "...", "varType": "string|number|boolean",
+                               "default": "...", "description": "..."}}],
+            }},
+            {{
+                "method": "GET", "path": "/api/schema",
+                "description": "This endpoint — machine-readable API schema.",
+            }},
+        ],
+    }}
+    return JSONResponse(schema)
+
 @app.get("/outputs")
 async def get_outputs():
     return JSONResponse(_OUTPUT_RESULTS)
 
 @app.get("/status")
 async def get_status():
-    return JSONResponse({{"ready": True}})
+    return JSONResponse({{"ready": True, "workflow": {repr(wf_name)},
+                          "public_vars": [v["name"] for v in _PUBLIC_VARS]}})
 
 @app.get("/stream")
-async def stream_execution(overrides: str = "{{}}"):
+async def stream_execution(overrides: str = "{{}}", variables: str = "{{}}"):
     global _INPUT_OVERRIDES, _OUTPUT_RESULTS
     try: _INPUT_OVERRIDES = json.loads(overrides)
     except Exception: _INPUT_OVERRIDES = {{}}
+    try: _var_overrides = json.loads(variables)
+    except Exception: _var_overrides = {{}}
     _OUTPUT_RESULTS.clear()
     async def event_stream():
         loop = asyncio.get_event_loop()
         def _run():
-            ex = WorkflowExecutor(_WORKFLOW)
+            ex = WorkflowExecutor(_WORKFLOW, variables=_var_overrides)
+            ex._vars.update({{k: v for k, v in _INPUT_OVERRIDES.items()
+                              if not k.startswith("_node_")}})
             return ex, ex.execute()
         executor, result = await loop.run_in_executor(None, _run)
         for entry in executor._log:
@@ -1856,8 +2141,9 @@ async def run_workflow(request: Request):
     try: body = await request.json()
     except Exception: pass
     _INPUT_OVERRIDES = body.get("overrides", {{}})
+    _var_overrides   = body.get("variables", {{}})
     _OUTPUT_RESULTS.clear()
-    ex = WorkflowExecutor(_WORKFLOW)
+    ex = WorkflowExecutor(_WORKFLOW, variables=_var_overrides)
     result = ex.execute()
     return JSONResponse(result)
 
@@ -1870,6 +2156,8 @@ if __name__ == "__main__":
     print(f"")
     print(f"  Standalone Workflow: {wf_name}")
     print(f"  \\033[36mhttp://{{args.host}}:{{args.port}}\\033[0m")
+    if _PUBLIC_VARS:
+        print(f"  Public variables: {{', '.join(v['name'] for v in _PUBLIC_VARS)}}")
     print(f"")
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 '''

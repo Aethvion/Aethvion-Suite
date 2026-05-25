@@ -36,7 +36,7 @@ class WorkflowExecutor:
         log          — [{level, msg, ts}, …]
     """
 
-    def __init__(self, workflow: dict) -> None:
+    def __init__(self, workflow: dict, variables: dict | None = None) -> None:
         self.workflow    = workflow
         self.nodes: dict[str, dict]          = {n["id"]: n for n in workflow.get("nodes", [])}
         self.connections: list[dict]         = workflow.get("connections", [])
@@ -45,7 +45,8 @@ class WorkflowExecutor:
         self._status:  dict[str, str]            = {}
         self._errors:  dict[str, str]            = {}
         self._log:     list[dict]                = []
-        self._vars:    dict[str, Any]            = {}  # set_variable store
+        # Pre-seed with injected variable values so data.variable nodes read them
+        self._vars:    dict[str, Any]            = dict(variables or {})
 
     # ── Public entry point ────────────────────────────────────────────────────
 

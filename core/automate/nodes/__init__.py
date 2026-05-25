@@ -51,6 +51,7 @@ _REGISTRY: dict[str, Callable] = {
     "data.regex":         data.data_regex,
     "data.set_variable":  data.data_set_variable,
     "data.split_text":    data.data_split_text,
+    "data.variable":      data.data_variable,
     "data.template":      data.data_template,
     "data.type_convert":  data.data_type_convert,
     "transform.combine":  data.transform_combine,

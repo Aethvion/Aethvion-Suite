@@ -323,6 +323,57 @@ _NODE_TYPES: list[dict] = [
         ],
     },
     {
+        "type": "data.variable",
+        "label": "Variable",
+        "category": "Data",
+        "icon": "fa-dollar-sign",
+        "color": "#a78bfa",
+        "inputs": [],
+        "outputs": [
+            {"name": "out",   "label": "Value"},
+        ],
+        "properties": [
+            {
+                "key": "name",
+                "label": "Variable Name",
+                "type": "text",
+                "default": "myVar",
+                "placeholder": "myVar",
+            },
+            {
+                "key": "value",
+                "label": "Default Value",
+                "type": "text",
+                "default": "",
+                "placeholder": "default value",
+            },
+            {
+                "key": "varType",
+                "label": "Type",
+                "type": "select",
+                "default": "string",
+                "options": [
+                    {"value": "string",  "label": "String"},
+                    {"value": "number",  "label": "Number"},
+                    {"value": "boolean", "label": "Boolean"},
+                ],
+            },
+            {
+                "key": "public",
+                "label": "Public (expose via API & compiled dashboard)",
+                "type": "toggle",
+                "default": False,
+            },
+            {
+                "key": "description",
+                "label": "Description",
+                "type": "text",
+                "default": "",
+                "placeholder": "What this variable does…",
+            },
+        ],
+    },
+    {
         "type": "data.filter",
         "label": "Filter",
         "category": "Data",
@@ -2660,8 +2711,12 @@ async def delete_workflow(wf_id: str):
     return {"ok": True}
 
 
+class RunWorkflowBody(BaseModel):
+    variables: Optional[dict] = None  # {name: value} — injected into data.variable nodes
+
+
 @router.post("/workflows/{wf_id}/run")
-async def run_workflow(wf_id: str):
+async def run_workflow(wf_id: str, body: RunWorkflowBody = RunWorkflowBody()):
     """Execute a workflow and return the full result including per-node status and outputs."""
     p = _wf_path(wf_id)
     if not p.exists():
@@ -2669,7 +2724,7 @@ async def run_workflow(wf_id: str):
     wf = json.loads(p.read_text(encoding="utf-8"))
 
     from core.automate.executor import WorkflowExecutor  # noqa: PLC0415
-    executor = WorkflowExecutor(wf)
+    executor = WorkflowExecutor(wf, variables=body.variables or {})
     result   = await asyncio.to_thread(executor.execute)
     return result
 
