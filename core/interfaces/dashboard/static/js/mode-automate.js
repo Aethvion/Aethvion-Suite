@@ -610,6 +610,96 @@
     }
 
     // ════════════════════════════════════════════════════════════════════════
+    //  Trigger reachability (mirrors the three-phase Python algorithm)
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Returns a Set of node IDs that would be executed if triggerId fires.
+     * Phase 1: forward BFS from triggerId.
+     * Phase 2: forward BFS from every OTHER trigger → "other territory".
+     * Phase 3: backward BFS from phase-1 set, skipping trigger nodes and
+     *          anything in other territory.
+     */
+    function _computeReachableFromTrigger(triggerId) {
+        if (!_active) return new Set();
+        var nodes = _active.nodes;
+        var conns = _active.connections || [];
+
+        var fwd = {}, rev = {};
+        nodes.forEach(function (n) { fwd[n.id] = []; rev[n.id] = []; });
+        conns.forEach(function (c) {
+            var s = c.sourceNodeId, t = c.targetNodeId;
+            if (fwd[s] && rev[t]) { fwd[s].push(t); rev[t].push(s); }
+        });
+
+        var allTriggers = nodes
+            .filter(function (n) { return n.type && n.type.startsWith('trigger.'); })
+            .map(function (n) { return n.id; });
+
+        function forwardBFS(seeds) {
+            var visited = new Set(seeds);
+            var queue   = seeds.slice();
+            while (queue.length) {
+                var nid = queue.shift();
+                (fwd[nid] || []).forEach(function (nx) {
+                    if (!visited.has(nx)) { visited.add(nx); queue.push(nx); }
+                });
+            }
+            return visited;
+        }
+
+        // Phase 1
+        var forward = forwardBFS([triggerId]);
+
+        // Phase 2 — other territory
+        var otherTerritory = new Set();
+        allTriggers.forEach(function (t) {
+            if (t !== triggerId) {
+                forwardBFS([t]).forEach(function (nid) { otherTerritory.add(nid); });
+            }
+        });
+
+        // Phase 3 — backward, blocked by triggers + other territory
+        var triggerSet = new Set(allTriggers);
+        var blocked    = new Set([...triggerSet, ...otherTerritory]);
+        var reachable  = new Set(forward);
+        var queue      = [...forward].filter(function (nid) { return !triggerSet.has(nid); });
+        while (queue.length) {
+            var nid = queue.shift();
+            (rev[nid] || []).forEach(function (up) {
+                if (!reachable.has(up) && !blocked.has(up)) {
+                    reachable.add(up);
+                    queue.push(up);
+                }
+            });
+        }
+        return reachable;
+    }
+
+    /** Highlight nodes reachable from triggerId; dim everything else. */
+    function _applyTriggerHighlight(triggerId) {
+        _clearTriggerHighlight();
+        if (!triggerId || !_e.canvasInner) return;
+        var reachable = _computeReachableFromTrigger(triggerId);
+        _e.canvasInner.querySelectorAll('.at-node').forEach(function (el) {
+            var nid = el.dataset.nodeId;
+            if (reachable.has(nid)) {
+                el.classList.add('at-trigger-highlight');
+            } else {
+                el.classList.add('at-trigger-dimmed');
+            }
+        });
+    }
+
+    /** Remove trigger highlight / dim from all nodes. */
+    function _clearTriggerHighlight() {
+        if (!_e.canvasInner) return;
+        _e.canvasInner.querySelectorAll('.at-node').forEach(function (el) {
+            el.classList.remove('at-trigger-highlight', 'at-trigger-dimmed');
+        });
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
     //  Workflow execution
     // ════════════════════════════════════════════════════════════════════════
 
@@ -623,64 +713,93 @@
 
         // Reset previous execution visuals
         _clearExecState();
+        _clearTriggerHighlight();
         _closeProps();
+
+        // Determine which triggers to run:
+        // • specific trigger selected → run just that one
+        // • "All" selected           → find every trigger.* node and run sequentially
+        var triggerIds;
+        if (_selTriggerId) {
+            triggerIds = [_selTriggerId];
+        } else {
+            triggerIds = (_active.nodes || [])
+                .filter(function (n) { return n.type && n.type.startsWith('trigger.'); })
+                .map(function (n) { return n.id; });
+            if (!triggerIds.length) triggerIds = [null]; // no trigger nodes → single run
+        }
+
+        // Mark only the nodes that will actually be touched as "pending"
+        var pendingIds = new Set();
+        triggerIds.forEach(function (tid) {
+            if (tid) {
+                _computeReachableFromTrigger(tid).forEach(function (nid) { pendingIds.add(nid); });
+            } else {
+                (_active.nodes || []).forEach(function (n) { pendingIds.add(n.id); });
+            }
+        });
+        pendingIds.forEach(function (nid) { _setNodeExecState(nid, 'pending'); });
+        _openExecPanelRunning();
 
         // Animate run button
         _e.btnRun.disabled = true;
         _e.btnRun.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Running…</span>';
 
-        // Mark all nodes as "pending" and open the log panel immediately
-        _active.nodes.forEach(function (nd) { _setNodeExecState(nd.id, 'pending'); });
-        _openExecPanelRunning();
-
         try {
-            const reqBody = {};
-            if (_selTriggerId) reqBody.trigger_id = _selTriggerId;
-
-            const r = await fetch('/api/automate/workflows/' + _active.id + '/run-stream', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(reqBody),
-            });
-
-            if (!r.ok) {
-                throw new Error('Server error ' + r.status);
-            }
-
-            const reader  = r.body.getReader();
-            const decoder = new TextDecoder();
-            let   buf     = '';
-
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-
-                buf += decoder.decode(value, { stream: true });
-                const lines = buf.split('\n');
-                buf = lines.pop(); // keep incomplete last line
-
-                for (const line of lines) {
-                    if (!line.startsWith('data: ')) continue;
-                    let ev;
-                    try { ev = JSON.parse(line.slice(6)); } catch (_) { continue; }
-
-                    if (ev.type === 'node_status') {
-                        _setNodeExecState(ev.node_id, ev.status);
-
-                    } else if (ev.type === 'log') {
-                        _appendExecLogEntry(ev);
-
-                    } else if (ev.type === 'done') {
-                        _applyExecResults(ev.result);
-                        break;
-                    }
-                }
+            // Run each trigger sequentially — independent chains, shared nodes re-run
+            for (var i = 0; i < triggerIds.length; i++) {
+                await _streamOneTrigger(triggerIds[i]);
             }
         } catch (e) {
             _toast('Execution failed: ' + e.message, true);
         } finally {
             _e.btnRun.disabled = false;
             _e.btnRun.innerHTML = '<i class="fas fa-play"></i><span>Run</span>';
+        }
+    }
+
+    /**
+     * Stream execution for a single trigger (or null = no trigger_id).
+     * Applies node states and log entries live; calls _applyExecResults on done.
+     */
+    async function _streamOneTrigger(triggerId) {
+        const reqBody = {};
+        if (triggerId) reqBody.trigger_id = triggerId;
+
+        const r = await fetch('/api/automate/workflows/' + _active.id + '/run-stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(reqBody),
+        });
+
+        if (!r.ok) throw new Error('Server error ' + r.status);
+
+        const reader  = r.body.getReader();
+        const decoder = new TextDecoder();
+        let   buf     = '';
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buf += decoder.decode(value, { stream: true });
+            const lines = buf.split('\n');
+            buf = lines.pop();
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                let ev;
+                try { ev = JSON.parse(line.slice(6)); } catch (_) { continue; }
+
+                if (ev.type === 'node_status') {
+                    _setNodeExecState(ev.node_id, ev.status);
+                } else if (ev.type === 'log') {
+                    _appendExecLogEntry(ev);
+                } else if (ev.type === 'done') {
+                    _applyExecResults(ev.result);
+                    break;
+                }
+            }
         }
     }
 
@@ -1408,6 +1527,12 @@
             el.style.zIndex = _zTop;
         }
 
+        // Highlight the reachable chain when a trigger node is selected
+        var nd = _active && _active.nodes.find(function (n) { return n.id === nodeId; });
+        if (nd && nd.type && nd.type.startsWith('trigger.')) {
+            _applyTriggerHighlight(nodeId);
+        }
+
         // Smart nav: when on Public Variables page, only switch to Inspector
         // for non-variable nodes. Variable nodes are edited inline on this page.
         if (_sidebarPage === 'pubvars') {
@@ -1503,6 +1628,7 @@
     function _deselectAll(closeProps) {
         _selNodeId = null;
         _selConnId = null;
+        _clearTriggerHighlight();
         _e.canvasInner.querySelectorAll('.at-node.at-selected').forEach(function (n) {
             n.classList.remove('at-selected');
         });

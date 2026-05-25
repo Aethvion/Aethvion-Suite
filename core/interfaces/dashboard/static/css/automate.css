@@ -1386,6 +1386,27 @@
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+/* ── Trigger selection highlight ────────────────────────────────────────── */
+
+/* Nodes inside the selected trigger's reachable chain */
+.at-node.at-trigger-highlight {
+    border-color: rgba(96, 165, 250, 0.75);
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.18), 0 4px 24px rgba(0,0,0,0.45);
+    opacity: 1;
+    transition: opacity 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+/* Nodes outside the selected trigger's chain — faded to show they won't run */
+.at-node.at-trigger-dimmed {
+    opacity: 0.28;
+    filter: grayscale(0.5);
+    transition: opacity 0.15s, filter 0.15s;
+}
+/* The selected trigger node itself is always brighter */
+.at-node.at-selected.at-trigger-highlight {
+    border-color: rgba(96, 165, 250, 0.95);
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.35), 0 0 16px rgba(96, 165, 250, 0.2), 0 4px 24px rgba(0,0,0,0.45);
+}
+
 /* ── Execution node states ──────────────────────────────────────────────── */
 
 .at-node.at-exec-running {

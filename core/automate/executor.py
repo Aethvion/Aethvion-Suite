@@ -123,29 +123,87 @@ class WorkflowExecutor:
     # ── Graph traversal ───────────────────────────────────────────────────────
 
     def _reachable_from_triggers(self) -> set[str]:
-        """BFS forward from trigger node(s); returns reachable node IDs."""
-        adj: dict[str, list[str]] = {nid: [] for nid in self.nodes}
+        """Three-phase reachability — returns the set of node IDs to execute.
+
+        Phase 1 — forward BFS from the active trigger seed(s):
+            Finds every node that this trigger chain directly activates.
+
+        Phase 2 — forward BFS from every INACTIVE trigger:
+            Builds the "other territory" — nodes owned by sibling chains.
+
+        Phase 3 — backward BFS from the Phase 1 set:
+            Pulls in upstream data suppliers (input.text, input.file,
+            data.variable, intermediate nodes, …) that feed into the active
+            chain.  A candidate is skipped if it lives in "other territory",
+            which prevents the walk from crossing into a sibling trigger's
+            branch even when both chains share a downstream node.
+
+        Example — Web to Summary (single trigger):
+            trigger → scrape  (forward: trigger, scrape, summarize, display)
+            url_input → scrape  ← backward walk adds url_input ✓
+            No inactive triggers → other_territory is empty.
+
+        Example — two triggers sharing a Summarize node:
+            Run_1 → Scrape_1 → Summarize,  URL_1 → Scrape_1
+            Run_2 → Scrape_2 → Summarize,  URL_2 → Scrape_2
+            When Run_1 fires:
+              forward         = {Run_1, Scrape_1, Summarize, Summary}
+              other_territory = {Run_2, Scrape_2, Summarize, Summary}
+              backward walk from Scrape_1 → adds URL_1 ✓
+              backward walk from Summarize → finds Scrape_2 (in other_territory) → skipped ✓
+              Result: {Run_1, Scrape_1, Summarize, Summary, URL_1} ✓
+        """
+        fwd: dict[str, list[str]] = {nid: [] for nid in self.nodes}
+        rev: dict[str, list[str]] = {nid: [] for nid in self.nodes}
         for conn in self.connections:
             src, tgt = conn.get("sourceNodeId"), conn.get("targetNodeId")
             if src in self.nodes and tgt in self.nodes:
-                adj[src].append(tgt)
+                fwd[src].append(tgt)
+                rev[tgt].append(src)
 
+        all_triggers = [nid for nid, n in self.nodes.items()
+                        if n.get("type", "").startswith("trigger.")]
+
+        def _forward_bfs(seeds: list[str]) -> set[str]:
+            visited: set[str] = set(seeds)
+            queue = list(seeds)
+            while queue:
+                nid = queue.pop(0)
+                for nxt in fwd[nid]:
+                    if nxt not in visited:
+                        visited.add(nxt)
+                        queue.append(nxt)
+            return visited
+
+        # ── Phase 1: forward from active seeds ────────────────────────────────
         if self._trigger_id:
-            seeds = [self._trigger_id] if self._trigger_id in self.nodes else []
+            active_seeds = [self._trigger_id] if self._trigger_id in self.nodes else []
         else:
-            seeds = [nid for nid, n in self.nodes.items()
-                     if n.get("type", "").startswith("trigger.")]
-        visited = set(seeds)
-        queue   = list(seeds)
+            active_seeds = list(all_triggers)
 
+        forward: set[str] = _forward_bfs(active_seeds)
+
+        # ── Phase 2: forward from inactive triggers → "other territory" ───────
+        inactive_triggers = [t for t in all_triggers if t not in active_seeds]
+        other_territory: set[str] = set()
+        for t in inactive_triggers:
+            other_territory |= _forward_bfs([t])
+
+        # ── Phase 3: backward from forward set ────────────────────────────────
+        # Skip nodes that are trigger nodes OR belong to another trigger's chain.
+        trigger_set = set(all_triggers)
+        blocked     = trigger_set | other_territory
+
+        reachable: set[str] = set(forward)
+        queue = [nid for nid in forward if nid not in trigger_set]
         while queue:
             nid = queue.pop(0)
-            for neighbour in adj[nid]:
-                if neighbour not in visited:
-                    visited.add(neighbour)
-                    queue.append(neighbour)
+            for upstream in rev[nid]:
+                if upstream not in reachable and upstream not in blocked:
+                    reachable.add(upstream)
+                    queue.append(upstream)
 
-        return visited
+        return reachable
 
     def _topo_sort(self) -> list[str] | None:
         """Kahn's algorithm. Returns execution order, or None if a cycle exists."""
