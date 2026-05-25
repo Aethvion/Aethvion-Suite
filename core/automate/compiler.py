@@ -289,27 +289,52 @@ def _h_data_parse_json(node, inputs, ctx):
 "data.extract_json": """\
 def _h_data_extract_json(node, inputs, ctx):
     import re as _re
-    p = node.get("properties", {})
-    key = str(p.get("key", "")).strip()
-    default = p.get("default", "")
+    p        = node.get("properties", {})
+    key_path = str(p.get("key", "")).strip()
+    default  = p.get("default", "")
     output_as = str(p.get("output_as", "auto"))
-    in_val = inputs.get("in")
+    in_val = inputs.get("in", "")
     if isinstance(in_val, str):
-        try: in_val = json.loads(in_val)
-        except Exception: pass
-    if not key:
-        result = in_val
-    else:
         try:
-            parts = _re.split(r"[.\\[]", key)
-            cur = in_val
-            for part in parts:
-                part = part.rstrip("]")
-                cur = cur[int(part)] if part.isdigit() else cur[part]
-            result = cur
-        except Exception:
-            if default != "": result = default
-            else: return {"out": "", "error": f"Key '{key}' not found"}
+            obj = json.loads(in_val)
+        except Exception as exc:
+            return {"out": default, "error": f"JSON parse error: {exc}"}
+    else:
+        obj = in_val
+    if not key_path:
+        result = obj
+    else:
+        _INDEX_RE   = _re.compile(r"\\[(\\d+)\\]")
+        _SEGMENT_RE = _re.compile(r"^([^\\[]*)((?:\\[\\d+\\])*)$")
+        def _resolve(root, path):
+            current = root
+            for raw_seg in path.split("."):
+                seg = raw_seg.strip()
+                if not seg:
+                    continue
+                m = _SEGMENT_RE.match(seg)
+                if not m:
+                    raise KeyError(seg)
+                key_part = m.group(1)
+                idx_part = m.group(2)
+                if key_part:
+                    if isinstance(current, list):
+                        current = current[int(key_part)]
+                    elif isinstance(current, dict):
+                        current = current[key_part]
+                    else:
+                        raise KeyError(key_part)
+                for idx_str in _INDEX_RE.findall(idx_part):
+                    if not isinstance(current, (list, tuple)):
+                        raise IndexError(f"[{idx_str}] on non-list")
+                    current = current[int(idx_str)]
+            return current
+        try:
+            result = _resolve(obj, key_path)
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            if default != "":
+                return {"out": default, "error": ""}
+            return {"out": "", "error": f"Key not found: {key_path} ({exc})"}
     if output_as == "string": result = _to_str(result)
     elif output_as == "json": result = json.dumps(result, ensure_ascii=False)
     return {"out": result, "error": ""}
@@ -2009,6 +2034,19 @@ def _safe_eval(expr: str, local_vars: dict) -> Any:
 def _ts() -> str:
     return datetime.now().strftime("%H:%M:%S.%f")[:-3]
 
+def _output_summary(outputs: dict) -> str:
+    """Return a short log preview of the first non-empty, non-private output port."""
+    if not outputs:
+        return ""
+    for port, val in outputs.items():
+        if port.startswith("_"):
+            continue
+        s = _to_str(val)
+        if s:
+            preview = s[:80].replace("\\n", " ")
+            return '[%s] "%s%s"' % (port, preview, "\\u2026" if len(s) > 80 else "")
+    return ""
+
 # ── WorkflowExecutor ──────────────────────────────────────────────────────────
 
 class WorkflowExecutor:
@@ -2058,7 +2096,11 @@ class WorkflowExecutor:
                     outputs = {{"out": inputs.get("in", "")}}
                 self._outputs[nid] = outputs or {{}}
                 self._status[nid]  = "done"
-                self._info('  \\u2713 %s' % label)
+                _summary = _output_summary(self._outputs[nid])
+                if _summary:
+                    self._info('  \\u2713 %s: %s' % (label, _summary))
+                else:
+                    self._info('  \\u2713 %s' % label)
             except Exception as exc:
                 self._status[nid] = "error"
                 self._errors[nid] = str(exc)
