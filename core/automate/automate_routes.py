@@ -75,7 +75,7 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-hand-pointer",
         "color": "#22d3ee",
         "inputs": [],
-        "outputs": [{"name": "trigger", "label": "Trigger"}],
+        "outputs": [{"name": "trigger", "label": "Trigger", "description": "Fires when this workflow is started manually."}],
         "properties": [
             {"key": "name", "label": "Name", "type": "text", "default": "", "placeholder": "e.g. Run Report"},
         ],
@@ -88,8 +88,8 @@ _NODE_TYPES: list[dict] = [
         "color": "#22d3ee",
         "inputs": [],
         "outputs": [
-            {"name": "trigger", "label": "Trigger"},
-            {"name": "data",    "label": "Data"},
+            {"name": "trigger", "label": "Trigger", "description": "Fires at each scheduled time."},
+            {"name": "data",    "label": "Data",    "description": "Metadata for this firing: date, time, and rule."},
         ],
         "properties": [
             {"key": "name", "label": "Name", "type": "text", "default": "", "placeholder": "e.g. Daily Sync"},
@@ -109,8 +109,8 @@ _NODE_TYPES: list[dict] = [
         "color": "#22d3ee",
         "inputs": [],
         "outputs": [
-            {"name": "out", "label": "Request"},
-            {"name": "body", "label": "Body"},
+            {"name": "out",  "label": "Request", "description": "Full request object — includes method, headers, body, and query params."},
+            {"name": "body", "label": "Body",    "description": "Parsed request body: a JSON object if content-type is JSON, otherwise raw text."},
         ],
         "properties": [
             {"key": "name", "label": "Name", "type": "text", "default": "", "placeholder": "e.g. Inbound Hook"},
@@ -137,10 +137,10 @@ _NODE_TYPES: list[dict] = [
         "category": "Logic",
         "icon": "fa-code-branch",
         "color": "#a78bfa",
-        "inputs": [{"name": "in", "label": "Input"}],
+        "inputs": [{"name": "in", "label": "Input", "description": "Value evaluated against the condition expression."}],
         "outputs": [
-            {"name": "true", "label": "True"},
-            {"name": "false", "label": "False"},
+            {"name": "true",  "label": "True",  "description": "Continues here when the condition evaluates to true."},
+            {"name": "false", "label": "False", "description": "Continues here when the condition evaluates to false."},
         ],
         "properties": [
             {
@@ -158,8 +158,8 @@ _NODE_TYPES: list[dict] = [
         "category": "Logic",
         "icon": "fa-hourglass-half",
         "color": "#a78bfa",
-        "inputs": [{"name": "in", "label": "Input"}],
-        "outputs": [{"name": "out", "label": "After Delay"}],
+        "inputs": [{"name": "in", "label": "Input", "description": "Value to pass through after the delay."}],
+        "outputs": [{"name": "out", "label": "After Delay", "description": "The input value, emitted after the configured delay."}],
         "properties": [
             {
                 "key": "duration",
@@ -175,10 +175,10 @@ _NODE_TYPES: list[dict] = [
         "category": "Logic",
         "icon": "fa-rotate",
         "color": "#a78bfa",
-        "inputs": [{"name": "in", "label": "Items"}],
+        "inputs": [{"name": "in", "label": "Items", "description": "List to iterate over — each element fires the 'Each Item' output."}],
         "outputs": [
-            {"name": "item", "label": "Each Item"},
-            {"name": "done", "label": "Done"},
+            {"name": "item", "label": "Each Item", "description": "Fires once per item in the list, carrying that item's value."},
+            {"name": "done", "label": "Done",      "description": "Fires once after all items have been processed."},
         ],
         "properties": [
             {
@@ -196,10 +196,10 @@ _NODE_TYPES: list[dict] = [
         "category": "Actions",
         "icon": "fa-globe",
         "color": "#34d399",
-        "inputs": [{"name": "in", "label": "Trigger"}],
+        "inputs": [{"name": "in", "label": "Trigger", "description": "Activates this node when a value arrives."}],
         "outputs": [
-            {"name": "out", "label": "Response"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Response", "description": "Response body — JSON parsed if content-type is application/json, otherwise raw text."},
+            {"name": "error", "label": "Error",    "description": "Error message if the request failed or returned a non-2xx status."},
         ],
         "properties": [
             {
@@ -237,10 +237,10 @@ _NODE_TYPES: list[dict] = [
         "category": "Actions",
         "icon": "fa-terminal",
         "color": "#34d399",
-        "inputs": [{"name": "in", "label": "Trigger"}],
+        "inputs": [{"name": "in", "label": "Trigger", "description": "Activates this node; the value is available as `input_data` in the script."}],
         "outputs": [
-            {"name": "out", "label": "Result"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Result", "description": "Value assigned to the `result` variable in the script."},
+            {"name": "error", "label": "Error",  "description": "Exception message if the script raised an error."},
         ],
         "properties": [
             {
@@ -257,8 +257,8 @@ _NODE_TYPES: list[dict] = [
         "category": "Actions",
         "icon": "fa-file-lines",
         "color": "#34d399",
-        "inputs": [{"name": "in", "label": "Input"}],
-        "outputs": [{"name": "out", "label": "Pass-through"}],
+        "inputs": [{"name": "in", "label": "Input", "description": "Value available as {{input}} in the message template."}],
+        "outputs": [{"name": "out", "label": "Pass-through", "description": "Passes the input value unchanged so the node can be chained."}],
         "properties": [
             {
                 "key": "message",
@@ -283,8 +283,8 @@ _NODE_TYPES: list[dict] = [
         "category": "Data",
         "icon": "fa-font",
         "color": "#fb923c",
-        "inputs": [{"name": "in", "label": "Input"}],
-        "outputs": [{"name": "out", "label": "Text"}],
+        "inputs": [{"name": "in", "label": "Input", "description": "Value accessible as {{input}} inside the template."}],
+        "outputs": [{"name": "out", "label": "Text", "description": "Rendered text after all {{placeholders}} have been substituted."}],
         "properties": [
             {
                 "key": "template",
@@ -301,10 +301,10 @@ _NODE_TYPES: list[dict] = [
         "category": "Data",
         "icon": "fa-code",
         "color": "#fb923c",
-        "inputs": [{"name": "in", "label": "JSON String"}],
+        "inputs": [{"name": "in", "label": "JSON String", "description": "Raw JSON text to parse into an object or array."}],
         "outputs": [
-            {"name": "out", "label": "Parsed"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Parsed", "description": "Resulting object or array after successful parsing."},
+            {"name": "error", "label": "Error",  "description": "Error message if the JSON string was invalid."},
         ],
         "properties": [],
     },
@@ -314,8 +314,8 @@ _NODE_TYPES: list[dict] = [
         "category": "Data",
         "icon": "fa-box",
         "color": "#fb923c",
-        "inputs": [{"name": "in", "label": "Value"}],
-        "outputs": [{"name": "out", "label": "Value"}],
+        "inputs": [{"name": "in", "label": "Value", "description": "Value to store under the configured variable name."}],
+        "outputs": [{"name": "out", "label": "Value", "description": "The value that was stored, passed through for chaining."}],
         "properties": [
             {
                 "key": "name",
@@ -334,7 +334,7 @@ _NODE_TYPES: list[dict] = [
         "color": "#a78bfa",
         "inputs": [],
         "outputs": [
-            {"name": "out",   "label": "Value"},
+            {"name": "out", "label": "Value", "description": "Current value of this variable (default value or runtime-updated)."},
         ],
         "properties": [
             {
@@ -383,10 +383,10 @@ _NODE_TYPES: list[dict] = [
         "category": "Data",
         "icon": "fa-filter",
         "color": "#fb923c",
-        "inputs": [{"name": "in", "label": "List"}],
+        "inputs": [{"name": "in", "label": "List", "description": "Array to filter — each element is evaluated against the expression."}],
         "outputs": [
-            {"name": "match", "label": "Matching"},
-            {"name": "rest", "label": "Rest"},
+            {"name": "match", "label": "Matching", "description": "Items where the filter expression returned true."},
+            {"name": "rest",  "label": "Rest",     "description": "Items that did not match the filter expression."},
         ],
         "properties": [
             {
@@ -441,7 +441,7 @@ _NODE_TYPES: list[dict] = [
         "category": "Outputs",
         "icon": "fa-eye",
         "color": "#e879f9",
-        "inputs": [{"name": "in", "label": "Data"}],
+        "inputs": [{"name": "in", "label": "Data", "description": "Value to display on the node card after the workflow runs."}],
         "outputs": [],
         "properties": [
             {
@@ -461,16 +461,16 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-brain",
         "color": "#4ade80",
         "inputs": [
-            {"name": "in",            "label": "Input Data"},
-            {"name": "model",         "label": "Model"},
-            {"name": "system_prompt", "label": "System Prompt"},
-            {"name": "prompt_prefix", "label": "Prefix"},
-            {"name": "prompt_suffix", "label": "Suffix"},
-            {"name": "temperature",   "label": "Temperature"},
+            {"name": "in",            "label": "Input Data",     "description": "Main content passed to the model as the user message."},
+            {"name": "model",         "label": "Model",          "description": "Overrides the configured model at runtime."},
+            {"name": "system_prompt", "label": "System Prompt",  "description": "Overrides the configured system prompt at runtime."},
+            {"name": "prompt_prefix", "label": "Prefix",         "description": "Text prepended to the input before sending to the model."},
+            {"name": "prompt_suffix", "label": "Suffix",         "description": "Text appended to the input before sending to the model."},
+            {"name": "temperature",   "label": "Temperature",    "description": "Overrides the configured temperature (creativity) at runtime."},
         ],
         "outputs": [
-            {"name": "out", "label": "Response"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Response", "description": "AI-generated text response."},
+            {"name": "error", "label": "Error",    "description": "Error message if the AI call failed."},
         ],
         "properties": [
             {
@@ -523,16 +523,16 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-robot",
         "color": "#60a5fa",
         "inputs": [
-            {"name": "in",            "label": "Input Data"},
-            {"name": "model",         "label": "Model"},
-            {"name": "system_prompt", "label": "System Prompt"},
-            {"name": "prompt_prefix", "label": "Prefix"},
-            {"name": "prompt_suffix", "label": "Suffix"},
-            {"name": "temperature",   "label": "Temperature"},
+            {"name": "in",            "label": "Input Data",    "description": "Main content passed to the model as the user message."},
+            {"name": "model",         "label": "Model",         "description": "Overrides the configured model at runtime."},
+            {"name": "system_prompt", "label": "System Prompt", "description": "Overrides the configured system prompt at runtime."},
+            {"name": "prompt_prefix", "label": "Prefix",        "description": "Text prepended to the input before sending to the model."},
+            {"name": "prompt_suffix", "label": "Suffix",        "description": "Text appended to the input before sending to the model."},
+            {"name": "temperature",   "label": "Temperature",   "description": "Overrides the configured temperature (creativity) at runtime."},
         ],
         "outputs": [
-            {"name": "out", "label": "Response"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Response", "description": "AI-generated text response."},
+            {"name": "error", "label": "Error",    "description": "Error message if the AI call failed."},
         ],
         "properties": [
             {
@@ -585,10 +585,10 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-compress-arrows-alt",
         "color": "#fb923c",
         "inputs": [
-            {"name": "a", "label": "Text A"},
-            {"name": "b", "label": "Text B"},
+            {"name": "a", "label": "Text A", "description": "First text to join."},
+            {"name": "b", "label": "Text B", "description": "Second text to join."},
         ],
-        "outputs": [{"name": "out", "label": "Combined"}],
+        "outputs": [{"name": "out", "label": "Combined", "description": "Result of joining Text A and Text B with the configured separator."}],
         "properties": [
             {
                 "key": "separator",
@@ -607,14 +607,14 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-file-code",
         "color": "#fb923c",
         "inputs": [
-            {"name": "in",    "label": "Data Object"},
-            {"name": "var_a", "label": "Variable A"},
-            {"name": "var_b", "label": "Variable B"},
-            {"name": "var_c", "label": "Variable C"},
+            {"name": "in",    "label": "Data Object", "description": "Object whose keys are available as {{key}} placeholders in the template."},
+            {"name": "var_a", "label": "Variable A",  "description": "Bound to {{var_a}} in the template."},
+            {"name": "var_b", "label": "Variable B",  "description": "Bound to {{var_b}} in the template."},
+            {"name": "var_c", "label": "Variable C",  "description": "Bound to {{var_c}} in the template."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Rendered Text"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Rendered Text", "description": "Final text after all {{placeholders}} have been substituted."},
+            {"name": "error", "label": "Error",         "description": "Error message if rendering failed."},
         ],
         "properties": [
             {
@@ -632,10 +632,10 @@ _NODE_TYPES: list[dict] = [
         "category": "Data",
         "icon": "fa-magnifying-glass",
         "color": "#fb923c",
-        "inputs": [{"name": "in", "label": "JSON Input"}],
+        "inputs": [{"name": "in", "label": "JSON Input", "description": "JSON string or object to extract a value from."}],
         "outputs": [
-            {"name": "out",   "label": "Value"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Value", "description": "Extracted value at the specified key path."},
+            {"name": "error", "label": "Error", "description": "Error message if the key was not found and no default was set."},
         ],
         "properties": [
             {
@@ -667,10 +667,10 @@ _NODE_TYPES: list[dict] = [
         "category": "Data",
         "icon": "fa-arrows-left-right",
         "color": "#fb923c",
-        "inputs": [{"name": "in", "label": "Input"}],
+        "inputs": [{"name": "in", "label": "Input", "description": "Value to convert to the selected type."}],
         "outputs": [
-            {"name": "out",   "label": "Converted"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Converted", "description": "The value cast to the configured target type."},
+            {"name": "error", "label": "Error",     "description": "Error message if the conversion was not possible."},
         ],
         "properties": [
             {
@@ -702,12 +702,12 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-database",
         "color": "#f59e0b",
         "inputs": [
-            {"name": "in",  "label": "Value"},
-            {"name": "key", "label": "Key Override"},
+            {"name": "in",  "label": "Value",       "description": "Data to persist in memory under the configured key."},
+            {"name": "key", "label": "Key Override", "description": "Overrides the configured storage key at runtime."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Pass-through"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Pass-through", "description": "The stored value, passed unchanged for chaining."},
+            {"name": "error", "label": "Error",        "description": "Error message if the memory write failed."},
         ],
         "properties": [
             {
@@ -740,9 +740,9 @@ _NODE_TYPES: list[dict] = [
         "color": "#f59e0b",
         "inputs": [],
         "outputs": [
-            {"name": "out",   "label": "Value"},
-            {"name": "found", "label": "Found"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Value", "description": "Data retrieved from memory, or the configured default if not found."},
+            {"name": "found", "label": "Found", "description": "True if the key existed in memory, false if the default was used."},
+            {"name": "error", "label": "Error", "description": "Error message if the memory read failed."},
         ],
         "properties": [
             {
@@ -775,13 +775,13 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-shield-halved",
         "color": "#a78bfa",
         "inputs": [
-            {"name": "in",       "label": "Input"},
-            {"name": "error_in", "label": "Error Input"},
+            {"name": "in",       "label": "Input",       "description": "Data to pass into the protected block."},
+            {"name": "error_in", "label": "Error Input", "description": "Wire an error output here to catch and re-route it."},
         ],
         "outputs": [
-            {"name": "try",    "label": "Try (success)"},
-            {"name": "catch",  "label": "Catch (error)"},
-            {"name": "always", "label": "Always"},
+            {"name": "try",    "label": "Try (success)", "description": "Continues here when no error occurred."},
+            {"name": "catch",  "label": "Catch (error)", "description": "Continues here when an error was caught, carrying the error message."},
+            {"name": "always", "label": "Always",        "description": "Always continues regardless of success or failure."},
         ],
         "properties": [
             {
@@ -799,13 +799,13 @@ _NODE_TYPES: list[dict] = [
         "category": "Logic",
         "icon": "fa-shuffle",
         "color": "#a78bfa",
-        "inputs": [{"name": "in", "label": "Input"}],
+        "inputs": [{"name": "in", "label": "Input", "description": "Value compared against each case to determine which branch fires."}],
         "outputs": [
-            {"name": "case_1",  "label": "Case 1"},
-            {"name": "case_2",  "label": "Case 2"},
-            {"name": "case_3",  "label": "Case 3"},
-            {"name": "case_4",  "label": "Case 4"},
-            {"name": "default", "label": "Default"},
+            {"name": "case_1",  "label": "Case 1",  "description": "Fires when the input matches the Case 1 value."},
+            {"name": "case_2",  "label": "Case 2",  "description": "Fires when the input matches the Case 2 value."},
+            {"name": "case_3",  "label": "Case 3",  "description": "Fires when the input matches the Case 3 value."},
+            {"name": "case_4",  "label": "Case 4",  "description": "Fires when the input matches the Case 4 value."},
+            {"name": "default", "label": "Default", "description": "Fires when the input does not match any configured case."},
         ],
         "properties": [
             {
@@ -834,14 +834,14 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-code-merge",
         "color": "#a78bfa",
         "inputs": [
-            {"name": "a", "label": "Branch A"},
-            {"name": "b", "label": "Branch B"},
-            {"name": "c", "label": "Branch C"},
-            {"name": "d", "label": "Branch D"},
+            {"name": "a", "label": "Branch A", "description": "Data flowing in from one branch."},
+            {"name": "b", "label": "Branch B", "description": "Data flowing in from one branch."},
+            {"name": "c", "label": "Branch C", "description": "Data flowing in from one branch."},
+            {"name": "d", "label": "Branch D", "description": "Data flowing in from one branch."},
         ],
         "outputs": [
-            {"name": "out",    "label": "Output"},
-            {"name": "source", "label": "Source Port"},
+            {"name": "out",    "label": "Output",      "description": "Value from whichever branch arrived (first, or all in 'all' mode)."},
+            {"name": "source", "label": "Source Port", "description": "Name of the input port that delivered the value (a, b, c, or d)."},
         ],
         "properties": [
             {
@@ -866,12 +866,12 @@ _NODE_TYPES: list[dict] = [
         "category": "Data",
         "icon": "fa-scissors",
         "color": "#fb923c",
-        "inputs": [{"name": "in", "label": "Text"}],
+        "inputs": [{"name": "in", "label": "Text", "description": "Text to split into parts."}],
         "outputs": [
-            {"name": "out",   "label": "All Parts"},
-            {"name": "first", "label": "First Part"},
-            {"name": "last",  "label": "Last Part"},
-            {"name": "count", "label": "Count"},
+            {"name": "out",   "label": "All Parts",  "description": "Array of all split segments."},
+            {"name": "first", "label": "First Part", "description": "First segment only."},
+            {"name": "last",  "label": "Last Part",  "description": "Last segment only."},
+            {"name": "count", "label": "Count",      "description": "Number of segments produced."},
         ],
         "properties": [
             {
@@ -914,14 +914,14 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-asterisk",
         "color": "#fb923c",
         "inputs": [
-            {"name": "in",      "label": "Text Input"},
-            {"name": "pattern", "label": "Pattern Override"},
+            {"name": "in",      "label": "Text Input",       "description": "Text to match, extract from, or apply replacements to."},
+            {"name": "pattern", "label": "Pattern Override", "description": "Regex pattern to use instead of the configured one."},
         ],
         "outputs": [
-            {"name": "out",     "label": "Result"},
-            {"name": "matches", "label": "All Matches"},
-            {"name": "matched", "label": "Did Match"},
-            {"name": "error",   "label": "Error"},
+            {"name": "out",     "label": "Result",      "description": "First match (extract mode) or replaced text (replace mode)."},
+            {"name": "matches", "label": "All Matches", "description": "Array of all matches found (when 'Return All Matches' is on)."},
+            {"name": "matched", "label": "Did Match",   "description": "True if at least one match was found, false otherwise."},
+            {"name": "error",   "label": "Error",       "description": "Error message if the regex pattern was invalid."},
         ],
         "properties": [
             {
@@ -968,14 +968,14 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-file-arrow-up",
         "color": "#34d399",
         "inputs": [
-            {"name": "in",   "label": "Trigger"},
-            {"name": "path", "label": "File Path"},
+            {"name": "in",   "label": "Trigger",   "description": "Activates this node when a value arrives."},
+            {"name": "path", "label": "File Path", "description": "Overrides the configured file path at runtime."},
         ],
         "outputs": [
-            {"name": "out",   "label": "File Content"},
-            {"name": "path",  "label": "Resolved Path"},
-            {"name": "size",  "label": "File Size"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "File Content",  "description": "Full text content of the file."},
+            {"name": "path",  "label": "Resolved Path", "description": "Absolute path of the file that was read."},
+            {"name": "size",  "label": "File Size",     "description": "File size in bytes."},
+            {"name": "error", "label": "Error",         "description": "Error message if the file could not be read."},
         ],
         "properties": [
             {
@@ -1014,13 +1014,13 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-file-arrow-down",
         "color": "#34d399",
         "inputs": [
-            {"name": "in",   "label": "Content"},
-            {"name": "path", "label": "File Path Override"},
+            {"name": "in",   "label": "Content",          "description": "Text content to write to the file."},
+            {"name": "path", "label": "File Path Override", "description": "Overrides the configured file path at runtime."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Pass-through"},
-            {"name": "path",  "label": "Written Path"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Pass-through", "description": "The content that was written, passed unchanged for chaining."},
+            {"name": "path",  "label": "Written Path", "description": "Absolute path of the file that was written."},
+            {"name": "error", "label": "Error",        "description": "Error message if the file could not be written."},
         ],
         "properties": [
             {
@@ -1066,13 +1066,13 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-bell",
         "color": "#34d399",
         "inputs": [
-            {"name": "in",      "label": "Input"},
-            {"name": "title",   "label": "Title Override"},
-            {"name": "message", "label": "Message Override"},
+            {"name": "in",      "label": "Value (pass-through)", "description": "Passed through to the output unchanged. Use {{input}} in the Message to embed this value in the notification."},
+            {"name": "title",   "label": "Title Override",       "description": "Overrides the configured notification title at runtime."},
+            {"name": "message", "label": "Message Override",     "description": "Overrides the configured message at runtime."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Pass-through"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Pass-through", "description": "The input value, passed unchanged so this node can be chained."},
+            {"name": "error", "label": "Error",        "description": "Error message if the notification could not be sent."},
         ],
         "properties": [
             {
@@ -1086,7 +1086,7 @@ _NODE_TYPES: list[dict] = [
                 "label": "Message",
                 "type": "textarea",
                 "default": "Workflow completed.",
-                "placeholder": "Use {{input}} to include the input value.",
+                "placeholder": "Use {{input}} to embed the wired-in value.",
             },
             {
                 "key": "sound",
@@ -1105,10 +1105,10 @@ _NODE_TYPES: list[dict] = [
         "color": "#94a3b8",
         "inputs": [],
         "outputs": [
-            {"name": "out",  "label": "File Content"},
-            {"name": "path", "label": "File Path"},
-            {"name": "name", "label": "File Name"},
-            {"name": "size", "label": "File Size"},
+            {"name": "out",  "label": "File Content", "description": "Text content read from the file."},
+            {"name": "path", "label": "File Path",    "description": "Full absolute path to the file."},
+            {"name": "name", "label": "File Name",    "description": "Filename portion only (e.g. report.txt)."},
+            {"name": "size", "label": "File Size",    "description": "File size in bytes."},
         ],
         "properties": [
             {
@@ -1142,9 +1142,9 @@ _NODE_TYPES: list[dict] = [
         "color": "#94a3b8",
         "inputs": [],
         "outputs": [
-            {"name": "out",   "label": "List"},
-            {"name": "count", "label": "Count"},
-            {"name": "first", "label": "First"},
+            {"name": "out",   "label": "List",  "description": "The items as an array."},
+            {"name": "count", "label": "Count", "description": "Number of items in the list."},
+            {"name": "first", "label": "First", "description": "First item in the list only."},
         ],
         "properties": [
             {
@@ -1175,7 +1175,7 @@ _NODE_TYPES: list[dict] = [
         "category": "Outputs",
         "icon": "fa-file-export",
         "color": "#e879f9",
-        "inputs": [{"name": "in", "label": "Data"}],
+        "inputs": [{"name": "in", "label": "Data", "description": "Content to write to the output file."}],
         "outputs": [],
         "properties": [
             {
@@ -1221,7 +1221,7 @@ _NODE_TYPES: list[dict] = [
         "category": "Outputs",
         "icon": "fa-clipboard-check",
         "color": "#e879f9",
-        "inputs": [{"name": "in", "label": "Data"}],
+        "inputs": [{"name": "in", "label": "Data", "description": "Content to copy to the clipboard."}],
         "outputs": [],
         "properties": [
             {
@@ -1246,10 +1246,10 @@ _NODE_TYPES: list[dict] = [
         "category": "Actions",
         "icon": "fa-clipboard",
         "color": "#34d399",
-        "inputs": [{"name": "in", "label": "Text to Copy"}],
+        "inputs": [{"name": "in", "label": "Text to Copy", "description": "Text to write to the clipboard (only used in 'write' mode)."}],
         "outputs": [
-            {"name": "out",   "label": "Clipboard Content"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Clipboard Content", "description": "Current clipboard text, populated when mode is read or read_then_clear."},
+            {"name": "error", "label": "Error",             "description": "Error message if the clipboard operation failed."},
         ],
         "properties": [
             {
@@ -1269,14 +1269,14 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-object-group",
         "color": "#fb923c",
         "inputs": [
-            {"name": "a", "label": "Object A"},
-            {"name": "b", "label": "Object B"},
-            {"name": "c", "label": "Object C"},
-            {"name": "d", "label": "Object D"},
+            {"name": "a", "label": "Object A", "description": "Object to include in the merge."},
+            {"name": "b", "label": "Object B", "description": "Object to include in the merge."},
+            {"name": "c", "label": "Object C", "description": "Object to include in the merge."},
+            {"name": "d", "label": "Object D", "description": "Object to include in the merge."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Merged Object"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Merged Object", "description": "Combined result of all wired input objects."},
+            {"name": "error", "label": "Error",         "description": "Error message if merging failed (e.g. non-object input)."},
         ],
         "properties": [
             {
@@ -1302,13 +1302,13 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-list-ol",
         "color": "#fb923c",
         "inputs": [
-            {"name": "in",    "label": "List"},
-            {"name": "index", "label": "Index Override"},
+            {"name": "in",    "label": "List",          "description": "Array to extract an item from."},
+            {"name": "index", "label": "Index Override", "description": "Zero-based index to use, overriding the configured value."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Item"},
-            {"name": "count", "label": "Count"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Item",  "description": "Item at the specified index (or slice if Slice End is set)."},
+            {"name": "count", "label": "Count", "description": "Total number of items in the input list."},
+            {"name": "error", "label": "Error", "description": "Error message if the index was out of range."},
         ],
         "properties": [
             {
@@ -1333,13 +1333,13 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-compress",
         "color": "#4ade80",
         "inputs": [
-            {"name": "in",     "label": "Text to Summarize"},
-            {"name": "model",  "label": "Model Override"},
-            {"name": "length", "label": "Length Override"},
+            {"name": "in",     "label": "Text to Summarize", "description": "Long-form content to condense into a summary."},
+            {"name": "model",  "label": "Model Override",    "description": "Overrides the configured model at runtime."},
+            {"name": "length", "label": "Length Override",   "description": "One of: short, medium, long — overrides the configured length."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Summary"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Summary", "description": "AI-generated summary of the input text."},
+            {"name": "error", "label": "Error",   "description": "Error message if the AI call failed."},
         ],
         "properties": [
             {
@@ -1386,15 +1386,15 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-tags",
         "color": "#4ade80",
         "inputs": [
-            {"name": "in",     "label": "Text to Classify"},
-            {"name": "model",  "label": "Model Override"},
-            {"name": "labels", "label": "Labels Override"},
+            {"name": "in",     "label": "Text to Classify", "description": "Text to be assigned to one of the configured labels."},
+            {"name": "model",  "label": "Model Override",   "description": "Overrides the configured model at runtime."},
+            {"name": "labels", "label": "Labels Override",  "description": "Comma-separated list of categories, overriding the configured setting."},
         ],
         "outputs": [
-            {"name": "label",     "label": "Matched Label"},
-            {"name": "reasoning", "label": "Reasoning"},
-            {"name": "all",       "label": "All Results"},
-            {"name": "error",     "label": "Error"},
+            {"name": "label",     "label": "Matched Label", "description": "Category the text was assigned to."},
+            {"name": "reasoning", "label": "Reasoning",     "description": "Explanation of why this label was chosen."},
+            {"name": "all",       "label": "All Results",   "description": "Ranked list of all labels with confidence scores."},
+            {"name": "error",     "label": "Error",         "description": "Error message if the AI call failed."},
         ],
         "properties": [
             {
@@ -1434,13 +1434,13 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-wand-magic-sparkles",
         "color": "#4ade80",
         "inputs": [
-            {"name": "in",     "label": "Text to Extract From"},
-            {"name": "model",  "label": "Model Override"},
-            {"name": "schema", "label": "Schema Override"},
+            {"name": "in",     "label": "Text to Extract From", "description": "Source text to extract structured data from."},
+            {"name": "model",  "label": "Model Override",       "description": "Overrides the configured model at runtime."},
+            {"name": "schema", "label": "Schema Override",      "description": "JSON schema overriding the configured fields to extract."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Extracted JSON"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Extracted JSON", "description": "Structured object with the extracted fields as key-value pairs."},
+            {"name": "error", "label": "Error",          "description": "Error message if the AI call or extraction failed."},
         ],
         "properties": [
             {
@@ -1489,10 +1489,10 @@ _NODE_TYPES: list[dict] = [
         "color": "#22d3ee",
         "inputs": [],
         "outputs": [
-            {"name": "trigger",    "label": "Trigger"},
-            {"name": "event_type", "label": "Event Type"},
-            {"name": "source",     "label": "Source"},
-            {"name": "data",       "label": "Event Data"},
+            {"name": "trigger",    "label": "Trigger",    "description": "Fires when the configured app event occurs."},
+            {"name": "event_type", "label": "Event Type", "description": "Type identifier of the event that fired (e.g. companion.message)."},
+            {"name": "source",     "label": "Source",     "description": "Component that emitted the event."},
+            {"name": "data",       "label": "Event Data", "description": "Payload data attached to the event."},
         ],
         "properties": [
             {"key": "name", "label": "Name", "type": "text", "default": "", "placeholder": "e.g. On Message"},
@@ -1522,9 +1522,9 @@ _NODE_TYPES: list[dict] = [
         "color": "#22d3ee",
         "inputs": [],
         "outputs": [
-            {"name": "trigger", "label": "Trigger"},
-            {"name": "path",    "label": "Changed Path"},
-            {"name": "event",   "label": "Event Type"},
+            {"name": "trigger", "label": "Trigger",      "description": "Fires when a file system change is detected."},
+            {"name": "path",    "label": "Changed Path", "description": "Full path of the file or folder that changed."},
+            {"name": "event",   "label": "Event Type",   "description": "One of: created, modified, deleted."},
         ],
         "properties": [
             {"key": "name", "label": "Name", "type": "text", "default": "", "placeholder": "e.g. Watch Folder"},
@@ -1565,10 +1565,10 @@ _NODE_TYPES: list[dict] = [
         "category": "Logic",
         "icon": "fa-repeat",
         "color": "#a78bfa",
-        "inputs": [{"name": "in", "label": "Input"}],
+        "inputs": [{"name": "in", "label": "Input", "description": "Value to repeat N times into a list."}],
         "outputs": [
-            {"name": "out",   "label": "Repeated List"},
-            {"name": "count", "label": "Count"},
+            {"name": "out",   "label": "Repeated List", "description": "Array containing the input value repeated N times."},
+            {"name": "count", "label": "Count",         "description": "Number of repetitions (same as the configured count)."},
         ],
         "properties": [
             {
@@ -1586,12 +1586,12 @@ _NODE_TYPES: list[dict] = [
         "category": "Data",
         "icon": "fa-table",
         "color": "#fb923c",
-        "inputs": [{"name": "in", "label": "CSV Text"}],
+        "inputs": [{"name": "in", "label": "CSV Text", "description": "Raw CSV text to parse into structured data."}],
         "outputs": [
-            {"name": "out",     "label": "Parsed Data"},
-            {"name": "rows",    "label": "Row Count"},
-            {"name": "headers", "label": "Headers"},
-            {"name": "error",   "label": "Error"},
+            {"name": "out",     "label": "Parsed Data", "description": "Array of row objects (or arrays) parsed from the CSV."},
+            {"name": "rows",    "label": "Row Count",   "description": "Number of data rows (excluding the header if present)."},
+            {"name": "headers", "label": "Headers",     "description": "Array of column header names from the first row."},
+            {"name": "error",   "label": "Error",       "description": "Error message if the CSV could not be parsed."},
         ],
         "properties": [
             {
@@ -1630,14 +1630,14 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-square-terminal",
         "color": "#34d399",
         "inputs": [
-            {"name": "in",  "label": "Trigger"},
-            {"name": "cmd", "label": "Command Override"},
+            {"name": "in",  "label": "Trigger",          "description": "Activates this node when a value arrives."},
+            {"name": "cmd", "label": "Command Override", "description": "Overrides the configured command at runtime."},
         ],
         "outputs": [
-            {"name": "out",       "label": "stdout"},
-            {"name": "stderr",    "label": "stderr"},
-            {"name": "exit_code", "label": "Exit Code"},
-            {"name": "error",     "label": "Error"},
+            {"name": "out",       "label": "stdout",    "description": "Standard output captured from the process."},
+            {"name": "stderr",    "label": "stderr",    "description": "Standard error output from the process."},
+            {"name": "exit_code", "label": "Exit Code", "description": "Process exit code — 0 means success."},
+            {"name": "error",     "label": "Error",     "description": "Error message if the process could not be started."},
         ],
         "properties": [
             {
@@ -1676,12 +1676,12 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-folder-tree",
         "color": "#34d399",
         "inputs": [
-            {"name": "path", "label": "Folder Path Override"},
+            {"name": "path", "label": "Folder Path Override", "description": "Overrides the configured folder path at runtime."},
         ],
         "outputs": [
-            {"name": "out",   "label": "File List"},
-            {"name": "count", "label": "Count"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "File List", "description": "Array of file paths matching the configured pattern."},
+            {"name": "count", "label": "Count",     "description": "Number of files found."},
+            {"name": "error", "label": "Error",     "description": "Error message if the folder could not be read."},
         ],
         "properties": [
             {
@@ -1734,12 +1734,12 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-spider",
         "color": "#34d399",
         "inputs": [
-            {"name": "url", "label": "URL Override"},
+            {"name": "url", "label": "URL Override", "description": "Overrides the configured URL at runtime."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Content"},
-            {"name": "title", "label": "Page Title"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Content",    "description": "Page content as text, Markdown, or HTML depending on the mode setting."},
+            {"name": "title", "label": "Page Title", "description": "The <title> element value from the page."},
+            {"name": "error", "label": "Error",      "description": "Error message if the page could not be fetched."},
         ],
         "properties": [
             {
@@ -1778,13 +1778,13 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-comments",
         "color": "#f472b6",
         "inputs": [
-            {"name": "in",     "label": "Prompt"},
-            {"name": "model",  "label": "Model Override"},
-            {"name": "system", "label": "System Prompt Override"},
+            {"name": "in",     "label": "Prompt",                "description": "Message or question sent to the companion."},
+            {"name": "model",  "label": "Model Override",         "description": "Overrides the companion's default model for this call."},
+            {"name": "system", "label": "System Prompt Override", "description": "Overrides the companion's built-in persona for this call."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Response"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Response", "description": "The companion's text reply."},
+            {"name": "error", "label": "Error",    "description": "Error message if the companion call failed."},
         ],
         "properties": [
             {
@@ -1830,13 +1830,13 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-discord",
         "color": "#818cf8",
         "inputs": [
-            {"name": "in",      "label": "Message"},
-            {"name": "title",   "label": "Embed Title"},
-            {"name": "webhook", "label": "Webhook URL Override"},
+            {"name": "in",      "label": "Message",             "description": "Text body of the Discord message or embed description."},
+            {"name": "title",   "label": "Embed Title",         "description": "Overrides the configured embed title at runtime."},
+            {"name": "webhook", "label": "Webhook URL Override", "description": "Overrides the configured webhook URL at runtime."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Pass-through"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Pass-through", "description": "The message that was sent, passed unchanged for chaining."},
+            {"name": "error", "label": "Error",        "description": "Error message if sending to Discord failed."},
         ],
         "properties": [
             {
@@ -1880,13 +1880,13 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-slack",
         "color": "#818cf8",
         "inputs": [
-            {"name": "in",      "label": "Message"},
-            {"name": "title",   "label": "Header Title"},
-            {"name": "webhook", "label": "Webhook URL Override"},
+            {"name": "in",      "label": "Message",             "description": "Text to post in the Slack channel."},
+            {"name": "title",   "label": "Header Title",        "description": "Overrides the configured header title at runtime."},
+            {"name": "webhook", "label": "Webhook URL Override", "description": "Overrides the configured webhook URL at runtime."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Pass-through"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Pass-through", "description": "The message that was sent, passed unchanged for chaining."},
+            {"name": "error", "label": "Error",        "description": "Error message if sending to Slack failed."},
         ],
         "properties": [
             {
@@ -1919,14 +1919,14 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-camera",
         "color": "#34d399",
         "inputs": [
-            {"name": "path", "label": "Save Path Override"},
+            {"name": "path", "label": "Save Path Override", "description": "Overrides the configured save path at runtime."},
         ],
         "outputs": [
-            {"name": "out",    "label": "File Path"},
-            {"name": "image",  "label": "Image Preview"},
-            {"name": "width",  "label": "Width"},
-            {"name": "height", "label": "Height"},
-            {"name": "error",  "label": "Error"},
+            {"name": "out",    "label": "File Path",     "description": "Path where the screenshot was saved."},
+            {"name": "image",  "label": "Image Preview", "description": "Data URI of the screenshot — wire to Analyze Image for AI vision."},
+            {"name": "width",  "label": "Width",         "description": "Screenshot width in pixels."},
+            {"name": "height", "label": "Height",        "description": "Screenshot height in pixels."},
+            {"name": "error",  "label": "Error",         "description": "Error message if the screenshot failed."},
         ],
         "properties": [
             {
@@ -1952,14 +1952,14 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-video",
         "color": "#34d399",
         "inputs": [
-            {"name": "path", "label": "Save Path Override"},
+            {"name": "path", "label": "Save Path Override", "description": "Overrides the configured save path at runtime."},
         ],
         "outputs": [
-            {"name": "out",    "label": "File Path"},
-            {"name": "image",  "label": "Image Preview"},
-            {"name": "width",  "label": "Width"},
-            {"name": "height", "label": "Height"},
-            {"name": "error",  "label": "Error"},
+            {"name": "out",    "label": "File Path",     "description": "Path where the captured image was saved."},
+            {"name": "image",  "label": "Image Preview", "description": "Data URI of the captured image — wire to Analyze Image for AI vision."},
+            {"name": "width",  "label": "Width",         "description": "Captured image width in pixels."},
+            {"name": "height", "label": "Height",        "description": "Captured image height in pixels."},
+            {"name": "error",  "label": "Error",         "description": "Error message if the camera capture failed."},
         ],
         "properties": [
             {
@@ -1997,11 +1997,11 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-glasses",
         "color": "#34d399",
         "inputs": [
-            {"name": "image", "label": "Image (path or data URI)"},
+            {"name": "image", "label": "Image (path or data URI)", "description": "Image file path or a data URI — e.g. from a Screenshot or Camera Capture node."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Extracted Text"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Extracted Text", "description": "All text recognized in the image."},
+            {"name": "error", "label": "Error",          "description": "Error message if OCR failed."},
         ],
         "properties": [
             {
@@ -2035,13 +2035,13 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-microchip-ai",
         "color": "#34d399",
         "inputs": [
-            {"name": "in",    "label": "Goal / Prompt"},
-            {"name": "model", "label": "Model Override"},
+            {"name": "in",    "label": "Goal / Prompt",  "description": "Task description sent to the autonomous agent."},
+            {"name": "model", "label": "Model Override", "description": "Overrides the configured model at runtime."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Agent Output"},
-            {"name": "agent", "label": "Agent Name"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Agent Output", "description": "Final result produced by the agent."},
+            {"name": "agent", "label": "Agent Name",   "description": "Name of the agent that was selected to run the task."},
+            {"name": "error", "label": "Error",        "description": "Error message if the agent failed."},
         ],
         "properties": [
             {
@@ -2108,13 +2108,13 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-image",
         "color": "#4ade80",
         "inputs": [
-            {"name": "in",    "label": "Question / Prompt"},
-            {"name": "image", "label": "Image Path or Data URI"},
-            {"name": "model", "label": "Model Override"},
+            {"name": "in",    "label": "Question / Prompt",    "description": "Question to ask about the image."},
+            {"name": "image", "label": "Image Path or Data URI", "description": "Wire from a Screenshot or Camera Capture node, or provide a file path."},
+            {"name": "model", "label": "Model Override",        "description": "Overrides the configured model at runtime."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Analysis"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Analysis", "description": "AI-generated description or answer about the image."},
+            {"name": "error", "label": "Error",    "description": "Error message if the image analysis failed."},
         ],
         "properties": [
             {
@@ -2166,14 +2166,14 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-palette",
         "color": "#4ade80",
         "inputs": [
-            {"name": "in",   "label": "Prompt"},
-            {"name": "path", "label": "Save Path Override"},
+            {"name": "in",   "label": "Prompt",            "description": "Text description of the image to generate."},
+            {"name": "path", "label": "Save Path Override", "description": "Overrides the configured save path at runtime."},
         ],
         "outputs": [
-            {"name": "out",   "label": "Saved File Path"},
-            {"name": "path",  "label": "Saved File Path"},
-            {"name": "count", "label": "Images Generated"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Saved File Path",    "description": "Path where the generated image was saved."},
+            {"name": "path",  "label": "Saved File Path",    "description": "Alias of the 'out' port — same path value."},
+            {"name": "count", "label": "Images Generated",   "description": "Number of images created."},
+            {"name": "error", "label": "Error",              "description": "Error message if image generation failed."},
         ],
         "properties": [
             {
@@ -2207,14 +2207,14 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-volume-high",
         "color": "#4ade80",
         "inputs": [
-            {"name": "in",   "label": "Text"},
-            {"name": "path", "label": "Save Path Override"},
+            {"name": "in",   "label": "Text",             "description": "Text to convert to spoken audio."},
+            {"name": "path", "label": "Save Path Override", "description": "Overrides the configured save path at runtime."},
         ],
         "outputs": [
-            {"name": "out",         "label": "Audio File Path"},
-            {"name": "path",        "label": "Audio File Path"},
-            {"name": "duration_ms", "label": "Duration (ms)"},
-            {"name": "error",       "label": "Error"},
+            {"name": "out",         "label": "Audio File Path", "description": "Path to the generated audio file."},
+            {"name": "path",        "label": "Audio File Path", "description": "Alias of the 'out' port — same path value."},
+            {"name": "duration_ms", "label": "Duration (ms)",  "description": "Length of the generated audio in milliseconds."},
+            {"name": "error",       "label": "Error",          "description": "Error message if speech synthesis failed."},
         ],
         "properties": [
             {
@@ -2268,12 +2268,12 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-microphone",
         "color": "#4ade80",
         "inputs": [
-            {"name": "path", "label": "Audio File Path Override"},
+            {"name": "path", "label": "Audio File Path Override", "description": "Overrides the configured audio file path at runtime."},
         ],
         "outputs": [
-            {"name": "out",      "label": "Transcription"},
-            {"name": "language", "label": "Detected Language"},
-            {"name": "error",    "label": "Error"},
+            {"name": "out",      "label": "Transcription",     "description": "Full transcribed text from the audio."},
+            {"name": "language", "label": "Detected Language", "description": "Language code detected in the audio (e.g. en, nl)."},
+            {"name": "error",    "label": "Error",             "description": "Error message if transcription failed."},
         ],
         "properties": [
             {
@@ -2314,11 +2314,11 @@ _NODE_TYPES: list[dict] = [
         "category": "Memory",
         "icon": "fa-magnifying-glass-chart",
         "color": "#f59e0b",
-        "inputs": [{"name": "in", "label": "Search Query"}],
+        "inputs": [{"name": "in", "label": "Search Query", "description": "Natural-language query to find relevant content in memory."}],
         "outputs": [
-            {"name": "out",   "label": "Results (JSON)"},
-            {"name": "count", "label": "Result Count"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Results (JSON)", "description": "Array of matching memory entries with content and relevance score."},
+            {"name": "count", "label": "Result Count",  "description": "Number of results returned."},
+            {"name": "error", "label": "Error",         "description": "Error message if the search failed."},
         ],
         "properties": [
             {
@@ -2349,12 +2349,12 @@ _NODE_TYPES: list[dict] = [
         "category": "Integrations",
         "icon": "fa-database",
         "color": "#818cf8",
-        "inputs": [{"name": "in", "label": "Search Query"}],
+        "inputs": [{"name": "in", "label": "Search Query", "description": "Natural-language query to search the AethvionDB database."}],
         "outputs": [
-            {"name": "out",   "label": "Results (JSON)"},
-            {"name": "count", "label": "Result Count"},
-            {"name": "speed", "label": "Speed"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Results (JSON)", "description": "Array of matching entities with scores and metadata."},
+            {"name": "count", "label": "Result Count",  "description": "Number of results returned."},
+            {"name": "speed", "label": "Speed",         "description": "Search execution time in milliseconds."},
+            {"name": "error", "label": "Error",         "description": "Error message if the search failed."},
         ],
         "properties": [
             {
@@ -2390,12 +2390,12 @@ _NODE_TYPES: list[dict] = [
         "category": "Integrations",
         "icon": "fa-database",
         "color": "#a78bfa",
-        "inputs": [{"name": "in", "label": "Search Query"}],
+        "inputs": [{"name": "in", "label": "Search Query", "description": "Natural-language query to search within the snapshot."}],
         "outputs": [
-            {"name": "out",   "label": "Results (JSON)"},
-            {"name": "count", "label": "Result Count"},
-            {"name": "speed", "label": "Speed"},
-            {"name": "error", "label": "Error"},
+            {"name": "out",   "label": "Results (JSON)", "description": "Array of matching entities from the snapshot with scores."},
+            {"name": "count", "label": "Result Count",  "description": "Number of results returned."},
+            {"name": "speed", "label": "Speed",         "description": "Search execution time in milliseconds."},
+            {"name": "error", "label": "Error",         "description": "Error message if the search failed."},
         ],
         "properties": [
             {

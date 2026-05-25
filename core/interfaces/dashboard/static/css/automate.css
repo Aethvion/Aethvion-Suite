@@ -17,6 +17,49 @@
     user-select: none;
 }
 
+/* ── Port tooltip ────────────────────────────────────────────────────────── */
+
+.at-port-tooltip {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    display: none;
+    background: #161b27;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 8px;
+    padding: 0.5rem 0.7rem 0.52rem;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.55);
+    max-width: 220px;
+    min-width: 100px;
+}
+
+.at-port-tooltip.at-pt-visible { display: block; }
+
+.at-pt-dir {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.18rem;
+}
+
+.at-pt-dir.at-pt-input  { color: #60a5fa; }
+.at-pt-dir.at-pt-output { color: #34d399; }
+
+.at-pt-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    line-height: 1.25;
+}
+
+.at-pt-desc {
+    font-size: 0.72rem;
+    color: #64748b;
+    line-height: 1.45;
+    margin-top: 0.22rem;
+}
+
 /* ── Toolbar ────────────────────────────────────────────────────────────── */
 
 .at-toolbar {

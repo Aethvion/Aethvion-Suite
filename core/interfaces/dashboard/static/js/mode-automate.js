@@ -125,6 +125,11 @@
             inspectorNone:  _$('at-inspector-none'),
             inspectorClose:      _$('at-inspector-close'),
             toast:          _$('at-toast'),
+            // Port tooltip
+            portTooltip:    _$('at-port-tooltip'),
+            ptDir:          _$('at-pt-dir'),
+            ptLabel:        _$('at-pt-label'),
+            ptDesc:         _$('at-pt-desc'),
             // Examples modal
             btnExamples:        _$('at-btn-examples'),
             examplesOverlay:    _$('at-examples-overlay'),
@@ -2696,6 +2701,72 @@
     }
 
     // ════════════════════════════════════════════════════════════════════════
+    //  Port tooltip
+    // ════════════════════════════════════════════════════════════════════════
+
+    function _showPortTooltip(portRow, mx, my) {
+        if (!_e.portTooltip || !_active) return;
+
+        var nodeId   = portRow.dataset.nodeId;
+        var portName = portRow.dataset.port;
+        var portDir  = portRow.dataset.portType; // 'input' | 'output'
+        if (!nodeId || !portName || !portDir) return;
+
+        var nd = _active.nodes.find(function (n) { return n.id === nodeId; });
+        if (!nd) return;
+        var td = _typeDef(nd.type);
+
+        var portList = portDir === 'input' ? (td.inputs || []) : (td.outputs || []);
+        var portDef  = portList.find(function (p) { return p.name === portName; });
+        if (!portDef) return;
+
+        // Direction badge
+        _e.ptDir.textContent = portDir === 'input' ? 'Input' : 'Output';
+        _e.ptDir.className   = 'at-pt-dir ' + (portDir === 'input' ? 'at-pt-input' : 'at-pt-output');
+
+        // Label
+        _e.ptLabel.textContent = portDef.label || portName;
+
+        // Description (optional)
+        if (portDef.description) {
+            _e.ptDesc.textContent  = portDef.description;
+            _e.ptDesc.style.display = '';
+        } else {
+            _e.ptDesc.style.display = 'none';
+        }
+
+        _e.portTooltip.classList.add('at-pt-visible');
+        _positionPortTooltip(mx, my);
+    }
+
+    function _positionPortTooltip(mx, my) {
+        if (!_e.portTooltip) return;
+        var rect = _e.portTooltip.getBoundingClientRect();
+        var w = rect.width  || 200;
+        var h = rect.height || 60;
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+
+        // Default: right of and above the cursor
+        var x = mx + 16;
+        var y = my - h - 10;
+
+        // Flip left if too close to right edge
+        if (x + w > vw - 12) x = mx - w - 16;
+        // Flip below if too close to top edge
+        if (y < 8) y = my + 16;
+        // Clamp to bottom
+        if (y + h > vh - 8) y = vh - h - 8;
+
+        _e.portTooltip.style.left = x + 'px';
+        _e.portTooltip.style.top  = y + 'px';
+    }
+
+    function _hidePortTooltip() {
+        if (_e.portTooltip) _e.portTooltip.classList.remove('at-pt-visible');
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
     //  Event wiring
     // ════════════════════════════════════════════════════════════════════════
 
@@ -2859,6 +2930,17 @@
                 c.classList.remove('at-result-linked');
             });
         });
+
+        // ── Port tooltips ──────────────────────────────────────────────────
+        _e.canvasInner.addEventListener('mousemove', function (e) {
+            var portRow = e.target.closest('.at-port-row');
+            if (portRow) {
+                _showPortTooltip(portRow, e.clientX, e.clientY);
+            } else {
+                _hidePortTooltip();
+            }
+        });
+        _e.canvasInner.addEventListener('mouseleave', _hidePortTooltip);
 
         // ── Canvas-inner click delegation ──────────────────────────────────
         _e.canvasInner.addEventListener('click', function (e) {
