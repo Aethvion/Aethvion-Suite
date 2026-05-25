@@ -159,8 +159,8 @@ _NODE_TYPES: list[dict] = [
         "category": "Logic",
         "icon": "fa-hourglass-half",
         "color": "#a78bfa",
-        "inputs": [{"name": "in", "label": "Input", "description": "Value to pass through after the delay."}],
-        "outputs": [{"name": "out", "label": "After Delay", "description": "The input value, emitted after the configured delay."}],
+        "inputs": [{"name": "in", "label": "Input", "description": "Activates this node; the value is forwarded to the Trigger output after the delay."}],
+        "outputs": [{"name": "trigger", "label": "Trigger", "description": "Fires after the configured delay, carrying the input value."}],
         "properties": [
             {
                 "key": "duration",

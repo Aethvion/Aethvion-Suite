@@ -30,7 +30,7 @@ def logic_delay(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p  = node.get("properties", {})
     ms = float(p.get("duration", 1000))
     time.sleep(min(ms / 1000.0, 10.0))   # cap at 10 s to prevent runaway waits
-    return {"out": inputs.get("in", "")}
+    return {"trigger": inputs.get("in", "")}
 
 
 def logic_loop(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
