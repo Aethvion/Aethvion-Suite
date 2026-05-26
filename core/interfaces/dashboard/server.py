@@ -194,6 +194,9 @@ ASSETS_DIR = PROJECT_ROOT / "assets"
 # Mount static files
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
+INTERACTIVEDOCS_DIR = PROJECT_ROOT / "core" / "documentation" / "interactivedocs"
+INTERACTIVEDOCS_DIR.mkdir(exist_ok=True)
+app.mount("/interactivedocs", StaticFiles(directory=str(INTERACTIVEDOCS_DIR), html=True), name="interactivedocs")
 
 @app.get("/", response_class=HTMLResponse)
 async def root():

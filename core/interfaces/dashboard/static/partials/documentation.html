@@ -1,9 +1,29 @@
-<div class="panel-header borderless">
-                    <h2 class="status-header-title">Repository Documentation</h2>
-                    <div class="status-meta">
-                        <span class="meta-primary">Aggregated Markdown Docs</span>
-                    </div>
-                </div>
-                <div class="status-container scrollable" id="documentation-container">
-                    <div class="loading-placeholder">Scanning repository for .md files...</div>
-                </div>
+<div class="panel-header borderless" style="padding-bottom: 0;">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <div>
+            <h2 class="status-header-title">Documentation</h2>
+            <div class="status-meta">
+                <span class="meta-primary" id="doc-view-meta">Aggregated Markdown Docs</span>
+            </div>
+        </div>
+        <div id="doc-view-toggle" style="display:flex; gap:6px; flex-shrink:0;">
+            <button id="btn-repo-docs" class="doc-toggle-btn active" onclick="switchDocView('repo')">
+                <i class="far fa-file-alt"></i> Repository Docs
+            </button>
+            <button id="btn-interactive-docs" class="doc-toggle-btn" onclick="switchDocView('interactive')">
+                <i class="fas fa-book-open"></i> Interactive Docs
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="status-container scrollable" id="documentation-container">
+    <div class="loading-placeholder">Scanning repository for .md files...</div>
+</div>
+
+<iframe
+    id="interactive-docs-frame"
+    src="/interactivedocs/"
+    style="display:none; width:100%; height:100%; border:none; flex:1;"
+    title="Aethvion Suite Interactive Documentation">
+</iframe>

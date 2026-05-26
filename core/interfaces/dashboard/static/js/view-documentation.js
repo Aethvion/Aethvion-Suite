@@ -1,5 +1,38 @@
 // Handles fetching and rendering repository documentation
 
+// ── View switching ────────────────────────────────────────────────────────────
+
+var _docCurrentView = localStorage.getItem('doc_view') || 'repo';
+
+function switchDocView(view) {
+    _docCurrentView = view;
+    localStorage.setItem('doc_view', view);
+
+    var container = document.getElementById('documentation-container');
+    var frame     = document.getElementById('interactive-docs-frame');
+    var btnRepo   = document.getElementById('btn-repo-docs');
+    var btnWeb    = document.getElementById('btn-interactive-docs');
+    var meta      = document.getElementById('doc-view-meta');
+
+    if (view === 'interactive') {
+        if (container) container.style.display = 'none';
+        if (frame)     frame.style.display     = 'block';
+        if (btnRepo)   btnRepo.classList.remove('active');
+        if (btnWeb)    btnWeb.classList.add('active');
+        if (meta)      meta.textContent = 'Interactive Tutorial Website';
+    } else {
+        if (container) container.style.display = '';
+        if (frame)     frame.style.display     = 'none';
+        if (btnRepo)   btnRepo.classList.add('active');
+        if (btnWeb)    btnWeb.classList.remove('active');
+        if (meta)      meta.textContent = 'Aggregated Markdown Docs';
+        // Load markdown docs if not already loaded
+        if (container && container.querySelector('.loading-placeholder')) {
+            loadDocumentation();
+        }
+    }
+}
+
 async function loadDocumentation() {
     const container = document.getElementById('documentation-container');
     if (!container) return;
@@ -115,6 +148,50 @@ async function loadDocumentation() {
 
 // Add CSS for documentation
 const docStyles = `
+/* ── View toggle ── */
+#doc-view-toggle {
+    display: flex;
+    gap: 6px;
+}
+.doc-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--border, rgba(255,255,255,0.1));
+    border-radius: 6px;
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    white-space: nowrap;
+}
+.doc-toggle-btn:hover {
+    color: var(--text, #e2e8f0);
+    border-color: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.04);
+}
+.doc-toggle-btn.active {
+    color: var(--primary, #60a5fa);
+    border-color: rgba(96,165,250,0.4);
+    background: rgba(96,165,250,0.08);
+}
+/* Make the panel flex so the iframe fills height */
+#documentation-panel {
+    display: flex !important;
+    flex-direction: column;
+}
+#interactive-docs-frame {
+    flex: 1;
+    min-height: 0;
+    border: none;
+    border-radius: 0;
+}
+
+/* ── Markdown docs ── */
 .doc-folder-section {
     margin-bottom: 2rem;
 }
@@ -203,28 +280,38 @@ const styleSheet = document.createElement("style");
 styleSheet.innerText = docStyles;
 document.head.appendChild(styleSheet);
 
-// Initialize when the tab is clicked (handled by core.js general tab logic usually, 
-// but we might need a custom hook if it doesn't auto-load)
 // Initialize when the tab is clicked or if it's already active on load
 document.addEventListener('DOMContentLoaded', () => {
+    function onDocTabOpen() {
+        // Restore saved view preference
+        switchDocView(_docCurrentView);
+        // If repo view and not yet loaded, trigger a load
+        if (_docCurrentView === 'repo') {
+            var container = document.getElementById('documentation-container');
+            if (container && container.querySelector('.loading-placeholder')) {
+                loadDocumentation();
+            }
+        }
+    }
+
     // Listen for tab changes from core.js
     document.addEventListener('tabChanged', (e) => {
         if (e.detail && (e.detail.tab === 'documentation' || e.detail.tab === 'panel-documentation')) {
-            loadDocumentation();
+            onDocTabOpen();
         }
     });
 
     // Auto-load if the documentation panel is already showing (e.g. on refresh)
     const docPanel = document.getElementById('documentation-panel');
     if (docPanel && (docPanel.classList.contains('active') || window.getComputedStyle(docPanel).display !== 'none')) {
-        setTimeout(loadDocumentation, 200);
+        setTimeout(onDocTabOpen, 200);
     }
-    
+
     // Fallback for click if event doesn't fire for some reason
     const docBtn = document.querySelector('[data-subtab="documentation"]') || document.querySelector('[data-maintab="documentation"]');
     if (docBtn) {
         docBtn.addEventListener('click', () => {
-            loadDocumentation();
+            onDocTabOpen();
         });
     }
 });
