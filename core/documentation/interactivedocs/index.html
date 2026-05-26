@@ -992,7 +992,7 @@ ANTHROPIC_API_KEY=your_anthropic_key_here</code></pre>
     <table>
       <thead><tr><th>Node</th><th>Outputs</th><th>Notes</th></tr></thead>
       <tbody>
-        <tr><td><code>logic.if</code></td><td><code>true</code>, <code>false</code></td><td>Evaluates a Python expression (e.g. <code>len(value) > 100</code>); routes to matching port</td></tr>
+        <tr><td><code>logic.if</code></td><td><code>true</code>, <code>false</code></td><td>Evaluates a Python expression (e.g. <code>len(value) &gt; 100</code>); routes to matching port</td></tr>
         <tr><td><code>logic.switch</code></td><td><code>case_1</code>…<code>case_4</code>, <code>default</code></td><td>Routes value to the port matching a configured string</td></tr>
         <tr><td><code>logic.delay</code></td><td><code>trigger</code></td><td>Waits N milliseconds (max 10 s), then passes input through as a trigger</td></tr>
         <tr><td><code>logic.loop</code></td><td><code>item</code>, <code>done</code></td><td>Takes a list; emits first item as <code>item</code>, full list as <code>done</code></td></tr>
