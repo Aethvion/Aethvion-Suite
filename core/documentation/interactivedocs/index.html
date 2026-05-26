@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aethvion Suite — Documentation</title>
+<style>
+:root {
+  --bg:            #0d0f15;
+  --bg-card:       #131720;
+  --bg-sidebar:    #0f1119;
+  --bg-code:       #090b11;
+  --bg-hover:      rgba(255,255,255,0.04);
+  --primary:       #60a5fa;
+  --primary-dim:   rgba(96,165,250,0.12);
+  --primary-glow:  rgba(96,165,250,0.25);
+  --accent:        #a78bfa;
+  --success:       #34d399;
+  --success-dim:   rgba(52,211,153,0.1);
+  --warning:       #fbbf24;
+  --warning-dim:   rgba(251,191,36,0.1);
+  --danger:        #f87171;
+  --danger-dim:    rgba(248,113,113,0.1);
+  --text:          #dde3f0;
+  --text-muted:    #6b7280;
+  --text-faint:    #374151;
+  --border:        rgba(255,255,255,0.07);
+  --border-mid:    rgba(255,255,255,0.1);
+  --sidebar-w:     268px;
+  --radius:        8px;
+  --font:          -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono:     'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 15px; scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.7;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+}
+
+/* ─── Sidebar ─────────────────────────────────────────────────────────────── */
+
+#sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  height: 100vh;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#sidebar-header {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.sidebar-logo {
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.sidebar-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  flex: 1;
+}
+
+.version-chip {
+  font-size: 0.68rem;
+  background: var(--primary-dim);
+  color: var(--primary);
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border: 1px solid var(--primary-glow);
+}
+
+#sidebar-search {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+#search-input {
+  width: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  padding: 7px 10px 7px 30px;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-family: var(--font);
+  outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 9px center;
+  transition: border-color 0.15s;
+}
+#search-input:focus { border-color: var(--primary); }
+#search-input::placeholder { color: var(--text-muted); }
+
+#nav-tree {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px 0 20px;
+}
+
+#nav-tree::-webkit-scrollbar { width: 3px; }
+#nav-tree::-webkit-scrollbar-thumb { background: var(--text-faint); border-radius: 3px; }
+
+.nav-group { margin-bottom: 2px; }
+
+.nav-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  margin: 0 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  user-select: none;
+  transition: color 0.15s, background 0.15s;
+}
+.nav-group-header:hover { color: var(--text); background: var(--bg-hover); }
+.nav-group-header.active-group { color: var(--primary); }
+
+.nav-group-icon { font-size: 0.9rem; width: 16px; text-align: center; }
+
+.nav-chevron {
+  margin-left: auto;
+  font-size: 0.75rem;
+  transition: transform 0.2s;
+  opacity: 0.5;
+}
+.nav-group.open .nav-chevron { transform: rotate(90deg); }
+
+.nav-group-items {
+  display: none;
+  padding: 2px 0;
+}
+.nav-group.open .nav-group-items { display: block; }
+
+.nav-item {
+  display: block;
+  padding: 5px 12px 5px 36px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  border-radius: 5px;
+  margin: 1px 6px;
+  transition: color 0.12s, background 0.12s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav-item:hover { color: var(--text); background: var(--bg-hover); }
+.nav-item.active {
+  color: var(--primary);
+  background: var(--primary-dim);
+  font-weight: 500;
+}
+
+/* ─── Main content area ───────────────────────────────────────────────────── */
+
+#main {
+  flex: 1;
+  overflow-y: auto;
+  height: 100vh;
+}
+
+#main::-webkit-scrollbar { width: 5px; }
+#main::-webkit-scrollbar-thumb { background: var(--text-faint); border-radius: 5px; }
+
+#content {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 40px 80px;
+}
+
+/* ─── Sections ────────────────────────────────────────────────────────────── */
+
+.doc-section {
+  padding-top: 56px;
+  padding-bottom: 8px;
+}
+
+.doc-section + .doc-section { border-top: 1px solid var(--border); }
+
+.section-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+
+h1.section-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 14px;
+  background: linear-gradient(135deg, #dde3f0 30%, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+h2.section-title {
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+
+h3.section-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+.section-lead {
+  font-size: 1.05rem;
+  color: #94a3b8;
+  margin-bottom: 28px;
+  line-height: 1.75;
+  max-width: 680px;
+}
+
+.section-body { margin-bottom: 28px; }
+.section-body p { margin-bottom: 14px; color: #9aa5b8; line-height: 1.75; }
+.section-body p:last-child { margin-bottom: 0; }
+
+h3 { font-size: 1.05rem; font-weight: 600; margin: 28px 0 10px; color: var(--text); }
+h4 { font-size: 0.9rem; font-weight: 600; margin: 20px 0 8px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ─── Feature cards ───────────────────────────────────────────────────────── */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 28px 0;
+}
+
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  transition: border-color 0.15s, transform 0.15s;
+  cursor: default;
+}
+.feature-card:hover { border-color: var(--primary-glow); transform: translateY(-2px); }
+
+.card-icon { font-size: 1.5rem; margin-bottom: 10px; }
+.feature-card h3 { font-size: 0.9rem; font-weight: 600; margin: 0 0 6px; color: var(--text); }
+.feature-card p { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin: 0; }
+
+/* ─── Step list ───────────────────────────────────────────────────────────── */
+
+.step-list { list-style: none; display: flex; flex-direction: column; gap: 16px; margin: 20px 0; }
+
+.step-list li {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.step-num {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  background: var(--primary-dim);
+  border: 1px solid var(--primary-glow);
+  color: var(--primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.step-content strong { display: block; font-size: 0.92rem; margin-bottom: 4px; color: var(--text); }
+.step-content p { font-size: 0.83rem; color: var(--text-muted); margin: 0; line-height: 1.6; }
+
+/* ─── Code blocks ─────────────────────────────────────────────────────────── */
+
+.code-block {
+  margin: 18px 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 14px;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--border);
+}
+
+.code-lang {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.copy-btn {
+  font-size: 0.72rem;
+  background: none;
+  border: 1px solid var(--border-mid);
+  color: var(--text-muted);
+  padding: 3px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: color 0.12s, border-color 0.12s;
+}
+.copy-btn:hover { color: var(--primary); border-color: var(--primary-glow); }
+.copy-btn.copied { color: var(--success); border-color: var(--success); }
+
+.code-block pre {
+  background: var(--bg-code);
+  margin: 0;
+  padding: 16px 18px;
+  overflow-x: auto;
+}
+
+.code-block pre::-webkit-scrollbar { height: 4px; }
+.code-block pre::-webkit-scrollbar-thumb { background: var(--text-faint); }
+
+.code-block code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: #c9d1e0;
+}
+
+/* Inline code */
+p code, li code, td code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  background: var(--bg-code);
+  border: 1px solid var(--border-mid);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #c9d1e0;
+}
+
+/* ─── Callouts ────────────────────────────────────────────────────────────── */
+
+.callout {
+  display: flex;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border-left: 3px solid;
+  margin: 20px 0;
+}
+
+.callout.tip    { background: var(--success-dim); border-color: var(--success); }
+.callout.note   { background: var(--primary-dim); border-color: var(--primary); }
+.callout.warn   { background: var(--warning-dim); border-color: var(--warning); }
+.callout.danger { background: var(--danger-dim);  border-color: var(--danger);  }
+
+.callout-icon { font-size: 1rem; margin-top: 1px; flex-shrink: 0; }
+.callout-body strong { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
+.callout.tip    .callout-body strong { color: var(--success); }
+.callout.note   .callout-body strong { color: var(--primary); }
+.callout.warn   .callout-body strong { color: var(--warning); }
+.callout.danger .callout-body strong { color: var(--danger);  }
+.callout-body p { font-size: 0.83rem; color: var(--text-muted); margin: 0; line-height: 1.6; }
+
+/* ─── Tables ──────────────────────────────────────────────────────────────── */
+
+.table-wrap {
+  overflow-x: auto;
+  margin: 18px 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+thead th {
+  background: rgba(255,255,255,0.03);
+  padding: 9px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  color: #9aa5b8;
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--bg-hover); }
+
+td:first-child code { white-space: nowrap; }
+
+/* ─── Companion cards ─────────────────────────────────────────────────────── */
+
+.companion-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 20px 0; }
+
+.companion-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+}
+
+.companion-avatar {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem;
+}
+
+.companion-card h3 { font-size: 0.92rem; font-weight: 600; margin: 0 0 6px; color: var(--text); }
+.companion-card .role { font-size: 0.75rem; color: var(--primary); font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+.companion-card p { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin: 0; }
+
+/* ─── Tag pills ───────────────────────────────────────────────────────────── */
+
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.tag { font-size: 0.73rem; padding: 3px 9px; border-radius: 20px; font-weight: 500; }
+.tag.blue   { background: var(--primary-dim); color: var(--primary); border: 1px solid var(--primary-glow); }
+.tag.purple { background: rgba(167,139,250,0.1); color: var(--accent); border: 1px solid rgba(167,139,250,0.2); }
+.tag.green  { background: var(--success-dim); color: var(--success); border: 1px solid rgba(52,211,153,0.2); }
+.tag.yellow { background: var(--warning-dim); color: var(--warning); border: 1px solid rgba(251,191,36,0.2); }
+
+/* ─── API endpoint list ───────────────────────────────────────────────────── */
+
+.endpoint-list { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+
+.endpoint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 14px;
+  font-size: 0.8rem;
+}
+
+.method {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  min-width: 40px;
+  text-align: center;
+  letter-spacing: 0.03em;
+}
+.method.get  { background: rgba(52,211,153,0.12); color: var(--success); }
+.method.post { background: rgba(96,165,250,0.12); color: var(--primary); }
+.method.put  { background: rgba(251,191,36,0.12); color: var(--warning); }
+.method.patch { background: rgba(167,139,250,0.12); color: var(--accent); }
+.method.delete { background: rgba(248,113,113,0.12); color: var(--danger); }
+
+.endpoint code { font-family: var(--font-mono); font-size: 0.78rem; color: #c9d1e0; background: none; border: none; padding: 0; }
+.endpoint-desc { color: var(--text-muted); margin-left: auto; font-size: 0.77rem; white-space: nowrap; }
+
+/* ─── Quick-start CTA ─────────────────────────────────────────────────────── */
+
+.cta-box {
+  background: linear-gradient(135deg, rgba(96,165,250,0.08) 0%, rgba(167,139,250,0.08) 100%);
+  border: 1px solid var(--primary-glow);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  margin: 28px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.cta-box h3 { font-size: 1rem; font-weight: 600; margin: 0 0 4px; }
+.cta-box p { font-size: 0.82rem; color: var(--text-muted); margin: 0; }
+
+.cta-btn {
+  padding: 9px 20px;
+  background: var(--primary);
+  color: #0d0f15;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.83rem;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--font);
+  transition: opacity 0.15s;
+}
+.cta-btn:hover { opacity: 0.85; }
+
+/* ─── Divider ─────────────────────────────────────────────────────────────── */
+
+.divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+/* ─── Scrollspy marker ────────────────────────────────────────────────────── */
+
+.anchor-target { scroll-margin-top: 24px; }
+
+/* ─── ul / ol inside content ──────────────────────────────────────────────── */
+
+.doc-section ul, .doc-section ol {
+  padding-left: 1.4em;
+  margin: 10px 0;
+  color: #9aa5b8;
+  font-size: 0.87rem;
+  line-height: 1.75;
+}
+.doc-section li { margin-bottom: 4px; }
+
+/* ─── Hidden search state ─────────────────────────────────────────────────── */
+
+.nav-group.search-hidden { display: none; }
+.nav-item.search-hidden  { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═══════════════════════════════════════════════════════════════ -->
+<nav id="sidebar">
+  <div id="sidebar-header">
+    <div class="sidebar-logo">⚡</div>
+    <span class="sidebar-title">Aethvion Suite</span>
+    <span class="version-chip">v16</span>
+  </div>
+  <div id="sidebar-search">
+    <input type="text" id="search-input" placeholder="Search docs…" autocomplete="off">
+  </div>
+  <div id="nav-tree">
+
+    <div class="nav-group open" data-group="welcome">
+      <div class="nav-group-header" onclick="toggleGroup(this)">
+        <span class="nav-group-icon">🏠</span><span>Welcome</span><span class="nav-chevron">›</span>
+      </div>
+      <div class="nav-group-items">
+        <a class="nav-item" href="#welcome">Overview</a>
+        <a class="nav-item" href="#feature-highlights">Feature Highlights</a>
+      </div>
+    </div>
+
+    <div class="nav-group open" data-group="start">
+      <div class="nav-group-header" onclick="toggleGroup(this)">
+        <span class="nav-group-icon">🚀</span><span>Getting Started</span><span class="nav-chevron">›</span>
+      </div>
+      <div class="nav-group-items">
+        <a class="nav-item" href="#gs-install">Installation</a>
+        <a class="nav-item" href="#gs-keys">API Keys</a>
+        <a class="nav-item" href="#gs-launch">First Launch</a>
+        <a class="nav-item" href="#gs-ref">Quick Reference</a>
+      </div>
+    </div>
+
+    <div class="nav-group" data-group="automate">
+      <div class="nav-group-header" onclick="toggleGroup(this)">
+        <span class="nav-group-icon">⚡</span><span>Automate</span><span class="nav-chevron">›</span>
+      </div>
+      <div class="nav-group-items">
+        <a class="nav-item" href="#at-overview">Overview</a>
+        <a class="nav-item" href="#at-canvas">The Canvas</a>
+        <a class="nav-item" href="#at-triggers">Triggers</a>
+        <a class="nav-item" href="#at-inputs">Input &amp; Output</a>
+        <a class="nav-item" href="#at-ai">AI Nodes</a>
+        <a class="nav-item" href="#at-logic">Logic Nodes</a>
+        <a class="nav-item" href="#at-data">Data Nodes</a>
+        <a class="nav-item" href="#at-actions">Actions</a>
+        <a class="nav-item" href="#at-memory">Memory &amp; DB</a>
+        <a class="nav-item" href="#at-run">Running Workflows</a>
+        <a class="nav-item" href="#at-examples">Example Workflows</a>
+        <a class="nav-item" href="#at-compile">Compile Feature</a>
+      </div>
+    </div>
+
+    <div class="nav-group" data-group="aethviondb">
+      <div class="nav-group-header" onclick="toggleGroup(this)">
+        <span class="nav-group-icon">🗄️</span><span>AethvionDB</span><span class="nav-chevron">›</span>
+      </div>
+      <div class="nav-group-items">
+        <a class="nav-item" href="#db-overview">Overview</a>
+        <a class="nav-item" href="#db-schema">Entity Schema</a>
+        <a class="nav-item" href="#db-adding">Adding Knowledge</a>
+        <a class="nav-item" href="#db-stubs">Stub Expansion</a>
+        <a class="nav-item" href="#db-vectors">Semantic Search</a>
+        <a class="nav-item" href="#db-bake">Baking Snapshots</a>
+        <a class="nav-item" href="#db-api">REST API</a>
+        <a class="nav-item" href="#db-workflows">In Workflows</a>
+      </div>
+    </div>
+
+    <div class="nav-group" data-group="companions">
+      <div class="nav-group-header" onclick="toggleGroup(this)">
+        <span class="nav-group-icon">🤖</span><span>Companions</span><span class="nav-chevron">›</span>
+      </div>
+      <div class="nav-group-items">
+        <a class="nav-item" href="#comp-overview">Overview</a>
+        <a class="nav-item" href="#comp-misaka">Misaka Cipher</a>
+        <a class="nav-item" href="#comp-axiom">Axiom</a>
+        <a class="nav-item" href="#comp-lyra">Lyra</a>
+        <a class="nav-item" href="#comp-memory">Memory System</a>
+      </div>
+    </div>
+
+    <div class="nav-group" data-group="code">
+      <div class="nav-group-header" onclick="toggleGroup(this)">
+        <span class="nav-group-icon">💻</span><span>Code &amp; Agents</span><span class="nav-chevron">›</span>
+      </div>
+      <div class="nav-group-items">
+        <a class="nav-item" href="#code-ide">Code IDE</a>
+        <a class="nav-item" href="#code-agents">Agent Corp</a>
+        <a class="nav-item" href="#code-schedule">Schedule</a>
+      </div>
+    </div>
+
+    <div class="nav-group" data-group="bridges">
+      <div class="nav-group-header" onclick="toggleGroup(this)">
+        <span class="nav-group-icon">🔗</span><span>Bridges</span><span class="nav-chevron">›</span>
+      </div>
+      <div class="nav-group-items">
+        <a class="nav-item" href="#bridges-overview">Overview</a>
+        <a class="nav-item" href="#bridges-list">Available Bridges</a>
+      </div>
+    </div>
+
+    <div class="nav-group" data-group="tips">
+      <div class="nav-group-header" onclick="toggleGroup(this)">
+        <span class="nav-group-icon">💡</span><span>Tips &amp; Practices</span><span class="nav-chevron">›</span>
+      </div>
+      <div class="nav-group-items">
+        <a class="nav-item" href="#tips-general">General Tips</a>
+        <a class="nav-item" href="#tips-patterns">Common Patterns</a>
+      </div>
+    </div>
+
+  </div><!-- /nav-tree -->
+</nav>
+
+<!-- ═══ MAIN ═══════════════════════════════════════════════════════════════════ -->
+<div id="main">
+<div id="content">
+
+<!-- ───────────────────────────────────── WELCOME ─────────────────────────── -->
+<section class="doc-section" id="welcome">
+  <div class="section-eyebrow">Aethvion Suite</div>
+  <h1 class="section-title">Everything AI, on your machine.</h1>
+  <p class="section-lead">
+    Aethvion Suite is a local-first AI platform — a complete workspace for AI-powered automation, knowledge management, creative work, and intelligent companions. No subscription required. Your data stays on your hardware.
+  </p>
+  <div class="cta-box">
+    <div>
+      <h3>New here? Start with Installation.</h3>
+      <p>Get up and running in under five minutes.</p>
+    </div>
+    <button class="cta-btn" onclick="scrollToSection('gs-install')">Get Started →</button>
+  </div>
+</section>
+
+<section class="doc-section" id="feature-highlights">
+  <h2 class="section-title">Feature Highlights</h2>
+  <p class="section-lead">Six major product areas — each designed to be powerful on its own, better together.</p>
+  <div class="card-grid">
+    <div class="feature-card">
+      <div class="card-icon">⚡</div>
+      <h3>Automate</h3>
+      <p>Visual node-based workflow builder. 50+ nodes for AI, data, files, web, and integrations. No code required.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-icon">🗄️</div>
+      <h3>AethvionDB</h3>
+      <p>Structured knowledge database. Distil any text into entities. Graph view, semantic search, and REST API.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-icon">🤖</div>
+      <h3>Companions</h3>
+      <p>Persistent AI personalities with long-term memory. Misaka Cipher, Axiom, and Lyra — each with a unique focus.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-icon">💻</div>
+      <h3>Code &amp; Agents</h3>
+      <p>AI code IDE with autonomous agents. Multi-step ReAct loops that read, write, and run code in your workspace.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-icon">🔬</div>
+      <h3>Research Board</h3>
+      <p>Multi-director AI debate. Assign perspectives to AI agents and watch structured analysis unfold.</p>
+    </div>
+    <div class="feature-card">
+      <div class="card-icon">🎨</div>
+      <h3>Creative Suite</h3>
+      <p>Photo Studio, 3D Workspace, Audio & Speech (TTS/STT), Image Models. All local, all integrated.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────── GETTING STARTED ───────────────────────── -->
+<section class="doc-section" id="gs-install">
+  <h2 class="section-title">Installation</h2>
+  <p class="section-lead">Aethvion Suite runs on Python 3.10+. The quickest way to get started on Windows is the automated launcher.</p>
+
+  <div class="callout note">
+    <div class="callout-icon">ℹ️</div>
+    <div class="callout-body">
+      <strong>Prerequisites</strong>
+      <p>Python 3.10 or higher (3.12+ recommended) · pip · At least one AI provider API key</p>
+    </div>
+  </div>
+
+  <h3>Option A — Windows Automatic Setup</h3>
+  <p style="color:#9aa5b8;font-size:0.85rem;margin-bottom:10px;">Double-click <code>Start_Aethvion_Suite.bat</code> in the project root. It checks your Python version, creates a virtual environment, installs all dependencies, and launches the server.</p>
+
+  <h3>Option B — Manual Setup</h3>
+  <ol class="step-list">
+    <li>
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>Clone the repository</strong>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre><code>git clone https://github.com/Aethvion/Aethvion-Suite.git
+cd Aethvion-Suite</code></pre>
+        </div>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>Create and activate a virtual environment</strong>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre><code>python -m venv .venv
+.venv\Scripts\activate     # Windows
+source .venv/bin/activate  # Linux / macOS</code></pre>
+        </div>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>Install dependencies</strong>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre><code>pip install -e ".[memory]"</code></pre>
+        </div>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<section class="doc-section" id="gs-keys">
+  <h2 class="section-title">API Keys</h2>
+  <p class="section-lead">Aethvion Suite requires at least one AI provider key. Google AI is recommended as the primary provider.</p>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">.env</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><code># Required — at least one of these
+GOOGLE_AI_API_KEY=your_google_key_here
+OPENAI_API_KEY=your_openai_key_here
+
+# Optional extras
+GROK_API_KEY=your_grok_key_here
+ANTHROPIC_API_KEY=your_anthropic_key_here</code></pre>
+  </div>
+  <div class="callout tip">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <strong>Set keys after launch too</strong>
+      <p>Open <strong>Settings → API Providers</strong> in the dashboard to add or update keys without touching the <code>.env</code> file.</p>
+    </div>
+  </div>
+  <p style="color:#9aa5b8;font-size:0.85rem;">AetherCore (the AI gateway) will try providers in priority order and fall back automatically if one fails. Multiple keys means higher reliability and flexibility to use different models.</p>
+</section>
+
+<section class="doc-section" id="gs-launch">
+  <h2 class="section-title">First Launch</h2>
+  <ol class="step-list">
+    <li>
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>Start the server</strong>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre><code>python -m core.main</code></pre>
+        </div>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>Open the dashboard</strong>
+        <p>Navigate to <code>http://localhost:8080</code> in your browser. The suite starts on the Home panel.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>Say hello to a companion</strong>
+        <p>Click <strong>Misaka Cipher</strong> in the sidebar and start chatting. She'll introduce herself and begin building context from your conversation.</p>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<section class="doc-section" id="gs-ref">
+  <h2 class="section-title">Quick Reference</h2>
+  <p class="section-lead">Which tool to use for which task.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>I want to…</th><th>Use</th></tr></thead>
+      <tbody>
+        <tr><td>Chat with an AI that remembers me</td><td>Companion (Misaka Cipher, Axiom, or Lyra)</td></tr>
+        <tr><td>Build an automation pipeline visually</td><td>Automate</td></tr>
+        <tr><td>Build a structured knowledge base</td><td>AethvionDB</td></tr>
+        <tr><td>Let an AI read, write, and run code for me</td><td>Code &amp; Agents</td></tr>
+        <tr><td>Get multiple AI perspectives on a topic</td><td>Research Board</td></tr>
+        <tr><td>Generate or edit images</td><td>Photo Studio / Image Models</td></tr>
+        <tr><td>Convert speech to text or text to speech</td><td>Audio &amp; Speech</td></tr>
+        <tr><td>Run a task on a schedule</td><td>Schedule</td></tr>
+        <tr><td>Store facts that all AIs should always know</td><td>Persistent Memory</td></tr>
+        <tr><td>Compare multiple AI models side-by-side</td><td>LLM Arena</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ──────────────────────────────────── AUTOMATE ─────────────────────────── -->
+<section class="doc-section" id="at-overview">
+  <h2 class="section-title">Automate — Overview</h2>
+  <p class="section-lead">Automate is a visual, node-based workflow builder. Drag nodes onto a canvas, connect them with wires, and create automation pipelines — no code required.</p>
+  <div class="section-body">
+    <p>Every workflow is a directed graph. Data flows left-to-right through connected nodes. A <strong>trigger</strong> starts the flow; each subsequent node receives the output of its upstream connection as its input.</p>
+    <p>Workflows are saved as JSON files in <code>data/automate/</code> and can be exported, imported, and compiled into standalone scripts.</p>
+  </div>
+</section>
+
+<section class="doc-section" id="at-canvas">
+  <h2 class="section-title">The Canvas</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Action</th><th>How</th></tr></thead>
+      <tbody>
+        <tr><td>Pan</td><td>Middle-click drag, or Space + left-click drag</td></tr>
+        <tr><td>Zoom</td><td>Scroll wheel</td></tr>
+        <tr><td>Select node</td><td>Left-click</td></tr>
+        <tr><td>Multi-select</td><td>Shift + click, or drag a box on empty canvas</td></tr>
+        <tr><td>Move node</td><td>Drag the node body</td></tr>
+        <tr><td>Connect nodes</td><td>Drag from an output port (right side) to an input port (left side)</td></tr>
+        <tr><td>Delete connection</td><td>Click the wire → Delete key</td></tr>
+        <tr><td>Reset view</td><td>Toolbar Home icon, or press H</td></tr>
+        <tr><td>Fit all nodes to screen</td><td>Toolbar Fit icon</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout tip">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <strong>Trigger Highlighting</strong>
+      <p>Click any <strong>trigger node</strong> on the canvas. Nodes in its chain glow blue; everything else dims. This shows exactly what will run when that trigger fires.</p>
+    </div>
+  </div>
+</section>
+
+<section class="doc-section" id="at-triggers">
+  <h2 class="section-title">Triggers</h2>
+  <p class="section-lead">Every workflow needs at least one trigger — it's the starting point. Triggers have a <code>trigger</code> output port that activates downstream nodes without carrying data.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Node</th><th>Fires when…</th><th>Output ports</th></tr></thead>
+      <tbody>
+        <tr><td><code>trigger.manual</code></td><td>You click Run in the UI</td><td><code>trigger</code></td></tr>
+        <tr><td><code>trigger.schedule</code></td><td>A cron schedule matches the current time</td><td><code>trigger</code>, <code>data</code> (ISO timestamp)</td></tr>
+        <tr><td><code>trigger.webhook</code></td><td>An HTTP POST arrives at its endpoint</td><td><code>out</code>, <code>body</code> (request JSON)</td></tr>
+        <tr><td><code>trigger.app_event</code></td><td>An internal Aethvion event occurs (companion message, agent done, etc.)</td><td><code>trigger</code>, <code>event_type</code>, <code>source</code>, <code>data</code></td></tr>
+        <tr><td><code>trigger.file_watch</code></td><td>A watched file or folder changes on disk</td><td><code>trigger</code>, <code>path</code>, <code>event</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout note">
+    <div class="callout-icon">ℹ️</div>
+    <div class="callout-body">
+      <strong>Input nodes don't need to connect to the trigger</strong>
+      <p>The execution engine automatically finds <code>input.text</code>, <code>data.variable</code>, and other source nodes that feed into the active chain — even if they're not wired to the trigger directly.</p>
+    </div>
+  </div>
+</section>
+
+<section class="doc-section" id="at-inputs">
+  <h2 class="section-title">Input &amp; Output Nodes</h2>
+  <h3>Inputs — supply data</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Node</th><th>Output</th><th>Use for</th></tr></thead>
+      <tbody>
+        <tr><td><code>input.text</code></td><td><code>out</code></td><td>Static text or a prompt to paste into</td></tr>
+        <tr><td><code>input.number</code></td><td><code>out</code></td><td>Numeric constants</td></tr>
+        <tr><td><code>input.list</code></td><td><code>out</code></td><td>Comma-separated values → JSON array</td></tr>
+        <tr><td><code>input.file</code></td><td><code>out</code>, <code>name</code>, <code>path</code>, <code>size</code></td><td>Read a file from disk at workflow runtime</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>Outputs — display or store results</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Node</th><th>Input</th><th>Use for</th></tr></thead>
+      <tbody>
+        <tr><td><code>output.display</code></td><td><code>in</code></td><td>Show the result in the execution panel</td></tr>
+        <tr><td><code>output.file</code></td><td><code>in</code></td><td>Write the value to a file on disk</td></tr>
+        <tr><td><code>output.clipboard</code></td><td><code>in</code></td><td>Copy the value to the system clipboard</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="doc-section" id="at-ai">
+  <h2 class="section-title">AI Nodes</h2>
+  <p class="section-lead">All AI nodes call the configured model via AetherCore, which provides automatic provider failover.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Node</th><th>Key inputs</th><th>Key outputs</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>ai.any</code></td><td><code>in</code>, <code>model</code>, <code>system_prompt</code></td><td><code>out</code>, <code>error</code></td><td>General-purpose prompt; pick any configured model</td></tr>
+        <tr><td><code>ai.google</code></td><td><code>in</code>, <code>model</code></td><td><code>out</code>, <code>error</code></td><td>Same as ai.any, scoped to Google models in the UI</td></tr>
+        <tr><td><code>ai.summarize</code></td><td><code>in</code>, <code>model</code></td><td><code>out</code>, <code>error</code></td><td>Focused summarizer. Style (paragraph/bullets/TL;DR) and length set in properties</td></tr>
+        <tr><td><code>ai.classify</code></td><td><code>in</code>, <code>model</code></td><td><code>label</code>, <code>reasoning</code>, <code>all</code>, <code>error</code></td><td>Classifies text into one of your configured categories</td></tr>
+        <tr><td><code>ai.extract_data</code></td><td><code>in</code>, <code>model</code></td><td><code>out</code>, <code>error</code></td><td>Extracts structured fields — defined as <code>field: description</code> lines in properties</td></tr>
+        <tr><td><code>ai.analyze_image</code></td><td><code>image</code>, <code>model</code></td><td><code>out</code>, <code>error</code></td><td>Describe or answer questions about an image</td></tr>
+        <tr><td><code>ai.generate_image</code></td><td><code>in</code>, <code>model</code></td><td><code>image</code>, <code>url</code>, <code>error</code></td><td>Generate an image from a text prompt</td></tr>
+        <tr><td><code>ai.speech_to_text</code></td><td><code>audio</code>, <code>model</code></td><td><code>out</code>, <code>error</code></td><td>Transcribe audio (Whisper)</td></tr>
+        <tr><td><code>ai.text_to_speech</code></td><td><code>in</code>, <code>model</code></td><td><code>audio</code>, <code>error</code></td><td>Synthesise speech (Kokoro / XTTS-v2)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="doc-section" id="at-logic">
+  <h2 class="section-title">Logic Nodes</h2>
+  <p class="section-lead">Control flow — branch, loop, delay, or catch errors.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Node</th><th>Outputs</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>logic.if</code></td><td><code>true</code>, <code>false</code></td><td>Evaluates a Python expression (e.g. <code>len(value) > 100</code>); routes to matching port</td></tr>
+        <tr><td><code>logic.switch</code></td><td><code>case_1</code>…<code>case_4</code>, <code>default</code></td><td>Routes value to the port matching a configured string</td></tr>
+        <tr><td><code>logic.delay</code></td><td><code>trigger</code></td><td>Waits N milliseconds (max 10 s), then passes input through as a trigger</td></tr>
+        <tr><td><code>logic.loop</code></td><td><code>item</code>, <code>done</code></td><td>Takes a list; emits first item as <code>item</code>, full list as <code>done</code></td></tr>
+        <tr><td><code>logic.repeat</code></td><td><code>out</code> (list), <code>count</code></td><td>Repeats the input N times into a list</td></tr>
+        <tr><td><code>logic.merge</code></td><td><code>out</code>, <code>source</code></td><td>First-non-null: passes the first arriving value from ports a/b/c/d. All mode: collects all into an object</td></tr>
+        <tr><td><code>logic.try_catch</code></td><td><code>try</code>, <code>catch</code>, <code>always</code></td><td>Routes to <code>catch</code> when <code>error_in</code> is non-empty; <code>always</code> fires regardless</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="doc-section" id="at-data">
+  <h2 class="section-title">Data Nodes</h2>
+  <p class="section-lead">Transform, parse, and manage data as it flows through your workflow.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Node</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>data.template</code></td><td>Mustache-style text template — <code>{{variable}}</code> replaced with upstream values</td></tr>
+        <tr><td><code>data.format_text</code></td><td>Python <code>.format()</code> with named ports as variables</td></tr>
+        <tr><td><code>data.regex</code></td><td>Apply a regex — returns match, groups, or replaced string</td></tr>
+        <tr><td><code>data.split_text</code></td><td>Split text by a delimiter into a list</td></tr>
+        <tr><td><code>data.parse_json</code></td><td>Parse a JSON string into a structured object</td></tr>
+        <tr><td><code>data.extract_json</code></td><td>Extract a value using a JSON path (e.g. <code>items[0].name</code>)</td></tr>
+        <tr><td><code>data.csv_parse</code></td><td>Parse CSV text into a list of row objects</td></tr>
+        <tr><td><code>data.filter</code></td><td>Filter a list with a Python expression (e.g. <code>item.get('city') == 'London'</code>)</td></tr>
+        <tr><td><code>data.variable</code></td><td>Read a named workflow-scoped variable</td></tr>
+        <tr><td><code>data.set_variable</code></td><td>Store a value into a named workflow variable</td></tr>
+        <tr><td><code>data.merge_objects</code></td><td>Deep-merge two JSON objects into one</td></tr>
+        <tr><td><code>data.type_convert</code></td><td>Convert between string, number, boolean, and list</td></tr>
+        <tr><td><code>data.list_item</code></td><td>Get the Nth item from a list</td></tr>
+        <tr><td><code>transform.combine</code></td><td>Concatenate multiple text inputs into one string</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="doc-section" id="at-actions">
+  <h2 class="section-title">Action Nodes</h2>
+  <p class="section-lead">Interact with files, the web, the system clipboard, or the shell.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Node</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>action.file_read</code></td><td>Read a file from disk</td></tr>
+        <tr><td><code>action.file_write</code></td><td>Write text to a file (creates if missing)</td></tr>
+        <tr><td><code>action.file_list</code></td><td>List files in a directory</td></tr>
+        <tr><td><code>action.http</code></td><td>Make an HTTP request (GET/POST/etc.) — returns status, body, headers</td></tr>
+        <tr><td><code>action.web_scrape</code></td><td>Fetch a URL and extract its readable text content</td></tr>
+        <tr><td><code>action.run_command</code></td><td>Execute a shell command — returns stdout, stderr, exit code</td></tr>
+        <tr><td><code>action.run_script</code></td><td>Run an inline Python snippet</td></tr>
+        <tr><td><code>action.run_agent</code></td><td>Dispatch a task to an Aethvion autonomous agent</td></tr>
+        <tr><td><code>action.clipboard</code></td><td>Read from or write to the system clipboard</td></tr>
+        <tr><td><code>action.notify</code></td><td>Send a desktop notification</td></tr>
+        <tr><td><code>action.screenshot</code></td><td>Capture the screen — outputs an image</td></tr>
+        <tr><td><code>action.ocr</code></td><td>Extract text from an image using OCR</td></tr>
+        <tr><td><code>action.camera_capture</code></td><td>Capture a frame from the webcam</td></tr>
+        <tr><td><code>action.log</code></td><td>Write a message to the Aethvion log</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="doc-section" id="at-memory">
+  <h2 class="section-title">Memory &amp; DB Nodes</h2>
+  <h3>Memory</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Node</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>memory.store</code></td><td>Write a value to a named memory key</td></tr>
+        <tr><td><code>memory.retrieve</code></td><td>Read a stored value by key</td></tr>
+        <tr><td><code>memory.search_semantic</code></td><td>Find memory entries semantically similar to a query</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>AethvionDB</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Node</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>aethviondb.search</code></td><td>Keyword/name search against a live database</td></tr>
+        <tr><td><code>aethviondb.semantic_search</code></td><td>Vector similarity search against a live database</td></tr>
+        <tr><td><code>aethviondb.snapshot_search</code></td><td>Keyword search against a baked snapshot file</td></tr>
+        <tr><td><code>aethviondb.snapshot_semantic_search</code></td><td>Semantic search against a baked snapshot</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>Integrations</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Node</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>companion.ask</code></td><td>Send a message to a companion and receive its response</td></tr>
+        <tr><td><code>integration.discord</code></td><td>Post a message to a Discord webhook</td></tr>
+        <tr><td><code>integration.slack</code></td><td>Post a message to a Slack webhook</td></tr>
+        <tr><td><code>integration.email</code></td><td>Send an email</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="doc-section" id="at-run">
+  <h2 class="section-title">Running Workflows</h2>
+  <p class="section-lead">Click <strong>Run</strong> in the toolbar. The execution panel opens on the right and streams live progress as each node runs.</p>
+  <h3>Trigger Selector</h3>
+  <p style="color:#9aa5b8;font-size:0.85rem;margin-bottom:14px;">Next to the Run button is a dropdown (defaults to "All"). You can select a specific trigger to run only that trigger's chain — useful when you have multiple independent trigger paths in the same workflow.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Selection</th><th>Behaviour</th></tr></thead>
+      <tbody>
+        <tr><td><strong>All</strong></td><td>Runs each trigger sequentially — Run_1 completes fully before Run_2 starts</td></tr>
+        <tr><td><strong>Specific trigger</strong></td><td>Runs only that trigger's chain; other nodes are skipped</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>Node Status Colours</h3>
+  <div class="tag-row">
+    <span class="tag blue">● Running</span>
+    <span class="tag green">● Done</span>
+    <span class="tag yellow">● Skipped</span>
+    <span class="tag" style="background:rgba(248,113,113,0.1);color:#f87171;border:1px solid rgba(248,113,113,0.2);">● Error</span>
+  </div>
+  <div class="callout tip">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <strong>Errors don't stop the whole run</strong>
+      <p>When a node errors, the executor logs it and continues — other branches may still succeed. Check the log panel for the full error message.</p>
+    </div>
+  </div>
+</section>
+
+<section class="doc-section" id="at-examples">
+  <h2 class="section-title">Example Workflows</h2>
+  <p class="section-lead">Six ready-to-use examples ship with Automate. Open the sidebar panel and click <strong>Examples</strong> to load one as a starting point.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Example</th><th>What it demonstrates</th><th>Key nodes</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Web to Summary</strong></td><td>Scrape a URL and summarise the page with AI</td><td>web_scrape → ai.summarize</td></tr>
+        <tr><td><strong>Data Extractor</strong></td><td>Paste any text; AI extracts structured fields</td><td>input.text → ai.extract_data</td></tr>
+        <tr><td><strong>AI Prompt Tester</strong></td><td>Quick way to try any prompt with any model</td><td>input.text → ai.any</td></tr>
+        <tr><td><strong>File Classifier</strong></td><td>Upload a file and have AI classify its content</td><td>input.file → ai.classify</td></tr>
+        <tr><td><strong>Scheduled Web Brief</strong></td><td>Fetch a URL on a cron schedule and send a notification</td><td>trigger.schedule → web_scrape → notify</td></tr>
+        <tr><td><strong>CSV Data Pipeline</strong></td><td>Parse a CSV, filter rows, display results</td><td>input.file → csv_parse → data.filter</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="doc-section" id="at-compile">
+  <h2 class="section-title">Compile Feature</h2>
+  <p class="section-lead">Click <strong>Compile</strong> in the toolbar to generate a self-contained <code>run.py</code> bundle that runs your workflow without the dashboard.</p>
+  <div class="section-body">
+    <p>The compiled bundle embeds your workflow JSON, a standalone <code>WorkflowExecutor</code>, and all relevant node handlers. On Windows it also generates a <code>run.bat</code> double-click launcher.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>When to compile</th></tr></thead>
+      <tbody>
+        <tr><td>Deploy a workflow to a server or cron job</td></tr>
+        <tr><td>Share a workflow as a portable script</td></tr>
+        <tr><td>Run a workflow without launching the full dashboard</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout note">
+    <div class="callout-icon">ℹ️</div>
+    <div class="callout-body">
+      <strong>API keys not embedded</strong>
+      <p>The compiled file reads API keys from the <code>.env</code> file in the project root — they are never baked into the bundle itself.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────────────────────────────── AETHVIONDB ───────────────────────── -->
+<section class="doc-section" id="db-overview">
+  <h2 class="section-title">AethvionDB — Overview</h2>
+  <p class="section-lead">AethvionDB is a local structured knowledge database. Store any topic as a graph of connected entities — people, places, events, concepts, and more — and query it with keywords or semantic similarity.</p>
+  <div class="section-body">
+    <p>Knowledge is stored as <strong>entities</strong>. Each entity has a stable ID, a type, and structured sections (summary, timeline, relations, properties). Entities reference each other by ID — renaming an entity never breaks links.</p>
+    <p>You can have multiple independent databases (select via the database picker in the top-right of the AethvionDB tab). Each database has its own entities, vectors, bakes, and backups.</p>
+  </div>
+</section>
+
+<section class="doc-section" id="db-schema">
+  <h2 class="section-title">Entity Schema</h2>
+  <h3>Entity Types</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Type</th><th>Examples</th></tr></thead>
+      <tbody>
+        <tr><td><code>person</code></td><td>Marie Curie, Sherlock Holmes</td></tr>
+        <tr><td><code>place</code></td><td>London, Hogwarts, the Andromeda Galaxy</td></tr>
+        <tr><td><code>event</code></td><td>World War II, the Apollo 11 mission</td></tr>
+        <tr><td><code>concept</code></td><td>Quantum entanglement, narrative tension</td></tr>
+        <tr><td><code>organization</code></td><td>NASA, Stark Industries</td></tr>
+        <tr><td><code>artifact</code></td><td>The Mona Lisa, the One Ring</td></tr>
+        <tr><td><code>work</code></td><td><em>Dune</em>, <em>Symphony No. 9</em>, <em>Half-Life 2</em></td></tr>
+        <tr><td><code>species</code></td><td>Grey wolf, Vulcan</td></tr>
+        <tr><td><code>universe</code></td><td>Marvel Cinematic Universe, Middle-earth</td></tr>
+        <tr><td><code>creature</code>, <code>substance</code>, <code>process</code>, <code>phenomenon</code>, <code>other</code></td><td>Catch-all types for everything else</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>Entity Sections</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Section</th><th>Contents</th></tr></thead>
+      <tbody>
+        <tr><td><code>core</code></td><td><code>summary</code> (1–3 sentences), <code>aliases</code>, <code>categories</code>, <code>tags</code></td></tr>
+        <tr><td><code>timeline</code></td><td>Dated events: <code>{ date, event, ref_ids }</code></td></tr>
+        <tr><td><code>relations</code></td><td>Typed links to other entities: <code>{ kind, target_id, note }</code></td></tr>
+        <tr><td><code>properties</code></td><td>Free key/value facts specific to this entity</td></tr>
+        <tr><td><code>stubs</code></td><td>Names of related entities that should get their own entries (expansion queue)</td></tr>
+        <tr><td><code>vectors</code></td><td>Stored embedding vectors (for semantic search)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>Relation Kinds</h3>
+  <div class="tag-row">
+    <span class="tag blue">parent_of</span><span class="tag blue">child_of</span><span class="tag blue">member_of</span>
+    <span class="tag blue">contains</span><span class="tag blue">created_by</span><span class="tag blue">located_in</span>
+    <span class="tag blue">part_of</span><span class="tag blue">preceded_by</span><span class="tag blue">followed_by</span>
+    <span class="tag blue">related_to</span><span class="tag blue">influenced_by</span><span class="tag blue">participated_in</span>
+  </div>
+</section>
+
+<section class="doc-section" id="db-adding">
+  <h2 class="section-title">Adding Knowledge</h2>
+  <h3>Manual Entry</h3>
+  <p style="color:#9aa5b8;font-size:0.85rem;margin-bottom:20px;">Click <strong>New Entity</strong>, choose a type, fill in the name and sections in the editor. Best for small, precise additions.</p>
+  <h3>Distiller — AI Extraction</h3>
+  <p style="color:#9aa5b8;font-size:0.85rem;margin-bottom:12px;">Paste any text into the <strong>Distiller</strong> panel. The AI reads it and produces a fully-structured entity automatically — no manual entry required.</p>
+  <div class="callout tip">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <strong>What the Distiller handles</strong>
+      <p>Wikipedia articles · book excerpts · research papers · raw notes · transcripts · technical documentation. The AI determines the canonical name, entity type, summary, timeline, and relations entirely from the content.</p>
+    </div>
+  </div>
+  <h3>Folder Distiller</h3>
+  <p style="color:#9aa5b8;font-size:0.85rem;">Drop an entire folder of text files to batch-distil all of them. The engine deduplicates — if a name already exists, content is merged instead of creating a duplicate.</p>
+</section>
+
+<section class="doc-section" id="db-stubs">
+  <h2 class="section-title">Stub Expansion</h2>
+  <p class="section-lead">When the distiller encounters important names in a text (people, places, concepts), it creates <strong>stub entities</strong> — placeholders with just a name and type. Stubs form a queue for future expansion.</p>
+  <ol class="step-list">
+    <li>
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>Distil a few core entities</strong>
+        <p>Stubs are automatically created for related entities mentioned in the text.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>Click "Expand Stubs"</strong>
+        <p>The AI generates full entity content for each stub, using context from related entities already in the database.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>Repeat</strong>
+        <p>Each expansion generates new stubs. The database grows organically from an initial seed of content.</p>
+      </div>
+    </li>
+  </ol>
+  <div class="callout note">
+    <div class="callout-icon">ℹ️</div>
+    <div class="callout-body">
+      <strong>Safe to run multiple times</strong>
+      <p>The expansion engine never overwrites existing data — it only fills in empty fields. Running it again is always safe.</p>
+    </div>
+  </div>
+</section>
+
+<section class="doc-section" id="db-vectors">
+  <h2 class="section-title">Semantic Search</h2>
+  <p class="section-lead">Find entities by meaning, not just keyword match. Requires generating embedding vectors first.</p>
+  <h3>Vectorize the Database</h3>
+  <p style="color:#9aa5b8;font-size:0.85rem;margin-bottom:14px;">Click <strong>Vectorize</strong> in the AethvionDB toolbar. Vectors are stored inside each entity's <code>sections.vectors</code> section — no separate vector database needed.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Model</th><th>Provider</th><th>Dimensions</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>text-embedding-3-small</code></td><td>OpenAI</td><td>1536</td><td>Fast, efficient — recommended</td></tr>
+        <tr><td><code>text-embedding-3-large</code></td><td>OpenAI</td><td>3072</td><td>Highest quality</td></tr>
+        <tr><td><code>text-embedding-004</code></td><td>Google</td><td>768</td><td>Gemini embedding</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>Searching</h3>
+  <p style="color:#9aa5b8;font-size:0.85rem;">Use the <strong>Semantic Search</strong> panel to type a natural-language query. Results are ranked by cosine similarity — finding entities by conceptual closeness even when exact words don't match.</p>
+</section>
+
+<section class="doc-section" id="db-bake">
+  <h2 class="section-title">Baking Snapshots</h2>
+  <p class="section-lead">A <strong>bake</strong> compiles your entire database into a single optimised file for external use — RAG pipelines, LLM context injection, sharing, or vector database ingestion.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Format</th><th>Best for</th></tr></thead>
+      <tbody>
+        <tr><td><code>jsonl</code></td><td>Streaming, vector DB ingestion (one entity per line)</td></tr>
+        <tr><td><code>json</code></td><td>Single document with metadata header</td></tr>
+        <tr><td><code>markdown</code></td><td>RAG context injection into LLM prompts, human reading</td></tr>
+        <tr><td><code>txt</code></td><td>Maximum density for token-constrained context windows</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="color:#9aa5b8;font-size:0.85rem;margin-top:12px;">Multiple named bakes coexist independently (e.g. <code>default.jsonl</code> and <code>full.md</code> and <code>rag-ready.jsonl</code> all at once). Bakes can be renamed and deleted without affecting the live database.</p>
+</section>
+
+<section class="doc-section" id="db-api">
+  <h2 class="section-title">REST API</h2>
+  <p class="section-lead">AethvionDB exposes a full HTTP API for external integrations. Runs on the same port as the dashboard.</p>
+  <div class="callout note">
+    <div class="callout-icon">ℹ️</div>
+    <div class="callout-body">
+      <strong>Authentication</strong>
+      <p>Pass your API key as the <code>X-API-Key</code> header. Generate keys under <strong>AethvionDB → Settings → API Keys</strong>.</p>
+    </div>
+  </div>
+  <h3>Live Database Endpoints</h3>
+  <div class="endpoint-list">
+    <div class="endpoint"><span class="method get">GET</span><code>/api/v1/{db}/raw/entities</code><span class="endpoint-desc">List entities (paginated)</span></div>
+    <div class="endpoint"><span class="method get">GET</span><code>/api/v1/{db}/raw/entities/{id}</code><span class="endpoint-desc">Get one entity</span></div>
+    <div class="endpoint"><span class="method post">POST</span><code>/api/v1/{db}/raw/entities</code><span class="endpoint-desc">Create entity</span></div>
+    <div class="endpoint"><span class="method patch">PATCH</span><code>/api/v1/{db}/raw/entities/{id}</code><span class="endpoint-desc">Partial update</span></div>
+    <div class="endpoint"><span class="method delete">DELETE</span><code>/api/v1/{db}/raw/entities/{id}</code><span class="endpoint-desc">Soft-delete</span></div>
+    <div class="endpoint"><span class="method get">GET</span><code>/api/v1/{db}/raw/search</code><span class="endpoint-desc">Keyword search</span></div>
+    <div class="endpoint"><span class="method get">GET</span><code>/api/v1/{db}/raw/vector-search</code><span class="endpoint-desc">Semantic search</span></div>
+    <div class="endpoint"><span class="method post">POST</span><code>/api/v1/{db}/raw/distill</code><span class="endpoint-desc">AI-distil text into entity</span></div>
+    <div class="endpoint"><span class="method post">POST</span><code>/api/v1/{db}/raw/upsert</code><span class="endpoint-desc">Create or update by name</span></div>
+  </div>
+  <h3>Baked Snapshot Endpoints</h3>
+  <div class="endpoint-list">
+    <div class="endpoint"><span class="method get">GET</span><code>/api/v1/{db}/baked/</code><span class="endpoint-desc">List bakes</span></div>
+    <div class="endpoint"><span class="method post">POST</span><code>/api/v1/{db}/baked/start</code><span class="endpoint-desc">Start a new bake</span></div>
+    <div class="endpoint"><span class="method get">GET</span><code>/api/v1/{db}/baked/{name}/download</code><span class="endpoint-desc">Download bake file</span></div>
+    <div class="endpoint"><span class="method get">GET</span><code>/api/v1/{db}/baked/{name}/search</code><span class="endpoint-desc">Search within snapshot</span></div>
+  </div>
+</section>
+
+<section class="doc-section" id="db-workflows">
+  <h2 class="section-title">AethvionDB in Workflows</h2>
+  <p class="section-lead">Four Automate nodes connect directly to AethvionDB, letting you use your knowledge base as a live data source inside any workflow.</p>
+  <div class="section-body">
+    <p>All four nodes output: <code>out</code> (matching entities as JSON), <code>count</code> (number of results), and <code>error</code>.</p>
+  </div>
+  <h3>Example: Knowledge-Enhanced Answer</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">workflow pattern</span></div>
+    <pre><code>trigger.manual
+  → input.text  (your question)
+  → aethviondb.semantic_search  (find relevant entities)
+  → ai.any  (synthesise an answer from the results)
+  → output.display</code></pre>
+  </div>
+  <p style="color:#9aa5b8;font-size:0.85rem;">This pattern: takes a question, finds the most semantically relevant knowledge in your database, feeds those entities to an AI for synthesis, and displays the answer.</p>
+</section>
+
+<!-- ──────────────────────────────────── COMPANIONS ───────────────────────── -->
+<section class="doc-section" id="comp-overview">
+  <h2 class="section-title">Companions — Overview</h2>
+  <p class="section-lead">Companions are persistent AI personalities. They remember things across sessions, can access live bridge data, and have access to tools that let them act on your behalf.</p>
+  <div class="section-body">
+    <p>Each companion has a dedicated tab in the sidebar. Their memory profiles grow over time — facts you share, preferences you mention, project context — all stored locally and automatically injected into future conversations.</p>
+  </div>
+</section>
+
+<section class="doc-section" id="comp-misaka">
+  <div class="companion-grid">
+    <div class="companion-card" style="grid-column: span 3;">
+      <div style="display:flex;align-items:center;gap:20px;text-align:left;">
+        <div class="companion-avatar" style="background: linear-gradient(135deg,#60a5fa,#3b82f6); min-width:48px;">⚡</div>
+        <div>
+          <div class="role">General Companion</div>
+          <h3 style="font-size:1.1rem;margin-bottom:6px;">Misaka Cipher</h3>
+          <p style="font-size:0.85rem;color:#9aa5b8;line-height:1.6;">Analytical, direct, and detail-oriented. Misaka is the primary general-purpose companion — great for everyday tasks, technical questions, project tracking, and casual conversation. She's the first companion you'll meet and the best starting point for new users.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="doc-section" id="comp-axiom">
+  <div class="companion-grid">
+    <div class="companion-card" style="grid-column: span 3;">
+      <div style="display:flex;align-items:center;gap:20px;text-align:left;">
+        <div class="companion-avatar" style="background: linear-gradient(135deg,#a78bfa,#7c3aed); min-width:48px;">🔬</div>
+        <div>
+          <div class="role" style="color:var(--accent);">Research &amp; Analysis</div>
+          <h3 style="font-size:1.1rem;margin-bottom:6px;">Axiom</h3>
+          <p style="font-size:0.85rem;color:#9aa5b8;line-height:1.6;">Systematic and structured. Axiom excels at research, logical analysis, step-by-step breakdowns, debugging, and complex problem-solving. Ask him to build a framework, analyse tradeoffs, or work through a hard technical question.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="doc-section" id="comp-lyra">
+  <div class="companion-grid">
+    <div class="companion-card" style="grid-column: span 3;">
+      <div style="display:flex;align-items:center;gap:20px;text-align:left;">
+        <div class="companion-avatar" style="background: linear-gradient(135deg,#f472b6,#ec4899); min-width:48px;">🎨</div>
+        <div>
+          <div class="role" style="color:#f472b6;">Creative &amp; Writing</div>
+          <h3 style="font-size:1.1rem;margin-bottom:6px;">Lyra</h3>
+          <p style="font-size:0.85rem;color:#9aa5b8;line-height:1.6;">Imaginative and expressive. Lyra shines at creative writing, naming things, brainstorming, worldbuilding, and any task where originality matters. Ask her to help write, edit, ideate, or explore ideas from unexpected angles.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="doc-section" id="comp-memory">
+  <h2 class="section-title">Memory System</h2>
+  <p class="section-lead">Companions remember things automatically — you don't have to manage memory manually.</p>
+  <h3>How it works</h3>
+  <ol class="step-list">
+    <li>
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>You share something in conversation</strong>
+        <p>"I'm working on a FastAPI backend project called Project Alpha."</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>The companion extracts it into their memory profile</strong>
+        <p>Key facts are stored in the companion's <code>memory.json</code> — project names, preferences, personal details, technical context.</p>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>Future sessions start with context</strong>
+        <p>Memory is injected into every conversation automatically — the companion already knows what you've told them before.</p>
+      </div>
+    </li>
+  </ol>
+  <div class="callout tip">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <strong>Use Persistent Memory for shared ground truth</strong>
+      <p>For facts that <em>all</em> companions and agents should know (project architecture, personal preferences, domain facts), save them as <strong>Persistent Memory</strong> topics. They're injected as context across the whole suite.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────── CODE & AGENTS ─────────────────────────── -->
+<section class="doc-section" id="code-ide">
+  <h2 class="section-title">Code IDE</h2>
+  <p class="section-lead">An AI-powered code editor with file browsing, streaming execution, and workspace management — all without leaving the dashboard.</p>
+  <div class="section-body">
+    <p>Create a <strong>workspace</strong> (a folder on disk) and point the IDE at it. The AI can read every file in the workspace, write new files, and run scripts — building context progressively across multiple steps.</p>
+    <p>Typical tasks: summarise an entire codebase, write a new module, refactor a function across all files, generate documentation, or fix a bug with full file context.</p>
+  </div>
+</section>
+
+<section class="doc-section" id="code-agents">
+  <h2 class="section-title">Agent Corp</h2>
+  <p class="section-lead">Multi-agent coordination hub for complex orchestrated tasks that require multiple AI perspectives or parallel specialised work.</p>
+  <div class="section-body">
+    <p>Define a task, assign it to a coordinator agent, and watch as it spins up specialists — a researcher, a writer, a critic — each contributing to the final output through structured collaboration.</p>
+  </div>
+</section>
+
+<section class="doc-section" id="code-schedule">
+  <h2 class="section-title">Schedule</h2>
+  <p class="section-lead">Run any AI task on a recurring cron schedule. Results are delivered as dashboard notifications with deep-links to the output.</p>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">example</span></div>
+    <pre><code>Task:     "Summarise AI news from the last 24 hours in 5 bullets"
+Schedule: Every day at 08:00 AM
+Result:   Desktop notification → click to read the summary</code></pre>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────── BRIDGES ───────────────────────────── -->
+<section class="doc-section" id="bridges-overview">
+  <h2 class="section-title">Bridges — Overview</h2>
+  <p class="section-lead">Bridges connect Aethvion Suite to live external data sources. When a bridge is active, its current data is injected automatically into every companion conversation as live context.</p>
+  <div class="section-body">
+    <p>Example: with the Spotify bridge enabled and a song playing, asking any companion "what am I listening to?" will give you an accurate real-time answer — no manual copy-pasting required.</p>
+    <p>Enable and configure bridges in <strong>Settings → Bridges</strong>.</p>
+  </div>
+</section>
+
+<section class="doc-section" id="bridges-list">
+  <h2 class="section-title">Available Bridges</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Bridge</th><th>Provides</th><th>Requires</th></tr></thead>
+      <tbody>
+        <tr><td>🎵 Spotify</td><td>Currently playing track, artist, album, progress</td><td>Spotify client ID + secret</td></tr>
+        <tr><td>🌤️ Weather</td><td>Current conditions, temperature, forecast</td><td>Location config</td></tr>
+        <tr><td>💻 System Info</td><td>CPU, RAM, disk usage, uptime</td><td>Nothing — works out of the box</td></tr>
+        <tr><td>🖥️ Screen Capture</td><td>Live screenshot context for visual AI queries</td><td>Nothing — works out of the box</td></tr>
+        <tr><td>📸 Webcam</td><td>Webcam frame for visual AI queries</td><td>Webcam device</td></tr>
+        <tr><td>🎬 Media</td><td>System media session info (currently playing)</td><td>Nothing — works out of the box</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ──────────────────────────────────── TIPS ─────────────────────────────── -->
+<section class="doc-section" id="tips-general">
+  <h2 class="section-title">General Tips</h2>
+  <ul>
+    <li><strong>Let companions build their memory gradually.</strong> Tell them things about your projects, preferences, and context. They'll remember for next time.</li>
+    <li><strong>Use Persistent Memory for ground truth.</strong> If something should be known suite-wide (project architecture, your name, team setup), save it as a Persistent Memory topic.</li>
+    <li><strong>Back up AethvionDB before bulk operations.</strong> Distillation runs, imports, and expansion batches are all irreversible. The backup takes seconds.</li>
+    <li><strong>Vectorize AethvionDB after each batch import.</strong> You don't need to re-vectorize unchanged entities — the vectorizer skips them automatically.</li>
+    <li><strong>Match the model to the task.</strong> Use Flash-tier models for simple tasks; Pro/large models only for complex generation. Check <strong>Settings → Model Registry</strong> for routing config.</li>
+    <li><strong>Compile Automate workflows for production use.</strong> The compiled <code>run.py</code> is a standalone script — no need to keep the dashboard running.</li>
+  </ul>
+</section>
+
+<section class="doc-section" id="tips-patterns">
+  <h2 class="section-title">Common Patterns</h2>
+  <h3>RAG with AethvionDB</h3>
+  <p style="color:#9aa5b8;font-size:0.85rem;margin-bottom:10px;">Build a knowledge base, bake it to Markdown, and inject it into a companion's system prompt or an Automate AI node for grounded answers.</p>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">automate workflow</span></div>
+    <pre><code>trigger.manual → input.text (question)
+  → aethviondb.semantic_search (find relevant entities)
+  → ai.any (system_prompt: "Answer based on the provided context")
+  → output.display</code></pre>
+  </div>
+  <h3>Automated Research Pipeline</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">automate workflow</span></div>
+    <pre><code>trigger.schedule (daily 9am)
+  → action.web_scrape (research URL)
+  → ai.summarize (5 bullets, paragraph style)
+  → action.notify (send desktop notification)</code></pre>
+  </div>
+  <h3>File Processing Pipeline</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">automate workflow</span></div>
+    <pre><code>trigger.manual → input.file (CSV path)
+  → data.csv_parse (list of row objects)
+  → data.filter (item.get('status') == 'active')
+  → ai.any (summarise the filtered rows)
+  → output.display</code></pre>
+  </div>
+  <h3>Knowledge Base Growth Loop</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">aethviondb workflow</span></div>
+    <pre><code>1. Paste article → Distiller → entity created + stubs generated
+2. Expand Stubs → stubs become full entities + more stubs
+3. Vectorize → semantic search enabled
+4. Bake → RAG-ready export</code></pre>
+  </div>
+  <div class="callout tip">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <strong>Two-trigger workflow design</strong>
+      <p>When building Automate workflows with multiple independent trigger chains, give each chain its own input nodes. The three-phase reachability algorithm ensures each trigger only activates its own inputs — parallel chains never interfere.</p>
+    </div>
+  </div>
+</section>
+
+</div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+// ── Navigation ─────────────────────────────────────────────────────────────
+
+function toggleGroup(header) {
+  var group = header.parentElement;
+  group.classList.toggle('open');
+}
+
+function scrollToSection(id) {
+  var el = document.getElementById(id);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setActive(id);
+  }
+}
+
+// Nav item click → scroll
+document.querySelectorAll('.nav-item').forEach(function(link) {
+  link.addEventListener('click', function(e) {
+    e.preventDefault();
+    var href = this.getAttribute('href');
+    if (href && href.startsWith('#')) {
+      var id = href.slice(1);
+      var el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setActive(id);
+        // Open parent group
+        var group = this.closest('.nav-group');
+        if (group) group.classList.add('open');
+      }
+    }
+  });
+});
+
+function setActive(id) {
+  document.querySelectorAll('.nav-item').forEach(function(l) {
+    l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+  });
+  // Mark parent group header as active
+  document.querySelectorAll('.nav-group-header').forEach(function(h) {
+    h.classList.remove('active-group');
+  });
+  var activeLink = document.querySelector('.nav-item.active');
+  if (activeLink) {
+    var header = activeLink.closest('.nav-group').querySelector('.nav-group-header');
+    if (header) header.classList.add('active-group');
+  }
+}
+
+// ── Scrollspy ──────────────────────────────────────────────────────────────
+
+var sections = Array.from(document.querySelectorAll('.doc-section[id]'));
+var observer = new IntersectionObserver(function(entries) {
+  entries.forEach(function(entry) {
+    if (entry.isIntersecting) {
+      setActive(entry.target.id);
+    }
+  });
+}, { root: document.getElementById('main'), rootMargin: '-20% 0px -60% 0px', threshold: 0 });
+
+sections.forEach(function(s) { observer.observe(s); });
+
+// ── Search ─────────────────────────────────────────────────────────────────
+
+document.getElementById('search-input').addEventListener('input', function() {
+  var q = this.value.toLowerCase().trim();
+  document.querySelectorAll('.nav-group').forEach(function(group) {
+    var items = group.querySelectorAll('.nav-item');
+    var anyVisible = false;
+    items.forEach(function(item) {
+      var match = !q || item.textContent.toLowerCase().includes(q);
+      item.classList.toggle('search-hidden', !match);
+      if (match) anyVisible = true;
+    });
+    group.classList.toggle('search-hidden', !anyVisible && q.length > 0);
+    if (q && anyVisible) group.classList.add('open');
+  });
+});
+
+// ── Copy code ──────────────────────────────────────────────────────────────
+
+function copyCode(btn) {
+  var block = btn.closest('.code-block');
+  var code = block.querySelector('code');
+  if (!code) return;
+  navigator.clipboard.writeText(code.innerText).then(function() {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(function() {
+      btn.textContent = 'Copy';
+      btn.classList.remove('copied');
+    }, 1800);
+  }).catch(function() {
+    btn.textContent = 'Copy';
+  });
+}
+
+// ── Initial active state ───────────────────────────────────────────────────
+
+setActive('welcome');
+</script>
+
+</body>
+</html>
