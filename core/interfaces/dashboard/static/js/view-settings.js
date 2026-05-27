@@ -89,11 +89,16 @@ async function loadPreferences() {
         const prefix = comp.prefix;
         const pfx = comp.prefPrefix;
 
+        // Helper: wrap an onChange callback to also flash the "Saved ✓" indicator
+        const _saved = () => _flashCompanionSaved(prefix);
+        const _wrapSave = (fn) => (val) => { _saved(); if (fn) fn(val); };
+
         // Model Selection
         const modelEl = document.getElementById(`setting-${pfx}-model`);
         if (modelEl) {
             modelEl.onchange = async (e) => {
                 await savePreference(`${pfx}.model`, e.target.value);
+                _saved();
                 window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { model: e.target.value } }));
             };
         }
@@ -104,7 +109,7 @@ async function loadPreferences() {
             `setting-${pfx}-typing-speed-val`,
             `${pfx}.typing_speed`,
             75,
-            (val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { typing_speed: val } }))
+            _wrapSave((val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { typing_speed: val } })))
         );
 
         // Memory Context Limit
@@ -113,12 +118,12 @@ async function loadPreferences() {
             `setting-${pfx}-context-limit-val`,
             `${pfx}.context_limit`,
             (id === 'misakacipher' ? 6 : 8),
-            (val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { context_limit: val } }))
+            _wrapSave((val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { context_limit: val } })))
         );
 
         // Hide Character (if exists)
-        _bindToggle(`setting-${pfx}-hide-character`, `${pfx}.hide_character`, false, 
-            (val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { hide_character: val } }))
+        _bindToggle(`setting-${pfx}-hide-character`, `${pfx}.hide_character`, false,
+            _wrapSave((val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { hide_character: val } })))
         );
 
         // Proactive Settings
@@ -139,12 +144,12 @@ async function loadPreferences() {
             const elId = `setting-${prefix}${item.suffix}`;
             const prefKey = `${pfx}.${item.key}`;
             if (item.type === 'toggle') {
-                _bindToggle(elId, prefKey, item.default, 
-                    (val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { [item.key]: val } }))
+                _bindToggle(elId, prefKey, item.default,
+                    _wrapSave((val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { [item.key]: val } })))
                 );
             } else {
                 _bindRangeWithDisplay(elId, `${elId}-val`, prefKey, item.default,
-                    (val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { [item.key]: val } }))
+                    _wrapSave((val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { [item.key]: val } })))
                 );
             }
         }
@@ -240,6 +245,41 @@ function toggleCompanionAccordion(id) {
     const isOpen = body.style.display !== 'none';
     body.style.display = isOpen ? 'none' : '';
     if (chevron) chevron.classList.toggle('open', !isOpen);
+}
+
+// ── Companion auto-save feedback ─────────────────────────────────────────────
+
+/**
+ * Flash a brief "Saved ✓" chip inside the given companion accordion header.
+ * Multiple rapid saves are debounced — only one chip is visible at a time.
+ */
+const _companionSaveTimers = {};
+function _flashCompanionSaved(companionPrefix) {
+    const headerId = `chevron-${companionPrefix}`;
+    const chevron  = document.getElementById(headerId);
+    if (!chevron) return;
+    const header = chevron.closest('.companions-accordion-header');
+    if (!header) return;
+
+    // Remove any existing chip
+    const old = header.querySelector('.companion-autosaved-chip');
+    if (old) old.remove();
+    clearTimeout(_companionSaveTimers[companionPrefix]);
+
+    const chip = document.createElement('span');
+    chip.className  = 'companion-autosaved-chip';
+    chip.textContent = 'Saved ✓';
+    chip.style.cssText = (
+        'font-size:0.72rem;color:var(--accent-green,#4ade80);' +
+        'margin-right:0.5rem;opacity:1;transition:opacity 0.4s;pointer-events:none;'
+    );
+    // Insert before the chevron
+    header.insertBefore(chip, chevron);
+
+    _companionSaveTimers[companionPrefix] = setTimeout(() => {
+        chip.style.opacity = '0';
+        setTimeout(() => chip.remove(), 400);
+    }, 2000);
 }
 
 // ── Reusable binding helpers ──────────────────────────────────────────────────
