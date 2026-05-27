@@ -4361,7 +4361,17 @@
         listEl.innerHTML = bakes.map(b => {
             const fmtLabel   = FMT_LABEL[b.format] || b.format || '?';
             const fmtCls     = FMT_CLS[b.format] || '';
-            const dateStr    = b.baked_at ? _fmtDate(b.baked_at) : (b.started_at ? _fmtDate(b.started_at) : '—');
+            const _bakeTs    = b.baked_at || b.started_at || null;
+            const dateStr    = (() => {
+                if (!_bakeTs) return '—';
+                try {
+                    const d = new Date(_bakeTs);
+                    const date = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+                    const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+                    return `${date}, ${time}`;
+                } catch { return _bakeTs; }
+            })();
+            const relStr     = _bakeTs ? (_relTime(_bakeTs) || dateStr) : null;
             const running    = b.status === 'running';
             const failed     = b.status === 'error';
             const fileName   = b.output_file || '';
@@ -4411,7 +4421,7 @@
                     ${b.size_fmt   ? `<span>${b.size_fmt}</span>` : ''}
                     ${b.include_stubs === false ? `<span style="color:#f59e0b">no stubs</span>` : ''}
                     ${fileName     ? `<span class="adb-bake-filename" title="${fileName}">${fileName}</span>` : ''}
-                    <span>${dateStr}</span>
+                    ${relStr ? `<span title="${dateStr}"><i class="fas fa-clock" style="opacity:0.5;margin-right:0.25em;font-size:0.72em;"></i>${relStr}</span>` : ''}
                 </div>
                 ${embeddingHtml}
             </div>`;
