@@ -647,15 +647,46 @@ def main() -> None:
         dashboard_port = int(os.environ.get("PORT", APP_REGISTRY["dashboard"]["port"]))
 
         def _open_browser() -> None:
-            # 1. Wait for dashboard to be ready (port bind)
-            _log(f"Waiting for dashboard port {dashboard_port} to be active...")
+            import json as _json
+
+            # 1. Resolve the actual port the dashboard bound to — the dashboard
+            #    process calls PortManager.bind_port("Aethvion Suite", ...) which
+            #    writes to ports.json before uvicorn starts listening.  If the
+            #    preferred port was already in use it will have picked the next
+            #    free one (e.g. 8081 instead of 8080).
+            actual_port = dashboard_port  # sensible fallback
+            _log(f"Resolving actual dashboard port (preferred: {dashboard_port})...")
+            resolve_start = time.time()
+            while time.time() - resolve_start < 15:
+                try:
+                    if PORTS_JSON.exists():
+                        registry = _json.loads(PORTS_JSON.read_text(encoding="utf-8"))
+                        for p_str, name in registry.items():
+                            if name == "Aethvion Suite":
+                                actual_port = int(p_str)
+                                _log(f"Dashboard registered at port {actual_port} in ports.json")
+                                break
+                        else:
+                            # Entry not written yet — keep waiting
+                            time.sleep(0.3)
+                            continue
+                        break  # found
+                except Exception:
+                    pass
+                time.sleep(0.3)
+
+            if actual_port != dashboard_port:
+                _log(f"Dashboard shifted port: {dashboard_port} → {actual_port}")
+
+            # 2. Wait for the actual port to respond (up to 30s total)
+            _log(f"Waiting for dashboard port {actual_port} to be active...")
             start_wait = time.time()
             port_ready = False
-            while time.time() - start_wait < 30: # 30s timeout
+            while time.time() - start_wait < 30:
                 try:
                     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                         s.settimeout(0.5)
-                        if s.connect_ex(('127.0.0.1', dashboard_port)) == 0:
+                        if s.connect_ex(('127.0.0.1', actual_port)) == 0:
                             port_ready = True
                             break
                 except OSError:
@@ -665,15 +696,15 @@ def main() -> None:
             if not port_ready:
                 _log("Dashboard port not ready after 30s. Attempting browser open anyway.")
             else:
-                _log(f"Dashboard port {dashboard_port} is active.")
+                _log(f"Dashboard port {actual_port} is active.")
 
             saved = os.environ.pop("AETHVION_NO_BROWSER", None)
             try:
                 from core.utils.browser import open_app_window
                 open_app_window(
-                    f"http://localhost:{dashboard_port}",
+                    f"http://localhost:{actual_port}",
                     delay=0.1,
-                    background=True,   # Reverting to background=True (manual shutdown mode)
+                    background=True,
                     app_mode=(browser_mode == "app"),
                 )
                 _log("Browser open command sent. Launcher continuing in background.")

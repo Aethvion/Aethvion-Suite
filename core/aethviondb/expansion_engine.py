@@ -469,27 +469,53 @@ class ExpansionEngine:
         entity_id: str,
         max_stubs: int = 5,
         model:     Optional[str] = None,
+        include_relations: bool = True,
     ) -> dict[str, Any]:
         """
         Preview expanding the sub-topics (stubs) of an active entity.
         Returns proposed AI data for each stub WITHOUT writing anything.
+
+        Parameters
+        ----------
+        include_relations : bool
+            If True (default), also include relation targets that are still stubs.
         """
         entity = self._writer.get(entity_id)
         if not entity:
             return {"entity_id": entity_id, "error": "Entity not found", "previews": []}
 
-        stub_names  = self._writer.get_stub_names_for(entity_id)[:max_stubs]
+        # 1. Sub-topic stubs from sections.stubs
+        stub_names: list[str] = list(self._writer.get_stub_names_for(entity_id))
+
+        # 2. Relation targets that are still stub entities
+        if include_relations:
+            relations = (entity.get("sections") or {}).get("relations", [])
+            for rel in relations:
+                if not isinstance(rel, dict):
+                    continue
+                target_id = rel.get("target_id", "")
+                if not target_id:
+                    continue
+                related = self._writer.get(target_id)
+                if related and related.get("status") == "stub":
+                    rel_name = related.get("name", "")
+                    if rel_name and rel_name not in stub_names:
+                        stub_names.append(rel_name)
+
+        stub_names = stub_names[:max_stubs]
+
         entity_name = entity["name"]
-        summary     = entity["sections"]["core"].get("summary", "")
+        summary     = (entity.get("sections") or {}).get("core", {}).get("summary", "")
         ctx_snippet = f"Parent entity: {entity_name}. {summary}"
 
         coros   = [self._preview_one_by_name(name, ctx_snippet, model) for name in stub_names]
         results = await asyncio.gather(*coros)
 
         return {
-            "entity_id":   entity_id,
-            "entity_name": entity_name,
-            "previews":    list(results),
+            "entity_id":         entity_id,
+            "entity_name":       entity_name,
+            "previews":          list(results),
+            "included_relations": include_relations,
         }
 
     async def apply_expand_preview(
@@ -587,18 +613,26 @@ class ExpansionEngine:
         entity_id: str,
         max_stubs: int = 5,
         model: Optional[str] = None,
+        include_relations: bool = True,
     ) -> ExpansionReport:
         """
-        For an active entity, turn its sections.stubs list into real entities,
-        then expand each one.
+        For an active entity, expand its stub sub-topics AND (by default)
+        any related entities that are still stubs.
+
+        Parameters
+        ----------
+        include_relations : bool
+            If True (default), relation targets with status='stub' are also
+            included in the expansion batch.
         """
         report   = ExpansionReport()
         entity   = self._writer.get(entity_id)
         if not entity:
             return report
 
-        stub_names = self._writer.get_stub_names_for(entity_id)[:max_stubs]
-        new_ids    = []
+        # 1. Sub-topic stubs from sections.stubs (already-existing stubs included)
+        stub_names = self._writer.get_stub_names_for(entity_id)
+        new_ids:  list[str] = []
 
         for name in stub_names:
             stub_entity, created = self._writer.create(
@@ -606,7 +640,24 @@ class ExpansionEngine:
             )
             if created:
                 self._writer.update(stub_entity["id"], {"status": "stub"})
-            new_ids.append(stub_entity["id"])
+            if stub_entity["id"] not in new_ids:
+                new_ids.append(stub_entity["id"])
+
+        # 2. Relation targets that are still stub entities
+        if include_relations:
+            relations = (entity.get("sections") or {}).get("relations", [])
+            for rel in relations:
+                if not isinstance(rel, dict):
+                    continue
+                target_id = rel.get("target_id", "")
+                if not target_id or target_id in new_ids:
+                    continue
+                related = self._writer.get(target_id)
+                if related and related.get("status") == "stub":
+                    new_ids.append(target_id)
+
+        # Cap at max_stubs
+        new_ids = new_ids[:max_stubs]
 
         if new_ids:
             sub = await self.run(max_entities=max_stubs, model=model, only_ids=new_ids)

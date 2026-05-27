@@ -177,13 +177,25 @@ def _make_openai_client():
 
 # ── Embedding ──────────────────────────────────────────────────────────────────
 
+def _google_model_id(model: str) -> str:
+    """Ensure the model ID has the required 'models/' prefix for the Google API."""
+    return model if model.startswith("models/") else f"models/{model}"
+
+
 async def _embed_google(text: str, model: str) -> list[float]:
     def _sync_embed() -> list[float]:
         client = _make_google_client()
-        result = client.models.embed_content(model=model, contents=text)
-        if not result or not result.embeddings:
-            raise RuntimeError(f"Empty embedding response from model {model!r}")
-        return list(result.embeddings[0].values)
+        model_id = _google_model_id(model)
+        result = client.models.embed_content(model=model_id, contents=text)
+        if not result:
+            raise RuntimeError(f"Null response from Google embedding model {model_id!r}")
+        # SDK >= 1.x: result.embeddings is a list of ContentEmbedding
+        if hasattr(result, "embeddings") and result.embeddings:
+            return list(result.embeddings[0].values)
+        # Older SDK shape: result.embedding (single ContentEmbedding)
+        if hasattr(result, "embedding") and result.embedding:
+            return list(result.embedding.values)
+        raise RuntimeError(f"Empty embedding response from model {model_id!r}: {result}")
     return await asyncio.to_thread(_sync_embed)
 
 
@@ -390,10 +402,15 @@ def embed_sync(text: str, model: str) -> list[float]:
         if not api_key:
             raise RuntimeError("GOOGLE_AI_API_KEY is not set — add it to your .env file.")
         client = genai.Client(api_key=api_key, http_options={"api_version": "v1"})
-        result = client.models.embed_content(model=model, contents=text)
-        if not result or not result.embeddings:
-            raise RuntimeError(f"Empty embedding response from model {model!r}")
-        return list(result.embeddings[0].values)
+        model_id = _google_model_id(model)
+        result = client.models.embed_content(model=model_id, contents=text)
+        if not result:
+            raise RuntimeError(f"Null response from Google embedding model {model_id!r}")
+        if hasattr(result, "embeddings") and result.embeddings:
+            return list(result.embeddings[0].values)
+        if hasattr(result, "embedding") and result.embedding:
+            return list(result.embedding.values)
+        raise RuntimeError(f"Empty embedding response from model {model_id!r}: {result}")
 
 
 # ── Cancel ─────────────────────────────────────────────────────────────────────

@@ -739,15 +739,18 @@ async def expand_single(
 
 @router.post("/entities/{entity_id}/deepen")
 async def deepen_entity(
-    entity_id: str,
-    max_stubs: int = Query(5, le=20),
-    model:     Optional[str] = Query(None),
-    db:        str = Query("default"),
-    path:      Optional[str] = Query(None),
+    entity_id:         str,
+    max_stubs:         int  = Query(5, le=20),
+    model:             Optional[str] = Query(None),
+    include_relations: bool = Query(True, description="Also expand relation targets that are stubs"),
+    db:                str  = Query("default"),
+    path:              Optional[str] = Query(None),
 ):
     from .expansion_engine import ExpansionEngine
     engine = ExpansionEngine(writer=_get_writer(db, path), index=_get_index(db, path))
-    report = await engine.deepen_stubs_for(entity_id, max_stubs=max_stubs, model=model)
+    report = await engine.deepen_stubs_for(
+        entity_id, max_stubs=max_stubs, model=model, include_relations=include_relations
+    )
     return report.as_dict()
 
 
@@ -785,16 +788,19 @@ async def apply_expand_single(
 
 @router.post("/entities/{entity_id}/deepen/preview")
 async def preview_deepen_entity(
-    entity_id: str,
-    max_stubs: int = Query(5, le=20),
-    model:     Optional[str] = Query(None),
-    db:        str = Query("default"),
-    path:      Optional[str] = Query(None),
+    entity_id:         str,
+    max_stubs:         int  = Query(5, le=20),
+    model:             Optional[str] = Query(None),
+    include_relations: bool = Query(True, description="Also preview expansion of relation targets that are stubs"),
+    db:                str  = Query("default"),
+    path:              Optional[str] = Query(None),
 ):
-    """Preview deepening the sub-topics of an active entity WITHOUT writing."""
+    """Preview deepening the sub-topics (and optionally relations) of an active entity WITHOUT writing."""
     from .expansion_engine import ExpansionEngine
     engine = ExpansionEngine(writer=_get_writer(db, path), index=_get_index(db, path))
-    result = await engine.preview_deepen_stubs_for(entity_id, max_stubs=max_stubs, model=model)
+    result = await engine.preview_deepen_stubs_for(
+        entity_id, max_stubs=max_stubs, model=model, include_relations=include_relations
+    )
     if result.get("error"):
         raise HTTPException(500, result["error"])
     return result

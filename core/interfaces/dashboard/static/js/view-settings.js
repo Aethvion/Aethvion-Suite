@@ -689,12 +689,38 @@ async function loadEnvStatus() {
                     const input = container.querySelector(`input[data-key="${kname}"]`);
                     if (!input.value.trim()) return;
 
-                    await fetch('/api/registry/env/update', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ key: kname, value: input.value.trim() })
-                    });
-                    input.value = '';
+                    // Disable button while saving
+                    b.disabled = true;
+                    const originalHtml = b.innerHTML;
+                    b.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+                    try {
+                        const res = await fetch('/api/registry/env/update', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ key: kname, value: input.value.trim() })
+                        });
+                        const result = await res.json().catch(() => ({}));
+                        input.value = '';
+
+                        if (res.ok) {
+                            // Providers are reloaded server-side — refresh model list too
+                            if (typeof loadChatModels === 'function') loadChatModels();
+                            showNotification(
+                                result.providers_reloaded
+                                    ? `API key saved — providers reloaded, ready to use.`
+                                    : `API key saved.`,
+                                'success'
+                            );
+                        } else {
+                            showNotification(result.detail || 'Failed to save API key.', 'error');
+                        }
+                    } catch (e) {
+                        showNotification('Error saving API key.', 'error');
+                    }
+
+                    b.disabled = false;
+                    b.innerHTML = originalHtml;
                     loadEnvStatus();
                 };
             });

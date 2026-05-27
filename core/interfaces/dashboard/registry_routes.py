@@ -115,8 +115,8 @@ async def create_env():
 
 
 @router.post("/env/update")
-async def update_env_key(data: Dict[str, Any]):
-    """Update a specific key in .env."""
+async def update_env_key(data: Dict[str, Any], request: Request):
+    """Update a specific key in .env and immediately reload providers."""
     try:
         key_name = data.get("key")
         key_value = data.get("value", "")
@@ -152,7 +152,18 @@ async def update_env_key(data: Dict[str, Any]):
         # Reload into current process environment
         os.environ[key_name] = key_value
 
-        return {"status": "success", "key": key_name}
+        # Reinitialise providers so they pick up the new key immediately —
+        # no restart required.
+        providers_reloaded = False
+        if hasattr(request.app.state, 'aether'):
+            try:
+                request.app.state.aether.reload_config()
+                providers_reloaded = True
+                logger.info(f"Providers reloaded after .env update for key: {key_name}")
+            except Exception as reload_err:
+                logger.warning(f"Provider reload after .env update failed: {reload_err}")
+
+        return {"status": "success", "key": key_name, "providers_reloaded": providers_reloaded}
     except HTTPException:
         raise
     except Exception as e:

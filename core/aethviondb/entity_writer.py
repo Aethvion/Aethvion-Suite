@@ -285,13 +285,29 @@ class EntityWriter:
         return [e for e in self.list_all() if e.get("status") == "stub"]
 
     def get_stub_names_for(self, entity_id: str) -> list[str]:
-        """Return the stub names from an entity's sections.stubs, minus already-indexed ones."""
+        """Return stub names from sections.stubs that still need expansion.
+
+        Includes:
+        - Names not yet in the index (need to be created)
+        - Names that ARE in the index but the entity is still status='stub'
+
+        Excludes names whose entities are already fully expanded (status='active').
+        """
         entity = self.get(entity_id)
         if not entity:
             return []
         stubs = entity["sections"].get("stubs", [])
-        # Filter out stubs already in the index
-        return [s for s in stubs if not self._index.get(s)]
+        result: list[str] = []
+        for name in stubs:
+            existing_id = self._index.get(name)
+            if not existing_id:
+                result.append(name)          # doesn't exist yet — include
+            else:
+                existing_entity = self.get(existing_id)
+                if existing_entity and existing_entity.get("status") == "stub":
+                    result.append(name)      # exists but still a stub — include
+                # else: already active — skip
+        return result
 
     def search_by_type(self, entity_type: str) -> list[dict[str, Any]]:
         return [e for e in self.list_all() if e.get("type") == entity_type]
