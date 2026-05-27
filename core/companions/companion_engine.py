@@ -211,6 +211,46 @@ class CompanionEngine:
 
             model = get_preferences_manager().get(config.id, {}).get("model", config.default_model)
             pm = ProviderManager()
+
+            # ── Pre-flight validation: catch missing model / API key early ─────
+            if not model:
+                yield json.dumps({
+                    "type": "error",
+                    "content": (
+                        f"No model selected for {config.name}. "
+                        "Please go to Settings → Companions and choose a model."
+                    ),
+                }) + "\n"
+                return
+
+            _target_provider = pm.model_to_provider_map.get(model)
+            if _target_provider:
+                from core.providers.provider_manager import ProviderStatus
+                _prov = pm.providers.get(_target_provider)
+                if _prov and _prov.status == ProviderStatus.OFFLINE:
+                    yield json.dumps({
+                        "type": "error",
+                        "content": (
+                            f"The {_target_provider} provider is offline — "
+                            "its API key may be missing or invalid. "
+                            "Go to Settings → API Keys to configure it."
+                        ),
+                    }) + "\n"
+                    return
+            elif "/" not in model and model != "auto":
+                # Model not in registry and not an OpenRouter passthrough
+                yield json.dumps({
+                    "type": "error",
+                    "content": (
+                        f"Model '{model}' is not available. "
+                        "It may belong to a provider with no API key configured. "
+                        "Go to Settings → API Keys to add the required key, "
+                        "then re-select the model in Settings → Companions."
+                    ),
+                }) + "\n"
+                return
+            # ── end validation ────────────────────────────────────────────────
+
             trace_id = f"{config.id}-chat-{uuid.uuid4().hex[:8]}"
 
             full_content = ""
