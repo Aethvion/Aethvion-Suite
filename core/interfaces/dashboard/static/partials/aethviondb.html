@@ -315,6 +315,26 @@
                 <div id="adb-import-result" class="hidden"></div>
             </div>
 
+            <!-- ── Validate / Cleanup ── -->
+            <div class="adb-panel" id="adb-validate-panel-tools">
+                <div class="adb-panel-header">
+                    <i class="fas fa-shield-check"></i> Validate &amp; Cleanup
+                </div>
+                <p class="adb-panel-desc">
+                    Run integrity checks on this database: detect orphan stubs, duplicate entities,
+                    status mismatches, missing relations, and soft-deleted files that can be purged.
+                </p>
+                <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+                    <button id="adb-tools-validate-btn" class="adb-primary-btn" style="flex:1;min-width:160px">
+                        <i class="fas fa-shield-check"></i> Full Validation
+                    </button>
+                    <button id="adb-tools-clean-orphans-btn" class="adb-btn adb-btn-ghost" style="flex:1;min-width:160px" title="Soft-delete all stub entities that have no relations and are not referenced by anything">
+                        <i class="fas fa-link-slash"></i> Clean Orphan Stubs
+                    </button>
+                </div>
+                <div id="adb-tools-orphan-status" class="adb-status hidden"></div>
+            </div>
+
             <!-- ── Smart Chunks ── -->
             <div class="adb-panel" id="adb-chunk-panel">
                 <div class="adb-panel-header">
@@ -726,7 +746,9 @@
                         <button id="adb-graph-card-close" class="adb-modal-close"><i class="fas fa-times"></i></button>
                     </div>
                     <p id="adb-graph-card-summary" class="adb-graph-card-summary"></p>
+                    <div id="adb-graph-card-categories" class="adb-graph-card-tags hidden"></div>
                     <div id="adb-graph-card-tags" class="adb-graph-card-tags hidden"></div>
+                    <div id="adb-graph-card-aliases" class="adb-graph-card-aliases hidden"></div>
                     <div id="adb-graph-card-meta" class="adb-graph-card-meta"></div>
                     <div id="adb-graph-card-rels" class="adb-graph-card-rels hidden"></div>
                     <div class="adb-graph-card-actions">

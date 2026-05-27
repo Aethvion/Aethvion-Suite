@@ -2415,8 +2415,8 @@
             }
 
             _hide('adb-deepen-preview');
-            await _loadEntity(_currentEntityId);
-            _loadEntityList(_currentFilter, _currentPage);
+            await _loadEntity(_currentEntityId);   // stay on entity detail
+            _refreshStats();                        // update counts without switching to list view
         } catch (e) {
             _toast(`Apply failed: ${e.message}`, 'error');
         } finally {
@@ -3474,7 +3474,19 @@
 
         // ── Summary ───────────────────────────────────────────────────────────
         const sumEl = _el('adb-graph-card-summary');
-        if (sumEl) sumEl.textContent = d.summary || '';
+        if (sumEl) sumEl.textContent = d.summary || '(no summary)';
+
+        // ── Categories ────────────────────────────────────────────────────────
+        const catsEl = _el('adb-graph-card-categories');
+        if (catsEl) {
+            const cats = d.categories || [];
+            if (cats.length) {
+                catsEl.innerHTML = cats.map(c => `<span class="adb-tag adb-tag-sm" style="background:rgba(99,102,241,0.15);color:#a5b4fc">${_escHtml(c)}</span>`).join('');
+                catsEl.classList.remove('hidden');
+            } else {
+                catsEl.classList.add('hidden');
+            }
+        }
 
         // ── Tags ──────────────────────────────────────────────────────────────
         const tagsEl = _el('adb-graph-card-tags');
@@ -3488,13 +3500,30 @@
             }
         }
 
-        // ── Meta: status badge + relation count ───────────────────────────────
+        // ── Aliases ───────────────────────────────────────────────────────────
+        const aliasEl = _el('adb-graph-card-aliases');
+        if (aliasEl) {
+            const aliases = d.aliases || [];
+            if (aliases.length) {
+                aliasEl.innerHTML = `<span style="font-size:0.7rem;opacity:0.6;margin-right:0.25rem">Also known as:</span>` +
+                    aliases.map(a => `<span class="adb-tag adb-tag-sm" style="opacity:0.75">${_escHtml(a)}</span>`).join('');
+                aliasEl.classList.remove('hidden');
+            } else {
+                aliasEl.classList.add('hidden');
+            }
+        }
+
+        // ── Meta: status badge + relation count + source + date ──────────────
         const metaEl = _el('adb-graph-card-meta');
         if (metaEl) {
             const isStub = d.status === 'stub';
-            metaEl.innerHTML =
-                `<span class="adb-badge ${isStub ? 'adb-badge-stub' : 'adb-badge-expanded'}">${isStub ? 'stub' : 'expanded'}</span>` +
-                (d.rel_count ? `<span>${d.rel_count} relation${d.rel_count !== 1 ? 's' : ''}</span>` : '');
+            const parts  = [
+                `<span class="adb-badge ${isStub ? 'adb-badge-stub' : 'adb-badge-expanded'}">${isStub ? 'stub' : 'expanded'}</span>`,
+                d.rel_count ? `<span>${d.rel_count} relation${d.rel_count !== 1 ? 's' : ''}</span>` : '',
+                d.source    ? `<span style="opacity:0.6;font-size:0.72rem">source: ${_escHtml(d.source)}</span>` : '',
+                d.created   ? `<span style="opacity:0.5;font-size:0.72rem">${_escHtml(d.created)}</span>` : '',
+            ].filter(Boolean);
+            metaEl.innerHTML = parts.join('');
         }
 
         // ── Connected relations (from already-loaded graph data) ───────────────
@@ -4503,7 +4532,7 @@
         return Array.from(cbs).map(cb => cb.value);
     }
 
-    async function _bakeStart() {
+    async function _bakeStart(overwrite = false) {
         const name           = (_el('adb-bake-name')?.value.trim() || 'default');
         const fmt            = _el('adb-bake-format')?.value || 'jsonl';
         const includeStubs   = _el('adb-bake-stubs')?.checked ?? true;
@@ -4517,8 +4546,24 @@
             const res = await fetch(`${API}/bake?${_dbParam()}`, {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ name, format: fmt, include_stubs: includeStubs, include_vectors: includeVectors, vector_models: vectorModels }),
+                body:    JSON.stringify({
+                    name, format: fmt,
+                    include_stubs: includeStubs, include_vectors: includeVectors,
+                    vector_models: vectorModels, overwrite,
+                }),
             });
+
+            if (res.status === 409 && !overwrite) {
+                // Name already exists — ask user before overwriting
+                const err = await res.json().catch(() => ({}));
+                if (bakeBtn) { bakeBtn.disabled = false; bakeBtn.innerHTML = '<i class="fas fa-box-archive"></i> Bake Now'; }
+                const confirmed = confirm(
+                    `A bake named "${name}" already exists.\n\nOverwrite it? The existing file will be permanently replaced.`
+                );
+                if (confirmed) _bakeStart(true);  // retry with overwrite flag
+                return;
+            }
+
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.detail || `HTTP ${res.status}`);
@@ -6269,6 +6314,38 @@
             }
         });
         _el('adb-validate-btn')?.addEventListener('click', _validateAll);
+        // Also wire the validate button that lives in the Tools tab
+        _el('adb-tools-validate-btn')?.addEventListener('click', () => {
+            // Switch to Explorer tab (where validation results are rendered) then run
+            document.querySelector('.adb-nav-tab[data-tab="explorer"]')?.click();
+            _validateAll();
+        });
+
+        // Quick "Clean Orphan Stubs" button in Tools tab
+        _el('adb-tools-clean-orphans-btn')?.addEventListener('click', async () => {
+            const btn      = _el('adb-tools-clean-orphans-btn');
+            const statusEl = _el('adb-tools-orphan-status');
+            const orig     = btn.innerHTML;
+            btn.disabled   = true;
+            btn.innerHTML  = '<i class="fas fa-spinner fa-spin"></i> Cleaning…';
+            if (statusEl) { statusEl.className = 'adb-status'; statusEl.textContent = ''; }
+            try {
+                const res  = await fetch(`${API}/validate/fix-orphan-stubs?${_dbParam()}`, { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+                const n    = data.fixed ?? 0;
+                const msg  = n === 0
+                    ? 'No orphan stubs found.'
+                    : `Removed ${n} orphan stub${n !== 1 ? 's' : ''} — use Purge in Validate to fully delete from disk.`;
+                if (statusEl) { statusEl.className = 'adb-status'; statusEl.textContent = msg; statusEl.classList.remove('hidden'); }
+                if (n > 0) _refreshStats();
+            } catch (e) {
+                if (statusEl) { statusEl.className = 'adb-status adb-status-error'; statusEl.textContent = `Error: ${e.message}`; statusEl.classList.remove('hidden'); }
+            } finally {
+                btn.disabled  = false;
+                btn.innerHTML = orig;
+            }
+        });
 
         // Tab navigation
         document.querySelectorAll('.adb-nav-tab').forEach(btn => {
