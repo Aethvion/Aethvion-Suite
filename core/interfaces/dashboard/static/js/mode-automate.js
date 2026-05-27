@@ -711,13 +711,8 @@
             try { await _apiSaveWorkflow(); } catch (_) {}
         }
 
-        // Reset previous execution visuals
-        _clearExecState();
-        _clearTriggerHighlight();
-        _closeProps();
-
         // Determine which triggers to run:
-        // • specific trigger selected → run just that one
+        // • specific trigger selected → run just that one (preserve other chains' states)
         // • "All" selected           → find every trigger.* node and run sequentially
         var triggerIds;
         if (_selTriggerId) {
@@ -729,7 +724,7 @@
             if (!triggerIds.length) triggerIds = [null]; // no trigger nodes → single run
         }
 
-        // Mark only the nodes that will actually be touched as "pending"
+        // Compute the full set of nodes this run will touch
         var pendingIds = new Set();
         triggerIds.forEach(function (tid) {
             if (tid) {
@@ -738,6 +733,13 @@
                 (_active.nodes || []).forEach(function (n) { pendingIds.add(n.id); });
             }
         });
+
+        // Reset execution visuals — but ONLY for nodes in the current run's chains,
+        // so that a single-trigger run doesn't wipe the results of other trigger chains.
+        _clearExecState(pendingIds);
+        _clearTriggerHighlight();
+        _closeProps();
+
         pendingIds.forEach(function (nid) { _setNodeExecState(nid, 'pending'); });
         _openExecPanelRunning();
 
@@ -746,9 +748,34 @@
         _e.btnRun.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Running…</span>';
 
         try {
-            // Run each trigger sequentially — independent chains, shared nodes re-run
-            for (var i = 0; i < triggerIds.length; i++) {
-                await _streamOneTrigger(triggerIds[i]);
+            if (triggerIds.length === 1) {
+                // Single trigger: apply its result directly.
+                // Pass pendingIds so live node_status events from sibling chains are ignored.
+                var singleResult = await _streamOneTrigger(triggerIds[0], pendingIds);
+                if (singleResult) _applyExecResults(singleResult, pendingIds);
+            } else {
+                // Multiple triggers: accumulate results so each chain's outputs are preserved.
+                // _lastExecData is kept as the growing merged object so the Results view
+                // always shows the combined picture even as triggers complete one by one.
+                var accumulated = { node_status: {}, node_outputs: {}, node_errors: {}, log: [], ok: true };
+                for (var i = 0; i < triggerIds.length; i++) {
+                    // Compute this trigger's own pending set for fine-grained filtering
+                    var thisTriggerIds = new Set(
+                        triggerIds[i]
+                            ? _computeReachableFromTrigger(triggerIds[i])
+                            : (_active.nodes || []).map(function (n) { return n.id; })
+                    );
+                    var res = await _streamOneTrigger(triggerIds[i], thisTriggerIds);
+                    if (res) {
+                        Object.assign(accumulated.node_status,  res.node_status  || {});
+                        Object.assign(accumulated.node_outputs, res.node_outputs || {});
+                        Object.assign(accumulated.node_errors,  res.node_errors  || {});
+                        (res.log || []).forEach(function (e) { accumulated.log.push(e); });
+                        if (res.ok === false) accumulated.ok = false;
+                        // Apply after each trigger so canvas visuals update progressively
+                        _applyExecResults(accumulated);
+                    }
+                }
             }
         } catch (e) {
             _toast('Execution failed: ' + e.message, true);
@@ -760,9 +787,14 @@
 
     /**
      * Stream execution for a single trigger (or null = no trigger_id).
-     * Applies node states and log entries live; calls _applyExecResults on done.
+     * Applies node states and log entries live as they arrive.
+     * Returns the final result object from the 'done' event (for the caller to accumulate / apply).
+     *
+     * @param {string|null} triggerId  - trigger node id, or null for no-trigger run
+     * @param {Set|null}    allowedIds - when provided, node_status events for nodes NOT in
+     *                                   this set are ignored (prevents sibling-chain wipes)
      */
-    async function _streamOneTrigger(triggerId) {
+    async function _streamOneTrigger(triggerId, allowedIds) {
         const reqBody = {};
         if (triggerId) reqBody.trigger_id = triggerId;
 
@@ -777,8 +809,9 @@
         const reader  = r.body.getReader();
         const decoder = new TextDecoder();
         let   buf     = '';
+        let   resultData = null;
 
-        while (true) {
+        outer: while (true) {
             const { value, done } = await reader.read();
             if (done) break;
 
@@ -792,15 +825,22 @@
                 try { ev = JSON.parse(line.slice(6)); } catch (_) { continue; }
 
                 if (ev.type === 'node_status') {
-                    _setNodeExecState(ev.node_id, ev.status);
+                    // Ignore status events for nodes outside this run's chain —
+                    // they could be "skipped" events for sibling-chain nodes that
+                    // would otherwise wipe those nodes' visual state and display output.
+                    if (!allowedIds || allowedIds.has(ev.node_id)) {
+                        _setNodeExecState(ev.node_id, ev.status);
+                    }
                 } else if (ev.type === 'log') {
                     _appendExecLogEntry(ev);
                 } else if (ev.type === 'done') {
-                    _applyExecResults(ev.result);
-                    break;
+                    resultData = ev.result;
+                    break outer;
                 }
             }
         }
+
+        return resultData;
     }
 
     /** Open the execution log panel immediately showing a "Running…" status. */
@@ -831,9 +871,15 @@
         logView.scrollTop = logView.scrollHeight;
     }
 
-    function _clearExecState() {
+    /**
+     * Clear execution state badges/classes from canvas nodes.
+     * @param {Set|null} restrictToIds  When provided, only clear nodes whose id is in the set.
+     *                                  Pass null (default) to clear all nodes (full reset).
+     */
+    function _clearExecState(restrictToIds) {
         if (!_e.canvasInner) return;
         _e.canvasInner.querySelectorAll('.at-node').forEach(function (el) {
+            if (restrictToIds && !restrictToIds.has(el.dataset.nodeId)) return;
             el.classList.remove('at-exec-running', 'at-exec-done', 'at-exec-error', 'at-exec-skipped', 'at-exec-pending');
             var badge = el.querySelector('.at-node-exec-badge');
             if (badge) badge.remove();
@@ -849,7 +895,14 @@
         el.classList.add('at-exec-' + state);
     }
 
-    function _applyExecResults(data) {
+    /**
+     * Apply execution results to the canvas and exec-panel.
+     *
+     * @param {object}   data       - result object from the backend
+     * @param {Set|null} allowedIds - when provided, only update nodes whose id is in this set.
+     *                                Pass null to update all nodes (accumulated multi-trigger call).
+     */
+    function _applyExecResults(data, allowedIds) {
         _lastExecData = data; // persist for inspector Results view
 
         var statuses = data.node_status  || {};
@@ -858,6 +911,8 @@
 
         // Apply per-node states + outputs
         Object.keys(statuses).forEach(function (nodeId) {
+            // Skip nodes that belong to sibling chains — don't disturb their state.
+            if (allowedIds && !allowedIds.has(nodeId)) return;
             var status = statuses[nodeId];
             _setNodeExecState(nodeId, status);
 
