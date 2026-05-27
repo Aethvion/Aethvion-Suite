@@ -99,11 +99,30 @@ _REGISTRY: dict[str, Callable] = {
     "output.display":   inputs_outputs.output_display,
     "output.file":      inputs_outputs.output_file,
 
-    # Integrations ─────────────────────────────────────────────────────────────
+    # AethvionDB — search ───────────────────────────────────────────────────────
     "aethviondb.search":                    aethviondb.aethviondb_search,
     "aethviondb.semantic_search":           aethviondb.aethviondb_semantic_search,
     "aethviondb.snapshot_search":           aethviondb.aethviondb_snapshot_search,
     "aethviondb.snapshot_semantic_search":  aethviondb.aethviondb_snapshot_semantic_search,
+    # AethvionDB — database ─────────────────────────────────────────────────────
+    "aethviondb.create_database":    aethviondb.aethviondb_create_database,
+    "aethviondb.get_stats":          aethviondb.aethviondb_get_stats,
+    # AethvionDB — entity CRUD ──────────────────────────────────────────────────
+    "aethviondb.list_entities":      aethviondb.aethviondb_list_entities,
+    "aethviondb.get_entity":         aethviondb.aethviondb_get_entity,
+    "aethviondb.create_entity":      aethviondb.aethviondb_create_entity,
+    "aethviondb.update_entity":      aethviondb.aethviondb_update_entity,
+    "aethviondb.delete_entity":      aethviondb.aethviondb_delete_entity,
+    # AethvionDB — AI operations ────────────────────────────────────────────────
+    "aethviondb.distill":            aethviondb.aethviondb_distill,
+    "aethviondb.expand_entity":      aethviondb.aethviondb_expand_entity,
+    "aethviondb.deepen_entity":      aethviondb.aethviondb_deepen_entity,
+    # AethvionDB — snapshots ────────────────────────────────────────────────────
+    "aethviondb.create_snapshot":    aethviondb.aethviondb_create_snapshot,
+    "aethviondb.list_snapshots":     aethviondb.aethviondb_list_snapshots,
+    # AethvionDB — maintenance ──────────────────────────────────────────────────
+    "aethviondb.validate":           aethviondb.aethviondb_validate,
+    "aethviondb.generate_vectors":   aethviondb.aethviondb_generate_vectors,
     "companion.ask":              integrations.companion_ask,
     "integration.discord":  integrations.integration_discord,
     "integration.email":    integrations.integration_email,
