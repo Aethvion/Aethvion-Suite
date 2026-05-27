@@ -19,7 +19,7 @@ import psutil
 import json
 
 from core.utils import utcnow_iso, atomic_json_write
-from core.version import VERSION
+from core.version import VERSION, get_version_parts
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["system"])
@@ -312,9 +312,9 @@ async def get_system_status(request: Request):
 @router.get("/api/system/version-info")
 async def get_version_info():
     root_dir = Path(__file__).resolve().parent.parent.parent.parent.parent
-    current_commit = "Unknown"
-    try: current_commit = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], cwd=str(root_dir), text=True, stderr=subprocess.DEVNULL, creationflags=CREATE_NO_WINDOW).strip()
-    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired): pass
+
+    # Use the pre-computed version parts (cached after first call)
+    parts = get_version_parts()
 
     last_update_commit = "Unknown"
     changelog = []
@@ -328,7 +328,18 @@ async def get_version_info():
         except (OSError, json.JSONDecodeError, KeyError): pass
 
     remote_commit = await asyncio.to_thread(_get_git_remote_head, root_dir)
-    return {"local": {"version": str(VERSION), "commit": current_commit, "last_update_commit": last_update_commit, "changelog": changelog}, "remote": {"commit": remote_commit}}
+    return {
+        "local": {
+            "version":            parts["string"],
+            "commit":             parts["short"],
+            "count":              parts["count"],
+            "year":               parts["year"],
+            "month":              parts["month"],
+            "last_update_commit": last_update_commit,
+            "changelog":          changelog,
+        },
+        "remote": {"commit": remote_commit},
+    }
 
 @router.post("/api/system/update")
 async def trigger_self_update():

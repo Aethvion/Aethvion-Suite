@@ -2185,12 +2185,12 @@ const REMOTE_VERSION_URL = "https://raw.githubusercontent.com/Aethvion/Aethvion-
 
 async function checkForUpdates(manual = false) {
     try {
-        // 1. Fetch local version & commit info from our new API
+        // 1. Fetch local version & commit info from our version API
         const localResp = await fetch('/api/system/version-info?v=' + Date.now());
         const localInfo = await localResp.json();
-        
-        const localVersion = parseFloat(localInfo.local.version) || 0;
-        const localCommit = localInfo.local.commit || "Unknown";
+
+        const localCount  = localInfo.local.count  || 0;   // total commit count
+        const localCommit = localInfo.local.commit  || "Unknown";
         const lastUpdateCommit = localInfo.local.last_update_commit || "Unknown";
 
         // Show loading if manual
@@ -2204,19 +2204,15 @@ async function checkForUpdates(manual = false) {
         const remoteResp = await fetch(REMOTE_VERSION_URL, { cache: "no-store" });
         if (!remoteResp.ok) throw new Error("Failed to fetch remote status");
         
-        const remoteData = await remoteResp.json();
-        const remoteVersion = parseFloat(remoteData.system.version) || 0;
-        const remoteCommit = localInfo.remote.commit || "Unknown"; // From our server API check
+        const remoteData   = await remoteResp.json();
+        const remoteCommit = localInfo.remote.commit || "Unknown"; // from our server git ls-remote check
 
-        const isNewVersion = remoteVersion > localVersion;
-        const isNewCommit = !isNewVersion && (remoteCommit !== "Unknown" && remoteCommit !== localCommit);
-        const isUpdateAvailable = isNewVersion || isNewCommit;
+        // Update available when remote commit hash differs from local
+        const isUpdateAvailable = remoteCommit !== "Unknown" && remoteCommit !== localCommit;
 
         if (manual && btn) {
-            if (isNewVersion) {
-                btn.innerHTML = `<i class="fas fa-download"></i> Update to v${remoteVersion}`;
-            } else if (isNewCommit) {
-                btn.innerHTML = `<i class="fas fa-code-commit"></i> Update to Latest Commit`;
+            if (isUpdateAvailable) {
+                btn.innerHTML = `<i class="fas fa-download"></i> Update Available`;
             } else {
                 btn.innerHTML = '<i class="fas fa-check"></i> Up to Date';
             }
@@ -2228,7 +2224,7 @@ async function checkForUpdates(manual = false) {
         if (dot) dot.style.display = isUpdateAvailable ? 'block' : 'none';
 
         if (manual || document.getElementById('settings-version-banner')) {
-            renderVersionTabContent(localInfo.local, remoteData, remoteCommit, isNewVersion, isNewCommit);
+            renderVersionTabContent(localInfo.local, remoteData, remoteCommit, isUpdateAvailable);
         }
 
         return isUpdateAvailable;
@@ -2243,7 +2239,7 @@ async function checkForUpdates(manual = false) {
     }
 }
 
-async function renderVersionTabContent(localInfo = null, remoteData = null, remoteCommit = "Unknown", isNewVersion = false, isNewCommit = false) {
+async function renderVersionTabContent(localInfo = null, remoteData = null, remoteCommit = "Unknown", isUpdateAvailable = false) {
     if (!localInfo) {
         try {
             const resp = await fetch('/api/system/version-info?v=' + Date.now());
@@ -2265,7 +2261,7 @@ async function renderVersionTabContent(localInfo = null, remoteData = null, remo
         // Update sidebar tag as well if it exists
         const sidebarTag = document.getElementById('suite-version-tag');
         if (sidebarTag) {
-            sidebarTag.textContent = 'v' + localInfo.version;
+            sidebarTag.textContent = localInfo.version;
         }
 
         localInfoBox.innerHTML = `
@@ -2273,11 +2269,10 @@ async function renderVersionTabContent(localInfo = null, remoteData = null, remo
                 <div style="font-size: 2rem;">🛡️</div>
                 <div style="flex: 1;">
                     <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary);">Currently Installed</div>
-                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--primary);">Aethvion Suite v${localInfo.version}</div>
+                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--primary); font-family: 'Fira Code', monospace;">${localInfo.version}</div>
                     <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
-                        <span style="opacity: 0.7;">Active Build:</span> <code style="background: rgba(0,0,0,0.2); padding: 2px 5px; border-radius: 4px; font-family: 'Fira Code', monospace;">${localInfo.commit}</code>
-                        ${localInfo.last_update_commit !== localInfo.commit && localInfo.last_update_commit !== "Unknown" ? 
-                            `<span style="margin-left: 10px; opacity: 0.5; font-size: 0.7rem;">(Synced from: ${localInfo.last_update_commit})</span>` : ''}
+                        ${localInfo.last_update_commit !== localInfo.commit && localInfo.last_update_commit !== "Unknown" ?
+                            `<span style="opacity: 0.5; font-size: 0.7rem;">Last synced from: ${localInfo.last_update_commit}</span>` : ''}
                     </div>
                 </div>
                 <div style="text-align: right;">
@@ -2290,31 +2285,23 @@ async function renderVersionTabContent(localInfo = null, remoteData = null, remo
 
     // 2. Render Update Banner
     if (versionBanner) {
-        if ((isNewVersion || isNewCommit) && remoteData) {
-            const bannerTitle = isNewVersion ? "New Version Available!" : "New Patches Available";
-            const bannerIcon = isNewVersion ? "🚀" : "🛠️";
-            const bannerBody = isNewVersion 
-                ? `Version <strong>${remoteData.system.version}</strong> is now live on GitHub.`
-                : `New improvements are available for v${localInfo.version} (Commit <strong>${remoteCommit}</strong>).`;
-            const btnText = isNewVersion ? `Update to v${remoteData.system.version}` : "Download Patches";
-
+        if (isUpdateAvailable && remoteData) {
             versionBanner.innerHTML = `
                 <div style="margin-top: 15px; padding: 15px; background: rgba(85, 239, 196, 0.1); border-left: 4px solid #55efc4; border-radius: 4px; display: flex; align-items: center; gap: 15px;">
-                    <div style="font-size: 1.5rem;">${bannerIcon}</div>
+                    <div style="font-size: 1.5rem;">🛠️</div>
                     <div style="flex: 1;">
-                        <strong style="color: #55efc4; font-size: 1rem;">${bannerTitle}</strong>
+                        <strong style="color: #55efc4; font-size: 1rem;">Updates Available</strong>
                         <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 4px;">
-                            ${bannerBody}
+                            New commits are available on GitHub
+                            ${remoteCommit !== "Unknown" ? ` (latest: <code style="background:rgba(0,0,0,0.2);padding:1px 4px;border-radius:3px;">${remoteCommit}</code>)` : ''}.
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px;">
-                        <button id="trigger-self-update-btn" class="action-btn small primary">${btnText}</button>
+                        <button id="trigger-self-update-btn" class="action-btn small primary">Pull Updates</button>
                         <a href="https://github.com/Aethvion/Aethvion-Suite" target="_blank" class="action-btn small secondary" style="text-decoration: none;">View Repo</a>
                     </div>
                 </div>
             `;
-            
-            // Re-attach button listener
             setTimeout(() => {
                 const updateBtn = document.getElementById('trigger-self-update-btn');
                 if (updateBtn) updateBtn.onclick = () => triggerSelfUpdate();
@@ -2323,7 +2310,7 @@ async function renderVersionTabContent(localInfo = null, remoteData = null, remo
             versionBanner.innerHTML = `
                 <div style="margin-top: 15px; padding: 12px; border-radius: 4px; border: 1px solid var(--border); background: rgba(255,255,255,0.02); display: flex; align-items: center; gap: 10px;">
                     <i class="fas fa-check-circle" style="color:#55efc4;"></i>
-                    <span style="font-size: 0.9rem; color: var(--text-secondary);">Aethvion Suite is up to date (Patch ${localInfo.commit}).</span>
+                    <span style="font-size: 0.9rem; color: var(--text-secondary);">Aethvion Suite is up to date.</span>
                 </div>
             `;
         } else {
@@ -2336,8 +2323,8 @@ async function renderVersionTabContent(localInfo = null, remoteData = null, remo
         const dataToUse = (remoteData && remoteData.system.changelog) ? remoteData.system.changelog : (localInfo.changelog || []);
         
         if (dataToUse && Array.isArray(dataToUse)) {
-            // Sort versions descending
-            const sorted = [...dataToUse].sort((a, b) => b.version.localeCompare(a.version, undefined, {numeric: true, sensitivity: 'base'}));
+            // Sort versions descending (new format YYYY.MM.count sorts lexicographically)
+            const sorted = [...dataToUse].sort((a, b) => String(b.version).localeCompare(String(a.version), undefined, {numeric: true, sensitivity: 'base'}));
             
             changelogList.innerHTML = '';
             sorted.forEach(entry => {

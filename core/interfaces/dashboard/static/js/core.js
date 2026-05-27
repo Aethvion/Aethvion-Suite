@@ -1053,19 +1053,18 @@ function initializeUI() {
 }
 
 /**
- * Updates system-wide information like version number from system-status.json
+ * Updates system-wide information like version number from the git-derived version API.
  */
 async function updateSystemInfo() {
     const heroVersion = document.getElementById('suite-hero-version');
     if (!heroVersion) return;
 
     try {
-        const response = await fetch('/static/assets/system-status.json?v=' + Date.now());
+        const response = await fetch('/api/system/version-info?v=' + Date.now());
         if (response.ok) {
             const data = await response.json();
-            if (data.system && data.system.version) {
-                heroVersion.textContent = `Version ${data.system.version}`;
-            }
+            const ver = data.local && data.local.version;
+            if (ver) heroVersion.textContent = ver;
         }
     } catch (e) {
         console.warn("Failed to update system info:", e);

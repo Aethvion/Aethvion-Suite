@@ -2402,7 +2402,10 @@ _NODE_TYPES: list[dict] = [
         "category": "AethvionDB",
         "icon": "fa-database",
         "color": "#818cf8",
-        "inputs": [{"name": "in", "label": "Search Query", "description": "Natural-language query to search the AethvionDB database."}],
+        "inputs": [
+            {"name": "in",       "label": "Search Query", "description": "Natural-language query to search the AethvionDB database."},
+            {"name": "database", "label": "Database",     "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
+        ],
         "outputs": [
             {"name": "out",   "label": "Results (JSON)", "description": "Array of matching entities with scores and metadata."},
             {"name": "count", "label": "Result Count",  "description": "Number of results returned."},
@@ -2443,7 +2446,11 @@ _NODE_TYPES: list[dict] = [
         "category": "AethvionDB",
         "icon": "fa-database",
         "color": "#a78bfa",
-        "inputs": [{"name": "in", "label": "Search Query", "description": "Natural-language query to search within the snapshot."}],
+        "inputs": [
+            {"name": "in",       "label": "Search Query", "description": "Natural-language query to search within the snapshot."},
+            {"name": "database", "label": "Database",     "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
+            {"name": "snapshot", "label": "Snapshot",     "description": "Wired snapshot name — overrides the Snapshot property. Connect a Global Snapshot node here."},
+        ],
         "outputs": [
             {"name": "out",   "label": "Results (JSON)", "description": "Array of matching entities from the snapshot with scores."},
             {"name": "count", "label": "Result Count",  "description": "Number of results returned."},
@@ -2493,7 +2500,8 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-brain",
         "color": "#c084fc",
         "inputs": [
-            {"name": "in", "label": "Search Query", "description": "Natural-language query — entities are ranked by semantic similarity to this text."},
+            {"name": "in",       "label": "Search Query", "description": "Natural-language query — entities are ranked by semantic similarity to this text."},
+            {"name": "database", "label": "Database",     "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
         ],
         "outputs": [
             {"name": "out",   "label": "Results (JSON)",    "description": "Array of matching entities ranked by cosine similarity score (0–1)."},
@@ -2550,7 +2558,9 @@ _NODE_TYPES: list[dict] = [
         "icon": "fa-brain",
         "color": "#a78bfa",
         "inputs": [
-            {"name": "in", "label": "Search Query", "description": "Natural-language query — entities are ranked by semantic similarity to this text."},
+            {"name": "in",       "label": "Search Query", "description": "Natural-language query — entities are ranked by semantic similarity to this text."},
+            {"name": "database", "label": "Database",     "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
+            {"name": "snapshot", "label": "Snapshot",     "description": "Wired snapshot name — overrides the Snapshot property. Connect a Global Snapshot node here."},
         ],
         "outputs": [
             {"name": "out",   "label": "Results (JSON)",   "description": "Array of matching entities ranked by cosine similarity score (0–1)."},
@@ -2641,7 +2651,10 @@ _NODE_TYPES: list[dict] = [
         "category": "AethvionDB",
         "icon":     "fa-chart-pie",
         "color":    "#34d399",
-        "inputs":  [],
+        "inputs": [
+            {"name": "database", "label": "Database",
+             "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
+        ],
         "outputs": [
             {"name": "out",     "label": "Stats (JSON)", "description": "Full stats object with counts by status."},
             {"name": "total",   "label": "Total",        "description": "Total entity count (all statuses)."},
@@ -2661,7 +2674,10 @@ _NODE_TYPES: list[dict] = [
         "category": "AethvionDB",
         "icon":     "fa-list",
         "color":    "#818cf8",
-        "inputs":  [],
+        "inputs": [
+            {"name": "database", "label": "Database",
+             "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
+        ],
         "outputs": [
             {"name": "out",   "label": "Entities (JSON)", "description": "Array of entity summaries matching the filters."},
             {"name": "count", "label": "Count",           "description": "Number of entities returned."},
@@ -2688,8 +2704,10 @@ _NODE_TYPES: list[dict] = [
         "icon":     "fa-file-lines",
         "color":    "#818cf8",
         "inputs": [
-            {"name": "in", "label": "Entity ID or Name",
+            {"name": "in",       "label": "Entity ID or Name",
              "description": "Entity ID (ws_…) or exact name to retrieve."},
+            {"name": "database", "label": "Database",
+             "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
         ],
         "outputs": [
             {"name": "out",         "label": "Entity (JSON)", "description": "Full entity JSON including all sections."},
@@ -2710,8 +2728,10 @@ _NODE_TYPES: list[dict] = [
         "icon":     "fa-file-circle-plus",
         "color":    "#818cf8",
         "inputs": [
-            {"name": "in", "label": "Entity Name",
+            {"name": "in",       "label": "Entity Name",
              "description": "Name for the new entity (overrides the Name property)."},
+            {"name": "database", "label": "Database",
+             "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
         ],
         "outputs": [
             {"name": "out",         "label": "Entity (JSON)", "description": "Newly created entity record."},
@@ -2750,10 +2770,12 @@ _NODE_TYPES: list[dict] = [
         "icon":     "fa-file-pen",
         "color":    "#818cf8",
         "inputs": [
-            {"name": "entity", "label": "Entity ID or Name",
+            {"name": "entity",   "label": "Entity ID or Name",
              "description": "Entity to update — accepts ID or exact name."},
-            {"name": "in",     "label": "JSON Patch",
+            {"name": "in",       "label": "JSON Patch",
              "description": "JSON object with fields to update, e.g. {\"type\":\"person\",\"sections\":{\"core\":{\"summary\":\"New text\"}}}."},
+            {"name": "database", "label": "Database",
+             "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
         ],
         "outputs": [
             {"name": "out",       "label": "Entity (JSON)", "description": "Updated entity after the patch was applied."},
@@ -2777,8 +2799,10 @@ _NODE_TYPES: list[dict] = [
         "icon":     "fa-file-circle-minus",
         "color":    "#f87171",
         "inputs": [
-            {"name": "in", "label": "Entity ID or Name",
+            {"name": "in",       "label": "Entity ID or Name",
              "description": "Entity to soft-delete."},
+            {"name": "database", "label": "Database",
+             "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
         ],
         "outputs": [
             {"name": "out",       "label": "Success",    "description": "'true' if deleted, 'false' if not found."},
@@ -2799,8 +2823,10 @@ _NODE_TYPES: list[dict] = [
         "icon":     "fa-flask",
         "color":    "#c084fc",
         "inputs": [
-            {"name": "in", "label": "Source Text",
+            {"name": "in",       "label": "Source Text",
              "description": "Any text to distil — article, notes, book excerpt, raw document. The AI identifies the subject and writes a structured entity."},
+            {"name": "database", "label": "Database",
+             "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
         ],
         "outputs": [
             {"name": "out",         "label": "Entity (JSON)", "description": "Distilled entity record."},
@@ -2823,10 +2849,12 @@ _NODE_TYPES: list[dict] = [
         "icon":     "fa-wand-sparkles",
         "color":    "#c084fc",
         "inputs": [
-            {"name": "in",      "label": "Entity ID or Name",
+            {"name": "in",       "label": "Entity ID or Name",
              "description": "Stub entity to expand. Already-active entities pass through untouched."},
-            {"name": "context", "label": "Source Material (optional)",
+            {"name": "context",  "label": "Source Material (optional)",
              "description": "Extra reference text for the AI to use when generating content (distil-style)."},
+            {"name": "database", "label": "Database",
+             "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
         ],
         "outputs": [
             {"name": "out",         "label": "Entity (JSON)", "description": "Expanded entity record."},
@@ -2850,10 +2878,12 @@ _NODE_TYPES: list[dict] = [
         "icon":     "fa-layer-group",
         "color":    "#c084fc",
         "inputs": [
-            {"name": "in",      "label": "Entity ID or Name",
+            {"name": "in",       "label": "Entity ID or Name",
              "description": "Active entity whose stub sub-topics should be expanded."},
-            {"name": "context", "label": "Source Material (optional)",
+            {"name": "context",  "label": "Source Material (optional)",
              "description": "Extra reference text to guide the AI when deepening."},
+            {"name": "database", "label": "Database",
+             "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
         ],
         "outputs": [
             {"name": "out",       "label": "Report (JSON)", "description": "Lists of applied and failed expansions."},
@@ -2881,8 +2911,10 @@ _NODE_TYPES: list[dict] = [
         "icon":     "fa-camera",
         "color":    "#38bdf8",
         "inputs": [
-            {"name": "in", "label": "Snapshot Name",
+            {"name": "in",       "label": "Snapshot Name",
              "description": "Name for the snapshot file (overrides Snapshot Name property)."},
+            {"name": "database", "label": "Database",
+             "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
         ],
         "outputs": [
             {"name": "out",   "label": "Meta (JSON)", "description": "Snapshot metadata including path, counts and timing."},
@@ -2911,7 +2943,10 @@ _NODE_TYPES: list[dict] = [
         "category": "AethvionDB",
         "icon":     "fa-camera-rotate",
         "color":    "#38bdf8",
-        "inputs":  [],
+        "inputs": [
+            {"name": "database", "label": "Database",
+             "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
+        ],
         "outputs": [
             {"name": "out",   "label": "Snapshots (JSON)", "description": "Array of snapshot metadata objects, newest first."},
             {"name": "count", "label": "Count",            "description": "Number of snapshots found."},
@@ -2929,8 +2964,10 @@ _NODE_TYPES: list[dict] = [
         "icon":     "fa-shield-check",
         "color":    "#fb923c",
         "inputs": [
-            {"name": "in", "label": "Entity ID or Name (optional)",
+            {"name": "in",       "label": "Entity ID or Name (optional)",
              "description": "Leave empty to validate the entire database. Connect an entity ID/name to validate a single entity."},
+            {"name": "database", "label": "Database",
+             "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
         ],
         "outputs": [
             {"name": "out",    "label": "Report (JSON)", "description": "Validation report with total, ok, errors and issues list."},
@@ -2951,7 +2988,10 @@ _NODE_TYPES: list[dict] = [
         "category": "AethvionDB",
         "icon":     "fa-microchip",
         "color":    "#fb923c",
-        "inputs":  [],
+        "inputs": [
+            {"name": "database", "label": "Database",
+             "description": "Wired database name — overrides the Database property. Connect a Global Database node here."},
+        ],
         "outputs": [
             {"name": "out",        "label": "Report (JSON)", "description": "Summary with model, counts and speed."},
             {"name": "vectorized", "label": "Vectorized",    "description": "Entities successfully embedded."},

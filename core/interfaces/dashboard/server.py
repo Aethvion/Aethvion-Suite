@@ -204,7 +204,7 @@ async def root():
     index_path = STATIC_DIR / "index.html"
     if index_path.exists():
         content = index_path.read_text(encoding="utf-8")
-        content = content.replace("__VERSION__", f"v{VERSION}").replace("__VNUM__", str(VERSION))
+        content = content.replace("__VERSION__", VERSION).replace("__VNUM__", VERSION)
         return HTMLResponse(content, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
     return HTMLResponse("<h1>Aethvion Suite</h1><p>index.html not found</p>")
 

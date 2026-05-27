@@ -25,8 +25,15 @@ async function loadSystemStatusTab() {
         const sys = roadmapData.system || roadmapData;
 
         if (nameEl) nameEl.textContent = sys.name || sys.system_name || 'Aethvion Suite';
-        if (verEl) verEl.textContent = sys.version ? `v${sys.version}` : '';
         if (dateEl) dateEl.textContent = sys.last_sync || sys.last_update || 'Unknown';
+
+        // Version is git-derived — fetch from version API
+        if (verEl) {
+            fetch('/api/system/version-info?v=' + Date.now())
+                .then(r => r.ok ? r.json() : null)
+                .then(d => { if (d && d.local && d.local.version) verEl.textContent = d.local.version; })
+                .catch(() => {});
+        }
         if (compEl) compEl.textContent = sys.company || '';
         if (contactEl) contactEl.textContent = sys.contact || '';
         if (contactEl && sys.contact) contactEl.href = `mailto:${sys.contact}`;

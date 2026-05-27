@@ -133,7 +133,7 @@ def aethviondb_search(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
     """
     p           = node.get("properties", {})
     query       = _to_str(inputs.get("in", "")).strip()
-    db_name     = str(p.get("database",    "default")).strip() or "default"
+    db_name     = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
     entity_type = str(p.get("entity_type", "")).strip()
     limit       = max(1, int(p.get("limit",     10) or 10))
     min_score   = float(p.get("min_score", 0.0) or 0.0)
@@ -210,8 +210,8 @@ def aethviondb_snapshot_search(node: dict, inputs: dict[str, Any], ctx) -> dict[
     """
     p           = node.get("properties", {})
     query       = _to_str(inputs.get("in", "")).strip()
-    db_name     = str(p.get("database",    "default")).strip() or "default"
-    snap_name   = str(p.get("snapshot",    "")).strip()
+    db_name     = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
+    snap_name   = (_to_str(inputs.get("snapshot", "")).strip() or str(p.get("snapshot", "")).strip())
     entity_type = str(p.get("entity_type", "")).strip()
     limit       = max(1, int(p.get("limit",     10) or 10))
     min_score   = float(p.get("min_score", 0.0) or 0.0)
@@ -279,7 +279,7 @@ def aethviondb_semantic_search(node: dict, inputs: dict[str, Any], ctx) -> dict[
     """
     p           = node.get("properties", {})
     query       = _to_str(inputs.get("in", "")).strip()
-    db_name     = str(p.get("database",    "default")).strip() or "default"
+    db_name     = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
     model       = str(p.get("model",       "text-embedding-004")).strip() or "text-embedding-004"
     entity_type = str(p.get("entity_type", "")).strip()
     limit       = max(1, int(p.get("limit",     10) or 10))
@@ -394,8 +394,8 @@ def aethviondb_snapshot_semantic_search(node: dict, inputs: dict[str, Any], ctx)
     """
     p           = node.get("properties", {})
     query       = _to_str(inputs.get("in", "")).strip()
-    db_name     = str(p.get("database",    "default")).strip() or "default"
-    snap_name   = str(p.get("snapshot",    "")).strip()
+    db_name     = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
+    snap_name   = (_to_str(inputs.get("snapshot", "")).strip() or str(p.get("snapshot", "")).strip())
     model       = str(p.get("model",       "text-embedding-004")).strip() or "text-embedding-004"
     entity_type = str(p.get("entity_type", "")).strip()
     limit       = max(1, int(p.get("limit",     10) or 10))
@@ -550,7 +550,7 @@ def aethviondb_create_database(node: dict, inputs: dict[str, Any], ctx) -> dict[
 def aethviondb_get_stats(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Return entity counts (total / active / stubs / deleted) for a database."""
     p       = node.get("properties", {})
-    db_name = str(p.get("database", "default")).strip() or "default"
+    db_name = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
 
     try:
         from core.aethviondb.db_registry import resolve_db_root  # noqa: PLC0415
@@ -604,7 +604,7 @@ def aethviondb_get_stats(node: dict, inputs: dict[str, Any], ctx) -> dict[str, A
 def aethviondb_list_entities(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """List entities with optional type / status filters."""
     p           = node.get("properties", {})
-    db_name     = str(p.get("database",    "default")).strip() or "default"
+    db_name     = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
     type_filter = str(p.get("entity_type", "")).strip()
     stat_filter = str(p.get("status",      "")).strip()   # "active", "stub", "" = all
     limit       = max(1, int(p.get("limit", 50) or 50))
@@ -656,7 +656,7 @@ def aethviondb_get_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[str, 
     """Fetch a single entity by ID or name."""
     p       = node.get("properties", {})
     ref     = _to_str(inputs.get("in", "")).strip() or str(p.get("entity_ref", "")).strip()
-    db_name = str(p.get("database", "default")).strip() or "default"
+    db_name = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
 
     if not ref:
         return {"out": "", "entity_id": "", "entity_name": "",
@@ -702,7 +702,7 @@ def aethviondb_create_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[st
     """Create a new entity record (no AI — manual creation)."""
     p           = node.get("properties", {})
     name        = _to_str(inputs.get("in", "")).strip() or str(p.get("name", "")).strip()
-    db_name     = str(p.get("database",    "default")).strip() or "default"
+    db_name     = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
     entity_type = str(p.get("entity_type", "other")).strip()    or "other"
     source      = str(p.get("source",      "workflow")).strip() or "workflow"
 
@@ -747,7 +747,7 @@ def aethviondb_update_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[st
     p       = node.get("properties", {})
     ref     = _to_str(inputs.get("entity", "")).strip() or str(p.get("entity_ref", "")).strip()
     patch_s = _to_str(inputs.get("in", "")).strip()
-    db_name = str(p.get("database", "default")).strip() or "default"
+    db_name = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
 
     if not ref:
         return {"out": "", "entity_id": "",
@@ -807,7 +807,7 @@ def aethviondb_delete_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[st
     """Soft-delete an entity (marks status='deleted', does not erase the file)."""
     p       = node.get("properties", {})
     ref     = _to_str(inputs.get("in", "")).strip() or str(p.get("entity_ref", "")).strip()
-    db_name = str(p.get("database", "default")).strip() or "default"
+    db_name = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
 
     if not ref:
         return {"out": "false", "entity_id": "",
@@ -852,7 +852,7 @@ def aethviondb_distill(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any
     """
     p         = node.get("properties", {})
     content   = _to_str(inputs.get("in", "")).strip()
-    db_name   = str(p.get("database",  "default")).strip() or "default"
+    db_name   = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
     model     = str(p.get("model",     "auto")).strip()    or "auto"
     auto_save = str(p.get("auto_save", "true")).lower() not in ("false", "0", "no")
 
@@ -916,7 +916,7 @@ def aethviondb_expand_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[st
     """
     p       = node.get("properties", {})
     ref     = _to_str(inputs.get("in", "")).strip() or str(p.get("entity_ref", "")).strip()
-    db_name = str(p.get("database", "default")).strip() or "default"
+    db_name = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
     model   = str(p.get("model",    "auto")).strip()    or "auto"
     context = (_to_str(inputs.get("context", "")).strip()
                or str(p.get("extra_context", "")).strip())
@@ -1002,7 +1002,7 @@ def aethviondb_deepen_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[st
     """
     p         = node.get("properties", {})
     ref       = _to_str(inputs.get("in", "")).strip() or str(p.get("entity_ref", "")).strip()
-    db_name   = str(p.get("database",  "default")).strip() or "default"
+    db_name   = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
     model     = str(p.get("model",     "auto")).strip()    or "auto"
     max_stubs = max(1, int(p.get("max_stubs", 5) or 5))
     context   = (_to_str(inputs.get("context", "")).strip()
@@ -1087,7 +1087,7 @@ def aethviondb_create_snapshot(node: dict, inputs: dict[str, Any], ctx) -> dict[
     snap_name       = (_to_str(inputs.get("in", "")).strip()
                        or str(p.get("snapshot_name", "")).strip()
                        or "snapshot")
-    db_name         = str(p.get("database",        "default")).strip() or "default"
+    db_name         = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
     fmt             = str(p.get("format",           "jsonl")).strip()   or "jsonl"
     include_stubs   = str(p.get("include_stubs",   "true")).lower()  not in ("false", "0", "no")
     include_vectors = str(p.get("include_vectors", "false")).lower() not in ("false", "0", "no")
@@ -1142,7 +1142,7 @@ def aethviondb_create_snapshot(node: dict, inputs: dict[str, Any], ctx) -> dict[
 def aethviondb_list_snapshots(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """List all baked snapshots for a database, newest first."""
     p       = node.get("properties", {})
-    db_name = str(p.get("database", "default")).strip() or "default"
+    db_name = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
 
     try:
         from core.aethviondb.db_registry import resolve_db_root  # noqa: PLC0415
@@ -1186,7 +1186,7 @@ def aethviondb_validate(node: dict, inputs: dict[str, Any], ctx) -> dict[str, An
     Validation issues are surfaced as structured JSON on the *out* port.
     """
     p          = node.get("properties", {})
-    db_name    = str(p.get("database",   "default")).strip() or "default"
+    db_name    = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
     entity_ref = (_to_str(inputs.get("in", "")).strip()
                   or str(p.get("entity_ref", "")).strip())
 
@@ -1249,7 +1249,7 @@ def aethviondb_generate_vectors(node: dict, inputs: dict[str, Any], ctx) -> dict
     Reads the VECINFO sidecar after completion for final counts.
     """
     p             = node.get("properties", {})
-    db_name       = str(p.get("database",      "default")).strip() or "default"
+    db_name       = (_to_str(inputs.get("database", "")).strip() or str(p.get("database", "default")).strip() or "default")
     model         = str(p.get("model",         "text-embedding-004")).strip() or "text-embedding-004"
     force_rewrite = str(p.get("force_rewrite", "false")).lower() not in ("false", "0", "no")
     include_stubs = str(p.get("include_stubs", "false")).lower() not in ("false", "0", "no")

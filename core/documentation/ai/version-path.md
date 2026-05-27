@@ -1,147 +1,102 @@
-# Version Update Path
+# Version System
 
-Every file that contains a hardcoded version number and must be updated when
-bumping Aethvion Suite to a new version. Work through this list top-to-bottom
-so nothing is missed.
-
----
-
-## Required — update every version
-
-### 1. `core/version.py`
-The canonical source-of-truth integer used by the Python runtime.
-
-```
-VERSION = 15   →   VERSION = 16
-```
+Aethvion Suite uses **automatic git-derived versioning**. There are no hardcoded
+version numbers to maintain. The version string is computed at process startup
+from the git history and cached for the lifetime of the process.
 
 ---
 
-### 2. `pyproject.toml`  (line ~7)
-Python package metadata.
+## Format
 
-```toml
-version = "15"   →   version = "16"
 ```
+2026.05.1142 (fc86ae4)
+```
+
+| Segment       | Source                                    |
+|---------------|-------------------------------------------|
+| `2026`        | Year of HEAD commit (`git log -1 --format=%ad --date=format:%Y`) |
+| `05`          | Month of HEAD commit (zero-padded)        |
+| `1142`        | Total commit count (`git rev-list --count HEAD`) |
+| `fc86ae4`     | 7-char short hash (`git rev-parse --short=7 HEAD`) |
 
 ---
 
-### 3. `CHANGELOG.md`  (top of file)
-Add a new entry block above the previous one:
+## How it works
 
-```markdown
-## [v16] - YYYY-MM-DD
+### `core/version.py`
 
-### Added
-- ...
+The canonical source. Calls `git` once at import time, caches the result via
+`@lru_cache`. Exports:
 
-### Changed
-- ...
-```
+- `VERSION: str` — the full version string (e.g. `"2026.05.1142 (fc86ae4)"`)
+- `get_version() -> str` — same value via function call
+- `get_version_parts() -> dict` — individual fields: `year`, `month`, `count`, `short`, `string`
 
----
+### `core/interfaces/dashboard/server.py`
 
-### 4. `README.md`  (line ~22)
-Badge / header line:
+Injects `VERSION` into `index.html` at request time by replacing the
+`__VERSION__` placeholder in the HTML. The splash screen and any
+`__VERSION__`/`__VNUM__` tokens in the page get the real string automatically.
 
-```markdown
-**Current version: v15**   →   **Current version: v16**
-```
+### `/api/system/version-info`
 
----
-
-### 5. `core/interfaces/dashboard/static/index.html`  (line ~364)
-Splash screen build label — search for `id="splash-version"`:
-
-```html
-<div id="splash-version" class="splash-version">BUILD v15</div>
-                                                        ↑
-                                                   change to v16
-```
-
----
-
-### 6. `core/interfaces/dashboard/static/partials/suite-home.html`  (line ~256)
-Hero badge visible on the home tab — search for `status-live`:
-
-```html
-<span class="sys-badge status-live">Aethvion Suite v15</span>
-                                                    ↑
-                                               change to v16
-```
-
----
-
-### 7. `core/interfaces/dashboard/static/assets/system-status.json`  (line ~5)
-Runtime status file. The top-level `version` key is the current version;
-a new history entry should also be added below it:
-
+Returns:
 ```json
 {
-    "version": "15",        →   "version": "16",
-    ...
-    "history": [
-        {
-            "version": "16",     ← add new entry at top of history array
-            "changes": [
-                "..."
-            ]
-        },
-        {
-            "version": "15",     ← previous entry stays
-            ...
-        }
-    ]
+  "local": {
+    "version": "2026.05.1142 (fc86ae4)",
+    "commit":  "fc86ae4",
+    "count":   1142,
+    "year":    "2026",
+    "month":   "05",
+    "last_update_commit": "...",
+    "changelog": [...]
+  },
+  "remote": { "commit": "abc1234" }
 }
 ```
 
+The JS update checker compares `local.commit` against `remote.commit` to detect
+available updates — no numeric version comparison needed.
+
 ---
 
-### 8. `core/devtools/csharpwrapper/AethvionSuite.csproj`  (lines ~15-17)
-Version metadata baked into the Windows `.exe` (shows in Properties → Details):
+## Adding a new feature / release
 
-```xml
-<Version>15.0.0</Version>              →   <Version>16.0.0</Version>
-<FileVersion>15.0.0.0</FileVersion>    →   <FileVersion>16.0.0.0</FileVersion>
-<InformationalVersion>15.0.0</InformationalVersion>   →   16.0.0
+**Nothing needs to change.** Commit your code. The version string updates
+automatically on next startup. The commit count increments, the date reflects
+the latest commit, and the hash identifies it uniquely.
+
+---
+
+## Files that DO NOT need manual version updates anymore
+
+These files previously required manual bumping — they are now fully automatic:
+
+| File | Was | Now |
+|------|-----|-----|
+| `core/version.py` | `VERSION = 16` | computed from git |
+| `pyproject.toml` | `version = "16"` | `"0.0.0"` placeholder |
+| `core/interfaces/dashboard/static/index.html` | `BUILD v16` | `__VERSION__` (server-injected) |
+| `core/interfaces/dashboard/static/partials/suite-home.html` | `v16` badge | populated by JS via API |
+
+---
+
+## Update detection logic
+
+The sidebar dot and Version Control page compare:
+- `local.commit` (7-char hash of HEAD on disk)
+- `remote.commit` (7-char hash from `git ls-remote origin HEAD`)
+
+If they differ → updates are available. No version number comparison is done.
+
+---
+
+## Fallback behaviour
+
+If `git` is not available (zip install, no git binary, no `.git` folder), every
+field returns a safe default:
+
+```python
+{"year": "0000", "month": "00", "count": 0, "short": "unknown", "string": "unknown"}
 ```
-
-Rebuild with `core/devtools/csharpwrapper/publish.bat` after changing this.
-
----
-
-## Optional — check each version, update if content has changed
-
-These files contain prose documentation. They do not always need a version
-bump but should be reviewed to confirm they still accurately describe the
-current state of the suite.
-
-| File | What to check |
-|------|---------------|
-| `core/documentation/ai/*.md` | Feature descriptions, architecture notes, tool lists |
-| `core/documentation/human/*.md` | User-facing guides, screenshots, instructions |
-| `core/documentation/README.md` | Overview still accurate, version references current |
-
----
-
-## Quick grep to verify nothing was missed
-
-Run this from the project root after updating to confirm no stale version
-strings remain (adjust `15` to the old version number):
-
-```bash
-grep -rn "v15\b\|version.*15\|15.*version" \
-    --include="*.py" \
-    --include="*.toml" \
-    --include="*.json" \
-    --include="*.html" \
-    --include="*.md" \
-    --include="*.csproj" \
-    . \
-    --exclude-dir=".venv" \
-    --exclude-dir="__pycache__" \
-    --exclude-dir=".git"
-```
-
-> The `system-status.json` history array intentionally keeps old version
-> numbers — those hits are expected and can be ignored.

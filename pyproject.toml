@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aethvion-suite"
-version = "16"
+version = "0.0.0"  # placeholder — real version is auto-derived from git at runtime (see core/version.py)
 description = "Aethvion Suite: An integrated agentic AI platform and application hub"
 readme = "README.md"
 license = { file = "LICENSE" }
