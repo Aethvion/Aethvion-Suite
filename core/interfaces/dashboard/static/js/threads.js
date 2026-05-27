@@ -1198,6 +1198,30 @@ async function sendMessage() {
 
     if (!message && !window._mainChatAttachedFile) return;
 
+    // --- Model / API-key validation (fail fast, before any UI changes) ---
+    const _modelSelectEl = document.getElementById('model-select');
+    const _modelIdEarly  = _modelSelectEl ? _modelSelectEl.value : null;
+    if (!_modelIdEarly) {
+        const cachedModels = (window._cachedRegistryData?.models || []);
+        const anyReady     = cachedModels.some(m => m.has_api_key !== false);
+        const msg = anyReady
+            ? 'Please select a model from the dropdown before sending.'
+            : 'No API keys configured. <a href="#" onclick="switchMainTab(\'settings\');return false;" style="color:#a78bfa;text-decoration:underline;">Go to Settings › API Keys</a> to add one.';
+        showNotification(msg, 'warning', 6000);
+        return;
+    }
+    const _cachedModels  = window._cachedRegistryData?.models || [];
+    const _selectedModel = _cachedModels.find(m => m.id === _modelIdEarly);
+    if (_selectedModel && _selectedModel.has_api_key === false) {
+        showNotification(
+            `No API key for <strong>${_selectedModel.provider || _modelIdEarly}</strong>. ` +
+            `<a href="#" onclick="switchMainTab('settings');return false;" style="color:#a78bfa;text-decoration:underline;">Add it in Settings › API Keys</a>.`,
+            'error', 7000
+        );
+        return;
+    }
+    // --- end validation ---
+
     // Lock UI immediately to prevent double-send
     setSendLoading(true);
 
