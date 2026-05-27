@@ -299,7 +299,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.7rem;
-    max-width: 640px;
+    width: 100%;
 }
 .adb-tool-page.hidden { display: none; }
 
@@ -5543,4 +5543,24 @@
 }
 .adb-chunk-row:hover .adb-chunk-graph-btn {
     opacity: 1;
+}
+
+/* Inline validation results inside the Tools tab validate page.
+   Override the flex-fill behaviour that assumes a full-height Explorer panel. */
+#adb-val-tools-summary {
+    flex-shrink: 0;
+    padding: 0.65rem 0 0.5rem;
+}
+#adb-val-tools-issues {
+    flex: none;
+    overflow-y: visible;
+    min-height: unset;
+    padding: 0 0 0.5rem;
+}
+/* Give the inline results a faint top separator once content appears */
+#adb-val-tools-summary:not(:empty),
+#adb-val-tools-issues:not(:empty) {
+    border-top: 1px solid var(--border);
+    margin-top: 0.25rem;
+    padding-top: 0.65rem;
 }

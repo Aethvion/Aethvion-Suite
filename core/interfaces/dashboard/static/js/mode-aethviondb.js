@@ -2586,12 +2586,16 @@
 
     // ── Validation ────────────────────────────────────────────────────────────
 
-    async function _validateAll() {
+    async function _validateAll(opts = {}) {
+        const summaryId = opts.summaryId || 'adb-val-summary';
+        const issuesId  = opts.issuesId  || 'adb-val-issues';
+        const showView  = opts.showView  !== false;
+
         _showBusy('Running integrity checks…');
         try {
             const res  = await fetch(`${API}/validate?${_dbParam()}`);
             const data = await res.json();
-            _showValidation();
+            if (showView) _showValidation();
 
             const mismatches       = data.stub_mismatches       || [];
             const dupGroups        = data.duplicate_groups       || [];
@@ -2606,7 +2610,7 @@
             const timelineCount    = timelineWarn ? timelineWarn.count : 0;
 
             // ── Control panel (overview + fix toggles) ───────────────────────
-            const sumEl = _el('adb-val-summary');
+            const sumEl = _el(summaryId);
             if (sumEl) {
                 const chips = [
                     { icon: 'fa-check-circle',         cls: 'ok',   val: data.clean ?? 0,          label: 'clean' },
@@ -2660,7 +2664,7 @@
             }
 
             // ── Issues pane ──────────────────────────────────────────────────
-            const issueEl = _el('adb-val-issues');
+            const issueEl = _el(issuesId);
             if (!issueEl) return;
 
             const hasAnything = dupGroups.length || errEntities.length || warnSummary.length || mismatches.length || orphanStubs.length || deletedEntities.length;
@@ -6379,11 +6383,13 @@
             }
         });
         _el('adb-validate-btn')?.addEventListener('click', _validateAll);
-        // Also wire the validate button that lives in the Tools tab
+        // Validate button inside the Tools tab — renders inline, stays on Tools
         _el('adb-tools-validate-btn')?.addEventListener('click', () => {
-            // Switch to Explorer tab (where validation results are rendered) then run
-            document.querySelector('.adb-nav-tab[data-tab="explorer"]')?.click();
-            _validateAll();
+            _validateAll({
+                summaryId: 'adb-val-tools-summary',
+                issuesId:  'adb-val-tools-issues',
+                showView:  false,
+            });
         });
 
         // Quick "Clean Orphan Stubs" button in Tools tab
