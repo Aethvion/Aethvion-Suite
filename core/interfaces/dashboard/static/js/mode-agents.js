@@ -162,7 +162,26 @@ async function agentsLoadThreads(workspaceId) {
         const resp = await fetch(`/api/agents/workspaces/${workspaceId}/threads`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
-        _agentsPopulateThreadSelect(data.threads || []);
+        let threads = data.threads || [];
+
+        // Auto-create a default thread when the workspace has none yet
+        if (threads.length === 0) {
+            try {
+                const createResp = await fetch(`/api/agents/workspaces/${workspaceId}/threads`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: 'Thread 1' }),
+                });
+                if (createResp.ok) {
+                    const newThread = await createResp.json();
+                    threads = [newThread];
+                }
+            } catch (createErr) {
+                console.warn('[Agents] Auto-create default thread failed:', createErr);
+            }
+        }
+
+        _agentsPopulateThreadSelect(threads);
     } catch (e) {
         console.error('[Agents] Failed to load threads:', e);
     }
@@ -1347,10 +1366,29 @@ function _agHandleWriteFile(event) {
 function _agHandleCommand(event) {
     const s = _agentsRenderState;
     if (!s) return;
-    _agFinalizeCmdStream();  // close any streaming preview card in Thoughts
-    s.cmdCount++;
+
     const result  = event.result || '';
     const failed  = result.trimStart().startsWith('(exit ');
+
+    // When a command fails, keep the live streaming card in the Thoughts panel as a
+    // persistent error card so the output is never "silently removed".  For success,
+    // discard the streaming card as usual (the activity row is sufficient).
+    if (failed && _agCmdStreamCard) {
+        _agCmdStreamCard.classList.remove('agent-thought-streaming');
+        _agCmdStreamCard.classList.add('agent-thought-cmd-fail');
+        const tag = _agCmdStreamCard.querySelector('.agent-thought-streaming-tag');
+        if (tag) {
+            tag.classList.remove('agent-thought-streaming-tag');
+            tag.innerHTML = '<span style="color:#f87171;margin-right:4px;">✗</span>Command failed';
+        }
+        // Detach from the live-card tracker so _agFinalizeCmdStream won't remove it.
+        _agCmdStreamCard = null;
+        _agCmdStreamLines = [];
+    } else {
+        _agFinalizeCmdStream();  // close any streaming preview card in Thoughts
+    }
+
+    s.cmdCount++;
     if (failed) s.cmdFail++; else s.cmdSuccess++;
     _agPhaseAdd('commands', '⚡', `Commands · ${s.cmdCount}`, event);
     _agUpdateStats();
@@ -1844,6 +1882,14 @@ function _agFinishRender(event) {
         body.className = 'agent-done-card-body';
         body.innerHTML = _agentsRenderMarkdown(detail);
         card.appendChild(body);
+    }
+
+    // Warn when done (even ✅) but some commands failed — prevents silent pass-off.
+    if (s.cmdFail > 0) {
+        const warn = document.createElement('div');
+        warn.className = 'agent-done-card-warn';
+        warn.innerHTML = `<span style="color:#f87171;">⚠</span> ${s.cmdFail} command${s.cmdFail !== 1 ? 's' : ''} failed — scroll up to review errors.`;
+        card.appendChild(warn);
     }
 
     s.activity.appendChild(card);
