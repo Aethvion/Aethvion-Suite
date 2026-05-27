@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automate Editor — Aethvion DevTools</title>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Dashboard base styles (served from /static/ which maps to dashboard/static/) -->
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <link rel="stylesheet" href="/static/css/automate.css">
+    <link rel="stylesheet" href="/static/css/modals.css">
+    <link rel="stylesheet" href="/static/css/notifications.css">
+
+    <style>
+        /* ── DevTool banner ──────────────────────────────────────────────── */
+        :root {
+            --devtool-banner-h: 36px;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0; padding: 0;
+            height: 100%; width: 100%;
+            overflow: hidden;
+            background: var(--bg, #0a0a14);
+            color: var(--text, #e2e8f0);
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        }
+
+        /* Banner across top */
+        #devtool-banner {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: var(--devtool-banner-h);
+            background: linear-gradient(90deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+            border-bottom: 1px solid rgba(99,102,241,0.5);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 10px;
+            z-index: 9999;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: rgba(199, 210, 254, 0.9);
+            user-select: none;
+        }
+
+        #devtool-banner .dt-icon {
+            width: 20px; height: 20px;
+            background: rgba(99,102,241,0.25);
+            border: 1px solid rgba(99,102,241,0.6);
+            border-radius: 5px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px;
+            color: #818cf8;
+        }
+
+        #devtool-banner .dt-label {
+            color: #c7d2fe;
+        }
+
+        #devtool-banner .dt-sep {
+            width: 1px; height: 16px;
+            background: rgba(99,102,241,0.35);
+            margin: 0 4px;
+        }
+
+        #devtool-banner .dt-dir {
+            font-family: 'Consolas', 'Cascadia Code', monospace;
+            font-size: 11px;
+            color: rgba(148,163,184,0.7);
+            font-weight: 400;
+        }
+
+        #devtool-banner .dt-badge {
+            margin-left: auto;
+            background: rgba(99,102,241,0.2);
+            border: 1px solid rgba(99,102,241,0.4);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 10px;
+            color: #a5b4fc;
+            letter-spacing: 0.08em;
+        }
+
+        /* Push content below the banner */
+        #app-shell {
+            position: fixed;
+            top: var(--devtool-banner-h);
+            left: 0; right: 0; bottom: 0;
+            overflow: hidden;
+        }
+
+        /* The automate root needs to fill its container */
+        .at-root {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── DevTool Banner ─────────────────────────────────────────────────────── -->
+<div id="devtool-banner">
+    <div class="dt-icon"><i class="fas fa-wrench"></i></div>
+    <span class="dt-label">Aethvion DevTools</span>
+    <div class="dt-sep"></div>
+    <i class="fas fa-bolt" style="color:#818cf8;font-size:11px;"></i>
+    <span>Automate Editor</span>
+    <div class="dt-sep"></div>
+    <span class="dt-dir">core/automate/config/</span>
+    <span class="dt-badge">DEV TOOL</span>
+</div>
+
+<!-- ── App shell ─────────────────────────────────────────────────────────── -->
+<div id="app-shell">
+    <!--
+        The automate partial HTML is inlined here.
+        This is a verbatim copy of the at-root structure from partials/automate.html.
+        The JavaScript (mode-automate.js) initialises it via _init() on DOMContentLoaded.
+    -->
+
+    <div id="at-root" class="at-root">
+
+        <!-- Port info tooltip (shown near cursor on port hover) -->
+        <div id="at-port-tooltip" class="at-port-tooltip" aria-hidden="true">
+            <div class="at-pt-dir" id="at-pt-dir"></div>
+            <div class="at-pt-label" id="at-pt-label"></div>
+            <div class="at-pt-desc" id="at-pt-desc"></div>
+        </div>
+
+        <!-- ══ Toolbar ══════════════════════════════════════════════════════ -->
+        <div class="at-toolbar">
+            <div class="at-toolbar-left">
+                <div class="at-brand">
+                    <i class="fas fa-bolt"></i>
+                    <span>Automate</span>
+                </div>
+                <div class="at-wf-name-wrap">
+                    <span class="at-wf-label" id="at-wf-label">No workflow selected</span>
+                    <button class="at-wf-rename-btn" id="at-wf-rename-btn" title="Rename workflow" style="display:none">
+                        <i class="fas fa-pen"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="at-toolbar-center">
+                <button class="at-btn at-btn-ghost" id="at-btn-new" title="New Workflow">
+                    <i class="fas fa-plus"></i><span>New</span>
+                </button>
+                <button class="at-btn at-btn-ghost" id="at-btn-save" title="Save  (Ctrl+S)" disabled>
+                    <i class="fas fa-floppy-disk"></i><span>Save</span>
+                </button>
+                <div class="at-toolbar-sep"></div>
+                <button class="at-btn at-btn-ghost at-btn-danger" id="at-btn-delete" title="Delete workflow" disabled>
+                    <i class="fas fa-trash"></i><span>Delete</span>
+                </button>
+                <div class="at-toolbar-sep"></div>
+                <div class="at-run-group" id="at-run-group">
+                    <button class="at-btn at-btn-run" id="at-btn-run" title="Run workflow" disabled>
+                        <i class="fas fa-play"></i><span>Run</span>
+                    </button>
+                    <div class="at-trigger-drop" id="at-trigger-drop">
+                        <button class="at-trigger-drop-btn" id="at-trigger-drop-btn" disabled title="Select trigger to run">
+                            <span class="at-trigger-drop-label" id="at-trigger-drop-label">All</span>
+                            <i class="fas fa-chevron-down at-trigger-chevron" id="at-trigger-chevron"></i>
+                        </button>
+                        <div class="at-trigger-drop-menu" id="at-trigger-drop-menu"></div>
+                    </div>
+                </div>
+                <div class="at-toolbar-sep"></div>
+                <button class="at-btn at-btn-ghost" id="at-btn-export" title="Export workflow as JSON" disabled>
+                    <i class="fas fa-download"></i><span>Export</span>
+                </button>
+                <button class="at-btn at-btn-ghost" id="at-btn-share" title="Share workflow" disabled style="display:none">
+                    <i class="fas fa-share-nodes"></i><span>Share</span>
+                </button>
+                <div class="at-toolbar-sep"></div>
+                <button class="at-btn at-btn-ghost" id="at-btn-compile" title="Compile workflow into standalone bundle" disabled>
+                    <i class="fas fa-box-archive"></i><span>Compile</span>
+                </button>
+            </div>
+
+            <div class="at-toolbar-right">
+                <button class="at-btn at-btn-ghost at-btn-icon" id="at-btn-reset-view" title="Reset view (origin · 100%)">
+                    <i class="fas fa-house"></i>
+                </button>
+                <button class="at-btn at-btn-ghost at-btn-icon" id="at-btn-fit" title="Fit to screen">
+                    <i class="fas fa-maximize"></i>
+                </button>
+                <button class="at-btn at-btn-ghost at-btn-icon" id="at-btn-zoom-out" title="Zoom out">
+                    <i class="fas fa-magnifying-glass-minus"></i>
+                </button>
+                <span class="at-zoom-label" id="at-zoom-label">100%</span>
+                <button class="at-btn at-btn-ghost at-btn-icon" id="at-btn-zoom-in" title="Zoom in">
+                    <i class="fas fa-magnifying-glass-plus"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- ══ Body ═════════════════════════════════════════════════════════ -->
+        <div class="at-body">
+
+            <!-- Sidebar -->
+            <div class="at-sidebar">
+                <div class="at-sidebar-nav" id="at-sidebar-nav">
+                    <button class="at-sidebar-nav-btn" id="at-sidebar-nav-btn">
+                        <i class="fas fa-bolt at-nav-icon" id="at-nav-icon"></i>
+                        <span class="at-nav-label" id="at-nav-label">Workflows</span>
+                        <i class="fas fa-chevron-down at-nav-chevron" id="at-nav-chevron"></i>
+                    </button>
+                    <div class="at-sidebar-nav-menu" id="at-sidebar-nav-menu">
+                        <button class="at-sidebar-nav-item at-nav-active" data-nav="workflows">
+                            <i class="fas fa-bolt"></i><span>Workflows</span>
+                        </button>
+                        <button class="at-sidebar-nav-item" data-nav="inspector">
+                            <i class="fas fa-sliders"></i><span>Inspector</span>
+                        </button>
+                        <button class="at-sidebar-nav-item" data-nav="results">
+                            <i class="fas fa-chart-bar"></i><span>Results</span>
+                            <span class="at-nav-new-dot" id="at-nav-results-dot" style="display:none"></span>
+                        </button>
+                        <button class="at-sidebar-nav-item" data-nav="pubvars">
+                            <i class="fas fa-dollar-sign"></i><span>Public Variables</span>
+                            <span class="at-nav-count" id="at-nav-pubvars-count" style="display:none">0</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Workflow Explorer -->
+                <div class="at-explorer" id="at-explorer">
+                    <div class="at-sidebar-hdr">
+                        <div class="at-sidebar-hdr-actions">
+                            <button class="at-sidebar-add" id="at-btn-examples" title="Example workflows">
+                                <i class="fas fa-layer-group"></i>
+                            </button>
+                            <button class="at-sidebar-add" id="at-btn-import" title="Import workflow">
+                                <i class="fas fa-upload"></i>
+                            </button>
+                            <button class="at-sidebar-add" id="at-sidebar-add" title="New workflow">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="at-wf-list" id="at-wf-list">
+                        <div class="at-wf-empty" id="at-wf-empty">
+                            <i class="fas fa-bolt"></i>
+                            <span>No workflows yet</span>
+                            <button class="at-btn at-btn-ghost at-btn-sm" id="at-wf-create-first">
+                                <i class="fas fa-plus"></i> Create one
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Node Inspector -->
+                <div class="at-inspector" id="at-inspector" style="display:none">
+                    <div class="at-inspector-hdr">
+                        <div class="at-inspector-node-hd">
+                            <div class="at-inspector-icon" id="at-inspector-icon">
+                                <i class="fas fa-arrow-pointer"></i>
+                            </div>
+                            <span class="at-inspector-title" id="at-inspector-title">Inspector</span>
+                        </div>
+                        <button class="at-inspector-close" id="at-inspector-close" title="Deselect node" style="display:none">
+                            <i class="fas fa-xmark"></i>
+                        </button>
+                    </div>
+                    <div class="at-inspector-body" id="at-inspector-body">
+                        <div class="at-inspector-none" id="at-inspector-none">
+                            <i class="fas fa-arrow-pointer"></i>
+                            <span>Click a node to inspect it</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Public Variables -->
+                <div class="at-pubvars" id="at-pubvars" style="display:none">
+                    <div class="at-inspector-hdr">
+                        <div class="at-inspector-node-hd">
+                            <div class="at-inspector-icon" style="background:rgba(167,139,250,.15);color:#a78bfa">
+                                <i class="fas fa-dollar-sign"></i>
+                            </div>
+                            <span class="at-inspector-title">Public Variables</span>
+                        </div>
+                    </div>
+                    <div class="at-pubvars-body" id="at-pubvars-body"></div>
+                </div>
+            </div>
+
+            <!-- Canvas -->
+            <div class="at-canvas-wrap" id="at-canvas">
+                <div class="at-canvas-empty" id="at-canvas-empty">
+                    <i class="fas fa-bolt"></i>
+                    <h3>No workflow open</h3>
+                    <p>Create a new workflow or select one from the sidebar to start building.</p>
+                    <button class="at-btn at-btn-accent" id="at-canvas-new-btn">
+                        <i class="fas fa-plus"></i> Create Workflow
+                    </button>
+                </div>
+                <div class="at-canvas-inner" id="at-canvas-inner" style="display:none">
+                    <svg class="at-svg" id="at-svg" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="at-arrow" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+                                <polygon points="0 0, 7 2.5, 0 5" fill="rgba(100,116,139,0.7)"/>
+                            </marker>
+                            <marker id="at-arrow-sel" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+                                <polygon points="0 0, 7 2.5, 0 5" fill="#22d3ee"/>
+                            </marker>
+                            <marker id="at-arrow-trigger" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto">
+                                <polygon points="0 0, 8 3, 0 6" fill="rgba(34,211,238,0.85)"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+                <div class="at-canvas-hint" id="at-canvas-hint">
+                    Middle-click or <kbd>Alt</kbd>+drag to pan &nbsp;·&nbsp; Scroll to zoom
+                </div>
+            </div>
+
+            <!-- Node palette (right) -->
+            <div class="at-palette">
+                <div class="at-palette-hdr">
+                    <span>Nodes</span>
+                    <input type="text" class="at-palette-search" id="at-palette-search" placeholder="Search nodes…">
+                </div>
+                <div class="at-palette-list" id="at-palette-list"></div>
+            </div>
+        </div>
+
+        <!-- Execution log panel -->
+        <div class="at-exec-panel" id="at-exec-panel">
+            <div class="at-exec-panel-hdr">
+                <div class="at-exec-panel-status" id="at-exec-panel-status">
+                    <i class="fas fa-bolt"></i>
+                    <span id="at-exec-status-text">Last run</span>
+                </div>
+                <button class="at-exec-panel-copy" id="at-exec-panel-copy" title="Copy log to clipboard">
+                    <i class="fas fa-copy"></i>
+                </button>
+                <button class="at-exec-panel-close" id="at-exec-panel-close">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="at-exec-log-view" id="at-exec-log-view"></div>
+        </div>
+
+        <!-- Toast -->
+        <div class="at-toast" id="at-toast" style="display:none"></div>
+
+        <!-- Compile Modal -->
+        <div class="at-modal-overlay" id="at-compile-overlay" style="display:none">
+            <div class="at-modal at-compile-modal">
+                <div class="at-modal-hdr">
+                    <div class="at-modal-hdr-left"><i class="fas fa-box-archive"></i><span>Compile Workflow</span></div>
+                    <button class="at-modal-close" id="at-compile-close"><i class="fas fa-xmark"></i></button>
+                </div>
+                <p class="at-modal-sub">Creates a standalone zip bundle you can run on any machine — no Aethvion Suite required.</p>
+                <div class="at-compile-options">
+                    <label class="at-compile-option">
+                        <input type="checkbox" id="at-compile-packages" checked>
+                        <div class="at-compile-option-body">
+                            <span class="at-compile-option-title">Include packages</span>
+                            <span class="at-compile-option-desc">Downloads pip wheels into a <code>packages/</code> folder so the bundle works offline.</span>
+                        </div>
+                    </label>
+                    <label class="at-compile-option" id="at-compile-apikey-row" style="display:none">
+                        <input type="checkbox" id="at-compile-apikey">
+                        <div class="at-compile-option-body">
+                            <span class="at-compile-option-title">Include API key</span>
+                            <span class="at-compile-option-desc">Embeds your configured API keys in the <code>.env</code> file. Only for personal use.</span>
+                        </div>
+                    </label>
+                    <label class="at-compile-option" id="at-compile-snapshot-row" style="display:none">
+                        <input type="checkbox" id="at-compile-snapshot">
+                        <div class="at-compile-option-body">
+                            <span class="at-compile-option-title">Include AethvionDB Snapshot</span>
+                            <span class="at-compile-option-desc" id="at-compile-snapshot-desc">Bundles the database snapshot.</span>
+                        </div>
+                    </label>
+                </div>
+                <div class="at-compile-actions">
+                    <div class="at-compile-status" id="at-compile-status" style="display:none">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span id="at-compile-status-text">Compiling…</span>
+                    </div>
+                    <button class="at-btn at-btn-accent" id="at-compile-btn">
+                        <i class="fas fa-box-archive"></i> Build &amp; Download
+                    </button>
+                </div>
+                <div class="at-compile-warn" id="at-compile-warn" style="display:none">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <span id="at-compile-warn-text"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Examples Modal -->
+        <div class="at-modal-overlay" id="at-examples-overlay" style="display:none">
+            <div class="at-modal">
+                <div class="at-modal-hdr">
+                    <div class="at-modal-hdr-left"><i class="fas fa-layer-group"></i><span>Default Workflows</span></div>
+                    <button class="at-modal-close" id="at-examples-close"><i class="fas fa-xmark"></i></button>
+                </div>
+                <p class="at-modal-sub">These are the shipped defaults. Selecting one creates a copy you can freely edit — the original stays unchanged.</p>
+                <div class="at-examples-grid" id="at-examples-grid"></div>
+            </div>
+        </div>
+
+        <!-- Share Modal -->
+        <div class="at-modal-overlay" id="at-share-overlay" style="display:none">
+            <div class="at-modal at-share-modal">
+                <div class="at-modal-hdr">
+                    <div class="at-modal-hdr-left"><i class="fas fa-share-nodes"></i><span>Share Workflow</span></div>
+                    <button class="at-modal-close" id="at-share-close"><i class="fas fa-xmark"></i></button>
+                </div>
+                <p class="at-modal-sub">Share this code with a teammate.</p>
+                <div class="at-share-code-wrap">
+                    <span class="at-share-code" id="at-share-code">········</span>
+                    <button class="at-btn at-btn-accent" id="at-share-copy-btn" title="Copy code">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import Modal -->
+        <div class="at-modal-overlay" id="at-import-overlay" style="display:none">
+            <div class="at-modal at-import-modal">
+                <div class="at-modal-hdr">
+                    <div class="at-modal-hdr-left"><i class="fas fa-upload"></i><span>Import Workflow</span></div>
+                    <button class="at-modal-close" id="at-import-close"><i class="fas fa-xmark"></i></button>
+                </div>
+                <div class="at-import-tabs">
+                    <button class="at-import-tab active" data-import-tab="file"><i class="fas fa-file-arrow-up"></i> From File</button>
+                    <button class="at-import-tab" data-import-tab="code"><i class="fas fa-hashtag"></i> From Code</button>
+                </div>
+                <div id="at-import-file-section">
+                    <p class="at-modal-sub">Select a previously exported workflow JSON file.</p>
+                    <button class="at-btn at-btn-accent" id="at-import-file-btn">
+                        <i class="fas fa-folder-open"></i> Choose File…
+                    </button>
+                    <input type="file" id="at-import-file-input" accept=".json" style="display:none">
+                </div>
+                <div id="at-import-code-section" style="display:none">
+                    <p class="at-modal-sub">Enter the 8-character share code to load a shared workflow.</p>
+                    <div class="at-import-code-row">
+                        <input type="text" class="at-prop-input at-import-code-input" id="at-import-code-input"
+                               placeholder="e.g. AB3X9KPQ" maxlength="16" autocomplete="off" spellcheck="false">
+                        <button class="at-btn at-btn-accent" id="at-import-code-btn">
+                            <i class="fas fa-cloud-arrow-down"></i> Load
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /#at-root -->
+</div><!-- /#app-shell -->
+
+<!-- ── Scripts ──────────────────────────────────────────────────────────── -->
+<script src="/static/js/mode-automate.js"></script>
+<script>
+    // mode-automate.js listens for a 'panelLoaded' event with tabName === 'automate'.
+    // Fire it once the DOM is ready so _init() runs exactly as the dashboard does.
+    document.addEventListener('DOMContentLoaded', () => {
+        document.dispatchEvent(new CustomEvent('panelLoaded', {
+            detail: { tabName: 'automate' }
+        }));
+    });
+</script>
+</body>
+</html>
