@@ -1463,23 +1463,11 @@
         // If we were in edit mode, clean up the DOM and reset button states
         if (_editingEntity) { _editingEntity = null; _exitEditDom(); }
         _show('adb-ev-edit-btn');
-        _show('adb-ev-expand-btn');
         _hide('adb-ev-save-btn');
         _hide('adb-ev-cancel-btn');
+        _updateDeepenButtons();
 
         _showEntityDetail();
-
-        // Update Deepen button label to reflect context
-        const deepenBtn = _el('adb-ev-expand-btn');
-        if (deepenBtn) {
-            if (_currentEntityStatus === 'stub') {
-                deepenBtn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Expand';
-                deepenBtn.title = 'Expand this stub into a full entity';
-            } else {
-                deepenBtn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Deepen';
-                deepenBtn.title = 'Expand the sub-topics listed in this entity';
-            }
-        }
 
         // Type badge
         const typeBadge = _el('adb-ev-type-badge');
@@ -1828,7 +1816,9 @@
         _editingEntity = JSON.parse(JSON.stringify(entity));
 
         _hide('adb-ev-edit-btn');
-        _hide('adb-ev-expand-btn');
+        _hide('adb-ev-deepen-this-btn');
+        _hide('adb-ev-deepen-rels-btn');
+        _hide('adb-ev-deepen-stubs-btn');
         _show('adb-ev-save-btn');
         _show('adb-ev-cancel-btn');
 
@@ -1880,7 +1870,7 @@
         _editingEntity = null;
         _exitEditDom();
         _show('adb-ev-edit-btn');
-        _show('adb-ev-expand-btn');
+        _updateDeepenButtons();
         _hide('adb-ev-save-btn');
         _hide('adb-ev-cancel-btn');
         _renderEntity(stored);
@@ -2266,7 +2256,7 @@
             _editingEntity = null;
             _exitEditDom();
             _show('adb-ev-edit-btn');
-            _show('adb-ev-expand-btn');
+            _updateDeepenButtons();
             _hide('adb-ev-save-btn');
             _hide('adb-ev-cancel-btn');
             _renderEntity(data);
@@ -2540,11 +2530,32 @@
         } finally { _hideBusy(); }
     }
 
-    async function _deepenCurrent() {
-        if (!_currentEntityId) return;
+    // ── Deepen button helpers ─────────────────────────────────────────────────
 
+    /** Show/hide the three deepen buttons based on current entity status. */
+    function _updateDeepenButtons() {
+        const isStub = _currentEntityStatus === 'stub';
+        const thisBtn  = _el('adb-ev-deepen-this-btn');
+        const relsBtn  = _el('adb-ev-deepen-rels-btn');
+        const stubsBtn = _el('adb-ev-deepen-stubs-btn');
+        if (thisBtn) {
+            thisBtn.classList.remove('hidden');
+            thisBtn.innerHTML = isStub
+                ? '<i class="fas fa-wand-sparkles"></i> Expand'
+                : '<i class="fas fa-wand-sparkles"></i> Deepen this';
+            thisBtn.title = isStub
+                ? 'Expand this stub into a full entity'
+                : 'Deepen this entity\'s own content';
+        }
+        // Relations + Stubs only make sense for active entities
+        if (relsBtn)  relsBtn.classList.toggle('hidden', isStub);
+        if (stubsBtn) stubsBtn.classList.toggle('hidden', isStub);
+    }
+
+    /** Deepen this entity itself (expand if stub, deepen own content if active). */
+    async function _deepenThis() {
+        if (!_currentEntityId) return;
         if (_currentEntityStatus === 'stub') {
-            // Stub entity: preview expanding it (non-destructive)
             _showBusy('Generating expansion preview…');
             try {
                 const model = _selectedModel();
@@ -2561,21 +2572,17 @@
                 _toast(`Preview failed: ${e.message}`, 'error');
             }
         } else {
-            // Active entity: preview deepening sub-topics (non-destructive)
             _showBusy('Generating deepen preview…');
             try {
                 const model = _selectedModel();
                 const res  = await fetch(
-                    `${API}/entities/${_currentEntityId}/deepen/preview?${_dbParam({ max_stubs: 5, ...(model ? { model } : {}) })}`,
+                    `${API}/entities/${_currentEntityId}/deepen/preview?${_dbParam({ max_stubs: 5, include_relations: false, ...(model ? { model } : {}) })}`,
                     { method: 'POST' }
                 );
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.detail || 'Preview failed');
                 _hideBusy();
-                if (!data.previews?.length) {
-                    _toast('No sub-topics to preview (add some in the Stubs tab first)', 'info');
-                    return;
-                }
+                if (!data.previews?.length) { _toast('No sub-topics found for this entity', 'info'); return; }
                 _showDeepenPreview(data);
             } catch (e) {
                 _hideBusy();
@@ -2583,6 +2590,51 @@
             }
         }
     }
+
+    /** Deepen the relation targets of this entity that are still stubs. */
+    async function _deepenRelations() {
+        if (!_currentEntityId) return;
+        _showBusy('Scanning relation stubs…');
+        try {
+            const model = _selectedModel();
+            const res  = await fetch(
+                `${API}/entities/${_currentEntityId}/deepen/preview?${_dbParam({ max_stubs: 0, include_relations: true, ...(model ? { model } : {}) })}`,
+                { method: 'POST' }
+            );
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Preview failed');
+            _hideBusy();
+            if (!data.previews?.length) { _toast('No stub relation targets found for this entity', 'info'); return; }
+            _showDeepenPreview(data);
+        } catch (e) {
+            _hideBusy();
+            _toast(`Preview failed: ${e.message}`, 'error');
+        }
+    }
+
+    /** Deepen the sub-topic stubs listed inside this entity. */
+    async function _deepenStubs() {
+        if (!_currentEntityId) return;
+        _showBusy('Scanning sub-topic stubs…');
+        try {
+            const model = _selectedModel();
+            const res  = await fetch(
+                `${API}/entities/${_currentEntityId}/deepen/preview?${_dbParam({ max_stubs: 10, include_relations: false, ...(model ? { model } : {}) })}`,
+                { method: 'POST' }
+            );
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Preview failed');
+            _hideBusy();
+            if (!data.previews?.length) { _toast('No sub-topic stubs found (add some in the Stubs tab first)', 'info'); return; }
+            _showDeepenPreview(data);
+        } catch (e) {
+            _hideBusy();
+            _toast(`Preview failed: ${e.message}`, 'error');
+        }
+    }
+
+    // Keep _deepenCurrent as an internal alias (used by new-entity create & expand flow)
+    const _deepenCurrent = _deepenThis;
 
     // ── Validation ────────────────────────────────────────────────────────────
 
@@ -6369,20 +6421,6 @@
             _refreshStats();
             _loadEntityList(_currentFilter, _currentPage);
         });
-        _el('adb-expand-btn')?.addEventListener('click', _toggleExpandDropdown);
-        document.querySelectorAll('.adb-expand-option').forEach(opt => {
-            opt.addEventListener('click', e => {
-                e.stopPropagation();
-                _smartExpand(parseInt(opt.dataset.min, 10));
-            });
-        });
-        // Close dropdown when clicking anywhere outside it
-        document.addEventListener('click', e => {
-            if (_expandDdOpen && !_el('adb-expand-wrap')?.contains(e.target)) {
-                _closeExpandDropdown();
-            }
-        });
-        _el('adb-validate-btn')?.addEventListener('click', _validateAll);
         // Validate button inside the Tools tab — renders inline, stays on Tools
         _el('adb-tools-validate-btn')?.addEventListener('click', () => {
             _validateAll({
@@ -6445,8 +6483,10 @@
         });
         _el('adb-ev-save-btn')?.addEventListener('click', _saveEdit);
         _el('adb-ev-cancel-btn')?.addEventListener('click', _cancelEditMode);
-        _el('adb-ev-expand-btn')?.addEventListener('click', _deepenCurrent);
-        _el('adb-ev-validate-btn')?.addEventListener('click', _validateCurrent);
+        _el('adb-ev-deepen-this-btn') ?.addEventListener('click', _deepenThis);
+        _el('adb-ev-deepen-rels-btn') ?.addEventListener('click', _deepenRelations);
+        _el('adb-ev-deepen-stubs-btn')?.addEventListener('click', _deepenStubs);
+        _el('adb-ev-validate-btn')    ?.addEventListener('click', _validateCurrent);
         document.querySelectorAll('.adb-ev-tab').forEach(btn => {
             btn.addEventListener('click', () => _activateEntityTab(btn.dataset.target));
         });
