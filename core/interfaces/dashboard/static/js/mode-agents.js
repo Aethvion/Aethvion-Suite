@@ -165,6 +165,7 @@ async function agentsLoadThreads(workspaceId) {
         let threads = data.threads || [];
 
         // Auto-create a default thread when the workspace has none yet
+        let autoCreatedThread = null;
         if (threads.length === 0) {
             try {
                 const createResp = await fetch(`/api/agents/workspaces/${workspaceId}/threads`, {
@@ -173,8 +174,8 @@ async function agentsLoadThreads(workspaceId) {
                     body: JSON.stringify({ name: 'Thread 1' }),
                 });
                 if (createResp.ok) {
-                    const newThread = await createResp.json();
-                    threads = [newThread];
+                    autoCreatedThread = await createResp.json();
+                    threads = [autoCreatedThread];
                 }
             } catch (createErr) {
                 console.warn('[Agents] Auto-create default thread failed:', createErr);
@@ -182,6 +183,15 @@ async function agentsLoadThreads(workspaceId) {
         }
 
         _agentsPopulateThreadSelect(threads);
+
+        // Auto-switch to the newly created thread so the workspace is immediately usable
+        if (autoCreatedThread) {
+            const sel = _agEl('agents-thread-select');
+            if (sel) {
+                sel.value = autoCreatedThread.id;
+                await _agentsOnThreadSelectChange();
+            }
+        }
     } catch (e) {
         console.error('[Agents] Failed to load threads:', e);
     }
