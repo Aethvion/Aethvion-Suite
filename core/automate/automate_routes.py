@@ -2343,11 +2343,11 @@ _NODE_TYPES: list[dict] = [
             },
         ],
     },
-    # ── Sprint 5: Integrations ────────────────────────────────────────────────
+    # ── AethvionDB ────────────────────────────────────────────────────────────
     {
         "type": "aethviondb.search",
         "label": "AethvionDB Search",
-        "category": "Integrations",
+        "category": "AethvionDB",
         "icon": "fa-database",
         "color": "#818cf8",
         "inputs": [{"name": "in", "label": "Search Query", "description": "Natural-language query to search the AethvionDB database."}],
@@ -2388,7 +2388,7 @@ _NODE_TYPES: list[dict] = [
     {
         "type": "aethviondb.snapshot_search",
         "label": "AethvionDB Snapshot Search",
-        "category": "Integrations",
+        "category": "AethvionDB",
         "icon": "fa-database",
         "color": "#a78bfa",
         "inputs": [{"name": "in", "label": "Search Query", "description": "Natural-language query to search within the snapshot."}],
@@ -2437,7 +2437,7 @@ _NODE_TYPES: list[dict] = [
     {
         "type": "aethviondb.semantic_search",
         "label": "AethvionDB Semantic Search",
-        "category": "Integrations",
+        "category": "AethvionDB",
         "icon": "fa-brain",
         "color": "#c084fc",
         "inputs": [
@@ -2494,7 +2494,7 @@ _NODE_TYPES: list[dict] = [
     {
         "type": "aethviondb.snapshot_semantic_search",
         "label": "AethvionDB Snapshot Semantic Search",
-        "category": "Integrations",
+        "category": "AethvionDB",
         "icon": "fa-brain",
         "color": "#a78bfa",
         "inputs": [
