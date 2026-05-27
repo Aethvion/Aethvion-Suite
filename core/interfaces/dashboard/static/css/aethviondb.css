@@ -3715,6 +3715,128 @@
    Import Panel
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
+/* ─── Deepen / Expand inline context panel ──────────────────────────────── */
+
+.adb-deepen-ctx-panel {
+    margin: 0 1.25rem 0;
+    padding: 0.85rem 1rem 0.7rem;
+    background: rgba(34,211,238,0.04);
+    border: 1px solid rgba(34,211,238,0.18);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    animation: adb-ctx-slide-in 0.18s ease;
+}
+@keyframes adb-ctx-slide-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.adb-dcp-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #22d3ee;
+}
+.adb-dcp-header i { font-size: 0.75rem; }
+.adb-dcp-optional {
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-tertiary);
+    margin-left: 0.25rem;
+}
+
+.adb-dcp-textarea {
+    width: 100%;
+    min-height: 90px;
+    resize: vertical;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    padding: 0.55rem 0.7rem;
+    border-color: rgba(34,211,238,0.2);
+    background: rgba(0,0,0,0.25);
+}
+.adb-dcp-textarea:focus {
+    border-color: rgba(34,211,238,0.45);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(34,211,238,0.08);
+}
+
+.adb-dcp-file-input { display: none; }
+.adb-dcp-file-label { cursor: pointer; }
+
+.adb-dcp-foot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.adb-dcp-char-count {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    flex: 1;
+}
+.adb-dcp-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-left: auto;
+}
+
+/* ─── Deepen Selection context toggle ────────────────────────────────────── */
+
+.adb-ds-context-section {
+    border-top: 1px solid var(--border);
+    padding: 0.6rem 1.25rem 0.85rem;
+}
+
+.adb-ds-ctx-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem 0;
+    transition: color 0.12s;
+}
+.adb-ds-ctx-toggle:hover { color: #22d3ee; }
+.adb-ds-ctx-toggle.open  { color: #22d3ee; }
+.adb-ds-ctx-chevron { font-size: 0.6rem; transition: transform 0.18s; }
+.adb-ds-ctx-toggle.open .adb-ds-ctx-chevron { transform: rotate(180deg); }
+
+.adb-ds-ctx-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.55rem;
+}
+
+.adb-ds-ctx-textarea {
+    width: 100%;
+    min-height: 80px;
+    resize: vertical;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    padding: 0.5rem 0.65rem;
+    border-color: rgba(34,211,238,0.18);
+    background: rgba(0,0,0,0.2);
+}
+.adb-ds-ctx-textarea:focus {
+    border-color: rgba(34,211,238,0.4);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(34,211,238,0.07);
+}
+.adb-ds-ctx-foot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 /* ─── Deepen Selection Panel ─────────────────────────────────────────────── */
 
 .adb-ds-list {

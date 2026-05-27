@@ -566,6 +566,30 @@
                     <span id="adb-ev-status-badge" class="adb-badge"></span>
                 </div>
             </div>
+            <!-- Inline context input — appears when user clicks Deepen / Expand -->
+            <div id="adb-deepen-ctx-panel" class="adb-deepen-ctx-panel hidden">
+                <div class="adb-dcp-header">
+                    <i class="fas fa-book-open-reader"></i>
+                    <span id="adb-dcp-header-label">Add source material</span>
+                    <span class="adb-dcp-optional">optional — leave blank to deepen from general knowledge</span>
+                </div>
+                <textarea id="adb-dcp-text" class="adb-input adb-dcp-textarea"
+                          placeholder="Paste text, notes, an article excerpt, or any source content here.&#10;The AI will use this as its primary reference when generating the expansion."></textarea>
+                <div class="adb-dcp-foot">
+                    <label class="adb-btn adb-btn-ghost adb-btn-sm adb-dcp-file-label" title="Load text from a file">
+                        <i class="fas fa-paperclip"></i> Attach file
+                        <input type="file" id="adb-dcp-file" accept=".txt,.md,.markdown,.json,.csv,.html,.htm,.rst,.py,.js,.ts,.yaml,.yml,.xml,.log" class="adb-dcp-file-input">
+                    </label>
+                    <span id="adb-dcp-char-count" class="adb-dcp-char-count">0 chars</span>
+                    <div class="adb-dcp-actions">
+                        <button id="adb-dcp-cancel-btn" class="adb-btn adb-btn-ghost adb-btn-sm">Cancel</button>
+                        <button id="adb-dcp-run-btn" class="adb-btn adb-btn-accent adb-btn-sm">
+                            <i class="fas fa-wand-sparkles"></i> <span id="adb-dcp-run-label">Deepen</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div class="adb-ev-header">
                 <div class="adb-ev-title-row">
                     <span id="adb-ev-type-badge" class="adb-type-badge">other</span>
@@ -643,6 +667,24 @@
                 </div>
             </div>
             <div id="adb-ds-list" class="adb-ds-list"></div>
+            <!-- Optional context for this multi-deepen run -->
+            <div class="adb-ds-context-section">
+                <button id="adb-ds-ctx-toggle" class="adb-ds-ctx-toggle">
+                    <i class="fas fa-book-open-reader"></i> Add source material
+                    <i class="fas fa-chevron-down adb-ds-ctx-chevron"></i>
+                </button>
+                <div id="adb-ds-ctx-body" class="adb-ds-ctx-body hidden">
+                    <textarea id="adb-ds-ctx-text" class="adb-input adb-ds-ctx-textarea"
+                              placeholder="Paste text or source content here — the AI will use this as reference when expanding the selected items."></textarea>
+                    <div class="adb-ds-ctx-foot">
+                        <label class="adb-btn adb-btn-ghost adb-btn-xs adb-dcp-file-label" title="Load text from a file">
+                            <i class="fas fa-paperclip"></i> Attach file
+                            <input type="file" id="adb-ds-ctx-file" accept=".txt,.md,.markdown,.json,.csv,.html,.htm,.rst,.py,.js,.yaml,.yml,.xml,.log" class="adb-dcp-file-input">
+                        </label>
+                        <span id="adb-ds-ctx-char-count" class="adb-dcp-char-count">0 chars</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- ── New Entity modal ── -->

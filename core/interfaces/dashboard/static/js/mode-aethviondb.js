@@ -1481,6 +1481,7 @@
         _hide('adb-ev-save-btn');
         _hide('adb-ev-cancel-btn');
         _updateDeepenButtons();
+        _hideDeepenCtxPanel();   // reset context panel whenever a new entity loads
 
         _showEntityDetail();
 
@@ -1829,6 +1830,7 @@
 
     function _enterEditMode(entity) {
         _editingEntity = JSON.parse(JSON.stringify(entity));
+        _hideDeepenCtxPanel();   // dismiss context panel if open
 
         _hide('adb-ev-edit-btn');
         _hide('adb-ev-deepen-this-btn');
@@ -2567,42 +2569,66 @@
         if (stubsBtn) stubsBtn.classList.toggle('hidden', isStub);
     }
 
-    /** Deepen this entity itself (expand if stub, deepen own content if active). */
-    async function _deepenThis() {
+    /** Show the inline context panel when user clicks "Deepen this" or "Expand". */
+    function _deepenThis() {
         if (!_currentEntityId) return;
+        _showDeepenCtxPanel();
+    }
+
+    /** Show the context input panel (inline in entity detail view). */
+    function _showDeepenCtxPanel() {
+        const panel    = _el('adb-deepen-ctx-panel');
+        const textarea = _el('adb-dcp-text');
+        const runLabel = _el('adb-dcp-run-label');
+        const isStub   = _currentEntityStatus === 'stub';
+        if (runLabel) runLabel.textContent = isStub ? 'Expand' : 'Deepen';
+        if (textarea) textarea.value = '';
+        _el('adb-dcp-char-count') && (_el('adb-dcp-char-count').textContent = '0 chars');
+        panel?.classList.remove('hidden');
+        textarea?.focus();
+    }
+
+    /** Hide the context panel without running. */
+    function _hideDeepenCtxPanel() {
+        _el('adb-deepen-ctx-panel')?.classList.add('hidden');
+    }
+
+    /**
+     * Actually run the deepen/expand AI call, optionally with user-supplied context.
+     * Called from the context panel's Run button.
+     */
+    async function _runDeepenThis(context) {
+        if (!_currentEntityId) return;
+        _hideDeepenCtxPanel();
+
+        const model   = _selectedModel();
+        const body    = context?.trim() ? JSON.stringify({ context }) : null;
+        const headers = body ? { 'Content-Type': 'application/json' } : {};
+
         if (_currentEntityStatus === 'stub') {
             _showBusy('Generating expansion preview…');
             try {
-                const model = _selectedModel();
                 const res  = await fetch(
                     `${API}/entities/${_currentEntityId}/expand/preview?${_dbParam(model ? { model } : {})}`,
-                    { method: 'POST' }
+                    { method: 'POST', headers, body }
                 );
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.detail || 'Preview failed');
-                _hideBusy();
-                _showExpandPreview(data);
-            } catch (e) {
-                _hideBusy();
-                _toast(`Preview failed: ${e.message}`, 'error');
-            }
+                _hideBusy(); _showExpandPreview(data);
+            } catch (e) { _hideBusy(); _toast(`Preview failed: ${e.message}`, 'error'); }
         } else {
             _showBusy('Generating deepen preview…');
             try {
-                const model = _selectedModel();
                 const res  = await fetch(
                     `${API}/entities/${_currentEntityId}/deepen/preview?${_dbParam({ max_stubs: 5, include_relations: false, ...(model ? { model } : {}) })}`,
-                    { method: 'POST' }
+                    { method: 'POST', headers, body }
                 );
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.detail || 'Preview failed');
                 _hideBusy();
                 if (!data.previews?.length) { _toast('No sub-topics found for this entity', 'info'); return; }
                 _showDeepenPreview(data);
-            } catch (e) {
-                _hideBusy();
-                _toast(`Preview failed: ${e.message}`, 'error');
-            }
+            } catch (e) { _hideBusy(); _toast(`Preview failed: ${e.message}`, 'error'); }
         }
     }
 
@@ -2699,17 +2725,21 @@
             return;
         }
 
+        // Pick up any context the user typed in the context toggle section
+        const ctxText  = (_el('adb-ds-ctx-text')?.value || '').trim();
+        const body     = ctxText ? JSON.stringify({ context: ctxText }) : null;
+        const headers  = body ? { 'Content-Type': 'application/json' } : {};
+
         _showBusy(`Generating previews for ${selected.length} item${selected.length > 1 ? 's' : ''}…`);
         try {
             const model = _selectedModel();
-            // Build URL — stub_names sent as repeated query params
             const params = new URLSearchParams(_dbParam());
             selected.forEach(n => params.append('stub_names', n));
             if (model) params.set('model', model);
 
             const res  = await fetch(
                 `${API}/entities/${_currentEntityId}/deepen/preview?${params}`,
-                { method: 'POST' }
+                { method: 'POST', headers, body }
             );
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || 'Preview failed');
@@ -6602,6 +6632,69 @@
 
         // Deepen preview panel
         _el('adb-dp-apply-btn')?.addEventListener('click', _applyDeepenPreview);
+
+        // Inline context panel (Deepen this / Expand)
+        _el('adb-dcp-cancel-btn')?.addEventListener('click', _hideDeepenCtxPanel);
+        _el('adb-dcp-run-btn')?.addEventListener('click', () => {
+            const ctx = _el('adb-dcp-text')?.value || '';
+            _runDeepenThis(ctx);
+        });
+        _el('adb-dcp-text')?.addEventListener('input', () => {
+            const len = _el('adb-dcp-text')?.value?.length || 0;
+            const cc  = _el('adb-dcp-char-count');
+            if (cc) cc.textContent = len >= 1000
+                ? `${(len / 1000).toFixed(1)}K chars`
+                : `${len} chars`;
+        });
+        _el('adb-dcp-file')?.addEventListener('change', e => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const ta = _el('adb-dcp-text');
+                if (ta) {
+                    ta.value = ev.target.result;
+                    ta.dispatchEvent(new Event('input'));
+                }
+                _toast(`Loaded ${file.name} (${(file.size / 1024).toFixed(1)} KB)`, 'success');
+            };
+            reader.onerror = () => _toast('Could not read file', 'error');
+            reader.readAsText(file);
+            e.target.value = '';   // allow re-attaching same file
+        });
+
+        // Deepen selection panel — context toggle + file
+        _el('adb-ds-ctx-toggle')?.addEventListener('click', () => {
+            const toggle = _el('adb-ds-ctx-toggle');
+            const body   = _el('adb-ds-ctx-body');
+            const open   = !body?.classList.contains('hidden');
+            body?.classList.toggle('hidden', open);
+            toggle?.classList.toggle('open', !open);
+        });
+        _el('adb-ds-ctx-text')?.addEventListener('input', () => {
+            const len = _el('adb-ds-ctx-text')?.value?.length || 0;
+            const cc  = _el('adb-ds-ctx-char-count');
+            if (cc) cc.textContent = len >= 1000 ? `${(len / 1000).toFixed(1)}K chars` : `${len} chars`;
+        });
+        _el('adb-ds-ctx-file')?.addEventListener('change', e => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const ta = _el('adb-ds-ctx-text');
+                if (ta) {
+                    ta.value = ev.target.result;
+                    ta.dispatchEvent(new Event('input'));
+                    // Auto-open the context body if file loaded
+                    _el('adb-ds-ctx-body')?.classList.remove('hidden');
+                    _el('adb-ds-ctx-toggle')?.classList.add('open');
+                }
+                _toast(`Loaded ${file.name}`, 'success');
+            };
+            reader.onerror = () => _toast('Could not read file', 'error');
+            reader.readAsText(file);
+            e.target.value = '';
+        });
 
         // Deepen selection panel
         _el('adb-ds-back')?.addEventListener('click', () => {

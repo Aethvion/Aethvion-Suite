@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query
 from pydantic import BaseModel
 
 from core.utils.logger import get_logger
@@ -153,6 +153,11 @@ class ApplyExpandRequest(BaseModel):
 
 class ApplyDeepenRequest(BaseModel):
     previews: list[dict[str, Any]]
+
+
+class DeepenContextBody(BaseModel):
+    """Optional request body that carries user-supplied source material for deepen/expand."""
+    context: Optional[str] = None
 
 
 class CreateDatabaseRequest(BaseModel):
@@ -757,14 +762,17 @@ async def deepen_entity(
 @router.post("/entities/{entity_id}/expand/preview")
 async def preview_expand_single(
     entity_id: str,
+    req:       Optional[DeepenContextBody] = Body(None),
     model:     Optional[str] = Query(None),
     db:        str = Query("default"),
     path:      Optional[str] = Query(None),
 ):
-    """Generate an expansion preview for a stub entity WITHOUT writing it."""
+    """Generate an expansion preview for a stub entity WITHOUT writing it.
+    Optionally accepts a JSON body: {"context": "...source material..."} """
     from .expansion_engine import ExpansionEngine
     engine = ExpansionEngine(writer=_get_writer(db, path), index=_get_index(db, path))
-    result = await engine.preview_expand_stub(entity_id, model=model)
+    extra  = (req.context or None) if req else None
+    result = await engine.preview_expand_stub(entity_id, model=model, extra_context=extra)
     if result.get("error"):
         raise HTTPException(500, result["error"])
     return result
@@ -805,6 +813,7 @@ async def list_deepen_candidates(
 @router.post("/entities/{entity_id}/deepen/preview")
 async def preview_deepen_entity(
     entity_id:         str,
+    req:               Optional[DeepenContextBody] = Body(None),
     max_stubs:         int  = Query(5, le=20),
     model:             Optional[str] = Query(None),
     include_relations: bool = Query(True, description="Also preview expansion of relation targets that are stubs"),
@@ -812,15 +821,18 @@ async def preview_deepen_entity(
     db:                str  = Query("default"),
     path:              Optional[str] = Query(None),
 ):
-    """Preview deepening the sub-topics (and optionally relations) of an active entity WITHOUT writing."""
+    """Preview deepening sub-topics/relations of an active entity WITHOUT writing.
+    Optionally accepts a JSON body: {"context": "...source material..."} """
     from .expansion_engine import ExpansionEngine
     engine = ExpansionEngine(writer=_get_writer(db, path), index=_get_index(db, path))
+    extra  = (req.context or None) if req else None
     result = await engine.preview_deepen_stubs_for(
         entity_id,
         max_stubs=max_stubs,
         model=model,
         include_relations=include_relations,
         stub_names=stub_names or None,
+        extra_context=extra,
     )
     if result.get("error"):
         raise HTTPException(500, result["error"])

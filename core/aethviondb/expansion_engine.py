@@ -82,11 +82,17 @@ def _build_expansion_prompt(
     context_snippets: list[str],
     max_context_chars: int = 2000,
     retry: bool = False,
+    extra_context: Optional[str] = None,
 ) -> str:
     ctx = "\n".join(context_snippets)[:max_context_chars]
     prompt = f'Generate a knowledge database entry for: "{entity_name}"'
     if ctx:
         prompt += f"\n\nContext from related entities:\n{ctx}"
+    if extra_context and extra_context.strip():
+        # Extra context from the user (pasted text, file content, etc.)
+        # Truncate to 8000 chars so we don't blow up the context window
+        ec = extra_context.strip()[:8000]
+        prompt += f"\n\nAdditional source material provided by the user — use this as primary reference:\n{ec}"
     prompt += "\n\nRespond with a JSON object only."
     if retry:
         prompt += _EXPANSION_RETRY_SUFFIX
@@ -357,12 +363,19 @@ class ExpansionEngine:
 
     async def preview_expand_stub(
         self,
-        entity_id: str,
-        model: Optional[str] = None,
+        entity_id:     str,
+        model:         Optional[str] = None,
+        extra_context: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Run the AI expansion but return the raw proposed data WITHOUT writing
         anything.  The caller can review and then call apply_expand_preview().
+
+        Parameters
+        ----------
+        extra_context : str, optional
+            User-supplied source material (pasted text, file content) that the AI
+            should treat as primary reference when generating the expansion.
         """
         entity = self._writer.get(entity_id)
         if not entity:
@@ -377,7 +390,7 @@ class ExpansionEngine:
 
             raw = None
             for attempt in range(2):
-                prompt   = _build_expansion_prompt(entity["name"], context, retry=(attempt > 0))
+                prompt   = _build_expansion_prompt(entity["name"], context, retry=(attempt > 0), extra_context=extra_context)
                 trace_id = uuid.uuid4().hex
                 try:
                     response = await asyncio.to_thread(
@@ -420,6 +433,7 @@ class ExpansionEngine:
         name:            str,
         context_summary: str,
         model:           Optional[str] = None,
+        extra_context:   Optional[str] = None,
     ) -> dict[str, Any]:
         """AI call for a single stub name given a parent-entity context string."""
         used_model = model or self._default_model
@@ -431,7 +445,7 @@ class ExpansionEngine:
 
             raw = None
             for attempt in range(2):
-                prompt   = _build_expansion_prompt(name, context, retry=(attempt > 0))
+                prompt   = _build_expansion_prompt(name, context, retry=(attempt > 0), extra_context=extra_context)
                 trace_id = uuid.uuid4().hex
                 try:
                     response = await asyncio.to_thread(
@@ -513,6 +527,7 @@ class ExpansionEngine:
         model:             Optional[str] = None,
         include_relations: bool = True,
         stub_names:        Optional[list[str]] = None,
+        extra_context:     Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Preview expanding the sub-topics (stubs) of an active entity.
@@ -522,11 +537,13 @@ class ExpansionEngine:
         ----------
         stub_names : list[str] | None
             When provided, use these names directly (skip auto-collection).
-            Useful when the caller already presented a selection UI.
         include_relations : bool
             When stub_names is None, also include relation targets that are stubs.
         max_stubs : int
             Cap on auto-collected names (ignored when stub_names is provided).
+        extra_context : str, optional
+            User-supplied source material that the AI should treat as primary
+            reference when generating each expansion.
         """
         entity = self._writer.get(entity_id)
         if not entity:
@@ -557,7 +574,7 @@ class ExpansionEngine:
         summary     = (entity.get("sections") or {}).get("core", {}).get("summary", "")
         ctx_snippet = f"Parent entity: {entity_name}. {summary}"
 
-        coros   = [self._preview_one_by_name(name, ctx_snippet, model) for name in stub_names]
+        coros   = [self._preview_one_by_name(name, ctx_snippet, model, extra_context=extra_context) for name in stub_names]
         results = await asyncio.gather(*coros)
 
         return {
