@@ -1627,7 +1627,22 @@
     border-top: 1px solid var(--border);
 }
 
-/* â”€â”€ Busy overlay â”€â”€ */
+/* ── New Entity modal ─────────────────────────────────────────────────────── */
+.adb-new-entity-modal { width: 500px; }
+
+.adb-ne-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.adb-new-entity-filter-btn {
+    margin-left: auto;
+    padding: 4px 12px;
+    font-size: 0.78rem;
+}
+
+/* ── Busy overlay ── */
 .adb-busy-overlay {
     position: absolute;
     inset: 0;

@@ -475,6 +475,9 @@
                 <button class="adb-filter-btn active" data-filter="all">All</button>
                 <button class="adb-filter-btn" data-filter="active">Expanded</button>
                 <button class="adb-filter-btn adb-filter-btn-stub" data-filter="stub">Stubs</button>
+                <button id="adb-new-entity-btn" class="adb-btn adb-btn-accent adb-btn-sm adb-new-entity-filter-btn">
+                    <i class="fas fa-plus"></i> New Entity
+                </button>
             </div>
         </div>
 
@@ -589,6 +592,70 @@
                 </div>
             </div>
             <div id="adb-dp-content" class="adb-dp-content"></div>
+        </div>
+
+        <!-- ── New Entity modal ── -->
+        <div id="adb-new-entity-overlay" class="adb-modal-overlay hidden">
+            <div class="adb-modal adb-new-entity-modal">
+                <div class="adb-modal-header">
+                    <span><i class="fas fa-plus"></i> New Entity</span>
+                    <button id="adb-ne-close-btn" class="adb-modal-close" title="Cancel"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="adb-modal-body">
+                    <div class="adb-field">
+                        <label>Name <span class="adb-form-required">*</span></label>
+                        <input type="text" id="adb-ne-name" class="adb-input"
+                               placeholder="e.g. Marie Curie, Quantum Entanglement…" autocomplete="off">
+                    </div>
+                    <div class="adb-ne-two-col">
+                        <div class="adb-field">
+                            <label>Type</label>
+                            <select id="adb-ne-type" class="adb-input">
+                                <option value="person">Person</option>
+                                <option value="place">Place</option>
+                                <option value="event">Event</option>
+                                <option value="concept">Concept</option>
+                                <option value="organization">Organization</option>
+                                <option value="artifact">Artifact</option>
+                                <option value="creature">Creature</option>
+                                <option value="substance">Substance</option>
+                                <option value="process">Process</option>
+                                <option value="phenomenon">Phenomenon</option>
+                                <option value="work">Work</option>
+                                <option value="species">Species</option>
+                                <option value="universe">Universe</option>
+                                <option value="other" selected>Other</option>
+                            </select>
+                        </div>
+                        <div class="adb-field">
+                            <label>Start as</label>
+                            <select id="adb-ne-status" class="adb-input">
+                                <option value="active" selected>Active</option>
+                                <option value="stub">Stub</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="adb-field">
+                        <label>Summary <span class="adb-form-optional">(optional)</span></label>
+                        <textarea id="adb-ne-summary" class="adb-input" rows="3"
+                                  placeholder="1–3 sentence description of this entity…"></textarea>
+                    </div>
+                    <div class="adb-field">
+                        <label>Tags <span class="adb-form-optional">(optional, comma-separated)</span></label>
+                        <input type="text" id="adb-ne-tags" class="adb-input"
+                               placeholder="tag1, tag2, tag3…">
+                    </div>
+                </div>
+                <div class="adb-modal-footer">
+                    <button id="adb-ne-cancel-btn" class="adb-btn adb-btn-ghost">Cancel</button>
+                    <button id="adb-ne-create-expand-btn" class="adb-btn adb-btn-ghost" title="Create entry and immediately run AI expansion">
+                        <i class="fas fa-wand-sparkles"></i> Create &amp; Expand
+                    </button>
+                    <button id="adb-ne-create-btn" class="adb-btn adb-btn-accent">
+                        <i class="fas fa-plus"></i> Create
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Validation view -->

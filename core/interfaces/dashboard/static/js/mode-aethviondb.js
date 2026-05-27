@@ -1648,6 +1648,84 @@
         }
     }
 
+    // ── Manual entity creation ────────────────────────────────────────────────
+
+    function _openNewEntityModal() {
+        // Reset form
+        _el('adb-ne-name').value    = '';
+        _el('adb-ne-type').value    = 'other';
+        _el('adb-ne-status').value  = 'active';
+        _el('adb-ne-summary').value = '';
+        _el('adb-ne-tags').value    = '';
+        _el('adb-new-entity-overlay').classList.remove('hidden');
+        setTimeout(() => _el('adb-ne-name')?.focus(), 60);
+    }
+
+    function _closeNewEntityModal() {
+        _el('adb-new-entity-overlay').classList.add('hidden');
+    }
+
+    async function _createEntity(thenExpand = false) {
+        const name    = (_el('adb-ne-name')?.value || '').trim();
+        const type    = _el('adb-ne-type')?.value    || 'other';
+        const status  = _el('adb-ne-status')?.value  || 'active';
+        const summary = (_el('adb-ne-summary')?.value || '').trim();
+        const rawTags = (_el('adb-ne-tags')?.value   || '');
+        const tags    = rawTags.split(',').map(t => t.trim()).filter(Boolean);
+
+        if (!name) { _toast('Name is required.', 'warning'); _el('adb-ne-name')?.focus(); return; }
+
+        const createBtn = _el('adb-ne-create-btn');
+        const expandBtn = _el('adb-ne-create-expand-btn');
+        if (createBtn) createBtn.disabled = true;
+        if (expandBtn) expandBtn.disabled = true;
+
+        try {
+            const body = { name, entity_type: type, source: 'manual', summary, tags };
+            const res  = await fetch(`${API}/entities?${_dbParam()}`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(body),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.detail || `HTTP ${res.status}`);
+            }
+            const data = await res.json();
+            const entity = data.entity;
+
+            // Apply status patch if stub was chosen (create always produces 'active')
+            if (status === 'stub' && entity?.id) {
+                await fetch(`${API}/entities/${entity.id}?${_dbParam()}`, {
+                    method:  'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ mutations: { status: 'stub' } }),
+                }).catch(() => {});
+            }
+
+            _closeNewEntityModal();
+            _toast(`"${name}" created.`, 'success');
+            _refreshStats();
+
+            if (entity?.id) {
+                if (thenExpand) {
+                    // Load entity and immediately trigger expand
+                    await _loadEntity(entity.id);
+                    _deepenCurrent();
+                } else {
+                    await _loadEntity(entity.id);
+                }
+            } else {
+                _loadEntityList(_currentFilter, _currentPage);
+            }
+        } catch (e) {
+            _toast(`Failed to create entity: ${e.message}`, 'error');
+        } finally {
+            if (createBtn) createBtn.disabled = false;
+            if (expandBtn) expandBtn.disabled = false;
+        }
+    }
+
     // ── Models ────────────────────────────────────────────────────────────────
 
     async function _fetchModels() {
@@ -6158,6 +6236,19 @@
         _el('adb-search-btn')?.addEventListener('click', _search);
         _el('adb-search-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') _search(); });
         _el('adb-vsearch-toggle')?.addEventListener('click', _vsearchToggle);
+
+        // New Entity
+        _el('adb-new-entity-btn')?.addEventListener('click', _openNewEntityModal);
+        _el('adb-ne-close-btn')?.addEventListener('click', _closeNewEntityModal);
+        _el('adb-ne-cancel-btn')?.addEventListener('click', _closeNewEntityModal);
+        _el('adb-ne-create-btn')?.addEventListener('click', () => _createEntity(false));
+        _el('adb-ne-create-expand-btn')?.addEventListener('click', () => _createEntity(true));
+        _el('adb-new-entity-overlay')?.addEventListener('click', e => {
+            if (e.target === _el('adb-new-entity-overlay')) _closeNewEntityModal();
+        });
+        _el('adb-ne-name')?.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _createEntity(false); }
+        });
 
         // Header toolbar — manual stats refresh + list reload
         _el('adb-refresh-btn')?.addEventListener('click', () => {
