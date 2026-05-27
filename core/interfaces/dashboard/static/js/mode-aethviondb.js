@@ -4401,11 +4401,16 @@
 
             if (coverageEl) coverageEl.classList.remove('hidden');
 
-            const _OPENAI = ['text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002'];
+            const _OPENAI_MODELS = ['text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002'];
+            const _GOOGLE_MODELS = ['text-embedding-004', 'embedding-001'];
+            const _vecProvider = m => {
+                if (_OPENAI_MODELS.includes(m)) return ['OpenAI', 'adb-vec-provider-openai'];
+                if (_GOOGLE_MODELS.includes(m))  return ['Google', 'adb-vec-provider-google'];
+                return ['Local', 'adb-vec-provider-local'];
+            };
             bodyEl.innerHTML = `<table class="adb-vec-cov-table"><tbody>${
                 models.map(m => {
-                    const provider = _OPENAI.includes(m) ? 'OpenAI' : 'Google';
-                    const provCls  = _OPENAI.includes(m) ? 'adb-vec-provider-openai' : 'adb-vec-provider-google';
+                    const [provider, provCls] = _vecProvider(m);
                     return `<tr>
                         <td class="adb-vec-cov-model">${m}</td>
                         <td><span class="adb-vec-provider-badge ${provCls}">${provider}</span></td>
@@ -4572,13 +4577,19 @@
             const fileName   = b.output_file || '';
 
             // Embeddings row — list each model with provider badge
+            const _OPENAI_M = ['text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002'];
+            const _GOOGLE_M = ['text-embedding-004', 'embedding-001'];
+            const _providerOf = m => {
+                if (_OPENAI_M.includes(m)) return ['OpenAI', 'adb-vec-provider-openai'];
+                if (_GOOGLE_M.includes(m))  return ['Google', 'adb-vec-provider-google'];
+                if (m === 'all embedded models') return ['', ''];
+                return ['Local', 'adb-vec-provider-local'];
+            };
             let embeddingHtml = '';
             if (b.include_vectors) {
                 const models = b.vector_models?.length ? b.vector_models : ['all embedded models'];
                 const chips  = models.map(m => {
-                    const isOpenAI = _OPENAI.includes(m);
-                    const provCls  = isOpenAI ? 'adb-vec-provider-openai' : (m === 'all embedded models' ? '' : 'adb-vec-provider-google');
-                    const provLbl  = isOpenAI ? 'OpenAI' : (m === 'all embedded models' ? '' : 'Google');
+                    const [provLbl, provCls] = _providerOf(m);
                     return `<span class="adb-bake-emb-chip">
                         <code>${m}</code>
                         ${provLbl ? `<span class="adb-vec-provider-badge ${provCls}">${provLbl}</span>` : ''}

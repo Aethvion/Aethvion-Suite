@@ -72,15 +72,47 @@ EMBEDDING_MODELS: dict[str, dict] = {
         "dimensions":  768,
         "description": "Gemini embedding-001 — legacy",
     },
+    # Local (sentence-transformers — offline, no API key required)
+    "all-MiniLM-L6-v2": {
+        "provider":    "local",
+        "dimensions":  384,
+        "description": "Local — all-MiniLM-L6-v2, fast & efficient (~90 MB, recommended)",
+    },
+    "all-MiniLM-L12-v2": {
+        "provider":    "local",
+        "dimensions":  384,
+        "description": "Local — all-MiniLM-L12-v2, balanced quality (~120 MB)",
+    },
+    "all-mpnet-base-v2": {
+        "provider":    "local",
+        "dimensions":  768,
+        "description": "Local — all-mpnet-base-v2, best quality in family (~420 MB)",
+    },
+    "BAAI/bge-small-en-v1.5": {
+        "provider":    "local",
+        "dimensions":  384,
+        "description": "Local — BAAI/bge-small-en-v1.5, excellent quality/speed (~130 MB)",
+    },
+    "BAAI/bge-base-en-v1.5": {
+        "provider":    "local",
+        "dimensions":  768,
+        "description": "Local — BAAI/bge-base-en-v1.5, high quality (~440 MB)",
+    },
 }
 
-# Cost per 1M input tokens (embeddings have no output tokens)
+# Cost per 1M input tokens (embeddings have no output tokens; local = free)
 EMBEDDING_COSTS: dict[str, float] = {
     "text-embedding-3-small":  0.020,
     "text-embedding-3-large":  0.130,
     "text-embedding-ada-002":  0.100,
     "text-embedding-004":      0.025,
     "embedding-001":           0.025,
+    # local models have no API cost
+    "all-MiniLM-L6-v2":        0.0,
+    "all-MiniLM-L12-v2":       0.0,
+    "all-mpnet-base-v2":        0.0,
+    "BAAI/bge-small-en-v1.5":   0.0,
+    "BAAI/bge-base-en-v1.5":    0.0,
 }
 
 
@@ -184,6 +216,27 @@ def _make_openai_client():
     return OpenAI(api_key=api_key)
 
 
+# ── Local model cache ──────────────────────────────────────────────────────────
+
+_local_model_cache: dict[str, object] = {}
+
+
+def _get_local_model(model: str):
+    """Load and cache a sentence-transformers model (one load per process)."""
+    if model not in _local_model_cache:
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError:
+            raise RuntimeError(
+                "sentence-transformers is not installed. "
+                "Run: pip install sentence-transformers"
+            )
+        logger.info(f"[Vectorizer] Loading local model {model!r} (first use — may download)…")
+        _local_model_cache[model] = SentenceTransformer(model)
+        logger.info(f"[Vectorizer] Local model {model!r} ready.")
+    return _local_model_cache[model]
+
+
 # ── Embedding ──────────────────────────────────────────────────────────────────
 
 def _google_model_id(model: str) -> str:
@@ -216,11 +269,20 @@ async def _embed_openai(text: str, model: str) -> list[float]:
     return await asyncio.to_thread(_sync_embed)
 
 
+async def _embed_local(text: str, model: str) -> list[float]:
+    def _sync() -> list[float]:
+        m = _get_local_model(model)
+        return m.encode(text, normalize_embeddings=True).tolist()
+    return await asyncio.to_thread(_sync)
+
+
 async def _embed(text: str, model: str) -> list[float]:
     """Route to the correct provider based on EMBEDDING_MODELS registry."""
     provider = EMBEDDING_MODELS.get(model, {}).get("provider", "google")
     if provider == "openai":
         return await _embed_openai(text, model)
+    if provider == "local":
+        return await _embed_local(text, model)
     return await _embed_google(text, model)
 
 
@@ -246,11 +308,19 @@ async def _embed_google_counted(text: str, model: str) -> tuple[list[float], int
     return embedding, _estimate_tokens(text)
 
 
+async def _embed_local_counted(text: str, model: str) -> tuple[list[float], int]:
+    """Embed locally and return (embedding, estimated_token_count). Cost = 0."""
+    embedding = await _embed_local(text, model)
+    return embedding, _estimate_tokens(text)
+
+
 async def _embed_counted(text: str, model: str) -> tuple[list[float], int]:
     """Like _embed() but also returns the token count (actual or estimated)."""
     provider = EMBEDDING_MODELS.get(model, {}).get("provider", "google")
     if provider == "openai":
         return await _embed_openai_counted(text, model)
+    if provider == "local":
+        return await _embed_local_counted(text, model)
     return await _embed_google_counted(text, model)
 
 
@@ -259,6 +329,15 @@ def _preflight_check(model: str) -> None:
     provider = EMBEDDING_MODELS.get(model, {}).get("provider", "google")
     if provider == "openai":
         _make_openai_client()
+    elif provider == "local":
+        # Importing is enough — model download happens lazily at first embed call
+        try:
+            from sentence_transformers import SentenceTransformer  # noqa: F401
+        except ImportError:
+            raise RuntimeError(
+                "sentence-transformers is not installed. "
+                "Run: pip install sentence-transformers"
+            )
     else:
         _make_google_client()
 
@@ -479,6 +558,9 @@ def embed_sync(text: str, model: str) -> list[float]:
         client = OpenAI(api_key=api_key)
         response = client.embeddings.create(model=model, input=text)
         return response.data[0].embedding
+    elif provider == "local":
+        m = _get_local_model(model)
+        return m.encode(text, normalize_embeddings=True).tolist()
     else:
         from google import genai  # noqa: PLC0415
         api_key = os.getenv("GOOGLE_AI_API_KEY", "")

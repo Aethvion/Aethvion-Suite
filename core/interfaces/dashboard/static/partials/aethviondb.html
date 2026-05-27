@@ -210,8 +210,15 @@
                     <div class="adb-field">
                         <label>Embedding model</label>
                         <select id="adb-vec-model">
+                            <optgroup label="Local (offline, no API key)">
+                                <option value="all-MiniLM-L6-v2" selected>all-MiniLM-L6-v2 — fast, 384d (recommended)</option>
+                                <option value="all-MiniLM-L12-v2">all-MiniLM-L12-v2 — balanced, 384d</option>
+                                <option value="all-mpnet-base-v2">all-mpnet-base-v2 — best quality, 768d</option>
+                                <option value="BAAI/bge-small-en-v1.5">BAAI/bge-small-en-v1.5 — excellent, 384d</option>
+                                <option value="BAAI/bge-base-en-v1.5">BAAI/bge-base-en-v1.5 — high quality, 768d</option>
+                            </optgroup>
                             <optgroup label="OpenAI">
-                                <option value="text-embedding-3-small" selected>text-embedding-3-small — fast, efficient</option>
+                                <option value="text-embedding-3-small">text-embedding-3-small — fast, efficient</option>
                                 <option value="text-embedding-3-large">text-embedding-3-large — highest quality</option>
                                 <option value="text-embedding-ada-002">text-embedding-ada-002 — legacy</option>
                             </optgroup>
