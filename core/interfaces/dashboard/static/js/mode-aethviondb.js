@@ -6305,6 +6305,20 @@
         }
     }
 
+    // ── Tools sub-navigation ──────────────────────────────────────────────────
+
+    const _TOOL_PAGE_IDS = ['distill', 'distill-folder', 'vectors', 'import', 'validate', 'chunks'];
+
+    function _toolsNavSwitch(toolId) {
+        document.querySelectorAll('.adb-tools-nav-item').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tool === toolId);
+        });
+        _TOOL_PAGE_IDS.forEach(id => {
+            const page = _el(`adb-tool-page-${id}`);
+            if (page) page.classList.toggle('hidden', id !== toolId);
+        });
+    }
+
     function _testWire() {
         _el('adb-bench-run-btn')    ?.addEventListener('click', _testRunBench);
         _el('adb-bench-add-bake')   ?.addEventListener('click', _testAddBakeRow);
@@ -6313,6 +6327,11 @@
         _el('adb-bench-query')      ?.addEventListener('keydown', e => { if (e.key === 'Enter') _testRunBench(); });
         _el('adb-bench-vec-cb')     ?.addEventListener('change', e => {
             _el('adb-bench-vec-wrap')?.classList.toggle('hidden', !e.target.checked);
+        });
+
+        // Tools left-nav: switch between tool pages
+        document.querySelectorAll('.adb-tools-nav-item').forEach(btn => {
+            btn.addEventListener('click', () => _toolsNavSwitch(btn.dataset.tool));
         });
     }
 

@@ -234,6 +234,98 @@
 }
 
 /* â”€â”€ Tools tab pane â”€â”€ */
+/* Tools tab — split layout */
+.adb-tools-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Left nav rail */
+.adb-tools-nav {
+    width: 188px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0.75rem 0.5rem;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+}
+.adb-tools-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: rgba(255,255,255,0.55);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s, color 0.12s;
+    width: 100%;
+}
+.adb-tools-nav-item i {
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 0.78rem;
+}
+.adb-tools-nav-item:hover {
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.8);
+}
+.adb-tools-nav-item.active {
+    background: rgba(34, 211, 238, 0.1);
+    color: #22d3ee;
+    font-weight: 600;
+}
+
+/* Right content area */
+.adb-tools-content {
+    flex: 1;
+    overflow-y: auto;
+    min-width: 0;
+    padding: 1.25rem 1.5rem;
+}
+
+/* Individual tool pages */
+.adb-tool-page {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    max-width: 640px;
+}
+.adb-tool-page.hidden { display: none; }
+
+.adb-tool-page-header {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0.1rem;
+}
+.adb-tool-page-header > i {
+    color: #22d3ee;
+    font-size: 0.9rem;
+}
+.adb-tool-page-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: auto;
+}
+
+/* Legacy grid pane (kept for backwards compat) */
 .adb-tools-pane {
     flex: 1;
     overflow-y: auto;

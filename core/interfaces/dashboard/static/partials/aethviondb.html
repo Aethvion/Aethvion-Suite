@@ -107,261 +107,276 @@
          vector generation, bake export.
     ══════════════════════════════════════════════════════ -->
     <div id="adb-tab-pane-tools" class="adb-tab-pane hidden">
-        <div class="adb-tools-pane">
+        <div class="adb-tools-layout">
 
-            <!-- ── Distill Content ── -->
-            <div class="adb-panel">
-                <div class="adb-panel-header">
-                    <i class="fas fa-flask"></i> Distill Content
-                </div>
-                <p class="adb-panel-desc">Paste any text — articles, books, notes, documents. AethvionDB extracts and structures the knowledge automatically.</p>
-                <div class="adb-field">
-                    <textarea id="adb-distill-text" rows="8" placeholder="Paste content here…"></textarea>
-                </div>
-                <div class="adb-field">
-                    <label>Model</label>
-                    <select id="adb-distill-model">
-                        <option value="auto">Auto Select</option>
-                    </select>
-                </div>
-                <button id="adb-distill-btn" class="adb-primary-btn">
-                    <i class="fas fa-flask"></i> Distill
+            <!-- ── Left navigation ── -->
+            <nav class="adb-tools-nav">
+                <button class="adb-tools-nav-item active" data-tool="distill">
+                    <i class="fas fa-flask"></i><span>Distill Content</span>
                 </button>
-                <div id="adb-distill-status" class="adb-status hidden"></div>
-            </div>
+                <button class="adb-tools-nav-item" data-tool="distill-folder">
+                    <i class="fas fa-folder-open"></i><span>Distill Folder</span>
+                </button>
+                <button class="adb-tools-nav-item" data-tool="vectors">
+                    <i class="fas fa-microchip"></i><span>Vector Search</span>
+                </button>
+                <button class="adb-tools-nav-item" data-tool="import">
+                    <i class="fas fa-file-import"></i><span>Import</span>
+                </button>
+                <button class="adb-tools-nav-item" data-tool="validate">
+                    <i class="fas fa-shield-check"></i><span>Validate &amp; Cleanup</span>
+                </button>
+                <button class="adb-tools-nav-item" data-tool="chunks">
+                    <i class="fas fa-layer-group"></i><span>Smart Chunks</span>
+                </button>
+            </nav>
 
-            <!-- ── Distill Folder ── -->
-            <div class="adb-panel" id="adb-fd-panel">
-                <div class="adb-panel-header">
-                    <i class="fas fa-folder-open"></i> Distill Folder
-                </div>
+            <!-- ── Right: per-tool pages ── -->
+            <div class="adb-tools-content">
 
-                <!-- Step 1: folder picker -->
-                <div id="adb-fd-pick">
-                    <p class="adb-panel-desc">Distil an entire folder of documents. Supports .txt .md .html .json .py and more.</p>
-                    <div class="adb-fd-path-row">
-                        <input type="text" id="adb-fd-path-input" class="adb-fd-path-input" placeholder="Folder path…">
-                        <button id="adb-fd-browse-btn" class="adb-db-browse-btn" title="Browse for folder">
-                            <i class="fas fa-folder-open"></i>
-                        </button>
+                <!-- ═══ Distill Content ═══ -->
+                <div id="adb-tool-page-distill" class="adb-tool-page">
+                    <div class="adb-tool-page-header">
+                        <i class="fas fa-flask"></i> Distill Content
                     </div>
-                    <button id="adb-fd-scan-btn" class="adb-primary-btn">
-                        <i class="fas fa-magnifying-glass"></i> Scan Folder
-                    </button>
-                    <div id="adb-fd-pick-status" class="adb-status hidden"></div>
-                </div>
-
-                <!-- Step 2: scan results + start -->
-                <div id="adb-fd-info" class="hidden">
-                    <div id="adb-fd-scan-stats" class="adb-fd-scan-stats"></div>
-                    <div id="adb-fd-type-list" class="adb-fd-type-list"></div>
+                    <p class="adb-panel-desc">Paste any text — articles, books, notes, documents. AethvionDB extracts and structures the knowledge automatically.</p>
+                    <div class="adb-field">
+                        <textarea id="adb-distill-text" rows="10" placeholder="Paste content here…"></textarea>
+                    </div>
                     <div class="adb-field">
                         <label>Model</label>
-                        <select id="adb-fd-model">
+                        <select id="adb-distill-model">
                             <option value="auto">Auto Select</option>
                         </select>
                     </div>
+                    <button id="adb-distill-btn" class="adb-primary-btn">
+                        <i class="fas fa-flask"></i> Distill
+                    </button>
+                    <div id="adb-distill-status" class="adb-status hidden"></div>
+                </div>
+
+                <!-- ═══ Distill Folder ═══ -->
+                <div id="adb-tool-page-distill-folder" class="adb-tool-page hidden">
+                    <div class="adb-tool-page-header">
+                        <i class="fas fa-folder-open"></i> Distill Folder
+                    </div>
+                    <p class="adb-panel-desc">Distil an entire folder of documents. Supports .txt .md .html .json .py and more.</p>
+
+                    <!-- Step 1: folder picker -->
+                    <div id="adb-fd-pick">
+                        <div class="adb-fd-path-row">
+                            <input type="text" id="adb-fd-path-input" class="adb-fd-path-input" placeholder="Folder path…">
+                            <button id="adb-fd-browse-btn" class="adb-db-browse-btn" title="Browse for folder">
+                                <i class="fas fa-folder-open"></i>
+                            </button>
+                        </div>
+                        <button id="adb-fd-scan-btn" class="adb-primary-btn">
+                            <i class="fas fa-magnifying-glass"></i> Scan Folder
+                        </button>
+                        <div id="adb-fd-pick-status" class="adb-status hidden"></div>
+                    </div>
+
+                    <!-- Step 2: scan results + start -->
+                    <div id="adb-fd-info" class="hidden">
+                        <div id="adb-fd-scan-stats" class="adb-fd-scan-stats"></div>
+                        <div id="adb-fd-type-list" class="adb-fd-type-list"></div>
+                        <div class="adb-field">
+                            <label>Model</label>
+                            <select id="adb-fd-model">
+                                <option value="auto">Auto Select</option>
+                            </select>
+                        </div>
+                        <div class="adb-field">
+                            <label title="How many files to distil simultaneously">Parallel files</label>
+                            <select id="adb-fd-concurrency">
+                                <option value="1">1 — Sequential</option>
+                                <option value="2">2 — Fast</option>
+                                <option value="4" selected>4 — Faster</option>
+                                <option value="8">8 — Max</option>
+                            </select>
+                        </div>
+                        <div class="adb-fd-btn-row">
+                            <button id="adb-fd-start-btn" class="adb-primary-btn" style="flex:1">
+                                <i class="fas fa-play"></i> Start Distilling
+                            </button>
+                            <button id="adb-fd-info-back-btn" class="adb-btn adb-btn-ghost" title="Back">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: job progress -->
+                    <div id="adb-fd-prog" class="hidden">
+                        <div class="adb-fd-prog-header">
+                            <span id="adb-fd-prog-folder" class="adb-fd-prog-folder"></span>
+                            <span id="adb-fd-prog-badge" class="adb-fd-badge"></span>
+                        </div>
+                        <div class="adb-fd-bar-wrap">
+                            <div class="adb-fd-bar-track">
+                                <div id="adb-fd-bar-fill" class="adb-fd-bar-fill" style="width:0%"></div>
+                            </div>
+                            <span id="adb-fd-bar-pct" class="adb-fd-bar-pct">0%</span>
+                        </div>
+                        <div id="adb-fd-prog-stats" class="adb-fd-prog-stats"></div>
+                        <div class="adb-fd-log-wrap">
+                            <div id="adb-fd-log-now" class="adb-fd-log-now hidden"></div>
+                            <div id="adb-fd-log" class="adb-fd-log"></div>
+                        </div>
+                        <div class="adb-fd-btn-row">
+                            <button id="adb-fd-pause-btn"  class="adb-btn adb-btn-ghost  adb-btn-sm hidden"><i class="fas fa-pause"></i> Pause</button>
+                            <button id="adb-fd-resume-btn" class="adb-btn adb-btn-accent adb-btn-sm hidden"><i class="fas fa-play"></i> Resume</button>
+                            <button id="adb-fd-cancel-btn" class="adb-btn adb-btn-ghost  adb-btn-sm hidden"><i class="fas fa-xmark"></i> Cancel</button>
+                            <button id="adb-fd-new-btn"    class="adb-btn adb-btn-ghost  adb-btn-sm hidden"><i class="fas fa-plus"></i> New</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ Vector Search ═══ -->
+                <div id="adb-tool-page-vectors" class="adb-tool-page hidden">
+                    <div class="adb-tool-page-header">
+                        <i class="fas fa-microchip"></i> Vector Search
+                    </div>
+                    <p class="adb-panel-desc">Generate embeddings for semantic search and AI-powered retrieval. Stored directly in each entity's raw data.</p>
                     <div class="adb-field">
-                        <label title="How many files to distil simultaneously">Parallel files</label>
-                        <select id="adb-fd-concurrency">
-                            <option value="1">1 — Sequential</option>
-                            <option value="2">2 — Fast</option>
-                            <option value="4" selected>4 — Faster</option>
-                            <option value="8">8 — Max</option>
+                        <label>Embedding model</label>
+                        <select id="adb-vec-model">
+                            <optgroup label="OpenAI">
+                                <option value="text-embedding-3-small" selected>text-embedding-3-small — fast, efficient</option>
+                                <option value="text-embedding-3-large">text-embedding-3-large — highest quality</option>
+                                <option value="text-embedding-ada-002">text-embedding-ada-002 — legacy</option>
+                            </optgroup>
+                            <optgroup label="Google Gemini">
+                                <option value="text-embedding-004">text-embedding-004</option>
+                                <option value="embedding-001">embedding-001 — legacy</option>
+                            </optgroup>
                         </select>
                     </div>
-                    <div class="adb-fd-btn-row">
-                        <button id="adb-fd-start-btn" class="adb-primary-btn" style="flex:1">
-                            <i class="fas fa-play"></i> Start Distilling
-                        </button>
-                        <button id="adb-fd-info-back-btn" class="adb-btn adb-btn-ghost" title="Back">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Step 3: job progress -->
-                <div id="adb-fd-prog" class="hidden">
-                    <div class="adb-fd-prog-header">
-                        <span id="adb-fd-prog-folder" class="adb-fd-prog-folder"></span>
-                        <span id="adb-fd-prog-badge" class="adb-fd-badge"></span>
-                    </div>
-                    <div class="adb-fd-bar-wrap">
-                        <div class="adb-fd-bar-track">
-                            <div id="adb-fd-bar-fill" class="adb-fd-bar-fill" style="width:0%"></div>
+                    <label class="adb-checkbox-row">
+                        <input type="checkbox" id="adb-vec-stubs" checked>
+                        <span>Include stub entities</span>
+                    </label>
+                    <label class="adb-checkbox-row">
+                        <input type="checkbox" id="adb-vec-force">
+                        <span>Re-generate existing vectors</span>
+                    </label>
+                    <div id="adb-vec-status" class="hidden">
+                        <div class="adb-vec-status-row">
+                            <span id="adb-vec-count-label" class="adb-vec-count-label">0 / 0 entities</span>
+                            <span id="adb-vec-badge" class="adb-fd-badge"></span>
                         </div>
-                        <span id="adb-fd-bar-pct" class="adb-fd-bar-pct">0%</span>
-                    </div>
-                    <div id="adb-fd-prog-stats" class="adb-fd-prog-stats"></div>
-                    <div class="adb-fd-log-wrap">
-                        <div id="adb-fd-log-now" class="adb-fd-log-now hidden"></div>
-                        <div id="adb-fd-log" class="adb-fd-log"></div>
+                        <div class="adb-fd-bar-wrap">
+                            <div class="adb-fd-bar-track">
+                                <div id="adb-vec-bar-fill" class="adb-fd-bar-fill" style="width:0%"></div>
+                            </div>
+                            <span id="adb-vec-bar-pct" class="adb-fd-bar-pct">0%</span>
+                        </div>
+                        <div id="adb-vec-breakdown" class="adb-vec-breakdown hidden"></div>
+                        <div id="adb-vec-error-msg" class="adb-vec-error-msg hidden"></div>
                     </div>
                     <div class="adb-fd-btn-row">
-                        <button id="adb-fd-pause-btn"  class="adb-btn adb-btn-ghost  adb-btn-sm hidden"><i class="fas fa-pause"></i> Pause</button>
-                        <button id="adb-fd-resume-btn" class="adb-btn adb-btn-accent adb-btn-sm hidden"><i class="fas fa-play"></i> Resume</button>
-                        <button id="adb-fd-cancel-btn" class="adb-btn adb-btn-ghost  adb-btn-sm hidden"><i class="fas fa-xmark"></i> Cancel</button>
-                        <button id="adb-fd-new-btn"    class="adb-btn adb-btn-ghost  adb-btn-sm hidden"><i class="fas fa-plus"></i> New</button>
+                        <button id="adb-vec-generate-btn" class="adb-primary-btn" style="flex:1">
+                            <i class="fas fa-microchip"></i> Generate Embeddings
+                        </button>
+                        <button id="adb-vec-cancel-btn" class="adb-btn adb-btn-ghost hidden" title="Cancel">
+                            <i class="fas fa-xmark"></i>
+                        </button>
                     </div>
-                </div>
-            </div>
-
-            <!-- ── Vector Search ── -->
-            <div class="adb-panel" id="adb-vec-panel">
-                <div class="adb-panel-header">
-                    <i class="fas fa-microchip"></i> Vector Search
-                </div>
-                <p class="adb-panel-desc">Generate embeddings for semantic search and AI-powered retrieval. Stored directly in each entity's raw data.</p>
-                <div class="adb-field">
-                    <label>Embedding model</label>
-                    <select id="adb-vec-model">
-                        <optgroup label="OpenAI">
-                            <option value="text-embedding-3-small" selected>text-embedding-3-small — fast, efficient</option>
-                            <option value="text-embedding-3-large">text-embedding-3-large — highest quality</option>
-                            <option value="text-embedding-ada-002">text-embedding-ada-002 — legacy</option>
-                        </optgroup>
-                        <optgroup label="Google Gemini">
-                            <option value="text-embedding-004">text-embedding-004</option>
-                            <option value="embedding-001">embedding-001 — legacy</option>
-                        </optgroup>
-                    </select>
-                </div>
-                <label class="adb-checkbox-row">
-                    <input type="checkbox" id="adb-vec-stubs" checked>
-                    <span>Include stub entities</span>
-                </label>
-                <label class="adb-checkbox-row">
-                    <input type="checkbox" id="adb-vec-force">
-                    <span>Re-generate existing vectors</span>
-                </label>
-                <div id="adb-vec-status" class="hidden">
-                    <div class="adb-vec-status-row">
-                        <span id="adb-vec-count-label" class="adb-vec-count-label">0 / 0 entities</span>
-                        <span id="adb-vec-badge" class="adb-fd-badge"></span>
-                    </div>
-                    <div class="adb-fd-bar-wrap">
-                        <div class="adb-fd-bar-track">
-                            <div id="adb-vec-bar-fill" class="adb-fd-bar-fill" style="width:0%"></div>
+                    <div id="adb-vec-coverage" class="adb-vec-coverage hidden">
+                        <div class="adb-vec-coverage-header">
+                            <i class="fas fa-layer-group"></i> Existing embeddings
                         </div>
-                        <span id="adb-vec-bar-pct" class="adb-fd-bar-pct">0%</span>
+                        <div id="adb-vec-coverage-body" class="adb-vec-coverage-body"></div>
                     </div>
-                    <div id="adb-vec-breakdown" class="adb-vec-breakdown hidden"></div>
-                    <div id="adb-vec-error-msg" class="adb-vec-error-msg hidden"></div>
                 </div>
-                <div class="adb-fd-btn-row">
-                    <button id="adb-vec-generate-btn" class="adb-primary-btn" style="flex:1">
-                        <i class="fas fa-microchip"></i> Generate Embeddings
-                    </button>
-                    <button id="adb-vec-cancel-btn" class="adb-btn adb-btn-ghost hidden" title="Cancel">
-                        <i class="fas fa-xmark"></i>
-                    </button>
-                </div>
-                <div id="adb-vec-coverage" class="adb-vec-coverage hidden">
-                    <div class="adb-vec-coverage-header">
-                        <i class="fas fa-layer-group"></i> Existing embeddings
+
+                <!-- ═══ Import ═══ -->
+                <div id="adb-tool-page-import" class="adb-tool-page hidden">
+                    <div class="adb-tool-page-header">
+                        <i class="fas fa-file-import"></i> Import
                     </div>
-                    <div id="adb-vec-coverage-body" class="adb-vec-coverage-body"></div>
+                    <p class="adb-panel-desc">
+                        Import entities from a <strong>.jsonl</strong> or <strong>.json</strong> bake export,
+                        a JSON array of entities, or a single entity file.
+                        Preserves all fields: summaries, relations, properties, stubs, vectors.
+                    </p>
+                    <div class="adb-field">
+                        <label>File</label>
+                        <div class="adb-import-file-row">
+                            <input type="text" id="adb-import-filename-display"
+                                   class="adb-input adb-import-filename-display"
+                                   placeholder="No file selected" readonly>
+                            <button id="adb-import-browse-btn" class="adb-db-browse-btn" title="Browse for file">
+                                <i class="fas fa-folder-open"></i>
+                            </button>
+                        </div>
+                        <input type="file" id="adb-import-file-input" accept=".json,.jsonl" style="display:none">
+                    </div>
+                    <div id="adb-import-preview" class="adb-import-preview hidden">
+                        <div id="adb-import-preview-text" class="adb-import-preview-text"></div>
+                    </div>
+                    <div class="adb-field">
+                        <label title="What to do when an entity with the same name already exists">On conflict</label>
+                        <select id="adb-import-conflict">
+                            <option value="skip">Skip — keep existing entity</option>
+                            <option value="overwrite">Overwrite — replace with imported data</option>
+                        </select>
+                    </div>
+                    <div class="adb-field">
+                        <label title="Overrides the source field on every imported entity">Source tag (optional)</label>
+                        <input type="text" id="adb-import-source" class="adb-input" placeholder="e.g. import, backup, merge…">
+                    </div>
+                    <button id="adb-import-btn" class="adb-primary-btn" disabled>
+                        <i class="fas fa-file-import"></i> Import
+                    </button>
+                    <div id="adb-import-result" class="hidden"></div>
                 </div>
-            </div>
 
-            <!-- ── Import ── -->
-            <div class="adb-panel" id="adb-import-panel">
-                <div class="adb-panel-header">
-                    <i class="fas fa-file-import"></i> Import
-                </div>
-                <p class="adb-panel-desc">
-                    Import entities from a <strong>.jsonl</strong> or <strong>.json</strong> bake export,
-                    a JSON array of entities, or a single entity file.
-                    Preserves all fields: summaries, relations, properties, stubs, vectors.
-                </p>
-
-                <!-- File picker row -->
-                <div class="adb-field">
-                    <label>File</label>
-                    <div class="adb-import-file-row">
-                        <input type="text" id="adb-import-filename-display"
-                               class="adb-input adb-import-filename-display"
-                               placeholder="No file selected" readonly>
-                        <button id="adb-import-browse-btn" class="adb-db-browse-btn" title="Browse for file">
-                            <i class="fas fa-folder-open"></i>
+                <!-- ═══ Validate & Cleanup ═══ -->
+                <div id="adb-tool-page-validate" class="adb-tool-page hidden">
+                    <div class="adb-tool-page-header">
+                        <i class="fas fa-shield-check"></i> Validate &amp; Cleanup
+                    </div>
+                    <p class="adb-panel-desc">
+                        Run integrity checks on this database: detect orphan stubs, duplicate entities,
+                        status mismatches, missing relations, and soft-deleted files that can be purged.
+                    </p>
+                    <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+                        <button id="adb-tools-validate-btn" class="adb-primary-btn" style="flex:1;min-width:160px">
+                            <i class="fas fa-shield-check"></i> Full Validation
+                        </button>
+                        <button id="adb-tools-clean-orphans-btn" class="adb-btn adb-btn-ghost" style="flex:1;min-width:160px" title="Soft-delete all stub entities that have no relations and are not referenced by anything">
+                            <i class="fas fa-link-slash"></i> Clean Orphan Stubs
                         </button>
                     </div>
-                    <input type="file" id="adb-import-file-input" accept=".json,.jsonl" style="display:none">
+                    <div id="adb-tools-orphan-status" class="adb-status hidden"></div>
                 </div>
 
-                <!-- Auto-detected preview -->
-                <div id="adb-import-preview" class="adb-import-preview hidden">
-                    <div id="adb-import-preview-text" class="adb-import-preview-text"></div>
-                </div>
-
-                <!-- Conflict mode -->
-                <div class="adb-field">
-                    <label title="What to do when an entity with the same name already exists">On conflict</label>
-                    <select id="adb-import-conflict">
-                        <option value="skip">Skip — keep existing entity</option>
-                        <option value="overwrite">Overwrite — replace with imported data</option>
-                    </select>
-                </div>
-
-                <!-- Source tag -->
-                <div class="adb-field">
-                    <label title="Overrides the source field on every imported entity">Source tag (optional)</label>
-                    <input type="text" id="adb-import-source" class="adb-input" placeholder="e.g. import, backup, merge…">
-                </div>
-
-                <button id="adb-import-btn" class="adb-primary-btn" disabled>
-                    <i class="fas fa-file-import"></i> Import
-                </button>
-                <div id="adb-import-result" class="hidden"></div>
-            </div>
-
-            <!-- ── Validate / Cleanup ── -->
-            <div class="adb-panel" id="adb-validate-panel-tools">
-                <div class="adb-panel-header">
-                    <i class="fas fa-shield-check"></i> Validate &amp; Cleanup
-                </div>
-                <p class="adb-panel-desc">
-                    Run integrity checks on this database: detect orphan stubs, duplicate entities,
-                    status mismatches, missing relations, and soft-deleted files that can be purged.
-                </p>
-                <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
-                    <button id="adb-tools-validate-btn" class="adb-primary-btn" style="flex:1;min-width:160px">
-                        <i class="fas fa-shield-check"></i> Full Validation
-                    </button>
-                    <button id="adb-tools-clean-orphans-btn" class="adb-btn adb-btn-ghost" style="flex:1;min-width:160px" title="Soft-delete all stub entities that have no relations and are not referenced by anything">
-                        <i class="fas fa-link-slash"></i> Clean Orphan Stubs
-                    </button>
-                </div>
-                <div id="adb-tools-orphan-status" class="adb-status hidden"></div>
-            </div>
-
-            <!-- ── Smart Chunks ── -->
-            <div class="adb-panel" id="adb-chunk-panel">
-                <div class="adb-panel-header">
-                    <i class="fas fa-layer-group"></i> Smart Chunks
-                    <div class="adb-panel-header-actions">
-                        <button id="adb-chunk-build-btn" class="adb-btn adb-btn-accent adb-btn-xs">
-                            <i class="fas fa-wand-sparkles"></i> Rebuild Chunks
-                        </button>
-                        <button id="adb-chunk-refresh-btn" class="adb-btn adb-btn-ghost adb-btn-xs" title="Refresh chunk list">
-                            <i class="fas fa-rotate-right"></i>
-                        </button>
+                <!-- ═══ Smart Chunks ═══ -->
+                <div id="adb-tool-page-chunks" class="adb-tool-page hidden">
+                    <div class="adb-tool-page-header">
+                        <i class="fas fa-layer-group"></i> Smart Chunks
+                        <div class="adb-tool-page-header-actions">
+                            <button id="adb-chunk-build-btn" class="adb-btn adb-btn-accent adb-btn-xs">
+                                <i class="fas fa-wand-sparkles"></i> Rebuild Chunks
+                            </button>
+                            <button id="adb-chunk-refresh-btn" class="adb-btn adb-btn-ghost adb-btn-xs" title="Refresh chunk list">
+                                <i class="fas fa-rotate-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="adb-panel-desc">
+                        Groups entities automatically by type, shared properties, tags, or alphabetically.
+                        Chunks power fast index search and the chunk filter in the Graph tab.
+                        Individual entity files are never modified.
+                    </p>
+                    <div id="adb-chunk-status" class="adb-chunk-status hidden"></div>
+                    <div id="adb-chunk-list" class="adb-chunk-list">
+                        <div class="adb-empty-hint">No chunks yet — click Rebuild Chunks to analyse this database.</div>
                     </div>
                 </div>
-                <p class="adb-panel-desc">
-                    Groups entities automatically by type, shared properties, tags, or alphabetically.
-                    Chunks power fast index search and the chunk filter in the Graph tab.
-                    Individual entity files are never modified.
-                </p>
 
-                <div id="adb-chunk-status" class="adb-chunk-status hidden"></div>
-
-                <div id="adb-chunk-list" class="adb-chunk-list">
-                    <div class="adb-empty-hint">No chunks yet — click Rebuild Chunks to analyse this database.</div>
-                </div>
-            </div>
-
-        </div>
+            </div><!-- /.adb-tools-content -->
+        </div><!-- /.adb-tools-layout -->
     </div>
 
     <!-- ══════════════════════════════════════════════════════
