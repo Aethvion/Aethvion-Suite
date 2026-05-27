@@ -699,6 +699,37 @@
         });
     }
 
+    /**
+     * Highlight nodes directly wired from a global node; dim everything else.
+     * Shows at a glance which nodes are affected by changing this parameter.
+     */
+    function _applyGlobalHighlight(globalNodeId) {
+        _clearGlobalHighlight();
+        if (!globalNodeId || !_e.canvasInner || !_active) return;
+        var connected = new Set();
+        (_active.connections || []).forEach(function (conn) {
+            if (conn.sourceNodeId === globalNodeId) connected.add(conn.targetNodeId);
+        });
+        _e.canvasInner.querySelectorAll('.at-node').forEach(function (el) {
+            var nid = el.dataset.nodeId;
+            if (nid === globalNodeId) {
+                el.classList.add('at-global-highlight'); // the global node itself
+            } else if (connected.has(nid)) {
+                el.classList.add('at-global-highlight');
+            } else {
+                el.classList.add('at-global-dimmed');
+            }
+        });
+    }
+
+    /** Remove global highlight / dim from all nodes. */
+    function _clearGlobalHighlight() {
+        if (!_e.canvasInner) return;
+        _e.canvasInner.querySelectorAll('.at-node').forEach(function (el) {
+            el.classList.remove('at-global-highlight', 'at-global-dimmed');
+        });
+    }
+
     // ════════════════════════════════════════════════════════════════════════
     //  Workflow execution
     // ════════════════════════════════════════════════════════════════════════
@@ -1239,7 +1270,7 @@
         const isCapture   = nd.type === 'action.screenshot' || nd.type === 'action.camera_capture';
         const isSchedule  = nd.type === 'trigger.schedule';
         const isTextInput = nd.type === 'input.text' || nd.type === 'input.number' || nd.type === 'input.list';
-        const isVariable  = nd.type === 'data.variable';
+        const isGlobal    = nd.type && nd.type.startsWith('global.');
         const isTrigger   = nd.type.startsWith('trigger.');
         const showResult  = (isAI && nd.properties['show_result'] !== false) || isDisplay;
 
@@ -1287,21 +1318,20 @@
                    '</div>';
         }());
 
-        // Variable info strip — shown on data.variable nodes
-        const variableHtml = (function () {
-            if (!isVariable) return '';
-            var varName = nd.properties['name'] || 'var';
-            var isPublic = nd.properties['public'];
-            var varType  = nd.properties['varType'] || 'string';
-            var defVal   = String(nd.properties['value'] !== undefined ? nd.properties['value'] : '');
-            var publicBadge = isPublic
-                ? '<span class="at-var-badge at-var-badge-pub" title="Exposed via API &amp; dashboard">PUBLIC</span> '
-                : '';
-            var preview = defVal.length > 30 ? defVal.slice(0, 30) + '…' : (defVal || '(empty)');
+        // Global strip — shown on all global.* nodes (always public/exposed)
+        const globalHtml = (function () {
+            if (!isGlobal) return '';
+            var paramName = nd.properties['name'] || 'param';
+            var nodeKind  = nd.type.replace('global.', ''); // "text", "number", "database", …
+            var rawVal    = nd.properties['value'];
+            var defVal    = (rawVal !== undefined && rawVal !== null) ? String(rawVal) : '';
+            // For toggle show true/false rather than blank
+            if (nd.type === 'global.toggle') defVal = rawVal ? 'true' : 'false';
+            var preview   = defVal.length > 30 ? defVal.slice(0, 30) + '…' : (defVal || '(default)');
             return '<div class="at-node-var-strip" data-var-strip="' + nd.id + '">' +
-                   publicBadge +
-                   '<span class="at-var-name">$' + _esc(varName) + '</span>' +
-                   '<span class="at-var-type">' + _esc(varType) + '</span>' +
+                   '<span class="at-var-badge at-var-badge-global" title="Exposed via API">GLOBAL</span>' +
+                   '<span class="at-var-name">$' + _esc(paramName) + '</span>' +
+                   '<span class="at-var-type">' + _esc(nodeKind) + '</span>' +
                    '<span class="at-var-default">' + _esc(preview) + '</span>' +
                    '</div>';
         }());
@@ -1334,7 +1364,7 @@
             '</div>' +
             schedHtml +
             valuePreviewHtml +
-            variableHtml +
+            globalHtml +
             trigNameHtml +
             aiBarHtml +
             resultHtml;
@@ -1358,8 +1388,13 @@
         });
         if (!_active) return;
 
+        // Build a quick node-id → type map for global connection detection
+        var _nodeTypeMap = {};
+        (_active.nodes || []).forEach(function (n) { _nodeTypeMap[n.id] = n.type || ''; });
+
         _active.connections.forEach(function (conn) {
             var isTriggerConn = (conn.targetPort === '__trigger__');
+            var isGlobalConn  = (_nodeTypeMap[conn.sourceNodeId] || '').startsWith('global.');
             var src = _portPos(conn.sourceNodeId, conn.sourcePort, 'output');
             var tgt = isTriggerConn
                 ? _nodeCenterLeftPos(conn.targetNodeId)
@@ -1371,6 +1406,7 @@
             path.setAttribute('class',
                 'at-conn' +
                 (isTriggerConn ? ' at-conn-trigger' : '') +
+                (isGlobalConn  ? ' at-conn-global'  : '') +
                 (isSelected    ? ' at-conn-selected' : ''));
             path.setAttribute('d', _bezier(src.x, src.y, tgt.x, tgt.y));
             path.dataset.connId = conn.id;
@@ -1587,17 +1623,21 @@
         if (nd && nd.type && nd.type.startsWith('trigger.')) {
             _applyTriggerHighlight(nodeId);
         }
+        // Highlight directly connected nodes when a global node is selected
+        if (nd && nd.type && nd.type.startsWith('global.')) {
+            _applyGlobalHighlight(nodeId);
+        }
 
-        // Smart nav: when on Public Variables page, only switch to Inspector
-        // for non-variable nodes. Variable nodes are edited inline on this page.
+        // Smart nav: when on Global Variables page, only switch to Inspector
+        // for non-global nodes. Global nodes are edited inline on this page.
         if (_sidebarPage === 'pubvars') {
             var clickedNd = _active && _active.nodes.find(function (n) { return n.id === nodeId; });
-            if (clickedNd && clickedNd.type === 'data.variable') {
+            if (clickedNd && clickedNd.type && clickedNd.type.startsWith('global.')) {
                 // Stay on pubvars — highlight the matching card and scroll to it
                 _highlightPubvarCard(nodeId);
                 return;
             }
-            // Non-variable node: fall through to Inspector
+            // Non-global node: fall through to Inspector
         }
 
         _openProps(nodeId);
@@ -1684,6 +1724,7 @@
         _selNodeId = null;
         _selConnId = null;
         _clearTriggerHighlight();
+        _clearGlobalHighlight();
         _e.canvasInner.querySelectorAll('.at-node.at-selected').forEach(function (n) {
             n.classList.remove('at-selected');
         });
@@ -1844,26 +1885,6 @@
                     if (prop.key === 'show_result') {
                         _updateAINodeResult(nd.id, null, check.checked);
                     }
-                    // Update pubvars count badge in the nav
-                    if (nd.type === 'data.variable' && prop.key === 'public') {
-                        _updatePubvarsCount();
-                    }
-                    // Update variable strip public badge live
-                    if (nd.type === 'data.variable' && prop.key === 'public') {
-                        var strip = _e.canvasInner.querySelector('[data-var-strip="' + nd.id + '"]');
-                        if (strip) {
-                            var vName    = nd.properties['name']    || 'var';
-                            var vType    = nd.properties['varType'] || 'string';
-                            var vDef     = String(nd.properties['value'] !== undefined ? nd.properties['value'] : '');
-                            var vPreview = vDef.length > 30 ? vDef.slice(0, 30) + '…' : (vDef || '(empty)');
-                            var pubBadge = check.checked
-                                ? '<span class="at-var-badge at-var-badge-pub">PUBLIC</span> ' : '';
-                            strip.innerHTML = pubBadge +
-                                '<span class="at-var-name">$' + _esc(vName) + '</span>' +
-                                '<span class="at-var-type">' + _esc(vType) + '</span>' +
-                                '<span class="at-var-default">' + _esc(vPreview) + '</span>';
-                        }
-                    }
                 });
                 const pill = document.createElement('span');
                 pill.className = 'at-prop-toggle-pill';
@@ -1940,21 +1961,21 @@
                         }
                     }
                 }
-                // Live-update the variable strip on data.variable nodes
-                if (nd.type === 'data.variable' &&
-                    (prop.key === 'name' || prop.key === 'value' || prop.key === 'varType')) {
+                // Live-update the global strip on global.* nodes
+                if (nd.type && nd.type.startsWith('global.') &&
+                    (prop.key === 'name' || prop.key === 'value')) {
                     var strip = _e.canvasInner.querySelector('[data-var-strip="' + nd.id + '"]');
                     if (strip) {
-                        var vName    = nd.properties['name']    || 'var';
-                        var vType    = nd.properties['varType'] || 'string';
-                        var vDef     = String(nd.properties['value'] !== undefined ? nd.properties['value'] : '');
-                        var vPreview = vDef.length > 30 ? vDef.slice(0, 30) + '…' : (vDef || '(empty)');
-                        var pubBadge = nd.properties['public']
-                            ? '<span class="at-var-badge at-var-badge-pub">PUBLIC</span> ' : '';
-                        strip.innerHTML = pubBadge +
-                            '<span class="at-var-name">$' + _esc(vName) + '</span>' +
-                            '<span class="at-var-type">' + _esc(vType) + '</span>' +
-                            '<span class="at-var-default">' + _esc(vPreview) + '</span>';
+                        var gName    = nd.properties['name']  || 'param';
+                        var gKind    = nd.type.replace('global.', '');
+                        var gDef     = String(nd.properties['value'] !== undefined ? nd.properties['value'] : '');
+                        if (nd.type === 'global.toggle') gDef = nd.properties['value'] ? 'true' : 'false';
+                        var gPreview = gDef.length > 30 ? gDef.slice(0, 30) + '…' : (gDef || '(default)');
+                        strip.innerHTML =
+                            '<span class="at-var-badge at-var-badge-global">GLOBAL</span>' +
+                            '<span class="at-var-name">' + _esc(gName) + '</span>' +
+                            '<span class="at-var-type">' + _esc(gKind) + '</span>' +
+                            '<span class="at-var-default">' + _esc(gPreview) + '</span>';
                     }
                 }
                 // Live-update trigger name strip and dropdown label
@@ -2241,11 +2262,11 @@
         if (!_e.pubvarsBody) return;
         _e.pubvarsBody.innerHTML = '';
 
-        // Gather public variable nodes from the active workflow
+        // Gather all global.* nodes from the active workflow
         var pubNodes = [];
         if (_active) {
             pubNodes = _active.nodes.filter(function (n) {
-                return n.type === 'data.variable' && n.properties && n.properties['public'];
+                return n.type && n.type.startsWith('global.');
             });
         }
 
@@ -2258,7 +2279,7 @@
         if (!_active) {
             var noWf = document.createElement('div');
             noWf.className = 'at-pubvar-none';
-            noWf.innerHTML = '<i class="fas fa-bolt"></i><span>Open a workflow to see its public variables.</span>';
+            noWf.innerHTML = '<i class="fas fa-bolt"></i><span>Open a workflow to see its global parameters.</span>';
             _e.pubvarsBody.appendChild(noWf);
             return;
         }
@@ -2267,15 +2288,16 @@
             var none = document.createElement('div');
             none.className = 'at-pubvar-none';
             none.innerHTML =
-                '<i class="fas fa-dollar-sign"></i>' +
-                '<span>No public variables yet.<br>' +
-                'Add a <strong>Variable</strong> node from the palette and enable <em>Public</em> in its properties.</span>';
+                '<i class="fas fa-globe"></i>' +
+                '<span>No global parameters yet.<br>' +
+                'Add a <strong>Global</strong> node from the palette to expose API parameters.</span>';
             _e.pubvarsBody.appendChild(none);
             return;
         }
 
         pubNodes.forEach(function (nd) {
-            var p = nd.properties || {};
+            var p       = nd.properties || {};
+            var gKind   = nd.type.replace('global.', '');
 
             // ── Card shell ────────────────────────────────────────────────
             var card = document.createElement('div');
@@ -2288,11 +2310,11 @@
 
             var nameDisplay = document.createElement('span');
             nameDisplay.className = 'at-pubvar-card-name';
-            nameDisplay.textContent = '$' + (p['name'] || 'var');
+            nameDisplay.textContent = p['name'] || 'param';
 
             var typeDisplay = document.createElement('span');
             typeDisplay.className = 'at-pubvar-card-type';
-            typeDisplay.textContent = p['varType'] || 'string';
+            typeDisplay.textContent = gKind;
 
             var inspBtn = document.createElement('button');
             inspBtn.className = 'at-pubvar-insp-btn';
@@ -2300,12 +2322,11 @@
             inspBtn.innerHTML = '<i class="fas fa-arrow-up-right-from-square"></i>';
             inspBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
-                // Select the node on canvas and open its Inspector
                 _deselectAll(false);
                 _selNodeId = nd.id;
                 var el = _e.canvasInner.querySelector('[data-node-id="' + nd.id + '"].at-node');
                 if (el) { el.classList.add('at-selected'); _zTop++; el.style.zIndex = _zTop; }
-                _openProps(nd.id); // _openProps calls _showInspector internally
+                _openProps(nd.id);
             });
 
             hdr.appendChild(nameDisplay);
@@ -2325,75 +2346,79 @@
                 return row;
             }
 
-            // Helper: sync the canvas var strip after any property change
+            // Helper: sync the canvas global strip after any property change
             function _syncStrip() {
                 var strip = _e.canvasInner.querySelector('[data-var-strip="' + nd.id + '"]');
                 if (!strip) return;
-                var vName    = p['name']    || 'var';
-                var vType    = p['varType'] || 'string';
-                var vDef     = String(p['value'] !== undefined ? p['value'] : '');
-                var vPreview = vDef.length > 30 ? vDef.slice(0, 30) + '…' : (vDef || '(empty)');
-                var pubBadge = p['public']
-                    ? '<span class="at-var-badge at-var-badge-pub">PUBLIC</span> ' : '';
-                strip.innerHTML = pubBadge +
-                    '<span class="at-var-name">$' + _esc(vName) + '</span>' +
-                    '<span class="at-var-type">' + _esc(vType) + '</span>' +
-                    '<span class="at-var-default">' + _esc(vPreview) + '</span>';
+                var gName    = p['name']  || 'param';
+                var gDef     = String(p['value'] !== undefined ? p['value'] : '');
+                if (nd.type === 'global.toggle') gDef = p['value'] ? 'true' : 'false';
+                var gPreview = gDef.length > 30 ? gDef.slice(0, 30) + '…' : (gDef || '(default)');
+                strip.innerHTML =
+                    '<span class="at-var-badge at-var-badge-global">GLOBAL</span>' +
+                    '<span class="at-var-name">' + _esc(gName) + '</span>' +
+                    '<span class="at-var-type">' + _esc(gKind) + '</span>' +
+                    '<span class="at-var-default">' + _esc(gPreview) + '</span>';
             }
 
-            // ── Name field ────────────────────────────────────────────────
+            // ── Parameter name field ──────────────────────────────────────
             var nameInput = document.createElement('input');
             nameInput.type = 'text';
             nameInput.className = 'at-pubvar-input';
             nameInput.value = p['name'] || '';
-            nameInput.placeholder = 'myVar';
+            nameInput.placeholder = 'paramName';
             nameInput.addEventListener('input', function () {
                 p['name'] = nameInput.value;
                 nd.properties['name'] = nameInput.value;
-                nameDisplay.textContent = '$' + (nameInput.value || 'var');
+                nameDisplay.textContent = nameInput.value || 'param';
                 _syncStrip();
                 _markDirty();
             });
             card.appendChild(_makeField('Name', nameInput));
 
             // ── Default value field ───────────────────────────────────────
-            var defInput = document.createElement('input');
-            defInput.type = 'text';
-            defInput.className = 'at-pubvar-input';
-            defInput.value = p['value'] !== undefined ? p['value'] : '';
-            defInput.placeholder = 'default value';
-            defInput.addEventListener('input', function () {
-                p['value'] = defInput.value;
-                nd.properties['value'] = defInput.value;
-                _syncStrip();
-                _markDirty();
-            });
-            card.appendChild(_makeField('Default', defInput));
-
-            // ── Type selector ─────────────────────────────────────────────
-            var typeSel = document.createElement('select');
-            typeSel.className = 'at-pubvar-select';
-            ['string', 'number', 'boolean'].forEach(function (t) {
-                var o = document.createElement('option');
-                o.value = t; o.textContent = t[0].toUpperCase() + t.slice(1);
-                if (t === (p['varType'] || 'string')) o.selected = true;
-                typeSel.appendChild(o);
-            });
-            typeSel.addEventListener('change', function () {
-                p['varType'] = typeSel.value;
-                nd.properties['varType'] = typeSel.value;
-                typeDisplay.textContent = typeSel.value;
-                _syncStrip();
-                _markDirty();
-            });
-            card.appendChild(_makeField('Type', typeSel));
+            var defEl;
+            if (nd.type === 'global.toggle') {
+                var defWrap = document.createElement('label');
+                defWrap.className = 'at-prop-toggle';
+                defEl = document.createElement('input');
+                defEl.type    = 'checkbox';
+                defEl.checked = p['value'] === true || p['value'] === 'true';
+                defEl.addEventListener('change', function () {
+                    p['value'] = defEl.checked;
+                    nd.properties['value'] = defEl.checked;
+                    _syncStrip();
+                    _markDirty();
+                });
+                var defPill = document.createElement('span');
+                defPill.className = 'at-prop-toggle-pill';
+                defWrap.appendChild(defEl);
+                defWrap.appendChild(defPill);
+                card.appendChild(_makeField('Default', defWrap));
+            } else {
+                defEl = document.createElement('input');
+                defEl.type        = nd.type === 'global.number' ? 'number' : 'text';
+                defEl.className   = 'at-pubvar-input';
+                defEl.value       = p['value'] !== undefined ? p['value'] : '';
+                defEl.placeholder = nd.type === 'global.database' ? 'default'
+                                  : nd.type === 'global.snapshot' ? '(most recent)'
+                                  : 'default value';
+                defEl.addEventListener('input', function () {
+                    p['value'] = nd.type === 'global.number'
+                        ? (parseFloat(defEl.value) || 0) : defEl.value;
+                    nd.properties['value'] = p['value'];
+                    _syncStrip();
+                    _markDirty();
+                });
+                card.appendChild(_makeField('Default', defEl));
+            }
 
             // ── Description field ─────────────────────────────────────────
             var descInput = document.createElement('input');
             descInput.type = 'text';
             descInput.className = 'at-pubvar-input';
             descInput.value = p['description'] || '';
-            descInput.placeholder = 'What this variable does…';
+            descInput.placeholder = 'What this parameter does…';
             descInput.addEventListener('input', function () {
                 p['description'] = descInput.value;
                 nd.properties['description'] = descInput.value;
@@ -2401,43 +2426,19 @@
             });
             card.appendChild(_makeField('Description', descInput));
 
-            // ── Public toggle ─────────────────────────────────────────────
-            var pubRow = document.createElement('div');
-            pubRow.className = 'at-pubvar-field at-pubvar-field-pub';
-
-            var pubLabel = document.createElement('label');
-            pubLabel.className = 'at-pubvar-pub-label';
-
-            var pubCheck = document.createElement('input');
-            pubCheck.type = 'checkbox';
-            pubCheck.checked = true; // always true since we only render public vars
-            pubCheck.addEventListener('change', function () {
-                p['public'] = pubCheck.checked;
-                nd.properties['public'] = pubCheck.checked;
-                _syncStrip();
-                _updatePubvarsCount();
-                _markDirty();
-                // Re-render so the card disappears if unchecked
-                if (!pubCheck.checked) _renderPubVars();
-            });
-
-            var pubPill = document.createElement('span');
-            pubPill.className = 'at-prop-toggle-pill';
-
-            var pubHint = document.createElement('span');
-            pubHint.className = 'at-pubvar-pub-hint';
-            pubHint.textContent = 'Exposed via API & dashboard';
-
-            pubLabel.appendChild(pubCheck);
-            pubLabel.appendChild(pubPill);
-            pubRow.appendChild(pubLabel);
-            pubRow.appendChild(pubHint);
-            card.appendChild(pubRow);
+            // ── Always-public hint ────────────────────────────────────────
+            var hintRow = document.createElement('div');
+            hintRow.className = 'at-pubvar-field at-pubvar-field-pub';
+            var hintSpan = document.createElement('span');
+            hintSpan.className = 'at-pubvar-pub-hint';
+            hintSpan.innerHTML = '<i class="fas fa-globe" style="margin-right:5px;color:#f59e0b;opacity:0.8"></i>Always exposed via API & compiled bundles';
+            hintRow.appendChild(hintSpan);
+            card.appendChild(hintRow);
 
             _e.pubvarsBody.appendChild(card);
         });
 
-        // Restore selection highlight if a var node is currently selected
+        // Restore selection highlight if a global node is currently selected
         if (_selNodeId) _highlightPubvarCard(_selNodeId);
     }
 
@@ -2447,7 +2448,7 @@
         var count = 0;
         if (_active) {
             count = _active.nodes.filter(function (n) {
-                return n.type === 'data.variable' && n.properties && n.properties['public'];
+                return n.type && n.type.startsWith('global.');
             }).length;
         }
         _e.navPubvarsCount.textContent = count;

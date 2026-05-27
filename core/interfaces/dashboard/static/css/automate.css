@@ -1184,6 +1184,28 @@
 .at-conn:hover { stroke: rgba(148, 163, 184, 0.85); stroke-width: 2.5; }
 .at-conn.at-conn-selected { stroke: #22d3ee; stroke-width: 2.5; marker-end: url(#at-arrow-sel); }
 
+/* Global connections — animated amber dash, signals an exposed API parameter */
+.at-conn.at-conn-global {
+    stroke: rgba(245, 158, 11, 0.55);
+    stroke-width: 2;
+    stroke-dasharray: 8 5;
+    marker-end: url(#at-arrow-global);
+    animation: at-global-flow 0.9s linear infinite;
+}
+@keyframes at-global-flow {
+    to { stroke-dashoffset: -13; }
+}
+.at-conn.at-conn-global:hover {
+    stroke: rgba(245, 158, 11, 0.9);
+    stroke-width: 2.5;
+}
+.at-conn.at-conn-global.at-conn-selected {
+    stroke: #f59e0b;
+    stroke-width: 2.5;
+    stroke-dasharray: 8 5;
+    marker-end: url(#at-arrow-global-sel);
+}
+
 /* Trigger connections — dashed cyan line, targets node body not a port */
 .at-conn.at-conn-trigger {
     stroke: rgba(34, 211, 238, 0.5);
@@ -1405,6 +1427,41 @@
 .at-node.at-selected.at-trigger-highlight {
     border-color: rgba(96, 165, 250, 0.95);
     box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.35), 0 0 16px rgba(96, 165, 250, 0.2), 0 4px 24px rgba(0,0,0,0.45);
+}
+
+/* ── Global node highlight ──────────────────────────────────────────────── */
+
+/* Nodes wired to the selected global node */
+.at-node.at-global-highlight {
+    border-color: rgba(245, 158, 11, 0.75);
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.18), 0 4px 24px rgba(0,0,0,0.45);
+    opacity: 1;
+    transition: opacity 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+/* Nodes not wired to the selected global — faded */
+.at-node.at-global-dimmed {
+    opacity: 0.28;
+    filter: grayscale(0.5);
+    transition: opacity 0.15s, filter 0.15s;
+}
+/* The selected global node itself — always fully bright */
+.at-node.at-selected.at-global-highlight {
+    border-color: rgba(245, 158, 11, 0.95);
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.35), 0 0 16px rgba(245, 158, 11, 0.2), 0 4px 24px rgba(0,0,0,0.45);
+}
+
+/* GLOBAL badge in the node card strip */
+.at-var-badge-global {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    vertical-align: middle;
+    margin-right: 4px;
 }
 
 /* ── Execution node states ──────────────────────────────────────────────── */

@@ -41,36 +41,6 @@ def data_set_variable(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
     return {"out": value}
 
 
-def data_variable(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
-    """Public-variable node.
-
-    Reads the variable value from ``ctx._vars`` first (which means API callers
-    and compiled-bundle dashboards can inject values at run time).  Falls back
-    to the *Default Value* property when no injected value is present.
-    """
-    p        = node.get("properties", {})
-    name     = str(p.get("name", "var")).strip() or "var"
-    default  = p.get("value", "")
-    var_type = str(p.get("varType", "string"))
-
-    # Injected value takes priority over the node's default
-    val = ctx._vars.get(name, default)
-
-    # Type coercion
-    if var_type == "number":
-        try:
-            s   = str(val)
-            val = float(s) if "." in s else int(s)
-        except (ValueError, TypeError):
-            pass
-    elif var_type == "boolean":
-        if isinstance(val, str):
-            val = val.lower() in ("true", "1", "yes")
-
-    ctx._vars[name] = val   # write back so template/format-text nodes can reference it
-    return {"out": val, "value": val}
-
-
 def data_filter(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p     = node.get("properties", {})
     items = inputs.get("in", [])

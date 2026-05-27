@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Callable
 
 from . import (
-    actions, aethviondb, ai, data,
+    actions, aethviondb, ai, data, globals as global_nodes,
     inputs_outputs, integrations, logic, media, memory, triggers,
 )
 
@@ -40,6 +40,13 @@ _REGISTRY: dict[str, Callable] = {
     "logic.switch":    logic.logic_switch,
     "logic.try_catch": logic.logic_try_catch,
 
+    # Global — public workflow parameters ─────────────────────────────────────
+    "global.text":      global_nodes.global_text,
+    "global.number":    global_nodes.global_number,
+    "global.toggle":    global_nodes.global_toggle,
+    "global.database":  global_nodes.global_database,
+    "global.snapshot":  global_nodes.global_snapshot,
+
     # Data ─────────────────────────────────────────────────────────────────────
     "data.csv_parse":     data.data_csv_parse,
     "data.extract_json":  data.data_extract_json,
@@ -51,7 +58,6 @@ _REGISTRY: dict[str, Callable] = {
     "data.regex":         data.data_regex,
     "data.set_variable":  data.data_set_variable,
     "data.split_text":    data.data_split_text,
-    "data.variable":      data.data_variable,
     "data.template":      data.data_template,
     "data.type_convert":  data.data_type_convert,
     "transform.combine":  data.transform_combine,

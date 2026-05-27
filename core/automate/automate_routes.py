@@ -68,6 +68,109 @@ def _atomic_write(path: Path, data: dict) -> None:
 # Fully self-contained — not imported from or dependent on any other module.
 
 _NODE_TYPES: list[dict] = [
+    # ── Global — public workflow parameters ───────────────────────────────────
+    {
+        "type":     "global.text",
+        "label":    "Text",
+        "category": "Global",
+        "icon":     "fa-globe",
+        "color":    "#f59e0b",
+        "inputs":   [],
+        "outputs": [
+            {"name": "out", "label": "Value",
+             "description": "The text string. Exposed as a named API parameter — callers can override the default at runtime."},
+        ],
+        "properties": [
+            {"key": "name",        "label": "Parameter Name", "type": "text",
+             "default": "myText",  "placeholder": "myText"},
+            {"key": "value",       "label": "Default Value",  "type": "text",
+             "default": "",        "placeholder": "default text"},
+            {"key": "description", "label": "Description",    "type": "text",
+             "default": "",        "placeholder": "What this parameter does…"},
+        ],
+    },
+    {
+        "type":     "global.number",
+        "label":    "Number",
+        "category": "Global",
+        "icon":     "fa-globe",
+        "color":    "#f59e0b",
+        "inputs":   [],
+        "outputs": [
+            {"name": "out", "label": "Value",
+             "description": "The numeric value. Exposed as a named API parameter."},
+        ],
+        "properties": [
+            {"key": "name",        "label": "Parameter Name", "type": "text",
+             "default": "myNumber","placeholder": "myNumber"},
+            {"key": "value",       "label": "Default Value",  "type": "number",
+             "default": 0},
+            {"key": "description", "label": "Description",    "type": "text",
+             "default": "",        "placeholder": "What this parameter does…"},
+        ],
+    },
+    {
+        "type":     "global.toggle",
+        "label":    "Toggle",
+        "category": "Global",
+        "icon":     "fa-globe",
+        "color":    "#f59e0b",
+        "inputs":   [],
+        "outputs": [
+            {"name": "out", "label": "Value",
+             "description": "The boolean value. Exposed as a named API parameter."},
+        ],
+        "properties": [
+            {"key": "name",        "label": "Parameter Name", "type": "text",
+             "default": "myFlag",  "placeholder": "myFlag"},
+            {"key": "value",       "label": "Default Value",  "type": "toggle",
+             "default": False},
+            {"key": "description", "label": "Description",    "type": "text",
+             "default": "",        "placeholder": "What this parameter does…"},
+        ],
+    },
+    {
+        "type":     "global.database",
+        "label":    "Database",
+        "category": "Global",
+        "icon":     "fa-globe",
+        "color":    "#f59e0b",
+        "inputs":   [],
+        "outputs": [
+            {"name": "out", "label": "Database Name",
+             "description": "The selected database name. Wire this into the 'database' port of any AethvionDB node to drive them all from one place."},
+        ],
+        "properties": [
+            {"key": "name",        "label": "Parameter Name", "type": "text",
+             "default": "database","placeholder": "database"},
+            {"key": "value",       "label": "Database",       "type": "aethviondb_db",
+             "default": "default"},
+            {"key": "description", "label": "Description",    "type": "text",
+             "default": "",        "placeholder": ""},
+        ],
+    },
+    {
+        "type":     "global.snapshot",
+        "label":    "Snapshot",
+        "category": "Global",
+        "icon":     "fa-globe",
+        "color":    "#f59e0b",
+        "inputs":   [],
+        "outputs": [
+            {"name": "out", "label": "Snapshot Name",
+             "description": "The selected snapshot name. Wire into the 'snapshot' port of AethvionDB snapshot nodes."},
+        ],
+        "properties": [
+            {"key": "name",        "label": "Parameter Name",  "type": "text",
+             "default": "snapshot","placeholder": "snapshot"},
+            {"key": "database",    "label": "Database",        "type": "aethviondb_db",
+             "default": "default"},
+            {"key": "value",       "label": "Snapshot",        "type": "aethviondb_snap",
+             "db_key": "database", "default": ""},
+            {"key": "description", "label": "Description",     "type": "text",
+             "default": "",        "placeholder": ""},
+        ],
+    },
     # ── Triggers ──────────────────────────────────────────────────────────────
     {
         "type": "trigger.manual",
@@ -324,57 +427,6 @@ _NODE_TYPES: list[dict] = [
                 "type": "text",
                 "default": "myVar",
                 "placeholder": "myVar",
-            },
-        ],
-    },
-    {
-        "type": "data.variable",
-        "label": "Variable",
-        "category": "Data",
-        "icon": "fa-dollar-sign",
-        "color": "#a78bfa",
-        "inputs": [],
-        "outputs": [
-            {"name": "out", "label": "Value", "description": "Current value of this variable (default value or runtime-updated)."},
-        ],
-        "properties": [
-            {
-                "key": "name",
-                "label": "Variable Name",
-                "type": "text",
-                "default": "myVar",
-                "placeholder": "myVar",
-            },
-            {
-                "key": "value",
-                "label": "Default Value",
-                "type": "text",
-                "default": "",
-                "placeholder": "default value",
-            },
-            {
-                "key": "varType",
-                "label": "Type",
-                "type": "select",
-                "default": "string",
-                "options": [
-                    {"value": "string",  "label": "String"},
-                    {"value": "number",  "label": "Number"},
-                    {"value": "boolean", "label": "Boolean"},
-                ],
-            },
-            {
-                "key": "public",
-                "label": "Public (expose via API & compiled dashboard)",
-                "type": "toggle",
-                "default": False,
-            },
-            {
-                "key": "description",
-                "label": "Description",
-                "type": "text",
-                "default": "",
-                "placeholder": "What this variable does…",
             },
         ],
     },
@@ -3209,7 +3261,7 @@ async def delete_workflow(wf_id: str):
 
 
 class RunWorkflowBody(BaseModel):
-    variables:  Optional[dict] = None  # {name: value} — injected into data.variable nodes
+    variables:  Optional[dict] = None  # {name: value} — injected into global.* nodes at runtime
     trigger_id: Optional[str]  = None  # node id of the specific trigger to run from
 
 

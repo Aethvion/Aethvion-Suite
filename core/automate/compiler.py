@@ -1552,22 +1552,28 @@ def _analyze_workflow(workflow: dict) -> dict:
             ):
                 snapshot_nodes.append(entry)
 
-    # Collect public variables (data.variable nodes where public=True)
+    # Collect global nodes (global.* — always exposed via API & compiled bundles)
+    _GLOBAL_VAR_TYPE: dict[str, str] = {
+        "global.text":     "string",
+        "global.number":   "number",
+        "global.toggle":   "boolean",
+        "global.database": "string",
+        "global.snapshot": "string",
+    }
     public_vars: list[dict] = []
     seen_names: set[str] = set()
     for node in workflow.get("nodes", []):
-        if node.get("type") != "data.variable":
+        node_type = node.get("type", "")
+        if not node_type.startswith("global."):
             continue
         props = node.get("properties", {})
-        if not props.get("public"):
-            continue
-        name = str(props.get("name", "var")).strip() or "var"
+        name = str(props.get("name", "param")).strip() or "param"
         if name in seen_names:
             continue   # deduplicate by name
         seen_names.add(name)
         public_vars.append({
             "name":        name,
-            "varType":     str(props.get("varType", "string")),
+            "varType":     _GLOBAL_VAR_TYPE.get(node_type, "string"),
             "default":     props.get("value", ""),
             "description": str(props.get("description", "")),
         })
