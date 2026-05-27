@@ -623,6 +623,24 @@
             <div id="adb-dp-content" class="adb-dp-content"></div>
         </div>
 
+        <!-- Deepen selection panel (shown before AI runs so user can pick which items to expand) -->
+        <div id="adb-deepen-select" class="adb-entity-detail hidden">
+            <div class="adb-detail-topbar">
+                <button id="adb-ds-back" class="adb-btn adb-btn-ghost adb-btn-sm">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <span id="adb-ds-title" class="adb-dp-title"></span>
+                <div class="adb-detail-actions">
+                    <button id="adb-ds-all-btn"  class="adb-btn adb-btn-ghost adb-btn-sm" title="Select all">All</button>
+                    <button id="adb-ds-none-btn" class="adb-btn adb-btn-ghost adb-btn-sm" title="Deselect all">None</button>
+                    <button id="adb-ds-deepen-btn" class="adb-btn adb-btn-accent adb-btn-sm">
+                        <i class="fas fa-wand-sparkles"></i> Deepen Selected
+                    </button>
+                </div>
+            </div>
+            <div id="adb-ds-list" class="adb-ds-list"></div>
+        </div>
+
         <!-- ── New Entity modal ── -->
         <div id="adb-new-entity-overlay" class="adb-modal-overlay hidden">
             <div class="adb-modal adb-new-entity-modal">

@@ -15,6 +15,7 @@
     // ── State ─────────────────────────────────────────────────────────────────
     let _currentEntityId     = null;
     let _currentEntityStatus = null;  // 'stub' | 'active' — set when entity detail opens
+    let _currentEntity       = null;  // full entity object, cached when detail opens
     let _currentDb           = 'default'; // named database
     let _currentPath         = null;      // folder-path database (overrides _currentDb)
     let _currentFilter       = 'all';     // 'all' | 'active' | 'stub'
@@ -125,10 +126,12 @@
     function _showEntityList() {
         _currentEntityId     = null;
         _currentEntityStatus = null;
+        _currentEntity       = null;
         _show('adb-explorer-header');
         _show('adb-list-pane');
         _hide('adb-entity-detail');
         _hide('adb-deepen-preview');
+        _hide('adb-deepen-select');
         _hide('adb-validation-view');
     }
 
@@ -136,14 +139,24 @@
         _hide('adb-list-pane');
         _show('adb-entity-detail');
         _hide('adb-deepen-preview');
+        _hide('adb-deepen-select');
         _hide('adb-validation-view');
     }
 
     function _showDeepenPreviewPanel() {
         _hide('adb-list-pane');
         _hide('adb-entity-detail');
+        _hide('adb-deepen-select');
         _hide('adb-validation-view');
         _show('adb-deepen-preview');
+    }
+
+    function _showDeepenSelectPanel() {
+        _hide('adb-list-pane');
+        _hide('adb-entity-detail');
+        _hide('adb-deepen-preview');
+        _hide('adb-validation-view');
+        _show('adb-deepen-select');
     }
 
     function _showValidation() {
@@ -152,6 +165,7 @@
         _hide('adb-list-pane');
         _hide('adb-entity-detail');
         _hide('adb-deepen-preview');
+        _hide('adb-deepen-select');
         _show('adb-validation-view');
     }
 
@@ -1457,6 +1471,7 @@
     }
 
     function _renderEntity(entity) {
+        _currentEntity       = entity;
         _currentEntityId     = entity.id;
         _currentEntityStatus = entity.status || 'active';
 
@@ -2591,41 +2606,115 @@
         }
     }
 
-    /** Deepen the relation targets of this entity that are still stubs. */
+    /** Show the selection panel for relations or stubs, then run AI only for chosen items. */
     async function _deepenRelations() {
         if (!_currentEntityId) return;
-        _showBusy('Scanning relation stubs…');
+        await _showDeepenSelect('relations');
+    }
+
+    async function _deepenStubs() {
+        if (!_currentEntityId) return;
+        await _showDeepenSelect('stubs');
+    }
+
+    /**
+     * Fetch the list of expandable items (no AI) and show the selection panel.
+     * mode: 'relations' | 'stubs'
+     */
+    async function _showDeepenSelect(mode) {
+        const includeRelations = mode === 'relations';
+        const label = mode === 'relations' ? 'Relation Stubs' : 'Sub-topic Stubs';
+
+        _showBusy(`Loading ${label.toLowerCase()}…`);
         try {
-            const model = _selectedModel();
             const res  = await fetch(
-                `${API}/entities/${_currentEntityId}/deepen/preview?${_dbParam({ max_stubs: 0, include_relations: true, ...(model ? { model } : {}) })}`,
-                { method: 'POST' }
+                `${API}/entities/${_currentEntityId}/deepen/list?${_dbParam({ include_relations: includeRelations })}`
             );
             const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || 'Preview failed');
+            if (!res.ok) throw new Error(data.detail || 'List failed');
             _hideBusy();
-            if (!data.previews?.length) { _toast('No stub relation targets found for this entity', 'info'); return; }
-            _showDeepenPreview(data);
+
+            // Filter to the relevant kind
+            const kindFilter = mode === 'relations' ? 'relation' : 'stub';
+            const items = (data.items || []).filter(i => i.kind === kindFilter);
+
+            if (!items.length) {
+                const msg = mode === 'relations'
+                    ? 'No stub relation targets found for this entity'
+                    : 'No sub-topic stubs found (add some in the Stubs tab first)';
+                _toast(msg, 'info');
+                return;
+            }
+
+            // Populate the selection panel
+            const titleEl = _el('adb-ds-title');
+            if (titleEl) titleEl.textContent = `${label} — ${data.entity_name}`;
+
+            const listEl = _el('adb-ds-list');
+            if (listEl) {
+                listEl.innerHTML = '';
+                items.forEach(item => {
+                    const row = document.createElement('div');
+                    row.className = 'adb-ds-item checked';
+                    row.dataset.name = item.name;
+                    row.dataset.kind = item.kind;
+                    row.innerHTML = `
+                        <input type="checkbox" checked>
+                        <span class="adb-ds-item-name">${_escHtml(item.name)}</span>
+                        <span class="adb-ds-item-kind kind-${item.kind}">${item.kind}</span>
+                    `;
+                    row.addEventListener('click', () => {
+                        const cb = row.querySelector('input[type="checkbox"]');
+                        const checked = !cb.checked;
+                        cb.checked = checked;
+                        row.classList.toggle('checked', checked);
+                    });
+                    listEl.appendChild(row);
+                });
+            }
+
+            // Store the mode so Deepen Selected knows what to call
+            const deepenBtn = _el('adb-ds-deepen-btn');
+            if (deepenBtn) deepenBtn.dataset.mode = mode;
+
+            _showDeepenSelectPanel();
         } catch (e) {
             _hideBusy();
-            _toast(`Preview failed: ${e.message}`, 'error');
+            _toast(`Failed to load list: ${e.message}`, 'error');
         }
     }
 
-    /** Deepen the sub-topic stubs listed inside this entity. */
-    async function _deepenStubs() {
-        if (!_currentEntityId) return;
-        _showBusy('Scanning sub-topic stubs…');
+    /** Called when user clicks "Deepen Selected" in the selection panel. */
+    async function _onDsDeepen() {
+        const listEl = _el('adb-ds-list');
+        if (!listEl || !_currentEntityId) return;
+
+        const selected = [...listEl.querySelectorAll('.adb-ds-item')]
+            .filter(row => row.querySelector('input[type="checkbox"]')?.checked)
+            .map(row => row.dataset.name)
+            .filter(Boolean);
+
+        if (!selected.length) {
+            _toast('Select at least one item to deepen', 'info');
+            return;
+        }
+
+        _showBusy(`Generating previews for ${selected.length} item${selected.length > 1 ? 's' : ''}…`);
         try {
             const model = _selectedModel();
+            // Build URL — stub_names sent as repeated query params
+            const params = new URLSearchParams(_dbParam());
+            selected.forEach(n => params.append('stub_names', n));
+            if (model) params.set('model', model);
+
             const res  = await fetch(
-                `${API}/entities/${_currentEntityId}/deepen/preview?${_dbParam({ max_stubs: 10, include_relations: false, ...(model ? { model } : {}) })}`,
+                `${API}/entities/${_currentEntityId}/deepen/preview?${params}`,
                 { method: 'POST' }
             );
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || 'Preview failed');
             _hideBusy();
-            if (!data.previews?.length) { _toast('No sub-topic stubs found (add some in the Stubs tab first)', 'info'); return; }
+            if (!data.previews?.length) { _toast('No expansions generated', 'info'); return; }
             _showDeepenPreview(data);
         } catch (e) {
             _hideBusy();
@@ -6493,6 +6582,25 @@
 
         // Deepen preview panel
         _el('adb-dp-apply-btn')?.addEventListener('click', _applyDeepenPreview);
+
+        // Deepen selection panel
+        _el('adb-ds-back')?.addEventListener('click', () => {
+            _hide('adb-deepen-select');
+            _showEntityDetail();
+        });
+        _el('adb-ds-all-btn')?.addEventListener('click', () => {
+            _el('adb-ds-list')?.querySelectorAll('.adb-ds-item').forEach(row => {
+                row.querySelector('input[type="checkbox"]').checked = true;
+                row.classList.add('checked');
+            });
+        });
+        _el('adb-ds-none-btn')?.addEventListener('click', () => {
+            _el('adb-ds-list')?.querySelectorAll('.adb-ds-item').forEach(row => {
+                row.querySelector('input[type="checkbox"]').checked = false;
+                row.classList.remove('checked');
+            });
+        });
+        _el('adb-ds-deepen-btn')?.addEventListener('click', _onDsDeepen);
 
         // Validation view — back button restores the page the user was on
         _el('adb-val-close')?.addEventListener('click', () => _loadEntityList(_currentFilter, _currentPage));

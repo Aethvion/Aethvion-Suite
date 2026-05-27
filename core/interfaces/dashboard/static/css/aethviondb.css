@@ -3700,6 +3700,74 @@
    Import Panel
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
+/* ─── Deepen Selection Panel ─────────────────────────────────────────────── */
+
+.adb-ds-list {
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    overflow-y: auto;
+}
+.adb-ds-empty {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    padding: 1rem 0;
+    text-align: center;
+}
+.adb-ds-item {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+    user-select: none;
+}
+.adb-ds-item:hover {
+    background: var(--bg-tertiary);
+    border-color: rgba(34,211,238,0.25);
+}
+.adb-ds-item.checked {
+    border-color: rgba(34,211,238,0.35);
+    background: rgba(34,211,238,0.05);
+}
+.adb-ds-item input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: #22d3ee;
+    flex-shrink: 0;
+    cursor: pointer;
+    pointer-events: none;
+}
+.adb-ds-item-name {
+    flex: 1;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.adb-ds-item-kind {
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.07);
+    border-radius: 4px;
+    padding: 0.15rem 0.5rem;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+}
+.adb-ds-item-kind.kind-relation {
+    color: rgba(34,211,238,0.6);
+    background: rgba(34,211,238,0.07);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+
 .adb-import-file-row {
     display: flex;
     gap: 0.4rem;

@@ -786,12 +786,29 @@ async def apply_expand_single(
     return result
 
 
+@router.get("/entities/{entity_id}/deepen/list")
+async def list_deepen_candidates(
+    entity_id:         str,
+    include_relations: bool = Query(True, description="Also include relation targets that are stubs"),
+    db:                str  = Query("default"),
+    path:              Optional[str] = Query(None),
+):
+    """Return the names of stubs that can be deepened for an entity, WITHOUT running AI."""
+    from .expansion_engine import ExpansionEngine
+    engine = ExpansionEngine(writer=_get_writer(db, path), index=_get_index(db, path))
+    result = await engine.list_expandable_stubs_for(entity_id, include_relations=include_relations)
+    if result.get("error"):
+        raise HTTPException(404, result["error"])
+    return result
+
+
 @router.post("/entities/{entity_id}/deepen/preview")
 async def preview_deepen_entity(
     entity_id:         str,
     max_stubs:         int  = Query(5, le=20),
     model:             Optional[str] = Query(None),
     include_relations: bool = Query(True, description="Also preview expansion of relation targets that are stubs"),
+    stub_names:        Optional[list[str]] = Query(None, description="Specific names to deepen; skips auto-collection when provided"),
     db:                str  = Query("default"),
     path:              Optional[str] = Query(None),
 ):
@@ -799,7 +816,11 @@ async def preview_deepen_entity(
     from .expansion_engine import ExpansionEngine
     engine = ExpansionEngine(writer=_get_writer(db, path), index=_get_index(db, path))
     result = await engine.preview_deepen_stubs_for(
-        entity_id, max_stubs=max_stubs, model=model, include_relations=include_relations
+        entity_id,
+        max_stubs=max_stubs,
+        model=model,
+        include_relations=include_relations,
+        stub_names=stub_names or None,
     )
     if result.get("error"):
         raise HTTPException(500, result["error"])

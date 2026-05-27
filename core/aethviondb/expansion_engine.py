@@ -464,30 +464,27 @@ class ExpansionEngine:
 
         return {"name": name, "proposed": extracted, "error": None}
 
-    async def preview_deepen_stubs_for(
+    async def list_expandable_stubs_for(
         self,
-        entity_id: str,
-        max_stubs: int = 5,
-        model:     Optional[str] = None,
+        entity_id:         str,
         include_relations: bool = True,
     ) -> dict[str, Any]:
         """
-        Preview expanding the sub-topics (stubs) of an active entity.
-        Returns proposed AI data for each stub WITHOUT writing anything.
-
-        Parameters
-        ----------
-        include_relations : bool
-            If True (default), also include relation targets that are still stubs.
+        Return the names/kinds of stubs that could be deepened for an entity,
+        WITHOUT running any AI.  Used to populate the selection UI.
         """
         entity = self._writer.get(entity_id)
         if not entity:
-            return {"entity_id": entity_id, "error": "Entity not found", "previews": []}
+            return {"entity_id": entity_id, "error": "Entity not found", "items": []}
 
-        # 1. Sub-topic stubs from sections.stubs
-        stub_names: list[str] = list(self._writer.get_stub_names_for(entity_id))
+        items: list[dict] = []
+        seen:  set[str]   = set()
 
-        # 2. Relation targets that are still stub entities
+        for name in self._writer.get_stub_names_for(entity_id):
+            if name not in seen:
+                items.append({"name": name, "kind": "stub"})
+                seen.add(name)
+
         if include_relations:
             relations = (entity.get("sections") or {}).get("relations", [])
             for rel in relations:
@@ -499,10 +496,62 @@ class ExpansionEngine:
                 related = self._writer.get(target_id)
                 if related and related.get("status") == "stub":
                     rel_name = related.get("name", "")
-                    if rel_name and rel_name not in stub_names:
-                        stub_names.append(rel_name)
+                    if rel_name and rel_name not in seen:
+                        items.append({"name": rel_name, "kind": "relation"})
+                        seen.add(rel_name)
 
-        stub_names = stub_names[:max_stubs]
+        return {
+            "entity_id":   entity_id,
+            "entity_name": entity["name"],
+            "items":       items,
+        }
+
+    async def preview_deepen_stubs_for(
+        self,
+        entity_id:         str,
+        max_stubs:         int  = 5,
+        model:             Optional[str] = None,
+        include_relations: bool = True,
+        stub_names:        Optional[list[str]] = None,
+    ) -> dict[str, Any]:
+        """
+        Preview expanding the sub-topics (stubs) of an active entity.
+        Returns proposed AI data for each stub WITHOUT writing anything.
+
+        Parameters
+        ----------
+        stub_names : list[str] | None
+            When provided, use these names directly (skip auto-collection).
+            Useful when the caller already presented a selection UI.
+        include_relations : bool
+            When stub_names is None, also include relation targets that are stubs.
+        max_stubs : int
+            Cap on auto-collected names (ignored when stub_names is provided).
+        """
+        entity = self._writer.get(entity_id)
+        if not entity:
+            return {"entity_id": entity_id, "error": "Entity not found", "previews": []}
+
+        if stub_names is None:
+            # Auto-collect ── 1. sub-topic stubs from sections.stubs
+            stub_names = list(self._writer.get_stub_names_for(entity_id))
+
+            # 2. Relation targets that are still stub entities
+            if include_relations:
+                relations = (entity.get("sections") or {}).get("relations", [])
+                for rel in relations:
+                    if not isinstance(rel, dict):
+                        continue
+                    target_id = rel.get("target_id", "")
+                    if not target_id:
+                        continue
+                    related = self._writer.get(target_id)
+                    if related and related.get("status") == "stub":
+                        rel_name = related.get("name", "")
+                        if rel_name and rel_name not in stub_names:
+                            stub_names.append(rel_name)
+
+            stub_names = stub_names[:max_stubs]
 
         entity_name = entity["name"]
         summary     = (entity.get("sections") or {}).get("core", {}).get("summary", "")
@@ -512,9 +561,9 @@ class ExpansionEngine:
         results = await asyncio.gather(*coros)
 
         return {
-            "entity_id":         entity_id,
-            "entity_name":       entity_name,
-            "previews":          list(results),
+            "entity_id":          entity_id,
+            "entity_name":        entity_name,
+            "previews":           list(results),
             "included_relations": include_relations,
         }
 
