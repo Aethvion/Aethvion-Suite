@@ -416,6 +416,21 @@
                     <button id="adb-bake-btn" class="adb-primary-btn">
                         <i class="fas fa-box-archive"></i> Bake Now
                     </button>
+                    <!-- Inline overwrite confirmation — shown when a bake with this name already exists -->
+                    <div id="adb-bake-overwrite-confirm" class="adb-bake-overwrite-confirm hidden">
+                        <span class="adb-bake-overwrite-msg">
+                            <i class="fas fa-triangle-exclamation"></i>
+                            A snapshot with this name already exists. Overwrite it?
+                        </span>
+                        <div class="adb-bake-overwrite-btns">
+                            <button id="adb-bake-overwrite-yes" class="adb-btn adb-btn-danger adb-btn-sm">
+                                <i class="fas fa-box-archive"></i> Overwrite
+                            </button>
+                            <button id="adb-bake-overwrite-no" class="adb-btn adb-btn-ghost adb-btn-sm">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
                     <div id="adb-bake-result" class="hidden">
                         <div id="adb-bake-result-inner" class="adb-bake-meta"></div>
                     </div>

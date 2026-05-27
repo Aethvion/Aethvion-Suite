@@ -582,67 +582,78 @@
         }
     }
 
-    async function _dbmRestoreBackup(name, bid) {
-        if (!confirm(
-            `Restore backup "${bid}"?\n\nThis replaces ALL current database contents. The current data will be lost.`
-        )) return;
-
-        _showBusy('Restoring backup…');
-        try {
-            const res  = await fetch(
-                `${API}/databases/${encodeURIComponent(name)}/backups/${encodeURIComponent(bid)}/restore`,
-                { method: 'POST' }
-            );
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || 'Restore failed');
-            _toast(`Restored: ${data.entity_count} entities.`, 'success');
-            // Reload entity list if this is the active database
-            if (name === _currentDb) _loadEntityList(_currentFilter, _currentPage);
-        } catch (e) {
-            _toast(e.message, 'error');
-        } finally {
-            _hideBusy();
-        }
+    function _dbmRestoreBackup(name, bid) {
+        showConfirm(
+            'Restore backup?',
+            `Restore "${bid}"? This replaces ALL current database contents — current data will be lost.`,
+            async () => {
+                _showBusy('Restoring backup…');
+                try {
+                    const res  = await fetch(
+                        `${API}/databases/${encodeURIComponent(name)}/backups/${encodeURIComponent(bid)}/restore`,
+                        { method: 'POST' }
+                    );
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || 'Restore failed');
+                    _toast(`Restored: ${data.entity_count} entities.`, 'success');
+                    if (name === _currentDb) _loadEntityList(_currentFilter, _currentPage);
+                } catch (e) {
+                    _toast(e.message, 'error');
+                } finally {
+                    _hideBusy();
+                }
+            },
+            { confirmLabel: 'Restore', icon: 'fa-rotate-left' }
+        );
     }
 
-    async function _dbmDeleteBackup(name, bid) {
-        if (!confirm(`Delete backup "${bid}"? This cannot be undone.`)) return;
-        try {
-            const res = await fetch(
-                `${API}/databases/${encodeURIComponent(name)}/backups/${encodeURIComponent(bid)}`,
-                { method: 'DELETE' }
-            );
-            if (!res.ok) throw new Error((await res.json()).detail || 'Delete failed');
-            _toast('Backup deleted.', 'success');
-            _dbmLoadBackups(name);
-        } catch (e) {
-            _toast(e.message, 'error');
-        }
+    function _dbmDeleteBackup(name, bid) {
+        showConfirm(
+            'Delete backup?',
+            `Delete backup "${bid}"? This cannot be undone.`,
+            async () => {
+                try {
+                    const res = await fetch(
+                        `${API}/databases/${encodeURIComponent(name)}/backups/${encodeURIComponent(bid)}`,
+                        { method: 'DELETE' }
+                    );
+                    if (!res.ok) throw new Error((await res.json()).detail || 'Delete failed');
+                    _toast('Backup deleted.', 'success');
+                    _dbmLoadBackups(name);
+                } catch (e) {
+                    _toast(e.message, 'error');
+                }
+            },
+            { confirmLabel: 'Delete', icon: 'fa-trash' }
+        );
     }
 
     async function _dbmDeleteDatabase() {
         const name = _dbmSettingsName;
         if (!name) return;
-        if (!confirm(`Delete database "${name}"?\n\nALL entity data will be permanently deleted from disk.`)) return;
-        const typed = prompt(`Type "${name}" to confirm:`);
-        if (typed !== name) { _toast('Deletion cancelled.', 'info'); return; }
-
-        _showBusy('Deleting database…');
-        try {
-            const res = await fetch(
-                `${API}/databases/${encodeURIComponent(name)}?confirm=true`,
-                { method: 'DELETE' }
-            );
-            if (!res.ok) throw new Error((await res.json()).detail || 'Delete failed');
-            _toast(`Database "${name}" deleted.`, 'success');
-            if (name === _currentDb) _switchToNamed('default');
-            _dbmView('adb-dbm-list');
-            _dbmLoadList();
-        } catch (e) {
-            _toast(e.message, 'error');
-        } finally {
-            _hideBusy();
-        }
+        showConfirm(
+            'Delete database?',
+            `Permanently delete database "${name}"? ALL entity data will be removed from disk. This cannot be undone.`,
+            async () => {
+                _showBusy('Deleting database…');
+                try {
+                    const res = await fetch(
+                        `${API}/databases/${encodeURIComponent(name)}?confirm=true`,
+                        { method: 'DELETE' }
+                    );
+                    if (!res.ok) throw new Error((await res.json()).detail || 'Delete failed');
+                    _toast(`Database "${name}" deleted.`, 'success');
+                    if (name === _currentDb) _switchToNamed('default');
+                    _dbmView('adb-dbm-list');
+                    _dbmLoadList();
+                } catch (e) {
+                    _toast(e.message, 'error');
+                } finally {
+                    _hideBusy();
+                }
+            },
+            { confirmLabel: 'Delete database', icon: 'fa-trash' }
+        );
     }
 
     // Keep legacy stubs so any other code that calls them doesn't break
@@ -4533,6 +4544,8 @@
     }
 
     async function _bakeStart(overwrite = false) {
+        // Guard: the click event handler can forward a MouseEvent as the first arg.
+        if (typeof overwrite !== 'boolean') overwrite = false;
         const name           = (_el('adb-bake-name')?.value.trim() || 'default');
         const fmt            = _el('adb-bake-format')?.value || 'jsonl';
         const includeStubs   = _el('adb-bake-stubs')?.checked ?? true;
@@ -4554,19 +4567,19 @@
             });
 
             if (res.status === 409 && !overwrite) {
-                // Name already exists — ask user before overwriting
-                const err = await res.json().catch(() => ({}));
+                // Name already exists — show inline overwrite strip (no popup, no focus steal)
                 if (bakeBtn) { bakeBtn.disabled = false; bakeBtn.innerHTML = '<i class="fas fa-box-archive"></i> Bake Now'; }
-                const confirmed = confirm(
-                    `A bake named "${name}" already exists.\n\nOverwrite it? The existing file will be permanently replaced.`
-                );
-                if (confirmed) _bakeStart(true);  // retry with overwrite flag
+                _bakeShowOverwriteConfirm();
                 return;
             }
 
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                throw new Error(err.detail || `HTTP ${res.status}`);
+                // Pydantic validation errors return detail as an array — flatten to a string.
+                const detail = Array.isArray(err.detail)
+                    ? err.detail.map(e => e.msg || JSON.stringify(e)).join('; ')
+                    : (err.detail || `HTTP ${res.status}`);
+                throw new Error(detail);
             }
             _bakeApplyStatus({ status: 'running', name });
             _bakeStartPolling();
@@ -4574,6 +4587,21 @@
             _toast(`Bake failed: ${e.message}`, 'error');
             if (bakeBtn) { bakeBtn.disabled = false; bakeBtn.innerHTML = '<i class="fas fa-box-archive"></i> Bake Now'; }
         }
+    }
+
+    function _bakeShowOverwriteConfirm() {
+        const strip  = _el('adb-bake-overwrite-confirm');
+        const bakeBtn = _el('adb-bake-btn');
+        if (!strip) return;
+        strip.classList.remove('hidden');
+        if (bakeBtn) bakeBtn.style.display = 'none';
+    }
+
+    function _bakeHideOverwriteConfirm() {
+        const strip  = _el('adb-bake-overwrite-confirm');
+        const bakeBtn = _el('adb-bake-btn');
+        if (strip) strip.classList.add('hidden');
+        if (bakeBtn) { bakeBtn.style.display = ''; bakeBtn.disabled = false; }
     }
 
     async function _bakeCheckExisting() {
@@ -4588,12 +4616,20 @@
     }
 
     function _bakeWire() {
-        _el('adb-bake-btn')              ?.addEventListener('click', _bakeStart);
+        _el('adb-bake-btn')              ?.addEventListener('click', () => _bakeStart(false));
         _el('adb-bake-refresh-list')     ?.addEventListener('click', _bakeLoadList);
         _el('adb-bake-open-folder-btn')  ?.addEventListener('click', _bakeOpenFolder);
         _el('adb-bake-vectors')?.addEventListener('change', e => {
             _bakeToggleVecFoldout(e.target.checked);
         });
+        // Inline overwrite confirmation buttons
+        _el('adb-bake-overwrite-yes')?.addEventListener('click', () => {
+            _bakeHideOverwriteConfirm();
+            _bakeStart(true);
+        });
+        _el('adb-bake-overwrite-no')?.addEventListener('click', _bakeHideOverwriteConfirm);
+        // Also hide the strip if the user changes the name — it's no longer relevant
+        _el('adb-bake-name')?.addEventListener('input', _bakeHideOverwriteConfirm);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

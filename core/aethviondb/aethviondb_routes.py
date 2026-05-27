@@ -1290,13 +1290,17 @@ async def get_graph(
         id_set.add(e["id"])
         core = (e.get("sections") or {}).get("core", {})
         nodes.append({
-            "id":        e["id"],
-            "name":      e["name"],
-            "type":      e.get("type", "other"),
-            "status":    e.get("status", "active"),
-            "summary":   core.get("summary", "")[:200],
-            "tags":      core.get("tags", [])[:8],
-            "rel_count": len((e.get("sections") or {}).get("relations", [])),
+            "id":         e["id"],
+            "name":       e["name"],
+            "type":       e.get("type", "other"),
+            "status":     e.get("status", "active"),
+            "summary":    core.get("summary", "")[:300],
+            "tags":       core.get("tags", [])[:10],
+            "categories": core.get("categories", [])[:6],
+            "aliases":    core.get("aliases", [])[:4],
+            "source":     e.get("source", ""),
+            "created":    (e.get("created") or "")[:10],   # YYYY-MM-DD
+            "rel_count":  len((e.get("sections") or {}).get("relations", [])),
         })
 
     # Edges — only where both endpoints are in the node set
@@ -1588,6 +1592,7 @@ class BakeRequest(BaseModel):
     include_stubs:   bool      = True
     include_vectors: bool      = False
     vector_models:   list[str] = []        # empty = all models; non-empty = only those keys
+    overwrite:       bool      = False     # must be True to replace an existing bake of the same name
 
 
 class RenameRequest(BaseModel):
@@ -1660,6 +1665,17 @@ async def start_bake(
         raise HTTPException(400, f"Unknown format {req.format!r}. Must be one of {BAKE_FORMATS}")
     if not safe_name(req.name):
         raise HTTPException(400, "Bake name must be 1-64 chars: letters, digits, _ or -")
+    # Guard against silent overwrites — caller must explicitly opt in
+    if not req.overwrite:
+        from .baker import read_bake_meta
+        existing = read_bake_meta(root, req.name)
+        if existing:
+            raise HTTPException(
+                409,
+                f"A bake named '{req.name}' already exists "
+                f"(created {existing.get('baked_at', '?')[:10]}). "
+                "Set overwrite=true to replace it.",
+            )
 
     writer = _get_writer(db, path)
     _bake_current_name[key] = req.name
