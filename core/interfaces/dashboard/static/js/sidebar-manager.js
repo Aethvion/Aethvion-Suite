@@ -1082,8 +1082,8 @@
 
         document.dispatchEvent(new CustomEvent('sidebar-ready'));
 
-        // Auto-show onboarding for first-time users
-        if (isFirstTime) setTimeout(showOnboardingModal, 500);
+        // First-time users start with the default profile immediately — no modal.
+        // The "New Layout" button in Settings › Sidebar lets them choose a preset any time.
     }
 
     if (document.readyState === 'loading') {

@@ -542,12 +542,26 @@ async def delete_model(provider_name: str, model_key: str, request: Request):
 
 @router.get("/models/chat")
 async def get_chat_models():
-    """Get flat list of all chat-capable models for the dropdown."""
+    """Get flat list of all chat-capable models for the dropdown.
+
+    Models whose provider does not have a configured API key are still
+    returned but carry ``has_api_key: false`` so the UI can hide or
+    grey them out and prompt the user to add a key.
+    """
     try:
         registry = _load_registry()
         chat_models = []
 
         for provider_name, config in registry.get("providers", {}).items():
+            # Determine whether this provider's API key is present
+            api_key_env = config.get("api_key_env", "")
+            if api_key_env:
+                key_value    = os.environ.get(api_key_env, "")
+                has_api_key  = bool(key_value and not key_value.startswith("your_"))
+            else:
+                # Local/ollama providers have no key requirement
+                has_api_key = True
+
             models = config.get("models", {})
             for model_id, model_info in models.items():
                 if isinstance(model_info, str):
@@ -567,6 +581,7 @@ async def get_chat_models():
                     "input_cost_per_1m_tokens": model_info.get("input_cost_per_1m_tokens", 0),
                     "output_cost_per_1m_tokens": model_info.get("output_cost_per_1m_tokens", 0),
                     "description": model_info.get("description", model_info.get("notes", "")),
+                    "has_api_key": has_api_key,
                 })
 
         # Add profile groups
@@ -576,9 +591,9 @@ async def get_chat_models():
 
         # Sort by model ID
         chat_models.sort(key=lambda m: m["id"])
-        
+
         return {
-            "models": chat_models, 
+            "models": chat_models,
             "chat_profiles": chat_profiles,
             "agent_profiles": agent_profiles
         }
