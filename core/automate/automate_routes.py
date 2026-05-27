@@ -2915,7 +2915,7 @@ async def run_workflow_stream(wf_id: str, body: RunWorkflowBody = RunWorkflowBod
 
 # ── Examples + Import/Export/Share ────────────────────────────────────────────
 
-_EXAMPLES_DIR = Path(__file__).parent / "examples"
+_EXAMPLES_DIR = Path(__file__).parent / "config"
 _SHARE_DIR    = Path(__file__).parent.parent.parent / "data" / "automate" / "shared"
 
 
