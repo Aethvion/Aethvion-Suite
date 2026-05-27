@@ -74,6 +74,15 @@ EMBEDDING_MODELS: dict[str, dict] = {
     },
 }
 
+# Cost per 1M input tokens (embeddings have no output tokens)
+EMBEDDING_COSTS: dict[str, float] = {
+    "text-embedding-3-small":  0.020,
+    "text-embedding-3-large":  0.130,
+    "text-embedding-ada-002":  0.100,
+    "text-embedding-004":      0.025,
+    "embedding-001":           0.025,
+}
+
 
 # ── State helpers ──────────────────────────────────────────────────────────────
 
@@ -215,6 +224,36 @@ async def _embed(text: str, model: str) -> list[float]:
     return await _embed_google(text, model)
 
 
+def _estimate_tokens(text: str) -> int:
+    """Rough token estimate: 1 token ≈ 4 characters (GPT tokenizer heuristic)."""
+    return max(1, len(text) // 4)
+
+
+async def _embed_openai_counted(text: str, model: str) -> tuple[list[float], int]:
+    """Embed via OpenAI and return (embedding, actual_token_count)."""
+    def _sync() -> tuple[list[float], int]:
+        client   = _make_openai_client()
+        response = client.embeddings.create(model=model, input=text)
+        tokens   = getattr(response.usage, "total_tokens", None) or _estimate_tokens(text)
+        return response.data[0].embedding, int(tokens)
+    return await asyncio.to_thread(_sync)
+
+
+async def _embed_google_counted(text: str, model: str) -> tuple[list[float], int]:
+    """Embed via Google and return (embedding, estimated_token_count).
+    Google embedding API does not expose token usage, so we estimate."""
+    embedding = await _embed_google(text, model)
+    return embedding, _estimate_tokens(text)
+
+
+async def _embed_counted(text: str, model: str) -> tuple[list[float], int]:
+    """Like _embed() but also returns the token count (actual or estimated)."""
+    provider = EMBEDDING_MODELS.get(model, {}).get("provider", "google")
+    if provider == "openai":
+        return await _embed_openai_counted(text, model)
+    return await _embed_google_counted(text, model)
+
+
 def _preflight_check(model: str) -> None:
     """Verify the provider client can be constructed. Raises on failure."""
     provider = EMBEDDING_MODELS.get(model, {}).get("provider", "google")
@@ -256,10 +295,20 @@ async def vectorize_all(
         "started_at": now_iso(),
     })
 
-    vectorized  = 0
-    skipped     = 0
-    failed:     list[str] = []
-    first_error: str | None = None
+    vectorized      = 0
+    skipped         = 0
+    failed:         list[str] = []
+    first_error:    str | None = None
+    session_tokens: int   = 0
+    session_cost:   float = 0.0
+    cost_per_1m     = EMBEDDING_COSTS.get(model, 0.0)
+
+    # Lazy import so the vectorizer doesn't force usage_tracker to load at module level
+    try:
+        from core.workspace.usage_tracker import get_usage_tracker as _get_tracker
+        _tracker = _get_tracker()
+    except Exception:
+        _tracker = None
 
     try:
         # ── Preflight: verify the embedding client works before touching any entity ──
@@ -285,15 +334,19 @@ async def vectorize_all(
         total = len(entities)
 
         write_vec_info(db_root, {
-            "status":        "running",
-            "model":         model,
-            "include_stubs": include_stubs,
-            "started_at":    now_iso(),
-            "total":         total,
-            "vectorized":    0,
-            "skipped":       0,
-            "failed":        0,
+            "status":          "running",
+            "model":           model,
+            "include_stubs":   include_stubs,
+            "started_at":      now_iso(),
+            "total":           total,
+            "vectorized":      0,
+            "skipped":         0,
+            "failed":          0,
+            "session_tokens":  0,
+            "session_cost":    0.0,
         })
+
+        provider = EMBEDDING_MODELS.get(model, {}).get("provider", "google")
 
         for idx, entity in enumerate(entities):
             entity_id = entity.get("id", "")
@@ -307,10 +360,12 @@ async def vectorize_all(
                 if existing_vec and not force_rewrite:
                     skipped += 1
                 else:
-                    text       = _entity_to_text(entity)
-                    embedding  = await _embed(text, model)
-                    dimensions = EMBEDDING_MODELS.get(model, {}).get("dimensions", len(embedding))
-                    vec_entry  = {
+                    text               = _entity_to_text(entity)
+                    embedding, tokens  = await _embed_counted(text, model)
+                    dimensions         = EMBEDDING_MODELS.get(model, {}).get("dimensions", len(embedding))
+                    call_cost          = round((tokens / 1_000_000) * cost_per_1m, 8)
+
+                    vec_entry = {
                         "embedding":    embedding,
                         "model":        model,
                         "dimensions":   dimensions,
@@ -322,7 +377,31 @@ async def vectorize_all(
                         {"sections": {"vectors": {model: vec_entry}}},
                         merge_sections=True,
                     )
-                    vectorized += 1
+                    vectorized     += 1
+                    session_tokens += tokens
+                    session_cost   += call_cost
+
+                    # Log individual embedding call to usage tracker
+                    if _tracker:
+                        try:
+                            import uuid
+                            _tracker.log_api_call(
+                                provider         = provider,
+                                model            = model,
+                                prompt           = text[:200],
+                                response_content = "",
+                                trace_id         = f"embed-{uuid.uuid4().hex[:8]}",
+                                operation        = "embedding",
+                                success          = True,
+                                metadata         = {"usage": {
+                                    "prompt_tokens":    tokens,
+                                    "completion_tokens": 0,
+                                    "total_tokens":     tokens,
+                                }},
+                                source           = "aethviondb",
+                            )
+                        except Exception as log_exc:
+                            logger.debug(f"[Vectorizer] Usage log failed: {log_exc}")
 
             except Exception as exc:
                 err_str = str(exc)
@@ -334,15 +413,17 @@ async def vectorize_all(
             # Checkpoint every 5 entities
             if (idx + 1) % 5 == 0:
                 write_vec_info(db_root, {
-                    "status":        "running",
-                    "model":         model,
-                    "include_stubs": include_stubs,
-                    "total":         total,
-                    "vectorized":    vectorized,
-                    "skipped":       skipped,
-                    "failed":        len(failed),
-                    "last_error":    first_error,
-                    "started_at":    now_iso(),
+                    "status":          "running",
+                    "model":           model,
+                    "include_stubs":   include_stubs,
+                    "total":           total,
+                    "vectorized":      vectorized,
+                    "skipped":         skipped,
+                    "failed":          len(failed),
+                    "last_error":      first_error,
+                    "started_at":      now_iso(),
+                    "session_tokens":  session_tokens,
+                    "session_cost":    round(session_cost, 6),
                 })
 
         # Final status
@@ -350,20 +431,22 @@ async def vectorize_all(
             "error" if failed else "done"
         )
         write_vec_info(db_root, {
-            "status":        final_status,
-            "model":         model,
-            "include_stubs": include_stubs,
-            "total":         total,
-            "vectorized":    vectorized,
-            "skipped":       skipped,
-            "failed":        len(failed),
-            "failed_ids":    failed,
-            "last_error":    first_error,
-            "completed_at":  now_iso(),
+            "status":          final_status,
+            "model":           model,
+            "include_stubs":   include_stubs,
+            "total":           total,
+            "vectorized":      vectorized,
+            "skipped":         skipped,
+            "failed":          len(failed),
+            "failed_ids":      failed,
+            "last_error":      first_error,
+            "completed_at":    now_iso(),
+            "session_tokens":  session_tokens,
+            "session_cost":    round(session_cost, 6),
         })
         logger.info(
             f"[Vectorizer] Done: {vectorized} embedded, {skipped} skipped, "
-            f"{len(failed)} failed."
+            f"{len(failed)} failed. Tokens: {session_tokens}, Cost: ${session_cost:.6f}"
         )
 
     except Exception as exc:

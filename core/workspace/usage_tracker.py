@@ -616,3 +616,55 @@ class UsageTracker:
                 "output_cost":  round(b["output_cost"], 6),
             })
         return result
+
+    def get_embedding_summary(
+        self,
+        start_date: Optional[datetime] = None,
+        end_date:   Optional[datetime] = None,
+        days:       int = 30,
+    ) -> Dict[str, Any]:
+        """
+        Return aggregated stats for embedding API calls (operation == 'embedding').
+        Used to power the Embedding Costs section in the Usage Dashboard.
+        """
+        if not start_date:
+            start_date = datetime.utcnow() - timedelta(days=days)
+
+        entries = self._get_entries_for_range(start_date, end_date)
+        embedding_entries = [e for e in entries if e.get("operation") == "embedding"]
+
+        if not embedding_entries:
+            return {
+                "total_calls":  0,
+                "total_tokens": 0,
+                "total_cost":   0.0,
+                "by_model":     {},
+            }
+
+        by_model: Dict[str, Dict] = defaultdict(
+            lambda: {"calls": 0, "tokens": 0, "cost": 0.0}
+        )
+        total_tokens = 0
+        total_cost   = 0.0
+
+        for e in embedding_entries:
+            m      = e.get("model", "unknown")
+            tokens = e.get("total_tokens", 0)
+            ic, oc, c = self._compute_entry_costs(e)
+
+            by_model[m]["calls"]  += 1
+            by_model[m]["tokens"] += tokens
+            by_model[m]["cost"]   += c
+
+            total_tokens += tokens
+            total_cost   += c
+
+        for v in by_model.values():
+            v["cost"] = round(v["cost"], 6)
+
+        return {
+            "total_calls":  len(embedding_entries),
+            "total_tokens": total_tokens,
+            "total_cost":   round(total_cost, 6),
+            "by_model":     dict(by_model),
+        }

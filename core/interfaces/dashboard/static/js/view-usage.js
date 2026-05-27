@@ -64,13 +64,14 @@ async function loadUsageDashboard(startDate = null, endDate = null) {
             fetch(`/api/usage/cost-by-model${rangeQ}`),
             fetch(`/api/usage/tokens-by-model${rangeQ}`),
             fetch(`/api/usage/daily?days=${dailyDays}${filterQ}`),
+            fetch(`/api/usage/embedding${rangeQ}`),
         ];
         if (prevRangeQ) requests.push(fetch(`/api/usage/summary${prevRangeQ}`));
 
         const responses  = await Promise.all(requests);
-        const [summary, history, hourly, costModel, tokensModel, daily] =
-            await Promise.all(responses.slice(0, 6).map(r => r.json()));
-        const prevSummary = prevRangeQ ? await responses[6].json() : null;
+        const [summary, history, hourly, costModel, tokensModel, daily, embedding] =
+            await Promise.all(responses.slice(0, 7).map(r => r.json()));
+        const prevSummary = prevRangeQ ? await responses[7]?.json() : null;
 
         _currentHourlyData     = hourly;
         _currentHistoryEntries = history.entries || [];
@@ -86,6 +87,7 @@ async function loadUsageDashboard(startDate = null, endDate = null) {
         _renderTokensByModel(tokensModel);
         _renderModelTable(summary);
         _renderRecentTable(_currentHistoryEntries);
+        _renderEmbeddingSection(embedding);
 
         if (!window._usageListenersReady) { _setupListeners(); window._usageListenersReady = true; }
 
@@ -516,6 +518,38 @@ function _renderModelTable(summary) {
             <td class="mono-sm text-muted">${formatCost(avgCost)}</td>
         </tr>`;
     }).join('');
+}
+
+function _renderEmbeddingSection(data) {
+    const section = document.getElementById('usage-embed-section');
+    if (!section) return;
+
+    const calls   = data?.total_calls  || 0;
+    const tokens  = data?.total_tokens || 0;
+    const cost    = data?.total_cost   || 0;
+    const byModel = data?.by_model     || {};
+
+    // Show/hide section based on whether there's any data
+    section.style.display = calls > 0 ? '' : 'none';
+    if (calls === 0) return;
+
+    const _setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+    _setText('usage-embed-calls',  formatNumber(calls));
+    _setText('usage-embed-tokens', formatNumber(tokens));
+    _setText('usage-embed-cost',   formatCost(cost));
+
+    const rowsEl = document.getElementById('usage-embed-model-rows');
+    if (!rowsEl) return;
+
+    const sorted = Object.entries(byModel).sort((a, b) => b[1].cost - a[1].cost);
+    rowsEl.innerHTML = sorted.map(([model, d]) => `
+        <div class="usage-embed-model-row">
+            <span class="usage-embed-model-name">${model}</span>
+            <span class="usage-embed-model-stat">${formatNumber(d.calls)} calls</span>
+            <span class="usage-embed-model-stat">${formatNumber(d.tokens)} tokens</span>
+            <span class="usage-embed-model-stat cost-highlight">${formatCost(d.cost)}</span>
+        </div>
+    `).join('');
 }
 
 function _renderRecentTable(entries, filter = '') {

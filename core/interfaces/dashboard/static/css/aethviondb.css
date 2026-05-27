@@ -484,6 +484,21 @@
 .adb-vec-bd-skipped  { color: var(--text-muted); }
 .adb-vec-bd-failed   { color: #f87171; }
 
+/* Session cost row */
+.adb-vec-cost-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: #22d3ee;
+    font-weight: 600;
+    margin-top: 6px;
+}
+.adb-vec-cost-row i {
+    font-size: 0.7rem;
+    opacity: 0.75;
+}
+
 /* Error message below the bar */
 .adb-vec-error-msg {
     margin-top: 6px;

@@ -4255,6 +4255,8 @@
         const fillEl      = _el('adb-vec-bar-fill');
         const pctEl       = _el('adb-vec-bar-pct');
         const breakdownEl = _el('adb-vec-breakdown');
+        const costRowEl   = _el('adb-vec-cost-row');
+        const sessionLbl  = _el('adb-vec-session-label');
         const errorMsgEl  = _el('adb-vec-error-msg');
         const generateBtn = _el('adb-vec-generate-btn');
         const cancelBtn   = _el('adb-vec-cancel-btn');
@@ -4308,6 +4310,24 @@
                 breakdownEl.classList.remove('hidden');
             } else {
                 breakdownEl.classList.add('hidden');
+            }
+        }
+
+        // Session cost (populated from VECINFO by backend during/after run)
+        if (costRowEl && sessionLbl) {
+            const sessionTokens = data.session_tokens || 0;
+            const sessionCost   = data.session_cost   || 0;
+            if (sessionTokens > 0 || sessionCost > 0) {
+                const costStr  = sessionCost >= 0.0001
+                    ? `$${sessionCost.toFixed(sessionCost >= 0.01 ? 4 : 6)}`
+                    : sessionCost > 0 ? `$${sessionCost.toFixed(6)}` : '$0.00';
+                const tokStr   = sessionTokens >= 1000
+                    ? `${(sessionTokens / 1000).toFixed(1)}K` : String(sessionTokens);
+                const suffix   = data.status === 'running' ? ' this session' : ' (session)';
+                sessionLbl.textContent = `${tokStr} tokens · ${costStr}${suffix}`;
+                costRowEl.classList.remove('hidden');
+            } else {
+                costRowEl.classList.add('hidden');
             }
         }
 

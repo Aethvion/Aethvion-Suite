@@ -56,6 +56,22 @@ async def get_usage_summary(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/embedding")
+async def get_embedding_summary(
+    start: Optional[str] = None,
+    end:   Optional[str] = None,
+):
+    """Get aggregated embedding cost statistics (operation == 'embedding')."""
+    try:
+        from core.workspace.usage_tracker import get_usage_tracker
+        tracker = get_usage_tracker()
+        s, e = parse_dates(start, end)
+        return tracker.get_embedding_summary(start_date=s, end_date=e)
+    except Exception as e:
+        logger.error(f"Failed to get embedding summary: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/history")
 async def get_usage_history(
     limit: int = 100, 
