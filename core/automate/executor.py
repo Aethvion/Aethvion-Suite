@@ -73,8 +73,20 @@ class WorkflowExecutor:
         reachable = self._reachable_from_triggers()
         run_order = [nid for nid in order if nid in reachable]
 
+        # When running a specific trigger, compute which nodes belong to OTHER trigger
+        # chains so we can skip marking them.  Emitting "skipped" for sibling-chain nodes
+        # causes the frontend to wipe their canvas state and display output — we only want
+        # to mark nodes that are genuinely orphan (not reachable from ANY trigger).
+        if self._trigger_id:
+            other_chains = self._sibling_trigger_territory()
+        else:
+            other_chains: set[str] = set()
+
         for node_id in order:
             if node_id not in reachable:
+                if node_id in other_chains:
+                    # Node belongs to a sibling trigger chain — leave it untouched.
+                    continue
                 label = self.nodes[node_id].get("label", node_id)
                 self._status[node_id] = "skipped"
                 self._info(f"⏭ {label} — skipped (not connected to a trigger)")
@@ -204,6 +216,34 @@ class WorkflowExecutor:
                     queue.append(upstream)
 
         return reachable
+
+    def _sibling_trigger_territory(self) -> set[str]:
+        """Return all nodes reachable from triggers OTHER than self._trigger_id.
+
+        Used to avoid marking sibling-chain nodes as 'skipped' when only one
+        trigger is being run — those nodes simply aren't part of this run; they
+        should not have their canvas state or display output disturbed.
+        """
+        fwd: dict[str, list[str]] = {nid: [] for nid in self.nodes}
+        for conn in self.connections:
+            src, tgt = conn.get("sourceNodeId"), conn.get("targetNodeId")
+            if src in self.nodes and tgt in self.nodes:
+                fwd[src].append(tgt)
+
+        sibling_triggers = [
+            nid for nid, n in self.nodes.items()
+            if n.get("type", "").startswith("trigger.") and nid != self._trigger_id
+        ]
+
+        territory: set[str] = set()
+        for t in sibling_triggers:
+            queue = [t]
+            while queue:
+                nid = queue.pop(0)
+                if nid not in territory:
+                    territory.add(nid)
+                    queue.extend(fwd.get(nid, []))
+        return territory
 
     def _topo_sort(self) -> list[str] | None:
         """Kahn's algorithm. Returns execution order, or None if a cycle exists."""

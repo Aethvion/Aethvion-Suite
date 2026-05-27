@@ -624,6 +624,25 @@ async function sendMisakaMessage() {
                         addAssistantToolStatus(); // dots only, already showing
                         if (statusLine) statusLine.textContent = data.content || "Processing...";
                     }
+                    else if (data.type === 'error') {
+                        // Surface the error outside the inner try-catch so it reaches
+                        // the outer handler that shows it as a message in the chat.
+                        removeAssistantToolStatus();
+                        if (window.ParticleSphere) ParticleSphere.setActive(false);
+                        const errMsg = data.content || 'An unknown error occurred.';
+                        // Show as an inline chat message so the user can act on it
+                        addAssistantMessageStatic('misaka',
+                            `⚠️ ${errMsg}`, ts);
+                        const settingsLink = errMsg.toLowerCase().includes('api key') || errMsg.toLowerCase().includes('model');
+                        const statusLine = document.getElementById('misaka-status-line');
+                        if (statusLine) {
+                            statusLine.textContent = settingsLink
+                                ? 'Configuration required — check Settings'
+                                : 'Error. Please try again.';
+                        }
+                        isMisakaTyping = false;
+                        return; // stop processing this stream
+                    }
                     else if (data.type === 'done') {
                         removeAssistantToolStatus();
                         if (window.ParticleSphere) ParticleSphere.setActive(false);
@@ -1065,7 +1084,13 @@ async function startProactiveScheduler() {
 
     // --- Startup check ---
     const hoursSince = await _getHoursSinceLastMessage();
-    if (hoursSince !== null && hoursSince >= startupHours) {
+    // hoursSince === null means no conversation history at all (first-ever use).
+    // Always send a startup greeting in that case (guaranteed, not chance-based).
+    if (hoursSince === null) {
+        const firstUseDelay = _randomBetween(3, 8) * 1000;
+        console.log(`[Misaka] First-ever session — startup greeting in ${(firstUseDelay/1000).toFixed(1)}s`);
+        setTimeout(() => triggerProactiveMessage('startup', 0), firstUseDelay);
+    } else if (hoursSince >= startupHours) {
         if (Math.random() * 100 < startupChance) {
             const delay = _randomBetween(delayMin, delayMax) * 1000;
             console.log(`[Misaka] Startup message scheduled in ${(_randomBetween(delayMin, delayMax)).toFixed(2)} seconds (Hours since: ${hoursSince.toFixed(2)})`);

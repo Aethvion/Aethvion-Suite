@@ -1865,12 +1865,17 @@ async function loadInitialData() {
 function generateCategorizedModelOptions(data, type = 'chat', selectedId = null) {
     if (!data) return '';
 
+    // Split models into those with API keys and those without
+    const allModels   = data.models || [];
+    const readyModels = allModels.filter(m => m.has_api_key !== false);
+    const noKeyModels = allModels.filter(m => m.has_api_key === false);
+
     // 1. Group Profiles
     let profilesHtml = `<optgroup label="${type === 'chat' ? 'Chat' : 'Agent'} Profiles">`;
     const autoSelected = (selectedId === 'auto' || !selectedId) ? 'selected' : '';
 
-    // Only add Auto option if there is more than one model
-    if (data.models && data.models.length > 1) {
+    // Only add Auto option if there is more than one ready model
+    if (readyModels.length > 1) {
         profilesHtml += `<option value="auto" ${autoSelected}>Auto (Complexity Routing)</option>`;
     }
 
@@ -1882,9 +1887,17 @@ function generateCategorizedModelOptions(data, type = 'chat', selectedId = null)
     }
     profilesHtml += `</optgroup>`;
 
-    // 2. Group Models by Provider
+    // 1b. Warning optgroup if no models have keys at all
+    let warningHtml = '';
+    if (readyModels.length === 0 && noKeyModels.length > 0) {
+        warningHtml = `<optgroup label="⚠️ No API keys configured">` +
+            `<option value="" disabled>→ Go to Settings › API Keys to add a key</option>` +
+            `</optgroup>`;
+    }
+
+    // 2. Group Models by Provider — only include models with keys
     const categorizedModels = {};
-    for (const m of data.models || []) {
+    for (const m of readyModels) {
         if (!categorizedModels[m.provider]) {
             categorizedModels[m.provider] = [];
         }
@@ -1931,7 +1944,7 @@ function generateCategorizedModelOptions(data, type = 'chat', selectedId = null)
         modelsHtml += `</optgroup>`;
     }
 
-    return profilesHtml + modelsHtml;
+    return profilesHtml + warningHtml + modelsHtml;
 }
 
 /**
@@ -2025,6 +2038,11 @@ window.loadChatModels = loadChatModels;
 document.addEventListener('tabChanged', (e) => {
     if (e.detail && e.detail.tab === 'chat') {
         loadChatModels();
+        // Auto-scroll to the latest message when switching to the chat tab
+        requestAnimationFrame(() => {
+            const msgs = document.getElementById('chat-messages');
+            if (msgs) msgs.scrollTop = msgs.scrollHeight;
+        });
     }
 });
 
