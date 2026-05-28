@@ -897,6 +897,15 @@
                     <label class="adb-graph-label-toggle" title="Toggle entity name labels">
                         <input type="checkbox" id="adb-graph-labels-cb" checked> Labels
                     </label>
+                    <label class="adb-graph-label-toggle" title="Hide stub entities from the graph">
+                        <input type="checkbox" id="adb-graph-no-stubs-cb"> No stubs
+                    </label>
+                    <label class="adb-graph-node-limit-wrap" title="Maximum nodes to display">
+                        <span id="adb-graph-limit-label" class="adb-graph-info">500</span>
+                        <input type="range" id="adb-graph-limit-slider"
+                               min="50" max="2000" step="50" value="500"
+                               class="adb-graph-limit-slider">
+                    </label>
                     <select id="adb-graph-depth" class="adb-graph-depth-sel" title="Focus depth (hops)">
                         <option value="1">Depth 1</option>
                         <option value="2" selected>Depth 2</option>
@@ -927,12 +936,14 @@
                         <span id="adb-graph-card-name" class="adb-graph-card-name"></span>
                         <button id="adb-graph-card-close" class="adb-modal-close"><i class="fas fa-times"></i></button>
                     </div>
-                    <p id="adb-graph-card-summary" class="adb-graph-card-summary"></p>
-                    <div id="adb-graph-card-categories" class="adb-graph-card-tags hidden"></div>
-                    <div id="adb-graph-card-tags" class="adb-graph-card-tags hidden"></div>
-                    <div id="adb-graph-card-aliases" class="adb-graph-card-aliases hidden"></div>
-                    <div id="adb-graph-card-meta" class="adb-graph-card-meta"></div>
-                    <div id="adb-graph-card-rels" class="adb-graph-card-rels hidden"></div>
+                    <div class="adb-graph-card-body">
+                        <p id="adb-graph-card-summary" class="adb-graph-card-summary"></p>
+                        <div id="adb-graph-card-categories" class="adb-graph-card-tags hidden"></div>
+                        <div id="adb-graph-card-tags" class="adb-graph-card-tags hidden"></div>
+                        <div id="adb-graph-card-aliases" class="adb-graph-card-aliases hidden"></div>
+                        <div id="adb-graph-card-meta" class="adb-graph-card-meta"></div>
+                        <div id="adb-graph-card-rels" class="adb-graph-card-rels hidden"></div>
+                    </div>
                     <div class="adb-graph-card-actions">
                         <button id="adb-graph-card-focus" class="adb-btn adb-btn-ghost adb-btn-sm" title="Re-center graph on this node">
                             <i class="fas fa-crosshairs"></i> Focus

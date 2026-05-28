@@ -3374,9 +3374,11 @@
         const backBtn = _el('adb-graph-back-btn');
         if (backBtn) backBtn.classList.toggle('hidden', !entityId);
 
-        const depth   = _el('adb-graph-depth')?.value || '2';
-        const chunkId = _el('adb-graph-chunk-sel')?.value || '';
-        const params  = new URLSearchParams(_dbParam({ limit: 500 }));
+        const depth        = _el('adb-graph-depth')?.value || '2';
+        const chunkId      = _el('adb-graph-chunk-sel')?.value || '';
+        const limit        = _el('adb-graph-limit-slider')?.value || '500';
+        const excludeStubs = _el('adb-graph-no-stubs-cb')?.checked ?? false;
+        const params       = new URLSearchParams(_dbParam({ limit, exclude_stubs: excludeStubs }));
         if (entityId) { params.set('entity_id', entityId); params.set('depth', depth); }
         else if (chunkId) { params.set('chunk_id', chunkId); }
 
@@ -3881,6 +3883,15 @@
         _el('adb-graph-labels-cb') ?.addEventListener('change',  e => {
             _graphLabelSel?.attr('display', e.target.checked ? null : 'none');
         });
+        _el('adb-graph-no-stubs-cb')?.addEventListener('change', () => _graphLoad(_graphFocusId));
+        const limitSlider = _el('adb-graph-limit-slider');
+        const limitLabel  = _el('adb-graph-limit-label');
+        if (limitSlider && limitLabel) {
+            limitSlider.addEventListener('input', () => {
+                limitLabel.textContent = limitSlider.value;
+            });
+            limitSlider.addEventListener('change', () => _graphLoad(_graphFocusId));
+        }
     }
 
     /** Populate the chunk filter dropdown in the graph toolbar. */

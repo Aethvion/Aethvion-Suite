@@ -1282,12 +1282,13 @@ def _graph_bfs(writer, start_id: str, depth: int) -> set:
 
 @router.get("/graph")
 async def get_graph(
-    db:        str = Query("default"),
-    path:      Optional[str] = Query(None),
-    entity_id: Optional[str] = Query(None, description="Focus node — returns BFS neighbourhood"),
-    chunk_id:  Optional[str] = Query(None, description="Restrict graph to entities in this chunk"),
-    depth:     int = Query(2, ge=1, le=4),
-    limit:     int = Query(500, le=2000),
+    db:            str  = Query("default"),
+    path:          Optional[str] = Query(None),
+    entity_id:     Optional[str] = Query(None, description="Focus node — returns BFS neighbourhood"),
+    chunk_id:      Optional[str] = Query(None, description="Restrict graph to entities in this chunk"),
+    depth:         int  = Query(2, ge=1, le=4),
+    limit:         int  = Query(500, le=2000),
+    exclude_stubs: bool = Query(False, description="Exclude stub entities from the graph"),
 ):
     """
     Return nodes + directed edges for graph visualisation.
@@ -1297,6 +1298,8 @@ async def get_graph(
     """
     writer = _get_writer(db, path)
     all_e  = writer.list_all()          # full entities, no deleted
+    if exclude_stubs:
+        all_e = [e for e in all_e if e.get("status") != "stub"]
 
     if entity_id:
         included = await asyncio.to_thread(_graph_bfs, writer, entity_id, depth)

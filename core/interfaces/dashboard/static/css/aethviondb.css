@@ -1845,6 +1845,41 @@
     user-select: none;
 }
 .adb-graph-label-toggle input { cursor: pointer; accent-color: #22d3ee; }
+
+.adb-graph-node-limit-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: default;
+}
+.adb-graph-limit-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 90px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+    accent-color: #22d3ee;
+}
+.adb-graph-limit-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #22d3ee;
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(34,211,238,0.4);
+}
+.adb-graph-limit-slider::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #22d3ee;
+    cursor: pointer;
+    border: none;
+}
 .adb-graph-depth-sel {
     background: var(--bg-tertiary, rgba(255,255,255,0.04));
     border: 1px solid var(--border);
@@ -1881,7 +1916,8 @@
     position: absolute;
     top: 0.85rem;
     right: 0.85rem;
-    width: 272px;
+    width: 340px;
+    max-height: calc(100% - 1.7rem);
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -1910,17 +1946,17 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+.adb-graph-card-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
 .adb-graph-card-summary {
     font-size: 0.78rem;
     color: var(--text-secondary);
     margin: 0;
-    padding: 0.5rem 0.7rem 0.35rem;
-    line-height: 1.45;
-    max-height: 72px;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
+    padding: 0.5rem 0.75rem 0.35rem;
+    line-height: 1.5;
 }
 .adb-graph-card-meta {
     padding: 0 0.7rem 0.4rem;
