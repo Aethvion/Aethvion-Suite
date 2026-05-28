@@ -286,6 +286,13 @@
     font-weight: 600;
 }
 
+.adb-tools-nav-sep {
+    height: 1px;
+    background: var(--border-color, rgba(255,255,255,0.08));
+    margin: 0.4rem 0.75rem;
+    opacity: 0.6;
+}
+
 /* Right content area */
 .adb-tools-content {
     flex: 1;

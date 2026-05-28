@@ -177,16 +177,12 @@
         });
         _el('adb-tab-pane-databases')?.classList.toggle('hidden', tab !== 'databases');
         _el('adb-tab-pane-tools')    ?.classList.toggle('hidden', tab !== 'tools');
-        _el('adb-tab-pane-bake')     ?.classList.toggle('hidden', tab !== 'bake');
         _el('adb-tab-pane-explorer') ?.classList.toggle('hidden', tab !== 'explorer');
         _el('adb-tab-pane-graph')    ?.classList.toggle('hidden', tab !== 'graph');
         _el('adb-tab-pane-api')      ?.classList.toggle('hidden', tab !== 'api');
-        _el('adb-tab-pane-test')     ?.classList.toggle('hidden', tab !== 'test');
         if (tab === 'databases') { _dbmView('adb-dbm-list'); _dbmLoadList(); }
-        if (tab === 'bake') _bakeLoadList();
         if (tab === 'api')  { _apiRenderTree(); _apiLoadKeys(); }
         if (tab === 'tools') _testLoadChunks();
-        if (tab === 'test') _testOnEnter();
         if (tab === 'graph') {
             _openGraph();
         } else {
@@ -6513,7 +6509,7 @@
 
     // ── Tools sub-navigation ──────────────────────────────────────────────────
 
-    const _TOOL_PAGE_IDS = ['distill', 'distill-folder', 'vectors', 'import', 'validate', 'chunks'];
+    const _TOOL_PAGE_IDS = ['distill', 'distill-folder', 'vectors', 'import', 'validate', 'chunks', 'bake', 'test'];
 
     function _toolsNavSwitch(toolId) {
         document.querySelectorAll('.adb-tools-nav-item').forEach(btn => {
@@ -6523,6 +6519,8 @@
             const page = _el(`adb-tool-page-${id}`);
             if (page) page.classList.toggle('hidden', id !== toolId);
         });
+        if (toolId === 'bake') _bakeLoadList();
+        if (toolId === 'test') _testOnEnter();
     }
 
     function _testWire() {
@@ -6757,7 +6755,7 @@
 
     // ── Init ──────────────────────────────────────────────────────────────────
 
-    const _VALID_SUBTABS = new Set(['databases', 'tools', 'bake', 'explorer', 'graph', 'api', 'test']);
+    const _VALID_SUBTABS = new Set(['databases', 'tools', 'explorer', 'graph', 'api']);
 
     function init() {
         const root = _el('aethviondb-root');
@@ -6779,7 +6777,7 @@
             }
         } catch { /* ignore bad storage */ }
 
-        // Restore last active sub-tab (databases / tools / bake / explorer / graph / api)
+        // Restore last active sub-tab (databases / tools / explorer / graph / api)
         try {
             const savedTab = localStorage.getItem('adb_last_subtab');
             if (savedTab && _VALID_SUBTABS.has(savedTab)) _currentTab = savedTab;

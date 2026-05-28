@@ -18,9 +18,6 @@
                 <button class="adb-nav-tab" data-tab="tools">
                     <i class="fas fa-wrench"></i> Tools
                 </button>
-                <button class="adb-nav-tab" data-tab="bake">
-                    <i class="fas fa-box-archive"></i> Bake
-                </button>
                 <button class="adb-nav-tab active" data-tab="explorer">
                     <i class="fas fa-table-list"></i> Explorer
                 </button>
@@ -29,9 +26,6 @@
                 </button>
                 <button class="adb-nav-tab" data-tab="api">
                     <i class="fas fa-plug"></i> API
-                </button>
-                <button class="adb-nav-tab" data-tab="test">
-                    <i class="fas fa-stopwatch"></i> Test
                 </button>
             </nav>
 
@@ -98,6 +92,13 @@
                 </button>
                 <button class="adb-tools-nav-item" data-tool="chunks">
                     <i class="fas fa-layer-group"></i><span>Smart Chunks</span>
+                </button>
+                <div class="adb-tools-nav-sep"></div>
+                <button class="adb-tools-nav-item" data-tool="bake">
+                    <i class="fas fa-box-archive"></i><span>Bake</span>
+                </button>
+                <button class="adb-tools-nav-item" data-tool="test">
+                    <i class="fas fa-stopwatch"></i><span>Benchmark</span>
                 </button>
             </nav>
 
@@ -359,104 +360,198 @@
                     </div>
                 </div>
 
-            </div><!-- /.adb-tools-content -->
-        </div><!-- /.adb-tools-layout -->
-    </div>
-
-    <!-- ══════════════════════════════════════════════════════
-         Tab 2 — Bake
-         Named bake configuration + baked datasets explorer.
-    ══════════════════════════════════════════════════════ -->
-    <div id="adb-tab-pane-bake" class="adb-tab-pane hidden">
-        <div class="adb-bake-page">
-
-            <!-- ── Left: Configure & Run ── -->
-            <div class="adb-bake-config-col">
-                <div class="adb-panel">
-                    <div class="adb-panel-header">
-                        <i class="fas fa-box-archive"></i> New Bake
+                <!-- ═══ Bake ═══ -->
+                <div id="adb-tool-page-bake" class="adb-tool-page hidden">
+                    <div class="adb-tool-page-header">
+                        <i class="fas fa-box-archive"></i> Bake
                     </div>
                     <p class="adb-panel-desc">Export all entities into one optimised snapshot. Raw data is never modified.</p>
+                    <div class="adb-bake-page">
 
-                    <div class="adb-field">
-                        <label>Bake name</label>
-                        <input type="text" id="adb-bake-name" class="adb-input"
-                               value="default" placeholder="default"
-                               pattern="[a-zA-Z0-9_\-]{1,64}" maxlength="64">
-                    </div>
-                    <div class="adb-field">
-                        <label>Format</label>
-                        <select id="adb-bake-format">
-                            <option value="jsonl">JSONL — vector DBs, streaming</option>
-                            <option value="json">JSON — structured document</option>
-                            <option value="markdown">Markdown — RAG / LLMs</option>
-                            <option value="txt">Plain text — context windows</option>
-                        </select>
-                    </div>
-                    <label class="adb-checkbox-row">
-                        <input type="checkbox" id="adb-bake-stubs" checked>
-                        <span>Include stub entities</span>
-                    </label>
-                    <div class="adb-bake-vec-wrap">
-                        <label class="adb-checkbox-row adb-bake-vec-toggle-row">
-                            <input type="checkbox" id="adb-bake-vectors">
-                            <span>Include embedding vectors</span>
-                            <i class="fas fa-chevron-down adb-bake-vec-chevron" id="adb-bake-vec-chevron"></i>
-                        </label>
-                        <div id="adb-bake-vec-foldout" class="adb-bake-vec-foldout hidden">
-                            <div class="adb-bake-vec-foldout-inner">
-                                <div class="adb-bake-vec-foldout-hint" id="adb-bake-vec-hint">
-                                    <i class="fas fa-spinner fa-spin"></i> Scanning database…
+                        <!-- ── Left: Configure & Run ── -->
+                        <div class="adb-bake-config-col">
+                            <div class="adb-panel">
+                                <div class="adb-panel-header">
+                                    <i class="fas fa-box-archive"></i> New Bake
                                 </div>
-                                <div id="adb-bake-vec-model-list" class="adb-bake-vec-model-list"></div>
+                                <div class="adb-field">
+                                    <label>Bake name</label>
+                                    <input type="text" id="adb-bake-name" class="adb-input"
+                                           value="default" placeholder="default"
+                                           pattern="[a-zA-Z0-9_\-]{1,64}" maxlength="64">
+                                </div>
+                                <div class="adb-field">
+                                    <label>Format</label>
+                                    <select id="adb-bake-format">
+                                        <option value="jsonl">JSONL — vector DBs, streaming</option>
+                                        <option value="json">JSON — structured document</option>
+                                        <option value="markdown">Markdown — RAG / LLMs</option>
+                                        <option value="txt">Plain text — context windows</option>
+                                    </select>
+                                </div>
+                                <label class="adb-checkbox-row">
+                                    <input type="checkbox" id="adb-bake-stubs" checked>
+                                    <span>Include stub entities</span>
+                                </label>
+                                <div class="adb-bake-vec-wrap">
+                                    <label class="adb-checkbox-row adb-bake-vec-toggle-row">
+                                        <input type="checkbox" id="adb-bake-vectors">
+                                        <span>Include embedding vectors</span>
+                                        <i class="fas fa-chevron-down adb-bake-vec-chevron" id="adb-bake-vec-chevron"></i>
+                                    </label>
+                                    <div id="adb-bake-vec-foldout" class="adb-bake-vec-foldout hidden">
+                                        <div class="adb-bake-vec-foldout-inner">
+                                            <div class="adb-bake-vec-foldout-hint" id="adb-bake-vec-hint">
+                                                <i class="fas fa-spinner fa-spin"></i> Scanning database…
+                                            </div>
+                                            <div id="adb-bake-vec-model-list" class="adb-bake-vec-model-list"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button id="adb-bake-btn" class="adb-primary-btn">
+                                    <i class="fas fa-box-archive"></i> Bake Now
+                                </button>
+                                <!-- Inline overwrite confirmation -->
+                                <div id="adb-bake-overwrite-confirm" class="adb-bake-overwrite-confirm hidden">
+                                    <span class="adb-bake-overwrite-msg">
+                                        <i class="fas fa-triangle-exclamation"></i>
+                                        A snapshot with this name already exists. Overwrite it?
+                                    </span>
+                                    <div class="adb-bake-overwrite-btns">
+                                        <button id="adb-bake-overwrite-yes" class="adb-btn adb-btn-danger adb-btn-sm">
+                                            <i class="fas fa-box-archive"></i> Overwrite
+                                        </button>
+                                        <button id="adb-bake-overwrite-no" class="adb-btn adb-btn-ghost adb-btn-sm">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="adb-bake-result" class="hidden">
+                                    <div id="adb-bake-result-inner" class="adb-bake-meta"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ── Right: Baked Datasets Explorer ── -->
+                        <div class="adb-bake-explorer-col">
+                            <div class="adb-panel adb-bake-explorer-panel">
+                                <div class="adb-panel-header">
+                                    <i class="fas fa-layer-group"></i> Baked Datasets
+                                    <div class="adb-panel-header-actions">
+                                        <button id="adb-bake-open-folder-btn" class="adb-btn adb-btn-ghost adb-btn-xs" title="Open baked/ folder in file manager">
+                                            <i class="fas fa-folder-open"></i> Open folder
+                                        </button>
+                                        <button id="adb-bake-refresh-list" class="adb-btn adb-btn-ghost adb-btn-xs" title="Refresh list">
+                                            <i class="fas fa-rotate-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="adb-bake-list" class="adb-bake-list">
+                                    <div class="adb-empty-hint">No bakes yet — run a bake to see it here.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div><!-- /.adb-bake-page -->
+                </div>
+
+                <!-- ═══ Benchmark ═══ -->
+                <div id="adb-tool-page-test" class="adb-tool-page hidden">
+                    <div class="adb-tool-page-header">
+                        <i class="fas fa-stopwatch"></i> Benchmark
+                    </div>
+                    <div class="adb-test-layout">
+                        <div class="adb-panel adb-test-panel">
+                            <p class="adb-panel-desc">
+                                Tests run sequentially — each timing is an isolated server-side wall-clock measurement.
+                            </p>
+
+                            <!-- Test query -->
+                            <div class="adb-field">
+                                <label title="Used for name-search, chunk, and vector-search tests">Test query</label>
+                                <input type="text" id="adb-bench-query" class="adb-input" value="a" placeholder="e.g. carbon, Zed, Kant…">
+                            </div>
+
+                            <!-- Always-included tests -->
+                            <div class="adb-field">
+                                <label>Always included</label>
+                                <div class="adb-bench-fixed-tests">
+                                    <div class="adb-bench-fixed-tag">
+                                        <i class="fas fa-database"></i>
+                                        <span class="adb-bench-fixed-label">Raw Files</span>
+                                        <span class="adb-bench-fixed-detail">load all · get by ID · name search</span>
+                                    </div>
+                                    <div class="adb-bench-fixed-tag">
+                                        <i class="fas fa-layer-group"></i>
+                                        <span class="adb-bench-fixed-label">Chunk Index</span>
+                                        <span class="adb-bench-fixed-detail">full-text search (build chunks first)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Optional: vector search -->
+                            <div class="adb-field">
+                                <label>
+                                    Vector search
+                                    <span class="adb-bench-opt-tag">optional</span>
+                                </label>
+                                <label class="adb-checkbox-row">
+                                    <input type="checkbox" id="adb-bench-vec-cb">
+                                    <span>Include semantic vector search</span>
+                                </label>
+                                <div id="adb-bench-vec-wrap" class="adb-bench-vec-wrap hidden">
+                                    <select id="adb-bench-vec-model" class="adb-input">
+                                        <optgroup label="Local (offline)">
+                                            <option value="all-MiniLM-L6-v2">all-MiniLM-L6-v2</option>
+                                            <option value="all-MiniLM-L12-v2">all-MiniLM-L12-v2</option>
+                                            <option value="all-mpnet-base-v2">all-mpnet-base-v2</option>
+                                            <option value="BAAI/bge-small-en-v1.5">BAAI/bge-small-en-v1.5</option>
+                                            <option value="BAAI/bge-base-en-v1.5">BAAI/bge-base-en-v1.5</option>
+                                        </optgroup>
+                                        <optgroup label="OpenAI">
+                                            <option value="text-embedding-3-small">text-embedding-3-small</option>
+                                            <option value="text-embedding-3-large">text-embedding-3-large</option>
+                                            <option value="text-embedding-ada-002">text-embedding-ada-002</option>
+                                        </optgroup>
+                                        <optgroup label="Google">
+                                            <option value="text-embedding-004">text-embedding-004</option>
+                                            <option value="embedding-001">embedding-001</option>
+                                        </optgroup>
+                                    </select>
+                                    <span class="adb-bench-vec-note">
+                                        <i class="fas fa-triangle-exclamation"></i>
+                                        Timing includes embed latency. Generate embeddings first.
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Baked snapshots to test -->
+                            <div class="adb-field">
+                                <label>Baked snapshots</label>
+                                <div id="adb-bench-bake-rows" class="adb-bench-bake-rows">
+                                    <div class="adb-bench-bake-empty">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading bakes…
+                                    </div>
+                                </div>
+                                <button id="adb-bench-add-bake" class="adb-btn adb-btn-ghost adb-btn-sm" style="margin-top:.45rem">
+                                    <i class="fas fa-plus"></i> Add bake
+                                </button>
+                            </div>
+
+                            <button id="adb-bench-run-btn" class="adb-primary-btn" style="margin-top:.2rem">
+                                <i class="fas fa-play"></i> Run Benchmark
+                            </button>
+
+                            <div id="adb-bench-results" class="adb-bench-results hidden">
+                                <div class="adb-bench-meta" id="adb-bench-meta"></div>
+                                <div id="adb-bench-sections" class="adb-bench-sections"></div>
                             </div>
                         </div>
                     </div>
-                    <button id="adb-bake-btn" class="adb-primary-btn">
-                        <i class="fas fa-box-archive"></i> Bake Now
-                    </button>
-                    <!-- Inline overwrite confirmation — shown when a bake with this name already exists -->
-                    <div id="adb-bake-overwrite-confirm" class="adb-bake-overwrite-confirm hidden">
-                        <span class="adb-bake-overwrite-msg">
-                            <i class="fas fa-triangle-exclamation"></i>
-                            A snapshot with this name already exists. Overwrite it?
-                        </span>
-                        <div class="adb-bake-overwrite-btns">
-                            <button id="adb-bake-overwrite-yes" class="adb-btn adb-btn-danger adb-btn-sm">
-                                <i class="fas fa-box-archive"></i> Overwrite
-                            </button>
-                            <button id="adb-bake-overwrite-no" class="adb-btn adb-btn-ghost adb-btn-sm">
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                    <div id="adb-bake-result" class="hidden">
-                        <div id="adb-bake-result-inner" class="adb-bake-meta"></div>
-                    </div>
                 </div>
-            </div>
 
-            <!-- ── Right: Baked Datasets Explorer ── -->
-            <div class="adb-bake-explorer-col">
-                <div class="adb-panel adb-bake-explorer-panel">
-                    <div class="adb-panel-header">
-                        <i class="fas fa-layer-group"></i> Baked Datasets
-                        <div class="adb-panel-header-actions">
-                            <button id="adb-bake-open-folder-btn" class="adb-btn adb-btn-ghost adb-btn-xs" title="Open baked/ folder in file manager">
-                                <i class="fas fa-folder-open"></i> Open folder
-                            </button>
-                            <button id="adb-bake-refresh-list" class="adb-btn adb-btn-ghost adb-btn-xs" title="Refresh list">
-                                <i class="fas fa-rotate-right"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div id="adb-bake-list" class="adb-bake-list">
-                        <div class="adb-empty-hint">No bakes yet — run a bake to see it here.</div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
+            </div><!-- /.adb-tools-content -->
+        </div><!-- /.adb-tools-layout -->
     </div>
 
     <!-- ══════════════════════════════════════════════════════
@@ -493,8 +588,15 @@
                 <!-- Model selector — shown only in semantic mode -->
                 <select id="adb-vsearch-model" class="adb-vsearch-model-sel hidden"
                         title="Embedding model — must match the model used when generating embeddings">
+                    <optgroup label="Local">
+                        <option value="all-MiniLM-L6-v2" selected>MiniLM-L6</option>
+                        <option value="all-MiniLM-L12-v2">MiniLM-L12</option>
+                        <option value="all-mpnet-base-v2">mpnet-base</option>
+                        <option value="BAAI/bge-small-en-v1.5">bge-small</option>
+                        <option value="BAAI/bge-base-en-v1.5">bge-base</option>
+                    </optgroup>
                     <optgroup label="OpenAI">
-                        <option value="text-embedding-3-small" selected>3-small</option>
+                        <option value="text-embedding-3-small">3-small</option>
                         <option value="text-embedding-3-large">3-large</option>
                         <option value="text-embedding-ada-002">ada-002</option>
                     </optgroup>
@@ -1133,98 +1235,6 @@
         </div><!-- .adb-dbm-tab-root -->
     </div><!-- #adb-tab-pane-databases -->
 
-    <!-- ══════════════════════════════════════════════════════
-         Tab — Test
-         Speed benchmarks: raw files vs baked snapshots vs chunk index.
-    ══════════════════════════════════════════════════════ -->
-    <div id="adb-tab-pane-test" class="adb-tab-pane hidden">
-        <div class="adb-test-layout">
-
-            <div class="adb-panel adb-test-panel">
-                <div class="adb-panel-header">
-                    <i class="fas fa-stopwatch"></i> Speed Benchmark
-                </div>
-                <p class="adb-panel-desc">
-                    Tests run sequentially — each timing is an isolated server-side wall-clock measurement.
-                </p>
-
-                <!-- Test query -->
-                <div class="adb-field">
-                    <label title="Used for name-search, chunk, and vector-search tests">Test query</label>
-                    <input type="text" id="adb-bench-query" class="adb-input" value="a" placeholder="e.g. carbon, Zed, Kant…">
-                </div>
-
-                <!-- Always-included tests -->
-                <div class="adb-field">
-                    <label>Always included</label>
-                    <div class="adb-bench-fixed-tests">
-                        <div class="adb-bench-fixed-tag">
-                            <i class="fas fa-database"></i>
-                            <span class="adb-bench-fixed-label">Raw Files</span>
-                            <span class="adb-bench-fixed-detail">load all · get by ID · name search</span>
-                        </div>
-                        <div class="adb-bench-fixed-tag">
-                            <i class="fas fa-layer-group"></i>
-                            <span class="adb-bench-fixed-label">Chunk Index</span>
-                            <span class="adb-bench-fixed-detail">full-text search (build chunks first)</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Optional: vector search -->
-                <div class="adb-field">
-                    <label>
-                        Vector search
-                        <span class="adb-bench-opt-tag">optional</span>
-                    </label>
-                    <label class="adb-checkbox-row">
-                        <input type="checkbox" id="adb-bench-vec-cb">
-                        <span>Include semantic vector search</span>
-                    </label>
-                    <div id="adb-bench-vec-wrap" class="adb-bench-vec-wrap hidden">
-                        <select id="adb-bench-vec-model" class="adb-input">
-                            <optgroup label="OpenAI">
-                                <option value="text-embedding-3-small">text-embedding-3-small</option>
-                                <option value="text-embedding-3-large">text-embedding-3-large</option>
-                                <option value="text-embedding-ada-002">text-embedding-ada-002</option>
-                            </optgroup>
-                            <optgroup label="Google">
-                                <option value="text-embedding-004">text-embedding-004</option>
-                                <option value="embedding-001">embedding-001</option>
-                            </optgroup>
-                        </select>
-                        <span class="adb-bench-vec-note">
-                            <i class="fas fa-triangle-exclamation"></i>
-                            Timing includes real API embed latency. Generate embeddings first.
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Baked snapshots to test -->
-                <div class="adb-field">
-                    <label>Baked snapshots</label>
-                    <div id="adb-bench-bake-rows" class="adb-bench-bake-rows">
-                        <div class="adb-bench-bake-empty">
-                            <i class="fas fa-spinner fa-spin"></i> Loading bakes…
-                        </div>
-                    </div>
-                    <button id="adb-bench-add-bake" class="adb-btn adb-btn-ghost adb-btn-sm" style="margin-top:.45rem">
-                        <i class="fas fa-plus"></i> Add bake
-                    </button>
-                </div>
-
-                <button id="adb-bench-run-btn" class="adb-primary-btn" style="margin-top:.2rem">
-                    <i class="fas fa-play"></i> Run Benchmark
-                </button>
-
-                <div id="adb-bench-results" class="adb-bench-results hidden">
-                    <div class="adb-bench-meta" id="adb-bench-meta"></div>
-                    <div id="adb-bench-sections" class="adb-bench-sections"></div>
-                </div>
-            </div>
-
-        </div>
-    </div>
 
     <!-- ── Busy overlay ── -->
     <div id="adb-busy-overlay" class="adb-busy-overlay hidden">
