@@ -1757,6 +1757,77 @@
     font-size: 0.78rem;
 }
 
+/* ── Column picker ── */
+.adb-col-picker-wrap {
+    position: relative;
+}
+.adb-col-picker {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 50;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    padding: 0.5rem 0;
+    min-width: 160px;
+}
+.adb-col-picker-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    padding: 0.1rem 0.85rem 0.35rem;
+}
+.adb-col-picker-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 0.3rem 0;
+    opacity: 0.6;
+}
+.adb-col-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.22rem 0.85rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.1s;
+}
+.adb-col-picker-row:hover { background: rgba(255,255,255,0.04); }
+.adb-col-picker-row input { cursor: pointer; accent-color: #22d3ee; }
+.adb-col-picker-fixed { opacity: 0.45; cursor: default; }
+.adb-col-picker-fixed:hover { background: none; }
+
+/* new table column widths */
+.adb-col-date   { width: 84px; }
+.adb-col-source { width: 100px; }
+
+/* date + source cells */
+.adb-td-date {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    font-family: 'Fira Code', monospace;
+}
+.adb-td-source { font-size: 0.75rem; }
+.adb-source-badge {
+    display: inline-block;
+    background: rgba(34,211,238,0.08);
+    color: var(--text-muted);
+    border: 1px solid rgba(34,211,238,0.15);
+    border-radius: 4px;
+    padding: 0.1rem 0.35rem;
+    font-size: 0.68rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90px;
+}
+
 /* ── Busy overlay ── */
 .adb-busy-overlay {
     position: absolute;

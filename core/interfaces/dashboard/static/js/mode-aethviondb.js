@@ -24,8 +24,32 @@
     const _PAGE_SIZE         = 100;
     let _currentTab          = 'explorer'; // 'explorer' | 'graph'
     let _selectedIds         = new Set(); // entity IDs checked in the list view
-    let _sortCol             = null;      // null | 'type'|'name'|'tags'|'rel'|'sub'|'status'
+    let _sortCol             = null;      // null | 'type'|'name'|'tags'|'rel'|'sub'|'status'|'created'|'updated'|'source'
     let _sortDir             = 'asc';    // 'asc' | 'desc'
+    let _lastLoadedEntities  = [];       // last raw entity page — used by column picker re-render
+
+    // ── Explorer column picker ────────────────────────────────────────────────
+    const _COL_DEFS = [
+        { id: 'tags',    label: 'Tags',       defaultOn: true  },
+        { id: 'rel',     label: 'Relations',  defaultOn: true  },
+        { id: 'sub',     label: 'Sub-topics', defaultOn: true  },
+        { id: 'status',  label: 'Status',     defaultOn: true  },
+        { id: 'created', label: 'Created',    defaultOn: false },
+        { id: 'updated', label: 'Updated',    defaultOn: false },
+        { id: 'source',  label: 'Source',     defaultOn: false },
+    ];
+    const _COL_STORAGE_KEY = 'adb_explorer_cols';
+
+    function _getEnabledCols() {
+        try {
+            const saved = localStorage.getItem(_COL_STORAGE_KEY);
+            if (saved) return new Set(JSON.parse(saved));
+        } catch {}
+        return new Set(_COL_DEFS.filter(c => c.defaultOn).map(c => c.id));
+    }
+    function _saveEnabledCols(set) {
+        try { localStorage.setItem(_COL_STORAGE_KEY, JSON.stringify([...set])); } catch {}
+    }
 
     // ── Databases tab state ───────────────────────────────────────────────────
     let _dbmData    = [];            // raw list from last /databases fetch
@@ -826,6 +850,7 @@
                 return;
             }
 
+            _lastLoadedEntities = entities;
             const sorted = _sortEntities(entities);
             listEl.innerHTML = _renderTable(sorted);
             _wireTableCheckboxes(sorted);
@@ -872,7 +897,9 @@
         _el('adb-pag-next')?.addEventListener('click', () => _loadEntityList(_currentFilter, page + 1));
     }
 
-    function _entityRowHtml(e) {
+    function _entityRowHtml(e, cols) {
+        if (!cols) cols = _getEnabledCols();
+        const show      = id => cols.has(id);
         const isStub    = e.status === 'stub';
         const badgeCls  = isStub ? 'adb-badge-stub' : 'adb-badge-expanded';
         const badgeTxt  = isStub ? 'stub' : 'expanded';
@@ -881,6 +908,7 @@
         const relCount  = e.relations_count != null ? e.relations_count : (e.sections?.relations?.length ?? null);
         const stubCount = e.stubs_count     != null ? e.stubs_count     : (e.sections?.stubs?.length    ?? null);
         const checked   = _selectedIds.has(e.id);
+        const _fmtDate  = iso => iso ? iso.slice(0, 10) : '—';
 
         const tagHtml = tags.slice(0, 3).map(t => `<span class="adb-tag-sm">${t}</span>`).join('')
                       + (tags.length > 3 ? `<span class="adb-tag-sm">+${tags.length - 3}</span>` : '');
@@ -896,14 +924,13 @@
                 <div class="adb-td-name-text">${e.name || e.id}</div>
                 ${summary ? `<div class="adb-td-summary">${summary}</div>` : ''}
             </td>
-            <td class="adb-td">
-                <div class="adb-td-tags">${tagHtml}</div>
-            </td>
-            <td class="adb-td adb-td-num${relCount  ? ' has-data' : ''}">${relCount  ?? '—'}</td>
-            <td class="adb-td adb-td-num${stubCount ? ' has-data' : ''}">${stubCount ?? '—'}</td>
-            <td class="adb-td">
-                <span class="adb-badge ${badgeCls}">${badgeTxt}</span>
-            </td>
+            ${show('tags')    ? `<td class="adb-td"><div class="adb-td-tags">${tagHtml}</div></td>` : ''}
+            ${show('rel')     ? `<td class="adb-td adb-td-num${relCount  ? ' has-data' : ''}">${relCount  ?? '—'}</td>` : ''}
+            ${show('sub')     ? `<td class="adb-td adb-td-num${stubCount ? ' has-data' : ''}">${stubCount ?? '—'}</td>` : ''}
+            ${show('status')  ? `<td class="adb-td"><span class="adb-badge ${badgeCls}">${badgeTxt}</span></td>` : ''}
+            ${show('created') ? `<td class="adb-td adb-td-date">${_fmtDate(e.created)}</td>` : ''}
+            ${show('updated') ? `<td class="adb-td adb-td-date">${_fmtDate(e.updated)}</td>` : ''}
+            ${show('source')  ? `<td class="adb-td adb-td-source">${e.source ? `<span class="adb-source-badge">${e.source}</span>` : '—'}</td>` : ''}
         </tr>`;
     }
 
@@ -943,6 +970,21 @@
                     const av = a.status === 'stub' ? 0 : 1;
                     const bv = b.status === 'stub' ? 0 : 1;
                     return dir * (av - bv);
+                }
+                case 'created': {
+                    const av = a.created || '';
+                    const bv = b.created || '';
+                    return dir * av.localeCompare(bv);
+                }
+                case 'updated': {
+                    const av = a.updated || '';
+                    const bv = b.updated || '';
+                    return dir * av.localeCompare(bv);
+                }
+                case 'source': {
+                    const av = (a.source || '').toLowerCase();
+                    const bv = (b.source || '').toLowerCase();
+                    return dir * av.localeCompare(bv);
                 }
                 default: return 0;
             }
@@ -990,6 +1032,8 @@
     }
 
     function _renderTable(entities) {
+        const cols = _getEnabledCols();
+        const show = id => cols.has(id);
         const _si = col => {
             if (_sortCol !== col) return `<span class="adb-sort-icon adb-sort-inactive"><i class="fas fa-sort"></i></span>`;
             const icon = _sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down';
@@ -1001,10 +1045,13 @@
                 <col class="adb-col-check">
                 <col class="adb-col-type">
                 <col>
-                <col class="adb-col-tags">
-                <col class="adb-col-rel">
-                <col class="adb-col-stubs">
-                <col class="adb-col-status">
+                ${show('tags')    ? '<col class="adb-col-tags">'   : ''}
+                ${show('rel')     ? '<col class="adb-col-rel">'    : ''}
+                ${show('sub')     ? '<col class="adb-col-stubs">'  : ''}
+                ${show('status')  ? '<col class="adb-col-status">' : ''}
+                ${show('created') ? '<col class="adb-col-date">'   : ''}
+                ${show('updated') ? '<col class="adb-col-date">'   : ''}
+                ${show('source')  ? '<col class="adb-col-source">' : ''}
             </colgroup>
             <thead>
                 <tr>
@@ -1013,14 +1060,17 @@
                     </th>
                     <th class="adb-col-type ${_thCls('type')}" data-sort="type">Type${_si('type')}</th>
                     <th class="${_thCls('name')}" data-sort="name">Name / Summary${_si('name')}</th>
-                    <th class="adb-col-tags ${_thCls('tags')}" data-sort="tags">Tags${_si('tags')}</th>
-                    <th class="adb-col-rel ${_thCls('rel')}" data-sort="rel" title="Number of relations">Rel.${_si('rel')}</th>
-                    <th class="adb-col-stubs ${_thCls('sub')}" data-sort="sub" title="Number of sub-topics">Sub.${_si('sub')}</th>
-                    <th class="adb-col-status ${_thCls('status')}" data-sort="status">Status${_si('status')}</th>
+                    ${show('tags')    ? `<th class="adb-col-tags ${_thCls('tags')}" data-sort="tags">Tags${_si('tags')}</th>` : ''}
+                    ${show('rel')     ? `<th class="adb-col-rel ${_thCls('rel')}" data-sort="rel" title="Number of relations">Rel.${_si('rel')}</th>` : ''}
+                    ${show('sub')     ? `<th class="adb-col-stubs ${_thCls('sub')}" data-sort="sub" title="Number of sub-topics">Sub.${_si('sub')}</th>` : ''}
+                    ${show('status')  ? `<th class="adb-col-status ${_thCls('status')}" data-sort="status">Status${_si('status')}</th>` : ''}
+                    ${show('created') ? `<th class="adb-col-date ${_thCls('created')}" data-sort="created">Created${_si('created')}</th>` : ''}
+                    ${show('updated') ? `<th class="adb-col-date ${_thCls('updated')}" data-sort="updated">Updated${_si('updated')}</th>` : ''}
+                    ${show('source')  ? `<th class="adb-col-source ${_thCls('source')}" data-sort="source">Source${_si('source')}</th>` : ''}
                 </tr>
             </thead>
             <tbody>
-                ${entities.map(e => _entityRowHtml(e)).join('')}
+                ${entities.map(e => _entityRowHtml(e, cols)).join('')}
             </tbody>
         </table>`;
     }
@@ -6627,6 +6677,51 @@
                 _loadEntityList(btn.dataset.filter, 0);
             });
         });
+
+        // ── Column picker ──────────────────────────────────────────────────────
+        (function _initColPicker() {
+            const btn    = _el('adb-col-picker-btn');
+            const picker = _el('adb-col-picker');
+            if (!btn || !picker) return;
+
+            // Reflect saved state onto checkboxes
+            const enabled = _getEnabledCols();
+            picker.querySelectorAll('input[data-col]').forEach(cb => {
+                cb.checked = enabled.has(cb.dataset.col);
+            });
+
+            // Toggle open/close
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                picker.classList.toggle('hidden');
+            });
+
+            // Close when clicking outside
+            document.addEventListener('click', e => {
+                if (!picker.contains(e.target) && e.target !== btn) {
+                    picker.classList.add('hidden');
+                }
+            });
+
+            // Re-render table on any checkbox change
+            picker.querySelectorAll('input[data-col]').forEach(cb => {
+                cb.addEventListener('change', () => {
+                    const cols = new Set();
+                    picker.querySelectorAll('input[data-col]').forEach(c => {
+                        if (c.checked) cols.add(c.dataset.col);
+                    });
+                    _saveEnabledCols(cols);
+                    // Re-render current list with new column set
+                    const listEl = _el('adb-entity-list');
+                    if (listEl && _lastLoadedEntities?.length) {
+                        const sorted = _sortEntities(_lastLoadedEntities);
+                        listEl.innerHTML = _renderTable(sorted);
+                        _wireTableSort(_lastLoadedEntities, listEl);
+                        _wireTableCheckboxes(sorted);
+                    }
+                });
+            });
+        })();
 
         // Entity detail — back button restores the page the user was on
         _el('adb-detail-back')?.addEventListener('click', () => {

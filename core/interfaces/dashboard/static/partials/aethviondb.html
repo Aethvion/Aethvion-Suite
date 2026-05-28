@@ -614,6 +614,30 @@
                 <button id="adb-new-entity-btn" class="adb-btn adb-btn-accent adb-btn-sm adb-new-entity-filter-btn">
                     <i class="fas fa-plus"></i> New Entity
                 </button>
+                <!-- Column picker -->
+                <div class="adb-col-picker-wrap">
+                    <button id="adb-col-picker-btn" class="adb-btn adb-btn-ghost adb-btn-sm" title="Configure columns">
+                        <i class="fas fa-table-columns"></i>
+                    </button>
+                    <div id="adb-col-picker" class="adb-col-picker hidden">
+                        <div class="adb-col-picker-title">Columns</div>
+                        <label class="adb-col-picker-row adb-col-picker-fixed">
+                            <input type="checkbox" checked disabled> Type
+                        </label>
+                        <label class="adb-col-picker-row adb-col-picker-fixed">
+                            <input type="checkbox" checked disabled> Name / Summary
+                        </label>
+                        <div class="adb-col-picker-sep"></div>
+                        <label class="adb-col-picker-row"><input type="checkbox" data-col="tags"    checked> Tags</label>
+                        <label class="adb-col-picker-row"><input type="checkbox" data-col="rel"     checked> Relations</label>
+                        <label class="adb-col-picker-row"><input type="checkbox" data-col="sub"     checked> Sub-topics</label>
+                        <label class="adb-col-picker-row"><input type="checkbox" data-col="status"  checked> Status</label>
+                        <div class="adb-col-picker-sep"></div>
+                        <label class="adb-col-picker-row"><input type="checkbox" data-col="created"> Created</label>
+                        <label class="adb-col-picker-row"><input type="checkbox" data-col="updated"> Updated</label>
+                        <label class="adb-col-picker-row"><input type="checkbox" data-col="source"> Source</label>
+                    </div>
+                </div>
             </div>
         </div>
 
