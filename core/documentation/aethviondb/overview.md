@@ -1,6 +1,6 @@
 # AethvionDB — Structured Knowledge Database
 
-**Last Updated:** 2026-05-26
+**Last Updated:** 2026-05-29
 
 AethvionDB is Aethvion Suite's local knowledge database. It stores information as structured entities — people, places, events, concepts, organizations, and more — in a format designed for AI consumption, semantic search, and relationship mapping. You can build knowledge bases about anything: a fictional universe, historical research, a technical domain, personal notes, or a project knowledge hub.
 
@@ -77,9 +77,25 @@ Switch between databases using the **database selector** in the top-right of the
 
 ## The Dashboard Interface
 
-### Entity List
+The AethvionDB header has five tabs: **Explorer**, **Distiller**, **Graph**, **Import**, and **Tools**. The **Tools** sidebar (inside the Tools tab) contains all power-user utilities: Vector Embedding, Semantic Search, Bake, Test, and Benchmark.
+
+### Entity List (Explorer)
 
 The left panel lists all entities in the current database. Click one to open it in the editor. Use the search box to filter by name.
+
+**Column customizer:** Click the **Columns** button in the filter row to choose which columns are shown. Settings persist across sessions via `localStorage`.
+
+| Column | Default | Description |
+|---|---|---|
+| Tags | ✅ On | Entity tags from `core.tags` |
+| Relations | ✅ On | Number of linked entities |
+| Sub-topics | ✅ On | Count of stub entries |
+| Status | ✅ On | `active` / `stub` / `deleted` |
+| Created | Off | Creation timestamp |
+| Updated | Off | Last-modified timestamp |
+| Source | Off | How the entity was created (`distiller`, `manual`, etc.) |
+
+Click any column header to sort by that column.
 
 ### Entity Editor
 
@@ -95,6 +111,15 @@ Every save increments the entity's `version` number and updates `updated`.
 ### Graph View
 
 Click **Graph** in the toolbar to switch to the relationship graph. Entities appear as nodes; relations appear as edges. Click a node to focus it and see its connections. The graph is interactive — drag, zoom, and explore the knowledge web.
+
+**Graph controls (toolbar):**
+
+| Control | What it does |
+|---|---|
+| Node limit slider (50–2000) | Cap how many nodes are rendered at once — drag left for speed, right for completeness |
+| No stubs checkbox | Hide stub-status entities from the graph — shows only fully populated entities |
+
+**Entity info card:** Clicking a node opens a side panel (340 px wide) with the full entity summary, type, status, tags, and relation count. The card body scrolls so long summaries are fully readable.
 
 ### Status
 
@@ -154,19 +179,26 @@ You can also expand individual stubs from the entity editor.
 
 ### Vectorizing the Database
 
-Click **Vectorize** to generate embedding vectors for all entities. Vectors are stored directly inside each entity's `sections.vectors` section.
+The tool was renamed from "Vector Search" to **Vector Embedding** to more accurately reflect what it does — it generates and stores vectors; the search happens in the Semantic Search tool.
+
+Click **Vector Embedding** (inside the Tools section) to generate embedding vectors for all entities. Vectors are stored directly inside each entity's `sections.vectors` section.
 
 **Supported embedding models:**
 
 | Model | Provider | Dimensions | Notes |
 |---|---|---|---|
-| `text-embedding-3-small` | OpenAI | 1536 | Fast, efficient — recommended |
+| `text-embedding-3-small` | OpenAI | 1536 | Fast, efficient |
 | `text-embedding-3-large` | OpenAI | 3072 | Highest quality |
 | `text-embedding-ada-002` | OpenAI | 1536 | Legacy |
-| `text-embedding-004` | Google | 768 | Gemini embedding |
-| `embedding-001` | Google | 768 | Gemini legacy |
+| `text-embedding-004` | Google | 768 | Gemini embedding — recommended |
+| `text-multilingual-embedding-002` | Google | 768 | Multilingual |
+| `all-MiniLM-L6-v2` | **Local** | 384 | Fastest local model — no API key needed |
+| `all-MiniLM-L12-v2` | **Local** | 384 | Slightly higher quality |
+| `all-mpnet-base-v2` | **Local** | 768 | Best local quality |
+| `BAAI/bge-small-en-v1.5` | **Local** | 384 | Compact, high performance |
+| `BAAI/bge-base-en-v1.5` | **Local** | 768 | Balanced local model |
 
-Requires an OpenAI or Google API key.
+Cloud models require an OpenAI or Google API key. **Local models** run entirely on your machine with no API key required — install them with `pip install sentence-transformers` (or `pip install aethvion-suite[local-llm]`).
 
 ### Semantic Search
 

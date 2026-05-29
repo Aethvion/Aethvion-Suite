@@ -151,6 +151,15 @@ Machine-readable specifications for AI agents operating within the system.
   - Dashboard tab registry updated (40+ tabs)
   - version-path.md added as a permanent version update checklist
   - All date stamps and version numbers updated to v16
+- **2026-05-29:** Production hardening pass
+  - Version reference in README changed to auto-versioning system
+  - AethvionDB: local embedding models (sentence-transformers), column customizer, graph improvements, Bake/Test moved into Tools tab, Vector Search renamed to Vector Embedding
+  - Security: CORS restricted to localhost, External API `require_auth` defaults to `True`
+  - Packaging: `winrt-*` moved to `[windows]` extras group (Linux/macOS installs no longer break)
+  - Added `COMMERCIAL_LICENSE.md` (dual-license structure documented)
+  - Docker image + `.dockerignore` added for headless deployments
+  - Automated test suite: 48 pytest tests across AethvionDB, companion registry, security scanner, and vectorizer provider routing
+  - `automate/compiler.py`: proper logging, honest docstring for template-string architecture
 
 ### Planned Enhancements
 - [ ] Video walkthroughs for Getting Started
@@ -183,7 +192,7 @@ Machine-readable specifications for AI agents operating within the system.
 - ✅ Routing rules and decision matrices
 - ✅ Evolution pipeline
 - ✅ Quality metrics
-- ⚠️ Automated testing guides (planned)
+- ✅ Automated test suite (pytest, 48 tests in `tests/`)
 
 ### Code Documentation
 - ✅ Inline docstrings in core modules
@@ -278,7 +287,7 @@ This documentation follows a **dual-tier approach**:
 
 ---
 
-**Last Updated:** 2026-05-24
+**Last Updated:** 2026-05-29
 
 **Maintained By:** Agentic Sprint Cycles + Human Contributors
 

@@ -26,7 +26,7 @@ Run intelligent agents on your own code and files, chat with persistent AI compa
 
 Whether you're a developer, creator, researcher, or just want a powerful personal AI setup, Aethvion Suite gives you a unified workspace that adapts to how *you* want to use it.
 
-**Current version: v16**
+**Version is auto-derived from git at runtime** (format: `YYYY.MM.build (sha)` — see `core/version.py`)
 
 ### ✨ Key Highlights
 
