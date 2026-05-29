@@ -1,0 +1,37 @@
+# ── Version control ───────────────────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+
+# ── Python build artefacts ────────────────────────────────────────────────────
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── User data & secrets (mount as volumes at runtime) ────────────────────────
+data/
+.env
+*.env
+
+# ── Logs & output ─────────────────────────────────────────────────────────────
+logs/
+outputfiles/
+
+# ── Dev tooling ───────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+# ── OS artefacts ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

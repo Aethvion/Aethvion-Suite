@@ -1,6 +1,11 @@
 """
-Misaka Cipher - Agent Factory
-Core spawning engine for creating transient worker agents
+Aethvion Suite - Agent Factory
+Core spawning engine for creating transient worker agents.
+
+NOTE: This module is actively used by the CLI, server, and orchestrator.
+It is not deprecated — the name "factory" refers to the dynamic agent-spawning
+pattern, not a legacy abstraction. Do not remove without updating all call sites
+in core/main.py, core/cli.py, and core/orchestration/.
 """
 
 import yaml

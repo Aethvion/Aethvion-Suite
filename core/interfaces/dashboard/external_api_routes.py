@@ -38,7 +38,9 @@ mgmt_router = APIRouter(prefix="/api/external-api", tags=["external-api-mgmt"])
 # ── Config & key helpers ──────────────────────────────────────────────────────
 
 def _load_config() -> dict:
-    defaults = {"enabled": True, "require_auth": False}
+    # require_auth defaults to True — new installs are secure out of the box.
+    # Users must explicitly disable auth via the UI/config if they want open access.
+    defaults = {"enabled": True, "require_auth": True}
     if not CONFIG_PATH.exists():
         return defaults
     try:

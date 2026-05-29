@@ -1,6 +1,6 @@
 # Getting Started with Aethvion Suite
 
-**Note: This documentation was updated on 2026-05-24 to reflect the current Aethvion Suite (v16) state.**
+**Note: This documentation was updated on 2026-05-29 to reflect the current Aethvion Suite state.**
 
 ---
 
@@ -50,8 +50,27 @@ source .venv/bin/activate  # Linux/macOS
 .venv\Scripts\activate     # Windows
 
 # Install dependencies
-pip install -e ".[memory]"
+pip install -e ".[memory]"          # Linux/macOS
+pip install -e ".[memory,windows]"  # Windows (adds winrt media control)
 ```
+
+### Step 2 (Alternative): Docker — Headless Server Mode
+
+A minimal Docker image is included for server/cloud deployments (no GUI required):
+
+```bash
+# Build
+docker build -t aethvion-suite .
+
+# Run (dashboard at http://localhost:8080)
+docker run -p 8080:8000 \
+  -e GOOGLE_AI_API_KEY=your_key \
+  -e OPENAI_API_KEY=your_key \
+  -v $(pwd)/data:/app/data \
+  aethvion-suite
+```
+
+> **Note:** The Docker image excludes the Windows launcher, CustomTkinter GUI, and `winrt-*` integrations. All dashboard and API features work normally.
 
 ### Step 3: Configure API Keys
 
@@ -346,13 +365,13 @@ Check the **Usage** tab regularly. Smart routing (Flash for simple tasks, Pro fo
 
 ---
 
-## Current State (v16)
+## Current State
 
 - ✅ Companion system (Misaka Cipher, Axiom, Lyra) with persistent memory and dedicated tab
 - ✅ Bridges system (6 active bridges with live context injection)
 - ✅ AetherCore AI gateway with failover and Intelligence Firewall
 - ✅ **Automate** — node-based visual workflow builder with 40+ nodes
-- ✅ **AethvionDB** — knowledge database with graph view, semantic search, baked snapshots, and API
+- ✅ **AethvionDB** — knowledge database with graph view, semantic search, local embedding models, column customizer, baked snapshots, and API
 - ✅ **WorldSim** — world simulation environment
 - ✅ Code IDE (AI copilot, streaming execution, autosave, revert, file search)
 - ✅ Agent Corp for multi-agent coordination
@@ -367,6 +386,8 @@ Check the **Usage** tab regularly. Smart routing (Flash for simple tasks, Pro fo
 - ✅ Companion Creator for custom companions
 - ✅ Games: Code Gold, Debug This (added alongside existing games)
 - ✅ Native .exe launcher (C# WebView2 wrapper, no runtime required)
+- ✅ Docker image for headless/server deployments
+- ✅ Automated test suite (pytest, 48 tests)
 
 **Near-term roadmap:**
 - Ollama integration for local model management UI
@@ -381,7 +402,7 @@ Check the **Usage** tab regularly. Smart routing (Flash for simple tasks, Pro fo
 python -m core.main
 ```
 
-**Last Updated:** 2026-05-24
+**Last Updated:** 2026-05-29
 
 ---
 

@@ -249,7 +249,9 @@ class AethvionInstaller(ctk.CTk):
         self.log("[System] Scanning library requirements...")
         pip_exe = str(self.project_root/".venv"/"Scripts"/"pip.exe")
         
-        proc = subprocess.Popen([pip_exe, "install", "-e", ".[memory]", "--no-color", "--progress-bar", "off"], cwd=str(self.project_root), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, creationflags=subprocess.CREATE_NO_WINDOW)
+        # On Windows, also install the [windows] extras group (winrt media control).
+        extras = ".[memory,windows]" if sys.platform == "win32" else ".[memory]"
+        proc = subprocess.Popen([pip_exe, "install", "-e", extras, "--no-color", "--progress-bar", "off"], cwd=str(self.project_root), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, creationflags=subprocess.CREATE_NO_WINDOW)
         
         discovered_pkgs = []
         installed_count = 0

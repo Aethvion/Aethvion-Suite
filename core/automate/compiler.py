@@ -11,11 +11,25 @@ Bundle layout:
   start.bat         — Windows launcher
   start.sh          — Unix launcher
   packages/         — pre-downloaded wheels (if include_packages=True)
+
+Implementation note — `except Exception` patterns
+───────────────────────────────────────────────────
+The majority of `except Exception` clauses in this file live inside Python
+*template strings* (the `_HANDLER_CODE` dict and the run.py generation
+template).  These strings are *data* — they are written verbatim into the
+generated `run.py` of each compiled bundle, not executed here.  They represent
+appropriate workflow-runtime error handling (return an error dict, log a
+warning, etc.) and are intentional.
+
+The handful of `except` blocks in the *compiler's own code* (outside the
+template strings) are either proper fallbacks with explicit return values or
+are followed by a `logger.warning()` / `return False, str(exc)` call.
 """
 from __future__ import annotations
 
 import io
 import json
+import logging
 import os
 import re
 import subprocess
@@ -25,6 +39,8 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # ── AethvionDB registry helper ────────────────────────────────────────────────
 # Reads _db_registry.json directly so compiler.py stays self-contained with no
@@ -49,8 +65,8 @@ def _resolve_db_root(db_name: str) -> Path:
             p = Path(entry["path"])
             if p.exists():
                 return p
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Could not read AethvionDB registry (%s); using default path", exc)
     return _DEFAULT_DB_ROOT / db_name
 
 

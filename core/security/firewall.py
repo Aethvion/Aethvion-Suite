@@ -20,8 +20,10 @@ class IntelligenceFirewall:
     Protects external API standing by routing sensitive/restricted content
     to local inference nodes (Ollama/vLLM).
     
-    Current Status: Local inference is PLACEHOLDER (to be integrated later).
-    Flagged content currently routes to external with warning.
+    Current Status: Local inference routing is not yet implemented.
+    Flagged content is currently passed through to the external provider with a
+    warning log entry — it is NOT silently blocked or rerouted to a local model.
+    Full local-routing integration (Ollama/vLLM) is planned for a future release.
     """
     
     def __init__(self, config_path: Optional[str] = None):
