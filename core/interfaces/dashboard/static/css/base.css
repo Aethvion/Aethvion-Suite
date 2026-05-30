@@ -683,7 +683,6 @@ select optgroup {
     color: var(--accent);
     font-size: 0.85rem;
     opacity: 0.85;
-    animation: pulse 2s infinite;
 }
 
 .splash-tip-text {
