@@ -148,14 +148,21 @@ NODE_DEPS: dict[str, dict] = {
 
 _BASE_REQS = ["fastapi", "uvicorn[standard]", "python-dotenv"]
 
-# ── Handler code blocks ───────────────────────────────────────────────────────
-# One .py file per node type in core/config/automate/handlers/.
-# Each file contains a single Python function included verbatim in run.py.
-_HANDLERS_DIR = Path(__file__).parent.parent / "config" / "automate" / "handlers"
-_HANDLER_CODE: dict[str, str] = {
-    p.stem: p.read_text(encoding="utf-8")
-    for p in sorted(_HANDLERS_DIR.glob("*.py"))
-}
+# ── Handler code blocks (lazy) ────────────────────────────────────────────────
+# Loaded on first compile — not at import time — so startup pays no cost if
+# the user never compiles a workflow.
+_HANDLERS_DIR       = Path(__file__).parent.parent / "config" / "automate" / "handlers"
+_handler_code_cache: dict[str, str] | None = None
+
+
+def _get_handler_code() -> dict[str, str]:
+    global _handler_code_cache
+    if _handler_code_cache is None:
+        _handler_code_cache = {
+            p.stem: p.read_text(encoding="utf-8")
+            for p in sorted(_HANDLERS_DIR.glob("*.py"))
+        }
+    return _handler_code_cache
 
 
 # ── Generator functions ───────────────────────────────────────────────────────
@@ -418,10 +425,17 @@ def _generate_start_sh(workflow_name: str, has_packages: bool) -> str:
     )
 
 
-# ── Web UI HTML ────────────────────────────────────────────────────────────────────────────
-_HTML_TEMPLATE = (
-    Path(__file__).parent.parent / "config" / "automate" / "standalone_ui.html"
-).read_text(encoding="utf-8")
+# ── Web UI HTML (lazy) ────────────────────────────────────────────────────────
+_html_template_cache: str | None = None
+
+
+def _get_html_template() -> str:
+    global _html_template_cache
+    if _html_template_cache is None:
+        _html_template_cache = (
+            Path(__file__).parent.parent / "config" / "automate" / "standalone_ui.html"
+        ).read_text(encoding="utf-8")
+    return _html_template_cache
 
 
 # ── run.py generator ──────────────────────────────────────────────────────────
@@ -465,14 +479,14 @@ def _h_ai_model(node, inputs, ctx):
         handler_blocks.append(ai_model_shared)
 
     for ntype in sorted(used):
-        code = _HANDLER_CODE.get(ntype)
+        code = _get_handler_code().get(ntype)
         if code:
             handler_blocks.append(code)
 
     # Build registry — function name derived from node type by convention
     registry_lines = []
     for ntype in sorted(used):
-        if ntype in _HANDLER_CODE:
+        if ntype in _get_handler_code():
             fn = "_h_" + ntype.replace(".", "_")
             registry_lines.append(f'    {repr(ntype)}: {fn},')
 
@@ -533,7 +547,7 @@ def _extract_json_block(text: str) -> dict:
     public_vars_json = json.dumps(public_vars, ensure_ascii=False)
     triggers         = analysis.get("triggers", [])
     triggers_json    = json.dumps(triggers, ensure_ascii=False)
-    html_content     = _HTML_TEMPLATE.replace("%%NAME%%", wf_name)
+    html_content     = _get_html_template().replace("%%NAME%%", wf_name)
 
     src = f'''\
 #!/usr/bin/env python3

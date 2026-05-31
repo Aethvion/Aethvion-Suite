@@ -39,12 +39,21 @@ def _wf_path(wf_id: str) -> Path:
     return _DATA_DIR / f"{wf_id}.json"
 
 
-# ── Node type registry ────────────────────────────────────────────
-_NODES_DIR  = Path(__file__).parent.parent / "config" / "automate" / "nodes"
-_NODE_TYPES: list[dict] = [
-    json.loads(p.read_text(encoding="utf-8"))
-    for p in sorted(_NODES_DIR.glob("*.json"))
-]
+# ── Node type registry (lazy) ─────────────────────────────────────
+# Loaded on first request — not at import time — so startup pays no
+# cost if the user never opens the Automate page.
+_NODES_DIR         = Path(__file__).parent.parent / "config" / "automate" / "nodes"
+_node_types_cache: list[dict] | None = None
+
+
+def _get_node_types() -> list[dict]:
+    global _node_types_cache
+    if _node_types_cache is None:
+        _node_types_cache = [
+            json.loads(p.read_text(encoding="utf-8"))
+            for p in sorted(_NODES_DIR.glob("*.json"))
+        ]
+    return _node_types_cache
 
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
@@ -72,7 +81,7 @@ class NodeTestRequest(BaseModel):
 @router.get("/node-types")
 async def get_node_types():
     """Return all available node type definitions."""
-    return {"node_types": _NODE_TYPES}
+    return {"node_types": _get_node_types()}
 
 
 @router.get("/models")

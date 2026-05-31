@@ -26,6 +26,11 @@ import psutil
 import urllib.request
 import urllib.error
 
+# GPU backend — initialised once per test run via _init_gpu_backend()
+_gpu_backend: str = "none"   # "pynvml" | "nvidia-smi" | "none"
+_nvml_handle = None          # pynvml device handle
+_nvidia_smi_path: Optional[str] = None  # cached path so shutil.which runs once
+
 # Add project root to sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -86,29 +91,75 @@ def get_git_info() -> Dict[str, str]:
         "commit_msg": commit_msg
     }
 
-def get_gpu_usage() -> Dict[str, Any]:
-    """Helper to fetch GPU and VRAM usage on NVIDIA cards."""
-    import shutil
-    if not shutil.which("nvidia-smi"):
-        return {"status": "N/A", "utilization": 0, "vram_used_mb": 0, "vram_total_mb": 0}
+def _init_gpu_backend() -> None:
+    """Detect the best GPU query method once per test run.
+
+    Tries pynvml (in-process, zero subprocess overhead) first.
+    Falls back to nvidia-smi with the path cached so shutil.which
+    is only called once instead of 60 times during profiling.
+    """
+    global _gpu_backend, _nvml_handle, _nvidia_smi_path
     try:
-        output = subprocess.check_output(
-            ["nvidia-smi", "--query-gpu=utilization.gpu,memory.used,memory.total", "--format=csv,noheader,nounits"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-            creationflags=0x08000000 # CREATE_NO_WINDOW
-        )
-        parts = [p.strip() for p in output.split(",")]
-        if len(parts) >= 3:
-            return {
-                "status": "Available",
-                "utilization": int(parts[0]),
-                "vram_used_mb": int(parts[1]),
-                "vram_total_mb": int(parts[2])
-            }
+        import pynvml
+        pynvml.nvmlInit()
+        _nvml_handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+        _gpu_backend = "pynvml"
+        return
     except Exception:
         pass
-    return {"status": "Error reading GPU", "utilization": 0, "vram_used_mb": 0, "vram_total_mb": 0}
+
+    import shutil
+    path = shutil.which("nvidia-smi")
+    if path:
+        _nvidia_smi_path = path
+        _gpu_backend = "nvidia-smi"
+    else:
+        _gpu_backend = "none"
+
+
+def get_gpu_usage() -> Dict[str, Any]:
+    """Query GPU utilisation and VRAM using whichever backend was initialised."""
+    _empty = {"status": "N/A", "utilization": 0, "vram_used_mb": 0, "vram_total_mb": 0}
+
+    if _gpu_backend == "pynvml":
+        try:
+            import pynvml
+            util = pynvml.nvmlDeviceGetUtilizationRates(_nvml_handle)
+            mem  = pynvml.nvmlDeviceGetMemoryInfo(_nvml_handle)
+            return {
+                "status":       "Available",
+                "utilization":  util.gpu,
+                "vram_used_mb": mem.used  // (1024 * 1024),
+                "vram_total_mb": mem.total // (1024 * 1024),
+            }
+        except Exception:
+            return _empty
+
+    if _gpu_backend == "nvidia-smi":
+        try:
+            kwargs: Dict[str, Any] = {
+                "text": True, "stderr": subprocess.DEVNULL,
+            }
+            if os.name == "nt":
+                kwargs["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
+            output = subprocess.check_output(
+                [_nvidia_smi_path,
+                 "--query-gpu=utilization.gpu,memory.used,memory.total",
+                 "--format=csv,noheader,nounits"],
+                **kwargs,
+            )
+            parts = [p.strip() for p in output.split(",")]
+            if len(parts) >= 3:
+                return {
+                    "status":        "Available",
+                    "utilization":   int(parts[0]),
+                    "vram_used_mb":  int(parts[1]),
+                    "vram_total_mb": int(parts[2]),
+                }
+        except Exception:
+            pass
+
+    return _empty
 
 def get_process_resource_usage(pid: int) -> Dict[str, Any]:
     """Recursively calculates CPU and Memory footprint for a parent PID and children."""
@@ -409,6 +460,9 @@ def run_test_orchestrator(run_id: str, python_exe: str):
     test_env["PYTHONPATH"] = str(PROJECT_ROOT)
     test_env["PYTHONUNBUFFERED"] = "1"
 
+    # Initialise GPU backend once — pynvml if available, nvidia-smi otherwise
+    _init_gpu_backend()
+
     # Capture absolute baseline (Pre-Test System state while Aethvion is Offline)
     pre_test_sys_cpu = psutil.cpu_percent(interval=0.1)
     pre_test_sys_mem = psutil.virtual_memory().percent
@@ -500,101 +554,100 @@ def run_test_orchestrator(run_id: str, python_exe: str):
         test_runs[run_id]["phase"] = "Performance Profiling"
 
     timeseries_data = []
-    
-    # Task state mapping
-    task_submitted = False
-    task_id = None
-    task_success = False
-    task_start_time = 0.0
-    task_duration = 0.0
-    ai_response = ""
-    task_error = None
-    temp_thread_id = f"perf_test_thread_{uuid.uuid4().hex[:6]}"
+    health_latencies: List[float] = []   # sampled during the window, not after
 
-    # 60 seconds loop
+    # Task state
+    task_submitted  = False
+    task_id         = None
+    task_success    = False
+    task_start_time = 0.0
+    task_duration   = 0.0
+    ai_response     = ""
+    task_error      = None
+    temp_thread_id  = f"perf_test_thread_{uuid.uuid4().hex[:6]}"
+
+    # ── 60-second profiling loop ───────────────────────────────────────────────
     for sec in range(1, 61):
         if suite_proc.poll() is not None:
             add_log(run_id, "CRITICAL: Suite process died during profiling run.")
             break
 
-        # Capture metrics
+        # Capture system snapshot at the top of each second
         proc_usage = get_process_resource_usage(suite_proc.pid)
-        sys_usage = {
+        sys_usage  = {
             "system_cpu": psutil.cpu_percent(),
-            "system_mem": psutil.virtual_memory().percent
+            "system_mem": psutil.virtual_memory().percent,
         }
         gpu_usage = get_gpu_usage()
-        
+
         snapshot = {
-            "second": sec,
+            "second":      sec,
             "process_cpu": proc_usage["cpu_percent"],
             "process_mem": proc_usage["memory_mb"],
-            "system_cpu": sys_usage["system_cpu"],
-            "system_mem": sys_usage["system_mem"],
-            "gpu_util": gpu_usage["utilization"] if gpu_usage["status"] == "Available" else 0,
-            "gpu_vram": gpu_usage["vram_used_mb"] if gpu_usage["status"] == "Available" else 0
+            "system_cpu":  sys_usage["system_cpu"],
+            "system_mem":  sys_usage["system_mem"],
+            "gpu_util":    gpu_usage["utilization"]  if gpu_usage["status"] == "Available" else 0,
+            "gpu_vram":    gpu_usage["vram_used_mb"] if gpu_usage["status"] == "Available" else 0,
         }
         timeseries_data.append(snapshot)
 
-        # Print log message every 10 seconds
         if sec % 10 == 0:
-            add_log(run_id, f"Profiling: Captured telemetry snapshot at second {sec}/60. (Proc Memory: {proc_usage['memory_mb']}MB, Sys CPU: {sys_usage['system_cpu']}%)")
+            add_log(run_id, f"Profiling: second {sec}/60 — RAM {proc_usage['memory_mb']}MB, Sys CPU {sys_usage['system_cpu']}%")
 
-        # Inject load: trigger LLM Task Routing at second 15
+        # Sample health latency during the window at seconds 10,20,30,40,50
+        # (measured under real load conditions, not after shutdown)
+        if sec in (10, 20, 30, 40, 50):
+            h_res = make_http_request(f"{test_url}/health", timeout=5.0)
+            if h_res["success"]:
+                health_latencies.append(h_res["latency_ms"])
+
+        # Submit load task at second 15
         if sec == 15 and not task_submitted:
-            add_log(run_id, "Injecting Load: Submitting test prompt request to agent task queue...")
-            task_prompt = "Respond with exactly the single word: ACKNOWLEDGED"
+            add_log(run_id, "Injecting Load: Submitting test prompt to agent task queue...")
             submit_res = make_http_request(
-                f"{test_url}/api/tasks/submit", 
-                method="POST", 
+                f"{test_url}/api/tasks/submit",
+                method="POST",
                 data={
-                    "prompt": task_prompt,
+                    "prompt":    "Respond with exactly the single word: ACKNOWLEDGED",
                     "thread_id": temp_thread_id,
-                    "mode": "chat_only"
-                }
+                    "mode":      "chat_only",
+                },
             )
             if submit_res["success"]:
-                task_id = submit_res["body"].get("task_id")
-                task_submitted = True
+                task_id         = submit_res["body"].get("task_id")
+                task_submitted  = True
                 task_start_time = time.time()
-                add_log(run_id, f"Load Task submitted successfully (Task ID: {task_id}). Monitoring queue...")
+                add_log(run_id, f"Task submitted (ID: {task_id}). Polling at 200ms resolution...")
             else:
-                add_log(run_id, f"Load Injection Error: Failed to submit task: {submit_res['body']}")
+                add_log(run_id, f"Load Injection Error: {submit_res['body']}")
                 task_error = str(submit_res["body"])
 
-        # Poll task status if active
-        if task_submitted and not task_success and not task_error:
-            status_res = make_http_request(f"{test_url}/api/tasks/status/{task_id}")
-            if status_res["success"]:
-                task_info = status_res["body"]
-                status_str = task_info.get("status", "queued")
-                if status_str in ["completed", "done", "success"]:
-                    task_success = True
-                    task_duration = time.time() - task_start_time
-                    result_dict = task_info.get("result", {})
-                    ai_response = result_dict.get("response", "")
-                    add_log(run_id, f"Load Task finished in {task_duration:.2f}s with response: '{ai_response.strip()}'")
-                elif status_str in ["failed", "cancelled", "error"]:
-                    task_error = f"Orchestrator error status: {status_str}"
-                    add_log(run_id, f"Load Task failed during execution: {task_info.get('error')}")
-            else:
-                add_log(run_id, f"Warning: Load Task polling failed: {status_res['body']}")
+        # ── Fill the remaining second with 200ms poll ticks ────────────────────
+        # This catches task completion within 200ms instead of up to 1s.
+        for _tick in range(5):
+            if task_submitted and not task_success and not task_error:
+                status_res = make_http_request(
+                    f"{test_url}/api/tasks/status/{task_id}", timeout=2.0
+                )
+                if status_res["success"]:
+                    task_info  = status_res["body"]
+                    status_str = task_info.get("status", "queued")
+                    if status_str in ("completed", "done", "success"):
+                        task_success  = True
+                        task_duration = time.time() - task_start_time
+                        ai_response   = (task_info.get("result") or {}).get("response", "")
+                        add_log(run_id, f"Task done in {task_duration:.2f}s — '{ai_response.strip()}'")
+                    elif status_str in ("failed", "cancelled", "error"):
+                        task_error = f"Orchestrator status: {status_str}"
+                        add_log(run_id, f"Task failed: {task_info.get('error')}")
+            time.sleep(0.2)
 
-        time.sleep(1.0)
-
-    # Clean up thread if it was created
+    # Clean up the temporary thread
     if task_submitted:
         make_http_request(f"{test_url}/api/tasks/thread/{temp_thread_id}", method="DELETE")
 
-    # API Routing Health Check Latency Check
-    add_log(run_id, "Checking server response latency...")
-    health_latencies = []
-    for _ in range(5):
-        res = make_http_request(f"{test_url}/health")
-        if res["success"]:
-            health_latencies.append(res["latency_ms"])
-        time.sleep(0.1)
-    avg_health_latency = sum(health_latencies) / len(health_latencies) if health_latencies else 0.0
+    avg_health_latency = round(sum(health_latencies) / len(health_latencies), 2) if health_latencies else 0.0
+    add_log(run_id, f"Avg health latency (sampled during load): {avg_health_latency}ms over {len(health_latencies)} samples")
 
     # == Phase 3: Graceful Shutdown & Cleanup ==
     add_log(run_id, "== Phase 3: Graceful Shutdown & Cleanup ==")
