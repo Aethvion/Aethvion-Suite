@@ -92,18 +92,6 @@ APP_REGISTRY: dict[str, dict] = {
         "title":    "Nexus Dashboard",
         "required": True,
     },
-    "vtuber": {
-        "script":   "apps/vtuber/vtuber_server.py",
-        "port":     8081,
-        "title":    "VTuber",
-        "required": False,
-    },
-    "tracking": {
-        "script":   "apps/tracking/tracking_server.py",
-        "port":     8082,
-        "title":    "Tracking",
-        "required": False,
-    },
     "code": {
         "script":   "apps/code/code_server.py",
         "port":     8083,
@@ -241,7 +229,7 @@ def _is_running_aethvion(proc: psutil.Process) -> bool:
             return False
             
         # Check for core modules or specific app servers
-        targets = ["core.main", "vtuber_server.py", "tracking_server.py", "code_server.py",
+        targets = ["core.main", "code_server.py",
                    "hardware_server.py", "audio_server.py", "photo_server.py",
                    "finance_server.py", "driveinfo_server.py", "apps/overlay/main.py"]
         return any(t in cmdline_str for t in targets)

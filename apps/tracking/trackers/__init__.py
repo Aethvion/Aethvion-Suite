@@ -1,3 +1,0 @@
-"""
-Synapse Trackers Package
-"""

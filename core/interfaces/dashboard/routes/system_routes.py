@@ -228,8 +228,6 @@ async def run_module_script(req_data: dict, request: Request):
     if not module_name: raise HTTPException(status_code=400, detail="Module name required")
 
     module_map = {
-        "vtuber":    "apps/vtuber/Start_VTuber.bat",
-        "tracking":  "apps/tracking/Start_Tracking.bat",
         "photo":     "apps/photo/Start_Photo.bat",
         "audio":     "apps/audio/Start_Audio.bat",
         "driveinfo": "apps/driveinfo/Start_DriveInfo.bat",

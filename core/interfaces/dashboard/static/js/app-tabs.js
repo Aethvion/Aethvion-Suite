@@ -120,8 +120,6 @@ const ATB = (() => {
         { id: 'code',         label: 'Code IDE',      emoji: '💻', category: 'Professional Development', port: null, portKey: 'Aethvion Code IDE'     },
         { id: 'photo',        label: 'Photo Studio',   emoji: '🎨', category: 'Creative & Production',    port: null, portKey: 'Aethvion Photo'        },
         { id: 'audio',        label: 'Audio Studio',   emoji: '🎙️', category: 'Creative & Production',    port: null, portKey: 'Aethvion Audio'        },
-        { id: 'vtuber',       label: 'VTuber',         emoji: '🎭', category: 'Streaming & Performance',  port: null, portKey: 'VTuber Engine'         },
-        { id: 'tracking',     label: 'Tracking',       emoji: '📡', category: 'Streaming & Performance',  port: null, portKey: 'Aethvion Tracking'     },
         { id: 'hardwareinfo', label: 'Hardware Info',  emoji: '🖥️', category: 'System & Analytics',       port: null, portKey: 'Aethvion Hardware Info' },
         { id: 'linkmap',      label: 'LinkMap',        emoji: '🗺️', category: 'System & Analytics',       port: null, portKey: 'Aethvion LinkMap'      },
         { id: 'driveinfo',    label: 'Drive Info',     emoji: '💿', category: 'System & Analytics',       port: null, portKey: 'Aethvion Drive Info'   },

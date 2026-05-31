@@ -137,12 +137,10 @@ copy .env.example .env
 |---|---|---|
 | **Suite Dashboard** | `Start_Aethvion_Suite.bat` | http://localhost:8080 |
 | **Code IDE** | `apps/code/Start_Code.bat` | http://localhost:8083 |
-| **VTuber Engine** | `apps/vtuber/Start_VTuber.bat` | http://localhost:8081 |
 | **Audio Editor** | `apps/audio/Start_Audio.bat` | http://localhost:8081* |
 | **Photo Editor** | `apps/photo/Start_Photo.bat` | http://localhost:8081* |
 | **Finance Hub** | `apps/finance/Start_Finance.bat` | http://localhost:8081* |
 | **Drive Info** | `apps/driveinfo/Start_DriveInfo.bat` | http://localhost:8084 |
-| **Tracking Bridge** | `apps/tracking/Start_Tracking.bat` | http://localhost:8081* |
 | **Hardware Info** | `apps/hardwareinfo/Start_HardwareInfo.bat` | http://localhost:8081* |
 
 *\* Apps sharing port 8081 auto-negotiate the next available port if multiple are running.*
@@ -284,9 +282,7 @@ Aethvion-Suite/
 │   ├── driveinfo/                  # System storage and drive info
 │   ├── finance/                    # Finance tracking + AI market analysis
 │   ├── hardwareinfo/               # System hardware information
-│   ├── photo/                      # AI-powered photo editing
-│   ├── tracking/                   # Motion tracking WebSocket server (port 8082)
-│   └── vtuber/                     # VTuber character animation engine (port 8081)
+│   └── photo/                      # AI-powered photo editing
 │
 ├── data/                           # Runtime data — never committed
 │   ├── companions/                 # Per-companion persistent data

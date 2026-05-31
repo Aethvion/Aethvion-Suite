@@ -72,8 +72,6 @@ APP_GAMES     = APPS / "games"
 APP_HARDWARE  = APPS / "hardwareinfo"
 APP_BRIDGES  = APPS / "nexus"
 APP_PHOTO     = APPS / "photo"
-APP_TRACKING  = APPS / "tracking"
-APP_VTUBER    = APPS / "vtuber"
 
 # ── Config files ──────────────────────────────────────────────────────────────
 MODEL_REGISTRY         = CONFIG / "model_registry.json"
@@ -160,7 +158,7 @@ def ensure_all() -> None:
         APPS, CONFIG, LOGS, SYSTEM, COMPANIONS, MODES, DEFAULT_OUTPUT,
         # Apps
         APP_ARENA, APP_AUDIO, APP_CODE, APP_DRIVEINFO, APP_FINANCE,
-        APP_GAMES, APP_HARDWARE, APP_BRIDGES, APP_PHOTO, APP_TRACKING, APP_VTUBER,
+        APP_GAMES, APP_HARDWARE, APP_BRIDGES, APP_PHOTO,
         # Modes
         MODE_CHAT, MODE_AGENTS, MODE_AGENT_CORP, MODE_AI_CONV, MODE_ADV_AICONV,
         MODE_EXPLAINED, MODE_WORKSPACES, MODE_WORLDSIM,
