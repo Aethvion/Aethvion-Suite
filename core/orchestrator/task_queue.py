@@ -1105,18 +1105,8 @@ class TaskQueueManager:
 # Singleton instance
 _task_queue_manager = None
 
-# Set of task IDs that have been requested to stop.
-# AgentRunner checks this each iteration — no threading primitives needed because
-_cancelled_agent_task_ids: set = set()
-
-
-def cancel_agent_task(task_id: str) -> None:
-    """Signal the agent runner for this task to exit after its current iteration."""
-    _cancelled_agent_task_ids.add(task_id)
-
-
-def is_agent_task_cancelled(task_id: str) -> bool:
-    return task_id in _cancelled_agent_task_ids
+# Re-exported so existing callers (task_routes.py) don't need to change import paths.
+from core.orchestrator.cancellation import cancel_agent_task, is_agent_task_cancelled  # noqa: F401
 
 
 def get_task_queue_manager(orchestrator=None, max_workers: int = 4) -> TaskQueueManager:

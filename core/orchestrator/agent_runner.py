@@ -14,7 +14,7 @@ from typing import Callable, Optional, List, Dict, Any
 
 from core.utils.logger import get_logger
 from core.utils import utcnow_iso, atomic_json_write
-from core.orchestrator.task_queue import is_agent_task_cancelled
+from core.orchestrator.cancellation import is_agent_task_cancelled
 from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
