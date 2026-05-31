@@ -12,8 +12,6 @@ from __future__ import annotations
 import asyncio
 import datetime
 import json
-import os
-import tempfile
 import uuid
 from pathlib import Path
 from typing import Any, Optional
@@ -22,14 +20,15 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from core.utils import atomic_json_write, load_json
+from core.providers import get_provider_manager as _get_pm
+
 router = APIRouter(prefix="/api/automate", tags=["automate"])
 
 # ── Storage ───────────────────────────────────────────────────────────────────
 
 _DATA_DIR      = Path(__file__).parent.parent.parent / "data" / "automate" / "workflows"
 _REGISTRY_PATH = Path(__file__).parent.parent.parent / "data" / "config" / "model_registry.json"
-
-from core.providers import get_provider_manager as _get_pm
 
 
 def _ensure_dir() -> None:
@@ -38,21 +37,6 @@ def _ensure_dir() -> None:
 
 def _wf_path(wf_id: str) -> Path:
     return _DATA_DIR / f"{wf_id}.json"
-
-
-def _atomic_write(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        os.replace(tmp, str(path))
-    except Exception:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
 
 
 # ── Node type registry ────────────────────────────────────────────
@@ -97,9 +81,8 @@ async def get_models(provider: Optional[str] = None):
     Return configured chat-capable models from the model registry.
     Pass ?provider=google_ai to filter to a specific provider.
     """
-    try:
-        registry = json.loads(_REGISTRY_PATH.read_text(encoding="utf-8"))
-    except Exception:
+    registry = load_json(_REGISTRY_PATH, default={})
+    if not registry:
         return {"models": []}
 
     models = []
@@ -229,7 +212,7 @@ async def create_workflow(body: WorkflowCreate):
         "nodes": body.nodes,
         "connections": body.connections,
     }
-    _atomic_write(_wf_path(wf_id), wf)
+    atomic_json_write(_wf_path(wf_id), wf)
     return {"workflow": wf}
 
 
@@ -258,7 +241,7 @@ async def update_workflow(wf_id: str, body: WorkflowUpdate):
     if body.viewport is not None:
         wf["viewport"] = body.viewport
     wf["updated"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    _atomic_write(p, wf)
+    atomic_json_write(p, wf)
     return {"workflow": wf}
 
 
@@ -389,7 +372,7 @@ async def _import_workflow_data(data: dict, name_suffix: str = "") -> dict:
         "nodes":       new_nodes,
         "connections": new_conns,
     }
-    _atomic_write(_wf_path(new_id), wf)
+    atomic_json_write(_wf_path(new_id), wf)
     return {"workflow": wf}
 
 

@@ -1,8 +1,7 @@
-import json
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
-from core.utils import get_logger, utcnow_iso
+from core.utils import get_logger, utcnow_iso, load_json, atomic_json_write
 
 logger = get_logger(__name__)
 
@@ -24,28 +23,16 @@ class PersistentMemory:
         
     def _load(self):
         """Load memory from disk."""
-        if self.path.exists():
-            try:
-                with open(self.path, 'r', encoding='utf-8') as f:
-                    self.memory = json.load(f)
-                logger.info(f"Loaded persistent memory from {self.path} ({len(self.memory)} topics)")
-            except Exception as e:
-                logger.error(f"Failed to load persistent memory: {e}")
-                self.memory = {}
-        else:
-            self.memory = {}
-            # Ensure directory exists
+        self.memory = load_json(self.path, default={})
+        if not self.path.exists():
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self._save()
+        else:
+            logger.info(f"Loaded persistent memory ({len(self.memory)} topics)")
 
     def _save(self):
-        """Save memory to disk."""
-        try:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.path, 'w', encoding='utf-8') as f:
-                json.dump(self.memory, f, indent=2)
-        except Exception as e:
-            logger.error(f"Failed to save persistent memory: {e}")
+        """Save memory to disk atomically."""
+        atomic_json_write(self.path, self.memory)
 
     def get_all_memory(self) -> str:
         """Returns all memory as a formatted string for prompting."""

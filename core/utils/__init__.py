@@ -60,6 +60,28 @@ def atomic_json_write(
         raise
 
 
+def load_json(
+    path: _Union[str, "_Path"],
+    default=None,
+) -> _Union[dict, list, None]:
+    """Load JSON from *path*, returning *default* on missing file or parse error.
+
+    Args:
+        path:    File to read.
+        default: Value returned when the file is absent or unreadable.
+                 Pass ``{}`` for dicts, ``[]`` for lists.
+    """
+    path = _Path(path)
+    if not path.exists():
+        return default
+    try:
+        return _json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        import logging as _std_logging
+        _std_logging.getLogger(__name__).warning("Failed to load %s: %s", path, exc)
+        return default
+
+
 from .trace_manager import (
     TraceManager,
     get_trace_manager,
@@ -85,6 +107,7 @@ __all__ = [
 
     # I/O helpers
     'atomic_json_write',
+    'load_json',
 
     # Trace Management
     'TraceManager',

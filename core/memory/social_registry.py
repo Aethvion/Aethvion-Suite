@@ -3,10 +3,9 @@ Aethvion Suite - Social Registry
 Tracks user relationships and interactions
 """
 
-import json
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from core.utils import get_logger, utcnow_iso
+from core.utils import get_logger, utcnow_iso, load_json, atomic_json_write
 from core.utils.paths import KNOWLEDGE_SOCIAL
 
 logger = get_logger(__name__)
@@ -37,25 +36,12 @@ class SocialRegistry:
         
     def _load(self):
         """Load registry from disk."""
-        if self.storage_path.exists():
-            try:
-                with open(self.storage_path, 'r', encoding='utf-8') as f:
-                    self.registry = json.load(f)
-                logger.info(f"Loaded {len(self.registry)} social profiles from registry")
-            except Exception as e:
-                logger.error(f"Failed to load social registry: {e}")
-                self.registry = {}
-        else:
-            logger.info("No social registry found, starting fresh")
-            self.registry = {}
-            
+        self.registry = load_json(self.storage_path, default={})
+        logger.info(f"Loaded {len(self.registry)} social profiles from registry")
+
     def _save(self):
-        """Save registry to disk."""
-        try:
-            with open(self.storage_path, 'w', encoding='utf-8') as f:
-                json.dump(self.registry, f, indent=2)
-        except Exception as e:
-            logger.error(f"Failed to save social registry: {e}")
+        """Save registry to disk atomically."""
+        atomic_json_write(self.storage_path, self.registry)
             
     def get_profile(self, platform: str, platform_id: str) -> Optional[Dict[str, Any]]:
         """

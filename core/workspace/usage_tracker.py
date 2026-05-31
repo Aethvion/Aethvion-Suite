@@ -3,16 +3,13 @@ Aethvion Suite - Usage Tracker
 Tracks API calls, token usage, and estimated costs.
 """
 
-import json
-import os
-import tempfile
 import threading
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from collections import defaultdict
 
-from core.utils import get_logger, utcnow_iso
+from core.utils import get_logger, utcnow_iso, load_json, atomic_json_write
 from core.utils.paths import LOGS_USAGE, MODEL_REGISTRY
 
 logger = get_logger(__name__)
@@ -54,15 +51,9 @@ class UsageTracker:
     def _load_day_logs(self, dt: datetime) -> List[Dict[str, Any]]:
         """Load logs for a specific day."""
         path = self._get_daily_log_path(dt)
-        if path.exists():
-            try:
-                with _lock: # Use lock for reading to prevent race conditions during write
-                    with open(path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        return data if isinstance(data, list) else []
-            except Exception as e:
-                logger.error(f"Failed to load usage for {dt.date()}: {e}")
-        return []
+        with _lock:
+            data = load_json(path, default=[])
+            return data if isinstance(data, list) else []
 
     def _load_model_costs(self) -> Dict[str, Dict[str, float]]:
         """Load per-model input/output cost data from model_registry.json."""
@@ -155,22 +146,9 @@ class UsageTracker:
         path = self._get_daily_log_path(now)
         try:
             with _lock:
-                logs = []
-                if path.exists():
-                    with open(path, "r", encoding="utf-8") as f:
-                        logs = json.load(f)
+                logs = load_json(path, default=[])
                 logs.append(entry)
-                fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
-                try:
-                    with os.fdopen(fd, "w", encoding="utf-8") as f:
-                        json.dump(logs, f, indent=2)
-                    os.replace(tmp_path, str(path))
-                except Exception:
-                    try:
-                        os.unlink(tmp_path)
-                    except OSError:
-                        pass
-                    raise
+                atomic_json_write(path, logs)
         except Exception as e:
             logger.error(f"Failed to log usage to {path}: {e}")
 
