@@ -157,8 +157,8 @@ async def chat_completions(
 
     # Non-streaming
     try:
-        from core.providers.provider_manager import ProviderManager
-        pm = ProviderManager()
+        from core.providers.provider_manager import get_provider_manager
+        pm = get_provider_manager()
         resp = pm.call_with_failover(
             prompt=prompt,
             trace_id=f"extapi-{uuid.uuid4().hex[:8]}",
@@ -197,8 +197,8 @@ async def chat_completions(
 async def _stream_chunks(req: ChatCompletionRequest, prompt: str, system_prompt: Optional[str]):
     cid = f"chatcmpl-{uuid.uuid4().hex[:12]}"
     try:
-        from core.providers.provider_manager import ProviderManager
-        pm = ProviderManager()
+        from core.providers.provider_manager import get_provider_manager
+        pm = get_provider_manager()
         for chunk in pm.call_with_failover_stream(
             prompt=prompt,
             trace_id=f"extapi-s-{uuid.uuid4().hex[:8]}",

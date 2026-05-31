@@ -203,8 +203,8 @@ class ContentDistiller:
           "errors":      list[str],
         }
         """
-        from core.providers import ProviderManager
-        pm = ProviderManager()
+        from core.providers import get_provider_manager
+        pm = get_provider_manager()
 
         result: dict[str, Any] = {
             "entity_id":   None,

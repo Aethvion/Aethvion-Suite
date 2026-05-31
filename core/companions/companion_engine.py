@@ -17,7 +17,7 @@ from core.companions.engine.memory import CompanionMemory
 from core.companions.engine.history import CompanionHistory
 from core.companions.engine.streaming import build_bridges_capabilities
 from core.companions.engine.tools import execute_tools_stream, extract_peripheral_captures
-from core.providers.provider_manager import ProviderManager
+from core.providers.provider_manager import get_provider_manager
 from core.workspace.preferences_manager import get_preferences_manager
 from core.workspace.workspace_utils import load_workspaces, build_workspace_block
 from core.utils.logger import get_logger
@@ -69,7 +69,7 @@ class CompanionEngine:
         )
 
         model = get_preferences_manager().get(config.id, {}).get("model", config.default_model)
-        pm = ProviderManager()
+        pm = get_provider_manager()
         response = pm.call_with_failover(
             prompt=system_prompt,
             trace_id=f"{config.id}-init-{uuid.uuid4().hex[:8]}",
@@ -210,7 +210,7 @@ class CompanionEngine:
             )
 
             model = get_preferences_manager().get(config.id, {}).get("model", config.default_model)
-            pm = ProviderManager()
+            pm = get_provider_manager()
 
             # ── Pre-flight validation: catch missing model / API key early ─────
             if not model:

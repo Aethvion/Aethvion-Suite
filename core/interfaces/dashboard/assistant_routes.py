@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional
 import uuid
 import json
 
-from core.providers.provider_manager import ProviderManager
+from core.providers.provider_manager import get_provider_manager
 from core.workspace.preferences_manager import get_preferences_manager
 from core.utils.logger import get_logger
 from core.ai.call_contexts import CallSource, build_companion_prompt, validate_call_context
@@ -68,7 +68,7 @@ async def assistant_chat(request: AssistantChatRequest):
     include_web = assistant_config.get('include_web_context', False)
     allow_dash_control = assistant_config.get('allow_dashboard_control', False)
 
-    pm = ProviderManager()
+    pm = get_provider_manager()
     trace_id = f"assistant-{uuid.uuid4().hex[:8]}"
 
     system_prompt = _build_assistant_context(include_web_context=include_web, allow_dashboard_control=allow_dash_control)

@@ -17,7 +17,7 @@ import time
 from core.utils import get_logger, atomic_json_write
 from core.utils.paths import APP_ARENA, HISTORY_AI_CONV
 from core.ai.call_contexts import CallSource
-from core.providers.provider_manager import ProviderManager
+from core.providers.provider_manager import get_provider_manager
 
 logger = get_logger(__name__)
 
@@ -142,7 +142,7 @@ async def arena_battle_stream(request: ArenaBattleRequest, req: Request):
     if len(request.model_ids) < 2:
         raise HTTPException(status_code=400, detail="Need at least 2 models for a battle")
 
-    provider_manager = ProviderManager()
+    provider_manager = get_provider_manager()
     trace_id = f"ARENA_{uuid.uuid4().hex[:8]}"
 
     async def event_generator():
@@ -203,7 +203,7 @@ class ArenaEvaluateRequest(BaseModel):
 async def evaluate_battle(request: ArenaEvaluateRequest, req: Request):
     """Evaluate an existing set of arena responses."""
     try:
-        provider_manager = ProviderManager()
+        provider_manager = get_provider_manager()
 
         responses = await _evaluate_responses(
             provider_manager, request.prompt, request.responses,
@@ -596,7 +596,7 @@ async def arena_gauntlet_stream(request: GauntletRequest, req: Request):
     if request.preset_name not in GAUNTLET_PRESETS:
         raise HTTPException(status_code=400, detail=f"Unknown preset: {request.preset_name}")
 
-    provider_manager = ProviderManager()
+    provider_manager = get_provider_manager()
     preset = GAUNTLET_PRESETS[request.preset_name]
     categories = preset["categories"]
     trace_id = f"GAUNTLET_{uuid.uuid4().hex[:8]}"
@@ -755,7 +755,7 @@ class AIConvRenameRequest(BaseModel):
 async def aiconv_generate(request: AIConvTurnRequest, req: Request):
     """Generate a single turn for AI Conversations."""
     try:
-        provider_manager = ProviderManager()
+        provider_manager = get_provider_manager()
         trace_id = f"AICONV_{uuid.uuid4().hex[:8]}"
         
         # Since call_with_failover usually takes a single string prompt, we construct it:

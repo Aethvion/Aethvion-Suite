@@ -563,8 +563,8 @@ class AgentRunner:
     ):
         self.task = task
         self.workspace = Path(workspace_path) if workspace_path else Path.cwd()
-        from core.providers import ProviderManager
-        self.pm = ProviderManager()
+        from core.providers import get_provider_manager
+        self.pm = get_provider_manager()
         self.step_callback = step_callback
         self.model_id = model_id
         self.trace_id = trace_id

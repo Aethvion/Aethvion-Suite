@@ -165,7 +165,7 @@ class CompanionMemory:
         Trigger a dedicated LLM call to reflect on and consolidate memory.
         Returns the updated memory dict (also persisted to disk).
         """
-        from core.providers.provider_manager import ProviderManager
+        from core.providers.provider_manager import get_provider_manager
 
         prompt = (
             f"You are performing a deep memory synthesis for {self._name}.\n\n"
@@ -187,7 +187,7 @@ class CompanionMemory:
         )
 
         try:
-            pm = ProviderManager()
+            pm = get_provider_manager()
             resp = pm.call_with_failover(
                 prompt=prompt,
                 trace_id=f"{self._name.lower().replace(' ', '_')}-synthesis-{uuid.uuid4().hex[:8]}",

@@ -506,8 +506,8 @@ class ProviderManager:
                  error="No model routing configured."
              )
 
-        # ── Privacy Mode: restrict to local providers only ────────────────────
-        if self.is_privacy_mode():
+        # ── Privacy Mode or local_only: restrict to local providers only ──────
+        if self.is_privacy_mode() or kwargs.get('local_only', False):
             original_order = model_order[:]
             model_order = [
                 m for m in model_order
@@ -515,16 +515,16 @@ class ProviderManager:
             ]
             if not model_order:
                 logger.warning(
-                    f"[{trace_id}] Privacy mode active but no local models available. "
+                    f"[{trace_id}] Privacy mode/local only active but no local models available. "
                     f"Original order was: {original_order}. "
                     "Add a local/ollama model in Settings to use Privacy Mode."
                 )
                 return ProviderResponse(
                     content="", model="none", provider="none", trace_id=trace_id,
-                    error="Privacy Mode is active but no local models are configured. "
+                    error="Privacy Mode/local only is active but no local models are configured. "
                           "Add an Ollama or local model in Settings → Model Hub."
                 )
-            logger.info(f"[{trace_id}] Privacy mode: restricted to local models {model_order}")
+            logger.info(f"[{trace_id}] Privacy mode/local only: restricted to local models {model_order}")
 
         last_error = None
         
@@ -657,6 +657,23 @@ class ProviderManager:
         """
         model_order = [model] if model and model != "auto" else self.chat_priority_order.copy()
         
+        # ── Privacy Mode or local_only: restrict to local providers only ──────
+        if self.is_privacy_mode() or kwargs.get('local_only', False):
+            original_order = model_order[:]
+            model_order = [
+                m for m in model_order
+                if self.model_to_provider_map.get(m) in self.LOCAL_PROVIDER_NAMES
+            ]
+            if not model_order:
+                logger.warning(
+                    f"[{trace_id}] Privacy mode/local only active but no local models available. "
+                    f"Original order was: {original_order}. "
+                    "Add a local/ollama model in Settings to use Privacy Mode."
+                )
+                yield "Error: Privacy Mode/local only is active but no local models are configured. Add an Ollama or local model in Settings → Model Hub."
+                return
+            logger.info(f"[{trace_id}] Privacy mode/local only: restricted to local models {model_order}")
+
         last_error = None
         for model_id in model_order:
             target_provider_name = self.model_to_provider_map.get(model_id)
@@ -807,3 +824,24 @@ class ProviderManager:
         
         return p.transcribe(audio_bytes, trace_id, model=model, **kwargs)
 
+
+# ── Re-export singleton accessor ───────────────────────────────────────────────
+# Allows `from core.providers.provider_manager import get_provider_manager`
+# in addition to `from core.providers import get_provider_manager`.
+_pm_instance: Optional[ProviderManager] = None
+
+
+def get_provider_manager() -> ProviderManager:
+    """Return the process-wide ProviderManager singleton.
+
+    The first call creates the instance (reads providers.yaml + model_registry.json,
+    initialises provider classes).  Every subsequent call returns the same object,
+    so config, routing state, and privacy-mode flags are shared across all subsystems.
+
+    To force a full reload from disk (e.g. after the user edits settings), call
+    ``get_provider_manager().reload_config()`` on the returned instance.
+    """
+    global _pm_instance
+    if _pm_instance is None:
+        _pm_instance = ProviderManager()
+    return _pm_instance

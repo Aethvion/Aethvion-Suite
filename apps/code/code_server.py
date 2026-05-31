@@ -44,8 +44,8 @@ load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 # ── Provider integration ─────────────────────────────────────────────────────
 try:
-    from core.providers.provider_manager import ProviderManager
-    pm = ProviderManager()
+    from core.providers import get_provider_manager
+    pm = get_provider_manager()
     HAS_PROVIDERS = True
 except Exception as _e:
     print(f"[Code IDE] Provider manager unavailable: {_e}")

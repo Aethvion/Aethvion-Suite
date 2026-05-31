@@ -197,8 +197,8 @@ def _parse_json_response(raw: str) -> Optional[Dict]:
 
 async def _llm_call(model: str, prompt: str, trace_id: str, temperature: float = 0.7) -> Optional[str]:
     """Thin wrapper around ProviderManager.call_with_failover using asyncio.to_thread."""
-    from core.providers import ProviderManager
-    pm = ProviderManager()
+    from core.providers import get_provider_manager
+    pm = get_provider_manager()
     try:
         response = await asyncio.to_thread(
             pm.call_with_failover,

@@ -381,8 +381,8 @@ class ScheduleManager:
             status = 'failed'
             try:
                 prompt = task.get('prompt') or f"[No prompt configured for task: {task.get('name')}]"
-                from core.providers import ProviderManager
-                pm = ProviderManager()
+                from core.providers import get_provider_manager
+                pm = get_provider_manager()
                 response = pm.call_with_failover(
                     prompt=prompt,
                     trace_id=f"sched-{run_id}",

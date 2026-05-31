@@ -206,8 +206,8 @@ async def chat(task_id: str, req: ChatRequest, request: Request):
 
     # Call AI
     try:
-        from core.providers import ProviderManager
-        pm = ProviderManager()
+        from core.providers import get_provider_manager
+        pm = get_provider_manager()
         model = req.model_id or task.get('model_id')
         response = pm.call_with_failover(
             prompt=prompt,

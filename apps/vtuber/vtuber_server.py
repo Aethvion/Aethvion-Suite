@@ -32,8 +32,8 @@ from core.utils import fastapi_utils
 
 # Optional Misaka Cipher provider integration
 try:
-    from core.providers.provider_manager import ProviderManager
-    pm = ProviderManager()
+    from core.providers import get_provider_manager
+    pm = get_provider_manager()
     HAS_PROVIDERS = True
 except Exception:
     pm = None

@@ -256,8 +256,8 @@ async def update_participants(thread_id: str, participants: List[str]):
 
 @router.post("/threads/{thread_id}/generate")
 async def generate_response(thread_id: str, req: GenerateRequest, request: Request):
-    from core.providers import ProviderManager
-    pm = ProviderManager()
+    from core.providers import get_provider_manager
+    pm = get_provider_manager()
     t_dir = THREADS_DIR / thread_id
     
     # Load thread data

@@ -12,14 +12,14 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
-from core.providers.provider_manager import ProviderManager
+from core.providers import get_provider_manager
 import uuid
 from google.genai import types
 
 class AutoRigger:
     def __init__(self):
         # Use Misaka Cipher's centralized Provider Manager
-        self.pm = ProviderManager()
+        self.pm = get_provider_manager()
         self.provider = self.pm.get_provider("google_ai")
         
         if not self.provider:

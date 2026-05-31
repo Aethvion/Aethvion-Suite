@@ -10,16 +10,7 @@ import json
 from datetime import datetime
 from typing import Any
 
-# ── Lazy ProviderManager (AI nodes only) ─────────────────────────────────────
-_pm = None
-
-
-def _get_pm():
-    global _pm
-    if _pm is None:
-        from core.providers.provider_manager import ProviderManager  # noqa: PLC0415
-        _pm = ProviderManager()
-    return _pm
+from core.providers import get_provider_manager as _get_pm  # noqa: PLC0415
 
 
 # ── Timestamp ─────────────────────────────────────────────────────────────────

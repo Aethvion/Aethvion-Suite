@@ -30,15 +30,7 @@ router = APIRouter(prefix="/api/automate", tags=["automate"])
 _DATA_DIR      = Path(__file__).parent.parent.parent / "data" / "automate" / "workflows"
 _REGISTRY_PATH = Path(__file__).parent.parent.parent / "data" / "config" / "model_registry.json"
 
-# Lazy ProviderManager singleton — only initialised when an AI node is tested
-_pm = None
-
-def _get_pm():
-    global _pm
-    if _pm is None:
-        from core.providers.provider_manager import ProviderManager  # noqa: PLC0415
-        _pm = ProviderManager()
-    return _pm
+from core.providers import get_provider_manager as _get_pm
 
 
 def _ensure_dir() -> None:

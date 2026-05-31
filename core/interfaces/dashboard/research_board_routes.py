@@ -146,7 +146,7 @@ async def start_board(req: BoardStartRequest):
 
 @router.post("/sessions/{session_id}/generate")
 async def generate_board_response(session_id: str, req: BoardGenerateRequest, request: Request):
-    from core.providers import ProviderManager
+    from core.providers import get_provider_manager
     
     s_dir = SESSIONS_DIR / session_id
     if not s_dir.exists(): raise HTTPException(404, "Session not found")
@@ -188,7 +188,7 @@ Output a strictly valid JSON object:
     prompt = f"Global Topic: {session_id}\n\nRecent Transcript:\n{context}\n\n{person['name']}, what is your official stance or reply?"
 
     try:
-        pm = ProviderManager()
+        pm = get_provider_manager()
         response = await asyncio.to_thread(
             pm.call_with_failover,
             prompt=prompt,
@@ -234,7 +234,7 @@ Output a strictly valid JSON object:
 
 @router.post("/synthesize")
 async def synthesize_board(req: SynthesisRequest, request: Request):
-    from core.providers import ProviderManager
+    from core.providers import get_provider_manager
     
     s_dir = SESSIONS_DIR / req.thread_id
     if not s_dir.exists(): raise HTTPException(404, "Session not found")
@@ -259,7 +259,7 @@ Provide a professional, structured markdown recommendation to the CEO based on t
     prompt = f"Synthesize debate:\n\n{transcript}"
     
     try:
-        pm = ProviderManager()
+        pm = get_provider_manager()
         response = await asyncio.to_thread(
             pm.call_with_failover,
             prompt=prompt,

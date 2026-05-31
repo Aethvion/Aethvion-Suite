@@ -100,7 +100,7 @@ class OverlayConfigIn(BaseModel):
 async def overlay_ask(req: AskRequest):
     """Answer a question, optionally using a screenshot for visual context."""
     try:
-        from core.providers.provider_manager import ProviderManager
+        from core.providers.provider_manager import get_provider_manager
         from core.workspace.preferences_manager import get_preferences_manager
 
         prefs = get_preferences_manager()
@@ -117,7 +117,7 @@ async def overlay_ask(req: AskRequest):
         logger.info(f"Overlay ask — model: {model_id!r}, has_screenshot: {bool(req.screenshot_b64)}")
 
         import asyncio, uuid
-        pm         = ProviderManager()
+        pm         = get_provider_manager()
         trace_id   = f"overlay-{uuid.uuid4().hex[:12]}"
         extra_kwargs: dict = {}
 

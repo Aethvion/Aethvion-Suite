@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any, List, Iterator
 from dataclasses import dataclass
 from datetime import datetime
 
-from core.providers import ProviderManager, ProviderResponse
+from core.providers import ProviderManager, ProviderResponse, get_provider_manager
 from core.security import IntelligenceFirewall, RoutingDecision
 from core.utils import (
     get_trace_manager,
@@ -91,9 +91,9 @@ class AetherCore:
             logger.info("Checking Model Registry...")
             ensure_registry_initialized()
 
-            # Initialize Provider Manager
+            # Initialize Provider Manager (singleton — shared across all subsystems)
             logger.info("Loading Provider Manager...")
-            self.provider_manager = ProviderManager()
+            self.provider_manager = get_provider_manager()
 
             # Initialize Intelligence Firewall
             logger.info("Loading Intelligence Firewall...")
@@ -180,22 +180,16 @@ class AetherCore:
                     routing_decision=routing_decision.value
                 )
 
-            elif routing_decision == RoutingDecision.LOCAL:
-                # TODO: Implement local inference routing when Ollama/vLLM is ready
-                logger.warning(
-                    f"[{trace_id}] LOCAL routing not yet implemented, "
-                    f"falling back to external"
-                )
-                routing_decision = RoutingDecision.EXTERNAL
-
-            # Route to external provider
-            if routing_decision == RoutingDecision.EXTERNAL:
-                logger.info(f"[{trace_id}] Routing to external provider")
+            # Route to provider (either LOCAL or EXTERNAL)
+            if routing_decision in (RoutingDecision.EXTERNAL, RoutingDecision.LOCAL):
+                logger.info(f"[{trace_id}] Routing request (decision: {routing_decision.value})")
 
                 # Extract source from metadata if present
                 source = "unknown"
                 if request.metadata and 'source' in request.metadata:
                     source = request.metadata['source']
+
+                local_only = (routing_decision == RoutingDecision.LOCAL)
 
                 provider_response = self.provider_manager.call_with_failover(
                     prompt=request.prompt,
@@ -207,7 +201,8 @@ class AetherCore:
                     model=request.model,
                     request_type=request.request_type,
                     source=source,
-                    images=request.images
+                    images=request.images,
+                    local_only=local_only
                 )
 
                 # Build response
@@ -276,17 +271,36 @@ class AetherCore:
         logger.info(f"[{trace_id}] === NEW STREAMING REQUEST ===")
         
         try:
-            # For simplicity, streaming bypasses firewall scan for now
-            # Usually streaming is for chat only
-            
-            generator = self.provider_manager.get_active_provider().stream(
+            # Pre-flight firewall scan
+            routing_decision, scan_result = self.firewall.scan_and_route(
+                prompt=request.prompt,
+                trace_id=trace_id,
+                request_type=request.request_type
+            )
+
+            if routing_decision == RoutingDecision.BLOCKED:
+                logger.error(f"[{trace_id}] Request BLOCKED by Intelligence Firewall")
+                self.trace_manager.end_trace(trace_id, status='blocked')
+                yield "Request blocked by Intelligence Firewall"
+                return
+
+            # Extract source from metadata if present
+            source = "unknown"
+            if request.metadata and 'source' in request.metadata:
+                source = request.metadata['source']
+
+            local_only = (routing_decision == RoutingDecision.LOCAL)
+
+            generator = self.provider_manager.call_with_failover_stream(
                 prompt=request.prompt,
                 system_prompt=request.system_prompt,
                 trace_id=trace_id,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
                 model=request.model,
-                messages=request.metadata.get('messages') if request.metadata else None
+                messages=request.metadata.get('messages') if request.metadata else None,
+                source=source,
+                local_only=local_only
             )
             
             for chunk in generator:

@@ -38,7 +38,7 @@ async def _call_ai(session: AIGameSession, user_message: str, expected_action: O
     """
     Send messages to the AI with 3-retry logic and strict validation.
     """
-    from core.providers import ProviderManager
+    from core.providers import get_provider_manager
 
     if len(session.ai_context) > 15:
         session.ai_context = session.ai_context[-15:]
@@ -54,7 +54,7 @@ async def _call_ai(session: AIGameSession, user_message: str, expected_action: O
         f"== NEW INPUT ==\n{user_message}"
     )
 
-    pm = ProviderManager()
+    pm = get_provider_manager()
     loop = asyncio.get_event_loop()
     
     max_retries = 3
@@ -488,8 +488,8 @@ async def clear_game_history(game_type: str):
 async def get_available_models():
     """Return list of available models for game selection."""
     try:
-        from core.providers import ProviderManager
-        pm = ProviderManager()
+        from core.providers import get_provider_manager
+        pm = get_provider_manager()
         models = [{"id": mid, "provider": info.get("provider", ""), "description": info.get("description", "")}
                   for mid, info in pm.model_descriptor_map.items()
                   if "chat" in info.get("capabilities", [])]
@@ -512,7 +512,7 @@ async def generate_word_search(req: WordSearchGenerateRequest):
     Generate a themed word list for Word Search using AI.
     Returns a list of uppercase words (4–15 letters) related to the given topic.
     """
-    from core.providers import ProviderManager
+    from core.providers import get_provider_manager
 
     topic = req.topic.strip()
     if not topic:
@@ -534,7 +534,7 @@ async def generate_word_search(req: WordSearchGenerateRequest):
         f'Return ONLY: {{"words": ["EXAMPLE", "WORDS", "HERE"]}}'
     )
 
-    pm = ProviderManager()
+    pm = get_provider_manager()
     loop = asyncio.get_event_loop()
 
     try:

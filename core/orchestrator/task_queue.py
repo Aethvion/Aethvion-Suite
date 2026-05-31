@@ -278,7 +278,7 @@ class TaskWorker:
                         if _can_stream:
                             # ── Token-streaming path (chat_only, no search, no images) ──
                             from core.orchestrator.chat_token_store import create_token_queue
-                            from core.providers.provider_manager import ProviderManager
+                            from core.providers.provider_manager import get_provider_manager
                             from core.memory.identity_manager import IdentityManager
                             from core.orchestrator.master_orchestrator import ExecutionResult
 
@@ -287,7 +287,7 @@ class TaskWorker:
 
                             def _run_stream():
                                 try:
-                                    _pm = ProviderManager()
+                                    _pm = get_provider_manager()
                                     for _chunk in _pm.call_with_failover_stream(
                                         prompt=context_prompt,
                                         trace_id=task.id,

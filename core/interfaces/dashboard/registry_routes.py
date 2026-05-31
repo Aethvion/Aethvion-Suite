@@ -1243,9 +1243,9 @@ Model to evaluate:
 In 3-5 sentences: Can this user run this model? Will it run on GPU or CPU? Estimate VRAM usage. Mention any caveats. Be direct and practical."""
 
     try:
-        from core.providers.provider_manager import ProviderManager
+        from core.providers.provider_manager import get_provider_manager
         import uuid
-        pm = ProviderManager()
+        pm = get_provider_manager()
         response = pm.call_with_failover(
             prompt=prompt,
             trace_id=f"model-info-{uuid.uuid4().hex[:8]}",

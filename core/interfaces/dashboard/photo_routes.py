@@ -17,7 +17,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-from core.providers import ProviderManager
+from core.providers import get_provider_manager as _get_provider_manager
 from core.workspace import get_workspace_manager
 from core.utils import get_logger
 
@@ -130,10 +130,10 @@ async def _get_sd_webui_models() -> List[Dict]:
 # but avoids circular imports.
 _provider_manager = None
 
-def get_provider_manager() -> ProviderManager:
+def get_provider_manager():
     global _provider_manager
     if _provider_manager is None:
-        _provider_manager = ProviderManager()
+        _provider_manager = _get_provider_manager()
     return _provider_manager
 
 class ImageGenerationRequest(BaseModel):

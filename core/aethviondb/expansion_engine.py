@@ -214,8 +214,8 @@ class ExpansionEngine:
         context    = self._gather_context(entity_id)
 
         async with self._semaphore:
-            from core.providers import ProviderManager
-            pm = ProviderManager()
+            from core.providers import get_provider_manager
+            pm = get_provider_manager()
 
             raw = None
             for attempt in range(2):   # up to 2 attempts
@@ -385,8 +385,8 @@ class ExpansionEngine:
         context    = self._gather_context(entity_id)
 
         async with self._semaphore:
-            from core.providers import ProviderManager
-            pm = ProviderManager()
+            from core.providers import get_provider_manager
+            pm = get_provider_manager()
 
             raw = None
             for attempt in range(2):
@@ -440,8 +440,8 @@ class ExpansionEngine:
         context    = [context_summary] if context_summary else []
 
         async with self._semaphore:
-            from core.providers import ProviderManager
-            pm = ProviderManager()
+            from core.providers import get_provider_manager
+            pm = get_provider_manager()
 
             raw = None
             for attempt in range(2):
