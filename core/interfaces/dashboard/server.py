@@ -13,7 +13,7 @@ from datetime import datetime
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -158,6 +158,29 @@ app = FastAPI(
     lifespan=lifespan
 )
 fastapi_utils.add_dev_cache_control(app)
+
+# ── Exception handlers ────────────────────────────────────────────────────────
+# Registered once here; covers every router in the application.
+
+from core.exceptions import AethvionError  # noqa: E402
+
+@app.exception_handler(AethvionError)
+async def _handle_domain_error(request: Request, exc: AethvionError) -> JSONResponse:
+    logger.error("[%s] %s: %s", request.url.path, type(exc).__name__, exc.message)
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
+
+@app.exception_handler(HTTPException)
+async def _handle_http_exception(request: Request, exc: HTTPException) -> JSONResponse:
+    if exc.status_code >= 500:
+        # Log the real detail server-side; send a generic message to the client.
+        logger.error("[%s] HTTP %d: %s", request.url.path, exc.status_code, exc.detail)
+        return JSONResponse(status_code=exc.status_code, content={"detail": "Internal server error."})
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+@app.exception_handler(Exception)
+async def _handle_unhandled_exception(request: Request, exc: Exception) -> JSONResponse:
+    logger.error("[%s] Unhandled %s: %s", request.url.path, type(exc).__name__, exc, exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error."})
 
 # Global State
 app.state.RUNNING_APPS = {}
