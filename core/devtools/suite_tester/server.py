@@ -256,9 +256,10 @@ def run_test_orchestrator(run_id: str, python_exe: str):
     test_env["PYTHONPATH"] = str(PROJECT_ROOT)
     test_env["PYTHONUNBUFFERED"] = "1"
 
-    # Save initial system metrics
-    initial_sys_mem = psutil.virtual_memory().percent
-    initial_gpu = get_gpu_usage()
+    # Capture absolute baseline (Pre-Test System state while Aethvion is Offline)
+    pre_test_sys_cpu = psutil.cpu_percent(interval=0.1)
+    pre_test_sys_mem = psutil.virtual_memory().percent
+    pre_test_gpu = get_gpu_usage()
 
     # == Phase 1: Startup ==
     add_log(run_id, "== Phase 1: Starting Aethvion Suite ==")
@@ -472,10 +473,6 @@ def run_test_orchestrator(run_id: str, python_exe: str):
         except Exception as e:
             add_log(run_id, f"Error killing process: {e}")
 
-    # Gather system usage metrics
-    final_sys_mem = psutil.virtual_memory().percent
-    final_gpu = get_gpu_usage()
-
     # Scan project source stats
     add_log(run_id, "Scanning repository codebase stats...")
     repo_stats = get_repository_stats()
@@ -500,16 +497,13 @@ def run_test_orchestrator(run_id: str, python_exe: str):
         "repository_stats": repo_stats,
         "vitals": {
             "startup_duration_s": round(startup_duration, 2),
+            "pre_test_baseline": {
+                "system_cpu_percent": pre_test_sys_cpu,
+                "system_memory_percent": pre_test_sys_mem,
+                "gpu": pre_test_gpu
+            },
             "startup_resources": startup_resources,
             "peak_resources": peak_resources,
-            "gpu_usage": {
-                "initial": initial_gpu,
-                "final": final_gpu
-            },
-            "system_memory_percent": {
-                "initial": initial_sys_mem,
-                "final": final_sys_mem
-            },
             "averages": {
                 "process_cpu_avg": round(sum(p_cpus)/len(p_cpus), 1) if p_cpus else 0.0,
                 "process_cpu_max": round(max(p_cpus), 1) if p_cpus else 0.0,
@@ -711,11 +705,9 @@ async def compare_reports(base_id: str, compare_id: str):
 
         # Helper to structure min / max / avg deltas for telemetry keys
         def compare_telemetry_metric(metric_name: str, key_base: str):
-            # For backward compatibility: if old report averages dict lacks min/max keys, map it gracefully.
             b_avg_dict = b_vitals.get("averages", {})
             c_avg_dict = c_vitals.get("averages", {})
             
-            # Map suffix keys
             b_min = b_avg_dict.get(f"{key_base}_min", b_avg_dict.get(f"{key_base}_avg", 0.0))
             c_min = c_avg_dict.get(f"{key_base}_min", c_avg_dict.get(f"{key_base}_avg", 0.0))
             
@@ -746,7 +738,6 @@ async def compare_reports(base_id: str, compare_id: str):
                 }
             }
 
-        # Compare min/max/avg across telemetry streams
         telemetry_deltas = {
             "process_cpu": compare_telemetry_metric("Process CPU", "process_cpu"),
             "process_mem": compare_telemetry_metric("Process RAM", "process_mem"),

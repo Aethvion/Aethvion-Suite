@@ -557,7 +557,6 @@
             background: var(--accent-primary);
         }
 
-        /* LOC diff classes */
         .diff-added { color: var(--accent-success); margin-left: 0.5rem; font-weight: 600; }
         .diff-removed { color: var(--accent-error); margin-left: 0.5rem; font-weight: 600; }
 
@@ -845,11 +844,23 @@
                             <span class="metric-value" id="inspect-git-msg" style="max-width: 250px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">N/A</span>
                         </div>
                         <div class="metric-row">
-                            <span class="metric-name">GPU Device Vitals</span>
+                            <span class="metric-name">System CPU (Pre-test vs Active Avg)</span>
+                            <span class="metric-value" id="inspect-sys-cpu-compare">N/A</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">System RAM (Pre-test vs Active Avg)</span>
+                            <span class="metric-value" id="inspect-sys-mem-compare">N/A</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">GPU Load (Pre-test vs Active Avg)</span>
+                            <span class="metric-value" id="inspect-gpu-load-compare">N/A</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">NVIDIA GPU Final Telemetry</span>
                             <span class="metric-value" id="inspect-gpu">N/A</span>
                         </div>
                         <div class="metric-row">
-                            <span class="metric-name">Averages (Process / System)</span>
+                            <span class="metric-name">Vitals (Process Avg / Max)</span>
                             <span class="metric-value" id="inspect-vitals-avg">N/A</span>
                         </div>
                     </div>
@@ -978,12 +989,49 @@
                 document.getElementById('inspect-git-hash').textContent = activeReport.git.commit_hash;
                 document.getElementById('inspect-git-msg').textContent = activeReport.git.commit_msg;
                 
-                const avgs = activeReport.vitals.averages;
-                document.getElementById('inspect-vitals-avg').textContent = `Proc CPU: ${avgs.process_cpu_avg}% (Max: ${avgs.process_cpu_max}%) | System CPU: ${avgs.system_cpu_avg}%`;
+                // Pre-test baselines vs profile averages
+                const baseline = activeReport.vitals.pre_test_baseline;
+                let sysCpuPre = 0;
+                let sysMemPre = 0;
+                let gpuLoadPre = 0;
+                let gpuBaseline = null;
                 
-                const gpu = activeReport.vitals.gpu_usage.final;
-                document.getElementById('inspect-gpu').textContent = gpu.status === 'Available' ? 
-                    `GPU: ${gpu.utilization}% | VRAM: ${gpu.vram_used_mb}MB / ${gpu.vram_total_mb}MB` : 'N/A';
+                if (baseline) {
+                    sysCpuPre = baseline.system_cpu_percent || 0;
+                    sysMemPre = baseline.system_memory_percent || 0;
+                    gpuBaseline = baseline.gpu || { status: 'N/A' };
+                    gpuLoadPre = gpuBaseline.status === 'Available' ? gpuBaseline.utilization : 0;
+                } else if (activeReport.vitals.gpu_usage && activeReport.vitals.gpu_usage.initial) {
+                    // Fallback for older reports
+                    const oldGpuInit = activeReport.vitals.gpu_usage.initial;
+                    gpuLoadPre = oldGpuInit.status === 'Available' ? oldGpuInit.utilization : 0;
+                    if (activeReport.vitals.system_memory_percent) {
+                        sysMemPre = activeReport.vitals.system_memory_percent.initial || 0;
+                    }
+                    sysCpuPre = 0; // Not tracked in older pre-test baselines
+                }
+                
+                const sysCpuAvg = activeReport.vitals.averages.system_cpu_avg || 0;
+                const sysMemAvg = activeReport.vitals.averages.system_mem_avg || 0;
+                const gpuLoadAvg = activeReport.vitals.averages.gpu_util_avg || 0;
+                
+                document.getElementById('inspect-sys-cpu-compare').textContent = `${sysCpuPre.toFixed(1)}% (Offline Baseline) vs ${sysCpuAvg.toFixed(1)}% (Active Avg)`;
+                document.getElementById('inspect-sys-mem-compare').textContent = `${sysMemPre.toFixed(1)}% (Offline Baseline) vs ${sysMemAvg.toFixed(1)}% (Active Avg)`;
+                document.getElementById('inspect-gpu-load-compare').textContent = `${gpuLoadPre.toFixed(1)}% (Offline Baseline) vs ${gpuLoadAvg.toFixed(1)}% (Active Avg)`;
+                
+                const avgs = activeReport.vitals.averages;
+                document.getElementById('inspect-vitals-avg').textContent = `Proc CPU: ${avgs.process_cpu_avg}% (Max: ${avgs.process_cpu_max}%) | Proc RAM: ${avgs.process_mem_avg}MB (Max: ${avgs.process_mem_max}MB)`;
+                
+                // Render GPU telemetry details (Pre-test baseline vs Active averages)
+                let gpuText = 'N/A';
+                if (gpuBaseline && gpuBaseline.status === 'Available') {
+                    gpuText = `Baseline: ${gpuBaseline.utilization}% Util, ${gpuBaseline.vram_used_mb}MB VRAM | Active Avg: ${gpuLoadAvg.toFixed(1)}% Util (Max: ${avgs.gpu_util_max.toFixed(1)}%), ${avgs.gpu_vram_avg.toFixed(0)}MB VRAM (Max: ${avgs.gpu_vram_max.toFixed(0)}MB)`;
+                } else if (activeReport.vitals.gpu_usage && activeReport.vitals.gpu_usage.final) {
+                    // Fallback for older reports
+                    const oldGpu = activeReport.vitals.gpu_usage.final;
+                    gpuText = oldGpu.status === 'Available' ? `GPU: ${oldGpu.utilization}% | VRAM: ${oldGpu.vram_used_mb}MB / ${oldGpu.vram_total_mb}MB` : 'N/A';
+                }
+                document.getElementById('inspect-gpu').textContent = gpuText;
                 
                 // Render baseline repository stats
                 renderRepoStats(activeReport.repository_stats);
@@ -1133,13 +1181,11 @@
                 
                 const tr = document.createElement('tr');
                 
-                // Metric name cell
                 const nameTd = document.createElement('td');
                 nameTd.className = 'compare-metric-name';
                 nameTd.textContent = config.label;
                 tr.appendChild(nameTd);
                 
-                // Loop through min (Lows), max (Highs), and avg (Averages) columns
                 ["min", "max", "avg"].forEach(stat => {
                     const sData = mData[stat];
                     const td = document.createElement('td');
