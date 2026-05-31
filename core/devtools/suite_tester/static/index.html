@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aethvion Suite Tester — DevTools</title>
+    <!-- Modern Premium Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #09090b;
+            --glass-bg: rgba(18, 18, 24, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.06);
+            --glass-border-glow: rgba(139, 92, 246, 0.35);
+            
+            --accent-primary: #8b5cf6; /* Indigo */
+            --accent-secondary: #06b6d4; /* Cyan */
+            --accent-success: #10b981; /* Emerald */
+            --accent-warning: #f59e0b; /* Amber */
+            --accent-error: #ef4444; /* Rose */
+            
+            --text-main: #f4f4f5;
+            --text-muted: #a1a1aa;
+            --text-dark: #71717a;
+            
+            --font-main: 'Plus Jakarta Sans', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.1) 0%, transparent 40%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Webkit Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-primary);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 2.5rem;
+            background: rgba(9, 9, 11, 0.5);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            z-index: 10;
+        }
+
+        .header-title-area h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff 30%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        .header-title-area p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .btn {
+            font-family: var(--font-main);
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 0.65rem 1.25rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), #6d28d9);
+            color: #ffffff;
+            box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.45);
+        }
+
+        .btn-primary:disabled {
+            background: var(--text-dark);
+            box-shadow: none;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        /* Workspace Grid */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            flex: 1;
+            height: calc(100vh - 80px);
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            border-right: 1px solid var(--glass-border);
+            background: rgba(9, 9, 11, 0.35);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .sidebar-header h2 {
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .reports-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .report-item {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .report-item:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.02);
+            transform: translateX(4px);
+        }
+
+        .report-item.active {
+            border-color: var(--accent-primary);
+            background: rgba(139, 92, 246, 0.05);
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.1);
+        }
+
+        .report-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.4rem;
+        }
+
+        .report-date {
+            font-size: 0.75rem;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+
+        .report-badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+        }
+
+        .badge-passed {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-success);
+        }
+
+        .badge-failed {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-error);
+        }
+
+        .report-commit {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--accent-secondary);
+            margin-bottom: 0.25rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .report-msg {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .report-quick-vitals {
+            display: flex;
+            gap: 0.8rem;
+            margin-top: 0.6rem;
+            font-size: 0.75rem;
+            color: var(--text-dark);
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            padding-top: 0.5rem;
+        }
+
+        /* Content Viewport */
+        .content-viewport {
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: #ffffff;
+        }
+
+        .info-card {
+            background: rgba(6, 182, 212, 0.05);
+            border: 1px solid rgba(6, 182, 212, 0.15);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #e0f2fe;
+        }
+
+        /* Active Runner */
+        .runner-panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(16px);
+            margin-bottom: 2rem;
+        }
+
+        .runner-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .runner-title h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .runner-title span {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 999px;
+            transition: width 0.4s ease;
+        }
+
+        .phases-stepper {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            opacity: 0.4;
+            flex: 1;
+            text-align: center;
+        }
+
+        .step.active { opacity: 1; color: var(--accent-secondary); }
+        .step.completed { opacity: 0.8; color: var(--accent-success); }
+
+        .step-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--text-dark);
+        }
+
+        .step.active .step-dot {
+            background: var(--accent-secondary);
+            box-shadow: 0 0 10px var(--accent-secondary);
+            transform: scale(1.2);
+        }
+
+        .step.completed .step-dot { background: var(--accent-success); }
+        .step-label { font-size: 0.75rem; font-weight: 600; }
+
+        .terminal-panel {
+            background: #000000;
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            font-family: var(--font-mono);
+            padding: 1.25rem;
+            height: 320px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .log-entry { font-size: 0.8rem; line-height: 1.4; color: #d1d5db; }
+
+        /* Report View */
+        .report-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .report-summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 1rem;
+        }
+
+        .report-title-section h2 { font-size: 1.4rem; font-weight: 700; }
+        .report-title-section p { font-size: 0.85rem; color: var(--text-muted); font-family: var(--font-mono); }
+
+        .compare-selector {
+            background: rgba(139, 92, 246, 0.04);
+            border: 1px dashed var(--accent-primary);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .compare-dropdown {
+            background: #18181b;
+            color: #ffffff;
+            border: 1px solid var(--glass-border);
+            padding: 0.5rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        /* Vitals Cards */
+        .vitals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .vital-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .vital-label { font-size: 0.8rem; font-weight: 500; color: var(--text-muted); }
+        .vital-value { font-size: 1.6rem; font-weight: 700; color: #ffffff; }
+        .vital-unit { font-size: 0.9rem; font-weight: 500; color: var(--text-dark); }
+        .vital-delta { font-size: 0.75rem; font-weight: 600; margin-top: 0.25rem; }
+        
+        .delta-better { color: var(--accent-success); }
+        .delta-worse { color: var(--accent-error); }
+        .delta-neutral { color: var(--text-dark); }
+
+        /* Chart Canvas Styles */
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 1024px) {
+            .charts-container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .chart-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #ffffff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chart-legend {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.75rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--text-muted);
+        }
+
+        .legend-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+
+        .chart-canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 220px;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Detail panels */
+        .sections-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 1024px) {
+            .sections-container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .section-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 1.5rem;
+        }
+
+        .section-card h3 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.5rem;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.65rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 0.85rem;
+        }
+
+        .metric-row:last-child { border-bottom: none; }
+        .metric-name { color: var(--text-muted); }
+        .metric-value { font-weight: 600; font-family: var(--font-mono); }
+
+        .loc-bar-container {
+            width: 80px;
+            height: 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 3px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 0.5rem;
+        }
+
+        .loc-bar {
+            height: 100%;
+            background: var(--accent-primary);
+        }
+
+        /* LOC diff classes */
+        .diff-added { color: var(--accent-success); margin-left: 0.5rem; font-weight: 600; }
+        .diff-removed { color: var(--accent-error); margin-left: 0.5rem; font-weight: 600; }
+
+        /* Telemetry Deltas Table Section */
+        .telemetry-compare-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--accent-primary);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .telemetry-compare-card h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+
+        .compare-table th, .compare-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .compare-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .compare-table tbody tr:hover {
+            background: rgba(255,255,255,0.01);
+        }
+
+        .compare-metric-name {
+            font-weight: 600;
+        }
+
+        .compare-cell-group {
+            font-family: var(--font-mono);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .compare-val-label {
+            color: var(--text-dark);
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title-area">
+            <h1>Aethvion Suite Tester</h1>
+            <p>Automatic Telemetry Profiling & Web Rendering Test Bench</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-primary" id="run-tests-btn" onclick="startTestRun()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Run Automatic Tests (60s)
+            </button>
+        </div>
+    </header>
+
+    <div class="workspace-grid">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>Historical Runs</h2>
+            </div>
+            <div class="reports-list" id="reports-list-container">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+
+        <!-- Main Viewport -->
+        <div class="content-viewport">
+            
+            <!-- Explanation Card -->
+            <div class="info-card">
+                <strong>How the Suite Tester works:</strong> When you press "Run Automatic Tests", the devtool backend spawns a separate instance of the Aethvion Suite backend on port <code>18080</code>. It then automatically launches a browser tab pointing to it. The tool profiles both backend process footprints (CPU & Memory) and system-wide telemetry at 1-second intervals for 60 seconds. At second 15, an LLM task load is injected to verify agent routing speed under render stress.
+            </div>
+
+            <!-- Empty Dashboard -->
+            <div class="empty-state" id="empty-state-view">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--text-dark)" stroke-width="1.5" style="margin-bottom: 1rem;"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                <h3>No Profile Run Selected</h3>
+                <p>Choose an execution from the left menu or trigger a new 60-second real-time telemetry profiling run.</p>
+            </div>
+
+            <!-- Active Run Stepper -->
+            <div class="runner-panel" id="active-runner-view" style="display: none;">
+                <div class="runner-header">
+                    <div class="runner-title">
+                        <h3 id="runner-phase-title">Starting Test...</h3>
+                        <span id="runner-id-label">Run ID: N/A</span>
+                    </div>
+                    <div class="report-badge" style="background: rgba(6, 182, 212, 0.15); color: var(--accent-secondary);" id="runner-status-badge">
+                        Running
+                    </div>
+                </div>
+
+                <div class="progress-container">
+                    <div class="progress-bar" id="active-progress-bar"></div>
+                </div>
+
+                <div class="phases-stepper">
+                    <div class="step" id="step-startup">
+                        <div class="step-dot"></div>
+                        <span class="step-label">Startup</span>
+                    </div>
+                    <div class="step" id="step-api">
+                        <div class="step-dot"></div>
+                        <span class="step-label">60s Profiling</span>
+                    </div>
+                    <div class="step" id="step-cleanup">
+                        <div class="step-dot"></div>
+                        <span class="step-label">Cleanup</span>
+                    </div>
+                </div>
+
+                <div class="terminal-panel" id="terminal-log-output">
+                    <!-- Dynamic logs -->
+                </div>
+            </div>
+
+            <!-- Inspector -->
+            <div class="report-layout" id="report-inspector-view" style="display: none;">
+                
+                <div class="compare-selector">
+                    <span>Compare this profile run against a baseline:</span>
+                    <div class="compare-actions">
+                        <select class="compare-dropdown" id="compare-target-select" onchange="runComparison()">
+                            <option value="">-- Choose baseline --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="report-summary-header">
+                    <div class="report-title-section">
+                        <h2 id="inspector-title">Performance Profile</h2>
+                        <p id="inspector-subtitle">Commit: unknown</p>
+                    </div>
+                    <div class="report-badge" id="inspector-badge">PASSED</div>
+                </div>
+
+                <!-- Vitals -->
+                <div class="vitals-grid">
+                    <div class="vital-card">
+                        <span class="vital-label">Startup Duration</span>
+                        <div class="vital-value" id="vital-startup">0.00<span class="vital-unit">s</span></div>
+                        <div class="vital-delta" id="delta-startup"></div>
+                    </div>
+                    <div class="vital-card">
+                        <span class="vital-label">Avg Process CPU</span>
+                        <div class="vital-value" id="vital-cpu">0.0<span class="vital-unit">%</span></div>
+                        <div class="vital-delta" id="delta-cpu"></div>
+                    </div>
+                    <div class="vital-card">
+                        <span class="vital-label">Peak Process Memory</span>
+                        <div class="vital-value" id="vital-memory">0.00<span class="vital-unit">MB</span></div>
+                        <div class="vital-delta" id="delta-memory"></div>
+                    </div>
+                    <div class="vital-card">
+                        <span class="vital-label">Task Queue Latency</span>
+                        <div class="vital-value" id="vital-task">0.00<span class="vital-unit">s</span></div>
+                        <div class="vital-delta" id="delta-task"></div>
+                    </div>
+                    <div class="vital-card">
+                        <span class="vital-label">Avg Health Latency</span>
+                        <div class="vital-value" id="vital-health">0.0<span class="vital-unit">ms</span></div>
+                        <div class="vital-delta" id="delta-health"></div>
+                    </div>
+                </div>
+
+                <!-- Telemetry Low / High / Avg Detailed Matrix Comparison (Shown only during comparison) -->
+                <div class="telemetry-compare-card" id="telemetry-comparison-card" style="display: none;">
+                    <h3>
+                        Telemetry Comparison Matrix
+                        <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);" id="compare-matrix-title">Comparing vs unknown</span>
+                    </h3>
+                    <table class="compare-table">
+                        <thead>
+                            <tr>
+                                <th>Vitals Stream</th>
+                                <th>Low (Min) Profile</th>
+                                <th>High (Max) Profile</th>
+                                <th>Running Average</th>
+                            </tr>
+                        </thead>
+                        <tbody id="compare-matrix-tbody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Charts (Canvas) -->
+                <div class="charts-container">
+                    <!-- CPU/GPU Chart -->
+                    <div class="chart-card">
+                        <h3>
+                            CPU & GPU Load Profile (60s)
+                            <div class="chart-legend">
+                                <div class="legend-item"><div class="legend-color" style="background: var(--accent-primary)"></div>Process CPU</div>
+                                <div class="legend-item"><div class="legend-color" style="background: var(--accent-secondary)"></div>System CPU</div>
+                                <div class="legend-item"><div class="legend-color" style="background: var(--accent-success)"></div>GPU Util</div>
+                            </div>
+                        </h3>
+                        <div class="chart-canvas-wrapper">
+                            <canvas id="cpu-chart-canvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Memory Chart -->
+                    <div class="chart-card">
+                        <h3>
+                            Memory Allocation Profile (60s)
+                            <div class="chart-legend">
+                                <div class="legend-item"><div class="legend-color" style="background: var(--accent-primary)"></div>Process RAM (MB)</div>
+                                <div class="legend-item"><div class="legend-color" style="background: var(--accent-warning)"></div>System RAM (%)</div>
+                            </div>
+                        </h3>
+                        <div class="chart-canvas-wrapper">
+                            <canvas id="mem-chart-canvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detail grids -->
+                <div class="sections-container">
+                    
+                    <!-- Repostory stats -->
+                    <div class="section-card">
+                        <h3>
+                            Repository Codebase Stats
+                            <span id="repo-diff-summary" style="font-size: 0.8rem; font-weight: normal;"></span>
+                        </h3>
+                        <div class="metric-row">
+                            <span class="metric-name">Total Files (Tracked)</span>
+                            <span class="metric-value">
+                                <span id="inspect-repo-files">0</span>
+                                <span id="diff-repo-files"></span>
+                            </span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Total Lines of Code (LOC)</span>
+                            <span class="metric-value">
+                                <span id="inspect-repo-loc">0</span>
+                                <span id="diff-repo-loc"></span>
+                            </span>
+                        </div>
+                        <div id="repo-lang-breakdown">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Git / specs details -->
+                    <div class="section-card">
+                        <h3>Environment & Specs</h3>
+                        <div class="metric-row">
+                            <span class="metric-name">Version String</span>
+                            <span class="metric-value" id="inspect-git-ver">N/A</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Commit Hash</span>
+                            <span class="metric-value" id="inspect-git-hash">N/A</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Commit Subject</span>
+                            <span class="metric-value" id="inspect-git-msg" style="max-width: 250px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">N/A</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">GPU Device Vitals</span>
+                            <span class="metric-value" id="inspect-gpu">N/A</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Averages (Process / System)</span>
+                            <span class="metric-value" id="inspect-vitals-avg">N/A</span>
+                        </div>
+                    </div>
+
+                    <!-- Load test details -->
+                    <div class="section-card">
+                        <h3>Task Routing Stress Test</h3>
+                        <div class="metric-row">
+                            <span class="metric-name">Prompt turnaround speed</span>
+                            <span class="metric-value" id="inspect-task-dur">N/A</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Content checks response</span>
+                            <span class="metric-value" id="inspect-task-correct">N/A</span>
+                        </div>
+                        <div class="metric-row" style="flex-direction: column; align-items: flex-start; gap: 0.4rem;">
+                            <span class="metric-name">AI Raw Response payload</span>
+                            <span class="metric-value" id="inspect-task-response" style="font-family: var(--font-mono); font-size: 0.8rem; background: rgba(0,0,0,0.3); padding: 0.5rem; width: 100%; border-radius: 6px; min-height: 40px; overflow-wrap: anywhere;">N/A</span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let reportsCache = [];
+        let activeReport = null;
+        let activePollInterval = null;
+
+        async function fetchReports() {
+            try {
+                const response = await fetch('/api/tests/reports');
+                const data = await response.json();
+                reportsCache = data.reports || [];
+                renderReportsList();
+                populateCompareSelect();
+            } catch (err) {
+                console.error("Failed loading history list", err);
+            }
+        }
+
+        function renderReportsList() {
+            const container = document.getElementById('reports-list-container');
+            container.innerHTML = '';
+            
+            if (reportsCache.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-dark); text-align: center; font-size: 0.85rem; padding: 2rem;">No test history found.</div>';
+                return;
+            }
+            
+            reportsCache.forEach(report => {
+                const isSelected = activeReport && activeReport.id === report.id;
+                const statusBadge = report.status === 'passed' ? 
+                    '<span class="report-badge badge-passed">Passed</span>' : 
+                    '<span class="report-badge badge-failed">Failed</span>';
+                
+                const item = document.createElement('div');
+                item.className = `report-item ${isSelected ? 'active' : ''}`;
+                item.onclick = () => selectReport(report.id);
+                item.innerHTML = `
+                    <div class="report-meta">
+                        <span class="report-date">${report.timestamp}</span>
+                        ${statusBadge}
+                    </div>
+                    <div class="report-commit">${report.commit_hash}</div>
+                    <div class="report-msg">${report.commit_msg}</div>
+                    <div class="report-quick-vitals">
+                        <span>Startup: ${report.startup_s.toFixed(1)}s</span>
+                        <span>Peak: ${report.peak_mem_mb.toFixed(0)}MB</span>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function populateCompareSelect() {
+            const select = document.getElementById('compare-target-select');
+            select.innerHTML = '<option value="">-- Choose baseline --</option>';
+            reportsCache.forEach(report => {
+                if (activeReport && report.id === activeReport.id) return;
+                const opt = document.createElement('option');
+                opt.value = report.id;
+                opt.textContent = `${report.timestamp} [${report.commit_hash}] - ${report.commit_msg.substring(0, 20)}`;
+                select.appendChild(opt);
+            });
+        }
+
+        async function selectReport(reportId) {
+            document.getElementById('empty-state-view').style.display = 'none';
+            document.getElementById('active-runner-view').style.display = 'none';
+            
+            try {
+                const response = await fetch(`/api/tests/reports/${reportId}`);
+                activeReport = await response.json();
+                
+                renderReportsList();
+                populateCompareSelect();
+                
+                document.getElementById('report-inspector-view').style.display = 'flex';
+                document.getElementById('inspector-title').textContent = `Performance Profile: ${activeReport.timestamp}`;
+                document.getElementById('inspector-subtitle').textContent = `Commit: ${activeReport.git.commit_hash} ("${activeReport.git.commit_msg}")`;
+                
+                const badge = document.getElementById('inspector-badge');
+                badge.textContent = activeReport.status.toUpperCase();
+                badge.className = `report-badge ${activeReport.status === 'passed' ? 'badge-passed' : 'badge-failed'}`;
+                
+                // Vitals metrics
+                document.getElementById('vital-startup').innerHTML = `${activeReport.vitals.startup_duration_s.toFixed(2)}<span class="vital-unit">s</span>`;
+                document.getElementById('vital-cpu').innerHTML = `${activeReport.vitals.averages.process_cpu_avg.toFixed(1)}<span class="vital-unit">%</span>`;
+                document.getElementById('vital-memory').innerHTML = `${activeReport.vitals.averages.process_mem_max.toFixed(0)}<span class="vital-unit">MB</span>`;
+                
+                const task = activeReport.tasks;
+                const taskDur = task.success ? task.duration_s : 0.0;
+                document.getElementById('vital-task').innerHTML = `${taskDur.toFixed(2)}<span class="vital-unit">s</span>`;
+                
+                const healthTest = activeReport.api_routing.find(x => x.test === 'health_check');
+                const healthLatency = healthTest ? healthTest.avg_latency_ms : 0.0;
+                document.getElementById('vital-health').innerHTML = `${healthLatency.toFixed(1)}<span class="vital-unit">ms</span>`;
+                
+                // Details Card specs
+                document.getElementById('inspect-git-ver').textContent = activeReport.git.version;
+                document.getElementById('inspect-git-hash').textContent = activeReport.git.commit_hash;
+                document.getElementById('inspect-git-msg').textContent = activeReport.git.commit_msg;
+                
+                const avgs = activeReport.vitals.averages;
+                document.getElementById('inspect-vitals-avg').textContent = `Proc CPU: ${avgs.process_cpu_avg}% (Max: ${avgs.process_cpu_max}%) | System CPU: ${avgs.system_cpu_avg}%`;
+                
+                const gpu = activeReport.vitals.gpu_usage.final;
+                document.getElementById('inspect-gpu').textContent = gpu.status === 'Available' ? 
+                    `GPU: ${gpu.utilization}% | VRAM: ${gpu.vram_used_mb}MB / ${gpu.vram_total_mb}MB` : 'N/A';
+                
+                // Render baseline repository stats
+                renderRepoStats(activeReport.repository_stats);
+                
+                // Task details
+                if (task.task_id) {
+                    document.getElementById('inspect-task-dur').textContent = `${task.duration_s}s`;
+                    document.getElementById('inspect-task-correct').textContent = task.correct ? 'PASSED' : 'FAILED';
+                    document.getElementById('inspect-task-response').textContent = task.ai_response;
+                } else {
+                    document.getElementById('inspect-task-dur').textContent = 'Failed';
+                    document.getElementById('inspect-task-correct').textContent = 'N/A';
+                    document.getElementById('inspect-task-response').textContent = task.error || 'N/A';
+                }
+                
+                // Reset comparison views
+                clearComparisonDeltas();
+                
+                // Render Canvas Charts
+                renderTelemetryCharts();
+                
+            } catch (err) {
+                console.error("Inspector fetch error", err);
+            }
+        }
+
+        function renderRepoStats(repo, diffStats = null) {
+            document.getElementById('inspect-repo-files').textContent = repo.total_files;
+            document.getElementById('inspect-repo-loc').textContent = repo.total_loc.toLocaleString();
+            
+            // Clear inline diff tags
+            document.getElementById('diff-repo-files').innerHTML = '';
+            document.getElementById('diff-repo-loc').innerHTML = '';
+            document.getElementById('repo-diff-summary').innerHTML = '';
+
+            // Handle diff render if comparison active
+            if (diffStats) {
+                const filesDiff = diffStats.total_files.delta;
+                const locDiff = diffStats.total_loc.delta;
+                
+                document.getElementById('diff-repo-files').innerHTML = filesDiff === 0 ? 
+                    '' : (filesDiff > 0 ? `<span class="diff-added">(+${filesDiff})</span>` : `<span class="diff-removed">(${filesDiff})</span>`);
+                    
+                document.getElementById('diff-repo-loc').innerHTML = locDiff === 0 ? 
+                    '' : (locDiff > 0 ? `<span class="diff-added">(+${locDiff.toLocaleString()} LOC)</span>` : `<span class="diff-removed">(${locDiff.toLocaleString()} LOC)</span>`);
+                
+                document.getElementById('repo-diff-summary').textContent = `[Files delta: ${filesDiff > 0 ? '+':''}${filesDiff} | LOC delta: ${locDiff > 0 ? '+':''}${locDiff.toLocaleString()}]`;
+            }
+
+            const breakdownDiv = document.getElementById('repo-lang-breakdown');
+            breakdownDiv.innerHTML = '';
+            
+            for (const [lang, stats] of Object.entries(repo.by_language)) {
+                if (stats.files === 0) continue;
+                const pct = repo.total_loc > 0 ? (stats.loc / repo.total_loc) * 100 : 0;
+                
+                let diffHtml = '';
+                if (diffStats && diffStats.languages[lang]) {
+                    const lDiff = diffStats.languages[lang].loc_delta;
+                    const fDiff = diffStats.languages[lang].files_delta;
+                    
+                    if (lDiff !== 0 || fDiff !== 0) {
+                        const lSign = lDiff > 0 ? '+' : '';
+                        const fSign = fDiff > 0 ? '+' : '';
+                        const lClass = lDiff > 0 ? 'diff-added' : 'diff-removed';
+                        const fClass = fDiff > 0 ? 'diff-added' : 'diff-removed';
+                        
+                        diffHtml = `<span style="font-size:0.75rem; margin-left: 0.5rem;">[Files: <span class="${fClass}">${fSign}${fDiff}</span> | LOC: <span class="${lClass}">${lSign}${lDiff}</span>]</span>`;
+                    }
+                }
+                
+                const row = document.createElement('div');
+                row.className = 'metric-row';
+                row.innerHTML = `
+                    <span class="metric-name">${lang} (${stats.files} files)</span>
+                    <span class="metric-value">
+                        ${stats.loc.toLocaleString()} lines
+                        ${diffHtml}
+                        <div class="loc-bar-container">
+                            <div class="loc-bar" style="width: ${pct}%"></div>
+                        </div>
+                    </span>
+                `;
+                breakdownDiv.appendChild(row);
+            }
+        }
+
+        function clearComparisonDeltas() {
+            ['delta-startup', 'delta-cpu', 'delta-memory', 'delta-task', 'delta-health'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+            document.getElementById('telemetry-comparison-card').style.display = 'none';
+            if (activeReport) {
+                renderRepoStats(activeReport.repository_stats); // Reset repo view without deltas
+            }
+        }
+
+        async function runComparison() {
+            const baseId = document.getElementById('compare-target-select').value;
+            if (!baseId || !activeReport) {
+                clearComparisonDeltas();
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/tests/compare?base_id=${baseId}&compare_id=${activeReport.id}`);
+                const comp = await response.json();
+                
+                // 1. Core Vitals card Deltas
+                renderDelta('delta-startup', comp.deltas.startup_duration, 's', false);
+                renderDelta('delta-cpu', comp.telemetry_deltas.process_cpu.avg, '%', false);
+                renderDelta('delta-memory', comp.telemetry_deltas.process_mem.max, 'MB', false);
+                renderDelta('delta-task', comp.deltas.task_queue_duration_s, 's', false);
+                renderDelta('delta-health', comp.deltas.health_avg_latency_ms, 'ms', false);
+                
+                // 2. Render Codebase LOC diff tags
+                renderRepoStats(activeReport.repository_stats, comp.repository_compare);
+                
+                // 3. Render Running Telemetry detailed Matrix (Lows, Highs, Averages)
+                renderTelemetryComparisonMatrix(comp);
+                
+            } catch (err) {
+                console.error("Compare error", err);
+            }
+        }
+
+        function renderTelemetryComparisonMatrix(comp) {
+            const card = document.getElementById('telemetry-comparison-card');
+            const title = document.getElementById('compare-matrix-title');
+            const tbody = document.getElementById('compare-matrix-tbody');
+            
+            title.textContent = `Baseline: ${comp.base.timestamp} [${comp.base.commit}] vs Current [${comp.compare.commit}]`;
+            tbody.innerHTML = '';
+            
+            const metricsMap = {
+                "process_cpu": { label: "Process CPU", unit: "%", lowerIsBetter: true },
+                "process_mem": { label: "Process RAM", unit: "MB", lowerIsBetter: true },
+                "system_cpu": { label: "System CPU", unit: "%", lowerIsBetter: true },
+                "system_mem": { label: "System RAM", unit: "%", lowerIsBetter: true },
+                "gpu_util": { label: "GPU Load", unit: "%", lowerIsBetter: true },
+                "gpu_vram": { label: "GPU VRAM", unit: "MB", lowerIsBetter: true }
+            };
+            
+            for (const [key, config] of Object.entries(metricsMap)) {
+                const mData = comp.telemetry_deltas[key];
+                if (!mData) continue;
+                
+                const tr = document.createElement('tr');
+                
+                // Metric name cell
+                const nameTd = document.createElement('td');
+                nameTd.className = 'compare-metric-name';
+                nameTd.textContent = config.label;
+                tr.appendChild(nameTd);
+                
+                // Loop through min (Lows), max (Highs), and avg (Averages) columns
+                ["min", "max", "avg"].forEach(stat => {
+                    const sData = mData[stat];
+                    const td = document.createElement('td');
+                    
+                    const isZero = sData.delta === 0;
+                    const isBetter = config.lowerIsBetter ? sData.delta < 0 : sData.delta > 0;
+                    
+                    let color = 'var(--text-main)';
+                    let sign = sData.delta > 0 ? '+' : '';
+                    let percentText = '';
+                    
+                    if (!isZero) {
+                        color = isBetter ? 'var(--accent-success)' : 'var(--accent-error)';
+                        percentText = ` (${sign}${sData.pct.toFixed(1)}%)`;
+                    }
+                    
+                    td.innerHTML = `
+                        <div class="compare-cell-group">
+                            <span>${sData.comp.toFixed(1)}${config.unit}</span>
+                            <span style="color: ${color}; font-size: 0.8rem; font-weight: 600;">
+                                ${isZero ? '0.0' : sign + sData.delta.toFixed(1)}${config.unit}${percentText}
+                            </span>
+                            <span class="compare-val-label">base: ${sData.base.toFixed(1)}</span>
+                        </div>
+                    `;
+                    tr.appendChild(td);
+                });
+                
+                tbody.appendChild(tr);
+            }
+            
+            card.style.display = 'block';
+        }
+
+        function renderDelta(id, data, unit, higherIsBetter = false) {
+            const container = document.getElementById(id);
+            if (!data) return;
+            
+            const val = data.delta;
+            const pct = data.pct;
+            const isZero = val === 0;
+            
+            const isBetter = higherIsBetter ? val > 0 : val < 0;
+            
+            let classStr = 'delta-neutral';
+            let icon = '';
+            if (!isZero) {
+                if (isBetter) {
+                    classStr = 'delta-better';
+                    icon = '▼';
+                } else {
+                    classStr = 'delta-worse';
+                    icon = '▲';
+                }
+            }
+            
+            const sign = val > 0 ? '+' : '';
+            container.className = `vital-delta ${classStr}`;
+            container.innerHTML = isZero ? '<span>No Change</span>' : `<span>${icon} ${sign}${val.toFixed(1)}${unit} (${sign}${pct.toFixed(1)}%)</span>`;
+        }
+
+        // Native HTML5 Canvas Line Graphs Drawing
+        function renderTelemetryCharts() {
+            const timeseries = activeReport.timeseries || [];
+            if (timeseries.length === 0) return;
+            
+            // 1. Draw CPU/GPU Chart
+            drawTelemetryChart(
+                'cpu-chart-canvas',
+                timeseries,
+                [
+                    { key: 'process_cpu', color: '#8b5cf6', width: 2 },
+                    { key: 'system_cpu', color: '#06b6d4', width: 1.5 },
+                    { key: 'gpu_util', color: '#10b981', width: 1.5 }
+                ],
+                { maxVal: 100, unit: '%' }
+            );
+
+            // 2. Draw Memory Chart
+            const maxMem = Math.max(...timeseries.map(s => s.process_mem), 256);
+            drawTelemetryChart(
+                'mem-chart-canvas',
+                timeseries,
+                [
+                    { key: 'process_mem', color: '#8b5cf6', width: 2, scaleToMax: true },
+                    { key: 'system_mem', color: '#f59e0b', width: 1.5, scaleToMax: false, customMax: 100 }
+                ],
+                { maxVal: maxMem, unit: 'MB', dualScale: true }
+            );
+        }
+
+        function drawTelemetryChart(canvasId, data, datasets, options) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            
+            const w = rect.width;
+            const h = rect.height;
+            
+            const padLeft = 40;
+            const padRight = 10;
+            const padTop = 15;
+            const padBottom = 20;
+            
+            const graphW = w - padLeft - padRight;
+            const graphH = h - padTop - padBottom;
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+            ctx.lineWidth = 1;
+            ctx.font = '9px monospace';
+            ctx.fillStyle = '#71717a';
+            
+            for (let i = 0; i <= 4; i++) {
+                const y = padTop + (graphH * (i / 4));
+                ctx.beginPath();
+                ctx.moveTo(padLeft, y);
+                ctx.lineTo(w - padRight, y);
+                ctx.stroke();
+                
+                if (options.dualScale && datasets.length > 1) {
+                    if (i === 4 || i === 0) {
+                        const valLeft = Math.round(options.maxVal * (1 - i/4));
+                        ctx.fillText(valLeft, 5, y + 3);
+                    }
+                } else {
+                    const val = Math.round(options.maxVal * (1 - i/4));
+                    ctx.fillText(val + options.unit, 5, y + 3);
+                }
+            }
+            
+            for (let sec = 0; sec <= 60; sec += 10) {
+                const x = padLeft + (graphW * (sec / 60));
+                ctx.beginPath();
+                ctx.moveTo(x, padTop);
+                ctx.lineTo(x, h - padBottom);
+                ctx.stroke();
+                
+                ctx.fillText(sec + 's', x - 8, h - 5);
+            }
+            
+            datasets.forEach(set => {
+                ctx.beginPath();
+                ctx.strokeStyle = set.color;
+                ctx.lineWidth = set.width;
+                
+                data.forEach((d, idx) => {
+                    const sec = d.second;
+                    const val = d[set.key];
+                    
+                    const x = padLeft + (graphW * (sec / 60));
+                    
+                    let yValScale = options.maxVal;
+                    if (set.customMax !== undefined) {
+                        yValScale = set.customMax;
+                    } else if (!set.scaleToMax && options.dualScale) {
+                        yValScale = 100;
+                    }
+                    
+                    const y = padTop + graphH - (graphH * (val / yValScale));
+                    
+                    if (idx === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                
+                ctx.stroke();
+                
+                if (set.key === 'process_cpu' || set.key === 'process_mem') {
+                    const grad = ctx.createLinearGradient(0, padTop, 0, h - padBottom);
+                    grad.addColorStop(0, set.color + '22');
+                    grad.addColorStop(1, set.color + '00');
+                    ctx.lineTo(padLeft + graphW * (data[data.length-1].second / 60), h - padBottom);
+                    ctx.lineTo(padLeft, h - padBottom);
+                    ctx.closePath();
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+                }
+            });
+        }
+
+        async function startTestRun() {
+            const runBtn = document.getElementById('run-tests-btn');
+            runBtn.disabled = true;
+            
+            document.getElementById('empty-state-view').style.display = 'none';
+            document.getElementById('report-inspector-view').style.display = 'none';
+            document.getElementById('active-runner-view').style.display = 'block';
+            
+            const logContainer = document.getElementById('terminal-log-output');
+            logContainer.innerHTML = '<div class="log-entry" style="color: var(--accent-secondary)">[System] Initializing profiling bench run (60 seconds)...</div>';
+            
+            ['step-startup', 'step-api', 'step-cleanup'].forEach(id => {
+                document.getElementById(id).className = 'step';
+            });
+            document.getElementById('active-progress-bar').style.width = '0%';
+            
+            try {
+                const response = await fetch('/api/tests/run', { method: 'POST' });
+                const result = await response.json();
+                const runId = result.run_id;
+                
+                document.getElementById('runner-id-label').textContent = `Run ID: ${runId.substring(0,8)}`;
+                
+                if (activePollInterval) clearInterval(activePollInterval);
+                activePollInterval = setInterval(() => pollRunStatus(runId), 1000);
+            } catch (err) {
+                console.error(err);
+                logContainer.innerHTML += `<div class="log-entry" style="color: var(--accent-error)">Error submitting run request: ${err}</div>`;
+                runBtn.disabled = false;
+            }
+        }
+
+        async function pollRunStatus(runId) {
+            const runBtn = document.getElementById('run-tests-btn');
+            const logContainer = document.getElementById('terminal-log-output');
+            
+            try {
+                const response = await fetch(`/api/tests/status/${runId}`);
+                if (response.status === 404) {
+                    clearInterval(activePollInterval);
+                    runBtn.disabled = false;
+                    return;
+                }
+                const run = await response.json();
+                
+                document.getElementById('runner-phase-title').textContent = `${run.phase}...`;
+                document.getElementById('active-progress-bar').style.width = `${run.progress}%`;
+                
+                const statusBadge = document.getElementById('runner-status-badge');
+                statusBadge.textContent = run.status.toUpperCase();
+                
+                if (run.status === 'completed') {
+                    statusBadge.className = 'report-badge badge-passed';
+                    statusBadge.textContent = 'PASSED';
+                } else if (run.status === 'failed') {
+                    statusBadge.className = 'report-badge badge-failed';
+                    statusBadge.textContent = 'FAILED';
+                }
+                
+                logContainer.innerHTML = '';
+                run.logs.forEach(log => {
+                    const el = document.createElement('div');
+                    el.className = 'log-entry';
+                    el.textContent = log;
+                    logContainer.appendChild(el);
+                });
+                logContainer.scrollTop = logContainer.scrollHeight;
+                
+                const phase = run.phase;
+                const steps = ['step-startup', 'step-api', 'step-cleanup'];
+                steps.forEach(id => document.getElementById(id).classList.remove('active'));
+                
+                if (phase === 'Startup') {
+                    document.getElementById('step-startup').classList.add('active');
+                } else if (phase === 'Performance Profiling') {
+                    document.getElementById('step-startup').className = 'step completed';
+                    document.getElementById('step-api').classList.add('active');
+                } else if (phase === 'Shutdown & Clean') {
+                    document.getElementById('step-startup').className = 'step completed';
+                    document.getElementById('step-api').className = 'step completed';
+                    document.getElementById('step-cleanup').classList.add('active');
+                }
+                
+                if (run.status === 'completed' || run.status === 'failed') {
+                    clearInterval(activePollInterval);
+                    runBtn.disabled = false;
+                    
+                    if (run.status === 'completed') {
+                        steps.forEach(id => document.getElementById(id).className = 'step completed');
+                    }
+                    
+                    await fetchReports();
+                    if (run.status === 'completed' && run.metrics && run.metrics.id) {
+                        setTimeout(() => selectReport(run.metrics.id), 1000);
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        window.onload = () => {
+            fetchReports();
+        };
+    </script>
+</body>
+</html>
