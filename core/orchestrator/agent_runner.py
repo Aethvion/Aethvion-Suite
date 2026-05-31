@@ -204,7 +204,12 @@ ACTION: {{"type": "add_note", "note": "important context to remember"}}
 ACTION: {{"type": "evict_file", "path": "relative/file.txt"}}          ← drop a file from active context the moment you no longer need its raw content
 ACTION: {{"type": "distill_file_context", "path": "relative/file.txt", "summary": "key functions, patterns, configs I extracted"}}  ← store compact notes then auto-evict (preferred over plain evict_file for large reference reads)
 ACTION: {{"type": "observe", "content": "I see a screenshot showing X, Y, Z. The error is on line N."}}  ← describe images or key findings
+ACTION: {{"type": "respond", "message": "Here are three ideas: ..."}}  ← send a visible message to the user in the main chat (use for suggestions, answers, lists — anything the user should read)
 ACTION: {{"type": "done", "summary": "brief summary of what was accomplished"}}
+ACTION: {{"type": "save_to_project_memory", "category": "rule", "text": "No compilers or build tools"}}
+ACTION: {{"type": "save_to_project_memory", "category": "context", "text": "Tech stack: Three.js via CDN, vanilla JS"}}
+ACTION: {{"type": "save_to_project_memory", "category": "checklist", "title": "Project Roadmap", "items": ["Add color picker", "Add performance stats"]}}
+ACTION: {{"type": "check_checklist_item", "checklist_id": "a1b2c3d4", "item_id": "e5f6g7h8", "done": true}}
 
 SURGICAL EDIT RULES (most important):
 1. PATCH, DON'T REWRITE: When modifying an existing file, ALWAYS use patch_file — never rewrite the whole file just to change one thing. patch_file replaces only the "old" string with "new". The rest of the file is untouched.
@@ -221,7 +226,7 @@ EFFICIENCY RULES:
 10. WORKSPACE CONTEXT: If "Files:" are already listed in the Context block above, you already know what exists — skip list_dir and proceed directly.
 11. If images are attached to the task, use observe as your FIRST action to describe exactly what you see in each image before doing anything else.
 12. When switching tech stack or approach (e.g. React → plain HTML/CSS/JS), use delete_file to remove ALL old files that no longer belong BEFORE writing new ones.
-13. Start complex tasks with set_plan. Call mark_done only AFTER the real action for that step has executed and returned a result.
+13. PLAN BEFORE YOU ACT: For any task involving more than one step, call set_plan FIRST — before any read_file, write_file, patch_file, or run_command. Your plan is shown to the user in real-time so they can stop you if the approach is wrong. Call mark_done immediately after each step's action returns a success result (never before, never instead of). You may revise the plan mid-task by calling set_plan again if the approach needs to change.
 14. BATCH EVERYTHING: Issue all independent ACTION lines in a single response. Multiple patch_file/append_file calls for different files are fine in one response.
 15. KNOWLEDGE BLOCK: The Context section contains a "Knowledge" block listing every file you have ever read or modified, with function names and their exact line numbers (e.g. handleMouseMove@L145). Use this to jump directly to the right section: read_file with offset=145 to see that function. Check the Knowledge block before deciding to read a file at all — you may already know what you need.
 16. FILE READING: read_file returns up to 50,000 chars per call — enough for most files in one shot. If a result ends with [TRUNCATED], use the exact offset shown to continue. If you see a [NOTE] about reading a section multiple times, check the Knowledge block — it has the function locations. Use offset-based reads to jump directly to the function you need.
@@ -235,6 +240,24 @@ EFFICIENCY RULES:
 24. NAVIGATE SMART: On any unfamiliar workspace, call get_project_blueprint FIRST — it gives the full folder/file tree instantly without a single list_dir. Use list_dir only for a targeted spot-check of one directory.
 25. FIND, DON'T READ: Use search_codebase(query, path) to locate a string, class, or link in seconds. Only call read_file after you know exactly which file and roughly which line you need.
 26. VERIFY YOUR CHANGES: Before calling done, always run appropriate verification commands (e.g. run tests, check compiling, check linting) if available in the project, to ensure your edits are correct and did not introduce regressions.
+27. PROJECT MEMORY: When the user states a constraint, preference, or project fact that should apply to ALL future tasks in this workspace, call save_to_project_memory immediately — before doing anything else. Use category "rule" for hard constraints ("no compilers"), "context" for tech stack facts ("Three.js via CDN, no npm"), "design" for visual/UX decisions, "note" for observations. For multi-task project roadmaps use category "checklist". These items persist across all threads and model switches — save anything a fresh agent would need to know.
+28. VISIBLE RESPONSES: ALWAYS call respond at the end of every task. The main chat shows ONLY respond messages — your thinking text and done summary are invisible there. Use respond to confirm what you built, answer a question, or share ideas. One sentence is fine. The only exception is a silent background action (e.g. saving a note) where there is literally nothing for the user to read.
+29. UNDERSTAND BEFORE ACTING: Before doing anything, read the full message and separate BUILD requests from ANSWER requests.
+    - "build/add/create/fix/make/implement" → write code / files
+    - "what X should we add?", "any ideas for X?", "what do you think?", "suggest X" → answer via respond only, do NOT create or modify files
+    - Mixed message example — "make a home screen and what theories should we add?":
+      → Build the home screen (user asked to make it)
+      → Respond with a list of theory ideas (user asked for ideas, NOT to add them)
+      → Do NOT add theories to files — the user only asked for suggestions
+    - If unclear whether to build or suggest, respond with a plan and ask.
+30. COMMUNICATION STYLE: Write like a teammate texting, not a corporate report. Avoid all of these:
+    ✗ "I have suggested 5 theories:" → ✓ just list the theories, no preamble
+    ✗ "I have successfully implemented..." → ✓ "Done."
+    ✗ "I have completed the task. The implementation includes..." → ✓ "Built X with Y and Z."
+    ✗ "Here are the results of my analysis:" → ✓ just give the results
+    ✗ Starting respond messages with "I have..." → ✓ start with the content itself
+    Write in present tense for results ("Here are 3 ideas:") not past tense ("I came up with 3 ideas:").
+31. NO CREATIVE LIBERTIES: Only do what was asked. Do not add extra features, sections, theories, components, or improvements that weren't requested. If asked to add a search bar, add a search bar. Not a search bar plus redesigned navigation plus three new sections. Stick to the exact scope of the request.
 """
 
 
@@ -532,7 +555,11 @@ class AgentRunner:
         trace_id: Optional[str] = None,
         state_path: Optional[Path] = None,
         images: Optional[List[Dict]] = None,
-        nexus=None,  # Deprecated argument to prevent callers from crashing
+        nexus=None,        # Deprecated argument to prevent callers from crashing
+        token_budget: Optional[int] = None,   # Max total tokens before stopping
+        resume: bool = False,                  # Resume from saved checkpoint state
+        workspace_id: Optional[str] = None,    # For project memory lookup
+        memory_root: Optional[Path] = None,    # Root dir for project_memory.json
     ):
         self.task = task
         self.workspace = Path(workspace_path) if workspace_path else Path.cwd()
@@ -549,13 +576,28 @@ class AgentRunner:
         self._task_short: Optional[str] = None
         # there instead of into the user's project workspace.
         self._blueprint_cache_path: Optional[Path] = None
-        # Reset only per-task planning state between tasks.
-        # file_cache and workspace_map are intentionally KEPT so the agent knows
-        # list_dir and re-reading files it already has in context.
-        # The list_dir-first rule handles any genuinely stale workspace state.
-        self.state.plan = []
-        self.state.action_log = []
-        self.state.notes = []
+        # Token budget (None = unlimited). Checked before each LLM call.
+        self._token_budget: Optional[int] = token_budget
+        self._budget_warned: bool = False  # True after 80% warning fired once
+        # Stall detection: track last iteration where mark_done was called.
+        # If STALL_THRESHOLD iterations pass with a plan but no progress, warn.
+        self._last_mark_done_iter: int = 0
+        self._stall_warned: bool = False
+        # Resume mode: keep the existing plan/notes/log instead of clearing them.
+        self._resume: bool = resume
+        if resume:
+            # Preserve existing checkpoint state — don't wipe the plan.
+            # file_cache and workspace_map are always kept across tasks.
+            logger.info(f"[AgentRunner] Resume mode — reloading checkpoint: "
+                        f"{len(self.state.plan)} plan steps, "
+                        f"{sum(1 for s in self.state.plan if s.get('done'))} done")
+        else:
+            # Reset only per-task planning state between tasks.
+            # file_cache and workspace_map are intentionally KEPT so the agent knows
+            # which files it has already seen in this thread.
+            self.state.plan = []
+            self.state.action_log = []
+            self.state.notes = []
         self._start_time = datetime.utcnow()
         self.run_input_tokens = 0
         self.run_output_tokens = 0
@@ -575,6 +617,19 @@ class AgentRunner:
         # Dynamic replanning: count consecutive iterations that produced failures.
         # When this hits ≥ 2, inject a replanning suggestion.
         self._consecutive_failures: int = 0
+        # Hard enforcement: paths whose last patch/write/append FAILED and have
+        # not yet been resolved by a subsequent successful edit.
+        # The `done` action is BLOCKED until this set is empty.
+        self._unresolved_failures: set = set()
+        # Project memory — workspace-level persistent rules/context/design/notes.
+        # None when no workspace_id is provided (standalone / test runs).
+        self._project_memory = None
+        if workspace_id and memory_root:
+            try:
+                from core.orchestrator.project_memory import ProjectMemory
+                self._project_memory = ProjectMemory(workspace_id, memory_root)
+            except Exception as _pm_err:
+                logger.warning("[AgentRunner] Could not load project memory: %s", _pm_err)
 
     # ── cache helpers ─────────────────────────────────────────────
 
@@ -761,10 +816,17 @@ class AgentRunner:
 
     def _get_system_prompt(self) -> str:
         """Return the formatted system prompt. Subclasses override for a shorter version."""
-        return SYSTEM_PROMPT.format(
+        base = SYSTEM_PROMPT.format(
             workspace=str(self.workspace),
             current_date=datetime.utcnow().strftime("%B %d, %Y"),
         )
+        # Prepend project memory block so workspace rules appear before all other
+        # instructions — this ensures they are never overridden by later rules.
+        if self._project_memory:
+            mem_block = self._project_memory.get_injection_block()
+            if mem_block:
+                base = mem_block + "\n\n" + base
+        return base
 
     def _call_llm(self, iteration: int = 0) -> str:
         """Use streaming — same path as the working Code IDE — for reliability."""
@@ -878,7 +940,21 @@ class AgentRunner:
 
         if t == "mark_done":
             step = action.get("step", "")
+            # Warn (but don't hard-block) if there are unresolved failures — the
+            # step being marked done might be unrelated to the failed file, so we
+            # let it proceed but append a reminder that `done` is still blocked.
+            if self._unresolved_failures:
+                failed_paths = ", ".join(sorted(self._unresolved_failures))
+                self.state.mark_done(step)
+                self._last_mark_done_iter = iteration
+                self._stall_warned = False
+                return (
+                    f"Step marked done. WARNING: done is still blocked because "
+                    f"{failed_paths} has an unresolved patch failure. Fix that file before calling done."
+                )
             self.state.mark_done(step)
+            self._last_mark_done_iter = iteration   # reset stall clock
+            self._stall_warned = False               # allow re-warning after recovery
             return None  # state-only
 
         if t == "evict_file":
@@ -921,6 +997,21 @@ class AgentRunner:
             self.state.add_note(note)
             return None  # state-only
 
+        if t == "respond":
+            # Send a visible message to the user in the main chat panel.
+            # Use this for suggestions, ideas, answers, status updates — anything
+            # the user should see. Thinking text before ACTION: lines only goes to
+            # the Thoughts side panel.
+            message = action.get("message", "").strip()
+            if not message:
+                return "[respond] 'message' is required."
+            self._emit({
+                "type":    "agent_response",
+                "content": message,
+            })
+            self.state.log_action(iteration, "respond", message[:60])
+            return "Message sent to user."
+
         if t == "observe":
             # Observation action — purely informational, emitted to the UI.
             content = action.get("content", "")
@@ -940,8 +1031,18 @@ class AgentRunner:
             self.state.log_action(iteration, "patch_file", path)
 
             if result.startswith("patch_file FAILED"):
-                # Show a warning in the Thoughts panel instead of a misleading
-                # "file written" card — the user should see the failure clearly.
+                # Track as an unresolved failure — blocks `done` until fixed.
+                self._unresolved_failures.add(path)
+                # Emit a dedicated patch_failed event so the main chat activity
+                # area shows a visible red card (the thinking event only goes to
+                # the Thoughts side panel and is invisible to most users).
+                self._emit({
+                    "type":   "patch_failed",
+                    "path":   path,
+                    "title":  f"⚠ Patch failed — {path}",
+                    "detail": "Content mismatch — the agent will re-read and retry.",
+                })
+                # Also emit to Thoughts panel for detailed context
                 self._emit({
                     "type":   "thinking",
                     "title":  f"⚠ Patch failed — {path}",
@@ -950,6 +1051,12 @@ class AgentRunner:
                         f"The agent will re-read the file and retry."
                     ),
                 })
+                # Hard enforcement note appended to the result so the LLM sees it.
+                result += (
+                    f"\n[ENFORCEMENT: {path} has an unresolved patch failure. "
+                    f"You CANNOT call done or mark_done until this is fixed. "
+                    f"Re-read {path} and retry the patch with the exact current text.]"
+                )
                 # Soft nudge on repeated failed patches
                 if attempt >= 2:
                     result += (
@@ -958,6 +1065,8 @@ class AgentRunner:
                         f"Or use write_file / append_file as an alternative.]"
                     )
             else:
+                # Patch succeeded — remove from unresolved failures if it was there.
+                self._unresolved_failures.discard(path)
                 import difflib as _dl
                 _diff_lines = list(_dl.unified_diff(
                     old.splitlines(keepends=True),
@@ -997,6 +1106,8 @@ class AgentRunner:
             self._emit({"type": "write_file", "path": path, "detail": f"append: {len(content)} chars"})
             self._invalidate_read_cache(path)
             if not result.startswith("Error:"):
+                # Successful append resolves any prior patch failure on this file.
+                self._unresolved_failures.discard(path)
                 # Mark as modified so phase-eviction doesn't drop it
                 existing_size = self.state.file_cache.get(path, {}).get("size", 0)
                 self.state.cache_file(path, existing_size, turn=iteration, modified=True)
@@ -1020,6 +1131,8 @@ class AgentRunner:
             self._invalidate_read_cache(path)
             # Generate digest for the newly written content
             if not result.startswith("Error:"):
+                # Successful write resolves any prior patch failure on this file.
+                self._unresolved_failures.discard(path)
                 try:
                     digest = self._generate_digest(path, content, last_action="written")
                     self.state.update_file_digest(path, digest)
@@ -1188,6 +1301,61 @@ class AgentRunner:
             self.state.log_action(iteration, "search_codebase", query[:40])
             self._emit({"type": "read_file", "path": path or "workspace", "detail": f"search: {query[:40]}"})
             return result
+
+        # ── Project memory actions ────────────────────────────────────────────
+
+        if t == "save_to_project_memory":
+            if not self._project_memory:
+                return "[save_to_project_memory] No project memory available for this workspace."
+            from core.orchestrator.project_memory import CATEGORY_META
+            category = action.get("category", "note")
+            text     = action.get("text")
+            title    = action.get("title")
+            raw_items = action.get("items", [])
+            # Convert plain string list to checklist item dicts
+            if raw_items and isinstance(raw_items[0], str):
+                raw_items = [{"id": __import__("uuid").uuid4().hex[:8], "text": t, "done": False}
+                             for t in raw_items]
+            item = self._project_memory.add_item(
+                category=category, text=text, title=title,
+                items=raw_items if raw_items else None, source="agent",
+            )
+            meta = CATEGORY_META.get(category, {"icon": "📝", "label": category.title()})
+            display = text or title or f"{len(raw_items)} items"
+            self._emit({
+                "type":     "project_memory_item",
+                "action":   "added",
+                "category": category,
+                "icon":     meta["icon"],
+                "label":    meta["label"],
+                "text":     display,
+                "item":     item,
+                "title":    f"{meta['icon']} Saved to Project Memory",
+                "detail":   f"[{meta['label']}] {display}",
+            })
+            self.state.log_action(iteration, "save_to_project_memory", f"{category}: {display[:40]}")
+            return f"Saved to project memory — [{category}] {display}"
+
+        if t == "check_checklist_item":
+            if not self._project_memory:
+                return "[check_checklist_item] No project memory available."
+            checklist_id = action.get("checklist_id", "")
+            item_id      = action.get("item_id", "")
+            done         = bool(action.get("done", True))
+            ok = self._project_memory.update_checklist_item(checklist_id, item_id, done)
+            if ok:
+                state_str = "done" if done else "undone"
+                self._emit({
+                    "type":          "project_memory_item",
+                    "action":        "checklist_updated",
+                    "checklist_id":  checklist_id,
+                    "item_id":       item_id,
+                    "done":          done,
+                    "title":         "📋 Checklist updated",
+                    "detail":        f"Item marked {state_str}",
+                })
+                return f"Checklist item marked {state_str}."
+            return f"[check_checklist_item] Item not found (checklist_id={checklist_id!r}, item_id={item_id!r})."
 
         return f"Unknown action: {t}"
 
@@ -1974,10 +2142,63 @@ class AgentRunner:
 
     # ── main loop ─────────────────────────────────────────────────
 
+    # Iterations without a mark_done (with an active plan) before emitting a stall warning.
+    _STALL_THRESHOLD = 8
+
     def run(self) -> str:
         self._emit({"type": "start", "title": "Starting task", "detail": self.task})
 
+        # ── Resume: inject context so the agent knows it's continuing ────────
+        if self._resume and self.state.plan:
+            incomplete = [s["text"] for s in self.state.plan if not s.get("done")]
+            done_count = sum(1 for s in self.state.plan if s.get("done"))
+            total = len(self.state.plan)
+            resume_msg = (
+                f"[System: Resuming from checkpoint — {done_count}/{total} steps completed. "
+                f"Your plan is already loaded. Continue from the first incomplete step: "
+                f"{incomplete[0] if incomplete else '(all done?)'}. "
+                f"Do NOT call set_plan again unless the approach has changed.]"
+            )
+            self.conversation.append(resume_msg)
+            self._emit({
+                "type": "thinking",
+                "title": "Resuming from checkpoint",
+                "detail": f"{done_count}/{total} steps already done. Continuing from: {incomplete[0] if incomplete else '—'}",
+            })
+            # Stall clock starts at 0 so resume gets a full fresh window
+            self._last_mark_done_iter = 0
+
         for iteration in range(MAX_ITERATIONS):
+            # ── Token budget check (before LLM call) ─────────────────────────
+            if self._token_budget is not None:
+                used = self.run_input_tokens + self.run_output_tokens
+                pct = used / self._token_budget
+                if pct >= 1.0:
+                    summary = (
+                        f"Token budget of {self._token_budget:,} reached "
+                        f"({used:,} tokens used). Task stopped to prevent overrun."
+                    )
+                    self._emit({
+                        "type": "budget_exceeded",
+                        "title": "Token budget reached",
+                        "detail": summary,
+                        "used": used,
+                        "budget": self._token_budget,
+                    })
+                    self.state.record_task(self.task, f"[budget] {summary}")
+                    self.state.save()
+                    return summary
+                elif pct >= 0.8 and not self._budget_warned:
+                    self._budget_warned = True
+                    self._emit({
+                        "type": "budget_warning",
+                        "title": "Approaching token budget",
+                        "detail": f"{used:,} / {self._token_budget:,} tokens used ({int(pct*100)}%). Wrapping up soon.",
+                        "used": used,
+                        "budget": self._token_budget,
+                        "pct": int(pct * 100),
+                    })
+
             # Evict file_cache entries that haven't been accessed in the last 2 turns.
             # Files stay in workspace_map and file_digests — only the '(cached)' marker
             if iteration > 0:
@@ -2040,6 +2261,32 @@ class AgentRunner:
                 action_type = action.get("type", "")
 
                 if action_type == "done":
+                    # ── Hard enforcement gate ─────────────────────────────────
+                    # Block `done` if any file still has an unresolved patch/write
+                    # failure.  The agent claimed completion without actually fixing
+                    # the file — force it to go back and repair.
+                    if self._unresolved_failures:
+                        failed_paths = ", ".join(sorted(self._unresolved_failures))
+                        block_msg = (
+                            f"[BLOCKED: cannot call done — unresolved edit failure(s) on: {failed_paths}. "
+                            f"Re-read each file, verify the current content, and retry the edit. "
+                            f"Only call done after a successful patch_file, write_file, or append_file "
+                            f"on every failed path.]"
+                        )
+                        logger.warning(
+                            f"[AgentRunner iter={iteration}] `done` blocked — "
+                            f"unresolved failures: {failed_paths}"
+                        )
+                        self._emit({
+                            "type":   "thinking",
+                            "title":  f"⛔ done blocked — unresolved failures",
+                            "detail": f"Agent tried to call done while {failed_paths} still has an unresolved patch failure. Forcing retry.",
+                        })
+                        results.append(f"done(): {block_msg}")
+                        compact_actions.append("done(BLOCKED)")
+                        # Don't set done_triggered — loop continues
+                        continue
+
                     done_summary = action.get("summary", "Task complete.")
                     done_triggered = True
                     break
@@ -2154,6 +2401,30 @@ class AgentRunner:
                         })
             else:
                 self._consecutive_failures = 0
+
+            # ── Stall detection ───────────────────────────────────────────────
+            # If the agent has an active plan but hasn't marked any step done
+            # in _STALL_THRESHOLD iterations, emit a warning once.
+            iters_since_progress = iteration - self._last_mark_done_iter
+            has_incomplete_plan = self.state.plan and any(not s.get("done") for s in self.state.plan)
+            if (
+                has_incomplete_plan
+                and iters_since_progress >= self._STALL_THRESHOLD
+                and not self._stall_warned
+            ):
+                self._stall_warned = True
+                incomplete = [s["text"] for s in self.state.plan if not s.get("done")]
+                self._emit({
+                    "type": "stall_warning",
+                    "title": "Agent may be stuck",
+                    "detail": (
+                        f"No plan progress in {iters_since_progress} steps. "
+                        f"Remaining: {', '.join(incomplete[:3])}"
+                        + (f" (+{len(incomplete)-3} more)" if len(incomplete) > 3 else "")
+                    ),
+                    "iterations_since_progress": iters_since_progress,
+                    "incomplete_steps": incomplete,
+                })
 
             # Keep conversation bounded to last 16 entries (8 round-trips).
             # When trimming, prepend a context note so the model knows history

@@ -51,6 +51,11 @@ MODE_COMPANIONS   = COMPANIONS      # Alias kept for backward compatibility
 # ── AethvionDB data root ──────────────────────────────────────────────────────
 AETHVIONDB        = DATA / "aethviondb"
 
+# ── Code IDE + Agent workspaces ───────────────────────────────────────────────
+# Standalone feature root — workspaces, threads, project memory, blueprints.
+# (Moved from data/modes/agents/ to give Code a proper top-level home.)
+CODE              = DATA / "code"
+
 # Legacy compatibility / Common aliases
 HISTORY     = MODES     # Generic history root
 VAULT       = COMPANIONS
@@ -84,8 +89,8 @@ HISTORY_CHAT     = MODE_CHAT
 HISTORY_AI_CONV  = MODE_AI_CONV
 # Advanced AI Conversations
 HISTORY_ADVANCED = MODE_ADV_AICONV
-# Agents
-HISTORY_AGENTS   = MODE_AGENTS
+# Agents / Code workspaces (redirected to the new top-level CODE root)
+HISTORY_AGENTS   = CODE
 # Explained
 HISTORY_EXPLAINED = MODE_EXPLAINED
 
@@ -160,6 +165,8 @@ def ensure_all() -> None:
         MODE_CHAT, MODE_AGENTS, MODE_AGENT_CORP, MODE_AI_CONV, MODE_ADV_AICONV,
         MODE_EXPLAINED, MODE_WORKSPACES, MODE_WORLDSIM,
         AETHVIONDB,
+        # Code / Agent workspaces
+        CODE,
         # Sub-directories
         LOGS_USAGE, LOGS_NOTIFICATIONS,
         COMPANIONS_PERSONAS, COMPANIONS_KNOWLEDGE, COMPANIONS_MEMORY,

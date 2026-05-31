@@ -32,6 +32,8 @@ class TaskSubmitRequest(BaseModel):
     workspace_id: Optional[str] = None       # Agent workspace ID (Agents tab)
     agent_thread_id: Optional[str] = None    # Agent thread ID (Agents tab)
     is_incognito: Optional[bool] = False
+    token_budget: Optional[int] = None       # Max tokens before agent is stopped
+    resume: Optional[bool] = False           # Resume from saved checkpoint state
 
 
 class ThreadSettingsRequest(BaseModel):
@@ -81,6 +83,8 @@ async def submit_task(request: TaskSubmitRequest):
             workspace_id=request.workspace_id,
             agent_thread_id=request.agent_thread_id,
             is_incognito=request.is_incognito,
+            token_budget=request.token_budget,
+            resume=request.resume,
         )
         
         return TaskResponse(

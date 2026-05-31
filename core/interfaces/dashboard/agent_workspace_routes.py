@@ -50,6 +50,24 @@ class RestoreFileRequest(BaseModel):
     path: str  # workspace-relative path to restore from .aethvion_backup/
 
 
+class MemoryItemRequest(BaseModel):
+    category: str             # rule | context | design | note | checklist
+    text: Optional[str] = None
+    title: Optional[str] = None
+    items: Optional[list] = None   # checklist items [{text: str}] or [{id, text, done}]
+    source: Optional[str] = "user"
+
+
+class MemoryItemUpdateRequest(BaseModel):
+    text: Optional[str] = None
+    title: Optional[str] = None
+    category: Optional[str] = None
+
+
+class ChecklistItemUpdateRequest(BaseModel):
+    done: bool
+
+
 # ── Workspace endpoints ────────────────────────────────────────────────────────
 
 @router.get("/workspaces")
@@ -217,6 +235,42 @@ async def delete_thread(workspace_id: str, thread_id: str):
     if not ok:
         raise HTTPException(status_code=404, detail="Thread not found")
     return {"status": "deleted", "id": thread_id}
+
+
+@router.get("/workspaces/{workspace_id}/threads/{thread_id}/state")
+async def get_thread_checkpoint_state(workspace_id: str, thread_id: str):
+    """Return the saved AgentState checkpoint for a thread, if one exists.
+
+    Used by the frontend to detect interrupted tasks and offer a resume option.
+    """
+    state_path = HISTORY_AGENTS / workspace_id / "threads" / f"{thread_id}_state.json"
+    if not state_path.exists():
+        return {"has_state": False, "is_interrupted": False}
+
+    try:
+        import json as _json
+        data = _json.loads(state_path.read_text(encoding="utf-8"))
+        plan = data.get("plan", [])
+        plan_total = len(plan)
+        plan_done  = sum(1 for s in plan if s.get("done"))
+        is_interrupted = plan_total > 0 and plan_done < plan_total
+
+        # Surface the last-modified time so the UI can show "interrupted 5 min ago"
+        import datetime as _dt
+        mtime = state_path.stat().st_mtime
+        last_saved = _dt.datetime.fromtimestamp(mtime, tz=_dt.timezone.utc).isoformat()
+
+        return {
+            "has_state":      True,
+            "is_interrupted": is_interrupted,
+            "plan":           plan,
+            "plan_total":     plan_total,
+            "plan_done":      plan_done,
+            "last_saved":     last_saved,
+        }
+    except Exception as exc:
+        logger.warning(f"[checkpoint] Could not read state for {workspace_id}/{thread_id}: {exc}")
+        return {"has_state": False, "is_interrupted": False}
 
 
 @router.get("/workspaces/{workspace_id}/threads/{thread_id}/history")
@@ -464,3 +518,66 @@ async def search_workspace_content(path: str, query: str):
         logger.error(f"search_workspace_content error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+
+# ── Project Memory endpoints ──────────────────────────────────────────────────
+
+def _get_pm(workspace_id: str):
+    """Return a ProjectMemory instance for the given workspace."""
+    from core.orchestrator.project_memory import ProjectMemory
+    return ProjectMemory(workspace_id, HISTORY_AGENTS)
+
+
+@router.get("/workspaces/{workspace_id}/memory")
+async def list_memory(workspace_id: str):
+    """List all project memory items for a workspace."""
+    return {"items": _get_pm(workspace_id).load()}
+
+
+@router.post("/workspaces/{workspace_id}/memory", status_code=201)
+async def add_memory_item(workspace_id: str, req: MemoryItemRequest):
+    """Add a new project memory item."""
+    import uuid as _uuid
+    items = req.items
+    if items and isinstance(items, list) and items and isinstance(items[0], dict) and "text" in items[0] and "id" not in items[0]:
+        items = [{"id": _uuid.uuid4().hex[:8], "text": i["text"], "done": False} for i in items]
+    item = _get_pm(workspace_id).add_item(
+        category=req.category,
+        text=req.text,
+        title=req.title,
+        items=items,
+        source=req.source or "user",
+    )
+    return item
+
+
+@router.patch("/workspaces/{workspace_id}/memory/{item_id}")
+async def update_memory_item(workspace_id: str, item_id: str, req: MemoryItemUpdateRequest):
+    """Update text/title/category of a memory item."""
+    updates = {k: v for k, v in req.model_dump().items() if v is not None}
+    item = _get_pm(workspace_id).update_item(item_id, **updates)
+    if not item:
+        raise HTTPException(status_code=404, detail="Memory item not found")
+    return item
+
+
+@router.delete("/workspaces/{workspace_id}/memory/{item_id}", status_code=204)
+async def delete_memory_item(workspace_id: str, item_id: str):
+    """Delete a project memory item."""
+    ok = _get_pm(workspace_id).delete_item(item_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Memory item not found")
+
+
+@router.patch("/workspaces/{workspace_id}/memory/{checklist_id}/items/{item_id}")
+async def update_checklist_item(
+    workspace_id: str,
+    checklist_id: str,
+    item_id: str,
+    req: ChecklistItemUpdateRequest,
+):
+    """Toggle a checklist row's done state."""
+    ok = _get_pm(workspace_id).update_checklist_item(checklist_id, item_id, req.done)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Checklist item not found")
+    return {"ok": True}

@@ -70,26 +70,13 @@
                     <!-- Dashboard body: left panel + main area -->
                     <div class="agents-body">
 
-                        <!-- Left panel: timeline / plan / stats -->
+                        <!-- Left panel: stats only -->
                         <div class="agents-dash-left" id="agents-dash-left">
                             <div class="agents-dash-left-empty" id="agents-dash-left-empty">
-                                <span style="font-size:1.4rem;opacity:0.4">⚡</span>
-                                <span>Run a task to<br>see activity here</span>
+                                <span style="font-size:1.1rem;opacity:0.3">📊</span>
+                                <span style="font-size:0.7rem">Stats appear<br>during a run</span>
                             </div>
                             <div class="agents-dash-content" id="agents-dash-content" style="display:none">
-                                <!-- Timeline -->
-                                <div class="agents-dash-section">
-                                    <div class="agents-dash-section-label">Timeline</div>
-                                    <div class="agents-vert-timeline" id="agents-vert-timeline"></div>
-                                </div>
-                                <!-- Plan -->
-                                <div class="agents-dash-section" id="agents-plan-section" style="display:none">
-                                    <div class="agents-dash-section-label">
-                                        Plan
-                                        <span class="agents-dash-badge" id="agents-plan-badge"></span>
-                                    </div>
-                                    <div class="agents-plan-compact-list" id="agents-plan-compact-list"></div>
-                                </div>
                                 <!-- Stats -->
                                 <div class="agents-dash-section" id="agents-stats-section" style="display:none">
                                     <div class="agents-dash-section-label">Stats</div>
@@ -126,6 +113,9 @@
                                 </button>
                                 <button class="agents-main-tab-btn" data-tab="search">
                                     <i class="fas fa-search"></i> Search
+                                </button>
+                                <button class="agents-main-tab-btn" data-tab="memory" id="agents-tab-memory-btn">
+                                    <i class="fas fa-brain"></i> Memory
                                 </button>
                             </div>
                             
@@ -204,21 +194,78 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Tab Content: Memory -->
+                            <div id="agents-memory-tab-panel" class="agents-tab-content-panel">
+                                <div class="agents-memory-container">
+                                    <div class="agents-pm-topbar">
+                                        <div class="agents-pm-topbar-left">
+                                            <span class="agents-pm-title-lg">Project Memory</span>
+                                            <span class="agents-pm-subtitle">Rules, context and decisions that apply to every task in this workspace</span>
+                                        </div>
+                                        <button id="agents-pm-add-btn" class="agents-pm-add-btn-tab">+ Add Item</button>
+                                    </div>
+                                    <div class="agents-pm-form agents-pm-form--tab" id="agents-pm-form" style="display:none">
+                                        <div class="agents-pm-form-row">
+                                            <select id="agents-pm-cat-sel" class="agents-pm-cat-sel">
+                                                <option value="rule">🔴 Rule</option>
+                                                <option value="context">🔵 Context</option>
+                                                <option value="design">🟣 Design</option>
+                                                <option value="note">🟡 Note</option>
+                                                <option value="checklist">📋 Checklist</option>
+                                            </select>
+                                            <div class="agents-pm-form-actions">
+                                                <button id="agents-pm-save-btn" class="agents-pm-save-btn">Save</button>
+                                                <button id="agents-pm-cancel-btn" class="agents-pm-cancel-btn">Cancel</button>
+                                            </div>
+                                        </div>
+                                        <textarea id="agents-pm-text-inp" class="agents-pm-text-inp agents-pm-text-inp--tab"
+                                                  placeholder="Enter rule, fact, or checklist title… (Ctrl+Enter to save)" rows="3"></textarea>
+                                    </div>
+                                    <div class="agents-pm-empty" id="agents-pm-empty">
+                                        No memory yet. The agent saves rules, context and design decisions here automatically.
+                                    </div>
+                                    <div class="agents-pm-list agents-pm-list--tab" id="agents-pm-list"></div>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Right panel: chain of thought -->
+                        <!-- Right panel: Plan + Activity Log -->
                         <div class="agents-dash-right" id="agents-dash-right">
-                            <div class="agents-dash-right-header">
-                                <span class="agents-dash-right-title">Thoughts</span>
-                                <span class="agents-dash-badge" id="agents-thought-badge" style="display:none"></span>
-                            </div>
                             <div class="agents-dash-right-empty" id="agents-dash-right-empty">
-                                <span style="font-size:1.4rem;opacity:0.3">🧠</span>
-                                <span>Chain of thought<br>appears here</span>
+                                <span style="font-size:1.2rem;opacity:0.3">⚡</span>
+                                <span>Plan & activity<br>appear here</span>
                             </div>
-                            <div class="agents-thoughts-list" id="agents-thoughts-list" style="display:none"></div>
+                            <div class="agents-dash-right-content" id="agents-dash-right-content" style="display:none">
+                                <!-- Plan -->
+                                <div class="agents-dash-section agents-dash-section--plan" id="agents-plan-section" style="display:none">
+                                    <div class="agents-dash-section-label">
+                                        Plan
+                                        <span class="agents-dash-badge" id="agents-plan-badge"></span>
+                                    </div>
+                                    <div class="agents-plan-compact-list" id="agents-plan-compact-list"></div>
+                                </div>
+                                <!-- Activity Log -->
+                                <div class="agents-dash-section agents-dash-section--actlog">
+                                    <div class="agents-dash-section-label">Activity</div>
+                                    <div class="agents-activity-log" id="agents-activity-log"></div>
+                                </div>
+                            </div>
                         </div>
 
+                    </div>
+
+                    <!-- Resume banner (shown when interrupted checkpoint detected) -->
+                    <div id="agents-resume-banner" class="agents-resume-banner" style="display:none">
+                        <span class="agents-resume-icon">⏸</span>
+                        <div class="agents-resume-text">
+                            <span id="agents-resume-title">Previous task interrupted</span>
+                            <span id="agents-resume-sub" class="agents-resume-sub"></span>
+                        </div>
+                        <div class="agents-resume-actions">
+                            <button id="agents-resume-btn" class="agents-resume-btn">Resume</button>
+                            <button id="agents-resume-dismiss-btn" class="agents-resume-dismiss">&times;</button>
+                        </div>
                     </div>
 
                     <!-- Input area -->
@@ -241,6 +288,11 @@
                                 <select id="agents-model-select" class="control-select" title="Model">
                                     <option value="auto">Auto</option>
                                 </select>
+                                <div class="agents-budget-wrap" title="Optional token budget — agent stops when reached">
+                                    <span class="agents-budget-label">Budget</span>
+                                    <input type="number" id="agents-budget-input" class="agents-budget-input"
+                                           placeholder="∞" min="1000" step="5000">
+                                </div>
                                 <button id="agents-stop-btn" class="agents-stop-btn" style="display:none" title="Stop agent">
                                     <i class="fas fa-stop"></i>
                                     <span>Stop</span>

@@ -263,6 +263,9 @@ async function _agentsOnThreadSelectChange() {
 
     // Show existing thread token totals in stats panel
     _agUpdateThreadStats();
+
+    // Check for interrupted checkpoint — show resume banner if found
+    _agentsCheckCheckpoint(_agentsCurrentWorkspace.id, threadId);
 }
 
 async function agentsLoadThreadMessages(workspaceId, threadId) {
@@ -356,11 +359,12 @@ function _agentsAppendMessage(msg, scroll = true, isHistory = false) {
         return;
     }
 
-    // The `assistant` message saved after an agent run is the same text already
-    // displayed by the done card from agent_steps replay — skip it.
+    // The `assistant` message saved after an agent run duplicates respond messages
+    // already replayed from agent_steps — skip it only when the run used respond.
+    // If the agent never called respond, we keep it so the conclusion persists on reload.
     if (msg.role === 'assistant' && _agLastMsgWasAgentSteps) {
         _agLastMsgWasAgentSteps = false;
-        return;
+        if (_agentsRenderState && _agentsRenderState.hadRespond) return;
     }
 
     // Reset flag for any other role (user, error, etc.)
@@ -375,12 +379,9 @@ function _agentsAppendMessage(msg, scroll = true, isHistory = false) {
     if (isHistory) wrapper.classList.add('instant-msg');
 
     if (role === 'user') {
-        // Task prompt header — compact, dashboard style
-        const header = document.createElement('div');
-        header.className = 'agents-task-header';
-        header.innerHTML = `
-            <span class="agents-task-label">Task</span>
-            <span class="agents-task-text">${_htmlEscape(msg.content || '')}</span>`;
+        const bubble = document.createElement('div');
+        bubble.className = 'agents-bubble';
+        bubble.textContent = msg.content || '';
         // Show attached file thumbnails/chips if present
         const attachments = msg.attachments || [];
         if (attachments.length > 0) {
@@ -398,26 +399,29 @@ function _agentsAppendMessage(msg, scroll = true, isHistory = false) {
                 }
                 chips.appendChild(chip);
             });
-            header.appendChild(chips);
+            bubble.appendChild(chips);
         }
-        wrapper.appendChild(header);
+        wrapper.appendChild(bubble);
     } else if (role === 'error') {
-        wrapper.innerHTML = `<div class="agents-response-error">${_htmlEscape(msg.content || 'An error occurred.')}</div>`;
+        const bubble = document.createElement('div');
+        bubble.className = 'agents-bubble';
+        bubble.textContent = msg.content || 'An error occurred.';
+        wrapper.appendChild(bubble);
     } else {
-        // Assistant final response — clean reading area
-        const body = document.createElement('div');
-        body.className = 'agents-response-body';
-        body.innerHTML = _agentsRenderMarkdown(msg.content || '');
+        // Assistant message — chat bubble
+        const bubble = document.createElement('div');
+        bubble.className = 'agents-bubble';
+        bubble.innerHTML = _agentsRenderMarkdown(msg.content || '');
         if (typeof hljs !== 'undefined') {
-            body.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+            bubble.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
         }
-        wrapper.appendChild(body);
+        wrapper.appendChild(bubble);
 
         const ts = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
         const modelStr = msg.model ? ` · ${msg.model}` : '';
         if (ts || modelStr) {
             const meta = document.createElement('div');
-            meta.className = 'agents-response-meta';
+            meta.className = 'agents-bubble-meta';
             meta.textContent = ts + modelStr;
             wrapper.appendChild(meta);
         }
@@ -552,6 +556,16 @@ async function agentsSubmitTask() {
     // Strip preview URL before sending to backend
     const filesForApi = filesSnapshot.map(({ _previewUrl, ...rest }) => rest);
 
+    // Hide resume banner when user starts a fresh task
+    const resumeBanner = _agEl('agents-resume-banner');
+    if (resumeBanner) resumeBanner.style.display = 'none';
+    _agentsCheckpointState = null;
+
+    // Read optional token budget
+    const budgetInput = _agEl('agents-budget-input');
+    const budgetVal = budgetInput && budgetInput.value ? parseInt(budgetInput.value, 10) : null;
+    const tokenBudget = (budgetVal && budgetVal >= 1000) ? budgetVal : null;
+
     try {
         const resp = await fetch('/api/tasks/submit', {
             method: 'POST',
@@ -564,6 +578,7 @@ async function agentsSubmitTask() {
                 workspace_id: _agentsCurrentWorkspace.id,
                 agent_thread_id: _agentsCurrentThread.id,
                 attached_files: filesForApi.length ? filesForApi : undefined,
+                token_budget: tokenBudget,
             })
         });
 
@@ -703,25 +718,31 @@ let _agentsRenderState = null;
 // Thread-level thought counter — persists across tasks, resets on thread switch
 let _agentsThoughtTotal = 0;
 
-// ── Reset left panel to empty state (also clears thoughts on thread switch) ──
+// ── Reset panels to empty state ───────────────────────────────
 function _agResetDashboard() {
     if (_agentsRenderState && _agentsRenderState.timerInterval) {
         clearInterval(_agentsRenderState.timerInterval);
     }
     _agentsRenderState = null;
+    _agentsThoughtTotal = 0;
+
+    // Left panel
     const leftEmpty   = _agEl('agents-dash-left-empty');
     const dashContent = _agEl('agents-dash-content');
     if (leftEmpty)   leftEmpty.style.display   = 'flex';
     if (dashContent) dashContent.style.display = 'none';
 
-    // Full reset of the thoughts panel — called on thread switch / full re-render
-    _agentsThoughtTotal = 0;
-    const thoughtsList = _agEl('agents-thoughts-list');
+    // Right panel
     const rightEmpty   = _agEl('agents-dash-right-empty');
-    const badge        = _agEl('agents-thought-badge');
-    if (thoughtsList) { thoughtsList.innerHTML = ''; thoughtsList.style.display = 'none'; }
-    if (rightEmpty)   rightEmpty.style.display = 'flex';
-    if (badge)        { badge.textContent = ''; badge.style.display = 'none'; }
+    const rightContent = _agEl('agents-dash-right-content');
+    const actLog       = _agEl('agents-activity-log');
+    const planSection  = _agEl('agents-plan-section');
+    const planList     = _agEl('agents-plan-compact-list');
+    if (rightEmpty)   rightEmpty.style.display   = 'flex';
+    if (rightContent) rightContent.style.display = 'none';
+    if (actLog)       actLog.innerHTML           = '';
+    if (planSection)  planSection.style.display  = 'none';
+    if (planList)     planList.innerHTML          = '';
 }
 
 // ── Bootstrap a new run ───────────────────────────────────────
@@ -739,30 +760,31 @@ function _agInitRender(isReplay = false) {
     container.appendChild(run);
 
     // Activate left panel
-    const leftEmpty   = _agEl('agents-dash-left-empty');
-    const dashContent = _agEl('agents-dash-content');
-    const vtl         = _agEl('agents-vert-timeline');
-    const planSection = _agEl('agents-plan-section');
-    const statsSection= _agEl('agents-stats-section');
-    const planList    = _agEl('agents-plan-compact-list');
+    // Left panel: show stats
+    const leftEmpty    = _agEl('agents-dash-left-empty');
+    const dashContent  = _agEl('agents-dash-content');
+    const statsSection = _agEl('agents-stats-section');
     if (leftEmpty)    leftEmpty.style.display    = 'none';
     if (dashContent)  dashContent.style.display  = 'flex';
-    if (planSection)  planSection.style.display  = 'none';
     if (statsSection) statsSection.style.display = 'block';
-    if (planList)     planList.innerHTML          = '';
-    if (vtl)          vtl.innerHTML               = '';
 
-    // Right panel (chain of thought) — add a task divider if thoughts already exist,
-    // otherwise just ensure the list is visible. Never clear between tasks in same thread.
-    const rightEmpty  = _agEl('agents-dash-right-empty');
-    const thoughtsList= _agEl('agents-thoughts-list');
-    if (thoughtsList && thoughtsList.children.length > 0 && !isReplay) {
-        // Insert a task-separator so you can visually tell where each task starts
-        const divider = document.createElement('div');
-        divider.className = 'agent-thought-divider';
-        divider.textContent = '▸ new task';
-        thoughtsList.appendChild(divider);
-        thoughtsList.scrollTop = thoughtsList.scrollHeight;
+    // Right panel: plan starts hidden (shown on first set_plan), plan list cleared
+    const planSection = _agEl('agents-plan-section');
+    const planList    = _agEl('agents-plan-compact-list');
+    if (planSection) planSection.style.display = 'none';
+    if (planList)    planList.innerHTML         = '';
+
+    // Right panel: show content area, add task separator if multiple tasks
+    const rightEmpty   = _agEl('agents-dash-right-empty');
+    const rightContent = _agEl('agents-dash-right-content');
+    if (rightEmpty)   rightEmpty.style.display   = 'none';
+    if (rightContent) rightContent.style.display = 'flex';
+
+    const actLog = _agEl('agents-activity-log');
+    if (actLog && actLog.children.length > 0 && !isReplay) {
+        const sep = document.createElement('div');
+        sep.style.cssText = 'height:1px;background:rgba(255,255,255,0.06);margin:0.35rem 0.5rem;';
+        actLog.appendChild(sep);
     }
 
     // Elapsed-time timer
@@ -793,61 +815,85 @@ function _agInitRender(isReplay = false) {
         timerInterval,
         isReplay,        // true when replaying history (skip localStorage writes)
         thoughtCount: 0, // number of thought cards added to right panel
+        hadRespond: false, // true if agent used the respond action this run
     };
     return _agentsRenderState;
 }
 
 // ── Timeline (vertical, renders into left panel) ──────────────
+// ── Activity Log (right panel) ─────────────────────────────────
+// Adds a compact timestamped row. If `detail` is provided the row is
+// expandable — click it to reveal the full thought text.
+function _agActivityLogAdd(icon, label, variant = '', event = null, detail = null) {
+    const actLog = _agEl('agents-activity-log');
+    if (!actLog) return;
+
+    let timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    const rawTime = event && (event.timestamp || event.time);
+    if (rawTime) {
+        try {
+            const d = new Date(rawTime);
+            if (!isNaN(d.getTime()))
+                timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        } catch(e) {}
+    }
+
+    const wrap = document.createElement('div');
+
+    const entry = document.createElement('div');
+    entry.className = 'agent-alog-entry' + (variant ? ` agent-alog-entry--${variant}` : '')
+                    + (detail ? ' agent-alog-entry--expandable' : '');
+
+    const timeEl  = document.createElement('span');
+    timeEl.className = 'agent-alog-time';
+    timeEl.textContent = timeStr;
+
+    const iconEl  = document.createElement('span');
+    iconEl.className = 'agent-alog-icon';
+    iconEl.textContent = icon;
+
+    const labelEl = document.createElement('span');
+    labelEl.className = 'agent-alog-label';
+    labelEl.textContent = label;
+
+    entry.appendChild(timeEl);
+    entry.appendChild(iconEl);
+    entry.appendChild(labelEl);
+
+    if (detail) {
+        const chev = document.createElement('span');
+        chev.className = 'agent-alog-chevron';
+        chev.textContent = '▾';
+        entry.appendChild(chev);
+
+        const detailEl = document.createElement('div');
+        detailEl.className = 'agent-alog-detail';
+        detailEl.innerHTML = _agentsRenderMarkdown(detail);
+
+        let open = false;
+        entry.addEventListener('click', () => {
+            open = !open;
+            detailEl.classList.toggle('agent-alog-detail--open', open);
+            chev.textContent = open ? '▴' : '▾';
+            if (open) actLog.scrollTop = actLog.scrollHeight;
+        });
+
+        wrap.appendChild(entry);
+        wrap.appendChild(detailEl);
+    } else {
+        wrap.appendChild(entry);
+    }
+
+    actLog.appendChild(wrap);
+    actLog.scrollTop = actLog.scrollHeight;
+}
+
+// Legacy shim — keep callers working without changes
 function _agPhaseAdd(id, icon, label, event = null) {
-    const s = _agentsRenderState;
-    if (!s) return;
-    
-    let timeStr = '';
-    const rawTime = (event && (event.timestamp || event.time)) || _agentsCurrentReplayTimestamp || new Date();
-    try {
-        const d = new Date(rawTime);
-        if (!isNaN(d.getTime())) {
-            timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-        }
-    } catch (e) {
-        console.error(e);
-    }
-    if (!timeStr) {
-        timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-    }
-
-    const existing = s.phases.find(p => p.id === id);
-    if (existing) {
-        existing.label = label;
-        _agRenderTimeline();
-        return;
-    }
-    s.phases.forEach(p => { if (p.status === 'active') p.status = 'done'; });
-    s.phases.push({ id, icon, label, status: 'active', time: timeStr });
-    _agRenderTimeline();
+    _agActivityLogAdd(icon, label, 'active', event);
 }
 
-function _agRenderTimeline() {
-    const s = _agentsRenderState;
-    if (!s) return;
-    const vtl = _agEl('agents-vert-timeline');
-    if (!vtl) return;
-    vtl.innerHTML = '';
-    s.phases.forEach((ph, i) => {
-        const item = document.createElement('div');
-        item.className = `agent-vtl-item agent-vtl--${ph.status}`;
-        item.innerHTML = `
-            <div class="agent-vtl-track">
-                <span class="agent-vtl-dot"></span>
-                ${i < s.phases.length - 1 ? '<span class="agent-vtl-line"></span>' : ''}
-            </div>
-            <div class="agent-vtl-label">
-                <span class="agent-vtl-time">${ph.time}</span>
-                <span class="agent-vtl-text">${ph.label}</span>
-            </div>`;
-        vtl.appendChild(item);
-    });
-}
+function _agRenderTimeline() { /* replaced by _agActivityLogAdd — no-op */ }
 
 // ── Plan (left panel checklist) ───────────────────────────────
 // ── Live LLM token streaming ──────────────────────────────────
@@ -860,102 +906,47 @@ let _agCmdStreamCard = null;
 let _agCmdStreamLines = [];
 
 /**
- * Append a raw token to the live streaming card in the Thoughts panel.
+ * Append a raw token to the live streaming card in the main activity area.
  * Called for every `llm_token` SSE event while the LLM is generating.
  */
 function _agHandleLLMToken(event) {
-    const thoughtsList = _agEl('agents-thoughts-list');
-    const rightEmpty   = _agEl('agents-dash-right-empty');
-    if (!thoughtsList) return;
-
-    // Make the thoughts panel visible
-    if (rightEmpty) rightEmpty.style.display = 'none';
-    thoughtsList.style.display = 'flex';
-
-    // Create the live card on first token of this LLM call
-    if (!_agLiveTokenCard) {
-        _agLiveTokenText = '';
-        _agLiveTokenCard = document.createElement('div');
-        _agLiveTokenCard.className = 'agent-thought-msg agent-thought-streaming';
-
-        const tag = document.createElement('span');
-        tag.className = 'agent-thought-tag agent-thought-streaming-tag';
-        tag.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="font-size:0.62rem;margin-right:4px;"></i>Thinking…';
-        _agLiveTokenCard.appendChild(tag);
-
-        const body = document.createElement('div');
-        body.className = 'agent-thought-body agent-thought-live-body';
-        _agLiveTokenCard.appendChild(body);
-
-        thoughtsList.appendChild(_agLiveTokenCard);
-    }
-
+    // Track tokens internally — thinking is not shown to the user
     _agLiveTokenText += event.token || '';
-
-    const body = _agLiveTokenCard.querySelector('.agent-thought-live-body');
-    if (body) {
-        // Strip ACTION: lines — they're noise in a "thinking" view
-        const display = _agLiveTokenText.split('\nACTION:')[0].trimStart();
-        // Show the last 1200 chars so the card doesn't grow unbounded
-        body.textContent = display.length > 1200 ? '…' + display.slice(-1200) : display;
-    }
-
-    thoughtsList.scrollTop = thoughtsList.scrollHeight;
 }
 
 /**
- * Remove the live streaming card.  Called when:
- * - a `thinking` event arrives (full response processed — card replaced by formatted thought)
- * - a `usage` event arrives (end of LLM call)
- * - a `done` or `error` event arrives
+ * Finalize the live streaming card.
+ * Instead of removing it (which causes the "info disappears" flash), convert
+ * it in place to a stable card with a static header.
  */
 function _agFinalizeLiveToken() {
     if (_agLiveTokenCard) {
         _agLiveTokenCard.remove();
         _agLiveTokenCard = null;
-        _agLiveTokenText = '';
     }
+    _agLiveTokenText = '';
 }
 
 /**
  * Called for each `run_command_line` SSE event — streams shell output into
- * a live card in the Thoughts panel while the command is still running.
+ * a compact card in the main activity area.
  */
 function _agHandleCmdLine(event) {
-    const thoughtsList = _agEl('agents-thoughts-list');
-    const rightEmpty   = _agEl('agents-dash-right-empty');
-    if (!thoughtsList) return;
-
-    if (rightEmpty) rightEmpty.style.display = 'none';
-    thoughtsList.style.display = 'flex';
+    // Command streaming goes into the right panel activity log
+    const actLog = _agEl('agents-activity-log');
+    if (!actLog) return;
 
     if (!_agCmdStreamCard) {
         _agCmdStreamLines = [];
         _agCmdStreamCard = document.createElement('div');
-        _agCmdStreamCard.className = 'agent-thought-msg agent-thought-streaming';
-
-        const tag = document.createElement('span');
-        tag.className = 'agent-thought-tag agent-thought-streaming-tag';
-        tag.innerHTML = '<i class="fas fa-terminal" style="font-size:0.62rem;margin-right:4px;"></i>Running…';
-        _agCmdStreamCard.appendChild(tag);
-
-        const body = document.createElement('div');
-        body.className = 'agent-thought-body agent-thought-live-body';
-        _agCmdStreamCard.appendChild(body);
-
-        thoughtsList.appendChild(_agCmdStreamCard);
+        _agCmdStreamCard.className = 'agent-cmd-stream-inline';
+        actLog.appendChild(_agCmdStreamCard);
     }
 
     const line = event.line || '';
     _agCmdStreamLines.push(line);
-
-    const body = _agCmdStreamCard.querySelector('.agent-thought-live-body');
-    if (body) {
-        // Show last 40 lines to keep the card compact
-        const display = _agCmdStreamLines.slice(-40).join('\n');
-        body.textContent = display;
-        body.scrollTop = body.scrollHeight;
-    }
+    _agCmdStreamCard.textContent = _agCmdStreamLines.slice(-30).join('\n');
+    actLog.scrollTop = actLog.scrollHeight;
 }
 
 /**
@@ -969,15 +960,28 @@ function _agFinalizeCmdStream() {
     }
 }
 
+/** Append an activity item into the main chat, before the typing indicator. */
+function _agActLogAppend(item) {
+    const s = _agentsRenderState;
+    if (s && s.activity) {
+        const ti = s.activity.querySelector('.agent-typing-indicator');
+        if (ti) s.activity.insertBefore(item, ti);
+        else s.activity.appendChild(item);
+    }
+    const container = _agEl('agents-messages');
+    if (container) container.scrollTop = container.scrollHeight;
+}
+
 function _agHandleThinking(event) {
     const s = _agentsRenderState;
     if (!s) return;
     _agFinalizeLiveToken(); // close streaming card before adding formatted thought
-    _agPhaseAdd('planning', '🧠', 'Planning', event);
 
-    const opMatch = (event.title || '').match(/\(([^)]+)\)/);
+    const title  = event.title || 'Thinking';
+    const opMatch = title.match(/\(([^)]+)\)/);
     const op = opMatch ? opMatch[1].trim() : '';
 
+    // Update plan state (set_plan / mark_done)
     if (op === 'set_plan') {
         const lines = (event.detail || '').split('\n').map(l => l.trim()).filter(Boolean);
         s.planItems = lines.map((line, i) => ({
@@ -1000,49 +1004,66 @@ function _agHandleThinking(event) {
         _agRenderPlanItems();
     }
 
-    // Push general thinking text (non-plan ops) to right chain-of-thought panel
-    const detail = (event.detail || '').trim();
-    if (detail && op !== 'set_plan' && op !== 'mark_done' && op !== 'add_note') {
-        _agAddThoughtCard(event.title || 'Thinking', detail);
+    // Activity log — only add compact entries for plan operations.
+    // General thinking content is already shown via the persistent streaming card,
+    // so we skip adding a redundant second entry.
+    if (op === 'set_plan') {
+        const count = s.planItems.length;
+        _agActivityLogAdd('📋', `Plan set · ${count} steps`, '', event);
+    } else if (op === 'mark_done') {
+        _agActivityLogAdd('✓', `Step done`, 'active', event);
+    } else if (title.includes('blocked') || title.includes('failed')) {
+        _agActivityLogAdd('⚠', title, 'fail', event);
     }
+    // Other thinking events: the streaming card handles the content — no log entry needed.
 }
 
-function _agAddThoughtCard(title, detail) {
-    const s = _agentsRenderState;
+function _agAddInlineThought(title, detail, s) {
+    if (!s) s = _agentsRenderState;
     if (!s) return;
 
-    const thoughtsList = _agEl('agents-thoughts-list');
-    const rightEmpty   = _agEl('agents-dash-right-empty');
-    const badge        = _agEl('agents-thought-badge');
-    if (!thoughtsList) return;
+    const PREVIEW_LEN = 500;
+    const truncated = detail.length > PREVIEW_LEN;
+    const preview   = truncated ? detail.slice(0, PREVIEW_LEN) + '…' : detail;
 
-    // Show the list, hide empty state
-    if (rightEmpty) rightEmpty.style.display = 'none';
-    thoughtsList.style.display = 'flex';
+    const card = document.createElement('div');
+    card.className = 'agent-thought-inline';
+    if (s.isReplay) card.classList.add('instant-msg');
 
-    _agentsThoughtTotal++;
-    if (s) s.thoughtCount = _agentsThoughtTotal; // keep render state in sync
-    if (badge) { badge.style.display = 'inline'; badge.textContent = _agentsThoughtTotal; }
+    const hdr = document.createElement('div');
+    hdr.className = 'agent-thought-inline-header';
+    hdr.textContent = `🧠 ${title}`;
+    card.appendChild(hdr);
 
-    const msg = document.createElement('div');
-    msg.className = 'agent-thought-msg';
-    if (s.isReplay) msg.classList.add('instant-msg');
-
-    // Label chip (source tag: "Thinking", "🔍 Found…", etc.)
-    const tag = document.createElement('span');
-    tag.className = 'agent-thought-tag';
-    tag.textContent = `#${_agentsThoughtTotal} ${title}`;
-    msg.appendChild(tag);
-
-    // Body text rendered as markdown
     const body = document.createElement('div');
-    body.className = 'agent-thought-body';
-    body.innerHTML = _agentsRenderMarkdown(detail);
-    msg.appendChild(body);
+    body.className = 'agent-thought-inline-body';
+    body.innerHTML = _agentsRenderMarkdown(preview);
+    card.appendChild(body);
 
-    thoughtsList.appendChild(msg);
-    // Keep scroll pinned to bottom (Twitch-style)
-    thoughtsList.scrollTop = thoughtsList.scrollHeight;
+    if (truncated) {
+        let expanded = false;
+        const toggle = document.createElement('button');
+        toggle.className = 'agent-thought-inline-toggle';
+        toggle.textContent = '▾ Show more';
+        toggle.addEventListener('click', () => {
+            expanded = !expanded;
+            body.innerHTML = _agentsRenderMarkdown(expanded ? detail : preview);
+            toggle.textContent = expanded ? '▴ Show less' : '▾ Show more';
+        });
+        card.appendChild(toggle);
+    }
+
+    s.activity.appendChild(card);
+    const container = _agEl('agents-messages');
+    if (container) container.scrollTop = container.scrollHeight;
+
+    // Legacy compat — was used to count thoughts
+    _agentsThoughtTotal++;
+}
+
+// Legacy shim — now adds to the right panel activity log
+function _agAddThoughtCard(title, detail) {
+    _agActivityLogAdd('🧠', title, '', null, detail || null);
 }
 
 function _agRenderPlanItems() {
@@ -1174,7 +1195,6 @@ function _agHandleUsage(event) {
 function _agHandleObserve(event) {
     const s = _agentsRenderState;
     if (!s) return;
-    _agPhaseAdd('observe', '👁️', 'Observation', event);
 
     const detail = event.detail || '';
     const item = document.createElement('div');
@@ -1244,14 +1264,13 @@ function _agHandleDeleteFile(event) {
         row.appendChild(err);
     }
     item.appendChild(row);
-    s.activity.appendChild(item);
+    _agActLogAppend(item);
 }
 
 function _agHandleWriteFile(event) {
     const s = _agentsRenderState;
     if (!s) return;
     s.fileCount++;
-    _agPhaseAdd('files', '📄', `Files · ${s.fileCount}`, event);
     _agUpdateStats();
 
     const path      = event.path || (event.title || '').replace(/^Writing\s+/, '').trim();
@@ -1358,7 +1377,7 @@ function _agHandleWriteFile(event) {
         });
 
         s.fileCards[path] = { row, expand, sizeEl, writeCount: 1 };
-        s.activity.appendChild(item);
+        _agActLogAppend(item);
     }
 
     // Real-time update for currently open file in editor
@@ -1400,7 +1419,6 @@ function _agHandleCommand(event) {
 
     s.cmdCount++;
     if (failed) s.cmdFail++; else s.cmdSuccess++;
-    _agPhaseAdd('commands', '⚡', `Commands · ${s.cmdCount}`, event);
     _agUpdateStats();
 
     const cmd     = (event.command || event.title || '').replace(/^\$\s*/, '');
@@ -1429,7 +1447,7 @@ function _agHandleCommand(event) {
     } else {
         item.appendChild(row);
     }
-    s.activity.appendChild(item);
+    _agActLogAppend(item);
 }
 
 // ── Read / list (compact dimmed, deduplicated) ─────────────────
@@ -1489,7 +1507,7 @@ function _agHandleReadFile(event) {
     row.appendChild(pathEl);
 
     item.appendChild(row);
-    s.activity.appendChild(item);
+    _agActLogAppend(item);
     s.readCards[path] = { item, row, countEl, count: 1 };
 }
 
@@ -1521,7 +1539,7 @@ function _agHandleListDir(event) {
     } else {
         item.appendChild(row);
     }
-    s.activity.appendChild(item);
+    _agActLogAppend(item);
 }
 
 // ── Web search ─────────────────────────────────────────────────
@@ -1530,7 +1548,6 @@ function _agHandleSearch(event) {
     if (!s) return;
     const query  = event.query || event.title || '';
     s.searchCount = (s.searchCount || 0) + 1;
-    _agPhaseAdd('search', '🔍', `Web · ${s.searchCount}`, event);
     const result = event.result || '';
     const item   = document.createElement('div');
     item.className = 'agent-act-item';
@@ -1566,7 +1583,7 @@ function _agHandleSearch(event) {
     } else {
         item.appendChild(row);
     }
-    s.activity.appendChild(item);
+    _agActLogAppend(item);
 }
 
 // Push search findings as a thought card so the right panel reflects what was found
@@ -1620,7 +1637,7 @@ function _agHandleFetch(event) {
     } else {
         item.appendChild(row);
     }
-    s.activity.appendChild(item);
+    _agActLogAppend(item);
 }
 
 // ── Glob / move_file / create_directory ──────────────────────
@@ -1668,14 +1685,13 @@ function _agHandleGlob(event) {
     } else {
         item.appendChild(row);
     }
-    s.activity.appendChild(item);
+    _agActLogAppend(item);
 }
 
 function _agHandleMoveFile(event) {
     const s = _agentsRenderState;
     if (!s) return;
     s.fileCount++;
-    _agPhaseAdd('files', '📄', `Files · ${s.fileCount}`, event);
     _agUpdateStats();
 
     const src = event.src || '';
@@ -1705,7 +1721,7 @@ function _agHandleMoveFile(event) {
         row.appendChild(res);
     }
     item.appendChild(row);
-    s.activity.appendChild(item);
+    _agActLogAppend(item);
 }
 
 function _agHandleCreateDir(event) {
@@ -1723,7 +1739,7 @@ function _agHandleCreateDir(event) {
     verbEl.textContent = 'mkdir';
     row.appendChild(verbEl);
     item.appendChild(row);
-    s.activity.appendChild(item);
+    _agActLogAppend(item);
 }
 
 // ── Blueprint scan ────────────────────────────────────────────
@@ -1753,7 +1769,7 @@ function _agHandleBlueprint(event) {
     }
 
     item.appendChild(row);
-    s.activity.appendChild(item);
+    _agActLogAppend(item);
 }
 
 // ── Codebase search ───────────────────────────────────────────
@@ -1806,7 +1822,7 @@ function _agHandleSearchCodebase(event) {
         item.appendChild(row);
     }
 
-    s.activity.appendChild(item);
+    _agActLogAppend(item);
 }
 
 // ── Restore file (undo) ────────────────────────────────────────
@@ -1860,49 +1876,48 @@ function _agHandleRestoreFile(event) {
     verbEl.textContent = 'Restored';
     row.appendChild(verbEl);
     item.appendChild(row);
-    s.activity.appendChild(item);
+    _agActLogAppend(item);
 }
 
 // ── Completion ─────────────────────────────────────────────────
-function _agFinishRender(event) {
+function _agFinishRender(event, isReplay = false) {
     const s = _agentsRenderState;
     if (!s) return;
     if (s.timerInterval) clearInterval(s.timerInterval);
 
-    const isOk  = event.type === 'done';
-    const label = event.title || (isOk ? 'Completed' : 'Error');
+    const isOk   = event.type === 'done';
     const detail = (event.detail || '').trim();
 
-    s.phases.forEach(p => { p.status = 'done'; });
-    s.phases.push({ id: 'final', icon: isOk ? '✅' : '❌', label: isOk ? 'Done' : 'Error', status: isOk ? 'done' : 'error' });
-    _agRenderTimeline();
+    // Update activity log with final entry
+    _agActivityLogAdd(isOk ? '✅' : '❌', isOk ? 'Done' : 'Error', isOk ? 'done' : 'error', event);
     if (isOk) { s.planItems.forEach(i => { i.done = true; }); _agRenderPlanItems(); }
 
-    // ── Summary card ──────────────────────────────────────────────
-    const card = document.createElement('div');
-    card.className = `agent-done-card ${isOk ? 'agent-done-card--ok' : 'agent-done-card--err'}`;
+    // Remove the inner typing indicator
+    const ti = s.activity.querySelector('.agent-typing-indicator');
+    if (ti) ti.remove();
 
-    const hdr = document.createElement('div');
-    hdr.className = 'agent-done-card-header';
-    hdr.innerHTML = `<span class="agent-done-card-icon">${isOk ? '✅' : '❌'}</span><span class="agent-done-card-label">${_htmlEscape(label)}</span>`;
-    card.appendChild(hdr);
-
-    if (detail) {
-        const body = document.createElement('div');
-        body.className = 'agent-done-card-body';
-        body.innerHTML = _agentsRenderMarkdown(detail);
-        card.appendChild(body);
-    }
-
-    // Warn when done (even ✅) but some commands failed — prevents silent pass-off.
+    // Command fail warning (inline in activity, not as a separate card)
     if (s.cmdFail > 0) {
         const warn = document.createElement('div');
-        warn.className = 'agent-done-card-warn';
-        warn.innerHTML = `<span style="color:#f87171;">⚠</span> ${s.cmdFail} command${s.cmdFail !== 1 ? 's' : ''} failed — scroll up to review errors.`;
-        card.appendChild(warn);
+        warn.className = 'agent-inline-warn agent-inline-warn--stall';
+        warn.style.margin = '0.3rem 0';
+        warn.innerHTML = `<span class="agent-inline-warn-icon">⚠</span><div class="agent-inline-warn-body"><strong>${s.cmdFail} command${s.cmdFail !== 1 ? 's' : ''} failed</strong>Scroll up to see the errors.</div>`;
+        s.activity.appendChild(warn);
     }
 
-    s.activity.appendChild(card);
+    // Show the done summary only when the agent didn't already respond via the respond action.
+    // If respond was used, that message is the conclusion — showing done summary would duplicate it.
+    if (!isReplay && !s.hadRespond) {
+        _agentsHideTyping();
+        const content = detail || (!isOk ? event.title || 'Task failed.' : '');
+        if (content) {
+            _agentsAppendMessage({
+                role:      isOk ? 'assistant' : 'error',
+                content:   content,
+                timestamp: new Date().toISOString(),
+            }, true);
+        }
+    }
 }
 
 // ── Main entry point (called for every SSE event) ─────────────
@@ -1933,12 +1948,10 @@ function renderAgentStep(event, isReplay = false) {
     const s = _agentsRenderState;
 
     if (event.type === 'done' || event.type === 'error') {
-        const ti = s.activity.querySelector('.agent-typing-indicator');
-        if (ti) ti.remove();
         _agentsHideTyping();
-        _agFinalizeLiveToken();  // close any open LLM streaming card
+        _agFinalizeLiveToken();  // finalize any open LLM streaming card (updates in place)
         _agFinalizeCmdStream();  // close any open command streaming card
-        _agFinishRender(event);
+        _agFinishRender(event, isReplay);
         container.scrollTop = container.scrollHeight;
         return;
     }
@@ -1962,6 +1975,38 @@ function renderAgentStep(event, isReplay = false) {
         case 'get_project_blueprint': _agHandleBlueprint(event);                           break;
         case 'search_codebase':       _agHandleSearchCodebase(event);                      break;
         case 'usage':                 _agFinalizeLiveToken(); _agHandleUsage(event);       break;
+        case 'stall_warning':
+            _agRenderInlineWarn('stall', '⚠️',
+                event.title || 'Agent may be stuck',
+                event.detail || `No plan progress in ${event.iterations_since_progress || '?'} steps.`
+            );
+            break;
+        case 'budget_warning':
+            _agRenderInlineWarn('budget-warn', '🟡',
+                event.title || 'Approaching token budget',
+                event.detail || ''
+            );
+            break;
+        case 'budget_exceeded':
+            _agRenderInlineWarn('budget-exceeded', '🛑',
+                event.title || 'Token budget reached',
+                event.detail || ''
+            );
+            // Treat as done — close stream cleanly
+            _agentsIsPolling = false;
+            _agentsCurrentTaskId = null;
+            _agentsUpdateSubmitState();
+            break;
+        case 'project_memory_item':
+            _pmHandleAgentSave(event);
+            break;
+        case 'patch_failed':
+            _agHandlePatchFailed(event);
+            break;
+        case 'agent_response':
+            if (_agentsRenderState) _agentsRenderState.hadRespond = true;
+            _agHandleAgentResponse(event);
+            break;
         default:
             // Unknown event type — log for diagnostics, don't crash
             if (event.type && event.type !== 'start' && event.type !== 'stream_end') {
@@ -2547,6 +2592,42 @@ function agentsInitEventHandlers() {
     const stopBtn = _agEl('agents-stop-btn');
     if (stopBtn) stopBtn.addEventListener('click', agentsStopTask);
 
+    // Resume banner buttons
+    const resumeBtn    = _agEl('agents-resume-btn');
+    const dismissBtn   = _agEl('agents-resume-dismiss-btn');
+    if (resumeBtn)  resumeBtn.addEventListener('click', _agentsResumeTask);
+    if (dismissBtn) dismissBtn.addEventListener('click', () => {
+        const banner = _agEl('agents-resume-banner');
+        if (banner) banner.style.display = 'none';
+        _agentsCheckpointState = null;
+    });
+
+    // Project memory panel buttons
+    const pmAddBtn    = _agEl('agents-pm-add-btn');
+    const pmSaveBtn   = _agEl('agents-pm-save-btn');
+    const pmCancelBtn = _agEl('agents-pm-cancel-btn');
+    if (pmAddBtn) pmAddBtn.addEventListener('click', () => {
+        const form = _agEl('agents-pm-form');
+        if (form) {
+            form.dataset.editId = '';
+            form.style.display = form.style.display === 'none' ? '' : 'none';
+            const inp = _agEl('agents-pm-text-inp');
+            if (inp && form.style.display !== 'none') inp.focus();
+        }
+    });
+    if (pmSaveBtn)   pmSaveBtn.addEventListener('click', _pmSaveForm);
+    if (pmCancelBtn) pmCancelBtn.addEventListener('click', () => {
+        const form = _agEl('agents-pm-form');
+        if (form) { form.style.display = 'none'; form.dataset.editId = ''; }
+        const inp = _agEl('agents-pm-text-inp');
+        if (inp) inp.value = '';
+    });
+    // Ctrl+Enter in textarea submits the form
+    const pmTextInp = _agEl('agents-pm-text-inp');
+    if (pmTextInp) pmTextInp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); _pmSaveForm(); }
+    });
+
     // Textarea Enter to submit (Shift+Enter for newline)
     const taskInput = _agEl('agents-task-input');
     if (taskInput) {
@@ -2579,6 +2660,8 @@ function agentsInitEventHandlers() {
             
             if (targetTab === 'files') {
                 _agLoadWorkspaceTree();
+            } else if (targetTab === 'memory') {
+                _pmLoad();
             }
         });
     });
@@ -2619,6 +2702,371 @@ function agentsInitEventHandlers() {
             }
         });
     }
+}
+
+// ── Project Memory ────────────────────────────────────────────
+
+const _PM_CAT_META = {
+    rule:      { icon: '🔴', label: 'Rule'      },
+    context:   { icon: '🔵', label: 'Context'   },
+    design:    { icon: '🟣', label: 'Design'    },
+    note:      { icon: '🟡', label: 'Note'      },
+    checklist: { icon: '📋', label: 'Checklist' },
+};
+
+async function _pmLoad() {
+    const ws = _agentsCurrentWorkspace;
+    if (!ws) return;
+    try {
+        const resp = await fetch(`/api/agents/workspaces/${ws.id}/memory`);
+        if (!resp.ok) return;
+        const { items } = await resp.json();
+        _pmRender(items);
+    } catch (e) { console.debug('[PM] load failed:', e); }
+}
+
+function _pmRender(items) {
+    const panel   = _agEl('agents-project-memory');
+    const empty   = _agEl('agents-pm-empty');
+    const list    = _agEl('agents-pm-list');
+    if (!panel || !list) return;
+
+    panel.style.display = _agentsCurrentWorkspace ? '' : 'none';
+    list.innerHTML = '';
+
+    if (!items || items.length === 0) {
+        if (empty) empty.style.display = '';
+        return;
+    }
+    if (empty) empty.style.display = 'none';
+
+    // Sort: rules first, then context, design, note, checklist
+    const ORDER = ['rule', 'context', 'design', 'note', 'checklist'];
+    items = [...items].sort((a, b) =>
+        ORDER.indexOf(a.category) - ORDER.indexOf(b.category)
+    );
+
+    for (const item of items) {
+        list.appendChild(_pmBuildItemEl(item));
+    }
+}
+
+function _pmBuildItemEl(item) {
+    const cat  = item.category || 'note';
+    const meta = _PM_CAT_META[cat] || { icon: '📝', label: cat };
+
+    const el = document.createElement('div');
+    el.className = 'agents-pm-item';
+    el.dataset.id  = item.id;
+    el.dataset.cat = cat;
+
+    const top = document.createElement('div');
+    top.className = 'agents-pm-item-top';
+
+    const badge = document.createElement('span');
+    badge.className = `agents-pm-badge agents-pm-badge--${cat}`;
+    badge.textContent = meta.label;
+
+    const text = document.createElement('span');
+    text.className = 'agents-pm-text';
+
+    if (cat === 'checklist') {
+        text.textContent = item.title || 'Checklist';
+    } else {
+        text.textContent = item.text || '';
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'agents-pm-actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'agents-pm-action-btn';
+    editBtn.title = 'Edit';
+    editBtn.textContent = '✏';
+    editBtn.addEventListener('click', (e) => { e.stopPropagation(); _pmEditItem(item); });
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'agents-pm-action-btn agents-pm-action-btn--del';
+    delBtn.title = 'Delete';
+    delBtn.textContent = '×';
+    delBtn.addEventListener('click', (e) => { e.stopPropagation(); _pmDeleteItem(item.id); });
+
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+    top.appendChild(badge);
+    top.appendChild(text);
+    top.appendChild(actions);
+    el.appendChild(top);
+
+    // Checklist rows
+    if (cat === 'checklist' && Array.isArray(item.items)) {
+        const cl = document.createElement('div');
+        cl.className = 'agents-pm-checklist';
+        for (const ci of item.items) {
+            cl.appendChild(_pmBuildChecklistRow(item.id, ci));
+        }
+        el.appendChild(cl);
+    }
+
+    return el;
+}
+
+function _pmBuildChecklistRow(checklistId, ci) {
+    const row = document.createElement('label');
+    row.className = 'agents-pm-cl-row' + (ci.done ? ' agents-pm-cl-row--done' : '');
+    row.dataset.ciId = ci.id;
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !!ci.done;
+    cb.addEventListener('change', async () => {
+        const done = cb.checked;
+        row.className = 'agents-pm-cl-row' + (done ? ' agents-pm-cl-row--done' : '');
+        try {
+            await fetch(`/api/agents/workspaces/${_agentsCurrentWorkspace.id}/memory/${checklistId}/items/${ci.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ done }),
+            });
+        } catch (e) { console.debug('[PM] checklist update failed:', e); }
+    });
+
+    const span = document.createElement('span');
+    span.className = 'agents-pm-cl-text';
+    span.textContent = ci.text;
+
+    row.appendChild(cb);
+    row.appendChild(span);
+    return row;
+}
+
+async function _pmDeleteItem(itemId) {
+    if (!_agentsCurrentWorkspace) return;
+    try {
+        await fetch(`/api/agents/workspaces/${_agentsCurrentWorkspace.id}/memory/${itemId}`, { method: 'DELETE' });
+        _pmLoad();
+    } catch (e) { console.debug('[PM] delete failed:', e); }
+}
+
+function _pmEditItem(item) {
+    // Simple inline edit — repopulate form with existing values and update on save
+    const form    = _agEl('agents-pm-form');
+    const catSel  = _agEl('agents-pm-cat-sel');
+    const textInp = _agEl('agents-pm-text-inp');
+    if (!form || !catSel || !textInp) return;
+
+    catSel.value  = item.category;
+    textInp.value = item.category === 'checklist' ? (item.title || '') : (item.text || '');
+    form.dataset.editId = item.id;
+    form.style.display = '';
+    textInp.focus();
+}
+
+async function _pmSaveForm() {
+    const ws = _agentsCurrentWorkspace;
+    if (!ws) return;
+    const form    = _agEl('agents-pm-form');
+    const catSel  = _agEl('agents-pm-cat-sel');
+    const textInp = _agEl('agents-pm-text-inp');
+    if (!form || !catSel || !textInp) return;
+
+    const cat  = catSel.value;
+    const text = textInp.value.trim();
+    if (!text) return;
+
+    const editId = form.dataset.editId;
+
+    try {
+        if (editId) {
+            // Update existing
+            const body = cat === 'checklist' ? { title: text } : { text, category: cat };
+            await fetch(`/api/agents/workspaces/${ws.id}/memory/${editId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+        } else {
+            // Add new
+            const body = { category: cat, source: 'user' };
+            if (cat === 'checklist') {
+                body.title = text;
+                body.items = [];   // empty checklist — user adds rows later
+            } else {
+                body.text = text;
+            }
+            await fetch(`/api/agents/workspaces/${ws.id}/memory`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+        }
+    } catch (e) { console.debug('[PM] save failed:', e); }
+
+    form.dataset.editId = '';
+    form.style.display = 'none';
+    textInp.value = '';
+    _pmLoad();
+}
+
+function _pmHandleAgentSave(event) {
+    // Called when SSE delivers a project_memory_item event from the agent.
+    // Add a compact entry to the activity log.
+    _agActivityLogAdd('💾', `Saved · [${event.label || event.category}] ${(event.text || '').slice(0, 40)}`);
+
+    // If the Memory tab is currently active, refresh it to show the new item
+    const memTab = _agEl('agents-memory-tab-panel');
+    if (memTab && memTab.classList.contains('active')) {
+        _pmLoad();
+    }
+}
+
+// ── Checkpoint / Resume ───────────────────────────────────────
+let _agentsCheckpointState = null;  // last fetched state from /state endpoint
+
+async function _agentsCheckCheckpoint(workspaceId, threadId) {
+    const banner = _agEl('agents-resume-banner');
+    if (banner) banner.style.display = 'none';
+    _agentsCheckpointState = null;
+
+    if (!workspaceId || !threadId) return;
+    try {
+        const resp = await fetch(`/api/agents/workspaces/${workspaceId}/threads/${threadId}/state`);
+        if (!resp.ok) return;
+        const state = await resp.json();
+        if (!state.is_interrupted) return;
+
+        _agentsCheckpointState = state;
+        const done  = state.plan_done  || 0;
+        const total = state.plan_total || 0;
+
+        // Format when it was last saved
+        let whenStr = '';
+        if (state.last_saved) {
+            const diff = Math.round((Date.now() - new Date(state.last_saved).getTime()) / 1000);
+            if (diff < 60)       whenStr = `${diff}s ago`;
+            else if (diff < 3600) whenStr = `${Math.round(diff/60)}m ago`;
+            else                  whenStr = `${Math.round(diff/3600)}h ago`;
+        }
+
+        const titleEl = _agEl('agents-resume-title');
+        const subEl   = _agEl('agents-resume-sub');
+        if (titleEl) titleEl.textContent = `Task interrupted — ${done}/${total} steps done`;
+        if (subEl) {
+            const firstIncomplete = (state.plan || []).find(s => !s.done);
+            subEl.textContent = (whenStr ? `${whenStr} · ` : '') +
+                (firstIncomplete ? `Next: ${firstIncomplete.text}` : '');
+        }
+        if (banner) banner.style.display = 'flex';
+    } catch (e) {
+        console.debug('[Agents] checkpoint check failed:', e);
+    }
+}
+
+async function _agentsResumeTask() {
+    if (!_agentsCheckpointState || !_agentsCurrentWorkspace || !_agentsCurrentThread) return;
+    const banner = _agEl('agents-resume-banner');
+    if (banner) banner.style.display = 'none';
+
+    // Reconstruct the original task from the plan steps for context
+    const steps = (_agentsCheckpointState.plan || []).map(s => s.text).join(', ');
+    const prompt = `Resume the previous task from where it was interrupted. Plan steps: ${steps}`;
+
+    // Show as a user message in chat
+    _agentsAppendMessage({ role: 'user', content: '⏩ Resuming from checkpoint…', timestamp: new Date().toISOString() });
+
+    _agentsIsPolling = true;
+    _agentsUpdateSubmitState();
+    _agentsShowTyping();
+
+    try {
+        const resp = await fetch('/api/tasks/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt,
+                thread_id: `agents-${_agentsCurrentWorkspace.id}-${_agentsCurrentThread.id}`,
+                workspace_id: _agentsCurrentWorkspace.id,
+                agent_thread_id: _agentsCurrentThread.id,
+                resume: true,
+            }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        _agentsCurrentTaskId = data.task_id;
+
+        const evtSource = new EventSource(`/api/tasks/${data.task_id}/events`);
+        _agentsPollTimer = evtSource;
+        evtSource.onmessage = (e) => {
+            try {
+                const event = JSON.parse(e.data);
+                if (event.type === 'stream_end') {
+                    evtSource.close();
+                    _agentsPollTimer = null;
+                    _agentsIsPolling = false;
+                    _agentsCurrentTaskId = null;
+                    _agentsCheckpointState = null;
+                    _agentsUpdateSubmitState();
+                    return;
+                }
+                renderAgentStep(event);
+            } catch (err) { console.error('[Agents] SSE parse error (resume):', err); }
+        };
+        evtSource.onerror = () => {
+            evtSource.close();
+            _agentsPollTimer = null;
+            _agentsIsPolling = false;
+            _agentsCurrentTaskId = null;
+            _agentsUpdateSubmitState();
+        };
+    } catch (e) {
+        _agentsHideTyping();
+        _agentsIsPolling = false;
+        _agentsUpdateSubmitState();
+        _agentsAppendMessage({ role: 'error', content: `Failed to resume: ${e.message}`, timestamp: new Date().toISOString() });
+    }
+}
+
+// ── Inline warning card (stall / budget) ──────────────────────
+function _agRenderInlineWarn(cls, icon, title, detail) {
+    const container = _agEl('agents-messages');
+    if (!container) return;
+    const card = document.createElement('div');
+    card.className = `agent-inline-warn agent-inline-warn--${cls}`;
+    card.innerHTML = `<span class="agent-inline-warn-icon">${icon}</span>
+        <div class="agent-inline-warn-body">
+            <strong>${_htmlEscape(title)}</strong>
+            ${_htmlEscape(detail)}
+        </div>`;
+    container.appendChild(card);
+    container.scrollTop = container.scrollHeight;
+}
+
+// ── Patch failure card in main activity ───────────────────────
+function _agHandlePatchFailed(event) {
+    const s = _agentsRenderState;
+    if (!s) return;
+    const path = event.path || '';
+
+    const card = document.createElement('div');
+    card.className = 'agent-patch-fail-card';
+    card.innerHTML = `<span class="agent-patch-fail-icon">⚠</span>
+        <div class="agent-patch-fail-body">
+            <strong>Patch failed · ${_htmlEscape(path)}</strong>
+            Content mismatch — agent re-reading file and retrying.
+        </div>`;
+    _agActLogAppend(card);
+}
+
+// ── Agent respond action — visible message in main chat ───────
+function _agHandleAgentResponse(event) {
+    const content = event.content || '';
+    if (!content) return;
+    _agentsHideTyping();
+    _agentsAppendMessage({
+        role:      'assistant',
+        content,
+        timestamp: new Date().toISOString(),
+    }, true);   // scroll=true
 }
 
 // ── Workspace IDE Tree & Editor Helpers ───────────────────────

@@ -248,6 +248,10 @@ class TaskWorker:
                             trace_id=task.id,
                             state_path=state_path,
                             images=images or None,
+                            token_budget=task.metadata.get('token_budget'),
+                            resume=bool(task.metadata.get('resume', False)),
+                            workspace_id=ws_id,
+                            memory_root=storage_path,
                         )
                         # Store blueprint cache in the agent data dir
                         _bp_dir = storage_path / ws_id
@@ -617,7 +621,8 @@ class TaskQueueManager:
                     mode: Optional[str] = None, settings: Optional[Dict[str, Any]] = None,
                     task_type: Optional[str] = None, channel_id: Optional[str] = None,
                     workspace_id: Optional[str] = None, agent_thread_id: Optional[str] = None,
-                    storage_root: Optional[str] = None, is_incognito: bool = False) -> str:
+                    storage_root: Optional[str] = None, is_incognito: bool = False,
+                    token_budget: Optional[int] = None, resume: bool = False) -> str:
         """
         Submit a task to the queue.
         
@@ -696,7 +701,11 @@ class TaskQueueManager:
             task.metadata['agent_thread_id'] = agent_thread_id
         if storage_root:
             task.metadata['storage_root'] = storage_root
-        
+        if token_budget:
+            task.metadata['token_budget'] = token_budget
+        if resume:
+            task.metadata['resume'] = True
+
         if is_incognito:
             task.metadata['is_incognito'] = True
 

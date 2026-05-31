@@ -1,3 +1,6 @@
+/* Plan and Activity Log panel — hidden (everything lives in the main chat) */
+#agents-dash-right { display: none !important; }
+
 .agents-layout {
     display: flex;
     flex-direction: column;
@@ -1585,6 +1588,39 @@
     margin: 0.25rem 0 0.75rem;
 }
 
+.agent-run-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin: 0.2rem 0 0.5rem;
+    transition: background 0.15s, border-color 0.15s;
+    user-select: none;
+    max-width: fit-content;
+}
+
+.agent-run-toggle:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+}
+
+.agent-run-summary {
+    flex: 1;
+}
+
+.agent-run-chev {
+    opacity: 0.5;
+    font-size: 0.65rem;
+    white-space: nowrap;
+}
+
 .agent-activity {
     display: flex;
     flex-direction: column;
@@ -2851,3 +2887,860 @@
     color: var(--primary);
 }
 
+
+/* ══════════════════════════════════════════════════════════════
+   Resume banner
+   ══════════════════════════════════════════════════════════════ */
+
+.agents-resume-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 1rem;
+    background: rgba(99, 102, 241, 0.12);
+    border-top: 1px solid rgba(99, 102, 241, 0.25);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+    flex-shrink: 0;
+}
+
+.agents-resume-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.agents-resume-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    font-size: 0.78rem;
+    color: var(--text-primary);
+}
+
+.agents-resume-sub {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.agents-resume-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.agents-resume-btn {
+    background: rgba(99, 102, 241, 0.8);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 0.28rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.agents-resume-btn:hover {
+    background: rgba(99, 102, 241, 1);
+}
+
+.agents-resume-dismiss {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.1rem 0.25rem;
+    border-radius: 3px;
+    transition: color 0.15s;
+}
+
+.agents-resume-dismiss:hover {
+    color: var(--text-primary);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Token budget input
+   ══════════════════════════════════════════════════════════════ */
+
+.agents-budget-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-shrink: 0;
+}
+
+.agents-budget-label {
+    font-size: 0.67rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.agents-budget-input {
+    width: 70px;
+    background: var(--input-bg, rgba(255,255,255,0.05));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 5px;
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    padding: 0.28rem 0.4rem;
+    text-align: right;
+    outline: none;
+    transition: border-color 0.15s;
+    -moz-appearance: textfield;
+}
+
+.agents-budget-input::-webkit-outer-spin-button,
+.agents-budget-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.agents-budget-input:focus {
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.agents-budget-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.5;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Inline warning cards (stall / budget)
+   ══════════════════════════════════════════════════════════════ */
+
+.agent-inline-warn {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    margin: 0.5rem 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 7px;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    border-left: 3px solid;
+}
+
+.agent-inline-warn--stall {
+    background: rgba(251, 191, 36, 0.08);
+    border-left-color: #fbbf24;
+    color: #fbbf24;
+}
+
+.agent-inline-warn--budget-warn {
+    background: rgba(251, 146, 60, 0.08);
+    border-left-color: #fb923c;
+    color: #fb923c;
+}
+
+.agent-inline-warn--budget-exceeded {
+    background: rgba(239, 68, 68, 0.1);
+    border-left-color: #ef4444;
+    color: #ef4444;
+}
+
+.agent-inline-warn-icon {
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+}
+
+.agent-inline-warn-body strong {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 0.15rem;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Project Memory panel (left sidebar — always visible)
+   ══════════════════════════════════════════════════════════════ */
+
+.agents-project-memory {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0.6rem 0.75rem 0.5rem;
+    flex-shrink: 0;
+}
+
+.agents-pm-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.4rem;
+}
+
+.agents-pm-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-secondary);
+}
+
+.agents-pm-add-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    width: 18px;
+    height: 18px;
+    font-size: 0.85rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.agents-pm-add-btn:hover {
+    border-color: rgba(99, 102, 241, 0.6);
+    color: #a5b4fc;
+}
+
+.agents-pm-empty {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    opacity: 0.45;
+    line-height: 1.4;
+    padding: 0.2rem 0;
+}
+
+.agents-pm-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+/* ── Memory item ── */
+.agents-pm-item {
+    background: rgba(255, 255, 255, 0.025);
+    border-radius: 5px;
+    padding: 0.3rem 0.4rem;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    border-left: 2px solid transparent;
+    transition: background 0.15s;
+}
+
+.agents-pm-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.agents-pm-item[data-cat="rule"]      { border-left-color: #ef4444; }
+.agents-pm-item[data-cat="context"]   { border-left-color: #3b82f6; }
+.agents-pm-item[data-cat="design"]    { border-left-color: #a855f7; }
+.agents-pm-item[data-cat="note"]      { border-left-color: #eab308; }
+.agents-pm-item[data-cat="checklist"] { border-left-color: #6366f1; }
+
+.agents-pm-item-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.3rem;
+}
+
+.agents-pm-badge {
+    flex-shrink: 0;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    margin-top: 0.05rem;
+    opacity: 0.85;
+}
+
+.agents-pm-badge--rule      { background: rgba(239,68,68,0.15);  color: #f87171; }
+.agents-pm-badge--context   { background: rgba(59,130,246,0.15); color: #60a5fa; }
+.agents-pm-badge--design    { background: rgba(168,85,247,0.15); color: #c084fc; }
+.agents-pm-badge--note      { background: rgba(234,179,8,0.15);  color: #facc15; }
+.agents-pm-badge--checklist { background: rgba(99,102,241,0.15); color: #818cf8; }
+
+.agents-pm-text {
+    flex: 1;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.agents-pm-actions {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: auto;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.agents-pm-item:hover .agents-pm-actions {
+    opacity: 1;
+}
+
+.agents-pm-action-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    cursor: pointer;
+    padding: 0.05rem 0.15rem;
+    border-radius: 3px;
+    transition: color 0.15s, background 0.15s;
+    line-height: 1;
+}
+
+.agents-pm-action-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.agents-pm-action-btn--del:hover {
+    color: #f87171;
+}
+
+/* ── Checklist rows ── */
+.agents-pm-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin-top: 0.15rem;
+    padding-left: 0.2rem;
+}
+
+.agents-pm-cl-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.3rem;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 3px;
+    padding: 0.05rem 0.1rem;
+    transition: background 0.12s;
+}
+
+.agents-pm-cl-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.agents-pm-cl-row input[type="checkbox"] {
+    flex-shrink: 0;
+    accent-color: #6366f1;
+    cursor: pointer;
+    margin-top: 0.1rem;
+}
+
+.agents-pm-cl-row--done .agents-pm-cl-text {
+    text-decoration: line-through;
+    opacity: 0.4;
+}
+
+/* ── Add form ── */
+.agents-pm-form {
+    margin-top: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.agents-pm-cat-sel {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 0.72rem;
+    padding: 0.25rem 0.35rem;
+    outline: none;
+}
+
+.agents-pm-text-inp {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 0.72rem;
+    padding: 0.3rem 0.4rem;
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+    min-height: 40px;
+}
+
+.agents-pm-text-inp:focus {
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.agents-pm-form-actions {
+    display: flex;
+    gap: 0.3rem;
+}
+
+.agents-pm-save-btn {
+    flex: 1;
+    background: rgba(99, 102, 241, 0.7);
+    border: none;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.28rem 0;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.agents-pm-save-btn:hover { background: rgba(99, 102, 241, 1); }
+
+.agents-pm-cancel-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    font-size: 0.72rem;
+    padding: 0.28rem 0.5rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.agents-pm-cancel-btn:hover { background: rgba(255, 255, 255, 0.09); }
+
+/* ── Thoughts panel: project_memory_item event card ── */
+.agent-pm-thought-card {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    padding: 0.3rem 0.5rem;
+    background: rgba(99, 102, 241, 0.08);
+    border-left: 2px solid rgba(99, 102, 241, 0.4);
+    border-radius: 0 5px 5px 0;
+    color: var(--text-secondary);
+    margin: 0.15rem 0;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Memory tab panel
+   ══════════════════════════════════════════════════════════════ */
+
+.agents-memory-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.agents-pm-topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 1rem 1.25rem 0.75rem;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.agents-pm-topbar-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.agents-pm-title-lg {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.agents-pm-subtitle {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+.agents-pm-add-btn-tab {
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: #a5b4fc;
+    border-radius: 5px;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.agents-pm-add-btn-tab:hover {
+    background: rgba(99, 102, 241, 0.28);
+}
+
+.agents-pm-form--tab {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.agents-pm-form-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.agents-pm-text-inp--tab {
+    min-height: 52px;
+    font-size: 0.8rem;
+}
+
+.agents-pm-list--tab {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem 1.25rem;
+    gap: 0.4rem;
+}
+
+/* Tab-view item — slightly larger than sidebar version */
+#agents-memory-tab-panel .agents-pm-item {
+    padding: 0.45rem 0.6rem;
+    font-size: 0.78rem;
+}
+
+#agents-memory-tab-panel .agents-pm-badge {
+    font-size: 0.62rem;
+    padding: 0.12rem 0.35rem;
+}
+
+#agents-memory-tab-panel .agents-pm-text {
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Patch failure card in main activity stream
+   ══════════════════════════════════════════════════════════════ */
+
+.agent-patch-fail-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    background: rgba(239, 68, 68, 0.07);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-left: 3px solid #ef4444;
+    border-radius: 5px;
+    font-size: 0.75rem;
+    color: #fca5a5;
+    margin: 0.25rem 0;
+}
+
+.agent-patch-fail-icon {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    margin-top: 0.05rem;
+}
+
+.agent-patch-fail-body strong {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 0.1rem;
+    color: #f87171;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Agent respond action — visible message in main chat
+   ══════════════════════════════════════════════════════════════ */
+
+.agents-message.agents-message--respond {
+    background: rgba(99, 102, 241, 0.05);
+    border-left: 2px solid rgba(99, 102, 241, 0.3);
+    border-radius: 0 6px 6px 0;
+    padding: 0.6rem 0.85rem;
+    margin: 0.3rem 0;
+}
+
+.agents-message--respond .agents-msg-content {
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Activity Log (replaces left-sidebar timeline)
+   ══════════════════════════════════════════════════════════════ */
+
+.agents-dash-section--log {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.agents-activity-log {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0.15rem 0;
+}
+
+.agents-activity-log::-webkit-scrollbar { width: 3px; }
+.agents-activity-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius:3px; }
+
+/* Act-item cards inside the narrow activity log panel */
+.agents-activity-log .agent-act-path {
+    display: none;
+}
+.agents-activity-log .agent-act-row {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+.agents-activity-log .agent-act-name {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.agent-alog-entry {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.12rem 0.4rem;
+    font-size: 0.69rem;
+    line-height: 1.35;
+    border-radius: 3px;
+    transition: background 0.1s;
+}
+
+.agent-alog-entry:hover { background: rgba(255,255,255,0.025); }
+
+.agent-alog-time {
+    font-family: monospace;
+    font-size: 0.62rem;
+    color: var(--text-secondary);
+    opacity: 0.4;
+    flex-shrink: 0;
+    width: 36px;
+}
+
+.agent-alog-icon {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    width: 1.1rem;
+    text-align: center;
+}
+
+.agent-alog-label {
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.agent-alog-entry--done   .agent-alog-label { color: #4ade80; }
+.agent-alog-entry--error  .agent-alog-label { color: #f87171; }
+.agent-alog-entry--active .agent-alog-label { color: var(--text-primary); }
+.agent-alog-entry--fail   .agent-alog-label { color: #fb923c; }
+
+/* ══════════════════════════════════════════════════════════════
+   Inline thought card (replaces right-panel Thoughts)
+   ══════════════════════════════════════════════════════════════ */
+
+.agent-thought-inline {
+    margin: 0.3rem 0;
+    padding: 0.55rem 0.7rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 2px solid rgba(99, 102, 241, 0.25);
+    border-radius: 0 5px 5px 0;
+    font-size: 0.76rem;
+    line-height: 1.6;
+}
+
+.agent-thought-inline--streaming {
+    border-left-color: rgba(99, 102, 241, 0.5);
+    background: rgba(99, 102, 241, 0.03);
+}
+
+.agent-thought-inline-header {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.67rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    margin-bottom: 0.35rem;
+}
+
+.agent-thought-inline-body {
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.agent-thought-inline-body p { margin: 0 0 0.4rem 0; }
+.agent-thought-inline-body ul,
+.agent-thought-inline-body ol { padding-left: 1.2rem; margin: 0 0 0.4rem 0; }
+.agent-thought-inline-body li { margin-bottom: 0.2rem; }
+.agent-thought-inline-body strong { color: var(--text-primary); font-weight: 600; }
+
+.agent-thought-inline-toggle {
+    display: inline-block;
+    margin-top: 0.35rem;
+    background: none;
+    border: none;
+    color: rgba(99, 102, 241, 0.7);
+    font-size: 0.7rem;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.15s;
+}
+
+.agent-thought-inline-toggle:hover { color: #a5b4fc; }
+
+/* Streaming body — monospace, compact */
+.agent-thought-inline--streaming .agent-thought-inline-body {
+    font-family: monospace;
+    font-size: 0.73rem;
+    color: var(--text-secondary);
+    max-height: 160px;
+    overflow: hidden;
+}
+
+/* Command streaming card */
+.agent-cmd-stream-inline {
+    margin: 0.2rem 0;
+    padding: 0.35rem 0.6rem;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 4px;
+    border-left: 2px solid rgba(34, 197, 94, 0.3);
+    font-family: monospace;
+    font-size: 0.7rem;
+    color: #86efac;
+    max-height: 120px;
+    overflow: hidden;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Right panel — Plan (top) + Activity Log (bottom)
+   ══════════════════════════════════════════════════════════════ */
+
+.agents-dash-right {
+    width: 240px;
+    min-width: 240px;
+    max-width: 240px;
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.agents-dash-right-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    opacity: 0.5;
+    text-align: center;
+    padding: 1rem;
+}
+
+.agents-dash-right-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Plan section — shrinks to fit its content, never scrolls */
+.agents-dash-section--plan {
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    max-height: 45%;
+    overflow-y: auto;
+}
+
+/* Activity log section — takes all remaining height */
+.agents-dash-section--actlog {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Override the activity log styles for right panel context */
+.agents-dash-section--actlog .agents-activity-log {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 0.2rem 0;
+}
+
+/* Activity log entry — compact for right panel width */
+.agents-dash-right .agent-alog-entry {
+    padding: 0.1rem 0.5rem;
+    font-size: 0.68rem;
+}
+
+.agents-dash-right .agent-alog-time {
+    width: 30px;
+    font-size: 0.6rem;
+}
+
+/* Streaming cards in right panel */
+.agents-dash-right .agent-thought-inline--streaming,
+.agents-dash-right .agent-cmd-stream-inline {
+    margin: 0.2rem 0.4rem;
+    font-size: 0.68rem;
+}
+
+/* Expandable thought detail inside activity log */
+.agent-alog-detail {
+    padding: 0.3rem 0.5rem 0.3rem 1.9rem;
+    font-size: 0.69rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    word-break: break-word;
+    border-left: 2px solid rgba(99, 102, 241, 0.2);
+    margin: 0 0.4rem 0.15rem;
+    border-radius: 0 3px 3px 0;
+    background: rgba(99, 102, 241, 0.03);
+    display: none;  /* hidden by default, shown when entry is expanded */
+}
+
+.agent-alog-detail--open { display: block; }
+
+.agent-alog-entry--expandable {
+    cursor: pointer;
+}
+
+.agent-alog-entry--expandable:hover { background: rgba(255,255,255,0.04); }
+
+.agent-alog-chevron {
+    flex-shrink: 0;
+    font-size: 0.55rem;
+    color: var(--text-secondary);
+    opacity: 0.4;
+    margin-left: auto;
+    padding-left: 0.2rem;
+}
