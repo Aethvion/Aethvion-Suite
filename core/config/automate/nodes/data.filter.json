@@ -1,0 +1,35 @@
+{
+  "type": "data.filter",
+  "label": "Filter",
+  "category": "Data",
+  "icon": "fa-filter",
+  "color": "#fb923c",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "List",
+      "description": "Array to filter — each element is evaluated against the expression."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "match",
+      "label": "Matching",
+      "description": "Items where the filter expression returned true."
+    },
+    {
+      "name": "rest",
+      "label": "Rest",
+      "description": "Items that did not match the filter expression."
+    }
+  ],
+  "properties": [
+    {
+      "key": "expression",
+      "label": "Filter Expression",
+      "type": "text",
+      "default": "",
+      "placeholder": "item.status == 'active'"
+    }
+  ]
+}

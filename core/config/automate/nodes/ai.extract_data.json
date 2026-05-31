@@ -1,0 +1,73 @@
+{
+  "type": "ai.extract_data",
+  "label": "Extract Data",
+  "category": "AI",
+  "icon": "fa-wand-magic-sparkles",
+  "color": "#4ade80",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Text to Extract From",
+      "description": "Source text to extract structured data from."
+    },
+    {
+      "name": "model",
+      "label": "Model Override",
+      "description": "Overrides the configured model at runtime."
+    },
+    {
+      "name": "schema",
+      "label": "Schema Override",
+      "description": "JSON schema overriding the configured fields to extract."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Extracted JSON",
+      "description": "Structured object with the extracted fields as key-value pairs."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the AI call or extraction failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "model",
+      "label": "Model",
+      "type": "model_select",
+      "source": "/api/automate/models",
+      "default": "",
+      "placeholder": "Select a model…"
+    },
+    {
+      "key": "fields",
+      "label": "Fields to Extract (one per line: name: description)",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "name: Full name of the person\ndate: Date in ISO format\namount: Dollar amount as a number"
+    },
+    {
+      "key": "context",
+      "label": "Context",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "This is a customer support email."
+    },
+    {
+      "key": "missing_value",
+      "label": "Missing Value",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = empty string for missing fields)"
+    },
+    {
+      "key": "show_result",
+      "label": "Show Result on Node",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

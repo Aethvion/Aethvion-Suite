@@ -1,0 +1,46 @@
+{
+  "type": "input.list",
+  "label": "List Input",
+  "category": "Inputs",
+  "icon": "fa-list",
+  "color": "#94a3b8",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "List",
+      "description": "The items as an array."
+    },
+    {
+      "name": "count",
+      "label": "Count",
+      "description": "Number of items in the list."
+    },
+    {
+      "name": "first",
+      "label": "First",
+      "description": "First item in the list only."
+    }
+  ],
+  "properties": [
+    {
+      "key": "items",
+      "label": "Items (one per line)",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "item one\nitem two\nitem three"
+    },
+    {
+      "key": "trim",
+      "label": "Trim Items",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "key": "remove_empty",
+      "label": "Remove Empty Lines",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

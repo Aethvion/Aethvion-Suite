@@ -1,0 +1,39 @@
+{
+  "type": "aethviondb.list_snapshots",
+  "label": "List Snapshots",
+  "category": "AethvionDB",
+  "icon": "fa-camera-rotate",
+  "color": "#38bdf8",
+  "inputs": [
+    {
+      "name": "database",
+      "label": "Database",
+      "description": "Wired database name — overrides the Database property. Connect a Global Database node here."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Snapshots (JSON)",
+      "description": "Array of snapshot metadata objects, newest first."
+    },
+    {
+      "name": "count",
+      "label": "Count",
+      "description": "Number of snapshots found."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if listing failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "database",
+      "label": "Database",
+      "type": "aethviondb_db",
+      "default": "default"
+    }
+  ]
+}

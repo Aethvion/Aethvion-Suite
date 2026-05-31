@@ -1,0 +1,59 @@
+{
+  "type": "logic.merge",
+  "label": "Merge",
+  "category": "Logic",
+  "icon": "fa-code-merge",
+  "color": "#a78bfa",
+  "inputs": [
+    {
+      "name": "a",
+      "label": "Branch A",
+      "description": "Data flowing in from one branch."
+    },
+    {
+      "name": "b",
+      "label": "Branch B",
+      "description": "Data flowing in from one branch."
+    },
+    {
+      "name": "c",
+      "label": "Branch C",
+      "description": "Data flowing in from one branch."
+    },
+    {
+      "name": "d",
+      "label": "Branch D",
+      "description": "Data flowing in from one branch."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Output",
+      "description": "Value from whichever branch arrived (first, or all in 'all' mode)."
+    },
+    {
+      "name": "source",
+      "label": "Source Port",
+      "description": "Name of the input port that delivered the value (a, b, c, or d)."
+    }
+  ],
+  "properties": [
+    {
+      "key": "num_inputs",
+      "label": "Number of Inputs",
+      "type": "number",
+      "default": 2
+    },
+    {
+      "key": "mode",
+      "label": "Mode",
+      "type": "select",
+      "default": "first",
+      "options": [
+        "first",
+        "all"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "type": "memory.retrieve",
+  "label": "Memory Retrieve",
+  "category": "Memory",
+  "icon": "fa-memory",
+  "color": "#f59e0b",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Value",
+      "description": "Data retrieved from memory, or the configured default if not found."
+    },
+    {
+      "name": "found",
+      "label": "Found",
+      "description": "True if the key existed in memory, false if the default was used."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the memory read failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "key",
+      "label": "Storage Key",
+      "type": "text",
+      "default": "",
+      "placeholder": "myworkflow.result"
+    },
+    {
+      "key": "scope",
+      "label": "Scope",
+      "type": "select",
+      "default": "global",
+      "options": [
+        "global",
+        "workflow"
+      ]
+    },
+    {
+      "key": "default",
+      "label": "Default Value",
+      "type": "text",
+      "default": ""
+    }
+  ]
+}

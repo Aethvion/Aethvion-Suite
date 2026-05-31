@@ -1,0 +1,38 @@
+{
+  "type": "global.text",
+  "label": "Text",
+  "category": "Global",
+  "icon": "fa-globe",
+  "color": "#f59e0b",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Value",
+      "description": "The text string. Exposed as a named API parameter — callers can override the default at runtime."
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Parameter Name",
+      "type": "text",
+      "default": "myText",
+      "placeholder": "myText"
+    },
+    {
+      "key": "value",
+      "label": "Default Value",
+      "type": "text",
+      "default": "",
+      "placeholder": "default text"
+    },
+    {
+      "key": "description",
+      "label": "Description",
+      "type": "text",
+      "default": "",
+      "placeholder": "What this parameter does…"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "type": "action.notify",
+  "label": "Notify",
+  "category": "Actions",
+  "icon": "fa-bell",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Value (pass-through)",
+      "description": "Passed through to the output unchanged. Use {{input}} in the Message to embed this value in the notification."
+    },
+    {
+      "name": "title",
+      "label": "Title Override",
+      "description": "Overrides the configured notification title at runtime."
+    },
+    {
+      "name": "message",
+      "label": "Message Override",
+      "description": "Overrides the configured message at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Pass-through",
+      "description": "The input value, passed unchanged so this node can be chained."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the notification could not be sent."
+    }
+  ],
+  "properties": [
+    {
+      "key": "title",
+      "label": "Notification Title",
+      "type": "text",
+      "default": "Aethvion"
+    },
+    {
+      "key": "message",
+      "label": "Message",
+      "type": "textarea",
+      "default": "Workflow completed.",
+      "placeholder": "Use {{input}} to embed the wired-in value."
+    },
+    {
+      "key": "sound",
+      "label": "Play Sound",
+      "type": "toggle",
+      "default": false
+    }
+  ]
+}

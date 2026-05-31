@@ -1,0 +1,81 @@
+{
+  "type": "action.file_list",
+  "label": "File List",
+  "category": "Actions",
+  "icon": "fa-folder-tree",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "path",
+      "label": "Folder Path Override",
+      "description": "Overrides the configured folder path at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "File List",
+      "description": "Array of file paths matching the configured pattern."
+    },
+    {
+      "name": "count",
+      "label": "Count",
+      "description": "Number of files found."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the folder could not be read."
+    }
+  ],
+  "properties": [
+    {
+      "key": "path",
+      "label": "Folder Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "C:/path/to/folder",
+      "picker": "folder"
+    },
+    {
+      "key": "pattern",
+      "label": "File Pattern (glob)",
+      "type": "text",
+      "default": "*",
+      "placeholder": "*.txt or *.{jpg,png}"
+    },
+    {
+      "key": "recursive",
+      "label": "Search Recursively",
+      "type": "toggle",
+      "default": false
+    },
+    {
+      "key": "include_dirs",
+      "label": "Include Directories",
+      "type": "toggle",
+      "default": false
+    },
+    {
+      "key": "sort_by",
+      "label": "Sort By",
+      "type": "select",
+      "default": "name",
+      "options": [
+        "name",
+        "size",
+        "modified"
+      ]
+    },
+    {
+      "key": "output_as",
+      "label": "Output As",
+      "type": "select",
+      "default": "paths",
+      "options": [
+        "paths",
+        "objects"
+      ]
+    }
+  ]
+}

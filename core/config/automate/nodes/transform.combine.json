@@ -1,0 +1,35 @@
+{
+  "type": "transform.combine",
+  "label": "Combine Text",
+  "category": "Data",
+  "icon": "fa-compress-arrows-alt",
+  "color": "#fb923c",
+  "inputs": [
+    {
+      "name": "a",
+      "label": "Text A",
+      "description": "First text to join."
+    },
+    {
+      "name": "b",
+      "label": "Text B",
+      "description": "Second text to join."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Combined",
+      "description": "Result of joining Text A and Text B with the configured separator."
+    }
+  ],
+  "properties": [
+    {
+      "key": "separator",
+      "label": "Separator",
+      "type": "text",
+      "default": "\\n",
+      "placeholder": "\\n or space or custom…"
+    }
+  ]
+}

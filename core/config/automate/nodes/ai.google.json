@@ -1,0 +1,94 @@
+{
+  "type": "ai.google",
+  "label": "Google AI",
+  "category": "AI",
+  "icon": "fa-brain",
+  "color": "#4ade80",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Input Data",
+      "description": "Main content passed to the model as the user message."
+    },
+    {
+      "name": "model",
+      "label": "Model",
+      "description": "Overrides the configured model at runtime."
+    },
+    {
+      "name": "system_prompt",
+      "label": "System Prompt",
+      "description": "Overrides the configured system prompt at runtime."
+    },
+    {
+      "name": "prompt_prefix",
+      "label": "Prefix",
+      "description": "Text prepended to the input before sending to the model."
+    },
+    {
+      "name": "prompt_suffix",
+      "label": "Suffix",
+      "description": "Text appended to the input before sending to the model."
+    },
+    {
+      "name": "temperature",
+      "label": "Temperature",
+      "description": "Overrides the configured temperature (creativity) at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Response",
+      "description": "AI-generated text response."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the AI call failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "model",
+      "label": "Model",
+      "type": "model_select",
+      "source": "/api/automate/models?provider=google_ai",
+      "default": "",
+      "placeholder": "Select a Google AI model…"
+    },
+    {
+      "key": "system_prompt",
+      "label": "System Prompt",
+      "type": "textarea",
+      "default": "You are a helpful assistant.",
+      "placeholder": "System instructions for the AI…"
+    },
+    {
+      "key": "prompt_prefix",
+      "label": "Prompt Prefix",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "Text added before the input data…"
+    },
+    {
+      "key": "prompt_suffix",
+      "label": "Prompt Suffix",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "Text added after the input data…"
+    },
+    {
+      "key": "temperature",
+      "label": "Temperature",
+      "type": "number",
+      "default": 0.7
+    },
+    {
+      "key": "show_result",
+      "label": "Show Result on Node",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

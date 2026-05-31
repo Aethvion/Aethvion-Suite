@@ -1,0 +1,22 @@
+{
+  "type": "input.number",
+  "label": "Number Input",
+  "category": "Inputs",
+  "icon": "fa-hashtag",
+  "color": "#94a3b8",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Number"
+    }
+  ],
+  "properties": [
+    {
+      "key": "value",
+      "label": "Value",
+      "type": "number",
+      "default": 0
+    }
+  ]
+}

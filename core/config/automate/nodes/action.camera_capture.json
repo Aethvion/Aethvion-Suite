@@ -1,0 +1,69 @@
+{
+  "type": "action.camera_capture",
+  "label": "Camera Capture",
+  "category": "Actions",
+  "icon": "fa-video",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "path",
+      "label": "Save Path Override",
+      "description": "Overrides the configured save path at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "File Path",
+      "description": "Path where the captured image was saved."
+    },
+    {
+      "name": "image",
+      "label": "Image Preview",
+      "description": "Data URI of the captured image — wire to Analyze Image for AI vision."
+    },
+    {
+      "name": "width",
+      "label": "Width",
+      "description": "Captured image width in pixels."
+    },
+    {
+      "name": "height",
+      "label": "Height",
+      "description": "Captured image height in pixels."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the camera capture failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "path",
+      "label": "Save Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = auto-generated temp file)",
+      "picker": "folder"
+    },
+    {
+      "key": "camera_index",
+      "label": "Camera Index",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "key": "width",
+      "label": "Capture Width",
+      "type": "number",
+      "default": 1280
+    },
+    {
+      "key": "height",
+      "label": "Capture Height",
+      "type": "number",
+      "default": 720
+    }
+  ]
+}

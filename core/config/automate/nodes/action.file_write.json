@@ -1,0 +1,80 @@
+{
+  "type": "action.file_write",
+  "label": "File Write",
+  "category": "Actions",
+  "icon": "fa-file-arrow-down",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Content",
+      "description": "Text content to write to the file."
+    },
+    {
+      "name": "path",
+      "label": "File Path Override",
+      "description": "Overrides the configured file path at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Pass-through",
+      "description": "The content that was written, passed unchanged for chaining."
+    },
+    {
+      "name": "path",
+      "label": "Written Path",
+      "description": "Absolute path of the file that was written."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the file could not be written."
+    }
+  ],
+  "properties": [
+    {
+      "key": "path",
+      "label": "File Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "C:/Users/me/output.txt",
+      "picker": "file"
+    },
+    {
+      "key": "mode",
+      "label": "Write Mode",
+      "type": "select",
+      "default": "overwrite",
+      "options": [
+        "overwrite",
+        "append",
+        "prepend"
+      ]
+    },
+    {
+      "key": "encoding",
+      "label": "Encoding",
+      "type": "select",
+      "default": "utf-8",
+      "options": [
+        "utf-8",
+        "latin-1",
+        "ascii"
+      ]
+    },
+    {
+      "key": "newline",
+      "label": "Add Trailing Newline",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "key": "create_dirs",
+      "label": "Create Missing Directories",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

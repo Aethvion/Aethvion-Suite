@@ -1,0 +1,58 @@
+{
+  "type": "integration.slack",
+  "label": "Slack",
+  "category": "Integrations",
+  "icon": "fa-slack",
+  "color": "#818cf8",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Message",
+      "description": "Text to post in the Slack channel."
+    },
+    {
+      "name": "title",
+      "label": "Header Title",
+      "description": "Overrides the configured header title at runtime."
+    },
+    {
+      "name": "webhook",
+      "label": "Webhook URL Override",
+      "description": "Overrides the configured webhook URL at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Pass-through",
+      "description": "The message that was sent, passed unchanged for chaining."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if sending to Slack failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "webhook_url",
+      "label": "Incoming Webhook URL",
+      "type": "text",
+      "default": "",
+      "placeholder": "https://hooks.slack.com/services/…"
+    },
+    {
+      "key": "title",
+      "label": "Header Title",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = message only)"
+    },
+    {
+      "key": "icon_emoji",
+      "label": "Icon Emoji",
+      "type": "text",
+      "default": ":robot_face:"
+    }
+  ]
+}

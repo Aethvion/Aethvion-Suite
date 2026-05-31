@@ -1,0 +1,53 @@
+{
+  "type": "data.type_convert",
+  "label": "Type Convert",
+  "category": "Data",
+  "icon": "fa-arrows-left-right",
+  "color": "#fb923c",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Input",
+      "description": "Value to convert to the selected type."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Converted",
+      "description": "The value cast to the configured target type."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the conversion was not possible."
+    }
+  ],
+  "properties": [
+    {
+      "key": "to",
+      "label": "Convert To",
+      "type": "select",
+      "default": "string",
+      "options": [
+        "string",
+        "integer",
+        "float",
+        "boolean",
+        "json"
+      ]
+    },
+    {
+      "key": "true_values",
+      "label": "True Values",
+      "type": "text",
+      "default": "true,yes,1,on"
+    },
+    {
+      "key": "false_values",
+      "label": "False Values",
+      "type": "text",
+      "default": "false,no,0,off"
+    }
+  ]
+}

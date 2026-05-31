@@ -1,0 +1,70 @@
+{
+  "type": "integration.discord",
+  "label": "Discord",
+  "category": "Integrations",
+  "icon": "fa-discord",
+  "color": "#818cf8",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Message",
+      "description": "Text body of the Discord message or embed description."
+    },
+    {
+      "name": "title",
+      "label": "Embed Title",
+      "description": "Overrides the configured embed title at runtime."
+    },
+    {
+      "name": "webhook",
+      "label": "Webhook URL Override",
+      "description": "Overrides the configured webhook URL at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Pass-through",
+      "description": "The message that was sent, passed unchanged for chaining."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if sending to Discord failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "webhook_url",
+      "label": "Webhook URL",
+      "type": "text",
+      "default": "",
+      "placeholder": "https://discord.com/api/webhooks/…"
+    },
+    {
+      "key": "username",
+      "label": "Bot Username",
+      "type": "text",
+      "default": "Aethvion"
+    },
+    {
+      "key": "title",
+      "label": "Embed Title",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = send as plain message)"
+    },
+    {
+      "key": "colour",
+      "label": "Embed Colour (hex int)",
+      "type": "number",
+      "default": 5793266
+    },
+    {
+      "key": "avatar_url",
+      "label": "Avatar URL",
+      "type": "text",
+      "default": ""
+    }
+  ]
+}

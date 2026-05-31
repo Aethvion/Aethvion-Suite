@@ -1,0 +1,70 @@
+{
+  "type": "action.run_command",
+  "label": "Run Command",
+  "category": "Actions",
+  "icon": "fa-square-terminal",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Trigger",
+      "description": "Activates this node when a value arrives."
+    },
+    {
+      "name": "cmd",
+      "label": "Command Override",
+      "description": "Overrides the configured command at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "stdout",
+      "description": "Standard output captured from the process."
+    },
+    {
+      "name": "stderr",
+      "label": "stderr",
+      "description": "Standard error output from the process."
+    },
+    {
+      "name": "exit_code",
+      "label": "Exit Code",
+      "description": "Process exit code — 0 means success."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the process could not be started."
+    }
+  ],
+  "properties": [
+    {
+      "key": "command",
+      "label": "Command",
+      "type": "text",
+      "default": "",
+      "placeholder": "python script.py --arg value"
+    },
+    {
+      "key": "working_dir",
+      "label": "Working Directory",
+      "type": "text",
+      "default": "",
+      "placeholder": "C:/my/project (blank = current dir)",
+      "picker": "folder"
+    },
+    {
+      "key": "shell",
+      "label": "Run via Shell",
+      "type": "toggle",
+      "default": false
+    },
+    {
+      "key": "timeout",
+      "label": "Timeout (seconds)",
+      "type": "number",
+      "default": 30
+    }
+  ]
+}

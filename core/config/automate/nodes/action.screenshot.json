@@ -1,0 +1,57 @@
+{
+  "type": "action.screenshot",
+  "label": "Screenshot",
+  "category": "Actions",
+  "icon": "fa-camera",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "path",
+      "label": "Save Path Override",
+      "description": "Overrides the configured save path at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "File Path",
+      "description": "Path where the screenshot was saved."
+    },
+    {
+      "name": "image",
+      "label": "Image Preview",
+      "description": "Data URI of the screenshot — wire to Analyze Image for AI vision."
+    },
+    {
+      "name": "width",
+      "label": "Width",
+      "description": "Screenshot width in pixels."
+    },
+    {
+      "name": "height",
+      "label": "Height",
+      "description": "Screenshot height in pixels."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the screenshot failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "path",
+      "label": "Save Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = auto-generated temp file)",
+      "picker": "folder"
+    },
+    {
+      "key": "monitor",
+      "label": "Monitor Index",
+      "type": "number",
+      "default": 0
+    }
+  ]
+}

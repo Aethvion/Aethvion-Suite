@@ -1,0 +1,50 @@
+{
+  "type": "data.template",
+  "label": "Template",
+  "category": "Data",
+  "icon": "fa-file-code",
+  "color": "#fb923c",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Data Object",
+      "description": "Object whose keys are available as {{key}} placeholders in the template."
+    },
+    {
+      "name": "var_a",
+      "label": "Variable A",
+      "description": "Bound to {{var_a}} in the template."
+    },
+    {
+      "name": "var_b",
+      "label": "Variable B",
+      "description": "Bound to {{var_b}} in the template."
+    },
+    {
+      "name": "var_c",
+      "label": "Variable C",
+      "description": "Bound to {{var_c}} in the template."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Rendered Text",
+      "description": "Final text after all {{placeholders}} have been substituted."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if rendering failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "template",
+      "label": "Template",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "Hello {{name}}! You live in {{city|unknown}}."
+    }
+  ]
+}

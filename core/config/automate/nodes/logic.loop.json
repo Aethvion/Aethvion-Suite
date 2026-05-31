@@ -1,0 +1,34 @@
+{
+  "type": "logic.loop",
+  "label": "Loop",
+  "category": "Logic",
+  "icon": "fa-rotate",
+  "color": "#a78bfa",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Items",
+      "description": "List to iterate over — each element fires the 'Each Item' output."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "item",
+      "label": "Each Item",
+      "description": "Fires once per item in the list, carrying that item's value."
+    },
+    {
+      "name": "done",
+      "label": "Done",
+      "description": "Fires once after all items have been processed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "max_iterations",
+      "label": "Max Iterations",
+      "type": "number",
+      "default": 100
+    }
+  ]
+}

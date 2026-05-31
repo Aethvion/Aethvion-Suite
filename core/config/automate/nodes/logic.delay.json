@@ -1,0 +1,29 @@
+{
+  "type": "logic.delay",
+  "label": "Delay",
+  "category": "Logic",
+  "icon": "fa-hourglass-half",
+  "color": "#a78bfa",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Input",
+      "description": "Activates this node; the value is forwarded to the Trigger output after the delay."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "trigger",
+      "label": "Trigger",
+      "description": "Fires after the configured delay, carrying the input value."
+    }
+  ],
+  "properties": [
+    {
+      "key": "duration",
+      "label": "Duration (ms)",
+      "type": "number",
+      "default": 1000
+    }
+  ]
+}

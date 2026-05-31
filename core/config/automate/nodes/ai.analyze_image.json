@@ -1,0 +1,78 @@
+{
+  "type": "ai.analyze_image",
+  "label": "Analyze Image",
+  "category": "AI",
+  "icon": "fa-image",
+  "color": "#4ade80",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Question / Prompt",
+      "description": "Question to ask about the image."
+    },
+    {
+      "name": "image",
+      "label": "Image Path or Data URI",
+      "description": "Wire from a Screenshot or Camera Capture node, or provide a file path."
+    },
+    {
+      "name": "model",
+      "label": "Model Override",
+      "description": "Overrides the configured model at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Analysis",
+      "description": "AI-generated description or answer about the image."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the image analysis failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "model",
+      "label": "Model",
+      "type": "model_select",
+      "source": "/api/automate/models",
+      "default": "",
+      "placeholder": "Select a vision-capable model…"
+    },
+    {
+      "key": "image_path",
+      "label": "Image Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "C:/path/to/image.jpg"
+    },
+    {
+      "key": "question",
+      "label": "Question",
+      "type": "textarea",
+      "default": "Describe this image in detail.",
+      "placeholder": "What does this image show?"
+    },
+    {
+      "key": "system_prompt",
+      "label": "System Prompt",
+      "type": "textarea",
+      "default": "You are a helpful vision assistant."
+    },
+    {
+      "key": "temperature",
+      "label": "Temperature",
+      "type": "number",
+      "default": 0.3
+    },
+    {
+      "key": "show_result",
+      "label": "Show Result on Node",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "type": "action.clipboard",
+  "label": "Clipboard",
+  "category": "Actions",
+  "icon": "fa-clipboard",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Text to Copy",
+      "description": "Text to write to the clipboard (only used in 'write' mode)."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Clipboard Content",
+      "description": "Current clipboard text, populated when mode is read or read_then_clear."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the clipboard operation failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "mode",
+      "label": "Mode",
+      "type": "select",
+      "default": "write",
+      "options": [
+        "write",
+        "read",
+        "read_then_clear"
+      ]
+    }
+  ]
+}

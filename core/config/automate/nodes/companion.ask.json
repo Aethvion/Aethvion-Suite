@@ -1,0 +1,72 @@
+{
+  "type": "companion.ask",
+  "label": "Ask Companion",
+  "category": "Companions",
+  "icon": "fa-comments",
+  "color": "#f472b6",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Prompt",
+      "description": "Message or question sent to the companion."
+    },
+    {
+      "name": "model",
+      "label": "Model Override",
+      "description": "Overrides the companion's default model for this call."
+    },
+    {
+      "name": "system",
+      "label": "System Prompt Override",
+      "description": "Overrides the companion's built-in persona for this call."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Response",
+      "description": "The companion's text reply."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the companion call failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "companion_id",
+      "label": "Companion",
+      "type": "companion_select",
+      "default": "",
+      "placeholder": "Select a companion…"
+    },
+    {
+      "key": "model",
+      "label": "Model Override",
+      "type": "model_select",
+      "source": "/api/automate/models",
+      "default": "",
+      "placeholder": "(blank = companion default)"
+    },
+    {
+      "key": "system_prompt",
+      "label": "System Prompt Override",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "(blank = use companion's built-in persona)"
+    },
+    {
+      "key": "temperature",
+      "label": "Temperature",
+      "type": "number",
+      "default": 0.7
+    },
+    {
+      "key": "show_result",
+      "label": "Show Result on Node",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

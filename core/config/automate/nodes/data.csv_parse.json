@@ -1,0 +1,67 @@
+{
+  "type": "data.csv_parse",
+  "label": "CSV Parse",
+  "category": "Data",
+  "icon": "fa-table",
+  "color": "#fb923c",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "CSV Text",
+      "description": "Raw CSV text to parse into structured data."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Parsed Data",
+      "description": "Array of row objects (or arrays) parsed from the CSV."
+    },
+    {
+      "name": "rows",
+      "label": "Row Count",
+      "description": "Number of data rows (excluding the header if present)."
+    },
+    {
+      "name": "headers",
+      "label": "Headers",
+      "description": "Array of column header names from the first row."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the CSV could not be parsed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "delimiter",
+      "label": "Delimiter",
+      "type": "text",
+      "default": ",",
+      "placeholder": ", or ; or \\t"
+    },
+    {
+      "key": "has_header",
+      "label": "First Row is Header",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "key": "output_as",
+      "label": "Output As",
+      "type": "select",
+      "default": "objects",
+      "options": [
+        "objects",
+        "arrays"
+      ]
+    },
+    {
+      "key": "skip_empty_rows",
+      "label": "Skip Empty Rows",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

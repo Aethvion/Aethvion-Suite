@@ -1,0 +1,60 @@
+{
+  "type": "trigger.app_event",
+  "label": "App Event",
+  "category": "Triggers",
+  "icon": "fa-bolt",
+  "color": "#22d3ee",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "trigger",
+      "label": "Trigger",
+      "description": "Fires when the configured app event occurs."
+    },
+    {
+      "name": "event_type",
+      "label": "Event Type",
+      "description": "Type identifier of the event that fired (e.g. companion.message)."
+    },
+    {
+      "name": "source",
+      "label": "Source",
+      "description": "Component that emitted the event."
+    },
+    {
+      "name": "data",
+      "label": "Event Data",
+      "description": "Payload data attached to the event."
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "e.g. On Message"
+    },
+    {
+      "key": "event_type",
+      "label": "Event Type Filter",
+      "type": "select",
+      "default": "any",
+      "options": [
+        "any",
+        "companion.message",
+        "agent.completed",
+        "memory.written",
+        "workflow.completed",
+        "custom"
+      ]
+    },
+    {
+      "key": "source",
+      "label": "Source Filter",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = all sources)"
+    }
+  ]
+}

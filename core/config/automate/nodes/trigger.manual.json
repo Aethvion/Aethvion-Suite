@@ -1,0 +1,24 @@
+{
+  "type": "trigger.manual",
+  "label": "Manual Trigger",
+  "category": "Triggers",
+  "icon": "fa-hand-pointer",
+  "color": "#22d3ee",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "trigger",
+      "label": "Trigger",
+      "description": "Fires when this workflow is started manually."
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "e.g. Run Report"
+    }
+  ]
+}

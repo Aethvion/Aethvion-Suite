@@ -1,0 +1,58 @@
+{
+  "type": "input.file",
+  "label": "File Input",
+  "category": "Inputs",
+  "icon": "fa-file-import",
+  "color": "#94a3b8",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "File Content",
+      "description": "Text content read from the file."
+    },
+    {
+      "name": "path",
+      "label": "File Path",
+      "description": "Full absolute path to the file."
+    },
+    {
+      "name": "name",
+      "label": "File Name",
+      "description": "Filename portion only (e.g. report.txt)."
+    },
+    {
+      "name": "size",
+      "label": "File Size",
+      "description": "File size in bytes."
+    }
+  ],
+  "properties": [
+    {
+      "key": "path",
+      "label": "File Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "C:/path/to/file.txt",
+      "picker": "file"
+    },
+    {
+      "key": "encoding",
+      "label": "Encoding",
+      "type": "select",
+      "default": "utf-8",
+      "options": [
+        "utf-8",
+        "latin-1",
+        "ascii",
+        "binary"
+      ]
+    },
+    {
+      "key": "strip",
+      "label": "Strip Whitespace",
+      "type": "toggle",
+      "default": false
+    }
+  ]
+}

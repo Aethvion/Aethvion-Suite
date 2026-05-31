@@ -1,0 +1,27 @@
+{
+  "type": "data.parse_json",
+  "label": "Parse JSON",
+  "category": "Data",
+  "icon": "fa-code",
+  "color": "#fb923c",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "JSON String",
+      "description": "Raw JSON text to parse into an object or array."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Parsed",
+      "description": "Resulting object or array after successful parsing."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the JSON string was invalid."
+    }
+  ],
+  "properties": []
+}

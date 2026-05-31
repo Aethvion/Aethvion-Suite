@@ -1,0 +1,42 @@
+{
+  "type": "action.log",
+  "label": "Log",
+  "category": "Actions",
+  "icon": "fa-file-lines",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Input",
+      "description": "Value available as {{input}} in the message template."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Pass-through",
+      "description": "Passes the input value unchanged so the node can be chained."
+    }
+  ],
+  "properties": [
+    {
+      "key": "message",
+      "label": "Message",
+      "type": "text",
+      "default": "{{input}}",
+      "placeholder": "Log message…"
+    },
+    {
+      "key": "level",
+      "label": "Level",
+      "type": "select",
+      "default": "info",
+      "options": [
+        "debug",
+        "info",
+        "warning",
+        "error"
+      ]
+    }
+  ]
+}

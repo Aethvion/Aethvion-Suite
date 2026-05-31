@@ -1,0 +1,64 @@
+{
+  "type": "output.file",
+  "label": "File Output",
+  "category": "Outputs",
+  "icon": "fa-file-export",
+  "color": "#e879f9",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Data",
+      "description": "Content to write to the output file."
+    }
+  ],
+  "outputs": [],
+  "properties": [
+    {
+      "key": "path",
+      "label": "Output File Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "C:/output/result_{{timestamp}}.txt",
+      "picker": "folder"
+    },
+    {
+      "key": "mode",
+      "label": "Write Mode",
+      "type": "select",
+      "default": "overwrite",
+      "options": [
+        "overwrite",
+        "append",
+        "new_file"
+      ]
+    },
+    {
+      "key": "encoding",
+      "label": "Encoding",
+      "type": "select",
+      "default": "utf-8",
+      "options": [
+        "utf-8",
+        "latin-1",
+        "ascii"
+      ]
+    },
+    {
+      "key": "format",
+      "label": "Auto Format",
+      "type": "select",
+      "default": "auto",
+      "options": [
+        "auto",
+        "json_pretty",
+        "lines"
+      ]
+    },
+    {
+      "key": "create_dirs",
+      "label": "Create Missing Directories",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

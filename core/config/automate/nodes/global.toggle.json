@@ -1,0 +1,37 @@
+{
+  "type": "global.toggle",
+  "label": "Toggle",
+  "category": "Global",
+  "icon": "fa-globe",
+  "color": "#f59e0b",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Value",
+      "description": "The boolean value. Exposed as a named API parameter."
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Parameter Name",
+      "type": "text",
+      "default": "myFlag",
+      "placeholder": "myFlag"
+    },
+    {
+      "key": "value",
+      "label": "Default Value",
+      "type": "toggle",
+      "default": false
+    },
+    {
+      "key": "description",
+      "label": "Description",
+      "type": "text",
+      "default": "",
+      "placeholder": "What this parameter does…"
+    }
+  ]
+}

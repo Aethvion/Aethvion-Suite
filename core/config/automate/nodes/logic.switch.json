@@ -1,0 +1,80 @@
+{
+  "type": "logic.switch",
+  "label": "Switch",
+  "category": "Logic",
+  "icon": "fa-shuffle",
+  "color": "#a78bfa",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Input",
+      "description": "Value compared against each case to determine which branch fires."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "case_1",
+      "label": "Case 1",
+      "description": "Fires when the input matches the Case 1 value."
+    },
+    {
+      "name": "case_2",
+      "label": "Case 2",
+      "description": "Fires when the input matches the Case 2 value."
+    },
+    {
+      "name": "case_3",
+      "label": "Case 3",
+      "description": "Fires when the input matches the Case 3 value."
+    },
+    {
+      "name": "case_4",
+      "label": "Case 4",
+      "description": "Fires when the input matches the Case 4 value."
+    },
+    {
+      "name": "default",
+      "label": "Default",
+      "description": "Fires when the input does not match any configured case."
+    }
+  ],
+  "properties": [
+    {
+      "key": "switch_on",
+      "label": "Switch On (JSON key)",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = compare raw input string)"
+    },
+    {
+      "key": "num_cases",
+      "label": "Number of Cases",
+      "type": "number",
+      "default": 2
+    },
+    {
+      "key": "case_1",
+      "label": "Case 1 Value",
+      "type": "text",
+      "default": ""
+    },
+    {
+      "key": "case_2",
+      "label": "Case 2 Value",
+      "type": "text",
+      "default": ""
+    },
+    {
+      "key": "case_3",
+      "label": "Case 3 Value",
+      "type": "text",
+      "default": ""
+    },
+    {
+      "key": "case_4",
+      "label": "Case 4 Value",
+      "type": "text",
+      "default": ""
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "type": "aethviondb.update_entity",
+  "label": "Update Entity",
+  "category": "AethvionDB",
+  "icon": "fa-file-pen",
+  "color": "#818cf8",
+  "inputs": [
+    {
+      "name": "entity",
+      "label": "Entity ID or Name",
+      "description": "Entity to update — accepts ID or exact name."
+    },
+    {
+      "name": "in",
+      "label": "JSON Patch",
+      "description": "JSON object with fields to update, e.g. {\"type\":\"person\",\"sections\":{\"core\":{\"summary\":\"New text\"}}}."
+    },
+    {
+      "name": "database",
+      "label": "Database",
+      "description": "Wired database name — overrides the Database property. Connect a Global Database node here."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Entity (JSON)",
+      "description": "Updated entity after the patch was applied."
+    },
+    {
+      "name": "entity_id",
+      "label": "Entity ID",
+      "description": "ID of the updated entity."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if update failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "database",
+      "label": "Database",
+      "type": "aethviondb_db",
+      "default": "default"
+    },
+    {
+      "key": "entity_ref",
+      "label": "Entity ID / Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "Fallback when 'entity' port is empty"
+    },
+    {
+      "key": "entity_type",
+      "label": "Override Type",
+      "type": "text",
+      "default": "",
+      "placeholder": "(leave blank to keep existing)"
+    },
+    {
+      "key": "summary",
+      "label": "Override Summary",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "(leave blank to keep existing)"
+    }
+  ]
+}

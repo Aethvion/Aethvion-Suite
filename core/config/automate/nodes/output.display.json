@@ -1,0 +1,24 @@
+{
+  "type": "output.display",
+  "label": "Display",
+  "category": "Outputs",
+  "icon": "fa-eye",
+  "color": "#e879f9",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Data",
+      "description": "Value to display on the node card after the workflow runs."
+    }
+  ],
+  "outputs": [],
+  "properties": [
+    {
+      "key": "label",
+      "label": "Display Label",
+      "type": "text",
+      "default": "Result",
+      "placeholder": "Result label…"
+    }
+  ]
+}

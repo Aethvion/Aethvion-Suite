@@ -1,0 +1,74 @@
+{
+  "type": "data.split_text",
+  "label": "Split Text",
+  "category": "Data",
+  "icon": "fa-scissors",
+  "color": "#fb923c",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Text",
+      "description": "Text to split into parts."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "All Parts",
+      "description": "Array of all split segments."
+    },
+    {
+      "name": "first",
+      "label": "First Part",
+      "description": "First segment only."
+    },
+    {
+      "name": "last",
+      "label": "Last Part",
+      "description": "Last segment only."
+    },
+    {
+      "name": "count",
+      "label": "Count",
+      "description": "Number of segments produced."
+    }
+  ],
+  "properties": [
+    {
+      "key": "mode",
+      "label": "Split Mode",
+      "type": "select",
+      "default": "delimiter",
+      "options": [
+        "delimiter",
+        "lines",
+        "words",
+        "chunks"
+      ]
+    },
+    {
+      "key": "delimiter",
+      "label": "Delimiter",
+      "type": "text",
+      "default": ","
+    },
+    {
+      "key": "chunk_size",
+      "label": "Chunk Size",
+      "type": "number",
+      "default": 500
+    },
+    {
+      "key": "trim",
+      "label": "Trim Parts",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "key": "remove_empty",
+      "label": "Remove Empty Parts",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

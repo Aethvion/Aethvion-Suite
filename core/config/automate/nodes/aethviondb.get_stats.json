@@ -1,0 +1,54 @@
+{
+  "type": "aethviondb.get_stats",
+  "label": "Database Stats",
+  "category": "AethvionDB",
+  "icon": "fa-chart-pie",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "database",
+      "label": "Database",
+      "description": "Wired database name — overrides the Database property. Connect a Global Database node here."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Stats (JSON)",
+      "description": "Full stats object with counts by status."
+    },
+    {
+      "name": "total",
+      "label": "Total",
+      "description": "Total entity count (all statuses)."
+    },
+    {
+      "name": "active",
+      "label": "Active",
+      "description": "Fully-expanded active entities."
+    },
+    {
+      "name": "stubs",
+      "label": "Stubs",
+      "description": "Stub entities awaiting expansion."
+    },
+    {
+      "name": "deleted",
+      "label": "Deleted",
+      "description": "Soft-deleted entities."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if stats could not be read."
+    }
+  ],
+  "properties": [
+    {
+      "key": "database",
+      "label": "Database",
+      "type": "aethviondb_db",
+      "default": "default"
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "type": "action.file_read",
+  "label": "File Read",
+  "category": "Actions",
+  "icon": "fa-file-arrow-up",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Trigger",
+      "description": "Activates this node when a value arrives."
+    },
+    {
+      "name": "path",
+      "label": "File Path",
+      "description": "Overrides the configured file path at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "File Content",
+      "description": "Full text content of the file."
+    },
+    {
+      "name": "path",
+      "label": "Resolved Path",
+      "description": "Absolute path of the file that was read."
+    },
+    {
+      "name": "size",
+      "label": "File Size",
+      "description": "File size in bytes."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the file could not be read."
+    }
+  ],
+  "properties": [
+    {
+      "key": "path",
+      "label": "File Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "C:/Users/me/document.txt",
+      "picker": "file"
+    },
+    {
+      "key": "encoding",
+      "label": "Encoding",
+      "type": "select",
+      "default": "utf-8",
+      "options": [
+        "utf-8",
+        "latin-1",
+        "ascii",
+        "binary"
+      ]
+    },
+    {
+      "key": "strip",
+      "label": "Strip Whitespace",
+      "type": "toggle",
+      "default": false
+    },
+    {
+      "key": "max_bytes",
+      "label": "Max Size (bytes)",
+      "type": "number",
+      "default": 0
+    }
+  ]
+}

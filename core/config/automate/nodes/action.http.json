@@ -1,0 +1,61 @@
+{
+  "type": "action.http",
+  "label": "HTTP Request",
+  "category": "Actions",
+  "icon": "fa-globe",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Trigger",
+      "description": "Activates this node when a value arrives."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Response",
+      "description": "Response body — JSON parsed if content-type is application/json, otherwise raw text."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the request failed or returned a non-2xx status."
+    }
+  ],
+  "properties": [
+    {
+      "key": "url",
+      "label": "URL",
+      "type": "text",
+      "default": "",
+      "placeholder": "https://example.com/api"
+    },
+    {
+      "key": "method",
+      "label": "Method",
+      "type": "select",
+      "default": "GET",
+      "options": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE"
+      ]
+    },
+    {
+      "key": "headers",
+      "label": "Headers (JSON)",
+      "type": "textarea",
+      "default": "{}"
+    },
+    {
+      "key": "body",
+      "label": "Body",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "Request body (JSON or plain text)"
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "type": "aethviondb.snapshot_search",
+  "label": "AethvionDB Snapshot Search",
+  "category": "AethvionDB",
+  "icon": "fa-database",
+  "color": "#a78bfa",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Search Query",
+      "description": "Natural-language query to search within the snapshot."
+    },
+    {
+      "name": "database",
+      "label": "Database",
+      "description": "Wired database name — overrides the Database property. Connect a Global Database node here."
+    },
+    {
+      "name": "snapshot",
+      "label": "Snapshot",
+      "description": "Wired snapshot name — overrides the Snapshot property. Connect a Global Snapshot node here."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Results (JSON)",
+      "description": "Array of matching entities from the snapshot with scores."
+    },
+    {
+      "name": "count",
+      "label": "Result Count",
+      "description": "Number of results returned."
+    },
+    {
+      "name": "speed",
+      "label": "Speed",
+      "description": "Search execution time in milliseconds."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the search failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "database",
+      "label": "Database",
+      "type": "aethviondb_db",
+      "default": "default"
+    },
+    {
+      "key": "snapshot",
+      "label": "Snapshot",
+      "type": "aethviondb_snap",
+      "db_key": "database",
+      "default": "",
+      "placeholder": "(most recent)"
+    },
+    {
+      "key": "entity_type",
+      "label": "Entity Type Filter",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = all types)"
+    },
+    {
+      "key": "limit",
+      "label": "Max Results",
+      "type": "number",
+      "default": 10
+    },
+    {
+      "key": "min_score",
+      "label": "Min Score (0–1)",
+      "type": "number",
+      "default": 0.0
+    }
+  ]
+}

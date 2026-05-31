@@ -1,0 +1,67 @@
+{
+  "type": "aethviondb.distill",
+  "label": "Distil Content",
+  "category": "AethvionDB",
+  "icon": "fa-flask",
+  "color": "#c084fc",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Source Text",
+      "description": "Any text to distil — article, notes, book excerpt, raw document. The AI identifies the subject and writes a structured entity."
+    },
+    {
+      "name": "database",
+      "label": "Database",
+      "description": "Wired database name — overrides the Database property. Connect a Global Database node here."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Entity (JSON)",
+      "description": "Distilled entity record."
+    },
+    {
+      "name": "entity_id",
+      "label": "Entity ID",
+      "description": "ID of the created/updated entity."
+    },
+    {
+      "name": "entity_name",
+      "label": "Name",
+      "description": "Entity name identified by the AI."
+    },
+    {
+      "name": "stub_count",
+      "label": "Stubs Created",
+      "description": "Number of stub sub-topics created alongside the main entity."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if distillation failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "database",
+      "label": "Database",
+      "type": "aethviondb_db",
+      "default": "default"
+    },
+    {
+      "key": "model",
+      "label": "AI Model",
+      "type": "model_select",
+      "default": "auto"
+    },
+    {
+      "key": "auto_save",
+      "label": "Save to Database",
+      "type": "toggle",
+      "default": true,
+      "description": "Turn off to preview the distilled entity without writing to disk."
+    }
+  ]
+}

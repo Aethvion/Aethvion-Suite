@@ -1,0 +1,56 @@
+{
+  "type": "memory.search_semantic",
+  "label": "Memory Search",
+  "category": "Memory",
+  "icon": "fa-magnifying-glass-chart",
+  "color": "#f59e0b",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Search Query",
+      "description": "Natural-language query to find relevant content in memory."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Results (JSON)",
+      "description": "Array of matching memory entries with content and relevance score."
+    },
+    {
+      "name": "count",
+      "label": "Result Count",
+      "description": "Number of results returned."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the search failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "scope",
+      "label": "Scope",
+      "type": "select",
+      "default": "all",
+      "options": [
+        "all",
+        "global",
+        "workflow"
+      ]
+    },
+    {
+      "key": "limit",
+      "label": "Max Results",
+      "type": "number",
+      "default": 5
+    },
+    {
+      "key": "min_score",
+      "label": "Min Relevance Score (0–1)",
+      "type": "number",
+      "default": 0.0
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "type": "data.regex",
+  "label": "Regex",
+  "category": "Data",
+  "icon": "fa-asterisk",
+  "color": "#fb923c",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Text Input",
+      "description": "Text to match, extract from, or apply replacements to."
+    },
+    {
+      "name": "pattern",
+      "label": "Pattern Override",
+      "description": "Regex pattern to use instead of the configured one."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Result",
+      "description": "First match (extract mode) or replaced text (replace mode)."
+    },
+    {
+      "name": "matches",
+      "label": "All Matches",
+      "description": "Array of all matches found (when 'Return All Matches' is on)."
+    },
+    {
+      "name": "matched",
+      "label": "Did Match",
+      "description": "True if at least one match was found, false otherwise."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the regex pattern was invalid."
+    }
+  ],
+  "properties": [
+    {
+      "key": "pattern",
+      "label": "Pattern",
+      "type": "text",
+      "default": "",
+      "placeholder": "(\\w+)"
+    },
+    {
+      "key": "mode",
+      "label": "Mode",
+      "type": "select",
+      "default": "extract",
+      "options": [
+        "match",
+        "extract",
+        "replace"
+      ]
+    },
+    {
+      "key": "replacement",
+      "label": "Replacement",
+      "type": "text",
+      "default": "",
+      "placeholder": "\\1"
+    },
+    {
+      "key": "flags",
+      "label": "Flags",
+      "type": "text",
+      "default": "",
+      "placeholder": "i / m / s"
+    },
+    {
+      "key": "all_matches",
+      "label": "Return All Matches",
+      "type": "toggle",
+      "default": false
+    }
+  ]
+}

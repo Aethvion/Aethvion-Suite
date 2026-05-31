@@ -1,0 +1,76 @@
+{
+  "type": "ai.classify",
+  "label": "Classify",
+  "category": "AI",
+  "icon": "fa-tags",
+  "color": "#4ade80",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Text to Classify",
+      "description": "Text to be assigned to one of the configured labels."
+    },
+    {
+      "name": "model",
+      "label": "Model Override",
+      "description": "Overrides the configured model at runtime."
+    },
+    {
+      "name": "labels",
+      "label": "Labels Override",
+      "description": "Comma-separated list of categories, overriding the configured setting."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "label",
+      "label": "Matched Label",
+      "description": "Category the text was assigned to."
+    },
+    {
+      "name": "reasoning",
+      "label": "Reasoning",
+      "description": "Explanation of why this label was chosen."
+    },
+    {
+      "name": "all",
+      "label": "All Results",
+      "description": "Ranked list of all labels with confidence scores."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the AI call failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "model",
+      "label": "Model",
+      "type": "model_select",
+      "source": "/api/automate/models",
+      "default": "",
+      "placeholder": "Select a model…"
+    },
+    {
+      "key": "labels",
+      "label": "Categories (comma-separated)",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "positive, negative, neutral"
+    },
+    {
+      "key": "context",
+      "label": "Classification Context",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "Classify the sentiment of customer support emails."
+    },
+    {
+      "key": "show_result",
+      "label": "Show Result on Node",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

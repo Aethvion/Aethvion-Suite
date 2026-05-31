@@ -1,0 +1,89 @@
+{
+  "type": "integration.email",
+  "label": "Send Email",
+  "category": "Integrations",
+  "icon": "fa-envelope",
+  "color": "#818cf8",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Email Body"
+    },
+    {
+      "name": "to",
+      "label": "To Override"
+    },
+    {
+      "name": "subject",
+      "label": "Subject Override"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Pass-through"
+    },
+    {
+      "name": "error",
+      "label": "Error"
+    }
+  ],
+  "properties": [
+    {
+      "key": "to",
+      "label": "To (recipient)",
+      "type": "text",
+      "default": "",
+      "placeholder": "recipient@example.com"
+    },
+    {
+      "key": "subject",
+      "label": "Subject",
+      "type": "text",
+      "default": "Aethvion Notification"
+    },
+    {
+      "key": "format",
+      "label": "Body Format",
+      "type": "select",
+      "default": "plain",
+      "options": [
+        "plain",
+        "html"
+      ]
+    },
+    {
+      "key": "smtp_host",
+      "label": "SMTP Host",
+      "type": "text",
+      "default": "",
+      "placeholder": "smtp.gmail.com"
+    },
+    {
+      "key": "smtp_port",
+      "label": "SMTP Port",
+      "type": "number",
+      "default": 587
+    },
+    {
+      "key": "smtp_user",
+      "label": "SMTP Username",
+      "type": "text",
+      "default": "",
+      "placeholder": "your@email.com"
+    },
+    {
+      "key": "smtp_pass",
+      "label": "SMTP Password",
+      "type": "password",
+      "default": ""
+    },
+    {
+      "key": "from_addr",
+      "label": "From Address",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = same as SMTP username)"
+    }
+  ]
+}

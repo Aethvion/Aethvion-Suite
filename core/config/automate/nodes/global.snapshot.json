@@ -1,0 +1,44 @@
+{
+  "type": "global.snapshot",
+  "label": "Snapshot",
+  "category": "Global",
+  "icon": "fa-globe",
+  "color": "#f59e0b",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Snapshot Name",
+      "description": "The selected snapshot name. Wire into the 'snapshot' port of AethvionDB snapshot nodes."
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Parameter Name",
+      "type": "text",
+      "default": "snapshot",
+      "placeholder": "snapshot"
+    },
+    {
+      "key": "database",
+      "label": "Database",
+      "type": "aethviondb_db",
+      "default": "default"
+    },
+    {
+      "key": "value",
+      "label": "Snapshot",
+      "type": "aethviondb_snap",
+      "db_key": "database",
+      "default": ""
+    },
+    {
+      "key": "description",
+      "label": "Description",
+      "type": "text",
+      "default": "",
+      "placeholder": ""
+    }
+  ]
+}

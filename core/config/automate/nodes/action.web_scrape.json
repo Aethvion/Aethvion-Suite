@@ -1,0 +1,63 @@
+{
+  "type": "action.web_scrape",
+  "label": "Web Scrape",
+  "category": "Actions",
+  "icon": "fa-spider",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "url",
+      "label": "URL Override",
+      "description": "Overrides the configured URL at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Content",
+      "description": "Page content as text, Markdown, or HTML depending on the mode setting."
+    },
+    {
+      "name": "title",
+      "label": "Page Title",
+      "description": "The <title> element value from the page."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the page could not be fetched."
+    }
+  ],
+  "properties": [
+    {
+      "key": "url",
+      "label": "URL",
+      "type": "text",
+      "default": "",
+      "placeholder": "https://example.com"
+    },
+    {
+      "key": "mode",
+      "label": "Output Mode",
+      "type": "select",
+      "default": "text",
+      "options": [
+        "text",
+        "markdown",
+        "html"
+      ]
+    },
+    {
+      "key": "max_chars",
+      "label": "Max Characters (0 = unlimited)",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "key": "user_agent",
+      "label": "User Agent",
+      "type": "text",
+      "default": "Mozilla/5.0 (compatible; AethvionBot/1.0)"
+    }
+  ]
+}

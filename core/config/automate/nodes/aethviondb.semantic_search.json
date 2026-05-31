@@ -1,0 +1,97 @@
+{
+  "type": "aethviondb.semantic_search",
+  "label": "AethvionDB Semantic Search",
+  "category": "AethvionDB",
+  "icon": "fa-brain",
+  "color": "#c084fc",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Search Query",
+      "description": "Natural-language query — entities are ranked by semantic similarity to this text."
+    },
+    {
+      "name": "database",
+      "label": "Database",
+      "description": "Wired database name — overrides the Database property. Connect a Global Database node here."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Results (JSON)",
+      "description": "Array of matching entities ranked by cosine similarity score (0–1)."
+    },
+    {
+      "name": "count",
+      "label": "Result Count",
+      "description": "Number of results returned."
+    },
+    {
+      "name": "speed",
+      "label": "Speed",
+      "description": "Total execution time including embedding generation."
+    },
+    {
+      "name": "error",
+      "label": "Error / Warning",
+      "description": "Error message, or a warning when some entities were skipped due to missing embeddings."
+    }
+  ],
+  "properties": [
+    {
+      "key": "database",
+      "label": "Database",
+      "type": "aethviondb_db",
+      "default": "default"
+    },
+    {
+      "key": "model",
+      "label": "Embedding Model",
+      "type": "select",
+      "options": [
+        {
+          "value": "text-embedding-004",
+          "label": "Gemini text-embedding-004 (Google)"
+        },
+        {
+          "value": "embedding-001",
+          "label": "Gemini embedding-001 (Google)"
+        },
+        {
+          "value": "text-embedding-3-small",
+          "label": "text-embedding-3-small (OpenAI)"
+        },
+        {
+          "value": "text-embedding-3-large",
+          "label": "text-embedding-3-large (OpenAI)"
+        },
+        {
+          "value": "text-embedding-ada-002",
+          "label": "text-embedding-ada-002 (OpenAI)"
+        }
+      ],
+      "default": "text-embedding-004",
+      "description": "Must match the model used when vectorizing the database."
+    },
+    {
+      "key": "entity_type",
+      "label": "Entity Type Filter",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = all types)"
+    },
+    {
+      "key": "limit",
+      "label": "Max Results",
+      "type": "number",
+      "default": 10
+    },
+    {
+      "key": "min_score",
+      "label": "Min Similarity (0–1)",
+      "type": "number",
+      "default": 0.5
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "type": "trigger.webhook",
+  "label": "Webhook",
+  "category": "Triggers",
+  "icon": "fa-share-nodes",
+  "color": "#22d3ee",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Request",
+      "description": "Full request object — includes method, headers, body, and query params."
+    },
+    {
+      "name": "body",
+      "label": "Body",
+      "description": "Parsed request body: a JSON object if content-type is JSON, otherwise raw text."
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "e.g. Inbound Hook"
+    },
+    {
+      "key": "path",
+      "label": "Path",
+      "type": "text",
+      "default": "/webhook",
+      "placeholder": "/my-webhook"
+    },
+    {
+      "key": "method",
+      "label": "Method",
+      "type": "select",
+      "default": "POST",
+      "options": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE"
+      ]
+    }
+  ]
+}

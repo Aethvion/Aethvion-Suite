@@ -1,0 +1,96 @@
+{
+  "type": "aethviondb.generate_vectors",
+  "label": "Generate Vectors",
+  "category": "AethvionDB",
+  "icon": "fa-microchip",
+  "color": "#fb923c",
+  "inputs": [
+    {
+      "name": "database",
+      "label": "Database",
+      "description": "Wired database name — overrides the Database property. Connect a Global Database node here."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Report (JSON)",
+      "description": "Summary with model, counts and speed."
+    },
+    {
+      "name": "vectorized",
+      "label": "Vectorized",
+      "description": "Entities successfully embedded."
+    },
+    {
+      "name": "skipped",
+      "label": "Skipped",
+      "description": "Entities skipped (already had embeddings, or stubs when include_stubs is off)."
+    },
+    {
+      "name": "failed",
+      "label": "Failed",
+      "description": "Entities that failed to embed."
+    },
+    {
+      "name": "speed",
+      "label": "Speed",
+      "description": "Total vectorization time."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if vectorization failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "database",
+      "label": "Database",
+      "type": "aethviondb_db",
+      "default": "default"
+    },
+    {
+      "key": "model",
+      "label": "Embedding Model",
+      "type": "select",
+      "options": [
+        {
+          "value": "text-embedding-004",
+          "label": "Gemini text-embedding-004 (Google)"
+        },
+        {
+          "value": "embedding-001",
+          "label": "Gemini embedding-001 (Google)"
+        },
+        {
+          "value": "text-embedding-3-small",
+          "label": "text-embedding-3-small (OpenAI)"
+        },
+        {
+          "value": "text-embedding-3-large",
+          "label": "text-embedding-3-large (OpenAI)"
+        },
+        {
+          "value": "text-embedding-ada-002",
+          "label": "text-embedding-ada-002 (OpenAI)"
+        }
+      ],
+      "default": "text-embedding-004"
+    },
+    {
+      "key": "force_rewrite",
+      "label": "Re-embed All",
+      "type": "toggle",
+      "default": false,
+      "description": "Re-generate embeddings even for entities that already have them."
+    },
+    {
+      "key": "include_stubs",
+      "label": "Include Stubs",
+      "type": "toggle",
+      "default": false,
+      "description": "Also embed stub entities (not yet expanded)."
+    }
+  ]
+}

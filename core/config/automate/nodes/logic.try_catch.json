@@ -1,0 +1,45 @@
+{
+  "type": "logic.try_catch",
+  "label": "Try / Catch",
+  "category": "Logic",
+  "icon": "fa-shield-halved",
+  "color": "#a78bfa",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Input",
+      "description": "Data to pass into the protected block."
+    },
+    {
+      "name": "error_in",
+      "label": "Error Input",
+      "description": "Wire an error output here to catch and re-route it."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "try",
+      "label": "Try (success)",
+      "description": "Continues here when no error occurred."
+    },
+    {
+      "name": "catch",
+      "label": "Catch (error)",
+      "description": "Continues here when an error was caught, carrying the error message."
+    },
+    {
+      "name": "always",
+      "label": "Always",
+      "description": "Always continues regardless of success or failure."
+    }
+  ],
+  "properties": [
+    {
+      "key": "error_contains",
+      "label": "Error Filter",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = catch all errors)"
+    }
+  ]
+}

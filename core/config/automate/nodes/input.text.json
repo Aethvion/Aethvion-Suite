@@ -1,0 +1,23 @@
+{
+  "type": "input.text",
+  "label": "Text Input",
+  "category": "Inputs",
+  "icon": "fa-keyboard",
+  "color": "#94a3b8",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Text"
+    }
+  ],
+  "properties": [
+    {
+      "key": "value",
+      "label": "Text Value",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "Enter text here…"
+    }
+  ]
+}

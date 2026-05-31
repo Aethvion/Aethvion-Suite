@@ -1,0 +1,96 @@
+{
+  "type": "aethviondb.create_snapshot",
+  "label": "Create Snapshot",
+  "category": "AethvionDB",
+  "icon": "fa-camera",
+  "color": "#38bdf8",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Snapshot Name",
+      "description": "Name for the snapshot file (overrides Snapshot Name property)."
+    },
+    {
+      "name": "database",
+      "label": "Database",
+      "description": "Wired database name — overrides the Database property. Connect a Global Database node here."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Meta (JSON)",
+      "description": "Snapshot metadata including path, counts and timing."
+    },
+    {
+      "name": "path",
+      "label": "Output Path",
+      "description": "Absolute path to the baked snapshot file."
+    },
+    {
+      "name": "count",
+      "label": "Entity Count",
+      "description": "Number of entities written to the snapshot."
+    },
+    {
+      "name": "speed",
+      "label": "Speed",
+      "description": "Bake duration in milliseconds."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if baking failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "database",
+      "label": "Database",
+      "type": "aethviondb_db",
+      "default": "default"
+    },
+    {
+      "key": "snapshot_name",
+      "label": "Snapshot Name",
+      "type": "text",
+      "default": "snapshot"
+    },
+    {
+      "key": "format",
+      "label": "Format",
+      "type": "select",
+      "options": [
+        {
+          "value": "jsonl",
+          "label": "JSONL (streaming / vector-DB ready)"
+        },
+        {
+          "value": "json",
+          "label": "JSON (single document)"
+        },
+        {
+          "value": "markdown",
+          "label": "Markdown (RAG / LLM prompts)"
+        },
+        {
+          "value": "txt",
+          "label": "Plain text (compact)"
+        }
+      ],
+      "default": "jsonl"
+    },
+    {
+      "key": "include_stubs",
+      "label": "Include Stubs",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "key": "include_vectors",
+      "label": "Include Vectors",
+      "type": "toggle",
+      "default": false
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "type": "ai.speech_to_text",
+  "label": "Speech to Text",
+  "category": "AI",
+  "icon": "fa-microphone",
+  "color": "#4ade80",
+  "inputs": [
+    {
+      "name": "path",
+      "label": "Audio File Path Override",
+      "description": "Overrides the configured audio file path at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Transcription",
+      "description": "Full transcribed text from the audio."
+    },
+    {
+      "name": "language",
+      "label": "Detected Language",
+      "description": "Language code detected in the audio (e.g. en, nl)."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if transcription failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "path",
+      "label": "Audio File Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "C:/path/to/audio.wav",
+      "picker": "file"
+    },
+    {
+      "key": "model_id",
+      "label": "STT Model",
+      "type": "text",
+      "default": "whisper",
+      "placeholder": "whisper"
+    },
+    {
+      "key": "language",
+      "label": "Language Hint",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = auto-detect)"
+    },
+    {
+      "key": "device",
+      "label": "Device",
+      "type": "select",
+      "default": "cpu",
+      "options": [
+        "cpu",
+        "cuda"
+      ]
+    }
+  ]
+}

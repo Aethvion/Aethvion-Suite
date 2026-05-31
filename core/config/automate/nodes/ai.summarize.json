@@ -1,0 +1,82 @@
+{
+  "type": "ai.summarize",
+  "label": "Summarize",
+  "category": "AI",
+  "icon": "fa-compress",
+  "color": "#4ade80",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Text to Summarize",
+      "description": "Long-form content to condense into a summary."
+    },
+    {
+      "name": "model",
+      "label": "Model Override",
+      "description": "Overrides the configured model at runtime."
+    },
+    {
+      "name": "length",
+      "label": "Length Override",
+      "description": "One of: short, medium, long — overrides the configured length."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Summary",
+      "description": "AI-generated summary of the input text."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the AI call failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "model",
+      "label": "Model",
+      "type": "model_select",
+      "source": "/api/automate/models",
+      "default": "",
+      "placeholder": "Select a model…"
+    },
+    {
+      "key": "style",
+      "label": "Summary Style",
+      "type": "select",
+      "default": "paragraph",
+      "options": [
+        "paragraph",
+        "bullets",
+        "headline",
+        "tldr"
+      ]
+    },
+    {
+      "key": "length",
+      "label": "Length",
+      "type": "select",
+      "default": "medium",
+      "options": [
+        "short",
+        "medium",
+        "long"
+      ]
+    },
+    {
+      "key": "language",
+      "label": "Output Language",
+      "type": "text",
+      "default": "",
+      "placeholder": "English / Dutch / … (blank = match input)"
+    },
+    {
+      "key": "show_result",
+      "label": "Show Result on Node",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

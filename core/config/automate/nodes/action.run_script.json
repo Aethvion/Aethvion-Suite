@@ -1,0 +1,34 @@
+{
+  "type": "action.run_script",
+  "label": "Run Script",
+  "category": "Actions",
+  "icon": "fa-terminal",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Trigger",
+      "description": "Activates this node; the value is available as `input_data` in the script."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Result",
+      "description": "Value assigned to the `result` variable in the script."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Exception message if the script raised an error."
+    }
+  ],
+  "properties": [
+    {
+      "key": "script",
+      "label": "Python Script",
+      "type": "code",
+      "default": "# Access input via `input_data`\nresult = input_data"
+    }
+  ]
+}

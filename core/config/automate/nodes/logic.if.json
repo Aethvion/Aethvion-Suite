@@ -1,0 +1,35 @@
+{
+  "type": "logic.if",
+  "label": "If / Else",
+  "category": "Logic",
+  "icon": "fa-code-branch",
+  "color": "#a78bfa",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Input",
+      "description": "Value evaluated against the condition expression."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "true",
+      "label": "True",
+      "description": "Continues here when the condition evaluates to true."
+    },
+    {
+      "name": "false",
+      "label": "False",
+      "description": "Continues here when the condition evaluates to false."
+    }
+  ],
+  "properties": [
+    {
+      "key": "condition",
+      "label": "Condition",
+      "type": "text",
+      "default": "",
+      "placeholder": "value == 'expected'"
+    }
+  ]
+}

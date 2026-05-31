@@ -1,0 +1,53 @@
+{
+  "type": "data.extract_json",
+  "label": "Extract JSON",
+  "category": "Data",
+  "icon": "fa-magnifying-glass",
+  "color": "#fb923c",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "JSON Input",
+      "description": "JSON string or object to extract a value from."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Value",
+      "description": "Extracted value at the specified key path."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the key was not found and no default was set."
+    }
+  ],
+  "properties": [
+    {
+      "key": "key",
+      "label": "Key Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "[0].name  or  user.address.city  or  results[0].score"
+    },
+    {
+      "key": "default",
+      "label": "Default Value",
+      "type": "text",
+      "default": "",
+      "placeholder": "(empty = error if key missing)"
+    },
+    {
+      "key": "output_as",
+      "label": "Output As",
+      "type": "select",
+      "default": "auto",
+      "options": [
+        "auto",
+        "string",
+        "json"
+      ]
+    }
+  ]
+}

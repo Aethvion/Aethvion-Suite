@@ -1,0 +1,56 @@
+{
+  "type": "aethviondb.get_entity",
+  "label": "Get Entity",
+  "category": "AethvionDB",
+  "icon": "fa-file-lines",
+  "color": "#818cf8",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Entity ID or Name",
+      "description": "Entity ID (ws_…) or exact name to retrieve."
+    },
+    {
+      "name": "database",
+      "label": "Database",
+      "description": "Wired database name — overrides the Database property. Connect a Global Database node here."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Entity (JSON)",
+      "description": "Full entity JSON including all sections."
+    },
+    {
+      "name": "entity_id",
+      "label": "Entity ID",
+      "description": "Resolved entity ID."
+    },
+    {
+      "name": "entity_name",
+      "label": "Name",
+      "description": "Entity display name."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error if the entity was not found."
+    }
+  ],
+  "properties": [
+    {
+      "key": "database",
+      "label": "Database",
+      "type": "aethviondb_db",
+      "default": "default"
+    },
+    {
+      "key": "entity_ref",
+      "label": "Entity ID / Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "Fallback when 'in' port is empty"
+    }
+  ]
+}

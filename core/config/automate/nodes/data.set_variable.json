@@ -1,0 +1,30 @@
+{
+  "type": "data.set_variable",
+  "label": "Set Variable",
+  "category": "Data",
+  "icon": "fa-box",
+  "color": "#fb923c",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Value",
+      "description": "Value to store under the configured variable name."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Value",
+      "description": "The value that was stored, passed through for chaining."
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Variable Name",
+      "type": "text",
+      "default": "myVar",
+      "placeholder": "myVar"
+    }
+  ]
+}

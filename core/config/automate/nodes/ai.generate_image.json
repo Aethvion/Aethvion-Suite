@@ -1,0 +1,71 @@
+{
+  "type": "ai.generate_image",
+  "label": "Generate Image",
+  "category": "AI",
+  "icon": "fa-palette",
+  "color": "#4ade80",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Prompt",
+      "description": "Text description of the image to generate."
+    },
+    {
+      "name": "path",
+      "label": "Save Path Override",
+      "description": "Overrides the configured save path at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Saved File Path",
+      "description": "Path where the generated image was saved."
+    },
+    {
+      "name": "path",
+      "label": "Saved File Path",
+      "description": "Alias of the 'out' port — same path value."
+    },
+    {
+      "name": "count",
+      "label": "Images Generated",
+      "description": "Number of images created."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if image generation failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "model",
+      "label": "Model",
+      "type": "text",
+      "default": "imagen-3.0-generate-002",
+      "placeholder": "imagen-3.0-generate-002"
+    },
+    {
+      "key": "aspect_ratio",
+      "label": "Aspect Ratio",
+      "type": "select",
+      "default": "1:1",
+      "options": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ]
+    },
+    {
+      "key": "path",
+      "label": "Save Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = auto-generated temp file)",
+      "picker": "folder"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "type": "memory.store",
+  "label": "Memory Store",
+  "category": "Memory",
+  "icon": "fa-database",
+  "color": "#f59e0b",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Value",
+      "description": "Data to persist in memory under the configured key."
+    },
+    {
+      "name": "key",
+      "label": "Key Override",
+      "description": "Overrides the configured storage key at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Pass-through",
+      "description": "The stored value, passed unchanged for chaining."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the memory write failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "key",
+      "label": "Storage Key",
+      "type": "text",
+      "default": "",
+      "placeholder": "myworkflow.result"
+    },
+    {
+      "key": "scope",
+      "label": "Scope",
+      "type": "select",
+      "default": "global",
+      "options": [
+        "global",
+        "workflow"
+      ]
+    },
+    {
+      "key": "ttl",
+      "label": "TTL (hours)",
+      "type": "number",
+      "default": 0
+    }
+  ]
+}

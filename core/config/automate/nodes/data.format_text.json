@@ -1,0 +1,30 @@
+{
+  "type": "data.format_text",
+  "label": "Format Text",
+  "category": "Data",
+  "icon": "fa-font",
+  "color": "#fb923c",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Input",
+      "description": "Value accessible as {{input}} inside the template."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Text",
+      "description": "Rendered text after all {{placeholders}} have been substituted."
+    }
+  ],
+  "properties": [
+    {
+      "key": "template",
+      "label": "Template",
+      "type": "textarea",
+      "default": "{{input}}",
+      "placeholder": "Hello {{name}}!"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "type": "trigger.file_watch",
+  "label": "File Watch",
+  "category": "Triggers",
+  "icon": "fa-folder-open",
+  "color": "#22d3ee",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "trigger",
+      "label": "Trigger",
+      "description": "Fires when a file system change is detected."
+    },
+    {
+      "name": "path",
+      "label": "Changed Path",
+      "description": "Full path of the file or folder that changed."
+    },
+    {
+      "name": "event",
+      "label": "Event Type",
+      "description": "One of: created, modified, deleted."
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "e.g. Watch Folder"
+    },
+    {
+      "key": "path",
+      "label": "Watch Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "C:/path/to/folder or file",
+      "picker": "folder"
+    },
+    {
+      "key": "watch_mode",
+      "label": "Watch Mode",
+      "type": "select",
+      "default": "directory",
+      "options": [
+        "file",
+        "directory"
+      ]
+    },
+    {
+      "key": "event_types",
+      "label": "Event Types",
+      "type": "text",
+      "default": "created,modified,deleted",
+      "placeholder": "created, modified, deleted"
+    },
+    {
+      "key": "recursive",
+      "label": "Watch Subdirectories",
+      "type": "toggle",
+      "default": false
+    }
+  ]
+}

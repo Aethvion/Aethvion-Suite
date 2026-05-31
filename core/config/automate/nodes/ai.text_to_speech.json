@@ -1,0 +1,88 @@
+{
+  "type": "ai.text_to_speech",
+  "label": "Text to Speech",
+  "category": "AI",
+  "icon": "fa-volume-high",
+  "color": "#4ade80",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Text",
+      "description": "Text to convert to spoken audio."
+    },
+    {
+      "name": "path",
+      "label": "Save Path Override",
+      "description": "Overrides the configured save path at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Audio File Path",
+      "description": "Path to the generated audio file."
+    },
+    {
+      "name": "path",
+      "label": "Audio File Path",
+      "description": "Alias of the 'out' port — same path value."
+    },
+    {
+      "name": "duration_ms",
+      "label": "Duration (ms)",
+      "description": "Length of the generated audio in milliseconds."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if speech synthesis failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "model_id",
+      "label": "TTS Model",
+      "type": "text",
+      "default": "kokoro",
+      "placeholder": "kokoro / xtts / …"
+    },
+    {
+      "key": "voice_id",
+      "label": "Voice",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = model default)"
+    },
+    {
+      "key": "language",
+      "label": "Language",
+      "type": "text",
+      "default": "en",
+      "placeholder": "en / nl / de / …"
+    },
+    {
+      "key": "speed",
+      "label": "Speed",
+      "type": "number",
+      "default": 1.0
+    },
+    {
+      "key": "device",
+      "label": "Device",
+      "type": "select",
+      "default": "cpu",
+      "options": [
+        "cpu",
+        "cuda"
+      ]
+    },
+    {
+      "key": "path",
+      "label": "Save Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "(blank = auto-generated temp file)",
+      "picker": "folder"
+    }
+  ]
+}

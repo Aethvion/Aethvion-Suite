@@ -1,0 +1,126 @@
+{
+  "type": "aethviondb.create_entity",
+  "label": "Create Entity",
+  "category": "AethvionDB",
+  "icon": "fa-file-circle-plus",
+  "color": "#818cf8",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Entity Name",
+      "description": "Name for the new entity (overrides the Name property)."
+    },
+    {
+      "name": "database",
+      "label": "Database",
+      "description": "Wired database name — overrides the Database property. Connect a Global Database node here."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Entity (JSON)",
+      "description": "Newly created entity record."
+    },
+    {
+      "name": "entity_id",
+      "label": "Entity ID",
+      "description": "ID of the created entity."
+    },
+    {
+      "name": "was_created",
+      "label": "Was Created",
+      "description": "'true' if new, 'false' if already existed."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if creation failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "database",
+      "label": "Database",
+      "type": "aethviondb_db",
+      "default": "default"
+    },
+    {
+      "key": "name",
+      "label": "Entity Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "Fallback when 'in' port is empty"
+    },
+    {
+      "key": "entity_type",
+      "label": "Entity Type",
+      "type": "select",
+      "options": [
+        {
+          "value": "other",
+          "label": "Other"
+        },
+        {
+          "value": "person",
+          "label": "Person"
+        },
+        {
+          "value": "place",
+          "label": "Place"
+        },
+        {
+          "value": "event",
+          "label": "Event"
+        },
+        {
+          "value": "concept",
+          "label": "Concept"
+        },
+        {
+          "value": "organization",
+          "label": "Organization"
+        },
+        {
+          "value": "artifact",
+          "label": "Artifact"
+        },
+        {
+          "value": "creature",
+          "label": "Creature"
+        },
+        {
+          "value": "substance",
+          "label": "Substance"
+        },
+        {
+          "value": "process",
+          "label": "Process"
+        },
+        {
+          "value": "phenomenon",
+          "label": "Phenomenon"
+        },
+        {
+          "value": "work",
+          "label": "Work"
+        },
+        {
+          "value": "species",
+          "label": "Species"
+        },
+        {
+          "value": "universe",
+          "label": "Universe"
+        }
+      ],
+      "default": "other"
+    },
+    {
+      "key": "source",
+      "label": "Source Tag",
+      "type": "text",
+      "default": "workflow"
+    }
+  ]
+}

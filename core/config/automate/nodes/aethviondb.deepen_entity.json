@@ -1,0 +1,86 @@
+{
+  "type": "aethviondb.deepen_entity",
+  "label": "Deepen Entity",
+  "category": "AethvionDB",
+  "icon": "fa-layer-group",
+  "color": "#c084fc",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Entity ID or Name",
+      "description": "Active entity whose stub sub-topics should be expanded."
+    },
+    {
+      "name": "context",
+      "label": "Source Material (optional)",
+      "description": "Extra reference text to guide the AI when deepening."
+    },
+    {
+      "name": "database",
+      "label": "Database",
+      "description": "Wired database name — overrides the Database property. Connect a Global Database node here."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Report (JSON)",
+      "description": "Lists of applied and failed expansions."
+    },
+    {
+      "name": "entity_id",
+      "label": "Entity ID",
+      "description": "ID of the entity that was deepened."
+    },
+    {
+      "name": "applied",
+      "label": "Applied",
+      "description": "Number of sub-topics successfully expanded."
+    },
+    {
+      "name": "failed",
+      "label": "Failed",
+      "description": "Number of sub-topics that could not be expanded."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if deepening failed entirely."
+    }
+  ],
+  "properties": [
+    {
+      "key": "database",
+      "label": "Database",
+      "type": "aethviondb_db",
+      "default": "default"
+    },
+    {
+      "key": "model",
+      "label": "AI Model",
+      "type": "model_select",
+      "default": "auto"
+    },
+    {
+      "key": "max_stubs",
+      "label": "Max Sub-topics",
+      "type": "number",
+      "default": 5,
+      "description": "Maximum number of stubs to expand in one run (1–20)."
+    },
+    {
+      "key": "entity_ref",
+      "label": "Entity ID / Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "Fallback when 'in' port is empty"
+    },
+    {
+      "key": "extra_context",
+      "label": "Source Material",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "Fallback when 'context' port is empty"
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "type": "action.run_agent",
+  "label": "Run Agent",
+  "category": "Actions",
+  "icon": "fa-microchip-ai",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Goal / Prompt",
+      "description": "Task description sent to the autonomous agent."
+    },
+    {
+      "name": "model",
+      "label": "Model Override",
+      "description": "Overrides the configured model at runtime."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Agent Output",
+      "description": "Final result produced by the agent."
+    },
+    {
+      "name": "agent",
+      "label": "Agent Name",
+      "description": "Name of the agent that was selected to run the task."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the agent failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "model",
+      "label": "Model",
+      "type": "model_select",
+      "source": "/api/automate/models",
+      "default": "",
+      "placeholder": "Select a model…"
+    },
+    {
+      "key": "domain",
+      "label": "Domain",
+      "type": "text",
+      "default": "Automate",
+      "placeholder": "Analytics / Research / Writing…"
+    },
+    {
+      "key": "action",
+      "label": "Action",
+      "type": "text",
+      "default": "Execute",
+      "placeholder": "Generate / Analyze / Summarize…"
+    },
+    {
+      "key": "object",
+      "label": "Object",
+      "type": "text",
+      "default": "Task",
+      "placeholder": "Report / Email / Code…"
+    },
+    {
+      "key": "instructions",
+      "label": "Additional Instructions",
+      "type": "textarea",
+      "default": "",
+      "placeholder": "Extra constraints or context for the agent…"
+    },
+    {
+      "key": "temperature",
+      "label": "Temperature",
+      "type": "number",
+      "default": 0.7
+    },
+    {
+      "key": "max_tokens",
+      "label": "Max Tokens (0 = default)",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "key": "show_result",
+      "label": "Show Result on Node",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}

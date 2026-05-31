@@ -1,0 +1,63 @@
+{
+  "type": "data.merge_objects",
+  "label": "Merge Objects",
+  "category": "Data",
+  "icon": "fa-object-group",
+  "color": "#fb923c",
+  "inputs": [
+    {
+      "name": "a",
+      "label": "Object A",
+      "description": "Object to include in the merge."
+    },
+    {
+      "name": "b",
+      "label": "Object B",
+      "description": "Object to include in the merge."
+    },
+    {
+      "name": "c",
+      "label": "Object C",
+      "description": "Object to include in the merge."
+    },
+    {
+      "name": "d",
+      "label": "Object D",
+      "description": "Object to include in the merge."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Merged Object",
+      "description": "Combined result of all wired input objects."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if merging failed (e.g. non-object input)."
+    }
+  ],
+  "properties": [
+    {
+      "key": "merge_mode",
+      "label": "Merge Mode",
+      "type": "select",
+      "default": "shallow",
+      "options": [
+        "shallow",
+        "deep"
+      ]
+    },
+    {
+      "key": "output_as",
+      "label": "Output As",
+      "type": "select",
+      "default": "json_string",
+      "options": [
+        "json_string",
+        "object"
+      ]
+    }
+  ]
+}

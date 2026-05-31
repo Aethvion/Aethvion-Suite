@@ -1,0 +1,35 @@
+{
+  "type": "trigger.schedule",
+  "label": "Schedule",
+  "category": "Triggers",
+  "icon": "fa-clock",
+  "color": "#22d3ee",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "trigger",
+      "label": "Trigger",
+      "description": "Fires at each scheduled time."
+    },
+    {
+      "name": "data",
+      "label": "Data",
+      "description": "Metadata for this firing: date, time, and rule."
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "e.g. Daily Sync"
+    },
+    {
+      "key": "schedules",
+      "label": "Schedules",
+      "type": "schedule_list",
+      "default": []
+    }
+  ]
+}

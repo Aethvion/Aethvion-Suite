@@ -1,0 +1,59 @@
+{
+  "type": "aethviondb.create_database",
+  "label": "Create Database",
+  "category": "AethvionDB",
+  "icon": "fa-circle-plus",
+  "color": "#34d399",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Database Name",
+      "description": "Name for the new database (overrides the Name property)."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Entry (JSON)",
+      "description": "Registry entry for the created database."
+    },
+    {
+      "name": "name",
+      "label": "Database Name",
+      "description": "Confirmed name of the new database."
+    },
+    {
+      "name": "path",
+      "label": "Path",
+      "description": "Absolute filesystem path of the database root."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if creation failed."
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Database Name",
+      "type": "text",
+      "default": "",
+      "placeholder": "my-database"
+    },
+    {
+      "key": "description",
+      "label": "Description",
+      "type": "text",
+      "default": "",
+      "placeholder": "Optional description"
+    },
+    {
+      "key": "path",
+      "label": "Custom Path",
+      "type": "text",
+      "default": "",
+      "placeholder": "(auto — leave blank)"
+    }
+  ]
+}

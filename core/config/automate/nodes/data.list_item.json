@@ -1,0 +1,50 @@
+{
+  "type": "data.list_item",
+  "label": "List Item",
+  "category": "Data",
+  "icon": "fa-list-ol",
+  "color": "#fb923c",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "List",
+      "description": "Array to extract an item from."
+    },
+    {
+      "name": "index",
+      "label": "Index Override",
+      "description": "Zero-based index to use, overriding the configured value."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Item",
+      "description": "Item at the specified index (or slice if Slice End is set)."
+    },
+    {
+      "name": "count",
+      "label": "Count",
+      "description": "Total number of items in the input list."
+    },
+    {
+      "name": "error",
+      "label": "Error",
+      "description": "Error message if the index was out of range."
+    }
+  ],
+  "properties": [
+    {
+      "key": "index",
+      "label": "Index",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "key": "slice_end",
+      "label": "Slice End (optional, 0 = disabled)",
+      "type": "number",
+      "default": 0
+    }
+  ]
+}

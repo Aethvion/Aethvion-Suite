@@ -1,0 +1,34 @@
+{
+  "type": "logic.repeat",
+  "label": "Repeat",
+  "category": "Logic",
+  "icon": "fa-repeat",
+  "color": "#a78bfa",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Input",
+      "description": "Value to repeat N times into a list."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Repeated List",
+      "description": "Array containing the input value repeated N times."
+    },
+    {
+      "name": "count",
+      "label": "Count",
+      "description": "Number of repetitions (same as the configured count)."
+    }
+  ],
+  "properties": [
+    {
+      "key": "count",
+      "label": "Repeat Count",
+      "type": "number",
+      "default": 3
+    }
+  ]
+}

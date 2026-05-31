@@ -1,0 +1,34 @@
+{
+  "type": "output.clipboard",
+  "label": "Clipboard Output",
+  "category": "Outputs",
+  "icon": "fa-clipboard-check",
+  "color": "#e879f9",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Data",
+      "description": "Content to copy to the clipboard."
+    }
+  ],
+  "outputs": [],
+  "properties": [
+    {
+      "key": "format",
+      "label": "Format",
+      "type": "select",
+      "default": "auto",
+      "options": [
+        "auto",
+        "json_pretty",
+        "trim"
+      ]
+    },
+    {
+      "key": "notify",
+      "label": "Show Notification",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}
