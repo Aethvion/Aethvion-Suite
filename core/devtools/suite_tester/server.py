@@ -36,8 +36,10 @@ from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
 # Initialize Paths
-REPORTS_DIR = PROJECT_ROOT / "data" / "devtools" / "suite_tester" / "reports"
+REPORTS_DIR = PROJECT_ROOT / "core" / "tests" / "performance" / "reports"
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+TRACKED_DIR = PROJECT_ROOT / "core" / "tests" / "performance"
+TRACKED_DIR.mkdir(parents=True, exist_ok=True)
 STATIC_DIR = Path(__file__).parent / "static"
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -127,6 +129,35 @@ def get_process_resource_usage(pid: int) -> Dict[str, Any]:
         }
     except Exception:
         return {"memory_mb": 0.0, "cpu_percent": 0.0}
+
+def kill_process_tree(pid: int):
+    """Recursively terminates a process and all its children to prevent orphaned tasks."""
+    try:
+        parent = psutil.Process(pid)
+        children = parent.children(recursive=True)
+        # Send terminate signal to children first
+        for child in children:
+            try:
+                child.terminate()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+        # Terminate parent
+        try:
+            parent.terminate()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+            
+        # Wait up to 3 seconds for graceful exit
+        gone, alive = psutil.wait_procs(children + [parent], timeout=3)
+        
+        # Force kill any remaining alive processes
+        for p in alive:
+            try:
+                p.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+    except Exception:
+        pass
 
 def get_repository_stats() -> Dict[str, Any]:
     """Scans the repository to compile file counts and lines of code by language."""
@@ -222,6 +253,116 @@ def make_http_request(url: str, method: str = "GET", data: Optional[Dict[str, An
             "latency_ms": round(latency_ms, 2)
         }
 
+def generate_markdown_report(report_data: Dict[str, Any]) -> str:
+    """Generates a clean, human-readable markdown summary of a performance report."""
+    git_meta = report_data.get("git", {})
+    vitals = report_data.get("vitals", {})
+    avgs = vitals.get("averages", {})
+    baseline = vitals.get("pre_test_baseline", {})
+    gpu_baseline = baseline.get("gpu", {})
+    
+    # Format startup duration
+    startup_s = vitals.get("startup_duration_s", 0.0)
+    
+    # Process vitals
+    p_cpu_avg = avgs.get("process_cpu_avg", 0.0)
+    p_cpu_max = avgs.get("process_cpu_max", 0.0)
+    p_mem_avg = avgs.get("process_mem_avg", 0.0)
+    p_mem_max = avgs.get("process_mem_max", 0.0)
+    
+    # System vitals pre vs during
+    sys_cpu_pre = baseline.get("system_cpu_percent", 0.0)
+    sys_cpu_avg = avgs.get("system_cpu_avg", 0.0)
+    sys_cpu_max = avgs.get("system_cpu_max", 0.0)
+    
+    sys_mem_pre = baseline.get("system_memory_percent", 0.0)
+    sys_mem_avg = avgs.get("system_mem_avg", 0.0)
+    sys_mem_max = avgs.get("system_mem_max", 0.0)
+    
+    # GPU pre vs during
+    gpu_status = gpu_baseline.get("status", "N/A")
+    gpu_pre_util = gpu_baseline.get("utilization", 0) if gpu_status == "Available" else 0
+    gpu_pre_vram = gpu_baseline.get("vram_used_mb", 0) if gpu_status == "Available" else 0
+    
+    gpu_avg_util = avgs.get("gpu_util_avg", 0.0)
+    gpu_max_util = avgs.get("gpu_util_max", 0.0)
+    gpu_avg_vram = avgs.get("gpu_vram_avg", 0.0)
+    gpu_max_vram = avgs.get("gpu_vram_max", 0.0)
+    
+    # Health checks
+    health_latency = 0.0
+    for r in report_data.get("api_routing", []):
+        if r.get("test") == "health_check":
+            health_latency = r.get("avg_latency_ms", 0.0)
+            
+    # Task queue
+    tasks_meta = report_data.get("tasks", {})
+    task_success = tasks_meta.get("success", False)
+    task_duration = tasks_meta.get("duration_s", 0.0)
+    task_correct = tasks_meta.get("correct", False)
+    
+    repo_stats = report_data.get("repository_stats", {})
+    total_files = repo_stats.get("total_files", 0)
+    total_loc = repo_stats.get("total_loc", 0)
+    
+    md = []
+    md.append(f"# Aethvion Suite Tester - Performance Report")
+    md.append(f"")
+    md.append(f"- **Report ID**: `{report_data.get('id')}`")
+    md.append(f"- **Timestamp**: `{report_data.get('timestamp')}`")
+    md.append(f"- **Commit**: `{git_meta.get('commit_hash', 'unknown')}`")
+    md.append(f"- **Commit Message**: `{git_meta.get('commit_msg', 'unknown')}`")
+    md.append(f"- **Version**: `{git_meta.get('version', 'unknown')}`")
+    md.append(f"")
+    md.append(f"## 📊 Telemetry Summary")
+    md.append(f"")
+    md.append(f"| Metric Stream | Offline Baseline | Active Test Average | Active Test Peak (Max) |")
+    md.append(f"| :--- | :---: | :---: | :---: |")
+    md.append(f"| **Process CPU** | — | {p_cpu_avg:.1f}% | {p_cpu_max:.1f}% |")
+    md.append(f"| **Process Memory (RAM)** | — | {p_mem_avg:.2f} MB | {p_mem_max:.2f} MB |")
+    md.append(f"| **System CPU** | {sys_cpu_pre:.1f}% | {sys_cpu_avg:.1f}% | {sys_cpu_max:.1f}% |")
+    md.append(f"| **System Memory (RAM)** | {sys_mem_pre:.1f}% | {sys_mem_avg:.1f}% | {sys_mem_max:.1f}% |")
+    
+    if gpu_status == "Available":
+        md.append(f"| **GPU Utilization** | {gpu_pre_util:.1f}% | {gpu_avg_util:.1f}% | {gpu_max_util:.1f}% |")
+        md.append(f"| **GPU VRAM** | {gpu_pre_vram:,} MB | {gpu_avg_vram:,.2f} MB | {gpu_max_vram:,.2f} MB |")
+    else:
+        md.append(f"| **GPU / VRAM** | N/A | N/A | N/A |")
+        
+    md.append(f"")
+    md.append(f"## ⏱️ Orchestration & Stress Tests")
+    md.append(f"")
+    md.append(f"- **Startup Duration**: `{startup_s:.2f} seconds`")
+    md.append(f"- **API Health Check Average Latency**: `{health_latency:.2f} ms`")
+    
+    if task_success:
+        status_text = "Passed" if task_correct else "Response Mismatch"
+        md.append(f"- **LLM Task Queue Routing Stress**: `{status_text}` (took `{task_duration:.2f}s`)")
+    else:
+        md.append(f"- **LLM Task Queue Routing Stress**: `Failed/Timeout` (error: `{tasks_meta.get('error', 'N/A')}`)")
+        
+    md.append(f"")
+    md.append(f"## 📁 Repository Codebase Stats")
+    md.append(f"")
+    md.append(f"- **Total Files Tracked**: `{total_files:,}`")
+    md.append(f"- **Total Lines of Code (LOC)**: `{total_loc:,}`")
+    md.append(f"")
+    md.append(f"### Language Breakdown")
+    md.append(f"")
+    md.append(f"| Language | Files | Lines of Code (LOC) | Code Ratio |")
+    md.append(f"| :--- | :---: | :---: | :---: |")
+    
+    by_lang = repo_stats.get("by_language", {})
+    for lang, stats in sorted(by_lang.items(), key=lambda x: x[1].get("loc", 0), reverse=True):
+        l_files = stats.get("files", 0)
+        l_loc = stats.get("loc", 0)
+        if l_files == 0:
+            continue
+        ratio = (l_loc / total_loc * 100) if total_loc > 0 else 0.0
+        md.append(f"| **{lang}** | {l_files:,} | {l_loc:,} | {ratio:.1f}% |")
+        
+    return "\n".join(md)
+
 def run_test_orchestrator(run_id: str, python_exe: str):
     """Orchestrates the entire automated test lifecycle."""
     add_log(run_id, "Initializing test orchestrator...")
@@ -235,15 +376,27 @@ def run_test_orchestrator(run_id: str, python_exe: str):
             s.settimeout(0.5)
             if s.connect_ex(('127.0.0.1', test_port)) == 0:
                 add_log(run_id, f"WARNING: Port {test_port} is already in use. Cleaning registry...")
-                # Fetch PID holding the port and terminate it
-                for proc in psutil.process_iter(['pid', 'connections']):
-                    try:
-                        for conn in proc.connections(kind='inet'):
-                            if conn.laddr.port == test_port:
-                                add_log(run_id, f"Killing process {proc.pid} holding port {test_port}")
-                                proc.kill()
-                    except Exception:
-                        pass
+                try:
+                    # Instantly find the process holding the port using system-wide net connections
+                    for conn in psutil.net_connections(kind='inet'):
+                        if conn.laddr.port == test_port and conn.pid:
+                            try:
+                                proc = psutil.Process(conn.pid)
+                                add_log(run_id, f"Killing process {proc.pid} ({proc.name()}) holding port {test_port}")
+                                kill_process_tree(proc.pid)
+                            except Exception as e:
+                                add_log(run_id, f"Error terminating process tree for PID {conn.pid}: {e}")
+                except Exception as net_exc:
+                    add_log(run_id, f"System-wide net connection query failed: {net_exc}. Falling back to connection iterator...")
+                    # Fallback if net_connections requires administrator permissions on some setups
+                    for proc in psutil.process_iter(['pid', 'connections']):
+                        try:
+                            for conn in proc.connections(kind='inet'):
+                                if conn.laddr.port == test_port:
+                                    add_log(run_id, f"Killing process {proc.pid} holding port {test_port}")
+                                    kill_process_tree(proc.pid)
+                        except Exception:
+                            pass
                 time.sleep(1.0)
     except Exception as exc:
         add_log(run_id, f"Port check skipped: {exc}")
@@ -464,14 +617,12 @@ def run_test_orchestrator(run_id: str, python_exe: str):
                 break
             time.sleep(0.5)
 
-    if not graceful_success:
-        add_log(run_id, "Force-killing suite process...")
-        try:
-            suite_proc.kill()
-            suite_proc.wait(timeout=2)
-            add_log(run_id, "Process killed forcefully.")
-        except Exception as e:
-            add_log(run_id, f"Error killing process: {e}")
+    # Always ensure the entire process tree (including orphaned child browser windows or server threads) is terminated
+    try:
+        add_log(run_id, "Ensuring all suite subprocesses are terminated recursively...")
+        kill_process_tree(suite_proc.pid)
+    except Exception as e:
+        add_log(run_id, f"Error during process tree cleanup: {e}")
 
     # Scan project source stats
     add_log(run_id, "Scanning repository codebase stats...")
@@ -548,14 +699,46 @@ def run_test_orchestrator(run_id: str, python_exe: str):
         "timeseries": timeseries_data
     }
 
-    # Write report file
-    report_file = REPORTS_DIR / f"{report_id}.json"
+    # Write report files
+    report_file_json = REPORTS_DIR / f"{report_id}.json"
+    report_file_md = REPORTS_DIR / f"{report_id}.md"
+    latest_file_json = TRACKED_DIR / "latest_report.json"
+    latest_file_md = TRACKED_DIR / "latest_report.md"
+    
+    # 1. Save historical JSON report (gitignored)
     try:
-        with open(report_file, "w", encoding="utf-8") as f:
+        with open(report_file_json, "w", encoding="utf-8") as f:
             json.dump(report_data, f, indent=4)
-        add_log(run_id, f"Saved performance report: {report_file.name}")
+        add_log(run_id, f"Saved historical JSON report: {report_file_json.name}")
     except Exception as e:
-        add_log(run_id, f"Error saving report file: {e}")
+        add_log(run_id, f"Error saving historical JSON report: {e}")
+        
+    # 2. Generate and save historical Markdown report (gitignored)
+    md_content = ""
+    try:
+        md_content = generate_markdown_report(report_data)
+        with open(report_file_md, "w", encoding="utf-8") as f:
+            f.write(md_content)
+        add_log(run_id, f"Saved historical Markdown report: {report_file_md.name}")
+    except Exception as e:
+        add_log(run_id, f"Error generating historical Markdown report: {e}")
+        
+    # 3. Save latest JSON report under Git version control (tracked)
+    try:
+        with open(latest_file_json, "w", encoding="utf-8") as f:
+            json.dump(report_data, f, indent=4)
+        add_log(run_id, "Updated git-tracked latest_report.json")
+    except Exception as e:
+        add_log(run_id, f"Error updating tracked latest_report.json: {e}")
+        
+    # 4. Save latest Markdown report under Git version control (tracked)
+    if md_content:
+        try:
+            with open(latest_file_md, "w", encoding="utf-8") as f:
+                f.write(md_content)
+            add_log(run_id, "Updated git-tracked latest_report.md")
+        except Exception as e:
+            add_log(run_id, f"Error updating tracked latest_report.md: {e}")
 
     with runs_lock:
         test_runs[run_id]["status"] = "completed"

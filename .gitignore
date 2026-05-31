@@ -63,3 +63,6 @@ aireports/*
 # C# .exe Wrapper
 core/devtools/csharpwrapper/bin/*
 core/devtools/csharpwrapper/obj/*
+
+# Performance Test Reports
+core/tests/performance/reports/*
