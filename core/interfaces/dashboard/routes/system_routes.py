@@ -231,7 +231,6 @@ async def run_module_script(req_data: dict, request: Request):
         "photo":     "apps/photo/Start_Photo.bat",
         "audio":     "apps/audio/Start_Audio.bat",
         "driveinfo": "apps/driveinfo/Start_DriveInfo.bat",
-        "finance":   "apps/finance/Start_Finance.bat",
         "code":      "apps/code/Start_Code.bat",
         "hardwareinfo": "apps/hardwareinfo/Start_HardwareInfo.bat",
         "linkmap":      "apps/linkmap/Start_LinkMap.bat",

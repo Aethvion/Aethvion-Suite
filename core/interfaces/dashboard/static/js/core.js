@@ -1617,7 +1617,7 @@ async function launchModule(name) {
             window.open(`http://localhost:${port}`, '_blank');
         } else {
             // Fallback to default ports if not registered yet
-            const defaults = { 'photo': 8083, 'audio': 8083, 'driveinfo': 8084, 'finance': 8085, 'kanban': 8089 };
+            const defaults = { 'photo': 8083, 'audio': 8083, 'driveinfo': 8084, 'kanban': 8089 };
             const defaultPort = defaults[name.toLowerCase()];
             if (defaultPort) {
                 console.warn(`Module ${name} not found in dynamic ports, trying default :${defaultPort}`);
@@ -1706,7 +1706,7 @@ async function updateModuleStatusBadges() {
 
         const registeredModules = Object.values(ports).map(m => m.toLowerCase());
 
-        ['photo', 'audio', 'driveinfo', 'finance', 'kanban'].forEach(mod => {
+        ['photo', 'audio', 'driveinfo', 'kanban'].forEach(mod => {
             const badge = document.getElementById(`${mod}-status-badge`);
             const headerLaunchBtn = document.querySelector(`.module-launch-btn[data-launch="${mod}"]`);
             const isOnline = registeredModules.some(m => m.includes(mod));

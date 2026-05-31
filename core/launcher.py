@@ -116,12 +116,6 @@ APP_REGISTRY: dict[str, dict] = {
         "title":    "Photo Studio",
         "required": False,
     },
-    "finance": {
-        "script":   "apps/finance/finance_server.py",
-        "port":     8087,
-        "title":    "Finance",
-        "required": False,
-    },
     "driveinfo": {
         "script":   "apps/driveinfo/driveinfo_server.py",
         "port":     8088,
@@ -231,7 +225,7 @@ def _is_running_aethvion(proc: psutil.Process) -> bool:
         # Check for core modules or specific app servers
         targets = ["core.main", "code_server.py",
                    "hardware_server.py", "audio_server.py", "photo_server.py",
-                   "finance_server.py", "driveinfo_server.py", "apps/overlay/main.py"]
+                   "driveinfo_server.py", "apps/overlay/main.py"]
         return any(t in cmdline_str for t in targets)
     except (psutil.NoSuchProcess, psutil.AccessDenied):
         return False

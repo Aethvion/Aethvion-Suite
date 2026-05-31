@@ -926,65 +926,7 @@
                 }
             ]
         },
-        {
-            "id": "finance",
-            "name": "Aethvion Finance",
-            "desc": "Professional multi-view financial dashboard for tracking net worth, budgets, investments, and goals.",
-            "features": [
-                {
-                    "name": "Dashboard Overview",
-                    "desc": "KPI cards (net worth, income, expenses, savings rate) with net worth trend and spending donut charts."
-                },
-                {
-                    "name": "Transaction Management",
-                    "desc": "Full CRUD transaction log with category tagging, date filtering, and search."
-                },
-                {
-                    "name": "Account Tracking",
-                    "desc": "Manage multiple accounts (checking, savings, investment, credit) with live balance totals."
-                },
-                {
-                    "name": "Budget Planner",
-                    "desc": "Monthly budget targets per category with spend-vs-budget bar charts."
-                },
-                {
-                    "name": "Goals Tracker",
-                    "desc": "Define savings goals with target amounts and deadlines — track progress visually."
-                },
-                {
-                    "name": "Portfolio Tab",
-                    "desc": "Track investment holdings (Stocks, ETFs, Crypto, Bonds) with allocation donut chart and gain/loss calculations."
-                },
-                {
-                    "name": "Live Price Refresh",
-                    "desc": "One-click market price update for all holdings via Yahoo Finance (yfinance) — no API key required."
-                },
-                {
-                    "name": "Analytics View",
-                    "desc": "Income vs. expenses bar chart, category breakdown, cash flow line chart, and accounts distribution."
-                },
-                {
-                    "name": "Project Storage",
-                    "desc": "Save and load named financial snapshots in the custom .aethfinance format with atomic autosave."
-                }
-            ],
-            "wip": [
-                {
-                    "name": "Recurring Transactions",
-                    "desc": "Define recurring income and expense rules that auto-populate the transaction log."
-                }
-            ],
-            "planned": [
-                {
-                    "name": "CSV Import / Export",
-                    "desc": "Import bank statement CSVs and export transaction history for external tools."
-                },
-                {
-                    "name": "Tax Report Generator",
-                    "desc": "Summarize capital gains, income, and deductible expenses for tax preparation."
-                }
-            ]
-        },
+
         {
             "id": "photo",
             "name": "Aethvion Photo",

@@ -123,7 +123,6 @@ const ATB = (() => {
         { id: 'hardwareinfo', label: 'Hardware Info',  emoji: '🖥️', category: 'System & Analytics',       port: null, portKey: 'Aethvion Hardware Info' },
         { id: 'linkmap',      label: 'LinkMap',        emoji: '🗺️', category: 'System & Analytics',       port: null, portKey: 'Aethvion LinkMap'      },
         { id: 'driveinfo',    label: 'Drive Info',     emoji: '💿', category: 'System & Analytics',       port: null, portKey: 'Aethvion Drive Info'   },
-        { id: 'finance',      label: 'Finance',        emoji: '💰', category: 'Other',                    port: null, portKey: 'Aethvion Finance'      },
         { id: 'kanban',       label: 'Kanban',         emoji: '📋', category: 'Professional Development', port: null, portKey: 'Aethvion Kanban'       },
     ];
 

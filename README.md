@@ -139,7 +139,6 @@ copy .env.example .env
 | **Code IDE** | `apps/code/Start_Code.bat` | http://localhost:8083 |
 | **Audio Editor** | `apps/audio/Start_Audio.bat` | http://localhost:8081* |
 | **Photo Editor** | `apps/photo/Start_Photo.bat` | http://localhost:8081* |
-| **Finance Hub** | `apps/finance/Start_Finance.bat` | http://localhost:8081* |
 | **Drive Info** | `apps/driveinfo/Start_DriveInfo.bat` | http://localhost:8084 |
 | **Hardware Info** | `apps/hardwareinfo/Start_HardwareInfo.bat` | http://localhost:8081* |
 
@@ -280,7 +279,6 @@ Aethvion-Suite/
 │   │   └── tts_manager.py          # TTS/STT lifecycle manager
 │   ├── code/                       # Monaco-based Code IDE (port 8083)
 │   ├── driveinfo/                  # System storage and drive info
-│   ├── finance/                    # Finance tracking + AI market analysis
 │   ├── hardwareinfo/               # System hardware information
 │   └── photo/                      # AI-powered photo editing
 │
