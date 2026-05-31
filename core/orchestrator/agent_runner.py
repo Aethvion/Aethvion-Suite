@@ -204,8 +204,8 @@ ACTION: {{"type": "add_note", "note": "important context to remember"}}
 ACTION: {{"type": "evict_file", "path": "relative/file.txt"}}          ← drop a file from active context the moment you no longer need its raw content
 ACTION: {{"type": "distill_file_context", "path": "relative/file.txt", "summary": "key functions, patterns, configs I extracted"}}  ← store compact notes then auto-evict (preferred over plain evict_file for large reference reads)
 ACTION: {{"type": "observe", "content": "I see a screenshot showing X, Y, Z. The error is on line N."}}  ← describe images or key findings
-ACTION: {{"type": "respond", "message": "Here are three ideas: ..."}}  ← send a visible message to the user in the main chat (use for suggestions, answers, lists — anything the user should read)
-ACTION: {{"type": "done", "summary": "brief summary of what was accomplished"}}
+ACTION: {{"type": "respond", "message": "Here are three ideas: ..."}}  ← THE ONLY WAY to show text in the main chat. Use for answers, ideas, lists, status updates, results — anything the user should read.
+ACTION: {{"type": "done", "summary": "3–5 word internal label — NOT shown in chat. e.g. 'Done', 'Answered', 'Built search'. NEVER put the actual answer here."}}
 ACTION: {{"type": "save_to_project_memory", "category": "rule", "text": "No compilers or build tools"}}
 ACTION: {{"type": "save_to_project_memory", "category": "context", "text": "Tech stack: Three.js via CDN, vanilla JS"}}
 ACTION: {{"type": "save_to_project_memory", "category": "checklist", "title": "Project Roadmap", "items": ["Add color picker", "Add performance stats"]}}
@@ -221,8 +221,8 @@ SURGICAL EDIT RULES (most important):
 
 EFFICIENCY RULES:
 7. Write REAL, COMPLETE file content — never stubs or placeholders. (For new files via write_file.)
-8. Before every response that takes actions, write 1–2 sentences describing what you're about to do and why. This reasoning appears before any ACTION: lines.
-9. SIMPLE QUESTIONS: If the user asks a conversational follow-up — read the relevant file(s), then immediately call done with the answer. Never paginate or loop.
+8. TEXT BEFORE ACTION: IS YOUR VISIBLE RESPONSE. Everything you write before the first ACTION: line appears directly in the user's chat, word by word as you generate it. For questions or suggestions: write your full answer first, then call done. For implementation tasks: write a brief note ("Starting with the HTML structure"), then take actions. Never skip this — if you go straight to ACTION: the user sees nothing.
+9. SIMPLE QUESTIONS: If the user asks a question or wants ideas — write your complete answer as regular text, then call done. Never paginate or loop.
 10. WORKSPACE CONTEXT: If "Files:" are already listed in the Context block above, you already know what exists — skip list_dir and proceed directly.
 11. If images are attached to the task, use observe as your FIRST action to describe exactly what you see in each image before doing anything else.
 12. When switching tech stack or approach (e.g. React → plain HTML/CSS/JS), use delete_file to remove ALL old files that no longer belong BEFORE writing new ones.
@@ -241,7 +241,7 @@ EFFICIENCY RULES:
 25. FIND, DON'T READ: Use search_codebase(query, path) to locate a string, class, or link in seconds. Only call read_file after you know exactly which file and roughly which line you need.
 26. VERIFY YOUR CHANGES: Before calling done, always run appropriate verification commands (e.g. run tests, check compiling, check linting) if available in the project, to ensure your edits are correct and did not introduce regressions.
 27. PROJECT MEMORY: When the user states a constraint, preference, or project fact that should apply to ALL future tasks in this workspace, call save_to_project_memory immediately — before doing anything else. Use category "rule" for hard constraints ("no compilers"), "context" for tech stack facts ("Three.js via CDN, no npm"), "design" for visual/UX decisions, "note" for observations. For multi-task project roadmaps use category "checklist". These items persist across all threads and model switches — save anything a fresh agent would need to know.
-28. VISIBLE RESPONSES: ALWAYS call respond at the end of every task. The main chat shows ONLY respond messages — your thinking text and done summary are invisible there. Use respond to confirm what you built, answer a question, or share ideas. One sentence is fine. The only exception is a silent background action (e.g. saving a note) where there is literally nothing for the user to read.
+28. CHAT TEXT: Your text before ACTION: streams directly into the chat as you write it. That IS your response. Use the `respond` action only for heavily formatted content (markdown tables, code blocks, numbered lists). For plain text answers, just write them — no `respond` needed. Always write something before done so the user knows what happened.
 29. UNDERSTAND BEFORE ACTING: Before doing anything, read the full message and separate BUILD requests from ANSWER requests.
     - "build/add/create/fix/make/implement" → write code / files
     - "what X should we add?", "any ideas for X?", "what do you think?", "suggest X" → answer via respond only, do NOT create or modify files
@@ -2340,10 +2340,13 @@ class AgentRunner:
                 compact_actions.append(f"{action_type}({short})")
 
             if done_triggered:
-                self._emit({"type": "done", "title": "Complete", "detail": done_summary})
-                self.state.record_task(self.task, done_summary)
+                # Use the pre-action thinking text as the detail (it's the actual answer).
+                # Fall back to done_summary only when no thinking text was generated.
+                result_detail = thinking or done_summary
+                self._emit({"type": "done", "title": "Complete", "detail": result_detail})
+                self.state.record_task(self.task, result_detail)
                 self.state.save()
-                return done_summary
+                return result_detail
 
             # Store as structured dicts so _render_conv_entry can evict stale
             # read_file payloads when building prompts in later iterations.

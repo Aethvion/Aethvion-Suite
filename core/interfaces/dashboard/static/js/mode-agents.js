@@ -310,6 +310,9 @@ function _agentsRenderMessages(messages) {
 
     // Reset the replay-dedup flag so switching threads can't carry stale state
     _agLastMsgWasAgentSteps = false;
+    // Clear any dangling stream card from a previous run
+    if (_agStreamCard) { _agStreamCard.remove(); _agStreamCard = null; }
+    _agLiveTokenText = '';
 
     // Reset dashboard left panel and stop any running timer
     _agResetDashboard();
@@ -359,12 +362,16 @@ function _agentsAppendMessage(msg, scroll = true, isHistory = false) {
         return;
     }
 
-    // The `assistant` message saved after an agent run duplicates respond messages
-    // already replayed from agent_steps — skip it only when the run used respond.
-    // If the agent never called respond, we keep it so the conclusion persists on reload.
+    // The `assistant` message stored after an agent run is already represented by
+    // either: the agent_response (respond action) events replayed from agent_steps,
+    // or the stream-static cards rebuilt from llm_token events. Skip it when either exists.
     if (msg.role === 'assistant' && _agLastMsgWasAgentSteps) {
         _agLastMsgWasAgentSteps = false;
-        if (_agentsRenderState && _agentsRenderState.hadRespond) return;
+        const rs = _agentsRenderState;
+        const hasStream = rs && rs.activity
+            ? rs.activity.querySelector('.agent-stream-static') !== null : false;
+        if ((rs && rs.hadRespond) || hasStream) return;
+        // Nothing visible yet → show the stored message as fallback
     }
 
     // Reset flag for any other role (user, error, etc.)
@@ -816,6 +823,7 @@ function _agInitRender(isReplay = false) {
         isReplay,        // true when replaying history (skip localStorage writes)
         thoughtCount: 0, // number of thought cards added to right panel
         hadRespond: false, // true if agent used the respond action this run
+        _planChatCard: null, // inline plan card shown in main chat
     };
     return _agentsRenderState;
 }
@@ -893,36 +901,65 @@ function _agPhaseAdd(id, icon, label, event = null) {
     _agActivityLogAdd(icon, label, 'active', event);
 }
 
-function _agRenderTimeline() { /* replaced by _agActivityLogAdd — no-op */ }
+function _agRenderTimeline() { /* no-op */ }
 
-// ── Plan (left panel checklist) ───────────────────────────────
-// ── Live LLM token streaming ──────────────────────────────────
-// State for the live streaming thought card
-let _agLiveTokenCard = null;
-let _agLiveTokenText = '';
+// ── Live LLM token streaming ─────────────────────────────────
+let _agLiveTokenText = '';   // accumulated raw LLM output for the current iteration
+let _agStreamCard    = null; // live streaming card in main chat (converts to static on finalize)
 
 // State for the live command streaming card (run_command_line events)
 let _agCmdStreamCard = null;
 let _agCmdStreamLines = [];
 
 /**
- * Append a raw token to the live streaming card in the main activity area.
- * Called for every `llm_token` SSE event while the LLM is generating.
+ * Called for every `llm_token` SSE event.
+ * Streams the pre-ACTION text (the model's actual narrative/answer) live into the chat.
+ * The backend emits all tokens including both the reasoning text and ACTION: JSON.
+ * We show only the part before the first ACTION: line — that IS the answer for Q&A tasks.
  */
 function _agHandleLLMToken(event) {
-    // Track tokens internally — thinking is not shown to the user
     _agLiveTokenText += event.token || '';
+
+    // Show text before the first ACTION: line (the model's answer/narration)
+    const actionIdx = _agLiveTokenText.indexOf('ACTION:');
+    const display   = (actionIdx !== -1
+        ? _agLiveTokenText.slice(0, actionIdx)
+        : _agLiveTokenText
+    ).trimStart().trimEnd();
+
+    if (!display) return;
+
+    const s = _agentsRenderState;
+    if (!s) return;
+
+    if (!_agStreamCard) {
+        _agStreamCard = document.createElement('div');
+        _agStreamCard.className = 'agent-stream-preview';
+        const ti = s.activity.querySelector('.agent-typing-indicator');
+        if (ti) s.activity.insertBefore(_agStreamCard, ti);
+        else s.activity.appendChild(_agStreamCard);
+    }
+    _agStreamCard.textContent = display;
+
+    const container = _agEl('agents-messages');
+    if (container) container.scrollTop = container.scrollHeight;
 }
 
 /**
- * Finalize the live streaming card.
- * Instead of removing it (which causes the "info disappears" flash), convert
- * it in place to a stable card with a static header.
+ * Finalize the streaming card: convert it to a stable static element.
+ * Keep the text visible — it IS the agent's response for the current iteration.
+ * Called between LLM iterations (before tool execution) and at task end.
  */
 function _agFinalizeLiveToken() {
-    if (_agLiveTokenCard) {
-        _agLiveTokenCard.remove();
-        _agLiveTokenCard = null;
+    if (_agStreamCard) {
+        const text = _agStreamCard.textContent.trim();
+        if (text) {
+            _agStreamCard.classList.remove('agent-stream-preview');
+            _agStreamCard.classList.add('agent-stream-static');
+        } else {
+            _agStreamCard.remove();
+        }
+        _agStreamCard = null;
     }
     _agLiveTokenText = '';
 }
@@ -1069,22 +1106,63 @@ function _agAddThoughtCard(title, detail) {
 function _agRenderPlanItems() {
     const s = _agentsRenderState;
     if (!s) return;
+    // Right panel (hidden) — kept for compat
     const planSection = _agEl('agents-plan-section');
     const planList    = _agEl('agents-plan-compact-list');
     const badge       = _agEl('agents-plan-badge');
     if (planSection) planSection.style.display = 'block';
-    if (!planList) return;
-    planList.innerHTML = '';
-    const done  = s.planItems.filter(i => i.done).length;
-    const total = s.planItems.length;
-    if (badge) badge.textContent = `${done}/${total}`;
+    if (planList) {
+        planList.innerHTML = '';
+        const done  = s.planItems.filter(i => i.done).length;
+        const total = s.planItems.length;
+        if (badge) badge.textContent = `${done}/${total}`;
+        s.planItems.forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'agents-plan-ci' + (item.done ? ' agents-plan-ci--done' : '');
+            row.title = item.text;
+            row.textContent = (item.done ? '✅ ' : '⬜ ') + item.text;
+            planList.appendChild(row);
+        });
+    }
+    // Also render inline plan card in main chat
+    _agRenderInlinePlan(s);
+}
+
+function _agRenderInlinePlan(s) {
+    if (!s || !s.planItems.length) return;
+
+    let card = s._planChatCard;
+    if (!card) {
+        card = document.createElement('div');
+        card.className = 'agent-plan-inline';
+        s._planChatCard = card;
+        // Insert before typing indicator
+        const ti = s.activity.querySelector('.agent-typing-indicator');
+        if (ti) s.activity.insertBefore(card, ti);
+        else s.activity.appendChild(card);
+    }
+
+    const doneCount  = s.planItems.filter(i => i.done).length;
+    const totalCount = s.planItems.length;
+    const allDone    = doneCount === totalCount;
+
+    card.innerHTML = '';
+    const hdr = document.createElement('div');
+    hdr.className = 'agent-plan-inline-header';
+    hdr.textContent = allDone
+        ? `✓ ${totalCount} steps done`
+        : `${doneCount}/${totalCount} steps`;
+    card.appendChild(hdr);
+
     s.planItems.forEach(item => {
         const row = document.createElement('div');
-        row.className = 'agents-plan-ci' + (item.done ? ' agents-plan-ci--done' : '');
-        row.title = item.text;
-        row.textContent = (item.done ? '✅ ' : '⬜ ') + item.text;
-        planList.appendChild(row);
+        row.className = 'agent-plan-inline-row' + (item.done ? ' done' : '');
+        row.textContent = (item.done ? '✓ ' : '○ ') + item.text;
+        card.appendChild(row);
     });
+
+    const container = _agEl('agents-messages');
+    if (container) container.scrollTop = container.scrollHeight;
 }
 
 // ── Stats helpers ──────────────────────────────────────────────
@@ -1905,17 +1983,21 @@ function _agFinishRender(event, isReplay = false) {
         s.activity.appendChild(warn);
     }
 
-    // Show the done summary only when the agent didn't already respond via the respond action.
-    // If respond was used, that message is the conclusion — showing done summary would duplicate it.
-    if (!isReplay && !s.hadRespond) {
+    // Show done.detail as the final message when no other content is visible.
+    // done.detail now contains the pre-action thinking text (the real answer) — backend fix.
+    // Skip when: agent used respond (that IS the answer), or stream-static already shows it.
+    if (!isReplay) {
         _agentsHideTyping();
-        const content = detail || (!isOk ? event.title || 'Task failed.' : '');
-        if (content) {
-            _agentsAppendMessage({
-                role:      isOk ? 'assistant' : 'error',
-                content:   content,
-                timestamp: new Date().toISOString(),
-            }, true);
+        const hasStream = s.activity.querySelector('.agent-stream-static') !== null;
+        if (!s.hadRespond && !hasStream) {
+            const content = detail || (!isOk ? event.title || 'Task failed.' : '');
+            if (content) {
+                _agentsAppendMessage({
+                    role:      isOk ? 'assistant' : 'error',
+                    content:   content,
+                    timestamp: new Date().toISOString(),
+                }, true);
+            }
         }
     }
 }
@@ -3061,12 +3143,14 @@ function _agHandlePatchFailed(event) {
 function _agHandleAgentResponse(event) {
     const content = event.content || '';
     if (!content) return;
+    // The current stream card contains partial ACTION: JSON — replace it with the clean message
+    if (_agStreamCard) { _agStreamCard.remove(); _agStreamCard = null; }
     _agentsHideTyping();
     _agentsAppendMessage({
         role:      'assistant',
         content,
         timestamp: new Date().toISOString(),
-    }, true);   // scroll=true
+    }, true);
 }
 
 // ── Workspace IDE Tree & Editor Helpers ───────────────────────
