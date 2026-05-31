@@ -1,11 +1,11 @@
 import asyncio
-import logging
 import subprocess
 import json
 import re
+from core.utils import get_logger
 
 # Setup logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 def _get_media_info_powershell() -> dict:
     """

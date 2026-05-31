@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import io
 import json
-import logging
 import os
 import re
 import subprocess
@@ -40,7 +39,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from core.utils import get_logger
+
+logger = get_logger(__name__)
 
 # ── AethvionDB registry helper ────────────────────────────────────────────────
 # Reads _db_registry.json directly so compiler.py stays self-contained with no

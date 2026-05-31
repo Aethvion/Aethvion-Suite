@@ -9,15 +9,15 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from datetime import datetime
-import logging
 import os
 import subprocess
 import sys
 import mimetypes
+from core.utils import get_logger
 
 from core.utils.paths import WS_OUTPUTS, WS_MEDIA, WS_UPLOADS
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(prefix="/api/workspace", tags=["workspace"])
 
 # Global cache for workspace files to avoid redundant disk scans

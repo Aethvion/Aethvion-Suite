@@ -5,14 +5,14 @@ Internet search bridge — queries DuckDuckGo's Instant Answer API (no API key
 required) and falls back to a HTML snippet scrape for queries that return no
 direct answer.
 """
-import logging
 import re
 import urllib.parse
 from typing import Any, Dict
+from core.utils import get_logger
 
 import requests
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _DDG_API     = "https://api.duckduckgo.com/"
 _DDG_HEADERS = {"User-Agent": "AethvionSuite/1.0 (local AI assistant)"}

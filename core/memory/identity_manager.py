@@ -4,15 +4,15 @@ Handles persistent identity (base_info.json) and dynamic memory (memory.json).
 """
 
 import json
-import logging
 import datetime
 import re
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from core.utils import utcnow_iso
 from core.utils.paths import COMPANIONS_PERSONAS
+from core.utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 def _get_companion_dir(companion_id: str) -> Path:
     """Get the persistent directory for a companion."""

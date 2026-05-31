@@ -1,9 +1,9 @@
 import requests
-import logging
 from typing import Dict, Any
+from core.utils import get_logger
 
 # Setup logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 def get_weather(args: Dict[str, Any]) -> str:
     """

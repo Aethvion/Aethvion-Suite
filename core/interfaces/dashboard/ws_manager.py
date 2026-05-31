@@ -8,8 +8,9 @@ import asyncio
 import logging
 from typing import Dict, List, Any, Optional
 from core.utils import utcnow_iso
+from core.utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class ConnectionManager:
     """Manages WebSocket connections."""

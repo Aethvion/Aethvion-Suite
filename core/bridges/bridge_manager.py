@@ -1,10 +1,8 @@
 import importlib
-import logging
 from pathlib import Path
+from core.utils import get_logger, load_json, atomic_json_write
 
-from core.utils import load_json, atomic_json_write
-
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 PROJECT_ROOT  = Path(__file__).parent.parent.parent
 REGISTRY_FILE = Path(__file__).parent / "registry.json"

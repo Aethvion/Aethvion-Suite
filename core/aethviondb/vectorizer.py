@@ -22,10 +22,10 @@ Persistence: AethvionDB.VECINFO (JSON sidecar in db root)
 """
 
 from __future__ import annotations
+from core.utils import get_logger
 
 import asyncio
 import json
-import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,7 +34,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .entity_writer import EntityWriter
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _VEC_INFO_FILE = "AethvionDB.VECINFO"
 

@@ -1,13 +1,13 @@
 import os
 import json
-import logging
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from pathlib import Path
 from core.utils.paths import APP_BRIDGES
+from core.utils import get_logger
 
 # Setup logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Constants for auth
 TOKEN_CACHE_DIR = APP_BRIDGES / "spotify"

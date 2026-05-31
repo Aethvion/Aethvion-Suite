@@ -8,7 +8,6 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 from datetime import datetime
-import logging
 import os
 import shutil
 import subprocess
@@ -17,11 +16,12 @@ import platform
 import asyncio
 import psutil
 import json
+from core.utils import get_logger
 
 from core.utils import utcnow_iso, atomic_json_write
 from core.version import VERSION, get_version_parts
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(tags=["system"])
 
 @router.post("/api/system/upload")

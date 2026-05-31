@@ -1,9 +1,9 @@
-import logging
 import psutil
 import json
 from pathlib import Path
+from core.utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 

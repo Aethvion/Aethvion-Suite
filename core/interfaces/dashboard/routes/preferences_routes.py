@@ -6,9 +6,9 @@ API routes for user preferences and settings.
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
-import logging
+from core.utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 router = APIRouter(prefix="/api/preferences", tags=["preferences"])
 
 class PreferenceUpdate(BaseModel):

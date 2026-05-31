@@ -4,12 +4,12 @@ Unifies system prompt building and tool execution for all platforms.
 """
 
 import json
-import logging
 import datetime
 import re
 import asyncio
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
+from core.utils import get_logger
 
 from core.bridges import bridge_manager
 from core.memory.identity_manager import IdentityManager
@@ -18,7 +18,7 @@ from core.workspace.preferences_manager import get_preferences_manager
 from core.workspace.workspace_utils import load_workspaces, validate_path, build_workspace_block
 from core.utils.paths import COMPANIONS_PERSONAS
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Base path relative to this file
 # Removed static MEMORY_DIR/HISTORY_DIR globals in favor of companion-specific resolution

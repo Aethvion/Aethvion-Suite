@@ -4,14 +4,14 @@ Shared logic for workspace management and path validation.
 """
 
 import json
-import logging
 import os
 import tempfile
 from pathlib import Path
 from typing import List, Tuple, Optional
+from core.utils import get_logger
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 from core.utils.paths import COMPANIONS
 
