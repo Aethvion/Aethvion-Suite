@@ -72,7 +72,6 @@ apps/ — standalone application backends (run as separate services)
     apps/audio/models/ — Kokoro, XTTS-v2, Whisper adapters + base class + registry
     apps/audio/tts_manager.py — TTSManager singleton; model lifecycle, TTS generation, STT transcription, voice clone management
   apps/code/code_server.py — Code IDE FastAPI backend; FS ops, streaming execution (SSE), AI chat, thread persistence
-  apps/finance/finance_server.py — Finance dashboard backend; holdings, market overview, per-ticker AI analysis
 config/ — committed config files (top-level, version-controlled)
 data/ — runtime data (never committed)
   data/modes/ — all tab-mode state and history
@@ -94,7 +93,7 @@ data/ — runtime data (never committed)
       data/modes/workspaces/preferences.json — workspace preferences
     data/modes/schedule/ — scheduled task definitions
     data/modes/explained/ — explained AI conversation history
-  data/apps/ — per-app runtime data (arena, audio, code, finance, games, photo, tracking, etc.)
+  data/apps/ — per-app runtime data (arena, audio, code, photo, etc.)
   data/config/
     data/config/model_registry.json — active model registry (copied from core/config/ on first run)
     data/config/settings.json — user settings
@@ -245,7 +244,7 @@ Utilities: rich, click
 Full list: see pyproject.toml
 
 ROUTE HANDLERS (registered in server.py)
-35+ routers registered: system, preferences, workspace, task, memory, registry, usage, arena, settings, photo, adv_aiconv, research_board, assistant, ollama, audio, corp, games, overlay, schedule, smarter_than_ai, three_d, agent_workspace, notification, explained, external_api (x2), persistent_memory, discord, logs, documentation, companion, companion_creator, automate, aethviondb, worldsim
+35+ routers registered: system, preferences, workspace, task, memory, registry, usage, arena, settings, photo, adv_aiconv, research_board, assistant, ollama, audio, corp, overlay, schedule, three_d, agent_workspace, notification, explained, external_api (x2), persistent_memory, discord, logs, documentation, companion, companion_creator, automate, aethviondb, worldsim
 All routes verified reachable; no orphaned route files.
 
 DASHBOARD TAB SYSTEM
@@ -267,7 +266,7 @@ Format: %(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 KNOWN TECHNICAL DEBT (v4 audit)
 agent_runner.py — 2,054 lines; tool-block parser and file-op executor should be extracted to shared core/tools/ modules
-24 bare except: clauses across games_routes, three_d_routes, system_routes, workspace_routes, episodic_memory, others — should be except Exception: with logger.error() calls
+24 bare except: clauses across three_d_routes, system_routes, workspace_routes, episodic_memory, others — should be except Exception: with logger.error() calls
 PERSONA_MISAKA* constants in paths.py — deprecated; migrate identity_manager.py and persona_manager.py to dynamic paths then delete
 nexus.* localStorage key prefix — should migrate to bridges.* (requires one-time migration step)
 

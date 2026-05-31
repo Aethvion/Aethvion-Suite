@@ -35,8 +35,6 @@ aiconv | AI Conversation | Simplified two-party AI conversation mode. Two AI per
 
 explained | Explained | AI explanation mode. Produces step-by-step breakdowns of complex topics with visible reasoning chains. [SwitchTab: explained]
 
-games-center | Games Center | Games hub. Access all built-in games: Checkers (vs Aethvion AI), Are You Smarter Than AI? (quiz game), Sudoku, Blackjack, Word Search, Logic Quest, Code Gold, and Debug This. Arena has a Gauntlet mode for multi-round model battles. [SwitchTab: games-center]
-
 photo | Photo | AI-powered photo and image workspace. Upload, generate, and process images. [SwitchTab: photo]
 
 audio | Audio | Audio generation and playback workspace. TTS generation, voice management, STT transcription interface. [SwitchTab: audio]
@@ -86,7 +84,7 @@ settings | Settings | Core configuration hub. Companion settings (personality, m
 TAB SWITCHING
 If Dashboard Control is enabled in the assistant settings, the assistant can navigate the user to any tab.
 
-Valid main tab IDs: suite-home, chat, misaka-cipher, axiom, lyra, companion-creator, code, agent-corp, automate, aethviondb, worldsim, researchboard, advaiconv, arena, aiconv, explained, games-center, photo, audio, schedule, sched-overview, memory, companion-memory, persistent-memory, output, screenshots, camera, uploads, local-models, image-models, audio-models, api-providers, 3d-models, 3d-gen, logs, documentation, usage, status, ports, settings
+Valid main tab IDs: suite-home, chat, misaka-cipher, axiom, lyra, companion-creator, code, agent-corp, automate, aethviondb, worldsim, researchboard, advaiconv, arena, aiconv, explained, photo, audio, schedule, sched-overview, memory, companion-memory, persistent-memory, output, screenshots, camera, uploads, local-models, image-models, audio-models, api-providers, 3d-models, 3d-gen, logs, documentation, usage, status, ports, settings
 
 Valid subtab IDs (inside settings): assistant (labeled 'Companion Settings'), system, env, providers, profiles, notifications
 

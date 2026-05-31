@@ -51,11 +51,6 @@ Call-mode overview
                   Context:        Neutral evaluation. NO persona. NO tools.
                   Entry point:    arena_routes._call_model()
 
-  GAME            In-game AI logic (direct provider call).
-                  System prompt:  game state specific — set by games_routes.
-                  Context:        Game logic only. NO persona.
-                  Entry point:    games_routes._llm_call()
-
   SCHEDULE        Scheduled-task chat (direct provider call).
                   System prompt:  schedule_routes._SYSTEM_PROMPT — task context.
                   Context:        Task description only. NO persona.
@@ -125,7 +120,6 @@ class CallSource:
     OVERLAY       = "overlay"         # Desktop overlay screen Q&A
     AGENT         = "agent"           # Software engineering agents
     ARENA         = "arena"           # Model battle / comparison
-    GAME          = "game"            # In-game AI logic
     SCHEDULE      = "schedule"        # Scheduled task chat
     RESEARCH      = "research_board"  # Research board queries
     AICONV        = "aiconv"          # Legacy AI conversation
@@ -206,15 +200,6 @@ ISOLATION_RULES: dict[str, dict] = {
     },
     CallSource.ARENA: {
         "description":          "Blind model comparison. Neutral prompt, no persona.",
-        "expects_system_prompt": True,
-        "persona":              False,
-        "memories":             False,
-        "tools":                False,
-        "identity":             False,
-        "aethvion_internals":   False,
-    },
-    CallSource.GAME: {
-        "description":          "In-game AI logic. Game-specific prompt only.",
         "expects_system_prompt": True,
         "persona":              False,
         "memories":             False,

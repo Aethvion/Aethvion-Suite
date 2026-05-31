@@ -34,7 +34,6 @@
         'axiom':             { label: 'Axiom',             icon: 'fas fa-atom' },
         'lyra':              { label: 'Lyra',              icon: 'fas fa-music' },
         'companion-creator': { label: 'Create Companion',  icon: 'fas fa-plus-circle' },
-        'games-center':      { label: 'Games Center',      icon: 'fas fa-gamepad' },
         'memory':            { label: 'Memory',            icon: 'fas fa-book' },
         'persistent-memory': { label: 'Persistent',        icon: 'fas fa-brain' },
         'sched-overview':    { label: 'Scheduled',         icon: 'fas fa-calendar-check' },
@@ -82,7 +81,7 @@
             subtitle: 'Companion Hub active — your AI companions are ready and waiting.',
             ctas: [
                 { label: 'Open Companions', icon: 'fas fa-heart',   tab: 'misaka-cipher', mode: 'home' },
-                { label: 'Games Center',    icon: 'fas fa-gamepad', tab: 'games-center',  mode: 'home' },
+                { label: 'Open Memory',     icon: 'fas fa-book',    tab: 'memory',        mode: 'home' },
             ],
         },
         full: {

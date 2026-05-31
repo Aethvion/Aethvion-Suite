@@ -22,7 +22,7 @@ Thank you to everyone supporting the development of Aethvion Suite!
 
 **Aethvion Suite** is a powerful, self-hosted AI platform combining the best cloud models (Gemini, GPT-4o, Claude, Grok) with fast local GGUF models — all in one unified, privacy-first dashboard.
 
-Run intelligent agents on your own code and files, chat with persistent AI companions who actually remember you, generate images and audio, research any topic with a multi-expert board, play AI-powered games, and automate recurring tasks. Everything runs on **your machine**, under **your control**.
+Run intelligent agents on your own code and files, chat with persistent AI companions who actually remember you, generate images and audio, research any topic with a multi-expert board, and automate recurring tasks. Everything runs on **your machine**, under **your control**.
 
 Whether you're a developer, creator, researcher, or just want a powerful personal AI setup, Aethvion Suite gives you a unified workspace that adapts to how *you* want to use it.
 
@@ -165,7 +165,7 @@ python -m core.main --test    # run verification tests
 ### Research & Analysis
 - **Research Board** — simulate a board of experts; each gives a structured perspective; optional live debate mode where experts argue across multiple rounds
 - **AI Explained** — generate richly formatted HTML deep-dives on any topic, with persistent threads
-- **Model Arena** — blind benchmark: run the same prompt across multiple models simultaneously and rate results
+- **Model Arena** — blind benchmark: run the same prompt across multiple models simultaneously and rate results; includes Gauntlet mode for multi-round battles
 - **Advanced Lab** — structured multi-persona conversations with custom participant profiles
 
 ### Agents & Automation
@@ -181,12 +181,6 @@ python -m core.main --test    # run verification tests
 - **Audio Studio** — local TTS (Kokoro, XTTS-v2 with voice cloning), STT (Whisper), and a full multi-track timeline editor
 - **3D Generation** — text-to-3D and image-to-3D (Trellis 2, TripoSR)
 - **Local Model Hub** — browse, download, and manage GGUF models and audio models locally
-
-### Games
-- Checkers, Blackjack, Sudoku, Word Search, Logic Quest, **Code Gold**, **Debug This** — all with AI opponents or generation
-- **Are You Smarter Than AI?** — gameshow-format trivia: AI Game Master generates questions, you and an AI opponent compete, the GM judges in real time
-- **Arena Gauntlet** — extended multi-round model battle mode with detailed result tracking
-
 ### System & Integrations
 - **External API** — OpenAI-compatible `/v1/chat/completions` endpoint; use Aethvion as a backend for other apps
 - **Discord Bot** — connect your Discord server; full bi-directional messaging with companions
@@ -270,7 +264,7 @@ Aethvion-Suite/
 │   └── interfaces/
 │       ├── dashboard/              # Web dashboard (FastAPI + static files)
 │       │   ├── server.py           # FastAPI app — 32 routers registered
-│       │   └── *_routes.py         # Feature route modules (agents, arena, companions, games, …)
+│       │   └── *_routes.py         # Feature route modules (agents, arena, companions, …)
 │       └── cli_modules/            # CLI module implementations
 │
 ├── apps/                           # Standalone apps — each has its own server + launcher

@@ -50,18 +50,7 @@
         'audio-models':     ['/static/js/view-audio-models.js'],
         'api-providers':    ['/static/js/view-api-providers.js'],
         '3d-models':        ['/static/js/view-3d-models.js'],
-        '3d-gen':           ['/static/js/particle-sphere.js', '/static/js/mode-3d-gen.js'],
-        'games-center':     ['/static/games/common/games-shared.js'],
-        'game-logic-quest': ['/static/games/common/games-shared.js', '/static/games/logic-quest/logic-quest.js'],
-        'game-blackjack':   ['/static/games/common/games-shared.js', '/static/games/blackjack/blackjack.js'],
-        'game-results':     ['/static/games/common/games-shared.js', '/static/games/results/results.js'],
-        'game-word-search': ['/static/games/common/games-shared.js', '/static/games/word_search/word_search.js'],
-        'game-sudoku':      ['/static/games/common/games-shared.js', '/static/games/sudoku/sudoku.js'],
-        'game-checkers':    ['/static/games/common/games-shared.js', '/static/games/checkers/checkers.js'],
-        'game-smarter-than-ai': ['/static/games/common/games-shared.js', '/static/games/smarter_than_ai/smarter_than_ai.js'],
-        'game-code-golf':   ['/static/games/common/games-shared.js', '/static/games/code-golf/code-golf.js'],
-        'game-debug-this':  ['/static/games/common/games-shared.js', '/static/games/debug-this/debug-this.js']
-
+        '3d-gen':           ['/static/js/particle-sphere.js', '/static/js/mode-3d-gen.js']
     };
 
     /**

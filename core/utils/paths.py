@@ -67,7 +67,6 @@ APP_ARENA     = APPS / "arena"
 APP_AUDIO     = APPS / "audio"
 APP_CODE      = APPS / "code"
 APP_DRIVEINFO = APPS / "driveinfo"
-APP_GAMES     = APPS / "games"
 APP_HARDWARE  = APPS / "hardwareinfo"
 APP_BRIDGES  = APPS / "nexus"
 APP_PHOTO     = APPS / "photo"
@@ -156,7 +155,7 @@ def ensure_all() -> None:
         # Top level
         APPS, CONFIG, LOGS, SYSTEM, COMPANIONS, MODES, DEFAULT_OUTPUT,
         APP_ARENA, APP_AUDIO, APP_CODE, APP_DRIVEINFO,
-        APP_GAMES, APP_HARDWARE, APP_BRIDGES, APP_PHOTO,
+        APP_HARDWARE, APP_BRIDGES, APP_PHOTO,
         # Modes
         MODE_CHAT, MODE_AGENTS, MODE_AGENT_CORP, MODE_AI_CONV, MODE_ADV_AICONV,
         MODE_EXPLAINED, MODE_WORKSPACES, MODE_WORLDSIM,

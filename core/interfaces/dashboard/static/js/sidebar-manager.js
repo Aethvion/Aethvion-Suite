@@ -34,7 +34,6 @@
         { id: 'aethviondb',        label: 'AethvionDB',       icon: 'fas fa-circle-nodes',       mode: ['home'] },
         { id: 'worldsim',          label: 'WorldSim',         icon: 'fas fa-globe',              mode: ['home'] },
         // Companion tabs are now top-level nav items (Companions button) — not in sidebar
-        { id: 'games-center',      label: 'Games Center',     icon: 'fas fa-gamepad',            mode: ['home'] },
         { id: 'memory',            label: 'Memory',           icon: 'fas fa-book',               mode: ['home'] },
         { id: 'persistent-memory', label: 'Persistent',       icon: 'fas fa-brain',              mode: ['home'] },
         { id: 'sched-overview',    label: 'Scheduled',        icon: 'fas fa-calendar-check',     mode: ['home'] },
@@ -107,13 +106,12 @@
             name: 'Companion Hub',
             icon: 'fas fa-heart',
             accent: '#a855f7',
-            description: 'Companions, entertainment, and memory — use the Companions tab for your AI companions.',
-            highlights: ['Companions Tab', 'Games', 'Memory'],
+            description: 'Companions and memory — use the Companions tab for your AI companions.',
+            highlights: ['Companions Tab', 'Memory'],
             folders: [
-                { name: 'Entertainment', expanded: true,  tabs: ['games-center'] },
-                { name: 'Memory',        expanded: false, tabs: ['memory'] },
+                { name: 'Memory',        expanded: true,  tabs: ['memory'] },
             ],
-            enabled: new Set(['suite-home', 'games-center', 'memory']),
+            enabled: new Set(['suite-home', 'memory']),
         },
         {
             id: 'full',
@@ -147,7 +145,6 @@
             folders: {
                 'f-workspace':  { name: 'Workspace',    expanded: true  },
                 'f-research':   { name: 'Research',     expanded: false },
-                'f-fun':        { name: 'Entertainment',expanded: false },
                 'f-memory':     { name: 'Memory',       expanded: false },
                 'f-storage':    { name: 'Storage',      expanded: false },
                 'f-models':     { name: 'Model Hub',    expanded: false },
@@ -157,7 +154,6 @@
                 { type: 'tab',    id: 'suite-home' },
                 { type: 'folder', id: 'f-workspace',  children: ['agent-corp','schedule','photo','audio','3d-gen'] },
                 { type: 'folder', id: 'f-research',   children: ['advaiconv','researchboard','arena','aiconv','explained'] },
-                { type: 'folder', id: 'f-fun',        children: ['games-center'] },
                 { type: 'folder', id: 'f-memory',     children: ['memory','persistent-memory','sched-overview'] },
                 { type: 'folder', id: 'f-storage',    children: ['output','screenshots','camera','uploads'] },
                 { type: 'folder', id: 'f-models',     children: ['local-models','image-models','audio-models','3d-models','api-providers'] },
@@ -230,6 +226,12 @@
                             );
                             if (fcompIdx >= 0) profile.order.splice(fcompIdx, 1);
                             if (profile.folders) delete profile.folders['f-companions'];
+                            // Remove the entertainment folder itself (f-fun) if present
+                            const ffunIdx = profile.order.findIndex(
+                                e => e.type === 'folder' && e.id === 'f-fun'
+                            );
+                            if (ffunIdx >= 0) profile.order.splice(ffunIdx, 1);
+                            if (profile.folders) delete profile.folders['f-fun'];
                         }
                         surfaceNewTabs(profile);
                     });

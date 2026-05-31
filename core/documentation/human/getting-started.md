@@ -357,7 +357,6 @@ Check the **Usage** tab regularly. Smart routing (Flash for simple tasks, Pro fo
 | **WorldSim** | World simulation environment |
 | **Research** | Research Board, Advanced AI Conversations, LLM Arena, AI Conversations, Explained |
 | **Creative** | Photo Studio, Image Models, Audio, Audio & Speech (TTS/STT), 3D Workspace, 3D Models |
-| **Games** | Checkers, Are You Smarter Than AI?, Sudoku, Blackjack, Word Search, Logic Quest, Code Gold, Debug This, Arena Gauntlet |
 | **Memory** | Companion Memory, Persistent Memory, Episodic Memory |
 | **Storage** | Output, Gallery, Camera, Uploads |
 | **Model Hub** | Text & Chat Models, Image Models, Audio & Speech, 3D Models, API Providers |
@@ -381,10 +380,8 @@ Check the **Usage** tab regularly. Smart routing (Flash for simple tasks, Pro fo
 - ✅ 40+ configurable sidebar tabs with layout profiles
 - ✅ LLM Arena with leaderboard and Gauntlet mode
 - ✅ Advanced AI Conversations (human participant, pause/inject, shareable links)
-- ✅ Finance dashboard with AI market analysis
 - ✅ Persistent Memory knowledge hub
 - ✅ Companion Creator for custom companions
-- ✅ Games: Code Gold, Debug This (added alongside existing games)
 - ✅ Native .exe launcher (C# WebView2 wrapper, no runtime required)
 - ✅ Docker image for headless/server deployments
 - ✅ Automated test suite (pytest, 48 tests)

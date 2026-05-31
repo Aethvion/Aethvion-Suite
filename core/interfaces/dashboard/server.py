@@ -48,10 +48,8 @@ async def register_all_routers(app: FastAPI):
         from .ollama_routes import router as ollama_router
         from .audio_models_routes import router as audio_router
         from .corp_routes import router as corp_router
-        from .games_routes import router as games_router
         from .overlay_routes import router as overlay_router
         from .schedule_routes import router as schedule_router
-        from .smarter_than_ai_routes import router as smarter_router
         from .three_d_routes import router as threed_router
         from .agent_workspace_routes import router as agent_ws_router
         from .notification_routes import router as notification_router
@@ -84,10 +82,8 @@ async def register_all_routers(app: FastAPI):
         app.include_router(ollama_router)
         app.include_router(audio_router)
         app.include_router(corp_router)
-        app.include_router(games_router)
         app.include_router(overlay_router)
         app.include_router(schedule_router)
-        app.include_router(smarter_router)
         app.include_router(threed_router)
         app.include_router(agent_ws_router)
         app.include_router(notification_router)

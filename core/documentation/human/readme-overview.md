@@ -133,13 +133,10 @@ Aethvion Suite is organized into a configurable sidebar. Every tab can be shown 
 | Research | Adv. AI Conv., Research Board, Arena, AI Conv., Explained |
 | Companions | Misaka Cipher, Axiom, Lyra, Create Companion |
 | Data | AethvionDB, WorldSim |
-| Entertainment | Games Center |
 | Memory | Memory, Companion Memory, Persistent Memory, Schedule Overview |
 | Storage | Output, Gallery, Camera, Uploads |
 | Model Hub | Text & Chat Models, Image Models, Audio & Speech, 3D Models, API Providers |
 | System | Logs, Docs, Usage, Status, Ports |
-
-**Built-in games:** Checkers (vs Aethvion AI), Are You Smarter Than AI?, Sudoku, Blackjack, Word Search, Logic Quest, Code Gold, Debug This, Arena Gauntlet
 
 **Creative tools:** AI image generation, 3D asset generation, AI photo studio, Kokoro TTS, XTTS-v2 voice cloning, Whisper STT
 
