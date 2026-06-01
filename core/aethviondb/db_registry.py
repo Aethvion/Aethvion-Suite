@@ -37,7 +37,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from core.utils.logger import get_logger
+from core.utils import get_logger, load_json
 from core.utils.paths import AETHVIONDB
 
 logger = get_logger(__name__)
@@ -67,12 +67,7 @@ def _default_db_entry(name: str, path: str) -> dict:
 
 def _read_raw() -> dict:
     """Read the registry file; returns {} on any error."""
-    if _REGISTRY_FILE.exists():
-        try:
-            return json.loads(_REGISTRY_FILE.read_text(encoding="utf-8"))
-        except Exception:
-            return {}
-    return {}
+    return load_json(_REGISTRY_FILE, default={})
 
 
 def _migrate(raw: dict) -> dict:

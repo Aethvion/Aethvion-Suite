@@ -53,7 +53,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.utils.logger import get_logger
-from core.utils import atomic_json_write
+from core.utils import atomic_json_write, load_json
 
 logger = get_logger(__name__)
 
@@ -116,12 +116,7 @@ class TriggerByIdRequest(BaseModel):
 # ── Persistence helpers ───────────────────────────────────────────────────────
 
 def _load_webhooks() -> Dict[str, Dict]:
-    if not _WEBHOOKS_FILE.exists():
-        return {}
-    try:
-        return json.loads(_WEBHOOKS_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+    return load_json(_WEBHOOKS_FILE, default={})
 
 
 def _save_webhooks(data: Dict[str, Dict]) -> None:

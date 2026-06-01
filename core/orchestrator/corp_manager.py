@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from core.utils.logger import get_logger
-from core.utils import utcnow_iso, atomic_json_write
+from core.utils import utcnow_iso, atomic_json_write, load_json
 from core.utils.paths import CORP_ROOT, MODEL_REGISTRY
 
 logger = get_logger(__name__)
@@ -502,7 +502,7 @@ class CorpManager:
         """Write or overwrite a key in the corp-wide shared memory store."""
         p = self._shared_memory_path(corp_id)
         try:
-            data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+            data = load_json(p, default={})
         except Exception:
             data = {}
         data[key] = {

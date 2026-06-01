@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from core.utils.logger import get_logger
-from core.utils import atomic_json_write
+from core.utils import atomic_json_write, load_json
 
 logger = get_logger(__name__)
 
@@ -60,13 +60,7 @@ class ProjectMemory:
     # ── I/O ───────────────────────────────────────────────────────────────────
 
     def load(self) -> list[dict]:
-        if not self._path.exists():
-            return []
-        try:
-            return json.loads(self._path.read_text(encoding="utf-8"))
-        except Exception as exc:
-            logger.warning("[ProjectMemory] Could not load %s: %s", self._path, exc)
-            return []
+        return load_json(self._path, default=[])
 
     def _save(self, items: list[dict]) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)

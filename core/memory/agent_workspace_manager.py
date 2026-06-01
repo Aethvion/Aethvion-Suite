@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 from core.utils.logger import get_logger
-from core.utils import utcnow_iso, atomic_json_write
+from core.utils import utcnow_iso, atomic_json_write, load_json
 
 logger = get_logger(__name__)
 
@@ -69,7 +69,7 @@ class AgentWorkspaceManager:
 
     def get_workspace(self, workspace_id: str) -> Optional[dict]:
         f = self._ws_file(workspace_id)
-        return json.loads(f.read_text(encoding="utf-8")) if f.exists() else None
+        return load_json(f)
 
     def update_workspace(self, workspace_id: str, name: str = None, path: str = None) -> Optional[dict]:
         ws = self.get_workspace(workspace_id)
@@ -137,7 +137,7 @@ class AgentWorkspaceManager:
 
     def get_thread(self, workspace_id: str, thread_id: str) -> Optional[dict]:
         f = self._thread_file(workspace_id, thread_id)
-        return json.loads(f.read_text(encoding="utf-8")) if f.exists() else None
+        return load_json(f)
 
     def delete_thread(self, workspace_id: str, thread_id: str) -> bool:
         f = self._thread_file(workspace_id, thread_id)

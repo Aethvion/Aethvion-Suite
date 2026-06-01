@@ -17,7 +17,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from core.utils import get_logger, utcnow_iso, atomic_json_write
+from core.utils import get_logger, utcnow_iso, atomic_json_write, load_json
 from core.utils.paths import COMPANIONS
 from core.companions.registry import CompanionRegistry
 
@@ -674,7 +674,7 @@ async def update_companion(companion_id: str, req: CompanionUpdateRequest):
     atomic_json_write(companion_dir / "config.json", config)
 
     base_info_path = companion_dir / "base_info.json"
-    base_info = json.loads(base_info_path.read_text(encoding="utf-8")) if base_info_path.exists() else {}
+    base_info = load_json(base_info_path, default={})
     base_info.update({
         "name":          req.name,
         "core_identity": req.description,

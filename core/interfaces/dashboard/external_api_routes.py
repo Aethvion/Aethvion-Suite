@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, Header, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from core.utils import get_logger, utcnow_iso, atomic_json_write
+from core.utils import get_logger, utcnow_iso, atomic_json_write, load_json
 from core.utils.paths import EXT_API_DIR, EXT_API_KEYS, EXT_API_CONFIG
 from core.ai.call_contexts import CallSource
 
@@ -34,12 +34,7 @@ def _load_config() -> dict:
     # require_auth defaults to True — new installs are secure out of the box.
     # Users must explicitly disable auth via the UI/config if they want open access.
     defaults = {"enabled": True, "require_auth": True}
-    if not EXT_API_CONFIG.exists():
-        return defaults
-    try:
-        return {**defaults, **json.loads(EXT_API_CONFIG.read_text())}
-    except Exception:
-        return defaults
+    return {**defaults, **load_json(EXT_API_CONFIG, default={})}
 
 
 def _save_config(cfg: dict):
@@ -47,12 +42,7 @@ def _save_config(cfg: dict):
 
 
 def _load_keys() -> dict:
-    if not EXT_API_KEYS.exists():
-        return {}
-    try:
-        return json.loads(EXT_API_KEYS.read_text())
-    except Exception:
-        return {}
+    return load_json(EXT_API_KEYS, default={})
 
 
 def _save_keys(keys: dict):
@@ -101,7 +91,7 @@ async def list_models(authorization: Optional[str] = Header(None)):
     _check_auth(authorization)
     try:
         from core.utils.paths import MODEL_REGISTRY
-        registry = json.loads(MODEL_REGISTRY.read_text()) if MODEL_REGISTRY.exists() else {}
+        registry = load_json(MODEL_REGISTRY, default={})
         models = []
         for provider_name, provider_data in (registry.get("providers") or {}).items():
             for model_id in (provider_data.get("models") or {}):

@@ -20,7 +20,7 @@ import psutil
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from core.utils import get_logger, atomic_json_write
+from core.utils import get_logger, atomic_json_write, load_json
 from core.utils.paths import OVERLAY_DIR, OVERLAY_CONFIG, OVERLAY_SCRIPT
 from core.ai.call_contexts import CallSource, build_overlay_prompt, validate_call_context
 
@@ -43,12 +43,7 @@ _DEFAULT_CONFIG = {
 
 
 def _load_config() -> dict:
-    try:
-        if OVERLAY_CONFIG.exists():
-            return {**_DEFAULT_CONFIG, **json.loads(OVERLAY_CONFIG.read_text("utf-8"))}
-    except Exception:
-        pass
-    return dict(_DEFAULT_CONFIG)
+    return {**_DEFAULT_CONFIG, **load_json(OVERLAY_CONFIG, default={})}
 
 
 def _save_config(cfg: dict) -> None:
