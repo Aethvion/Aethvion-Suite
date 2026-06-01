@@ -20,12 +20,14 @@
 
                         <div id="settings-version-banner"></div>
 
-                        <h3 style="margin-top: 25px;">Remote Changelog (GitHub)</h3>
+                        <h3 style="margin-top: 25px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-tachometer-alt" style="color: var(--primary);"></i>
+                            <span>Performance & Codebase Metrics</span>
+                        </h3>
 
-                        <p class="section-hint">Recent improvements and fixes from the main repository.</p>
-                        <ul id="settings-changelog-list"
-                            style="margin-top: 10px; padding-left: 20px; color: var(--text-secondary); line-height: 1.6;">
-                            <li>Checking for remote changes...</li>
-                        </ul>
+                        <p class="section-hint">Automated execution benchmarks, resource utilization telemetry, and codebase distribution.</p>
+                        <div id="performance-report-container" style="margin-top: 15px;">
+                            <div class="loading-placeholder">Loading performance report...</div>
+                        </div>
                     </div>
                 </div>

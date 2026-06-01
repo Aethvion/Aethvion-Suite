@@ -2239,6 +2239,145 @@ async function checkForUpdates(manual = false) {
     }
 }
 
+async function renderPerformanceReport(container) {
+    if (!container) return;
+    try {
+        const resp = await fetch('/api/system/performance-report?v=' + Date.now());
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        const data = await resp.json();
+        
+        if (!data || Object.keys(data).length === 0) {
+            container.innerHTML = '<div style="color:var(--text-secondary); padding: 15px; text-align: center;">No performance report available. Run performance tests to generate metrics.</div>';
+            return;
+        }
+
+        const vitals = data.vitals || {};
+        const averages = vitals.averages || {};
+        const repo = data.repository_stats || {};
+        const git = data.git || {};
+
+        // Calculate language ratio
+        const totalLoc = repo.total_loc || 1;
+        const languagesHtml = Object.entries(repo.by_language || {})
+            .sort((a, b) => b[1].loc - a[1].loc)
+            .map(([lang, info]) => {
+                const ratio = ((info.loc / totalLoc) * 100).toFixed(1);
+                return `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                        <td style="padding: 10px 12px; font-weight: bold; color: var(--text-bright);">${lang}</td>
+                        <td style="padding: 10px 12px; text-align: center;">${info.files}</td>
+                        <td style="padding: 10px 12px; text-align: center; font-family: monospace;">${info.loc.toLocaleString()}</td>
+                        <td style="padding: 10px 12px; text-align: right; color: var(--primary); font-weight: bold;">${ratio}%</td>
+                    </tr>
+                `;
+            }).join('');
+
+        const offlineBaseline = vitals.pre_test_baseline || {};
+        const offlineGpu = offlineBaseline.gpu || {};
+
+        container.innerHTML = `
+            <div style="background: rgba(0, 217, 255, 0.04); border: 1px solid rgba(0, 217, 255, 0.15); border-radius: 6px; padding: 15px; margin-bottom: 20px;">
+                <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px;">Report Source Commit</div>
+                <div style="font-size: 1.1rem; font-weight: bold; color: var(--text-bright); margin-top: 5px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-tag" style="color: var(--primary);"></i>
+                    <span>Version ${git.version || 'Unknown'}</span>
+                </div>
+                <div style="font-size: 0.82rem; color: var(--text-bright); margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.05);">
+                    Commit: <code style="color: var(--primary); font-family: monospace;">${git.commit_hash || 'N/A'}</code> — <strong>"${git.commit_msg || 'N/A'}"</strong>
+                </div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 6px;">
+                    Evaluated on: <strong>${data.timestamp || 'Unknown'}</strong> | Report ID: <code style="font-family: monospace;">${data.id || 'N/A'}</code>
+                </div>
+            </div>
+
+            <div style="display: grid; gap: 15px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 20px;">
+                <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border); border-radius: 6px; padding: 12px 15px;">
+                    <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px; letter-spacing: 0.5px;">Process Memory (RAM)</div>
+                    <div style="font-size: 1.4rem; font-weight: bold; color: var(--primary);">${averages.process_mem_avg ? averages.process_mem_avg.toFixed(2) + ' MB' : 'N/A'}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px;">Peak: ${averages.process_mem_max ? averages.process_mem_max.toFixed(2) + ' MB' : 'N/A'}</div>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border); border-radius: 6px; padding: 12px 15px;">
+                    <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px; letter-spacing: 0.5px;">Startup & Stress Latency</div>
+                    <div style="font-size: 1.4rem; font-weight: bold; color: #fdcb6e;">${vitals.startup_duration_s ? vitals.startup_duration_s.toFixed(2) + 's' : 'N/A'}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px;">API: ${data.api_routing && data.api_routing[0] ? data.api_routing[0].avg_latency_ms.toFixed(2) + ' ms' : 'N/A'}</div>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border); border-radius: 6px; padding: 12px 15px;">
+                    <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px; letter-spacing: 0.5px;">Tracked Codebase Size</div>
+                    <div style="font-size: 1.4rem; font-weight: bold; color: var(--text-bright);">${(repo.total_loc || 0).toLocaleString()} LOC</div>
+                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px;">Across ${repo.total_files || 0} files</div>
+                </div>
+            </div>
+
+            <h4 style="margin-top: 20px; margin-bottom: 10px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-bright); display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-chart-area" style="color: var(--primary);"></i> System Telemetry Baseline vs Active
+            </h4>
+            <div style="overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 25px; background: rgba(0,0,0,0.1);">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem;">
+                    <thead>
+                        <tr style="background: rgba(255, 255, 255, 0.02); border-bottom: 1px solid var(--border);">
+                            <th style="padding: 10px 15px; font-weight: bold; color: var(--text-bright);">Metric Stream</th>
+                            <th style="padding: 10px 15px; font-weight: bold; color: var(--text-bright); text-align: center;">Offline Baseline</th>
+                            <th style="padding: 10px 15px; font-weight: bold; color: var(--text-bright); text-align: center;">Active Average</th>
+                            <th style="padding: 10px 15px; font-weight: bold; color: var(--text-bright); text-align: center;">Active Peak</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                            <td style="padding: 10px 15px; font-weight: bold; color: var(--text-bright);">System CPU</td>
+                            <td style="padding: 10px 15px; text-align: center; color: var(--text-secondary);">${offlineBaseline.system_cpu_percent !== undefined ? offlineBaseline.system_cpu_percent + '%' : '—'}</td>
+                            <td style="padding: 10px 15px; text-align: center;">${averages.system_cpu_avg !== undefined ? averages.system_cpu_avg + '%' : '—'}</td>
+                            <td style="padding: 10px 15px; text-align: center;">${averages.system_cpu_max !== undefined ? averages.system_cpu_max + '%' : '—'}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                            <td style="padding: 10px 15px; font-weight: bold; color: var(--text-bright);">System Memory (RAM)</td>
+                            <td style="padding: 10px 15px; text-align: center; color: var(--text-secondary);">${offlineBaseline.system_memory_percent !== undefined ? offlineBaseline.system_memory_percent + '%' : '—'}</td>
+                            <td style="padding: 10px 15px; text-align: center;">${averages.system_mem_avg !== undefined ? averages.system_mem_avg + '%' : '—'}</td>
+                            <td style="padding: 10px 15px; text-align: center;">${averages.system_mem_max !== undefined ? averages.system_mem_max + '%' : '—'}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                            <td style="padding: 10px 15px; font-weight: bold; color: var(--text-bright);">GPU Utilization</td>
+                            <td style="padding: 10px 15px; text-align: center; color: var(--text-secondary);">${offlineGpu.utilization !== undefined ? offlineGpu.utilization + '%' : '0%'}</td>
+                            <td style="padding: 10px 15px; text-align: center;">${averages.gpu_util_avg !== undefined ? averages.gpu_util_avg + '%' : '—'}</td>
+                            <td style="padding: 10px 15px; text-align: center;">${averages.gpu_util_max !== undefined ? averages.gpu_util_max + '%' : '—'}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px 15px; font-weight: bold; color: var(--text-bright);">GPU VRAM Allocation</td>
+                            <td style="padding: 10px 15px; text-align: center; color: var(--text-secondary);">${offlineGpu.vram_used_mb !== undefined ? (offlineGpu.vram_used_mb / 1024).toFixed(2) + ' GB' : '—'}</td>
+                            <td style="padding: 10px 15px; text-align: center;">${averages.gpu_vram_avg !== undefined ? averages.gpu_vram_avg.toFixed(1) + ' MB' : '—'}</td>
+                            <td style="padding: 10px 15px; text-align: center;">${averages.gpu_vram_max !== undefined ? averages.gpu_vram_max.toFixed(1) + ' MB' : '—'}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h4 style="margin-top: 20px; margin-bottom: 10px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-bright); display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-folder-open" style="color: var(--primary);"></i> Codebase Distribution
+            </h4>
+            <div style="margin-bottom: 10px; font-size: 0.8rem; color: var(--text-secondary);">
+                Tracked Files: <strong>${repo.total_files || 0}</strong> | Total Lines of Code (LOC): <strong>${(repo.total_loc || 0).toLocaleString()}</strong>
+            </div>
+            <div style="overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; background: rgba(0,0,0,0.1);">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem;">
+                    <thead>
+                        <tr style="background: rgba(255, 255, 255, 0.02); border-bottom: 1px solid var(--border);">
+                            <th style="padding: 10px 12px; font-weight: bold; color: var(--text-bright);">Language</th>
+                            <th style="padding: 10px 12px; font-weight: bold; color: var(--text-bright); text-align: center;">Files</th>
+                            <th style="padding: 10px 12px; font-weight: bold; color: var(--text-bright); text-align: center;">Lines of Code (LOC)</th>
+                            <th style="padding: 10px 12px; font-weight: bold; color: var(--text-bright); text-align: right;">Code Ratio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${languagesHtml}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } catch (e) {
+        console.error("Failed to render performance report:", e);
+        container.innerHTML = '<div style="color:red; padding: 15px; text-align: center;">Error loading performance metrics.</div>';
+    }
+}
+
 async function renderVersionTabContent(localInfo = null, remoteData = null, remoteCommit = "Unknown", isUpdateAvailable = false) {
     if (!localInfo) {
         try {
@@ -2254,7 +2393,7 @@ async function renderVersionTabContent(localInfo = null, remoteData = null, remo
 
     const localInfoBox = document.getElementById('local-version-info');
     const versionBanner = document.getElementById('settings-version-banner');
-    const changelogList = document.getElementById('settings-changelog-list');
+    const perfContainer = document.getElementById('performance-report-container');
     
     // 1. Render Local Info Box
     if (localInfoBox) {
@@ -2318,106 +2457,9 @@ async function renderVersionTabContent(localInfo = null, remoteData = null, remo
         }
     }
 
-    // 3. Render Version-Grouped Changelog
-    if (changelogList) {
-        const dataToUse = (remoteData && remoteData.system.changelog) ? remoteData.system.changelog : (localInfo.changelog || []);
-        
-        if (dataToUse && Array.isArray(dataToUse)) {
-            // Sort versions descending (new format YYYY.MM.count sorts lexicographically)
-            const sorted = [...dataToUse].sort((a, b) => String(b.version).localeCompare(String(a.version), undefined, {numeric: true, sensitivity: 'base'}));
-            
-            changelogList.innerHTML = '';
-            sorted.forEach(entry => {
-                const isCurrent = entry.version === localInfo.version;
-                const highlightStyle = isCurrent ? 'border-left: 3px solid var(--primary); background: rgba(0, 217, 255, 0.03);' : '';
-                const currentBadge = isCurrent ? '<span style="background: var(--primary); color: #000; font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; font-weight: bold; margin-left: 10px;">INSTALLED</span>' : '';
-                
-                // Calculate summaries
-                const counts = {
-                    added: (entry.added || []).length,
-                    improved: (entry.improved || []).length,
-                    changed: (entry.changed || []).length,
-                    fixed: (entry.fixed || []).length,
-                    upgraded: (entry.upgraded || []).length,
-                    removed: (entry.removed || []).length
-                };
-                
-                let summaryParts = [];
-                if (counts.added) summaryParts.push(`${counts.added} added`);
-                if (counts.improved) summaryParts.push(`${counts.improved} improved`);
-                if (counts.changed) summaryParts.push(`${counts.changed} changed`);
-                if (counts.fixed) summaryParts.push(`${counts.fixed} fixed`);
-                
-                const summaryText = summaryParts.length > 0 ? ` — ${summaryParts.join(', ')}` : '';
-
-                const versionItem = document.createElement('div');
-                versionItem.className = 'changelog-version-entry';
-                versionItem.style.cssText = `margin-bottom: 12px; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; transition: all 0.2s ease; ${highlightStyle}`;
-                
-                const header = document.createElement('div');
-                header.className = 'version-entry-header';
-                header.style.cssText = `padding: 12px 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); transition: background 0.2s;`;
-                header.onmouseover = () => header.style.background = 'rgba(255,255,255,0.05)';
-                header.onmouseout = () => header.style.background = 'rgba(255,255,255,0.02)';
-                
-                header.innerHTML = `
-                    <div style="font-weight: bold; color: var(--text-primary); font-size: 0.95rem; display: flex; align-items: center;">
-                        <i class="fas fa-chevron-right toggle-icon" style="font-size: 0.7rem; margin-right: 10px; transition: transform 0.2s; transform: ${isCurrent ? 'rotate(90deg)' : 'none'};"></i>
-                        Version ${entry.version} <span class="version-summary" style="font-weight: normal; font-size: 0.8rem; color: var(--text-secondary); margin-left: 8px; ${isCurrent ? 'display:none;' : ''}">${summaryText}</span> ${currentBadge}
-                    </div>
-                    <div style="font-size: 0.75rem; color: var(--text-secondary);">${entry.date || ''}</div>
-                `;
-
-                const body = document.createElement('div');
-                body.className = 'version-entry-body';
-                body.style.cssText = `padding: 0 15px 15px 15px; display: ${isCurrent ? 'block' : 'none'}; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;`;
-                
-                // Define categories
-                const categories = [
-                    { key: 'added', label: 'Added', color: '#55efc4' },
-                    { key: 'improved', label: 'Improved', color: '#74b9ff' },
-                    { key: 'changed', label: 'Changed', color: '#a29bfe' },
-                    { key: 'fixed', label: 'Fixed', color: '#fdcb6e' },
-                    { key: 'upgraded', label: 'Upgraded', color: '#00cec9' },
-                    { key: 'removed', label: 'Removed', color: '#ff7675' }
-                ];
-
-                let detailsHtml = '';
-                if (entry.changes && Array.isArray(entry.changes) && entry.changes.length > 0) {
-                     detailsHtml += `<ul style="margin: 0 0 10px 0; padding-left: 20px; color: var(--text-secondary);">
-                        ${entry.changes.map(c => `<li style="margin-bottom: 5px;">${c}</li>`).join('')}
-                     </ul>`;
-                }
-
-                categories.forEach(cat => {
-                    if (entry[cat.key] && Array.isArray(entry[cat.key]) && entry[cat.key].length > 0) {
-                        detailsHtml += `
-                            <div style="margin-bottom: 12px;">
-                                <span style="display: inline-block; font-size: 0.6rem; font-weight: bold; text-transform: uppercase; color: ${cat.color}; border: 1px solid ${cat.color}40; background: ${cat.color}15; padding: 1px 5px; border-radius: 4px; margin-bottom: 6px; letter-spacing: 0.5px;">${cat.label}</span>
-                                <ul style="margin: 0; padding-left: 18px; color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5;">
-                                    ${entry[cat.key].map(item => `<li style="margin-bottom: 3px;">${item}</li>`).join('')}
-                                </ul>
-                            </div>
-                        `;
-                    }
-                });
-                
-                body.innerHTML = detailsHtml;
-                
-                header.onclick = () => {
-                    const isVisible = body.style.display === 'block';
-                    body.style.display = isVisible ? 'none' : 'block';
-                    header.querySelector('.toggle-icon').style.transform = isVisible ? 'none' : 'rotate(90deg)';
-                    header.querySelector('.version-summary').style.display = isVisible ? 'inline' : 'none';
-                };
-
-                versionItem.appendChild(header);
-                versionItem.appendChild(body);
-                changelogList.appendChild(versionItem);
-            });
-        } else {
-            changelogList.innerHTML = '<div style="color:var(--text-secondary); padding: 20px; text-align: center;">No changelog data available.</div>';
-        }
+    // 3. Render Performance Report
+    if (perfContainer) {
+        await renderPerformanceReport(perfContainer);
     }
 }
 

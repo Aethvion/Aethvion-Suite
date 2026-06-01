@@ -149,6 +149,11 @@ OVERLAY_DIR    = DATA / "overlay"
 OVERLAY_CONFIG = OVERLAY_DIR / "config.json"
 OVERLAY_SCRIPT = _PROJECT / "apps" / "overlay" / "main.py"
 
+# ── Performance Tests ─────────────────────────────────────────────────────────
+PERFORMANCE_DIR = _PROJECT / "core" / "tests" / "performance"
+PERFORMANCE_REPORT_JSON = PERFORMANCE_DIR / "latest_report.json"
+PERFORMANCE_REPORT_MD = PERFORMANCE_DIR / "latest_report.md"
+
 # ── Default Output ────────────────────────────────────────────────────────────
 OUT_IMAGES    = DEFAULT_OUTPUT / "images"
 OUT_MODELS    = DEFAULT_OUTPUT / "models"

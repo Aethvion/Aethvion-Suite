@@ -338,6 +338,12 @@ async def get_version_info():
         "remote": {"commit": remote_commit},
     }
 
+@router.get("/api/system/performance-report")
+async def get_performance_report():
+    from core.utils import load_json
+    from core.utils.paths import PERFORMANCE_REPORT_JSON
+    return load_json(PERFORMANCE_REPORT_JSON, default={})
+
 @router.post("/api/system/update")
 async def trigger_self_update():
     root_dir = Path(__file__).resolve().parent.parent.parent.parent.parent
