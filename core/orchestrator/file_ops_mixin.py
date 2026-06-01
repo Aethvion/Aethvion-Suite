@@ -9,6 +9,7 @@ provided by AgentRunner.__init__.
 """
 from __future__ import annotations
 
+import json
 import os
 import queue
 import re

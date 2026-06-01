@@ -7,7 +7,7 @@ Extracted from agent_runner.py — shared by AgentRunner and CorpManager.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 # ── Blueprint / search constants ──────────────────────────────────────────────
 BLUEPRINT_IGNORE_DIRS = frozenset({
@@ -161,7 +161,6 @@ def build_workspace_blueprint(
 # ── Digest + search utilities ────────────────────────────────────────────────
 import re as _ws_re  # noqa: E402 (appended section)
 from datetime import datetime as _ws_dt
-from typing import List as _WsList
 
 
 def generate_file_digest(path: str, content: str,
@@ -178,12 +177,12 @@ def generate_file_digest(path: str, content: str,
     ts    = _ws_dt.utcnow().strftime("%H:%M")
     header = f"{path} [{len(lines)}L, {len(content):,}ch]"
 
-    entries: _WsList[str] = []   # "name@line" or "name@line: first-sig"
+    entries: List[str] = []   # "name@line" or "name@line: first-sig"
 
     if ext in (".js", ".ts", ".jsx", ".tsx", ".mjs"):
         seen: set = set()
-        globals_top: _WsList[str] = []
-        fns_with_lines: _WsList[str] = []
+        globals_top: List[str] = []
+        fns_with_lines: List[str] = []
 
         for i, line in enumerate(lines, 1):
             # function declarations
@@ -211,7 +210,7 @@ def generate_file_digest(path: str, content: str,
             entries.append("globals: " + ", ".join(globals_top[:8]))
 
     elif ext == ".css":
-        sel_with_lines: _WsList[str] = []
+        sel_with_lines: List[str] = []
         seen_sel: set = set()
         for i, line in enumerate(lines, 1):
             m = _ws_re.match(r"^([.#]?[\w][\w\s.#:>+~\[\]\"'=*-]*?)\s*\{", line)
@@ -234,7 +233,7 @@ def generate_file_digest(path: str, content: str,
             entries.append("scripts: " + ", ".join(scripts[:6]))
 
     elif ext == ".py":
-        cls_with_lines: _WsList[str] = []
+        cls_with_lines: List[str] = []
         fn_with_lines:  List[str] = []
         for i, line in enumerate(lines, 1):
             m = _ws_re.match(r"^class (\w+)", line)
@@ -276,7 +275,7 @@ def search_codebase(workspace: Path, query: str, path: str = "", context_lines: 
         pattern = _ws_re.compile(_ws_re.escape(query), _ws_re.IGNORECASE)
 
     if search_root.is_file():
-        files: _WsList[Path] = [search_root]
+        files: List[Path] = [search_root]
     else:
         files = sorted(
             f for f in search_root.rglob("*")
@@ -286,7 +285,7 @@ def search_codebase(workspace: Path, query: str, path: str = "", context_lines: 
                         for part in f.relative_to(workspace).parts)
         )
 
-    results: _WsList[str] = []
+    results: List[str] = []
     total_matches = 0
 
     for filepath in files:
@@ -298,7 +297,7 @@ def search_codebase(workspace: Path, query: str, path: str = "", context_lines: 
             continue
 
         file_lines = text.splitlines()
-        file_hits: _WsList[str] = []
+        file_hits: List[str] = []
 
         for lineno, line in enumerate(file_lines, 1):
             if total_matches >= max_results:
