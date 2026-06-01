@@ -9,7 +9,6 @@ import secrets
 import time
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException, Header, Request
@@ -17,15 +16,10 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from core.utils import get_logger, utcnow_iso, atomic_json_write
+from core.utils.paths import EXT_API_DIR, EXT_API_KEYS, EXT_API_CONFIG
 from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
-
-# ── Paths ─────────────────────────────────────────────────────────────────────
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-EXT_API_DIR  = PROJECT_ROOT / "data" / "external_api"
-KEYS_PATH    = EXT_API_DIR / "keys.json"
-CONFIG_PATH  = EXT_API_DIR / "config.json"
 
 # ── OpenAI-compatible router (/v1) ────────────────────────────────────────────
 router = APIRouter(prefix="/v1", tags=["external-api"])
@@ -40,31 +34,29 @@ def _load_config() -> dict:
     # require_auth defaults to True — new installs are secure out of the box.
     # Users must explicitly disable auth via the UI/config if they want open access.
     defaults = {"enabled": True, "require_auth": True}
-    if not CONFIG_PATH.exists():
+    if not EXT_API_CONFIG.exists():
         return defaults
     try:
-        return {**defaults, **json.loads(CONFIG_PATH.read_text())}
+        return {**defaults, **json.loads(EXT_API_CONFIG.read_text())}
     except Exception:
         return defaults
 
 
 def _save_config(cfg: dict):
-    EXT_API_DIR.mkdir(parents=True, exist_ok=True)
-    atomic_json_write(CONFIG_PATH, cfg)
+    atomic_json_write(EXT_API_CONFIG, cfg)
 
 
 def _load_keys() -> dict:
-    if not KEYS_PATH.exists():
+    if not EXT_API_KEYS.exists():
         return {}
     try:
-        return json.loads(KEYS_PATH.read_text())
+        return json.loads(EXT_API_KEYS.read_text())
     except Exception:
         return {}
 
 
 def _save_keys(keys: dict):
-    EXT_API_DIR.mkdir(parents=True, exist_ok=True)
-    atomic_json_write(KEYS_PATH, keys)
+    atomic_json_write(EXT_API_KEYS, keys)
 
 
 def _check_auth(authorization: Optional[str]):

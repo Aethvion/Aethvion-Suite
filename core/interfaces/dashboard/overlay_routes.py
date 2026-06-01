@@ -20,8 +20,8 @@ import psutil
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from core.utils.logger import get_logger
-from core.utils import atomic_json_write
+from core.utils import get_logger, atomic_json_write
+from core.utils.paths import OVERLAY_DIR, OVERLAY_CONFIG, OVERLAY_SCRIPT
 from core.ai.call_contexts import CallSource, build_overlay_prompt, validate_call_context
 
 logger = get_logger(__name__)
@@ -29,10 +29,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/overlay", tags=["overlay"])
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-PROJECT_ROOT   = Path(__file__).parent.parent.parent.parent
-OVERLAY_DIR    = PROJECT_ROOT / "data" / "overlay"
-CONFIG_PATH    = OVERLAY_DIR / "config.json"
-OVERLAY_SCRIPT = PROJECT_ROOT / "apps" / "overlay" / "main.py"
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent   # used for .venv, cwd, logs
 
 _DEFAULT_CONFIG = {
     "enabled": False,
@@ -47,16 +44,15 @@ _DEFAULT_CONFIG = {
 
 def _load_config() -> dict:
     try:
-        if CONFIG_PATH.exists():
-            return {**_DEFAULT_CONFIG, **json.loads(CONFIG_PATH.read_text("utf-8"))}
+        if OVERLAY_CONFIG.exists():
+            return {**_DEFAULT_CONFIG, **json.loads(OVERLAY_CONFIG.read_text("utf-8"))}
     except Exception:
         pass
     return dict(_DEFAULT_CONFIG)
 
 
 def _save_config(cfg: dict) -> None:
-    OVERLAY_DIR.mkdir(parents=True, exist_ok=True)
-    atomic_json_write(CONFIG_PATH, cfg)
+    atomic_json_write(OVERLAY_CONFIG, cfg)
 
 
 def _overlay_running() -> bool:

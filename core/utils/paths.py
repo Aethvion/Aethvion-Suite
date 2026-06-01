@@ -139,6 +139,16 @@ WS_PREFERENCES = MODE_WORKSPACES / "preferences.json"
 WS_PACKAGES    = MODE_WORKSPACES / "packages.json"
 WS_FILES_INDEX = MODE_WORKSPACES / "files.json"
 
+# ── External API ─────────────────────────────────────────────────────────────
+EXT_API_DIR    = DATA / "external_api"
+EXT_API_KEYS   = EXT_API_DIR / "keys.json"
+EXT_API_CONFIG = EXT_API_DIR / "config.json"
+
+# ── Overlay ───────────────────────────────────────────────────────────────────
+OVERLAY_DIR    = DATA / "overlay"
+OVERLAY_CONFIG = OVERLAY_DIR / "config.json"
+OVERLAY_SCRIPT = _PROJECT / "apps" / "overlay" / "main.py"
+
 # ── Default Output ────────────────────────────────────────────────────────────
 OUT_IMAGES    = DEFAULT_OUTPUT / "images"
 OUT_MODELS    = DEFAULT_OUTPUT / "models"
@@ -168,6 +178,8 @@ def ensure_all() -> None:
         WS_OUTPUTS, WS_TOOLS, WS_MEDIA, WS_UPLOADS, WS_PROJECTS,
         OUT_IMAGES, OUT_MODELS, OUT_DOCS,
         SCHEDULED_TASKS,
+        EXT_API_DIR,
+        OVERLAY_DIR,
     ]
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
