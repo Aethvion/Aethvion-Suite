@@ -8,9 +8,7 @@ Registry is hot-reloaded after every mutation — no server restart required.
 """
 
 import json
-import os
 import re
-import tempfile
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -19,7 +17,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from core.utils import get_logger, utcnow_iso
+from core.utils import get_logger, utcnow_iso, atomic_json_write
 from core.utils.paths import COMPANIONS
 from core.companions.registry import CompanionRegistry
 
@@ -117,19 +115,6 @@ def _validate_companion_id(companion_id: str) -> None:
         )
 
 
-def _atomic_write_json(path: Path, data: dict | list) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        os.replace(tmp_path, str(path))
-    except Exception:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
 
 
 def _slug(name: str) -> str:
@@ -299,8 +284,8 @@ async def import_companion(req: ImportRequest):
         "type":          "custom",
         "_imported": True,
     }
-    _atomic_write_json(companion_dir / "config.json", config)
-    _atomic_write_json(companion_dir / "base_info.json", {
+    atomic_json_write(companion_dir / "config.json", config)
+    atomic_json_write(companion_dir / "base_info.json", {
         "name":          config["name"],
         "core_identity": config["description"],
         "personality":   config["personality"],
@@ -310,7 +295,7 @@ async def import_companion(req: ImportRequest):
         "dislikes":      config["dislikes"],
         "autonomy_level": "Medium",
     })
-    _atomic_write_json(companion_dir / "memory.json", {
+    atomic_json_write(companion_dir / "memory.json", {
         "user_info": {},
         "recent_observations": [],
         "synthesis_notes": [],
@@ -396,7 +381,7 @@ async def upload_companion_icon(companion_id: str, file: UploadFile = File(...))
             cfg = {}
     cfg["has_icon"] = True
     cfg["icon_ext"] = suffix
-    _atomic_write_json(config_path, cfg)
+    atomic_json_write(config_path, cfg)
 
     CompanionRegistry.force_reload()
     logger.info(f"[CompanionCreator] Icon uploaded for {companion_id} ({suffix}, {len(data)} bytes)")
@@ -420,7 +405,7 @@ async def delete_companion_icon(companion_id: str):
         cfg = json.loads(config_path.read_text(encoding="utf-8"))
         cfg.pop("has_icon", None)
         cfg.pop("icon_ext",  None)
-        _atomic_write_json(config_path, cfg)
+        atomic_json_write(config_path, cfg)
 
     CompanionRegistry.force_reload()
     return {"success": True, "removed": removed}
@@ -500,7 +485,7 @@ async def upload_expression_image(companion_id: str, expression_name: str, file:
             cfg = {}
     cfg.setdefault("expression_images", {})[expression_name] = suffix
     cfg["icon_mode"] = True
-    _atomic_write_json(config_path, cfg)
+    atomic_json_write(config_path, cfg)
 
     CompanionRegistry.force_reload()
     logger.info(f"[CompanionCreator] Expression image uploaded: {companion_id}/{expression_name}{suffix}")
@@ -526,7 +511,7 @@ async def delete_expression_image(companion_id: str, expression_name: str):
     if config_path.exists():
         cfg = json.loads(config_path.read_text(encoding="utf-8"))
         cfg.get("expression_images", {}).pop(expression_name, None)
-        _atomic_write_json(config_path, cfg)
+        atomic_json_write(config_path, cfg)
 
     CompanionRegistry.force_reload()
     return {"success": True, "removed": removed}
@@ -614,8 +599,8 @@ async def create_companion(req: CompanionCreateRequest):
         "icon_mode":     req.icon_mode,
     }
 
-    _atomic_write_json(companion_dir / "config.json", config)
-    _atomic_write_json(companion_dir / "base_info.json", {
+    atomic_json_write(companion_dir / "config.json", config)
+    atomic_json_write(companion_dir / "base_info.json", {
         "name":          req.name,
         "core_identity": req.description,
         "personality":   req.personality,
@@ -625,7 +610,7 @@ async def create_companion(req: CompanionCreateRequest):
         "dislikes":      req.dislikes,
         "autonomy_level": "Medium",
     })
-    _atomic_write_json(companion_dir / "memory.json", {
+    atomic_json_write(companion_dir / "memory.json", {
         "user_info": {},
         "recent_observations": [],
         "synthesis_notes": [],
@@ -686,7 +671,7 @@ async def update_companion(companion_id: str, req: CompanionUpdateRequest):
         # icon_mode from the form; expression_images preserved via **existing spread above
         "icon_mode": req.icon_mode,
     }
-    _atomic_write_json(companion_dir / "config.json", config)
+    atomic_json_write(companion_dir / "config.json", config)
 
     base_info_path = companion_dir / "base_info.json"
     base_info = json.loads(base_info_path.read_text(encoding="utf-8")) if base_info_path.exists() else {}
@@ -699,7 +684,7 @@ async def update_companion(companion_id: str, req: CompanionUpdateRequest):
         "likes":         req.likes,
         "dislikes":      req.dislikes,
     })
-    _atomic_write_json(base_info_path, base_info)
+    atomic_json_write(base_info_path, base_info)
 
     CompanionRegistry.force_reload()
     return {"success": True, "id": companion_id, "message": f"'{req.name}' updated successfully."}

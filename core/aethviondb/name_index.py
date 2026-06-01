@@ -18,15 +18,13 @@ Thread-safety: Uses a threading.Lock around all reads and writes.
 from __future__ import annotations
 
 import json
-import os
 import re
-import tempfile
 import threading
 from pathlib import Path
 from typing import Optional
 
+from core.utils import get_logger, atomic_json_write
 from core.utils.paths import AETHVIONDB
-from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -79,17 +77,7 @@ class NameIndex:
 
     def _save(self) -> None:
         """Atomically write the index to disk. Must be called under _lock."""
-        tmp_fd, tmp_path = tempfile.mkstemp(dir=str(self._path.parent), suffix=".tmp")
-        try:
-            with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
-                json.dump(self._data, f, indent=2, ensure_ascii=False, sort_keys=True)
-            os.replace(tmp_path, str(self._path))
-        except Exception:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-            raise
+        atomic_json_write(self._path, self._data, sort_keys=True)
 
     # ── Public API ─────────────────────────────────────────────────────────────
 

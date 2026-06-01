@@ -4,11 +4,9 @@ Shared logic for workspace management and path validation.
 """
 
 import json
-import os
-import tempfile
 from pathlib import Path
 from typing import List, Tuple, Optional
-from core.utils import get_logger
+from core.utils import get_logger, atomic_json_write
 
 
 logger = get_logger(__name__)
@@ -34,19 +32,7 @@ def load_workspaces(companion_id: str) -> List[dict]:
 def save_workspaces(companion_id: str, workspaces: List[dict]) -> None:
     """Save workspace configurations to disk for a specific companion (atomic write)."""
     try:
-        ws_file = get_workspaces_file(companion_id)
-        ws_file.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp_path = tempfile.mkstemp(dir=str(ws_file.parent), suffix=".tmp")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(workspaces, f, indent=4)
-            os.replace(tmp_path, str(ws_file))
-        except Exception:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-            raise
+        atomic_json_write(get_workspaces_file(companion_id), workspaces, indent=4, ensure_ascii=True)
     except Exception as e:
         logger.error(f"Failed to save workspaces for {companion_id}: {e}")
 

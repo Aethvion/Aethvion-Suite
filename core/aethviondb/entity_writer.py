@@ -22,14 +22,12 @@ data/modes/worldsim/entities/
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from core.utils import get_logger, atomic_json_write
 from core.utils.paths import AETHVIONDB
-from core.utils.logger import get_logger
 
 _DEFAULT_ENTITIES_DIR = AETHVIONDB / "default" / "entities"
 from .entity_schema import make_empty, validate, _new_id, _now_iso
@@ -69,18 +67,7 @@ class EntityWriter:
     # ── Atomic write ──────────────────────────────────────────────────────────
 
     def _write(self, entity: dict[str, Any]) -> None:
-        path = self._path_for(entity["id"])
-        tmp_fd, tmp_path = tempfile.mkstemp(dir=str(self._dir), suffix=".tmp")
-        try:
-            with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
-                json.dump(entity, f, indent=2, ensure_ascii=False)
-            os.replace(tmp_path, str(path))
-        except Exception:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-            raise
+        atomic_json_write(self._path_for(entity["id"]), entity)
 
     # ── Public API ─────────────────────────────────────────────────────────────
 

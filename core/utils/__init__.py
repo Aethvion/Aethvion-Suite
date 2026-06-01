@@ -27,6 +27,7 @@ def atomic_json_write(
     *,
     indent: int = 2,
     ensure_ascii: bool = False,
+    sort_keys: bool = False,
 ) -> None:
     """Write *data* as JSON to *path* atomically.
 
@@ -36,11 +37,12 @@ def atomic_json_write(
     near-atomic on Windows (uses MoveFileEx MOVEFILE_REPLACE_EXISTING).
 
     Args:
-        path: Destination file path (``str`` or ``Path``).
-        data: JSON-serialisable ``dict`` or ``list``.
-        indent: JSON indent level (default 2).
+        path:         Destination file path (``str`` or ``Path``).
+        data:         JSON-serialisable ``dict`` or ``list``.
+        indent:       JSON indent level (default 2).
         ensure_ascii: Passed through to ``json.dump`` (default False → keep
-            Unicode characters as-is).
+                      Unicode characters as-is).
+        sort_keys:    Sort dict keys before writing (default False).
 
     Raises:
         Whatever ``json.dump`` or ``os.replace`` raises on genuine failure.
@@ -50,7 +52,7 @@ def atomic_json_write(
     fd, tmp_path = _tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
     try:
         with _os.fdopen(fd, "w", encoding="utf-8") as f:
-            _json.dump(data, f, indent=indent, ensure_ascii=ensure_ascii)
+            _json.dump(data, f, indent=indent, ensure_ascii=ensure_ascii, sort_keys=sort_keys)
         _os.replace(tmp_path, str(path))
     except Exception:
         try:

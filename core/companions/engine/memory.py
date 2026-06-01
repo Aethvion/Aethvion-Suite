@@ -7,30 +7,14 @@ One instance per companion; handles init, load, XML-tag extraction, and synthesi
 from __future__ import annotations
 import datetime
 import json
-import os
 import re
-import tempfile
 import uuid
 from pathlib import Path
-from core.utils import get_logger, utcnow_iso
+from core.utils import get_logger, utcnow_iso, atomic_json_write
 
 logger = get_logger(__name__)
 
 
-def _atomic_write(path: Path, data: dict) -> None:
-    """Write JSON atomically: write to a temp file then rename into place."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
-        os.replace(tmp_path, str(path))  # atomic on POSIX; near-atomic on Windows
-    except Exception:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
 
 
 class CompanionMemory:
@@ -58,16 +42,16 @@ class CompanionMemory:
         if not self._base_path.exists() or self._base_path.stat().st_size == 0:
             # Unwrap if double-nested before writing:
             default_to_write = self._default_base_info.get("base_info", self._default_base_info)
-            _atomic_write(self._base_path, default_to_write)
+            atomic_json_write(self._base_path, default_to_write, indent=4)
             logger.info(f"{self._name}: Initialized base_info.json")
 
         if not self._mem_path.exists() or self._mem_path.stat().st_size == 0:
-            _atomic_write(self._mem_path, {
+            atomic_json_write(self._mem_path, {
                 "user_info": {},
                 "recent_observations": [],
                 "synthesis_notes": [],
                 "last_updated": utcnow_iso(),
-            })
+            }, indent=4)
             logger.info(f"{self._name}: Initialized memory.json")
 
     # ── Load ──────────────────────────────────────────────────────────────
@@ -123,7 +107,7 @@ class CompanionMemory:
             if "base_info" in data and self._base_path.exists():
                 existing = json.loads(self._base_path.read_text(encoding="utf-8"))
                 existing.update(data["base_info"])
-                _atomic_write(self._base_path, existing)
+                atomic_json_write(self._base_path, existing, indent=4)
 
             # Update memory.json atomically
             if self._mem_path.exists():
@@ -138,7 +122,7 @@ class CompanionMemory:
                 obs.extend(data["recent_observations"])
                 existing_mem["recent_observations"] = obs[-20:]
             existing_mem["last_updated"] = utcnow_iso()
-            _atomic_write(self._mem_path, existing_mem)
+            atomic_json_write(self._mem_path, existing_mem, indent=4)
 
             logger.info(f"{self._name}: Memory updated from XML tag.")
         except Exception as e:
@@ -206,12 +190,12 @@ class CompanionMemory:
             data = json.loads(raw)
 
             if "base_info" in data:
-                _atomic_write(self._base_path, data["base_info"])
+                atomic_json_write(self._base_path, data["base_info"], indent=4)
                 logger.info(f"{self._name}: Identity updated during synthesis.")
 
             synthesized: dict = data.get("memory", {})
             synthesized["last_synthesis"] = utcnow_iso()
-            _atomic_write(self._mem_path, synthesized)
+            atomic_json_write(self._mem_path, synthesized, indent=4)
             logger.info(f"{self._name}: Memory synthesis complete.")
             return synthesized
         except Exception as e:
