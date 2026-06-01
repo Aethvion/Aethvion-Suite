@@ -5,6 +5,7 @@ Manage models in a locally-running Ollama instance.
 
 import asyncio
 import json
+import os
 import threading
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -14,7 +15,8 @@ from core.utils.logger import get_logger
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/ollama", tags=["ollama"])
 
-_DEFAULT = "http://localhost:11434"
+# Override via OLLAMA_URL environment variable for non-default Ollama installations.
+_DEFAULT = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 
 
 def _url(path: str, base: str = _DEFAULT) -> str:

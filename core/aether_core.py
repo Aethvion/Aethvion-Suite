@@ -331,4 +331,7 @@ class AetherCore:
         logger.info("Aether Core reloading configuration...")
         if self.provider_manager:
             self.provider_manager.reload_config()
-        # TODO: Reload firewall if needed
+        # IntelligenceFirewall reads config at init time; re-instantiate to pick up changes.
+        if self.firewall is not None:
+            from core.security.firewall import IntelligenceFirewall
+            self.firewall = IntelligenceFirewall()

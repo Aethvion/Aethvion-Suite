@@ -306,8 +306,8 @@ class DiscordWorker(commands.Bot):
                 
                 # Check if we have a primary user DM channel
                 
-                # TODO: Implement actual 'should I reach out?' logic via orchestrator
-                # For now, we just log the opportunity.
+                # Proactive outreach logic is intentionally minimal —
+                # extend here to call the orchestrator when needed.
                 
             except Exception as e:
                 logger.error(f"Error in proactive loop: {e}")

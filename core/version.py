@@ -28,10 +28,6 @@ def _git(*args: str) -> str:
     flags = {"cwd": str(_ROOT), "text": True, "stderr": subprocess.DEVNULL}
     if hasattr(subprocess, "CREATE_NO_WINDOW"):
         flags["creationflags"] = _CREATE_NO_WINDOW
-    try:
-        flags["creationflags"] = _CREATE_NO_WINDOW
-    except AttributeError:
-        pass
     return subprocess.check_output(["git", *args], **flags).strip()
 
 

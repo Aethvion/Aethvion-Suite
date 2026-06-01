@@ -11,12 +11,14 @@ from pathlib import Path
 from core.utils import get_logger, generate_trace_id, utcnow_iso
 
 
+from core.tools.standard.file_ops import WORKSPACE_ROOT
+
+
 def _parse_dt(ts: str) -> datetime:
     """Parse an ISO 8601 timestamp, handling both Z-suffix and bare naive strings."""
     if ts.endswith('Z'):
         ts = ts[:-1] + '+00:00'
     return datetime.fromisoformat(ts)
-from core.tools.standard.file_ops import WORKSPACE_ROOT
 from core.utils.paths import WS_PROJECTS, HISTORY_AGENTS
 from .task_models import Task, TaskStatus, ChatThread, ChatFolder
 from core.ai.call_contexts import CallSource
@@ -63,34 +65,17 @@ class TaskWorker:
                 # Get task from queue (blocks until available)
                 task = await self.queue.get()
                 
-                # Check if this is a specialized task for another worker (e.g. Discord)
+                # DISCORD_SEND tasks are handled by DiscordWorker — skip in this general queue.
                 if task.metadata.get('task_type') == 'DISCORD_SEND':
-                    # We should prevent Discord tasks from entering this general queue, 
-                    # OR we make this worker ignore it and the DiscordWorker pulls it.
-                    # Best: DiscordWorker doesn't use the queue.put(), it just watches the tasks dict.
-                    # Wait, submit_task calls queue.put(task).
-                    # I'll update submit_task to NOT queue DISCORD_SEND tasks.
                     self.queue.task_done()
                     continue
 
                 self.current_task = task
-                
                 logger.info(f"Worker {self.worker_id} picked up task {task.id}")
-                
-                # Update task status
-                task.status = TaskStatus.RUNNING
+
+                task.status    = TaskStatus.RUNNING
                 task.started_at = datetime.now(timezone.utc)
-                task.worker_id = self.worker_id
-                
-                # Save task state (started)
-                # but better yet, let's add a save callback or reference.
-                # Actually, the queue manager pass 'self' as well? No.
-                # Let's check init: __init__(self, worker_id: str, queue: asyncio.Queue, tasks: Dict[str, Task], orchestrator)
-                # We can't reach _save_task easily.
-                # Let's Modify TaskWorker init to accept manager or save_callback.
-                # No, intermediate saving is good for crash recovery.
-                # Wait, I can pass a callback to the worker.
-                # Let's do that in a minute.
+                task.worker_id  = self.worker_id
                 
                 # Actually, I can just update the code to pass the callback.
                 try:
@@ -506,7 +491,6 @@ class TaskQueueManager:
             max_workers: Maximum number of parallel workers
         """
         self.orchestrator = orchestrator
-        self.max_workers = max_workers
         self.max_workers = max_workers
         self.queue: asyncio.Queue = asyncio.Queue()
         self.tasks: Dict[str, Task] = {}

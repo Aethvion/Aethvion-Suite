@@ -600,16 +600,33 @@ def run_test_orchestrator(run_id: str, python_exe: str):
             "system_cpu": psutil.cpu_percent(),
             "system_mem": psutil.virtual_memory().percent,
         }
-        gpu_usage = get_gpu_usage()
+        gpu_usage   = get_gpu_usage()
+        gpu_avail   = gpu_usage["status"] == "Available"
+        raw_gpu_util = gpu_usage["utilization"]  if gpu_avail else 0
+        raw_gpu_vram = gpu_usage["vram_used_mb"] if gpu_avail else 0
+
+        # Net metrics: subtract the pre-test offline baseline so that other
+        # programs running on the machine don't inflate the suite's numbers.
+        # Clamped to 0 — negative means the suite freed resources vs baseline.
+        net_sys_cpu  = max(0.0, round(sys_usage["system_cpu"] - pre_test_sys_cpu, 1))
+        net_sys_mem  = max(0.0, round(sys_usage["system_mem"] - pre_test_sys_mem, 1))
+        net_gpu_util = max(0, raw_gpu_util - pre_test_gpu.get("utilization",  0))
+        net_gpu_vram = max(0, raw_gpu_vram - pre_test_gpu.get("vram_used_mb", 0))
 
         snapshot = {
-            "second":      sec,
-            "process_cpu": proc_usage["cpu_percent"],
-            "process_mem": proc_usage["memory_mb"],
-            "system_cpu":  sys_usage["system_cpu"],
-            "system_mem":  sys_usage["system_mem"],
-            "gpu_util":    gpu_usage["utilization"]  if gpu_usage["status"] == "Available" else 0,
-            "gpu_vram":    gpu_usage["vram_used_mb"] if gpu_usage["status"] == "Available" else 0,
+            "second":        sec,
+            "process_cpu":   proc_usage["cpu_percent"],
+            "process_mem":   proc_usage["memory_mb"],
+            # Raw absolute values (affected by other programs open on the machine)
+            "system_cpu":    sys_usage["system_cpu"],
+            "system_mem":    sys_usage["system_mem"],
+            "gpu_util":      raw_gpu_util,
+            "gpu_vram":      raw_gpu_vram,
+            # Net suite-attributable values (baseline subtracted)
+            "net_system_cpu":  net_sys_cpu,
+            "net_system_mem":  net_sys_mem,
+            "net_gpu_util":    net_gpu_util,
+            "net_gpu_vram":    net_gpu_vram,
         }
         timeseries_data.append(snapshot)
 
@@ -704,12 +721,18 @@ def run_test_orchestrator(run_id: str, python_exe: str):
     repo_stats = get_repository_stats()
 
     # Compile report and calculate averages
-    p_cpus = [s["process_cpu"] for s in timeseries_data]
-    p_mems = [s["process_mem"] for s in timeseries_data]
-    s_cpus = [s["system_cpu"] for s in timeseries_data]
-    s_mems = [s["system_mem"] for s in timeseries_data]
-    gpu_utils = [s["gpu_util"] for s in timeseries_data]
-    gpu_vrams = [s["gpu_vram"] for s in timeseries_data]
+    p_cpus    = [s["process_cpu"] for s in timeseries_data]
+    p_mems    = [s["process_mem"] for s in timeseries_data]
+    # Raw system/GPU (absolute — varies with what else is open on the machine)
+    s_cpus    = [s["system_cpu"]  for s in timeseries_data]
+    s_mems    = [s["system_mem"]  for s in timeseries_data]
+    gpu_utils = [s["gpu_util"]    for s in timeseries_data]
+    gpu_vrams = [s["gpu_vram"]    for s in timeseries_data]
+    # Net system/GPU (baseline-subtracted — suite-attributable only)
+    n_cpus    = [s["net_system_cpu"]  for s in timeseries_data]
+    n_mems    = [s["net_system_mem"]  for s in timeseries_data]
+    n_gutls   = [s["net_gpu_util"]    for s in timeseries_data]
+    n_gvrams  = [s["net_gpu_vram"]    for s in timeseries_data]
 
     git_meta = get_git_info()
     report_id = f"report_{int(time.time())}_{git_meta['commit_hash']}"
@@ -731,29 +754,38 @@ def run_test_orchestrator(run_id: str, python_exe: str):
             "startup_resources": startup_resources,
             "peak_resources": peak_resources,
             "averages": {
+                # Process metrics are already suite-specific (psutil measures the process tree)
                 "process_cpu_avg": round(sum(p_cpus)/len(p_cpus), 1) if p_cpus else 0.0,
                 "process_cpu_max": round(max(p_cpus), 1) if p_cpus else 0.0,
                 "process_cpu_min": round(min(p_cpus), 1) if p_cpus else 0.0,
-                
+
                 "process_mem_avg": round(sum(p_mems)/len(p_mems), 2) if p_mems else 0.0,
                 "process_mem_max": round(max(p_mems), 2) if p_mems else 0.0,
                 "process_mem_min": round(min(p_mems), 2) if p_mems else 0.0,
-                
-                "system_cpu_avg": round(sum(s_cpus)/len(s_cpus), 1) if s_cpus else 0.0,
-                "system_cpu_max": round(max(s_cpus), 1) if s_cpus else 0.0,
-                "system_cpu_min": round(min(s_cpus), 1) if s_cpus else 0.0,
-                
-                "system_mem_avg": round(sum(s_mems)/len(s_mems), 1) if s_mems else 0.0,
-                "system_mem_max": round(max(s_mems), 1) if s_mems else 0.0,
-                "system_mem_min": round(min(s_mems), 1) if s_mems else 0.0,
-                
-                "gpu_util_avg": round(sum(gpu_utils)/len(gpu_utils), 1) if gpu_utils else 0.0,
-                "gpu_util_max": round(max(gpu_utils), 1) if gpu_utils else 0.0,
-                "gpu_util_min": round(min(gpu_utils), 1) if gpu_utils else 0.0,
-                
-                "gpu_vram_avg": round(sum(gpu_vrams)/len(gpu_vrams), 2) if gpu_vrams else 0.0,
-                "gpu_vram_max": round(max(gpu_vrams), 2) if gpu_vrams else 0.0,
-                "gpu_vram_min": round(min(gpu_vrams), 2) if gpu_vrams else 0.0
+
+                # System/GPU — net (baseline-subtracted, suite-attributable only).
+                # Used for comparisons so other programs don't skew the delta.
+                "system_cpu_avg": round(sum(n_cpus)/len(n_cpus), 1) if n_cpus else 0.0,
+                "system_cpu_max": round(max(n_cpus), 1) if n_cpus else 0.0,
+                "system_cpu_min": round(min(n_cpus), 1) if n_cpus else 0.0,
+
+                "system_mem_avg": round(sum(n_mems)/len(n_mems), 1) if n_mems else 0.0,
+                "system_mem_max": round(max(n_mems), 1) if n_mems else 0.0,
+                "system_mem_min": round(min(n_mems), 1) if n_mems else 0.0,
+
+                "gpu_util_avg": round(sum(n_gutls)/len(n_gutls), 1) if n_gutls else 0.0,
+                "gpu_util_max": round(max(n_gutls), 1) if n_gutls else 0.0,
+                "gpu_util_min": round(min(n_gutls), 1) if n_gutls else 0.0,
+
+                "gpu_vram_avg": round(sum(n_gvrams)/len(n_gvrams), 2) if n_gvrams else 0.0,
+                "gpu_vram_max": round(max(n_gvrams), 2) if n_gvrams else 0.0,
+                "gpu_vram_min": round(min(n_gvrams), 2) if n_gvrams else 0.0,
+
+                # Raw absolute values stored for reference (not used in comparison matrix)
+                "system_cpu_raw_avg": round(sum(s_cpus)/len(s_cpus), 1) if s_cpus else 0.0,
+                "system_mem_raw_avg": round(sum(s_mems)/len(s_mems), 1) if s_mems else 0.0,
+                "gpu_util_raw_avg":   round(sum(gpu_utils)/len(gpu_utils), 1) if gpu_utils else 0.0,
+                "gpu_vram_raw_avg":   round(sum(gpu_vrams)/len(gpu_vrams), 2) if gpu_vrams else 0.0,
             }
         },
         "api_routing": [

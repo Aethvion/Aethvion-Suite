@@ -10,6 +10,7 @@ Supported backends:
 """
 
 import base64
+import os
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -25,9 +26,9 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/photo", tags=["photo"])
 
-# ── Local SD backend defaults (configurable via env or settings) ───────────────
-_SD_WEBUI_URL  = "http://127.0.0.1:7860"   # AUTOMATIC1111 / Forge
-_COMFYUI_URL   = "http://127.0.0.1:8188"   # ComfyUI
+# ── Local SD backend URLs — override via environment variables ────────────────
+_SD_WEBUI_URL = os.environ.get("SD_WEBUI_URL", "http://127.0.0.1:7860")   # AUTOMATIC1111 / Forge
+_COMFYUI_URL  = os.environ.get("COMFYUI_URL",  "http://127.0.0.1:8188")   # ComfyUI
 
 
 def _is_local_sd_model(model: str) -> bool:
