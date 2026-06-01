@@ -16,6 +16,17 @@ from core.utils.logger import get_logger
 from core.utils import utcnow_iso, atomic_json_write
 from core.orchestrator.cancellation import is_agent_task_cancelled
 from core.ai.call_contexts import CallSource
+from core.utils.paths import CODE_AGENT_PROMPT
+from core.orchestrator.workspace_tools import (
+    BLUEPRINT_IGNORE_DIRS, BLUEPRINT_SKIP_EXTS,
+    BLUEPRINT_MAX_FILES_PER_DIR, BLUEPRINT_MAX_DEPTH,
+    BLUEPRINT_MAX_LINES, BLUEPRINT_CACHE_SECS,
+    _bp_fmt_size, build_workspace_blueprint,
+    generate_file_digest, search_codebase, parse_dir_entries,
+)
+from core.orchestrator.agent_state import AgentState
+from core.orchestrator.web_tools import fetch_url, search_web
+from core.orchestrator.file_ops_mixin import FileOpsMixin
 
 logger = get_logger(__name__)
 
@@ -38,7 +49,7 @@ MAX_ITERATIONS = 200
 SYSTEM_PROMPT: str = CODE_AGENT_PROMPT.read_text(encoding='utf-8')
 
 
-class AgentRunner:
+class AgentRunner(FileOpsMixin):
     def __init__(
         self,
         task: str,
@@ -132,98 +143,6 @@ class AgentRunner:
         keys = [k for k in list(self._read_cache) if k.startswith(path + ":") or k == path]
         for k in keys:
             del self._read_cache[k]
-
-    def _generate_digest(self, path: str, content: str,
-                         last_action: Optional[str] = None) -> str:
-        """Build a rich semantic digest of a file's structure.
-
-        Includes function/selector names WITH line numbers so the agent can jump
-        directly to `offset=N` for any function without scanning the whole file.
-        Stored in AgentState.file_digests; injected into every prompt as the
-        Knowledge block.  Target size: ~400 chars per file.
-        """
-        ext   = Path(path).suffix.lower()
-        lines = content.splitlines()
-        ts    = datetime.utcnow().strftime("%H:%M")
-        header = f"{path} [{len(lines)}L, {len(content):,}ch]"
-
-        entries: List[str] = []   # "name@line" or "name@line: first-sig"
-
-        if ext in (".js", ".ts", ".jsx", ".tsx", ".mjs"):
-            seen: set = set()
-            globals_top: List[str] = []
-            fns_with_lines: List[str] = []
-
-            for i, line in enumerate(lines, 1):
-                # function declarations
-                m = re.match(r"\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*(\([^)]*\))?", line)
-                if m and m.group(1) not in seen:
-                    sig = m.group(2) or "()"
-                    fns_with_lines.append(f"{m.group(1)}@L{i}{sig}")
-                    seen.add(m.group(1))
-                    continue
-                # const/let/var arrow functions
-                m = re.match(r"\s*(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(([^)]*)\)", line)
-                if m and m.group(1) not in seen:
-                    fns_with_lines.append(f"{m.group(1)}@L{i}({m.group(2)})")
-                    seen.add(m.group(1))
-                    continue
-                # top-of-file globals (first 30 lines only)
-                if i <= 30:
-                    m = re.match(r"^\s*(?:const|let|var)\s+(\w+)\s*=\s*([^;]{0,40})", line)
-                    if m and m.group(1) not in seen:
-                        globals_top.append(f"{m.group(1)}={m.group(2).strip()[:20]}")
-
-            if fns_with_lines:
-                entries.append("functions:\n    " + "\n    ".join(fns_with_lines[:30]))
-            if globals_top:
-                entries.append("globals: " + ", ".join(globals_top[:8]))
-
-        elif ext == ".css":
-            sel_with_lines: List[str] = []
-            seen_sel: set = set()
-            for i, line in enumerate(lines, 1):
-                m = re.match(r"^([.#]?[\w][\w\s.#:>+~\[\]\"'=*-]*?)\s*\{", line)
-                if m:
-                    sel = m.group(1).strip()
-                    if sel and sel not in seen_sel:
-                        sel_with_lines.append(f"{sel}@L{i}")
-                        seen_sel.add(sel)
-            if sel_with_lines:
-                entries.append("selectors:\n    " + "\n    ".join(sel_with_lines[:30]))
-
-        elif ext in (".html", ".htm"):
-            ids = re.findall(r'\bid=["\']([^"\']+)["\']', content)
-            unique_ids = list(dict.fromkeys(ids))
-            if unique_ids:
-                entries.append("ids: " + ", ".join(unique_ids[:20]))
-            # key script/link/meta tags summary
-            scripts = re.findall(r'<script[^>]*src=["\']([^"\']+)["\']', content)
-            if scripts:
-                entries.append("scripts: " + ", ".join(scripts[:6]))
-
-        elif ext == ".py":
-            cls_with_lines: List[str] = []
-            fn_with_lines:  List[str] = []
-            for i, line in enumerate(lines, 1):
-                m = re.match(r"^class (\w+)", line)
-                if m:
-                    cls_with_lines.append(f"{m.group(1)}@L{i}")
-                m = re.match(r"^\s*def (\w+)\s*(\([^)]*\))?", line)
-                if m:
-                    sig = (m.group(2) or "()").replace("\n", "")[:40]
-                    fn_with_lines.append(f"{m.group(1)}@L{i}{sig}")
-            if cls_with_lines:
-                entries.append("classes: " + ", ".join(cls_with_lines[:10]))
-            if fn_with_lines:
-                entries.append("functions:\n    " + "\n    ".join(fn_with_lines[:25]))
-
-        body = ""
-        if entries:
-            body = "\n  " + "\n  ".join(entries)
-
-        last = f"\n  last: {last_action} @ {ts}" if last_action else ""
-        return f"{header}{body}{last}"
 
     # ── emit ──────────────────────────────────────────────────────
 
@@ -585,7 +504,7 @@ class AgentRunner:
                     fp = self.workspace / path
                     full = fp.read_text(encoding="utf-8", errors="replace")
                     summary = f"patched ({len(old)}→{len(new)} chars)"
-                    digest = self._generate_digest(path, full, last_action=summary)
+                    digest = generate_file_digest(path, full, last_action=summary)
                     self.state.update_file_digest(path, digest)
                 except Exception:
                     pass
@@ -607,7 +526,7 @@ class AgentRunner:
                 try:
                     fp = self.workspace / path
                     full = fp.read_text(encoding="utf-8", errors="replace")
-                    digest = self._generate_digest(path, full, last_action=f"appended {len(content)} chars")
+                    digest = generate_file_digest(path, full, last_action=f"appended {len(content)} chars")
                     self.state.update_file_digest(path, digest)
                 except Exception:
                     pass
@@ -627,7 +546,7 @@ class AgentRunner:
                 # Successful write resolves any prior patch failure on this file.
                 self._unresolved_failures.discard(path)
                 try:
-                    digest = self._generate_digest(path, content, last_action="written")
+                    digest = generate_file_digest(path, content, last_action="written")
                     self.state.update_file_digest(path, digest)
                 except Exception:
                     pass
@@ -669,7 +588,7 @@ class AgentRunner:
                     try:
                         fp = self.workspace / path
                         full = fp.read_text(encoding="utf-8", errors="replace")
-                        digest = self._generate_digest(path, full)
+                        digest = generate_file_digest(path, full)
                         self.state.update_file_digest(path, digest)
                     except Exception:
                         pass
@@ -692,7 +611,7 @@ class AgentRunner:
             result = self._list_dir(path)
             # Parse flat filenames from result to update workspace map
             if result and result != "(empty)" and not result.startswith("Error:"):
-                entries = self._parse_list_dir_entries(result)
+                entries = parse_dir_entries(result)
                 if entries:
                     self.state.update_workspace_map(entries)
             self.state.log_action(iteration, "list_dir", path or ".")
@@ -751,7 +670,7 @@ class AgentRunner:
                 cached = self._search_cache[query]
                 return f"[DUPLICATE SEARCH — returning cached result]\n{cached}"
             self._search_count += 1
-            result = self._search_web(query, max_results)
+            result = search_web(query, max_results)
             self._search_cache[query] = result
             self.state.log_action(iteration, "search_web", query[:40])
             return result
@@ -767,7 +686,7 @@ class AgentRunner:
                     f"[DUPLICATE FETCH — you already fetched this URL. "
                     f"Use the data from the cached result below and write your files now.]\n{cached}"
                 )
-            result = self._fetch_url(url)
+            result = fetch_url(url)
             # Only cache successful responses — never cache 429/5xx errors so
             # the agent can retry after a rate-limit window passes.
             if not result.startswith("HTTP 429") and not result.startswith("HTTP 5"):
@@ -790,7 +709,7 @@ class AgentRunner:
             max_r = int(action.get("max_results", 30))
             if not query:
                 return "[search_codebase] 'query' is required."
-            result = self._search_codebase(query, path, ctx, max_r)
+            result = search_codebase(self.workspace, query, path, ctx, max_r)
             self.state.log_action(iteration, "search_codebase", query[:40])
             self._emit({"type": "read_file", "path": path or "workspace", "detail": f"search: {query[:40]}"})
             return result
@@ -852,702 +771,7 @@ class AgentRunner:
 
         return f"Unknown action: {t}"
 
-    def _search_codebase(self, query: str, path: str = "", context_lines: int = 1, max_results: int = 30) -> str:
-        """Search for a literal string or regex pattern across workspace source files.
 
-        Much cheaper than reading whole files: returns only matching lines with
-        a small context window, and the file + line number so the agent can jump
-        straight to the right offset with read_file.
-        """
-        search_root = self.workspace / path if path else self.workspace
-        if not search_root.exists():
-            return f"Error: path '{path}' does not exist in workspace."
-
-        try:
-            pattern = re.compile(query, re.IGNORECASE)
-        except re.error:
-            pattern = re.compile(re.escape(query), re.IGNORECASE)
-
-        if search_root.is_file():
-            files: List[Path] = [search_root]
-        else:
-            files = sorted(
-                f for f in search_root.rglob("*")
-                if f.is_file()
-                and f.suffix.lower() not in BLUEPRINT_SKIP_EXTS
-                and not any(part in BLUEPRINT_IGNORE_DIRS
-                            for part in f.relative_to(self.workspace).parts)
-            )
-
-        results: List[str] = []
-        total_matches = 0
-
-        for filepath in files:
-            if total_matches >= max_results:
-                break
-            try:
-                text = filepath.read_text(encoding="utf-8", errors="replace")
-            except Exception:
-                continue
-
-            file_lines = text.splitlines()
-            file_hits: List[str] = []
-
-            for lineno, line in enumerate(file_lines, 1):
-                if total_matches >= max_results:
-                    break
-                if pattern.search(line):
-                    total_matches += 1
-                    ctx_start = max(0, lineno - 1 - context_lines)
-                    ctx_end   = min(len(file_lines), lineno + context_lines)
-                    block = []
-                    for j in range(ctx_start, ctx_end):
-                        marker = "→" if j == lineno - 1 else " "
-                        block.append(f"  {marker} L{j + 1}: {file_lines[j].rstrip()}")
-                    file_hits.append("\n".join(block))
-
-            if file_hits:
-                rel = str(filepath.relative_to(self.workspace))
-                results.append(f"{rel}:\n" + "\n".join(file_hits))
-
-        if not results:
-            scope = f" in '{path}'" if path else ""
-            return f"No matches for '{query}'{scope}."
-
-        more = f" (first {max_results} shown)" if total_matches >= max_results else ""
-        header = f"Found {total_matches} match{'es' if total_matches != 1 else ''}{more} for '{query}':\n\n"
-        return header + "\n\n".join(results)
-
-    def _parse_list_dir_entries(self, listing: str) -> List[str]:
-        """Extract bare filenames from _list_dir output (strips emoji prefix)."""
-        entries = []
-        for line in listing.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            # Strip folder/file emoji prefixes added by _list_dir
-            for prefix in ("\U0001f4c1 ", "\U0001f4c4 "):
-                if line.startswith(prefix):
-                    line = line[len(prefix):]
-                    break
-            if line:
-                entries.append(line)
-        return entries
-
-    def _patch_file(self, path: str, old: str, new: str) -> str:
-        """Replace first occurrence of `old` with `new`, with whitespace-tolerant fallbacks.
-
-        Three strategies are tried in order, most to least strict:
-          1. Exact match — fastest, always preferred.
-          2. Trailing-whitespace normalised — handles lines where the LLM strips
-             trailing spaces/tabs that are present in the file (very common).
-          3. Full strip (leading + trailing) — handles indentation differences
-             while still preserving the file's own indentation for the replaced block.
-
-        On success, the file is written and a summary is returned.  Only if all
-        three strategies fail is ``patch_file FAILED`` returned.
-        """
-        try:
-            fp, err = self._safe_path(path)
-            if err:
-                return err
-            if not fp.exists():
-                return f"Error: {path} does not exist — use write_file to create it first."
-            if not old:
-                return "Error: patch_file requires a non-empty 'old' string."
-            content = fp.read_text(encoding="utf-8", errors="replace")
-
-            # ── Strategy 1: exact match ───────────────────────────────────
-            if old in content:
-                count = content.count(old)
-                updated = content.replace(old, new, 1)
-                fp.write_text(updated, encoding="utf-8")
-                suffix = f" ({count} occurrences, replaced first)" if count > 1 else ""
-                msg = f"Patched {path}: {len(old):,}→{len(new):,} chars.{suffix}"
-                syntax_err = self._validate_file_syntax(path)
-                if syntax_err:
-                    msg += f"\n\n[WARNING] Syntax validation failed:\n{syntax_err}"
-                return msg
-
-            # ── Strategy 2: strip trailing whitespace per line ────────────
-            # Covers the very common case where the LLM omits trailing spaces
-            # that exist in the actual file (e.g. in Python docstrings, HTML).
-            def _rstrip_lines(s: str) -> str:
-                return "\n".join(line.rstrip() for line in s.splitlines())
-
-            norm_content = _rstrip_lines(content)
-            norm_old     = _rstrip_lines(old)
-            if norm_old and norm_old in norm_content:
-                idx        = norm_content.index(norm_old)
-                line_start = norm_content[:idx].count("\n")
-                line_count = norm_old.count("\n") + 1
-                orig_lines = content.splitlines(keepends=True)
-                orig_block = "".join(orig_lines[line_start : line_start + line_count])
-                updated    = content.replace(orig_block, new, 1)
-                if updated != content:
-                    fp.write_text(updated, encoding="utf-8")
-                    msg = (
-                        f"Patched {path} (trailing-ws normalized): "
-                        f"{len(orig_block):,}→{len(new):,} chars."
-                    )
-                    syntax_err = self._validate_file_syntax(path)
-                    if syntax_err:
-                        msg += f"\n\n[WARNING] Syntax validation failed:\n{syntax_err}"
-                    return msg
-
-            # ── Strategy 3: strip all whitespace per line (indentation-agnostic) ──
-            # or vice-versa.  The original file's indentation is preserved — only
-            # the content of those lines is replaced.
-            def _strip_lines(s: str) -> str:
-                return "\n".join(line.strip() for line in s.splitlines())
-
-            stripped_content = _strip_lines(content)
-            stripped_old     = _strip_lines(old)
-            if stripped_old and stripped_old in stripped_content:
-                idx        = stripped_content.index(stripped_old)
-                line_start = stripped_content[:idx].count("\n")
-                line_count = stripped_old.count("\n") + 1
-                orig_lines = content.splitlines(keepends=True)
-                orig_block = "".join(orig_lines[line_start : line_start + line_count])
-                updated    = content.replace(orig_block, new, 1)
-                if updated != content:
-                    fp.write_text(updated, encoding="utf-8")
-                    msg = (
-                        f"Patched {path} (whitespace-normalized): "
-                        f"{len(orig_block):,}→{len(new):,} chars."
-                    )
-                    syntax_err = self._validate_file_syntax(path)
-                    if syntax_err:
-                        msg += f"\n\n[WARNING] Syntax validation failed:\n{syntax_err}"
-                    return msg
-
-            return (
-                f"patch_file FAILED: 'old' string not found in {path} "
-                f"(tried exact, trailing-ws, and indentation-agnostic matching). "
-                f"Use read_file to get the exact current contents, then retry."
-            )
-        except Exception as e:
-            return f"Error: {e}"
-
-    def _validate_file_syntax(self, path: str) -> Optional[str]:
-        """Validate syntax of Python and JSON files.
-        Returns a string error description if invalid, or None if valid or non-applicable.
-        """
-        try:
-            fp, err = self._safe_path(path)
-            if err or not fp or not fp.exists():
-                return None
-
-            content = fp.read_text(encoding="utf-8", errors="replace")
-
-            if path.endswith(".py"):
-                try:
-                    compile(content, path, "exec")
-                except SyntaxError as se:
-                    text_line = f"\nCode: {se.text.strip()}" if se.text else ""
-                    return f"Python SyntaxError: {se.msg} at line {se.lineno}, column {se.offset}{text_line}"
-                except Exception as e:
-                    return f"Python Compilation Error: {e}"
-            elif path.endswith(".json"):
-                try:
-                    json.loads(content)
-                except json.JSONDecodeError as jde:
-                    return f"JSON SyntaxError: {jde.msg} at line {jde.lineno}, column {jde.colno}"
-                except Exception as e:
-                    return f"JSON Parse Error: {e}"
-        except Exception as e:
-            return f"Syntax check failed: {e}"
-        return None
-
-    # ── Path safety helper ────────────────────────────────────────────────
-
-    def _safe_path(self, path: str) -> "tuple[Path | None, str | None]":
-        """Resolve *path* relative to workspace and block directory traversal.
-
-        Returns ``(resolved_path, None)`` on success, or ``(None, error_message)``
-        when the resolved path escapes the workspace root.
-        """
-        try:
-            resolved = (self.workspace / path).resolve()
-            ws_root  = self.workspace.resolve()
-            # str comparison is safe because resolve() returns absolute paths
-            if not str(resolved).startswith(str(ws_root) + os.sep) and resolved != ws_root:
-                return None, (
-                    f"Security: path {path!r} resolves outside the workspace. "
-                    "Use relative paths that stay within the workspace directory."
-                )
-            return resolved, None
-        except Exception as e:
-            return None, f"Invalid path {path!r}: {e}"
-
-    def _write_file(self, path: str, content: str) -> str:
-        try:
-            fp, err = self._safe_path(path)
-            if err:
-                return err
-            fp.parent.mkdir(parents=True, exist_ok=True)
-            fp.write_text(content, encoding="utf-8")
-            msg = f"Written {len(content.encode()):,} bytes"
-            syntax_err = self._validate_file_syntax(path)
-            if syntax_err:
-                msg += f"\n\n[WARNING] Syntax validation failed:\n{syntax_err}"
-            return msg
-        except Exception as e:
-            return f"Error: {e}"
-
-    def _append_file(self, path: str, content: str) -> str:
-        """Append `content` to the end of a file (creates it if it doesn't exist)."""
-        try:
-            fp, err = self._safe_path(path)
-            if err:
-                return err
-            fp.parent.mkdir(parents=True, exist_ok=True)
-            with open(fp, "a", encoding="utf-8") as f:
-                if fp.stat().st_size > 0:
-                    f.write("\n")
-                f.write(content)
-            msg = f"Appended {len(content.encode()):,} bytes to {path}"
-            syntax_err = self._validate_file_syntax(path)
-            if syntax_err:
-                msg += f"\n\n[WARNING] Syntax validation failed:\n{syntax_err}"
-            return msg
-        except Exception as e:
-            return f"Error: {e}"
-
-    def _delete_file(self, path: str) -> str:
-        try:
-            fp, err = self._safe_path(path)
-            if err:
-                return err
-            if not fp.exists():
-                return f"Not found: {path}"
-            if fp.is_dir():
-                import shutil
-                shutil.rmtree(fp)
-                return f"Deleted directory {path}"
-            fp.unlink()
-            return f"Deleted {path}"
-        except Exception as e:
-            return f"Error: {e}"
-
-    def _read_file(self, path: str, offset: int = 0, limit: Optional[int] = None) -> str:
-        """Read a file, optionally starting at line `offset` and capping at `limit` lines.
-
-        The per-chunk char cap is 50,000 — large enough to read most source files in
-        a single call.  If a chunk is still truncated, the response says exactly what
-        offset to use next so the agent can continue without shell-command workarounds.
-        """
-        MAX_CHARS = 50_000
-        try:
-            fp, err = self._safe_path(path)
-            if err:
-                return err
-            if not fp.exists():
-                return f"Not found: {path}"
-            content = fp.read_text(encoding="utf-8", errors="replace")
-            lines   = content.splitlines(keepends=True)
-            total   = len(lines)
-
-            # Apply line-based offset / limit
-            if offset:
-                lines = lines[offset:]
-            if limit is not None:
-                lines = lines[:limit]
-
-            chunk = "".join(lines)
-
-            if len(chunk) <= MAX_CHARS:
-                # Entire requested slice fits — include a summary footer so the agent
-                # knows whether it has the whole file or just a slice.
-                end_line = offset + len(lines)
-                if end_line < total:
-                    return (
-                        chunk
-                        + f"\n\n[File: {total} total lines. Showing lines {offset}–{end_line}. "
-                        f"To read more use: ACTION: {{\"type\": \"read_file\", \"path\": \"{path}\", \"offset\": {end_line}}}]"
-                    )
-                return chunk  # whole file (or final slice) — no footer needed
-
-            trimmed = chunk[:MAX_CHARS]
-            lines_returned = trimmed.count("\n")
-            next_offset = offset + lines_returned
-            return (
-                trimmed
-                + f"\n\n[TRUNCATED at {MAX_CHARS:,} chars. "
-                f"File has {total} lines. Next offset: {next_offset}. "
-                f"Continue with: ACTION: {{\"type\": \"read_file\", \"path\": \"{path}\", \"offset\": {next_offset}}}]"
-            )
-        except Exception as e:
-            return f"Error: {e}"
-
-    def _list_dir(self, path: str) -> str:
-        try:
-            if path:
-                target, err = self._safe_path(path)
-                if err:
-                    return err
-            else:
-                target = self.workspace
-            if not target.exists():
-                return f"Not found: {path}"
-            entries = [
-                ("\U0001f4c1 " if e.is_dir() else "\U0001f4c4 ") + e.name
-                for e in sorted(target.iterdir())
-                if e.name != ".aethvion_backup"
-            ]
-            return "\n".join(entries) if entries else "(empty)"
-        except Exception as e:
-            return f"Error: {e}"
-
-    def _glob(self, pattern: str, sub_path: str = "") -> str:
-        """Find files matching a glob pattern. Returns workspace-relative paths."""
-        try:
-            if sub_path:
-                root, err = self._safe_path(sub_path)
-                if err:
-                    return f"Error: {err}"
-            else:
-                root = self.workspace
-            if not root.exists():
-                return f"Error: path '{sub_path}' not found."
-            matches = sorted(root.glob(pattern))
-            if not matches:
-                return f"No files matching '{pattern}'"
-            rel = [
-                str(m.relative_to(self.workspace)).replace("\\", "/")
-                for m in matches
-                if not m.name.endswith("_blueprint.txt")
-                and ".aethvion_backup" not in m.parts
-            ]
-            total = len(rel)
-            if total > 200:
-                rel = rel[:200]
-                rel.append(f"... {total} total — showing first 200")
-            return "\n".join(rel)
-        except Exception as e:
-            return f"Error: {e}"
-
-    def _move_file(self, src: str, dst: str) -> str:
-        """Move or rename a file/directory within the workspace."""
-        import shutil
-        try:
-            if not src or not dst:
-                return "Error: move_file requires non-empty 'src' and 'dst'."
-            src_fp, err = self._safe_path(src)
-            if err:
-                return err
-            dst_fp, err = self._safe_path(dst)
-            if err:
-                return err
-            if not src_fp.exists():
-                return f"Error: {src} not found."
-            dst_fp.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(src_fp), str(dst_fp))
-            # Transfer state caches from old path to new path
-            self.state.file_cache.pop(src, None)
-            if src in self.state.workspace_map:
-                self.state.workspace_map.remove(src)
-                self.state.workspace_map.append(dst)
-            if src in self.state.file_digests:
-                self.state.file_digests[dst] = self.state.file_digests.pop(src)
-            return f"Moved {src} → {dst}"
-        except Exception as e:
-            return f"Error: {e}"
-
-    def _create_directory(self, path: str) -> str:
-        """Create a directory (and all parents) within the workspace."""
-        try:
-            if not path:
-                return "Error: create_directory requires a non-empty 'path'."
-            dp, err = self._safe_path(path)
-            if err:
-                return err
-            dp.mkdir(parents=True, exist_ok=True)
-            return f"Created directory: {path}"
-        except Exception as e:
-            return f"Error: {e}"
-
-    def _compute_write_diff(self, path: str, new_content: str) -> str:
-        """Compute a unified diff of the existing file vs new_content.
-        Returns an empty string if the file doesn't exist (new file) or is identical."""
-        import difflib
-        try:
-            fp = self.workspace / path
-            if not fp.exists():
-                return ""
-            old = fp.read_text(encoding="utf-8", errors="replace")
-            if old == new_content:
-                return ""
-            diff = list(difflib.unified_diff(
-                old.splitlines(keepends=True),
-                new_content.splitlines(keepends=True),
-                fromfile=f"a/{path}",
-                tofile=f"b/{path}",
-                n=3,
-            ))
-            result = "".join(diff)
-            if len(result) > 3000:
-                result = result[:2800] + "\n...[diff truncated]"
-            return result
-        except Exception:
-            return ""
-
-    def _fetch_url(self, url: str) -> str:
-        """Fetch a URL with smart HTML extraction (trafilatura → html.parser → raw)."""
-        import urllib.request
-        import urllib.error
-        _CAP = 12_000
-        try:
-            headers = {
-                "User-Agent": "Mozilla/5.0 (compatible; AethvionAgent/1.0)",
-                "Accept": "application/json, text/html, text/plain, */*",
-            }
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=20) as resp:
-                status = resp.status
-                content_type = resp.headers.get("Content-Type", "")
-                raw_bytes = resp.read()
-
-            body = raw_bytes.decode("utf-8", errors="replace")
-
-            # JSON / plain text — return raw, no extraction needed
-            if "application/json" in content_type or "text/plain" in content_type:
-                if len(body) > _CAP:
-                    body = body[:_CAP] + "\n...(truncated)"
-                return f"HTTP {status}\n{body}"
-
-            # HTML — try smart extraction strategies
-            is_html = "text/html" in content_type or body.lstrip()[:15].lower().startswith("<!doctype")
-            if is_html:
-                # Strategy 1: trafilatura — best for articles, docs, blog posts
-                try:
-                    import trafilatura  # type: ignore
-                    extracted = trafilatura.extract(
-                        body, include_comments=False, include_tables=True,
-                        no_fallback=False,
-                    )
-                    if extracted and len(extracted) > 150:
-                        if len(extracted) > _CAP:
-                            extracted = extracted[:_CAP] + "\n...(truncated)"
-                        return f"HTTP {status} [extracted]\n{extracted}"
-                except ImportError:
-                    pass
-                except Exception:
-                    pass
-
-                # Strategy 2: html.parser semantic extraction
-                try:
-                    from html.parser import HTMLParser
-
-                    class _SE(HTMLParser):
-                        _SKIP = {"script", "style", "nav", "footer", "header",
-                                 "aside", "noscript", "svg", "form"}
-                        _BLOCK = {"p", "h1", "h2", "h3", "h4", "h5", "li",
-                                  "pre", "code", "blockquote", "td", "th", "dt", "dd"}
-
-                        def __init__(self):
-                            super().__init__()
-                            self._depth = 0
-                            self.parts: list[str] = []
-
-                        def handle_starttag(self, tag, attrs):
-                            if tag in self._SKIP:
-                                self._depth += 1
-
-                        def handle_endtag(self, tag):
-                            if tag in self._SKIP and self._depth:
-                                self._depth -= 1
-                            if tag in self._BLOCK and self.parts and self.parts[-1] != "\n":
-                                self.parts.append("\n")
-
-                        def handle_data(self, data):
-                            if self._depth:
-                                return
-                            t = data.strip()
-                            if t:
-                                self.parts.append(t + " ")
-
-                    p = _SE()
-                    p.feed(body)
-                    text = "".join(p.parts).strip()
-                    # Collapse noisy whitespace
-                    text = re.sub(r" {3,}", "  ", text)
-                    text = re.sub(r"\n{3,}", "\n\n", text)
-                    if text and len(text) > 100:
-                        if len(text) > _CAP:
-                            text = text[:_CAP] + "\n...(truncated)"
-                        return f"HTTP {status} [html]\n{text}"
-                except Exception:
-                    pass
-
-            # Fallback: raw with increased cap
-            if len(body) > _CAP:
-                body = body[:_CAP] + "\n...(truncated)"
-            return f"HTTP {status}\n{body}"
-
-        except urllib.error.HTTPError as e:
-            body = e.read().decode("utf-8", errors="replace")[:500]
-            return f"HTTP {e.code} {e.reason}: {body}"
-        except Exception as e:
-            return f"Fetch error: {e}"
-
-    # ── file backup / restore ──────────────────────────────────────
-
-    def _backup_file(self, path: str) -> bool:
-        """Copy the current file to .aethvion_backup/<path> before overwriting.
-
-        Returns True if a backup was saved, False if the file didn't exist
-        (nothing to back up — new file creation).
-        """
-        try:
-            import shutil
-            fp = self.workspace / path
-            if not fp.exists() or not fp.is_file():
-                return False
-            bak = self.workspace / ".aethvion_backup" / path
-            bak.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(str(fp), str(bak))
-            return True
-        except Exception:
-            return False
-
-    def _restore_file(self, path: str) -> str:
-        """Restore a file from .aethvion_backup/<path>."""
-        try:
-            import shutil
-            bak = self.workspace / ".aethvion_backup" / path
-            if not bak.exists():
-                return f"No backup found for {path}"
-            fp = self.workspace / path
-            fp.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(str(bak), str(fp))
-            return f"Restored {path} from backup"
-        except Exception as e:
-            return f"Error: {e}"
-
-    def _search_web(self, query: str, max_results: int = 6) -> str:
-        try:
-            from duckduckgo_search import DDGS
-            results = []
-            with DDGS() as ddgs:
-                for r in ddgs.text(query, max_results=max_results):
-                    title = r.get("title", "")
-                    href  = r.get("href", "")
-                    body  = r.get("body", "")
-                    results.append(f"[{title}]\n{href}\n{body}")
-            if not results:
-                return "No results found."
-            return "\n\n---\n\n".join(results)
-        except Exception as e:
-            return f"Search error: {e}"
-
-    # Patterns that are unconditionally blocked regardless of workspace isolation.
-    # These represent irreversible destructive operations that no legitimate agent
-    # task should ever need to perform.
-    _BLOCKED_COMMAND_PATTERNS = [
-        # Windows: wipe entire drive / system directories
-        r"(?i)\bformat\s+[a-z]:",
-        r"(?i)del\s+/[sq].*\s+[a-z]:\\",
-        r"(?i)rmdir\s+/[sq].*\s+[a-z]:\\",
-        r"(?i)rd\s+/[sq].*\s+[a-z]:\\",
-        # POSIX: recursive delete from root or home
-        r"rm\s+-[^\s]*r[^\s]*\s+/\s*$",
-        r"rm\s+-[^\s]*r[^\s]*\s+~/",
-        # Registry destruction
-        r"(?i)reg\s+delete\s+hk[lcmu]",
-        # Shutdown / reboot
-        r"(?i)\bshutdown\b",
-        r"(?i)\breboot\b",
-    ]
-
-    def _run_command(self, command: str, timeout: int = 120) -> str:
-        """Run a shell command, streaming output line-by-line via run_command_line events."""
-        import re
-        import time
-
-        # ── Safety guard: block catastrophically destructive patterns ────────
-        for pattern in self._BLOCKED_COMMAND_PATTERNS:
-            if re.search(pattern, command):
-                logger.warning(
-                    "[AgentRunner] Blocked destructive command (pattern=%r): %r",
-                    pattern, command[:200],
-                )
-                return (
-                    "Error: command blocked — matches a destructive pattern that is "
-                    "never permitted within the workspace. Revise your approach."
-                )
-
-        logger.info("[AgentRunner] run_command (workspace=%s): %s", self.workspace.name, command[:200])
-
-        try:
-            proc = subprocess.Popen(
-                command, shell=True, cwd=str(self.workspace),
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                text=True, bufsize=1,
-            )
-
-            output_lines: list[str] = []
-            line_q: queue.Queue = queue.Queue()
-
-            def _reader():
-                try:
-                    assert proc.stdout is not None
-                    for line in proc.stdout:
-                        line_q.put(line)
-                except Exception:
-                    pass
-                finally:
-                    line_q.put(None)  # sentinel
-
-            reader = threading.Thread(target=_reader, daemon=True)
-            reader.start()
-
-            start = time.time()
-            timed_out = False
-
-            while True:
-                try:
-                    line = line_q.get(timeout=0.15)
-                except queue.Empty:
-                    if time.time() - start > timeout:
-                        proc.kill()
-                        timed_out = True
-                        break
-                    continue
-
-                if line is None:
-                    break  # reader finished
-                output_lines.append(line)
-                self._emit({"type": "run_command_line", "line": line.rstrip("\n")})
-
-                if time.time() - start > timeout:
-                    proc.kill()
-                    timed_out = True
-                    break
-
-            reader.join(timeout=3)
-            try:
-                proc.wait(timeout=5)
-            except Exception:
-                pass
-
-            if timed_out:
-                output_lines.append(f"\n(timeout: {timeout}s — process killed)\n")
-
-            out = "".join(output_lines).strip()
-            # Rolling tail cap so errors at the end are never truncated
-            if len(out) > 5000:
-                out = out[:2000] + f"\n...[{len(out):,} chars — middle truncated]...\n" + out[-2500:]
-
-            rc = proc.returncode if proc.returncode is not None else (124 if timed_out else 0)
-            if rc != 0:
-                return f"(exit {rc})\n{out}" if out else f"(exit {rc})"
-            return out or "(exit 0)"
-
-        except Exception as e:
-            return f"Error: {e}"
-
-    # ── event builder ─────────────────────────────────────────────
 
     def _make_event(self, action: Dict[str, Any]) -> Dict[str, Any]:
         t = action.get("type", "")
