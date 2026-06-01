@@ -84,11 +84,7 @@ class MasterOrchestrator:
         self.aether = aether
         self.factory = factory
         self.intent_analyzer = IntentAnalyzer(aether)
-        
-        # Memory tier (lazy loaded)
-        self.episodic_memory = get_episodic_memory()
-        self.knowledge_graph = get_knowledge_graph()
-        
+
         # Execution tracking
         self.current_trace_id: Optional[str] = None
         self.execution_history: List[ExecutionResult] = []
@@ -99,7 +95,18 @@ class MasterOrchestrator:
     def set_step_callback(self, callback: Callable[[Dict], None]):
         """Set callback for real-time step monitoring."""
         self.step_callback = callback
-    
+
+    @property
+    def episodic_memory(self):
+        """Episodic memory store — loaded on first access (ChromaDB + SentenceTransformer).
+        Keeping this as a lazy property avoids the ~8-10s ChromaDB init at startup."""
+        return get_episodic_memory()
+
+    @property
+    def knowledge_graph(self):
+        """Knowledge graph — loaded on first access (NetworkX + graph file)."""
+        return get_knowledge_graph()
+
     async def process_message(self, user_message: str, system_prompt: Optional[str] = None, mode: str = "auto", trace_id: Optional[str] = None, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, source: str = "unknown", security_context: str = "", allow_tools: bool = True, internet_search: bool = False, companion_id: Optional[str] = None) -> ExecutionResult:
         """
         Process user message end-to-end (Asynchronous).

@@ -674,17 +674,15 @@ async function pollStartupStatus() {
                         systemInitialized = true;
                         if (tipInterval) clearInterval(tipInterval);
 
-                        // Wait for progress animation to hit 100% before starting fade-out
+                        // Wait for progress animation to hit 100% then fade immediately
                         const checkComplete = () => {
                             if (currentPercent >= 100) {
+                                splash.classList.add('fade-out');
                                 setTimeout(() => {
-                                    splash.classList.add('fade-out');
-                                    setTimeout(() => {
-                                        splash.style.display = 'none';
-                                        window.dispatchEvent(new CustomEvent('systemReady'));
-                                        resolve();
-                                    }, 1000);
-                                }, 800);
+                                    splash.style.display = 'none';
+                                    window.dispatchEvent(new CustomEvent('systemReady'));
+                                    resolve();
+                                }, 350);
                             } else {
                                 setTimeout(checkComplete, 50);
                             }

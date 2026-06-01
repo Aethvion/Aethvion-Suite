@@ -100,13 +100,6 @@ class AetherCore:
             logger.info("Loading Intelligence Firewall...")
             self.firewall = IntelligenceFirewall()
 
-            # Health check all providers
-            logger.info("Running provider health checks...")
-            health_status = self.provider_manager.health_check_all()
-
-            for provider_name, status in health_status.items():
-                logger.info(f"  {provider_name}: {status.value}")
-
             self._initialized = True
             logger.info("Aether Core initialization: COMPLETE")
             logger.info("=" * 60)

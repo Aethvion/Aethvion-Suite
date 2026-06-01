@@ -60,7 +60,7 @@ def run_cli():
 
 def open_browser(port: int = 8080) -> None:
     """Wait for server to start then open the dashboard in browser app-mode."""
-    time.sleep(1.5)
+    time.sleep(0.5)
 
     print("\n" + "-" * 70)
     print(f"WEB DASHBOARD READY: http://localhost:{port}")

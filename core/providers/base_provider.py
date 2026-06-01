@@ -233,6 +233,13 @@ class BaseProvider(ABC):
         self._consecutive_failures += 1
         if self._consecutive_failures >= self.config.max_retries:
             self._status = ProviderStatus.OFFLINE
+
+    def record_auth_failure(self):
+        """Record a permanent authentication failure (invalid/expired API key).
+        Marks the provider offline immediately — no point retrying.
+        """
+        self._consecutive_failures = self.config.max_retries
+        self._status = ProviderStatus.OFFLINE
     
     def record_success(self):
         """Record a successful request."""

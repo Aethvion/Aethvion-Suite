@@ -8,6 +8,20 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional, Iterator, Any
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig, ProviderStatus
+
+
+def _is_auth_error(error: str) -> bool:
+    """Return True if the error string indicates a permanent API key / auth failure."""
+    e = error.lower()
+    return (
+        "401" in error
+        or "authentication_error" in e
+        or "invalid x-api-key" in e
+        or "invalid_api_key" in e
+        or "api key not valid" in e
+        or "incorrect api key" in e
+        or ("unauthorized" in e and "key" in e)
+    )
 from .google_provider import GoogleAIProvider
 from .openai_provider import OpenAIProvider
 from .grok_provider import GrokProvider
@@ -624,10 +638,22 @@ class ProviderManager:
                 
                 last_error = response.error
                 logger.warning(f"[{trace_id}] Provider {target_provider_name} returned error: {last_error}")
-                
+                if last_error and _is_auth_error(last_error):
+                    provider.record_auth_failure()
+                    logger.warning(
+                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE — "
+                        "authentication failure (key invalid or expired)"
+                    )
+
             except Exception as e:
                 last_error = str(e)
                 logger.error(f"[{trace_id}] Provider {target_provider_name} raised exception: {last_error}")
+                if _is_auth_error(last_error):
+                    provider.record_auth_failure()
+                    logger.warning(
+                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE — "
+                        "authentication failure (key invalid or expired)"
+                    )
         
         # All providers failed
         logger.error(f"[{trace_id}] All providers failed. Last error: {last_error}")
@@ -732,7 +758,13 @@ class ProviderManager:
             except Exception as e:
                 last_error = str(e)
                 logger.warning(f"[{trace_id}] Stream failed for {target_provider_name}: {last_error}")
-        
+                if _is_auth_error(last_error):
+                    provider.record_auth_failure()
+                    logger.warning(
+                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE — "
+                        "authentication failure (key invalid or expired)"
+                    )
+
         if last_error:
             yield f" [STREAM ERROR: {last_error}] "
     

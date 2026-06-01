@@ -28,96 +28,105 @@ aether = None
 orchestrator = None
 factory = None
 
+def _import_remaining_routers():
+    """Import all non-critical route modules. Runs in a thread pool so it
+    does NOT block the event loop during startup."""
+    from .routes.preferences_routes import router as preferences_router
+    from .routes.workspace_routes import router as workspace_router
+    from .task_routes import router as task_router
+    from .memory_routes import router as memory_router
+    from .registry_routes import router as registry_router
+    from .usage_routes import router as usage_router
+    from .arena_routes import router as arena_router
+    from .settings_routes import router as settings_router
+    from .photo_routes import router as photo_router
+    from .advanced_aiconv_routes import router as adv_aiconv_router
+    from .research_board_routes import router as board_router
+    from .assistant_routes import router as assistant_router
+    from .ollama_routes import router as ollama_router
+    from .audio_models_routes import router as audio_router
+    from .corp_routes import router as corp_router
+    from .overlay_routes import router as overlay_router
+    from .schedule_routes import router as schedule_router
+    from .three_d_routes import router as threed_router
+    from .agent_workspace_routes import router as agent_ws_router
+    from .notification_routes import router as notification_router
+    from .explained_routes import router as explained_router
+    from .external_api_routes import router as ext_api_router, mgmt_router as ext_api_mgmt_router
+    from .persistent_memory_routes import router as persistent_memory_router
+    from .discord_routes import router as discord_router
+    from .logs_routes import router as logs_router
+    from .documentation_routes import router as documentation_router
+    from core.companions.companion_routes import router as companion_router
+    from core.companions.companion_creator_routes import router as companion_creator_router
+    from core.aethviondb.aethviondb_routes import router as aethviondb_router
+    from core.aethviondb.api_v1.router import router as aethviondb_v1_router
+    from core.automate.automate_routes import router as automate_router
+    return [
+        preferences_router, workspace_router, task_router, memory_router,
+        registry_router, usage_router, arena_router, settings_router,
+        photo_router, adv_aiconv_router, board_router, assistant_router,
+        ollama_router, audio_router, corp_router, overlay_router,
+        schedule_router, threed_router, agent_ws_router, notification_router,
+        explained_router, ext_api_router, ext_api_mgmt_router,
+        persistent_memory_router, discord_router, logs_router,
+        documentation_router, companion_router, companion_creator_router,
+        aethviondb_router, aethviondb_v1_router, automate_router,
+    ]
+
+
 async def register_all_routers(app: FastAPI):
-    """Register all API routes. Must be called during startup."""
+    """Import remaining route modules in a thread (non-blocking), then register them.
+    system_router is already registered synchronously in lifespan before this runs."""
     try:
-        # Import routers here to avoid circular dependencies
-        from .routes.system_routes import router as system_router
-        from .routes.preferences_routes import router as preferences_router
-        from .routes.workspace_routes import router as workspace_router
-        from .task_routes import router as task_router
-        from .memory_routes import router as memory_router
-        from .registry_routes import router as registry_router
-        from .usage_routes import router as usage_router
-        from .arena_routes import router as arena_router
-        from .settings_routes import router as settings_router
-        from .photo_routes import router as photo_router
-        from .advanced_aiconv_routes import router as adv_aiconv_router
-        from .research_board_routes import router as board_router
-        from .assistant_routes import router as assistant_router
-        from .ollama_routes import router as ollama_router
-        from .audio_models_routes import router as audio_router
-        from .corp_routes import router as corp_router
-        from .overlay_routes import router as overlay_router
-        from .schedule_routes import router as schedule_router
-        from .three_d_routes import router as threed_router
-        from .agent_workspace_routes import router as agent_ws_router
-        from .notification_routes import router as notification_router
-        from .explained_routes import router as explained_router
-        from .external_api_routes import router as ext_api_router, mgmt_router as ext_api_mgmt_router
-        from .persistent_memory_routes import router as persistent_memory_router
-        from .discord_routes import router as discord_router
-        from .logs_routes import router as logs_router
-        from .documentation_routes import router as documentation_router
-        
-        from core.companions.companion_routes import router as companion_router
-        from core.companions.companion_creator_routes import router as companion_creator_router
-        from core.aethviondb.aethviondb_routes import router as aethviondb_router
-        from core.aethviondb.api_v1.router import router as aethviondb_v1_router
-        from core.automate.automate_routes import router as automate_router
-        
-        app.include_router(system_router)
-        app.include_router(preferences_router)
-        app.include_router(workspace_router)
-        app.include_router(task_router)
-        app.include_router(memory_router)
-        app.include_router(registry_router)
-        app.include_router(usage_router)
-        app.include_router(arena_router)
-        app.include_router(settings_router)
-        app.include_router(photo_router)
-        app.include_router(adv_aiconv_router)
-        app.include_router(board_router)
-        app.include_router(assistant_router)
-        app.include_router(ollama_router)
-        app.include_router(audio_router)
-        app.include_router(corp_router)
-        app.include_router(overlay_router)
-        app.include_router(schedule_router)
-        app.include_router(threed_router)
-        app.include_router(agent_ws_router)
-        app.include_router(notification_router)
-        app.include_router(explained_router)
-        app.include_router(ext_api_router)
-        app.include_router(ext_api_mgmt_router)
-        app.include_router(persistent_memory_router)
-        app.include_router(discord_router)
-        app.include_router(logs_router)
-        app.include_router(documentation_router)
-        app.include_router(companion_router)
-        app.include_router(companion_creator_router)
-        app.include_router(aethviondb_router)
-        app.include_router(aethviondb_v1_router)
-        app.include_router(automate_router)
-        
+        routers = await asyncio.to_thread(_import_remaining_routers)
+        for router in routers:
+            app.include_router(router)
         logger.debug("All routers included successfully.")
     except Exception as e:
         logger.error(f"Failed to register routers: {e}", exc_info=True)
-        raise
+        app.state.startup_status.update({"status": "Startup error: route registration failed.", "error": str(e)})
+    finally:
+        app.state.routes_ready.set()
+
+async def _prewarm_memory():
+    """Load ChromaDB + knowledge graph after the UI is declared ready.
+    Runs in background so the first memory-touching user request doesn't stall."""
+    try:
+        def _load():
+            from core.memory import get_episodic_memory, get_knowledge_graph
+            get_episodic_memory()
+            get_knowledge_graph()
+        await asyncio.to_thread(_load)
+        logger.info("Memory tier pre-warmed.")
+    except Exception as e:
+        logger.warning(f"Memory pre-warm failed (non-critical): {e}")
+
 
 async def initialize_ai_engine(app: FastAPI):
     """Perform slow/blocking AI engine initialization in background."""
     try:
-        # Blocking init
+        # Blocking init (runs in thread pool — no ChromaDB/memory here anymore)
         await asyncio.to_thread(perform_blocking_init)
-        
+
+        # Wait for all routes to be registered before declaring the app ready.
+        # Router imports run concurrently in a thread; this ensures no 404s on first use.
+        try:
+            await asyncio.wait_for(app.state.routes_ready.wait(), timeout=30.0)
+        except asyncio.TimeoutError:
+            logger.warning("Route registration timed out — proceeding anyway")
+
         # Post-init workers
         from core.orchestrator.task_queue import get_task_queue_manager
         task_manager = get_task_queue_manager(app.state.orchestrator)
         await task_manager.start()
-        
+
         app.state.startup_status.update({"status": "Ready", "progress": 100, "initialized": True})
         logger.info("Aethvion Suite ready!")
+
+        # Pre-warm ChromaDB + knowledge graph in the background after UI is visible
+        asyncio.create_task(_prewarm_memory())
+
     except Exception as e:
         logger.error(f"AI Engine initialization failed: {e}", exc_info=True)
         app.state.startup_status.update({"status": "Something went wrong during AI initialization.", "error": str(e)})
@@ -125,18 +134,25 @@ async def initialize_ai_engine(app: FastAPI):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.main_event_loop = asyncio.get_running_loop()
-    
-    # 1. Initialize log streaming
+    app.state.routes_ready = asyncio.Event()
+
+    # Initialize log streaming
     ws_handler = WebSocketLogHandler()
     ws_handler.main_loop = app.state.main_event_loop
     ws_handler.setLevel(logging.INFO)
     logging.getLogger().addHandler(ws_handler)
-    
-    await register_all_routers(app)
-    
-    # 3. Start AI engine initialization in background
+
+    # Register system_router synchronously — provides /health and /startup-status
+    # which the frontend and suite tester need before anything else is ready.
+    from .routes.system_routes import router as system_router
+    app.include_router(system_router)
+
+    # Import + register remaining 31 routers in a thread (non-blocking).
+    # AI engine init runs concurrently; it waits for routes_ready before
+    # declaring initialized=True, so the frontend never hits a 404 on first use.
+    asyncio.create_task(register_all_routers(app))
     asyncio.create_task(initialize_ai_engine(app))
-    
+
     yield
     
     # Shutdown logic
