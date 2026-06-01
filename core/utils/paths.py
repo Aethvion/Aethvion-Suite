@@ -139,6 +139,10 @@ WS_PREFERENCES = MODE_WORKSPACES / "preferences.json"
 WS_PACKAGES    = MODE_WORKSPACES / "packages.json"
 WS_FILES_INDEX = MODE_WORKSPACES / "files.json"
 
+# ── Code agent prompts ──────────────────────────────────────────────────────
+CODE_AGENT_PROMPT = _CORE_CONFIG / "code" / "agent_system_prompt.txt"
+CODE_CORP_PROMPT  = _CORE_CONFIG / "code" / "corp_system_prompt.txt"
+
 # ── External API ─────────────────────────────────────────────────────────────
 EXT_API_DIR    = DATA / "external_api"
 EXT_API_KEYS   = EXT_API_DIR / "keys.json"
