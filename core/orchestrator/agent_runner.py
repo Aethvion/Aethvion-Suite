@@ -331,447 +331,548 @@ class AgentRunner(FileOpsMixin):
 
     # ── tool execution ────────────────────────────────────────────
 
+
+    # ── Action handlers ──────────────────────────────────────────────────────
+
+    def _handle_set_plan(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        steps = action.get("steps", [])
+        # Phase transition: if a plan already exists this is a re-plan (e.g.
+        # exploration → execution).  Evict all read-only files immediately so
+        # template/reference files don't snowball into the execution phase.
+        if self.state.plan:
+            phase_evicted = self.state.evict_read_only_files()
+            if phase_evicted:
+                logger.info(
+                    f"[AgentRunner iter={iteration}] Phase transition (new plan) → "
+                    f"evicted {len(phase_evicted)} read-only file(s): {phase_evicted}"
+                )
+        self.state.set_plan(steps)
+        return None  # state-only, not sent to LLM
+
+
+    def _handle_mark_done(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        step = action.get("step", "")
+        # Warn (but don't hard-block) if there are unresolved failures — the
+        # step being marked done might be unrelated to the failed file, so we
+        # let it proceed but append a reminder that `done` is still blocked.
+        if self._unresolved_failures:
+            failed_paths = ", ".join(sorted(self._unresolved_failures))
+            self.state.mark_done(step)
+            self._last_mark_done_iter = iteration
+            self._stall_warned = False
+            return (
+                f"Step marked done. WARNING: done is still blocked because "
+                f"{failed_paths} has an unresolved patch failure. Fix that file before calling done."
+            )
+        self.state.mark_done(step)
+        self._last_mark_done_iter = iteration   # reset stall clock
+        self._stall_warned = False               # allow re-warning after recovery
+        return None  # state-only
+
+
+    def _handle_evict_file(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        path = action.get("path", "")
+        if not path:
+            return "[evict_file] 'path' is required."
+        success = self.state.evict_file(path)
+        self.state.log_action(iteration, "evict_file", path)
+        self._emit({"type": "thinking", "title": f"Evicted {path}", "detail": "Dropped from active context."})
+        return (
+            f"Evicted {path} from active context."
+            if success
+            else f"{path} was not in active context (already absent or never read)."
+        )
+
+
+    def _handle_distill_file_context(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        path    = action.get("path", "")
+        summary = action.get("summary", "").strip()
+        if not path:
+            return "[distill_file_context] 'path' is required."
+        if not summary:
+            return "[distill_file_context] 'summary' is required — write compact notes about what you extracted."
+        # Store the agent-authored summary in file_digests so it shows up in
+        # the Knowledge block on every subsequent turn.  This replaces any
+        # auto-generated digest for that file (agent notes are more precise).
+        digest_entry = f"{path} [distilled]: {summary}"
+        self.state.update_file_digest(path, digest_entry)
+        was_cached = self.state.evict_file(path)
+        self.state.log_action(iteration, "distill_file_context", path)
+        self._emit({
+            "type": "thinking",
+            "title": f"Distilled {path}",
+            "detail": summary[:120] + ("…" if len(summary) > 120 else ""),
+        })
+        evict_note = " Raw content evicted." if was_cached else " (was not in active context)"
+        return f"Distilled {path} → stored in Knowledge block.{evict_note}"
+
+
+    def _handle_add_note(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        note = action.get("note", "")
+        self.state.add_note(note)
+        return None  # state-only
+
+
+    def _handle_respond(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        # Send a visible message to the user in the main chat panel.
+        # Use this for suggestions, ideas, answers, status updates — anything
+        # the user should see. Thinking text before ACTION: lines only goes to
+        # the Thoughts side panel.
+        message = action.get("message", "").strip()
+        if not message:
+            return "[respond] 'message' is required."
+        self._emit({
+            "type":    "agent_response",
+            "content": message,
+        })
+        self.state.log_action(iteration, "respond", message[:60])
+        return "Message sent to user."
+
+
+    def _handle_observe(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        # Observation action — purely informational, emitted to the UI.
+        content = action.get("content", "")
+        self.state.log_action(iteration, "observe", content[:60])
+        return content  # returned to LLM as confirmation
+
+
+    def _handle_patch_file(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        path = action.get("path", "")
+        old  = action.get("old", "")
+        new  = action.get("new", "")
+        repeat_key = f"patch_file:{path}:{old[:60]}"
+        self._action_repeats[repeat_key] = self._action_repeats.get(repeat_key, 0) + 1
+        attempt = self._action_repeats[repeat_key]
+
+        had_backup = self._backup_file(path)
+        result = self._patch_file(path, old, new)
+        self.state.log_action(iteration, "patch_file", path)
+
+        if result.startswith("patch_file FAILED"):
+            # Track as an unresolved failure — blocks `done` until fixed.
+            self._unresolved_failures.add(path)
+            # Emit a dedicated patch_failed event so the main chat activity
+            # area shows a visible red card (the thinking event only goes to
+            # the Thoughts side panel and is invisible to most users).
+            self._emit({
+                "type":   "patch_failed",
+                "path":   path,
+                "title":  f"⚠ Patch failed — {path}",
+                "detail": "Content mismatch — the agent will re-read and retry.",
+            })
+            # Also emit to Thoughts panel for detailed context
+            self._emit({
+                "type":   "thinking",
+                "title":  f"⚠ Patch failed — {path}",
+                "detail": (
+                    f"All whitespace strategies failed. "
+                    f"The agent will re-read the file and retry."
+                ),
+            })
+            # Hard enforcement note appended to the result so the LLM sees it.
+            result += (
+                f"\n[ENFORCEMENT: {path} has an unresolved patch failure. "
+                f"You CANNOT call done or mark_done until this is fixed. "
+                f"Re-read {path} and retry the patch with the exact current text.]"
+            )
+            # Soft nudge on repeated failed patches
+            if attempt >= 2:
+                result += (
+                    f"\n[NOTE: Attempt {attempt} with the same 'old' string. "
+                    f"Use read_file to get the exact current content of {path}. "
+                    f"Or use write_file / append_file as an alternative.]"
+                )
+        else:
+            # Patch succeeded — remove from unresolved failures if it was there.
+            self._unresolved_failures.discard(path)
+            import difflib as _dl
+            _diff_lines = list(_dl.unified_diff(
+                old.splitlines(keepends=True),
+                new.splitlines(keepends=True),
+                fromfile=f"a/{path}", tofile=f"b/{path}", n=2,
+            ))
+            _diff_str = "".join(_diff_lines)[:2500]
+            self._emit({
+                "type":       "write_file",
+                "path":       path,
+                "detail":     f"patch: {len(old):,}→{len(new):,} chars",
+                "diff":       _diff_str,
+                "has_backup": had_backup,
+            })
+            # Successful patch — reset the repeat counter and clear read dedup
+            self._action_repeats.pop(repeat_key, None)
+            self._invalidate_read_cache(path)
+            # Mark as modified so phase-eviction doesn't drop it
+            existing_size = self.state.file_cache.get(path, {}).get("size", 0)
+            self.state.cache_file(path, existing_size, turn=iteration, modified=True)
+            # Update digest to reflect the change
+            try:
+                fp = self.workspace / path
+                full = fp.read_text(encoding="utf-8", errors="replace")
+                summary = f"patched ({len(old)}→{len(new)} chars)"
+                digest = generate_file_digest(path, full, last_action=summary)
+                self.state.update_file_digest(path, digest)
+            except Exception:
+                pass
+        return result
+
+
+    def _handle_append_file(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        path    = action.get("path", "")
+        content = action.get("content", "")
+        result  = self._append_file(path, content)
+        self.state.log_action(iteration, "append_file", path)
+        self._emit({"type": "write_file", "path": path, "detail": f"append: {len(content)} chars"})
+        self._invalidate_read_cache(path)
+        if not result.startswith("Error:"):
+            # Successful append resolves any prior patch failure on this file.
+            self._unresolved_failures.discard(path)
+            # Mark as modified so phase-eviction doesn't drop it
+            existing_size = self.state.file_cache.get(path, {}).get("size", 0)
+            self.state.cache_file(path, existing_size, turn=iteration, modified=True)
+            try:
+                fp = self.workspace / path
+                full = fp.read_text(encoding="utf-8", errors="replace")
+                digest = generate_file_digest(path, full, last_action=f"appended {len(content)} chars")
+                self.state.update_file_digest(path, digest)
+            except Exception:
+                pass
+        return result
+
+
+    def _handle_write_file(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        path = action.get("path", "")
+        content = action.get("content", "")
+        self._backup_file(path)
+        result = self._write_file(path, content)
+        self.state.cache_file(path, len(content.encode()), turn=iteration, modified=True)
+        self.state.log_action(iteration, "write_file", path)
+        # File was written — clear its read-dedup entries.
+        self._invalidate_read_cache(path)
+        # Generate digest for the newly written content
+        if not result.startswith("Error:"):
+            # Successful write resolves any prior patch failure on this file.
+            self._unresolved_failures.discard(path)
+            try:
+                digest = generate_file_digest(path, content, last_action="written")
+                self.state.update_file_digest(path, digest)
+            except Exception:
+                pass
+        return result
+
+
+    def _handle_delete_file(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        path = action.get("path", "")
+        self._backup_file(path)
+        result = self._delete_file(path)
+        # Remove from state caches on success
+        if not result.startswith("Error:") and not result.startswith("Not found:"):
+            self.state.file_cache.pop(path, None)
+            if path in self.state.workspace_map:
+                self.state.workspace_map.remove(path)
+        self.state.log_action(iteration, "delete_file", path)
+        return result
+
+
+    def _handle_read_file(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        path   = action.get("path", "")
+        offset = int(action.get("offset", 0))   # line offset (0 = start)
+        limit  = action.get("limit")            # max lines to return (None = all)
+        limit  = int(limit) if limit is not None else None
+
+        # Track reads per section for the nudge system — no hard blocks.
+        # Bucket offsets into 100-line windows so offset=0 and offset=10 are treated
+        # identically.
+        bucket    = (offset // 100) * 100
+        cache_key = f"{path}:{bucket}"
+        self._read_cache[cache_key] = self._read_cache.get(cache_key, 0) + 1
+        read_count = self._read_cache[cache_key]
+
+        result = self._read_file(path, offset=offset, limit=limit)
+        # Cache with actual byte size of result if successful
+        if not result.startswith("Error:") and not result.startswith("Not found:"):
+            self.state.cache_file(path, len(result.encode()), turn=iteration)
+            # Generate / refresh semantic digest on a full read (offset=0).
+            # This populates the Knowledge block so subsequent iterations don't
+            if offset == 0:
+                try:
+                    fp = self.workspace / path
+                    full = fp.read_text(encoding="utf-8", errors="replace")
+                    digest = generate_file_digest(path, full)
+                    self.state.update_file_digest(path, digest)
+                except Exception:
+                    pass
+            # Soft nudge after repeated reads of the same section — never block,
+            # just remind the agent that the Knowledge block has the structure.
+            if read_count >= 3:
+                nudge = (
+                    f"\n\n[NOTE: You have read this section of {path} {read_count} times. "
+                    f"The Knowledge block in Context already lists all functions with line "
+                    f"numbers — check it before reading again. If you have the content you "
+                    f"need, write your patch now.]"
+                )
+                result = result + nudge
+        suffix = f"@{offset}" if offset else ""
+        self.state.log_action(iteration, "read_file", f"{path}{suffix}")
+        return result
+
+
+    def _handle_list_dir(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        path = action.get("path", "")
+        result = self._list_dir(path)
+        # Parse flat filenames from result to update workspace map
+        if result and result != "(empty)" and not result.startswith("Error:"):
+            entries = parse_dir_entries(result)
+            if entries:
+                self.state.update_workspace_map(entries)
+        self.state.log_action(iteration, "list_dir", path or ".")
+        return result
+
+
+    def _handle_restore_file(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        path = action.get("path", "")
+        if not path:
+            return "[restore_file] 'path' is required."
+        result = self._restore_file(path)
+        self.state.log_action(iteration, "restore_file", path)
+        if not result.startswith("Error:") and not result.startswith("No backup"):
+            self._invalidate_read_cache(path)
+        return result
+
+
+    def _handle_run_command(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        cmd     = action.get("command", "")
+        timeout = int(action.get("timeout", 120))
+        result  = self._run_command(cmd, timeout=timeout)
+        short_cmd = cmd[:40] if len(cmd) > 40 else cmd
+        self.state.log_action(iteration, "run_command", short_cmd)
+        return result
+
+
+    def _handle_glob(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        pattern  = action.get("pattern", "**/*")
+        sub_path = action.get("path", "")
+        result = self._glob(pattern, sub_path)
+        self.state.log_action(iteration, "glob", pattern)
+        return result
+
+
+    def _handle_move_file(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        src = action.get("src", "")
+        dst = action.get("dst", "")
+        result = self._move_file(src, dst)
+        self.state.log_action(iteration, "move_file", f"{src}→{dst}")
+        return result
+
+
+    def _handle_create_directory(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        path = action.get("path", "")
+        result = self._create_directory(path)
+        self.state.log_action(iteration, "create_directory", path)
+        return result
+
+
+    def _handle_search_web(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        query = action.get("query", "")
+        max_results = int(action.get("max_results", 6))
+        # Hard limit: max 3 searches per task, enforced in code
+        if self._search_count >= 3:
+            return (
+                "[SEARCH BLOCKED: you have already used all 3 search calls for this task. "
+                "You MUST now use fetch_url with a specific URL, or write the output "
+                "using the best information you already have. Do NOT search again.]"
+            )
+        # Dedup: never run the exact same query twice
+        if query in self._search_cache:
+            cached = self._search_cache[query]
+            return f"[DUPLICATE SEARCH — returning cached result]\n{cached}"
+        self._search_count += 1
+        result = search_web(query, max_results)
+        self._search_cache[query] = result
+        self.state.log_action(iteration, "search_web", query[:40])
+        return result
+
+
+    def _handle_fetch_url(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        url = action.get("url", "")
+        # Dedup: never fetch the same URL twice — return cached result instantly.
+        # This breaks the most common runaway loop: the model forgets it already
+        # fetched a URL (conversation window is only 4 entries) and retries it.
+        if url in self._fetch_cache:
+            cached = self._fetch_cache[url]
+            return (
+                f"[DUPLICATE FETCH — you already fetched this URL. "
+                f"Use the data from the cached result below and write your files now.]\n{cached}"
+            )
+        result = fetch_url(url)
+        # Only cache successful responses — never cache 429/5xx errors so
+        # the agent can retry after a rate-limit window passes.
+        if not result.startswith("HTTP 429") and not result.startswith("HTTP 5"):
+            self._fetch_cache[url] = result
+        self.state.log_action(iteration, "fetch_url", url[:40])
+        return result
+
+
+    def _handle_get_project_blueprint(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        sub_path = action.get("path", "")
+        result = build_workspace_blueprint(
+            self.workspace, sub_path, cache_path=self._blueprint_cache_path
+        )
+        self.state.log_action(iteration, "get_project_blueprint", sub_path or "workspace")
+        return result
+
+
+    def _handle_search_codebase(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        query = action.get("query", "")
+        path  = action.get("path", "")
+        ctx   = int(action.get("context", 1))
+        max_r = int(action.get("max_results", 30))
+        if not query:
+            return "[search_codebase] 'query' is required."
+        result = search_codebase(self.workspace, query, path, ctx, max_r)
+        self.state.log_action(iteration, "search_codebase", query[:40])
+        self._emit({"type": "read_file", "path": path or "workspace", "detail": f"search: {query[:40]}"})
+        return result
+
+
+    def _handle_save_to_project_memory(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        if not self._project_memory:
+            return "[save_to_project_memory] No project memory available for this workspace."
+        from core.orchestrator.project_memory import CATEGORY_META
+        category = action.get("category", "note")
+        text     = action.get("text")
+        title    = action.get("title")
+        raw_items = action.get("items", [])
+        # Convert plain string list to checklist item dicts
+        if raw_items and isinstance(raw_items[0], str):
+            raw_items = [{"id": __import__("uuid").uuid4().hex[:8], "text": t, "done": False}
+                         for t in raw_items]
+        item = self._project_memory.add_item(
+            category=category, text=text, title=title,
+            items=raw_items if raw_items else None, source="agent",
+        )
+        meta = CATEGORY_META.get(category, {"icon": "📝", "label": category.title()})
+        display = text or title or f"{len(raw_items)} items"
+        self._emit({
+            "type":     "project_memory_item",
+            "action":   "added",
+            "category": category,
+            "icon":     meta["icon"],
+            "label":    meta["label"],
+            "text":     display,
+            "item":     item,
+            "title":    f"{meta['icon']} Saved to Project Memory",
+            "detail":   f"[{meta['label']}] {display}",
+        })
+        self.state.log_action(iteration, "save_to_project_memory", f"{category}: {display[:40]}")
+        return f"Saved to project memory — [{category}] {display}"
+
+
+    def _handle_check_checklist_item(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        if not self._project_memory:
+            return "[check_checklist_item] No project memory available."
+        checklist_id = action.get("checklist_id", "")
+        item_id      = action.get("item_id", "")
+        done         = bool(action.get("done", True))
+        ok = self._project_memory.update_checklist_item(checklist_id, item_id, done)
+        if ok:
+            state_str = "done" if done else "undone"
+            self._emit({
+                "type":          "project_memory_item",
+                "action":        "checklist_updated",
+                "checklist_id":  checklist_id,
+                "item_id":       item_id,
+                "done":          done,
+                "title":         "📋 Checklist updated",
+                "detail":        f"Item marked {state_str}",
+            })
+            return f"Checklist item marked {state_str}."
+        return f"[check_checklist_item] Item not found (checklist_id={checklist_id!r}, item_id={item_id!r})."
+
+
+
+    _HANDLER_MAP = {
+        "set_plan": "_handle_set_plan",
+        "mark_done": "_handle_mark_done",
+        "evict_file": "_handle_evict_file",
+        "distill_file_context": "_handle_distill_file_context",
+        "add_note": "_handle_add_note",
+        "respond": "_handle_respond",
+        "observe": "_handle_observe",
+        "patch_file": "_handle_patch_file",
+        "append_file": "_handle_append_file",
+        "write_file": "_handle_write_file",
+        "delete_file": "_handle_delete_file",
+        "read_file": "_handle_read_file",
+        "list_dir": "_handle_list_dir",
+        "restore_file": "_handle_restore_file",
+        "run_command": "_handle_run_command",
+        "glob": "_handle_glob",
+        "move_file": "_handle_move_file",
+        "create_directory": "_handle_create_directory",
+        "search_web": "_handle_search_web",
+        "fetch_url": "_handle_fetch_url",
+        "get_project_blueprint": "_handle_get_project_blueprint",
+        "search_codebase": "_handle_search_codebase",
+        "save_to_project_memory": "_handle_save_to_project_memory",
+        "check_checklist_item": "_handle_check_checklist_item",
+    }
+
     def _execute(self, action: Dict[str, Any], iteration: int = 0) -> Optional[str]:
         """Execute an action. Returns result string, or None for state-only actions."""
         t = action.get("type", "")
-
-        if t == "set_plan":
-            steps = action.get("steps", [])
-            # Phase transition: if a plan already exists this is a re-plan (e.g.
-            # exploration → execution).  Evict all read-only files immediately so
-            # template/reference files don't snowball into the execution phase.
-            if self.state.plan:
-                phase_evicted = self.state.evict_read_only_files()
-                if phase_evicted:
-                    logger.info(
-                        f"[AgentRunner iter={iteration}] Phase transition (new plan) → "
-                        f"evicted {len(phase_evicted)} read-only file(s): {phase_evicted}"
-                    )
-            self.state.set_plan(steps)
-            return None  # state-only, not sent to LLM
-
-        if t == "mark_done":
-            step = action.get("step", "")
-            # Warn (but don't hard-block) if there are unresolved failures — the
-            # step being marked done might be unrelated to the failed file, so we
-            # let it proceed but append a reminder that `done` is still blocked.
-            if self._unresolved_failures:
-                failed_paths = ", ".join(sorted(self._unresolved_failures))
-                self.state.mark_done(step)
-                self._last_mark_done_iter = iteration
-                self._stall_warned = False
-                return (
-                    f"Step marked done. WARNING: done is still blocked because "
-                    f"{failed_paths} has an unresolved patch failure. Fix that file before calling done."
-                )
-            self.state.mark_done(step)
-            self._last_mark_done_iter = iteration   # reset stall clock
-            self._stall_warned = False               # allow re-warning after recovery
-            return None  # state-only
-
-        if t == "evict_file":
-            path = action.get("path", "")
-            if not path:
-                return "[evict_file] 'path' is required."
-            success = self.state.evict_file(path)
-            self.state.log_action(iteration, "evict_file", path)
-            self._emit({"type": "thinking", "title": f"Evicted {path}", "detail": "Dropped from active context."})
-            return (
-                f"Evicted {path} from active context."
-                if success
-                else f"{path} was not in active context (already absent or never read)."
-            )
-
-        if t == "distill_file_context":
-            path    = action.get("path", "")
-            summary = action.get("summary", "").strip()
-            if not path:
-                return "[distill_file_context] 'path' is required."
-            if not summary:
-                return "[distill_file_context] 'summary' is required — write compact notes about what you extracted."
-            # Store the agent-authored summary in file_digests so it shows up in
-            # the Knowledge block on every subsequent turn.  This replaces any
-            # auto-generated digest for that file (agent notes are more precise).
-            digest_entry = f"{path} [distilled]: {summary}"
-            self.state.update_file_digest(path, digest_entry)
-            was_cached = self.state.evict_file(path)
-            self.state.log_action(iteration, "distill_file_context", path)
-            self._emit({
-                "type": "thinking",
-                "title": f"Distilled {path}",
-                "detail": summary[:120] + ("…" if len(summary) > 120 else ""),
-            })
-            evict_note = " Raw content evicted." if was_cached else " (was not in active context)"
-            return f"Distilled {path} → stored in Knowledge block.{evict_note}"
-
-        if t == "add_note":
-            note = action.get("note", "")
-            self.state.add_note(note)
-            return None  # state-only
-
-        if t == "respond":
-            # Send a visible message to the user in the main chat panel.
-            # Use this for suggestions, ideas, answers, status updates — anything
-            # the user should see. Thinking text before ACTION: lines only goes to
-            # the Thoughts side panel.
-            message = action.get("message", "").strip()
-            if not message:
-                return "[respond] 'message' is required."
-            self._emit({
-                "type":    "agent_response",
-                "content": message,
-            })
-            self.state.log_action(iteration, "respond", message[:60])
-            return "Message sent to user."
-
-        if t == "observe":
-            # Observation action — purely informational, emitted to the UI.
-            content = action.get("content", "")
-            self.state.log_action(iteration, "observe", content[:60])
-            return content  # returned to LLM as confirmation
-
-        if t == "patch_file":
-            path = action.get("path", "")
-            old  = action.get("old", "")
-            new  = action.get("new", "")
-            repeat_key = f"patch_file:{path}:{old[:60]}"
-            self._action_repeats[repeat_key] = self._action_repeats.get(repeat_key, 0) + 1
-            attempt = self._action_repeats[repeat_key]
-
-            had_backup = self._backup_file(path)
-            result = self._patch_file(path, old, new)
-            self.state.log_action(iteration, "patch_file", path)
-
-            if result.startswith("patch_file FAILED"):
-                # Track as an unresolved failure — blocks `done` until fixed.
-                self._unresolved_failures.add(path)
-                # Emit a dedicated patch_failed event so the main chat activity
-                # area shows a visible red card (the thinking event only goes to
-                # the Thoughts side panel and is invisible to most users).
-                self._emit({
-                    "type":   "patch_failed",
-                    "path":   path,
-                    "title":  f"⚠ Patch failed — {path}",
-                    "detail": "Content mismatch — the agent will re-read and retry.",
-                })
-                # Also emit to Thoughts panel for detailed context
-                self._emit({
-                    "type":   "thinking",
-                    "title":  f"⚠ Patch failed — {path}",
-                    "detail": (
-                        f"All whitespace strategies failed. "
-                        f"The agent will re-read the file and retry."
-                    ),
-                })
-                # Hard enforcement note appended to the result so the LLM sees it.
-                result += (
-                    f"\n[ENFORCEMENT: {path} has an unresolved patch failure. "
-                    f"You CANNOT call done or mark_done until this is fixed. "
-                    f"Re-read {path} and retry the patch with the exact current text.]"
-                )
-                # Soft nudge on repeated failed patches
-                if attempt >= 2:
-                    result += (
-                        f"\n[NOTE: Attempt {attempt} with the same 'old' string. "
-                        f"Use read_file to get the exact current content of {path}. "
-                        f"Or use write_file / append_file as an alternative.]"
-                    )
-            else:
-                # Patch succeeded — remove from unresolved failures if it was there.
-                self._unresolved_failures.discard(path)
-                import difflib as _dl
-                _diff_lines = list(_dl.unified_diff(
-                    old.splitlines(keepends=True),
-                    new.splitlines(keepends=True),
-                    fromfile=f"a/{path}", tofile=f"b/{path}", n=2,
-                ))
-                _diff_str = "".join(_diff_lines)[:2500]
-                self._emit({
-                    "type":       "write_file",
-                    "path":       path,
-                    "detail":     f"patch: {len(old):,}→{len(new):,} chars",
-                    "diff":       _diff_str,
-                    "has_backup": had_backup,
-                })
-                # Successful patch — reset the repeat counter and clear read dedup
-                self._action_repeats.pop(repeat_key, None)
-                self._invalidate_read_cache(path)
-                # Mark as modified so phase-eviction doesn't drop it
-                existing_size = self.state.file_cache.get(path, {}).get("size", 0)
-                self.state.cache_file(path, existing_size, turn=iteration, modified=True)
-                # Update digest to reflect the change
-                try:
-                    fp = self.workspace / path
-                    full = fp.read_text(encoding="utf-8", errors="replace")
-                    summary = f"patched ({len(old)}→{len(new)} chars)"
-                    digest = generate_file_digest(path, full, last_action=summary)
-                    self.state.update_file_digest(path, digest)
-                except Exception:
-                    pass
-            return result
-
-        if t == "append_file":
-            path    = action.get("path", "")
-            content = action.get("content", "")
-            result  = self._append_file(path, content)
-            self.state.log_action(iteration, "append_file", path)
-            self._emit({"type": "write_file", "path": path, "detail": f"append: {len(content)} chars"})
-            self._invalidate_read_cache(path)
-            if not result.startswith("Error:"):
-                # Successful append resolves any prior patch failure on this file.
-                self._unresolved_failures.discard(path)
-                # Mark as modified so phase-eviction doesn't drop it
-                existing_size = self.state.file_cache.get(path, {}).get("size", 0)
-                self.state.cache_file(path, existing_size, turn=iteration, modified=True)
-                try:
-                    fp = self.workspace / path
-                    full = fp.read_text(encoding="utf-8", errors="replace")
-                    digest = generate_file_digest(path, full, last_action=f"appended {len(content)} chars")
-                    self.state.update_file_digest(path, digest)
-                except Exception:
-                    pass
-            return result
-
-        if t == "write_file":
-            path = action.get("path", "")
-            content = action.get("content", "")
-            self._backup_file(path)
-            result = self._write_file(path, content)
-            self.state.cache_file(path, len(content.encode()), turn=iteration, modified=True)
-            self.state.log_action(iteration, "write_file", path)
-            # File was written — clear its read-dedup entries.
-            self._invalidate_read_cache(path)
-            # Generate digest for the newly written content
-            if not result.startswith("Error:"):
-                # Successful write resolves any prior patch failure on this file.
-                self._unresolved_failures.discard(path)
-                try:
-                    digest = generate_file_digest(path, content, last_action="written")
-                    self.state.update_file_digest(path, digest)
-                except Exception:
-                    pass
-            return result
-
-        if t == "delete_file":
-            path = action.get("path", "")
-            self._backup_file(path)
-            result = self._delete_file(path)
-            # Remove from state caches on success
-            if not result.startswith("Error:") and not result.startswith("Not found:"):
-                self.state.file_cache.pop(path, None)
-                if path in self.state.workspace_map:
-                    self.state.workspace_map.remove(path)
-            self.state.log_action(iteration, "delete_file", path)
-            return result
-
-        if t == "read_file":
-            path   = action.get("path", "")
-            offset = int(action.get("offset", 0))   # line offset (0 = start)
-            limit  = action.get("limit")            # max lines to return (None = all)
-            limit  = int(limit) if limit is not None else None
-
-            # Track reads per section for the nudge system — no hard blocks.
-            # Bucket offsets into 100-line windows so offset=0 and offset=10 are treated
-            # identically.
-            bucket    = (offset // 100) * 100
-            cache_key = f"{path}:{bucket}"
-            self._read_cache[cache_key] = self._read_cache.get(cache_key, 0) + 1
-            read_count = self._read_cache[cache_key]
-
-            result = self._read_file(path, offset=offset, limit=limit)
-            # Cache with actual byte size of result if successful
-            if not result.startswith("Error:") and not result.startswith("Not found:"):
-                self.state.cache_file(path, len(result.encode()), turn=iteration)
-                # Generate / refresh semantic digest on a full read (offset=0).
-                # This populates the Knowledge block so subsequent iterations don't
-                if offset == 0:
-                    try:
-                        fp = self.workspace / path
-                        full = fp.read_text(encoding="utf-8", errors="replace")
-                        digest = generate_file_digest(path, full)
-                        self.state.update_file_digest(path, digest)
-                    except Exception:
-                        pass
-                # Soft nudge after repeated reads of the same section — never block,
-                # just remind the agent that the Knowledge block has the structure.
-                if read_count >= 3:
-                    nudge = (
-                        f"\n\n[NOTE: You have read this section of {path} {read_count} times. "
-                        f"The Knowledge block in Context already lists all functions with line "
-                        f"numbers — check it before reading again. If you have the content you "
-                        f"need, write your patch now.]"
-                    )
-                    result = result + nudge
-            suffix = f"@{offset}" if offset else ""
-            self.state.log_action(iteration, "read_file", f"{path}{suffix}")
-            return result
-
-        if t == "list_dir":
-            path = action.get("path", "")
-            result = self._list_dir(path)
-            # Parse flat filenames from result to update workspace map
-            if result and result != "(empty)" and not result.startswith("Error:"):
-                entries = parse_dir_entries(result)
-                if entries:
-                    self.state.update_workspace_map(entries)
-            self.state.log_action(iteration, "list_dir", path or ".")
-            return result
-
-        if t == "restore_file":
-            path = action.get("path", "")
-            if not path:
-                return "[restore_file] 'path' is required."
-            result = self._restore_file(path)
-            self.state.log_action(iteration, "restore_file", path)
-            if not result.startswith("Error:") and not result.startswith("No backup"):
-                self._invalidate_read_cache(path)
-            return result
-
-        if t == "run_command":
-            cmd     = action.get("command", "")
-            timeout = int(action.get("timeout", 120))
-            result  = self._run_command(cmd, timeout=timeout)
-            short_cmd = cmd[:40] if len(cmd) > 40 else cmd
-            self.state.log_action(iteration, "run_command", short_cmd)
-            return result
-
-        if t == "glob":
-            pattern  = action.get("pattern", "**/*")
-            sub_path = action.get("path", "")
-            result = self._glob(pattern, sub_path)
-            self.state.log_action(iteration, "glob", pattern)
-            return result
-
-        if t == "move_file":
-            src = action.get("src", "")
-            dst = action.get("dst", "")
-            result = self._move_file(src, dst)
-            self.state.log_action(iteration, "move_file", f"{src}→{dst}")
-            return result
-
-        if t == "create_directory":
-            path = action.get("path", "")
-            result = self._create_directory(path)
-            self.state.log_action(iteration, "create_directory", path)
-            return result
-
-        if t == "search_web":
-            query = action.get("query", "")
-            max_results = int(action.get("max_results", 6))
-            # Hard limit: max 3 searches per task, enforced in code
-            if self._search_count >= 3:
-                return (
-                    "[SEARCH BLOCKED: you have already used all 3 search calls for this task. "
-                    "You MUST now use fetch_url with a specific URL, or write the output "
-                    "using the best information you already have. Do NOT search again.]"
-                )
-            # Dedup: never run the exact same query twice
-            if query in self._search_cache:
-                cached = self._search_cache[query]
-                return f"[DUPLICATE SEARCH — returning cached result]\n{cached}"
-            self._search_count += 1
-            result = search_web(query, max_results)
-            self._search_cache[query] = result
-            self.state.log_action(iteration, "search_web", query[:40])
-            return result
-
-        if t == "fetch_url":
-            url = action.get("url", "")
-            # Dedup: never fetch the same URL twice — return cached result instantly.
-            # This breaks the most common runaway loop: the model forgets it already
-            # fetched a URL (conversation window is only 4 entries) and retries it.
-            if url in self._fetch_cache:
-                cached = self._fetch_cache[url]
-                return (
-                    f"[DUPLICATE FETCH — you already fetched this URL. "
-                    f"Use the data from the cached result below and write your files now.]\n{cached}"
-                )
-            result = fetch_url(url)
-            # Only cache successful responses — never cache 429/5xx errors so
-            # the agent can retry after a rate-limit window passes.
-            if not result.startswith("HTTP 429") and not result.startswith("HTTP 5"):
-                self._fetch_cache[url] = result
-            self.state.log_action(iteration, "fetch_url", url[:40])
-            return result
-
-        if t == "get_project_blueprint":
-            sub_path = action.get("path", "")
-            result = build_workspace_blueprint(
-                self.workspace, sub_path, cache_path=self._blueprint_cache_path
-            )
-            self.state.log_action(iteration, "get_project_blueprint", sub_path or "workspace")
-            return result
-
-        if t == "search_codebase":
-            query = action.get("query", "")
-            path  = action.get("path", "")
-            ctx   = int(action.get("context", 1))
-            max_r = int(action.get("max_results", 30))
-            if not query:
-                return "[search_codebase] 'query' is required."
-            result = search_codebase(self.workspace, query, path, ctx, max_r)
-            self.state.log_action(iteration, "search_codebase", query[:40])
-            self._emit({"type": "read_file", "path": path or "workspace", "detail": f"search: {query[:40]}"})
-            return result
-
-        # ── Project memory actions ────────────────────────────────────────────
-
-        if t == "save_to_project_memory":
-            if not self._project_memory:
-                return "[save_to_project_memory] No project memory available for this workspace."
-            from core.orchestrator.project_memory import CATEGORY_META
-            category = action.get("category", "note")
-            text     = action.get("text")
-            title    = action.get("title")
-            raw_items = action.get("items", [])
-            # Convert plain string list to checklist item dicts
-            if raw_items and isinstance(raw_items[0], str):
-                raw_items = [{"id": __import__("uuid").uuid4().hex[:8], "text": t, "done": False}
-                             for t in raw_items]
-            item = self._project_memory.add_item(
-                category=category, text=text, title=title,
-                items=raw_items if raw_items else None, source="agent",
-            )
-            meta = CATEGORY_META.get(category, {"icon": "📝", "label": category.title()})
-            display = text or title or f"{len(raw_items)} items"
-            self._emit({
-                "type":     "project_memory_item",
-                "action":   "added",
-                "category": category,
-                "icon":     meta["icon"],
-                "label":    meta["label"],
-                "text":     display,
-                "item":     item,
-                "title":    f"{meta['icon']} Saved to Project Memory",
-                "detail":   f"[{meta['label']}] {display}",
-            })
-            self.state.log_action(iteration, "save_to_project_memory", f"{category}: {display[:40]}")
-            return f"Saved to project memory — [{category}] {display}"
-
-        if t == "check_checklist_item":
-            if not self._project_memory:
-                return "[check_checklist_item] No project memory available."
-            checklist_id = action.get("checklist_id", "")
-            item_id      = action.get("item_id", "")
-            done         = bool(action.get("done", True))
-            ok = self._project_memory.update_checklist_item(checklist_id, item_id, done)
-            if ok:
-                state_str = "done" if done else "undone"
-                self._emit({
-                    "type":          "project_memory_item",
-                    "action":        "checklist_updated",
-                    "checklist_id":  checklist_id,
-                    "item_id":       item_id,
-                    "done":          done,
-                    "title":         "📋 Checklist updated",
-                    "detail":        f"Item marked {state_str}",
-                })
-                return f"Checklist item marked {state_str}."
-            return f"[check_checklist_item] Item not found (checklist_id={checklist_id!r}, item_id={item_id!r})."
-
-        return f"Unknown action: {t}"
-
-
+        handler_name = self._HANDLER_MAP.get(t)
+        if handler_name is None:
+            return f"Unknown action: {t}"
+        return getattr(self, handler_name)(action, iteration)
 
     def _make_event(self, action: Dict[str, Any]) -> Dict[str, Any]:
         t = action.get("type", "")
