@@ -19,7 +19,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from core.utils.logger import get_logger
+from core.utils import get_logger, utcnow_iso
 from core.utils.paths import COMPANIONS
 from core.companions.registry import CompanionRegistry
 
@@ -314,7 +314,7 @@ async def import_companion(req: ImportRequest):
         "user_info": {},
         "recent_observations": [],
         "synthesis_notes": [],
-        "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "last_updated": utcnow_iso(),
     })
 
     CompanionRegistry.force_reload()
@@ -629,7 +629,7 @@ async def create_companion(req: CompanionCreateRequest):
         "user_info": {},
         "recent_observations": [],
         "synthesis_notes": [],
-        "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "last_updated": utcnow_iso(),
     })
 
     CompanionRegistry.force_reload()

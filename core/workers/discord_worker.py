@@ -7,7 +7,7 @@ import asyncio
 import discord
 from discord.ext import commands
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from core.utils import get_logger, generate_trace_id
 from core.orchestrator.task_models import Task, TaskStatus
@@ -223,7 +223,7 @@ class DiscordWorker(commands.Bot):
     async def _execute_discord_task(self, task: Task):
         """Execute a DISCORD_SEND task."""
         task.status = TaskStatus.RUNNING
-        task.started_at = datetime.now()
+        task.started_at = datetime.now(timezone.utc)
         
         channel_id = task.metadata.get('channel_id')
         content = task.prompt 
@@ -275,7 +275,7 @@ class DiscordWorker(commands.Bot):
             task.status = TaskStatus.FAILED
             task.error = str(e)
         
-        task.completed_at = datetime.now()
+        task.completed_at = datetime.now(timezone.utc)
         if hasattr(self.task_manager, '_save_task'):
             self.task_manager._save_task(task)
 

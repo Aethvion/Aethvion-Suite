@@ -15,7 +15,7 @@ from typing import Dict, Any
 CREATE_NO_WINDOW = 0x08000000 if os.name == 'nt' else 0
 from fastapi import APIRouter, HTTPException, Request
 
-from core.utils import get_logger, atomic_json_write
+from core.utils import get_logger, utcnow_iso, atomic_json_write
 from core.utils.model_downloader import ModelDownloader
 from core.utils.registry_utils import ensure_registry_initialized
 from core.utils.paths import (
@@ -1116,7 +1116,7 @@ async def get_system_specs():
         "gpu_name": None,
         "vram_gb": 0.0,
         "cuda_available": False,
-        "last_updated": datetime.datetime.now().isoformat(),
+        "last_updated": utcnow_iso(),
     }
 
     # ── CPU & RAM via psutil ─────────────────────────────────────────────────

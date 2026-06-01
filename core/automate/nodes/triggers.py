@@ -5,8 +5,9 @@ Handler functions for all trigger.* node types.
 """
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
+
+from core.utils import utcnow_iso
 
 
 def trigger_manual(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
@@ -18,7 +19,7 @@ def trigger_manual(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
 
 def trigger_schedule(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     # "trigger" fires the chain; "data" carries the ISO timestamp of execution.
-    return {"trigger": None, "data": datetime.now().isoformat()}
+    return {"trigger": None, "data": utcnow_iso()}
 
 
 def trigger_webhook(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:

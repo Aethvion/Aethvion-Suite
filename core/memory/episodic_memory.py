@@ -6,7 +6,7 @@ Vector-based semantic memory storage using ChromaDB
 import yaml
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 # heavy import moved to lazy loading
 # from sentence_transformers import SentenceTransformer
@@ -283,7 +283,7 @@ class EpisodicMemoryStore:
             return []
         
         try:
-            cutoff_time = (datetime.now() - timedelta(hours=hours)).isoformat()
+            cutoff_time = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
             
             where = {}
             if domain:

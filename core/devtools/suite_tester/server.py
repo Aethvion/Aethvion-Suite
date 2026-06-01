@@ -448,7 +448,16 @@ def run_test_orchestrator(run_id: str, python_exe: str):
                                     kill_process_tree(proc.pid)
                         except Exception:
                             pass
-                time.sleep(1.0)
+                # Wait until the port is actually free (up to 5s)
+                for _ in range(10):
+                    time.sleep(0.5)
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as chk:
+                        chk.settimeout(0.2)
+                        if chk.connect_ex(('127.0.0.1', test_port)) != 0:
+                            add_log(run_id, f"Port {test_port} is now free.")
+                            break
+                else:
+                    add_log(run_id, f"WARNING: Port {test_port} may still be in use after cleanup.")
     except Exception as exc:
         add_log(run_id, f"Port check skipped: {exc}")
 
@@ -494,38 +503,51 @@ def run_test_orchestrator(run_id: str, python_exe: str):
             test_runs[run_id]["error"] = f"Launch failed: {str(e)}"
         return
 
-    # Poll startup status
-    startup_success = False
+    # Poll startup status — wait up to 60 seconds
+    startup_success  = False
     startup_duration = 0.0
-    
-    # Wait up to 35 seconds
+    last_status      = "not started"
+    last_progress    = 0
+    http_reachable   = False
+
     poll_start = time.time()
-    while time.time() - poll_start < 35:
-        # Check if process died
+    while time.time() - poll_start < 60:
         if suite_proc.poll() is not None:
-            add_log(run_id, f"CRITICAL: Process terminated prematurely with exit code {suite_proc.returncode}")
+            add_log(run_id, f"CRITICAL: Process terminated prematurely (exit code {suite_proc.returncode})")
             break
-            
+
+        elapsed = round(time.time() - poll_start, 1)
         res = make_http_request(f"{test_url}/api/system/startup-status", timeout=2.0)
         if res["success"]:
-            body = res["body"]
-            status_str = body.get("status", "Starting")
-            progress_int = body.get("progress", 0)
-            initialized = body.get("initialized", False)
-            add_log(run_id, f"Suite startup status: {status_str} ({progress_int}%)")
-            
+            http_reachable = True
+            body          = res["body"]
+            last_status   = body.get("status", "Starting")
+            last_progress = body.get("progress", 0)
+            initialized   = body.get("initialized", False)
+            error_msg     = body.get("error")
+
+            add_log(run_id, f"[{elapsed}s] Startup: {last_status} ({last_progress}%)")
+
+            if error_msg:
+                add_log(run_id, f"CRITICAL: Suite reported init error: {error_msg}")
+                break
+
             if initialized:
-                startup_success = True
+                startup_success  = True
                 startup_duration = time.time() - startup_start
-                add_log(run_id, f"SUCCESS: Aethvion Suite is fully ready in {startup_duration:.2f} seconds!")
+                add_log(run_id, f"SUCCESS: Ready in {startup_duration:.2f}s")
                 break
         else:
-            add_log(run_id, "Waiting for HTTP server to respond...")
-            
+            add_log(run_id, f"[{elapsed}s] Waiting for HTTP server...")
+
         time.sleep(1.0)
 
     if not startup_success:
-        add_log(run_id, "CRITICAL: Startup timeout or failure.")
+        reason = (
+            f"last status: '{last_status}' ({last_progress}%)"
+            if http_reachable else "HTTP server never responded"
+        )
+        add_log(run_id, f"CRITICAL: Startup timeout after 60s — {reason}")
         try:
             suite_proc.terminate()
             suite_proc.wait(timeout=3)
@@ -533,7 +555,7 @@ def run_test_orchestrator(run_id: str, python_exe: str):
             suite_proc.kill()
         with runs_lock:
             test_runs[run_id]["status"] = "failed"
-            test_runs[run_id]["error"] = "Startup timed out or crashed"
+            test_runs[run_id]["error"]  = f"Startup timed out — {reason}"
         return
 
     # Launch browser window to render the suite front-end and trigger JS executions

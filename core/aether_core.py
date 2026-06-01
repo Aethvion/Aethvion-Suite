@@ -16,6 +16,7 @@ from core.security import IntelligenceFirewall, RoutingDecision
 from core.utils import (
     get_trace_manager,
     get_logger,
+    utcnow_iso,
     InputValidator
 )
 from core.utils.registry_utils import ensure_registry_initialized
@@ -140,7 +141,7 @@ class AetherCore:
             # Register manually — start_trace() always generates a new ID
             self.trace_manager._active_traces[trace_id] = {
                 'trace_id': trace_id,
-                'started_at': datetime.now().isoformat(),
+                'started_at': utcnow_iso(),
                 'metadata': {'request_type': request.request_type},
                 'status': 'active'
             }
@@ -148,7 +149,7 @@ class AetherCore:
             trace_id = self.trace_manager.start_trace(metadata={
                 'request_type': request.request_type,
                 'source': request.metadata.get('source', 'unknown') if request.metadata else 'unknown',
-                'timestamp': datetime.now().isoformat()
+                'timestamp': utcnow_iso()
             })
 
         logger.info(f"[{trace_id}] === NEW REQUEST ===")

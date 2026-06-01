@@ -16,8 +16,7 @@ from fastapi import APIRouter, HTTPException, Header, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from core.utils.logger import get_logger
-from core.utils import atomic_json_write
+from core.utils import get_logger, utcnow_iso, atomic_json_write
 from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
@@ -80,7 +79,7 @@ def _check_auth(authorization: Optional[str]):
     keys = _load_keys()
     for key_id, kd in keys.items():
         if kd.get("key") == token and kd.get("enabled", True):
-            kd["last_used"] = datetime.now().isoformat()
+            kd["last_used"] = utcnow_iso()
             kd["request_count"] = kd.get("request_count", 0) + 1
             _save_keys(keys)
             return key_id
@@ -270,7 +269,7 @@ async def create_api_key(request: Request):
     raw  = f"aeth-{secrets.token_urlsafe(32)}"
     keys[kid] = {
         "id": kid, "name": name, "key": raw,
-        "created_at": datetime.now().isoformat(),
+        "created_at": utcnow_iso(),
         "last_used": None, "request_count": 0, "enabled": True,
     }
     _save_keys(keys)

@@ -13,7 +13,7 @@ unless a TTL is set on the store node.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -60,7 +60,7 @@ def memory_store(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
 
     entry: dict = {"value": in_val}
     if ttl_hrs > 0:
-        entry["expires"] = (datetime.now() + timedelta(hours=ttl_hrs)).isoformat()
+        entry["expires"] = (datetime.now(timezone.utc) + timedelta(hours=ttl_hrs)).isoformat()
 
     store[key] = entry
 
@@ -95,7 +95,7 @@ def memory_retrieve(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     expires = entry.get("expires")
     if expires:
         try:
-            if datetime.now() > datetime.fromisoformat(expires):
+            if datetime.now(timezone.utc) > datetime.fromisoformat(expires):
                 return {"out": default, "found": "false", "error": ""}
         except Exception:
             pass
@@ -125,7 +125,7 @@ def memory_search_semantic(node: dict, inputs: dict[str, Any], ctx) -> dict[str,
 
     query_lower = query.lower()
     query_words = set(query_lower.split())
-    now         = datetime.now()
+    now         = datetime.now(timezone.utc)
     results     = []
 
     for key, entry in store.items():

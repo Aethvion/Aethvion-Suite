@@ -12,7 +12,7 @@ import re
 import tempfile
 import uuid
 from pathlib import Path
-from core.utils.logger import get_logger
+from core.utils import get_logger, utcnow_iso
 
 logger = get_logger(__name__)
 
@@ -66,7 +66,7 @@ class CompanionMemory:
                 "user_info": {},
                 "recent_observations": [],
                 "synthesis_notes": [],
-                "last_updated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "last_updated": utcnow_iso(),
             })
             logger.info(f"{self._name}: Initialized memory.json")
 
@@ -137,7 +137,7 @@ class CompanionMemory:
                 obs: list = existing_mem.get("recent_observations", [])
                 obs.extend(data["recent_observations"])
                 existing_mem["recent_observations"] = obs[-20:]
-            existing_mem["last_updated"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            existing_mem["last_updated"] = utcnow_iso()
             _atomic_write(self._mem_path, existing_mem)
 
             logger.info(f"{self._name}: Memory updated from XML tag.")
@@ -210,7 +210,7 @@ class CompanionMemory:
                 logger.info(f"{self._name}: Identity updated during synthesis.")
 
             synthesized: dict = data.get("memory", {})
-            synthesized["last_synthesis"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            synthesized["last_synthesis"] = utcnow_iso()
             _atomic_write(self._mem_path, synthesized)
             logger.info(f"{self._name}: Memory synthesis complete.")
             return synthesized
