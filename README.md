@@ -16,7 +16,7 @@
 ---
 
 <div align="center">
-<img src="assets/showcase/AethvionSuite_HomeScreen.png" alt="Aethvion Suite" width="100%">
+<img src="assets/showcase/Aethvion-Suite.png" alt="Aethvion Suite" width="100%">
 </div>
 
 ---
@@ -38,7 +38,7 @@ Each conversation thread keeps its own history. Companions — AI characters wit
 Chat routes across all configured providers with automatic failover. If your primary model is unavailable, the next in your priority list picks up transparently.
 
 <div align="center">
-<img src="assets/showcase/AethvionSuite_MisakaCipher.png" alt="Aethvion Suite Chat" width="80%">
+<img src="assets/showcase/Chat.png" alt="Aethvion Suite Chat" width="80%">
 </div>
 
 ---
@@ -52,7 +52,7 @@ The Code agent operates on a workspace directory. It can read files, apply preci
 Project memory persists across sessions: the agent retains a structured understanding of your codebase, reducing redundant reads and keeping context tight over long tasks.
 
 <div align="center">
-<img src="assets/showcase/AethvionSuite_Code.png" alt="Aethvion Suite Code" width="80%">
+<img src="assets/showcase/Code.png" alt="Aethvion Suite Code" width="80%">
 </div>
 
 ---
@@ -66,7 +66,7 @@ Workflows are built by connecting nodes on a canvas. Node types span AI calls, d
 Finished workflows compile to standalone bundles — a single Python file with no Aethvion dependency — that can run anywhere.
 
 <div align="center">
-<img src="assets/showcase/AethvionSuite_Agent.png" alt="Aethvion Suite Automate" width="80%">
+<img src="assets/showcase/Automate.png" alt="Aethvion Suite Automate" width="80%">
 </div>
 
 ---
@@ -78,6 +78,10 @@ A structured personal knowledge base designed to work alongside AI workflows.
 Data is organised as typed entities — people, projects, concepts, events — stored with semantic embeddings for natural-language search. Relationships between entities form a queryable graph. Entities can be baked into snapshot datasets for use in Automate workflows or external pipelines.
 
 AethvionDB is queryable from the Automate node editor, from Chat, and from the Code agent. It functions as a shared knowledge layer across the entire platform.
+
+<div align="center">
+<img src="assets/showcase/AethvionDB.png" alt="Aethvion Suite AethvionDB" width="80%">
+</div>
 
 ---
 
