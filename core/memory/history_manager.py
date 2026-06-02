@@ -142,9 +142,11 @@ class HistoryManager:
         """
         Get the most recent messages across days up to the limit.
         """
-        all_messages = []
+        # Collect day-lists newest-first, then flatten once — O(n) instead of O(n²).
+        collected: List[List[Dict[str, Any]]] = []
+        total = 0
         now = datetime.datetime.now(datetime.timezone.utc)
-        
+
         for i in range(7):
             dt = now - datetime.timedelta(days=i)
             day_file = HistoryManager._get_history_file(dt, companion_id)
@@ -152,10 +154,13 @@ class HistoryManager:
                 try:
                     with open(day_file, "r", encoding="utf-8") as f:
                         day_messages = json.load(f)
-                        all_messages = day_messages + all_messages
-                        if len(all_messages) > limit * 2:
+                        collected.append(day_messages)
+                        total += len(day_messages)
+                        if total > limit * 2:
                             break
                 except Exception as e:
                     logger.error(f"Error reading history for {dt} ({companion_id}): {e}")
-        
+
+        # collected is newest-first; reverse to chronological order, then flatten
+        all_messages = [msg for day in reversed(collected) for msg in day]
         return all_messages[-limit:] if all_messages else []
