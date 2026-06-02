@@ -25,7 +25,7 @@ from core.providers import get_provider_manager as _get_pm
 
 router = APIRouter(prefix="/api/automate", tags=["automate"])
 
-# ── Storage ───────────────────────────────────────────────────────────────────
+# Storage
 
 _DATA_DIR      = Path(__file__).parent.parent.parent / "data" / "automate" / "workflows"
 _REGISTRY_PATH = Path(__file__).parent.parent.parent / "data" / "config" / "model_registry.json"
@@ -39,7 +39,7 @@ def _wf_path(wf_id: str) -> Path:
     return _DATA_DIR / f"{wf_id}.json"
 
 
-# ── Node type registry (lazy) ─────────────────────────────────────
+# Node type registry (lazy)
 # Loaded on first request — not at import time — so startup pays no
 # cost if the user never opens the Automate page.
 _NODES_DIR         = Path(__file__).parent.parent / "config" / "automate" / "nodes"
@@ -56,7 +56,7 @@ def _get_node_types() -> list[dict]:
     return _node_types_cache
 
 
-# ── Pydantic models ───────────────────────────────────────────────────────────
+# Pydantic models
 
 class WorkflowCreate(BaseModel):
     name: str
@@ -76,7 +76,7 @@ class NodeTestRequest(BaseModel):
     input_data: str = ""
 
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+# Routes
 
 @router.get("/node-types")
 async def get_node_types():
@@ -336,7 +336,7 @@ async def run_workflow_stream(wf_id: str, body: RunWorkflowBody = RunWorkflowBod
     )
 
 
-# ── Examples + Import/Export/Share ────────────────────────────────────────────
+# Examples + Import/Export/Share
 
 _EXAMPLES_DIR = Path(__file__).parent / "config"
 _SHARE_DIR    = Path(__file__).parent.parent.parent / "data" / "automate" / "shared"
@@ -545,7 +545,7 @@ async def pick_path(
     return {"path": None, "cancelled": True}
 
 
-# ── Compile ───────────────────────────────────────────────────────────────────
+# Compile
 
 class CompileOptions(BaseModel):
     include_packages: bool = True

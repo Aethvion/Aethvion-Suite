@@ -13,7 +13,7 @@
  */
 
 window.Notifications = (() => {
-    // ── State ──────────────────────────────────────────────────────────
+    // State
     let _active = [];      // array of notification objects (unseen)
     let _panelOpen = false;
     let _viewMode = 'active'; // 'active' | 'history'
@@ -23,7 +23,7 @@ window.Notifications = (() => {
     // DOM refs (set in init)
     let bellBtn, badge, panel, listEl, emptyEl;
 
-    // ── Source → Icon mapping ──────────────────────────────────────────
+    // Source → Icon mapping
     const SOURCE_ICONS = {
         agents:   'fa-robot',
         schedule: 'fa-clock',
@@ -40,7 +40,7 @@ window.Notifications = (() => {
         return SOURCE_ICONS[source] || SOURCE_ICONS.default;
     }
 
-    // ── Time formatting ────────────────────────────────────────────────
+    // Time formatting
     function _relTime(isoStr) {
         if (!isoStr) return '';
         const diff = Date.now() - new Date(isoStr).getTime();
@@ -53,7 +53,7 @@ window.Notifications = (() => {
         return new Date(isoStr).toLocaleDateString();
     }
 
-    // ── Build element ──────────────────────────────────────────────────
+    // Build element
     function _buildRow(notif, isHistory = false) {
         const row = document.createElement('div');
         row.className = `notif-row${notif.target ? ' has-target' : ''}${isHistory && notif.seen ? ' seen' : ''}`;
@@ -109,7 +109,7 @@ window.Notifications = (() => {
         return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    // ── Navigation ─────────────────────────────────────────────────────
+    // Navigation
     function _navigateTo(notif) {
         if (!notif.target) return;
         const { tab, context } = notif.target;
@@ -136,7 +136,7 @@ window.Notifications = (() => {
         }
     }
 
-    // ── Dismiss ────────────────────────────────────────────────────────
+    // Dismiss
     async function _dismiss(id, rowEl) {
         // Optimistic UI
         _active = _active.filter(n => n.id !== id);
@@ -157,7 +157,7 @@ window.Notifications = (() => {
         }
     }
 
-    // ── Render list ────────────────────────────────────────────────────
+    // Render list
     function _renderActive() {
         if (!listEl) return;
         listEl.innerHTML = '';
@@ -206,7 +206,7 @@ function _isHidden(source) {
         }
     }
 
-    // ── Badge ──────────────────────────────────────────────────────────
+    // Badge
     function _updateBadge() {
         if (!badge) return;
         // Count only non-hidden active notifications
@@ -216,7 +216,7 @@ function _isHidden(source) {
         if (bellBtn) bellBtn.classList.toggle('has-unread', count > 0);
     }
 
-    // ── Panel toggle ───────────────────────────────────────────────────
+    // Panel toggle
     function openPanel() {
         if (!panel) return;
         _panelOpen = true;
@@ -235,7 +235,7 @@ function _isHidden(source) {
         _panelOpen ? closePanel() : openPanel();
     }
 
-    // ── API fetch ──────────────────────────────────────────────────────
+    // API fetch
     async function _fetchActive() {
         try {
             const res = await fetch('/api/notifications/active');
@@ -293,7 +293,7 @@ function _isHidden(source) {
         }
     }
 
-    // ── Public push (JS-side) ──────────────────────────────────────────
+    // Public push (JS-side)
     /**
      * Push a notification from JavaScript.
      * @param {Object} notif - { title, message, source?, level?, target? }
@@ -329,7 +329,7 @@ function _isHidden(source) {
         }
     }
 
-    // ── DOM Construction ───────────────────────────────────────────────
+    // DOM Construction
     function _buildPanel() {
         const el = document.createElement('div');
         el.className = 'notif-panel';
@@ -365,7 +365,7 @@ function _isHidden(source) {
         return btn;
     }
 
-    // ── Init ───────────────────────────────────────────────────────────
+    // Init
     function init() {
         // Build bell button and insert before the header settings button
         bellBtn = _buildBell();
@@ -445,7 +445,7 @@ function _isHidden(source) {
         init();
     }
 
-    // ── Public API ─────────────────────────────────────────────────────
+    // Public API
     return {
         push,
         open: openPanel,

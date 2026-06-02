@@ -67,9 +67,7 @@ def chat_history_module():
     _browse_chat_history()
 
 
-# ─────────────────────────────────────────────────
 # Internal helpers
-# ─────────────────────────────────────────────────
 
 def _semantic_search(memory_store):
     """Semantic search interface."""

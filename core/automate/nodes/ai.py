@@ -60,7 +60,7 @@ def ai_model(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     return {"out": resp.content, "error": ""}
 
 
-# ── Shared helpers ────────────────────────────────────────────────────────────
+# Shared helpers
 
 def _simple_ai_call(model_id: str, system_prompt: str, prompt: str,
                     temperature: float = 0.3) -> "any":
@@ -110,7 +110,7 @@ def _extract_json_from_response(text: str) -> dict:
     return {}
 
 
-# ── Focused AI nodes ──────────────────────────────────────────────────────────
+# Focused AI nodes
 
 def ai_summarize(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p        = node.get("properties", {})

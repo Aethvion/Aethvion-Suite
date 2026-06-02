@@ -33,7 +33,7 @@ from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# ── Constants ──────────────────────────────────────────────────────────────────
+# Constants
 
 _INFO_FILE  = "AethvionDB.DISTILLINFO"
 _QUEUE_FILE = "AethvionDB.DISTILLQUEUE"
@@ -54,13 +54,13 @@ SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({
     ".sql", ".r", ".lua", ".log",
 })
 
-# ── In-process job state ───────────────────────────────────────────────────────
+# In-process job state
 
 _active_tasks: dict[str, asyncio.Task] = {}  # str(db_root) → Task
 _pause_events: dict[str, asyncio.Event] = {}  # str(db_root) → Event (set=running)
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+# Helpers
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -73,7 +73,7 @@ def _fmt_size(b: int) -> str:
     return f"{b / 1024 ** 3:.2f} GB"
 
 
-# ── DISTILLINFO I/O ────────────────────────────────────────────────────────────
+# DISTILLINFO I/O
 
 def read_distill_info(db_root: Path) -> dict:
     """Return contents of AethvionDB.DISTILLINFO, or {} if absent / unreadable."""
@@ -140,13 +140,13 @@ def _save_progress(
     })
 
 
-# ── Public query helpers ───────────────────────────────────────────────────────
+# Public query helpers
 
 def is_running(db_root: Path) -> bool:
     return str(db_root) in _active_tasks
 
 
-# ── Scan (sync — call via asyncio.to_thread) ──────────────────────────────────
+# Scan (sync — call via asyncio.to_thread)
 
 def scan_folder(folder_path: str) -> dict:
     """
@@ -201,7 +201,7 @@ def scan_folder(folder_path: str) -> dict:
     }
 
 
-# ── Job preparation (sync — call via asyncio.to_thread) ───────────────────────
+# Job preparation (sync — call via asyncio.to_thread)
 
 def prepare_start_job(
     db_root:     Path,
@@ -251,7 +251,7 @@ def prepare_start_job(
     return total
 
 
-# ── Per-file distillation helper ───────────────────────────────────────────────
+# Per-file distillation helper
 
 async def _distill_one_file(
     distiller,
@@ -295,7 +295,7 @@ async def _distill_one_file(
         }
 
 
-# ── Background task ────────────────────────────────────────────────────────────
+# Background task
 
 async def run_distill_job(
     db_root:     Path,
@@ -339,7 +339,7 @@ async def run_distill_job(
     i = next_index
     while i < total:
 
-        # ── Pause check (between batches) ────────────────────────────────────
+        # Pause check (between batches)
         ev = _pause_events.get(key)
         if ev is not None and not ev.is_set():
             _save_progress(db_root, info, "paused", i, processed, failed, skipped, failed_list, log)
@@ -349,7 +349,7 @@ async def run_distill_job(
             _pause_events.pop(key, None)
             return
 
-        # ── Build next batch: skip unsupported inline, collect up to N files ─
+        # Build next batch: skip unsupported inline, collect up to N files
         batch: list[tuple[int, str, Path]] = []
         j = i
         while j < total and len(batch) < concurrency:
@@ -369,15 +369,15 @@ async def run_distill_job(
             await asyncio.sleep(0)
             continue
 
-        # ── Signal which files are being processed ───────────────────────────
+        # Signal which files are being processed
         current_names = " | ".join(fp.name for _, _, fp in batch)
         _save_progress(db_root, info, "running", i, processed, failed, skipped, failed_list, log, current_names)
 
-        # ── Distil batch in parallel ─────────────────────────────────────────
+        # Distil batch in parallel
         coros   = [_distill_one_file(distiller, source, fp, rel, idx) for idx, rel, fp in batch]
         results = await asyncio.gather(*coros)
 
-        # ── Apply results ────────────────────────────────────────────────────
+        # Apply results
         for res in results:
             if res["status"] == "skip":
                 skipped += 1
@@ -405,7 +405,7 @@ async def run_distill_job(
     _pause_events.pop(key, None)
 
 
-# ── Pause (sync — safe to call from async context) ────────────────────────────
+# Pause (sync — safe to call from async context)
 
 def pause_job(db_root: Path) -> dict:
     """

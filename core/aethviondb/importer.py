@@ -43,7 +43,7 @@ CONFLICT_MODES = ("skip", "overwrite")
 _VALID_STATUSES = {"active", "stub", "deleted"}
 
 
-# ── Format detection ───────────────────────────────────────────────────────────
+# Format detection
 
 def detect_format(content: str, filename: str = "") -> str:
     """
@@ -81,7 +81,7 @@ def detect_format(content: str, filename: str = "") -> str:
     return "unknown"
 
 
-# ── Normalisation helpers ──────────────────────────────────────────────────────
+# Normalisation helpers
 
 def _is_flat(entity: dict) -> bool:
     """True when the entity is in baked (flat) format rather than Layer-1."""
@@ -165,7 +165,7 @@ def _normalise(entity: dict, source_override: Optional[str] = None) -> dict:
     return entity
 
 
-# ── Relation resolution ────────────────────────────────────────────────────────
+# Relation resolution
 
 def _resolve_relations(
     entity:         dict,
@@ -215,7 +215,7 @@ def _resolve_relations(
     return resolved
 
 
-# ── Parse ─────────────────────────────────────────────────────────────────────
+# Parse
 
 def parse_content(content: str, filename: str = "") -> tuple[str, list[dict]]:
     """
@@ -258,7 +258,7 @@ def parse_content(content: str, filename: str = "") -> tuple[str, list[dict]]:
     return fmt, raw
 
 
-# ── Main import function ───────────────────────────────────────────────────────
+# Main import function
 
 def import_entities(
     writer,

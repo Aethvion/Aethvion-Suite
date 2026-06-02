@@ -10,9 +10,7 @@ from __future__ import annotations
 import pytest
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # NameIndex
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TestNameIndex:
     def test_empty_index_returns_none(self, name_index):
@@ -55,9 +53,7 @@ class TestNameIndex:
         assert idx2.get("Galileo") == "ws_gal001"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # EntityWriter
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TestEntityWriter:
     def test_create_returns_entity_and_was_created_true(self, entity_writer):

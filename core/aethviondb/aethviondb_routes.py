@@ -40,7 +40,7 @@ _INDEX_CACHE: dict[str, Any] = {}
 _INDEX_CACHE_LOCK = threading.Lock()
 
 
-# ── Database resolution ───────────────────────────────────────────────────────
+# Database resolution
 
 def _db_root(db: str = "default", path: Optional[str] = None) -> Path:
     """Return the root directory for a database."""
@@ -88,7 +88,7 @@ def _ensure_db(root: Path) -> None:
     (root / "chunks").mkdir(parents=True, exist_ok=True)
 
 
-# ── AethvionDB.INFO helpers ───────────────────────────────────────────────────
+# AethvionDB.INFO helpers
 
 _INFO_FILE = "AethvionDB.INFO"
 
@@ -113,7 +113,7 @@ def _write_db_info(root: Path, data: dict) -> None:
         logger.warning(f"[AethvionDB] Could not write {_INFO_FILE}: {exc}")
 
 
-# ── Request schemas ───────────────────────────────────────────────────────────
+# Request schemas
 
 class DistillRequest(BaseModel):
     content: str                  # Text to extract an entity from
@@ -175,7 +175,7 @@ class CreateBackupRequest(BaseModel):
     label: str = ""
 
 
-# ── Database management ───────────────────────────────────────────────────────
+# Database management
 
 @router.get("/databases")
 async def list_databases():
@@ -184,7 +184,7 @@ async def list_databases():
 
     AETHVIONDB.mkdir(parents=True, exist_ok=True)
 
-    # ── Legacy migration (one-time, non-destructive) ──────────────────────────
+    # Legacy migration (one-time, non-destructive)
     # If databases lived in the old data/modes/worldsim/ root, register them
     # with their original absolute paths so nothing is lost when the root moves.
     from core.utils.paths import MODES
@@ -407,7 +407,7 @@ async def get_db_info(
     return {"cached": True, **info}
 
 
-# ── Stats ─────────────────────────────────────────────────────────────────────
+# Stats
 
 @router.get("/stats")
 async def get_stats(
@@ -480,7 +480,7 @@ async def get_stats(
     return result
 
 
-# ── Entity CRUD ───────────────────────────────────────────────────────────────
+# Entity CRUD
 
 @router.get("/entities")
 async def list_entities(
@@ -578,7 +578,7 @@ async def delete_entity(
     return {"success": True, "entity_id": entity_id, "mode": "hard" if hard else "soft"}
 
 
-# ── Import ───────────────────────────────────────────────────────────────────
+# Import
 
 @router.post("/import")
 async def import_entities_route(
@@ -605,7 +605,7 @@ async def import_entities_route(
     return result
 
 
-# ── Search ────────────────────────────────────────────────────────────────────
+# Search
 
 @router.get("/search")
 async def search_entities(
@@ -646,7 +646,7 @@ async def search_entities(
     return {"count": len(results), "results": results}
 
 
-# ── Distillation ──────────────────────────────────────────────────────────────
+# Distillation
 
 @router.post("/distill")
 async def distill_content(
@@ -667,7 +667,7 @@ async def distill_content(
     return result
 
 
-# ── Expansion ─────────────────────────────────────────────────────────────────
+# Expansion
 
 @router.post("/expand")
 async def expand_stubs(
@@ -853,7 +853,7 @@ async def apply_deepen_entity(
     return result
 
 
-# ── Validation ────────────────────────────────────────────────────────────────
+# Validation
 
 @router.get("/validate")
 async def validate_all(
@@ -916,7 +916,7 @@ async def fix_duplicates(
 
         merged_count = 0
 
-        # ── 1. Merge content from losers into winner ──────────────────────────
+        # 1. Merge content from losers into winner
         if body.merge:
             for rid in body.remove_ids:
                 removed = writer.get(rid)
@@ -958,7 +958,7 @@ async def fix_duplicates(
                     primary = writer.update(body.primary_id, mutations)
                     merged_count += 1
 
-        # ── 2. Rewrite references in every other entity ───────────────────────
+        # 2. Rewrite references in every other entity
         ref_updates = 0
         for entity in writer.list_all(include_deleted=True):
             eid = entity["id"]
@@ -994,7 +994,7 @@ async def fix_duplicates(
                 writer.update(eid, mutations, merge_sections=False)
                 ref_updates += 1
 
-        # ── 3. Remap NameIndex entries & soft-delete losers ───────────────────
+        # 3. Remap NameIndex entries & soft-delete losers
         for rid in body.remove_ids:
             removed = writer.get(rid)
             if removed:
@@ -1179,7 +1179,7 @@ async def fix_broken_relations(
             relations = sections.get("relations", [])
             timeline  = sections.get("timeline",  [])
 
-            # ── Relations ─────────────────────────────────────────────────────
+            # Relations
             clean_rels   = [
                 rel for rel in relations
                 if not isinstance(rel, dict)
@@ -1188,7 +1188,7 @@ async def fix_broken_relations(
             ]
             removed_rels = len(relations) - len(clean_rels)
 
-            # ── Timeline ref_ids ──────────────────────────────────────────────
+            # Timeline ref_ids
             clean_timeline = []
             removed_refs   = 0
             for ev in timeline:
@@ -1244,7 +1244,7 @@ async def validate_entity(
     return result.as_dict()
 
 
-# ── Index / stubs ─────────────────────────────────────────────────────────────
+# Index / stubs
 
 @router.get("/index")
 async def get_index_snapshot(
@@ -1257,7 +1257,7 @@ async def get_index_snapshot(
     return {"total": index.count(), "entries": [{"name": k, "id": v} for k, v in items]}
 
 
-# ── Graph ─────────────────────────────────────────────────────────────────────
+# Graph
 
 def _graph_bfs(writer, start_id: str, depth: int) -> set:
     """Return all entity IDs reachable from start_id within `depth` hops."""
@@ -1365,7 +1365,7 @@ async def get_graph(
     }
 
 
-# ── Folder distillation ───────────────────────────────────────────────────────
+# Folder distillation
 
 @router.get("/distill-folder/scan")
 async def scan_folder_endpoint(
@@ -1535,7 +1535,7 @@ async def cancel_folder_distill(
     return {"cancelled": True}
 
 
-# ── Vectors ───────────────────────────────────────────────────────────────────
+# Vectors
 
 @router.get("/vectors/status")
 async def get_vector_status(
@@ -1620,7 +1620,7 @@ async def cancel_vectorize_endpoint(
     return cancel_vectorize(_db_root(db, path))
 
 
-# ── Bake ──────────────────────────────────────────────────────────────────────
+# Bake
 
 class BakeRequest(BaseModel):
     name:            str       = "default"
@@ -1786,7 +1786,7 @@ async def download_bake(
     return FileResponse(path=str(out_path), media_type=media, filename=out_path.name)
 
 
-# ── Chunks ───────────────────────────────────────────────────────────────────
+# Chunks
 
 class ChunkSearchRequest(BaseModel):
     query:    str
@@ -1851,7 +1851,7 @@ async def search_chunks_endpoint(
     return {"results": results, "total": len(results), "query": req.query}
 
 
-# ── Speed benchmark ───────────────────────────────────────────────────────────
+# Speed benchmark
 
 @router.get("/benchmark")
 async def run_benchmark(
@@ -1877,7 +1877,7 @@ async def run_benchmark(
     writer  = _get_writer(db, path)
     q_lower = query.lower()
 
-    # ── 1. Load all entities (raw) ────────────────────────────────────────────
+    # 1. Load all entities (raw)
     t0    = _time.perf_counter()
     all_e = writer.list_all(include_deleted=False)
     results.append({
@@ -1890,7 +1890,7 @@ async def run_benchmark(
     # Build a fast id→entity map for resolving chunk/vector hit names
     entity_map: dict[str, dict] = {e["id"]: e for e in all_e}
 
-    # ── 2. Get entity by ID (raw) ─────────────────────────────────────────────
+    # 2. Get entity by ID (raw)
     sample_id = all_e[0]["id"] if all_e else None
     if sample_id:
         t0 = _time.perf_counter()
@@ -1902,7 +1902,7 @@ async def run_benchmark(
             "note":     f"id={sample_id[:8]}…",
         })
 
-    # ── 3. Name search (raw) ──────────────────────────────────────────────────
+    # 3. Name search (raw)
     t0           = _time.perf_counter()
     name_matches = [e for e in all_e if q_lower in e.get("name", "").lower()]
     results.append({
@@ -1915,7 +1915,7 @@ async def run_benchmark(
         "total_matches": len(name_matches),
     })
 
-    # ── 4. Chunk index search ─────────────────────────────────────────────────
+    # 4. Chunk index search
     manifest = read_manifest(root)
     if manifest:
         t0         = _time.perf_counter()
@@ -1941,7 +1941,7 @@ async def run_benchmark(
             "note":     "No chunks built — use Smart Chunks in the Tools tab",
         })
 
-    # ── 5. Vector search (optional) ───────────────────────────────────────────
+    # 5. Vector search (optional)
     if vec_model:
         from .vectorizer import _embed, EMBEDDING_MODELS
 
@@ -1992,7 +1992,7 @@ async def run_benchmark(
                     "note":     f"Error: {exc}",
                 })
 
-    # ── 6+. Baked snapshot tests ──────────────────────────────────────────────
+    # 6+. Baked snapshot tests
     all_bakes     = list_bakes(root)
     bake_name_map = {b["name"]: b for b in all_bakes if b.get("status") == "done"}
 

@@ -194,7 +194,7 @@ class LocalProvider(BaseProvider):
             self.current_n_gpu_layers = n_gpu_layers
             logger.info(f"Local model loaded successfully")
 
-    # ── Model family detection ──────────────────────────────────────────────────
+    # Model family detection
 
     _FAMILY_PATTERNS: Dict[str, List[str]] = {
         # Checked in order — first match wins.
@@ -230,7 +230,7 @@ class LocalProvider(BaseProvider):
         }
         return stops.get(family, stops["llama3"])
 
-    # ── Prompt parsing (model-agnostic) ─────────────────────────────────────────
+    # Prompt parsing (model-agnostic)
 
     def _parse_prompt(self, prompt: str, system_prompt: str = None):
         """
@@ -272,7 +272,7 @@ class LocalProvider(BaseProvider):
 
         return system_part, history_turns, user_part
 
-    # ── Per-family template renderers ────────────────────────────────────────────
+    # Per-family template renderers
 
     def _fmt_llama3(self, system: str, history: List[tuple], user: str) -> str:
         out = f"<|start_header_id|>system<|end_header_id|>\n\n{system}<|eot_id|>"

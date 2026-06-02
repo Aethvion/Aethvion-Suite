@@ -24,12 +24,12 @@ from core.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-# ── Focused system prompt for corp workers ────────────────────────────────────
+# Focused system prompt for corp workers
 # ~1,400 chars vs the 6,025-char base SYSTEM_PROMPT.
 # Removes verbose web-search/fetch sections workers rarely use; keeps all
 # file-editing, corp tools, and the surgical-edit rules that matter most.
 
-# ── Focused system prompt for corp workers ────────────────────────────────────
+# Focused system prompt for corp workers
 # ~1,400 chars vs the full SYSTEM_PROMPT. Edit core/config/code/corp_system_prompt.txt.
 from core.utils.paths import CODE_CORP_PROMPT
 CORP_SYSTEM_PROMPT: str = CODE_CORP_PROMPT.read_text(encoding='utf-8')
@@ -81,7 +81,7 @@ class CorpWorkerRunner(AgentRunner):
             except Exception:
                 pass
 
-        # ── Token optimisations ───────────────────────────────────────────────
+        # Token optimisations
         # Narrow conversation window: focused corp tasks need less lookback.
         self._conv_window = 6
 
@@ -96,7 +96,7 @@ class CorpWorkerRunner(AgentRunner):
             f"Edit: patch_file (existing files) · append_file (new code) · Knowledge block has line numbers."
         )
 
-    # ── Corp-specific system prompt & prompt building ─────────────────────────
+    # Corp-specific system prompt & prompt building
 
     def _build_prompt(self) -> str:
         """Like parent, but injects recent operator steering messages on iterations 1+."""
@@ -142,7 +142,7 @@ class CorpWorkerRunner(AgentRunner):
             current_date=datetime.utcnow().strftime("%B %d, %Y"),
         )
 
-    # ── Corp tool execution ───────────────────────────────────────────────────
+    # Corp tool execution
 
     def _execute(self, action: Dict[str, Any], iteration: int = 0) -> str:
         """Handle corp-specific action types; fall through to parent for the rest."""

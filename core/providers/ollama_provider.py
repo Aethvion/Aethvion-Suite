@@ -127,7 +127,7 @@ class OllamaProvider(BaseProvider):
         except Exception:
             return False
 
-    # ── Unsupported capabilities ──────────────────────────────────────────────
+    # Unsupported capabilities
 
     def generate_image(self, *args, **kwargs) -> ProviderResponse:
         return ProviderResponse(

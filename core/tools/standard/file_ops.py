@@ -129,7 +129,7 @@ def data_read_file(filename: str, domain: str = "General") -> str:
         return f"Error reading file: {str(e)}"
 
 
-# ===== BACKWARD COMPATIBILITY ALIASES =====
+# BACKWARD COMPATIBILITY ALIASES
 # Old function names that agents may still reference
 
 def file_save_string(content: str, filename: str, domain: str = "General") -> Dict[str, Any]:

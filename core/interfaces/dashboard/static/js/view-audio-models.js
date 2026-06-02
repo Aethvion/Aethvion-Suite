@@ -14,7 +14,7 @@ const AudioModels = (() => {
     let _defaultVoice = null;
     let _search = '';
 
-    // ── Init ──────────────────────────────────────────────────────────────────
+    // Init
     async function init() {
         await refresh();
         _setupCloneDropzone();
@@ -66,7 +66,7 @@ const AudioModels = (() => {
         } catch (e) { console.warn('Suggested audio models fetch failed:', e); }
     }
 
-    // ── Rendering ─────────────────────────────────────────────────────────────
+    // Rendering
     function _matchesSearch(m) {
         if (!_search) return true;
         const hay = `${m.name} ${(m.tags || []).join(' ')} ${m.description || ''}`.toLowerCase();
@@ -220,7 +220,7 @@ const AudioModels = (() => {
         return '';
     }
 
-    // ── Voices tab ────────────────────────────────────────────────────────────
+    // Voices tab
     async function _renderVoices() {
         const selector = document.getElementById('am-voices-model-select');
         const list     = document.getElementById('am-voices-list');
@@ -280,7 +280,7 @@ const AudioModels = (() => {
         _renderVoices();
     }
 
-    // ── Actions ───────────────────────────────────────────────────────────────
+    // Actions
     async function install(modelId, packages, btn) {
         const card = document.getElementById(`am-card-${modelId}`);
 
@@ -573,7 +573,7 @@ const AudioModels = (() => {
         }
     }
 
-    // ── Tab switching ─────────────────────────────────────────────────────────
+    // Tab switching
     function switchTab(tab, btn) {
         _currentTab = tab;
         ['tts','stt','voices'].forEach(t => {
@@ -585,7 +585,7 @@ const AudioModels = (() => {
         if (tab === 'voices') _renderVoices();
     }
 
-    // ── Clone dropzone ────────────────────────────────────────────────────────
+    // Clone dropzone
     function _setupCloneDropzone() {
         const dz   = document.getElementById('am-clone-dropzone');
         const inp  = document.getElementById('am-clone-file');
@@ -611,7 +611,7 @@ const AudioModels = (() => {
         reader.readAsDataURL(file);
     }
 
-    // ── Tab init registration ─────────────────────────────────────────────────
+    // Tab init registration
     if (typeof registerTabInit === 'function') {
         registerTabInit('audio-models', init);
     }

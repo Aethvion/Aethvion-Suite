@@ -56,7 +56,7 @@ class NameIndex:
         self._data: dict[str, str] = {}
         self._loaded = False
 
-    # ── Loading ────────────────────────────────────────────────────────────────
+    # Loading
 
     def _ensure_loaded(self) -> None:
         if self._loaded:
@@ -79,7 +79,7 @@ class NameIndex:
         """Atomically write the index to disk. Must be called under _lock."""
         atomic_json_write(self._path, self._data, sort_keys=True)
 
-    # ── Public API ─────────────────────────────────────────────────────────────
+    # Public API
 
     def get(self, name: str) -> Optional[str]:
         """Return the entity ID for *name*, or None if not indexed."""

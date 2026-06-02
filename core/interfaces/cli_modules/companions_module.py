@@ -39,7 +39,7 @@ def companions_module():
         _show_companion_detail(companion_list[choice - 1])
 
 
-# ── Companion detail menu ──────────────────────────────────────────────────────
+# Companion detail menu
 
 def _show_companion_detail(companion):
     """Drill-down menu for a single companion."""
@@ -68,7 +68,7 @@ def _show_companion_detail(companion):
             _show_companion_history_stats(companion)
 
 
-# ── Sub-views ─────────────────────────────────────────────────────────────────
+# Sub-views
 
 def _show_companion_config(companion):
     """Show companion registry configuration and path health."""

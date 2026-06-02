@@ -13,7 +13,7 @@ from typing import Any
 from ._utils import _to_str
 
 
-# ── Inputs ────────────────────────────────────────────────────────────────────
+# Inputs
 
 def input_text(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p = node.get("properties", {})
@@ -76,7 +76,7 @@ def input_list(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     return {"out": json.dumps(lines, ensure_ascii=False), "count": len(lines), "first": first}
 
 
-# ── Outputs ───────────────────────────────────────────────────────────────────
+# Outputs
 
 def output_display(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     # _display prefix tells the executor log summary to skip this port,

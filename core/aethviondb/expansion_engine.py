@@ -147,7 +147,7 @@ class ExpansionEngine:
         self._default_model = model
         self._semaphore     = asyncio.Semaphore(concurrency)
 
-    # ── Context gathering ─────────────────────────────────────────────────────
+    # Context gathering
 
     def _gather_context(self, entity_id: str) -> list[str]:
         """
@@ -171,7 +171,7 @@ class ExpansionEngine:
 
         return snippets
 
-    # ── Core expansion ────────────────────────────────────────────────────────
+    # Core expansion
 
     async def expand_stub(
         self,
@@ -304,7 +304,7 @@ class ExpansionEngine:
         )
         return result
 
-    # ── Batch run ─────────────────────────────────────────────────────────────
+    # Batch run
 
     async def run(
         self,
@@ -359,7 +359,7 @@ class ExpansionEngine:
         )
         return report
 
-    # ── Preview (non-destructive) ─────────────────────────────────────────────
+    # Preview (non-destructive)
 
     async def preview_expand_stub(
         self,
@@ -672,7 +672,7 @@ class ExpansionEngine:
             "total":   len(previews),
         }
 
-    # ── Section deepening ─────────────────────────────────────────────────────
+    # Section deepening
 
     async def deepen_stubs_for(
         self,

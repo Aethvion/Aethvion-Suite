@@ -266,7 +266,7 @@ class ProviderManager:
         """
         return self.providers.get(name)
 
-    # ── Privacy Mode ──────────────────────────────────────────────────────────
+    # Privacy Mode
 
     def is_privacy_mode(self) -> bool:
         """
@@ -520,7 +520,7 @@ class ProviderManager:
                  error="No model routing configured."
              )
 
-        # ── Privacy Mode or local_only: restrict to local providers only ──────
+        # Privacy Mode or local_only: restrict to local providers only
         if self.is_privacy_mode() or kwargs.get('local_only', False):
             original_order = model_order[:]
             model_order = [
@@ -683,7 +683,7 @@ class ProviderManager:
         """
         model_order = [model] if model and model != "auto" else self.chat_priority_order.copy()
         
-        # ── Privacy Mode or local_only: restrict to local providers only ──────
+        # Privacy Mode or local_only: restrict to local providers only
         if self.is_privacy_mode() or kwargs.get('local_only', False):
             original_order = model_order[:]
             model_order = [
@@ -857,7 +857,7 @@ class ProviderManager:
         return p.transcribe(audio_bytes, trace_id, model=model, **kwargs)
 
 
-# ── Re-export singleton accessor ───────────────────────────────────────────────
+# Re-export singleton accessor
 # Allows `from core.providers.provider_manager import get_provider_manager`
 # in addition to `from core.providers import get_provider_manager`.
 _pm_instance: Optional[ProviderManager] = None

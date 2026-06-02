@@ -19,7 +19,7 @@ const PROVIDER_COLORS = {
 };
 function providerColor(p) { return PROVIDER_COLORS[p] || '#888888'; }
 
-// ── Main loader ────────────────────────────────────────────────────────────
+// Main loader
 
 async function loadUsageDashboard(startDate = null, endDate = null) {
     try {
@@ -104,7 +104,7 @@ function _buildRangeQuery(start, end, filterQ) {
     return q + filterQ;
 }
 
-// ── Listeners ─────────────────────────────────────────────────────────────
+// Listeners
 
 function _setupListeners() {
     document.querySelectorAll('.date-preset-btn').forEach(btn => {
@@ -140,7 +140,7 @@ function _setupListeners() {
     });
 }
 
-// ── Formatters ────────────────────────────────────────────────────────────
+// Formatters
 
 function formatNumber(n) {
     if (n == null) return '0';
@@ -166,7 +166,7 @@ function _deltaHTML(current, prev) {
     return `<span class="${cls}">${icon} ${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% vs prev period</span>`;
 }
 
-// ── Hero banner ───────────────────────────────────────────────────────────
+// Hero banner
 
 function _updateHero(summary, prevSummary) {
     const cost  = summary.total_cost  || 0;
@@ -182,7 +182,7 @@ function _updateHero(summary, prevSummary) {
     if (deltaEl) deltaEl.innerHTML = prevSummary ? _deltaHTML(cost, prevSummary.total_cost) : '';
 }
 
-// ── Stat cards ────────────────────────────────────────────────────────────
+// Stat cards
 
 function _updateStatCards(summary) {
     const calls  = summary.total_calls  || 0;
@@ -216,7 +216,7 @@ function _updateStatCards(summary) {
     _setText('usage-success-sub',    summary.success_rate != null ? `${Math.round((summary.success_rate / 100) * calls)} / ${calls}` : '');
 }
 
-// ── Insights ──────────────────────────────────────────────────────────────
+// Insights
 
 function _renderInsights(summary, dailyData) {
     const container = document.getElementById('usage-insights-row');
@@ -266,7 +266,7 @@ function _renderInsights(summary, dailyData) {
     ).join('');
 }
 
-// ── Charts ────────────────────────────────────────────────────────────────
+// Charts
 
 function _renderProviderChart(summary) {
     const ctx = document.getElementById('chart-provider-calls');
@@ -489,7 +489,7 @@ function _renderTokensByModel(tokensData) {
     });
 }
 
-// ── Tables ────────────────────────────────────────────────────────────────
+// Tables
 
 function _renderModelTable(summary) {
     const tbody = document.getElementById('usage-model-tbody');
@@ -605,7 +605,7 @@ function _renderRecentTable(entries, filter = '') {
     }).join('');
 }
 
-// ── Export ────────────────────────────────────────────────────────────────
+// Export
 
 function _exportCSV() {
     if (!_currentHistoryEntries.length) return;
@@ -624,6 +624,6 @@ function _exportCSV() {
     a.click();
 }
 
-// ── Util ──────────────────────────────────────────────────────────────────
+// Util
 
 function _setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }

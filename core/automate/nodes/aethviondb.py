@@ -41,7 +41,7 @@ from typing import Any
 from ._utils import _to_str
 
 
-# ── Scoring ────────────────────────────────────────────────────────────────────
+# Scoring
 
 def _score_raw(query: str, entity: dict) -> float:
     """Score a raw (live) entity — fields live inside sections.core."""
@@ -94,7 +94,7 @@ def _score_baked(query: str, entity: dict) -> float:
     return 0.0
 
 
-# ── Snapshot loader ────────────────────────────────────────────────────────────
+# Snapshot loader
 
 def _load_snapshot_entities(meta: dict) -> list[dict]:
     """Load entities from a bake output file. Returns [] for unsupported formats."""
@@ -124,7 +124,7 @@ def _load_snapshot_entities(meta: dict) -> list[dict]:
     return []   # markdown / txt — not searchable
 
 
-# ── Handlers ───────────────────────────────────────────────────────────────────
+# Handlers
 
 def aethviondb_search(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Search live (raw) entity files in an AethvionDB database.
@@ -308,14 +308,14 @@ def aethviondb_semantic_search(node: dict, inputs: dict[str, Any], ctx) -> dict[
 
     _t0 = time.perf_counter()
 
-    # ── Embed the query ────────────────────────────────────────────────────────
+    # Embed the query
     try:
         query_vec = embed_sync(query, model)
     except Exception as exc:
         return {"out": "[]", "count": 0, "speed": "0ms",
                 "error": f"Embedding failed ({model}): {exc}"}
 
-    # ── Load entities ──────────────────────────────────────────────────────────
+    # Load entities
     entities: list[dict] = []
     for fp in entities_dir.glob("*.json"):
         try:
@@ -330,7 +330,7 @@ def aethviondb_semantic_search(node: dict, inputs: dict[str, Any], ctx) -> dict[
     if entity_type:
         entities = [e for e in entities if e.get("type") == entity_type]
 
-    # ── Cosine similarity ──────────────────────────────────────────────────────
+    # Cosine similarity
     def _cosine(a: list[float], b: list[float]) -> float:
         dot   = sum(x * y for x, y in zip(a, b))
         mag_a = math.sqrt(sum(x * x for x in a))
@@ -429,14 +429,14 @@ def aethviondb_snapshot_semantic_search(node: dict, inputs: dict[str, Any], ctx)
 
     _t0 = time.perf_counter()
 
-    # ── Embed the query ────────────────────────────────────────────────────────
+    # Embed the query
     try:
         query_vec = embed_sync(query, model)
     except Exception as exc:
         return {"out": "[]", "count": 0, "speed": "0ms",
                 "error": f"Embedding failed ({model}): {exc}"}
 
-    # ── Load entities from snapshot ────────────────────────────────────────────
+    # Load entities from snapshot
     entities = _load_snapshot_entities(meta)
 
     if not entities:
@@ -446,7 +446,7 @@ def aethviondb_snapshot_semantic_search(node: dict, inputs: dict[str, Any], ctx)
     if entity_type:
         entities = [e for e in entities if e.get("type") == entity_type]
 
-    # ── Cosine similarity — baked format: entity["vectors"][model]["embedding"] ─
+    # Cosine similarity — baked format: entity["vectors"][model]["embedding"]
     def _cosine(a: list[float], b: list[float]) -> float:
         dot   = sum(x * y for x, y in zip(a, b))
         mag_a = math.sqrt(sum(x * x for x in a))
@@ -489,11 +489,9 @@ def aethviondb_snapshot_semantic_search(node: dict, inputs: dict[str, Any], ctx)
     }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 # Database + CRUD + AI operations
-# ══════════════════════════════════════════════════════════════════════════════
 
-# ── Shared helpers ─────────────────────────────────────────────────────────────
+# Shared helpers
 
 def _get_writer(root: Path):
     """Return (EntityWriter, NameIndex) for the given database root."""
@@ -512,7 +510,7 @@ def _resolve_entity(writer, idx, ref: str):
     return idx.get(ref)  # name-based lookup
 
 
-# ── aethviondb.create_database ────────────────────────────────────────────────
+# aethviondb.create_database
 
 def aethviondb_create_database(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Create and register a new AethvionDB database on disk."""
@@ -545,7 +543,7 @@ def aethviondb_create_database(node: dict, inputs: dict[str, Any], ctx) -> dict[
         return {"out": "", "name": "", "path": "", "error": str(exc)}
 
 
-# ── aethviondb.get_stats ──────────────────────────────────────────────────────
+# aethviondb.get_stats
 
 def aethviondb_get_stats(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Return entity counts (total / active / stubs / deleted) for a database."""
@@ -599,7 +597,7 @@ def aethviondb_get_stats(node: dict, inputs: dict[str, Any], ctx) -> dict[str, A
                 "error": str(exc)}
 
 
-# ── aethviondb.list_entities ──────────────────────────────────────────────────
+# aethviondb.list_entities
 
 def aethviondb_list_entities(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """List entities with optional type / status filters."""
@@ -650,7 +648,7 @@ def aethviondb_list_entities(node: dict, inputs: dict[str, Any], ctx) -> dict[st
         return {"out": "[]", "count": 0, "error": str(exc)}
 
 
-# ── aethviondb.get_entity ─────────────────────────────────────────────────────
+# aethviondb.get_entity
 
 def aethviondb_get_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Fetch a single entity by ID or name."""
@@ -696,7 +694,7 @@ def aethviondb_get_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[str, 
         return {"out": "", "entity_id": "", "entity_name": "", "error": str(exc)}
 
 
-# ── aethviondb.create_entity ──────────────────────────────────────────────────
+# aethviondb.create_entity
 
 def aethviondb_create_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Create a new entity record (no AI — manual creation)."""
@@ -735,7 +733,7 @@ def aethviondb_create_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[st
         return {"out": "", "entity_id": "", "was_created": False, "error": str(exc)}
 
 
-# ── aethviondb.update_entity ──────────────────────────────────────────────────
+# aethviondb.update_entity
 
 def aethviondb_update_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Update fields on an existing entity.
@@ -801,7 +799,7 @@ def aethviondb_update_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[st
         return {"out": "", "entity_id": "", "error": str(exc)}
 
 
-# ── aethviondb.delete_entity ──────────────────────────────────────────────────
+# aethviondb.delete_entity
 
 def aethviondb_delete_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Soft-delete an entity (marks status='deleted', does not erase the file)."""
@@ -842,7 +840,7 @@ def aethviondb_delete_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[st
         return {"out": "false", "entity_id": "", "error": str(exc)}
 
 
-# ── aethviondb.distill ────────────────────────────────────────────────────────
+# aethviondb.distill
 
 def aethviondb_distill(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Distil free-text (article, notes, book excerpt) into a structured entity via AI.
@@ -905,7 +903,7 @@ def aethviondb_distill(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any
                 "error": str(exc)}
 
 
-# ── aethviondb.expand_entity ──────────────────────────────────────────────────
+# aethviondb.expand_entity
 
 def aethviondb_expand_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Expand a stub entity with AI-generated content (saves immediately).
@@ -992,7 +990,7 @@ def aethviondb_expand_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[st
         return {"out": "", "entity_id": "", "entity_name": "", "error": str(exc)}
 
 
-# ── aethviondb.deepen_entity ──────────────────────────────────────────────────
+# aethviondb.deepen_entity
 
 def aethviondb_deepen_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Expand the stub sub-topics and relation-stubs of an active entity via AI.
@@ -1079,7 +1077,7 @@ def aethviondb_deepen_entity(node: dict, inputs: dict[str, Any], ctx) -> dict[st
                 "error": str(exc)}
 
 
-# ── aethviondb.create_snapshot ────────────────────────────────────────────────
+# aethviondb.create_snapshot
 
 def aethviondb_create_snapshot(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Bake the database to a portable snapshot file (JSONL / JSON / Markdown / TXT)."""
@@ -1137,7 +1135,7 @@ def aethviondb_create_snapshot(node: dict, inputs: dict[str, Any], ctx) -> dict[
         return {"out": "", "path": "", "count": 0, "error": str(exc)}
 
 
-# ── aethviondb.list_snapshots ─────────────────────────────────────────────────
+# aethviondb.list_snapshots
 
 def aethviondb_list_snapshots(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """List all baked snapshots for a database, newest first."""
@@ -1177,7 +1175,7 @@ def aethviondb_list_snapshots(node: dict, inputs: dict[str, Any], ctx) -> dict[s
         return {"out": "[]", "count": 0, "error": str(exc)}
 
 
-# ── aethviondb.validate ───────────────────────────────────────────────────────
+# aethviondb.validate
 
 def aethviondb_validate(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Run integrity checks across the entire database (or a single entity).
@@ -1240,7 +1238,7 @@ def aethviondb_validate(node: dict, inputs: dict[str, Any], ctx) -> dict[str, An
         return {"out": "", "total": 0, "ok": 0, "errors": 0, "error": str(exc)}
 
 
-# ── aethviondb.generate_vectors ───────────────────────────────────────────────
+# aethviondb.generate_vectors
 
 def aethviondb_generate_vectors(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Generate embeddings for all entities in the database.

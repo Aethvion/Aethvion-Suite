@@ -3,7 +3,7 @@
  * Monaco Editor + File Tree + AI Copilot
  */
 
-// ── State ───────────────────────────────────────────────────────────────────
+// State
 const state = {
   workspace:        '',
   tabs:             [],       // [{path, name, language, dirty}]
@@ -31,7 +31,7 @@ const state = {
   problemsMap:      new Map(),
 };
 
-// ── Settings persistence (localStorage) ─────────────────────────────────────
+// Settings persistence (localStorage)
 function saveSettings() {
   try {
     localStorage.setItem('ide_settings', JSON.stringify({
@@ -59,7 +59,7 @@ function loadSettings() {
 }
 loadSettings();
 
-// ── DOM refs ─────────────────────────────────────────────────────────────────
+// DOM refs
 const $ = id => document.getElementById(id);
 const dom = {
   topbar:        $('topbar'),
@@ -82,7 +82,7 @@ const dom = {
   aiPanel:       $('aiPanel'),
 };
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
+// Toast
 const TOAST_ICONS = { success:'fa-circle-check', error:'fa-circle-xmark', warn:'fa-triangle-exclamation', info:'fa-circle-info' };
 function toast(msg, type = 'info', duration = 3500) {
   const el = document.createElement('div');
@@ -97,7 +97,7 @@ function toast(msg, type = 'info', duration = 3500) {
   el.addEventListener('click', () => { clearTimeout(t); remove(); });
 }
 
-// ── File type icon map ────────────────────────────────────────────────────────
+// File type icon map
 const FILE_ICONS = {
   py:'fa-snake icon-py', js:'fa-square-js icon-js', mjs:'fa-square-js icon-js',
   jsx:'fa-react icon-js', ts:'fa-code icon-ts', tsx:'fa-react icon-ts',
@@ -118,7 +118,7 @@ function fileIcon(name) {
   return FILE_ICONS[ext] || 'fa-file icon-file';
 }
 
-// ── API helpers ───────────────────────────────────────────────────────────────
+// API helpers
 async function api(path, opts = {}) {
   const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
   if (!res.ok) {
@@ -166,7 +166,7 @@ async function streamSSE(path, body, onChunk, signal = null) {
   return full;
 }
 
-// ── Debounce & Linting Helpers ────────────────────────────────────────────────
+// Debounce & Linting Helpers
 function debounce(func, wait) {
   let timeout;
   return function executedFunction(...args) {
@@ -276,7 +276,7 @@ const triggerAutoSave = debounce((path) => {
   }
 }, 1500);
 
-// ── AI streaming state helpers ────────────────────────────────────────────────
+// AI streaming state helpers
 function _updateChatInputState() {
   const sendBtn = $('btnSendChat');
   const stopBtn = $('btnStopAI');
@@ -303,7 +303,7 @@ function _updateIncludeFileBtn() {
     : `Include active file content in message`;
 }
 
-// ── Provider/model loading ────────────────────────────────────────────────────
+// Provider/model loading
 function _buildModelOptions(data, selectedId = null) {
   if (!data || !data.models) return '';
   const providerLabels = { google_ai: 'Google AI', openai: 'OpenAI', anthropic: 'Anthropic', grok: 'Grok', local: 'Local' };
@@ -356,7 +356,7 @@ async function loadProviders() {
   } catch { dom.modelSel.innerHTML = '<option value="">No providers</option>'; }
 }
 
-// ── Project persistence ───────────────────────────────────────────────────────
+// Project persistence
 async function saveProjectState() {
   if (!state.workspace) return;
   if (state.activeTab && state.editor) {
@@ -400,7 +400,7 @@ async function restoreProjectState(workspace) {
   } catch { /* no saved state yet */ }
 }
 
-// ── Workspace ─────────────────────────────────────────────────────────────────
+// Workspace
 async function loadWorkspace(path = '') {
   try {
     // Save state of the previous workspace first
@@ -442,7 +442,7 @@ async function loadWorkspace(path = '') {
   } catch (e) { toast(`Workspace error: ${e.message}`, 'error'); }
 }
 
-// ── File tree ─────────────────────────────────────────────────────────────────
+// File tree
 async function refreshTree(path = state.workspace) {
   try {
     const data = await api(`/api/fs/tree?path=${encodeURIComponent(path)}`);
@@ -535,7 +535,7 @@ function toggleDir(node, row) {
   }
 }
 
-// ── Tab management ────────────────────────────────────────────────────────────
+// Tab management
 /**
  * Open a file.
  * @param {string} path - File path
@@ -677,7 +677,7 @@ function highlightTreeItem(path) {
   });
 }
 
-// ── Save ──────────────────────────────────────────────────────────────────────
+// Save
 async function saveActiveFile() {
   if (!state.activeTab || !state.editor) return;
   const content = state.editor.getValue();
@@ -689,7 +689,7 @@ async function saveActiveFile() {
   } catch (e) { toast(`Save failed: ${e.message}`, 'error'); }
 }
 
-// ── Run code (streaming) ──────────────────────────────────────────────────────
+// Run code (streaming)
 async function runActiveFile() {
   if (!state.activeTab || state.isRunning) return;
   await saveActiveFile();
@@ -778,7 +778,7 @@ function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ── Bottom panel ──────────────────────────────────────────────────────────────
+// Bottom panel
 function switchBtab(name) {
   document.querySelectorAll('.btab').forEach(b => b.classList.toggle('active', b.dataset.btab === name));
   document.querySelectorAll('.btab-content').forEach(c => c.classList.toggle('active', c.id === `${name}Content`));
@@ -795,7 +795,7 @@ function toggleBottomPanel() {
   icon.className = `fa-solid ${state.bottomCollapsed ? 'fa-chevron-up' : 'fa-chevron-down'}`;
 }
 
-// ── Context menu ──────────────────────────────────────────────────────────────
+// Context menu
 function showContextMenu(e, path, isDir, el) {
   e.preventDefault();
   e.stopPropagation();
@@ -897,7 +897,7 @@ $('ctx-move').addEventListener('click', () => {
   openMoveModal();
 });
 
-// ── Move-to folder picker ──────────────────────────────────────────────────
+// Move-to folder picker
 function openMoveModal() {
   state.moveTargetDir = null;
   $('moveModalConfirm').disabled = true;
@@ -998,7 +998,7 @@ function startInlineRename(row, path, isDir) {
   });
 }
 
-// ── Workspace modal ───────────────────────────────────────────────────────────
+// Workspace modal
 async function openWorkspaceModal() {
   const modal = $('wsModal');
   modal.style.display = 'flex';
@@ -1105,7 +1105,7 @@ $('wsBrowse').addEventListener('click', async () => {
 });
 $('wsModal').addEventListener('click', e => { if (e.target === $('wsModal')) $('wsModal').style.display = 'none'; });
 
-// ── Name prompt modal (replaces window.prompt for file/folder/thread names) ───
+// Name prompt modal (replaces window.prompt for file/folder/thread names)
 function _promptName(title, placeholder, defaultVal = '') {
   return new Promise(resolve => {
     $('nameModalTitle').textContent  = title;
@@ -1135,7 +1135,7 @@ function _promptName(title, placeholder, defaultVal = '') {
   });
 }
 
-// ── AI Chat ───────────────────────────────────────────────────────────────────
+// AI Chat
 function addChatMessage(role, content = '', streaming = false) {
   const wrap   = document.createElement('div');
   wrap.className = `chat-msg ${role}`;
@@ -1230,7 +1230,7 @@ function applyCodeBlock(btn) {
   applyCodeToEditor(code);
 }
 
-// ── File Write Card (FWC) helpers ─────────────────────────────────────────────
+// File Write Card (FWC) helpers
 
 /** Toggle expand / collapse of a file write card. */
 function toggleFwc(el) {
@@ -1399,7 +1399,7 @@ function renderMarkdown(text, opts = {}) {
   return processed;
 }
 
-// ── Auto file writer ──────────────────────────────────────────────────────────
+// Auto file writer
 /**
  * Scan AI response text for ### FILE: markers and write those files.
  * Format expected:
@@ -1469,7 +1469,7 @@ async function autoWriteFiles(text) {
     if (files[0]) openFile(files[0].path);
   }
 
-  // ── MOVE directives: ### MOVE: src → dst_dir/ (### prefix optional, → or -> accepted)
+  // MOVE directives: ### MOVE: src → dst_dir/ (### prefix optional, → or -> accepted)
   const movePattern = /(?:#{1,4}\s*)?MOVE:\s*([^\n→\-]+?)\s*(?:→|->)\s*([^\n]+)/gi;
   let moveMatch;
   while ((moveMatch = movePattern.exec(text)) !== null) {
@@ -1493,7 +1493,7 @@ async function autoWriteFiles(text) {
     }
   }
 
-  // ── DELETE directives: ### DELETE: path (### prefix optional)
+  // DELETE directives: ### DELETE: path (### prefix optional)
   const deletePattern = /(?:#{1,4}\s*)?DELETE:\s*([^\n]+)/gi;
   let deleteMatch;
   while ((deleteMatch = deletePattern.exec(text)) !== null) {
@@ -1915,7 +1915,7 @@ async function refactorSelection() {
 }
 
 
-// ── File palette (Ctrl+P) ─────────────────────────────────────────────────────
+// File palette (Ctrl+P)
 let _paletteFiles = [];
 let _paletteActive = 0;
 
@@ -2018,7 +2018,7 @@ $('paletteInput').addEventListener('keydown', e => {
 });
 $('filePalette').addEventListener('click', e => { if (e.target === $('filePalette')) closeFilePalette(); });
 
-// ── Status bar ────────────────────────────────────────────────────────────────
+// Status bar
 function updateStatusBar() {
   if (!state.editor) return;
   const pos = state.editor.getPosition();
@@ -2040,7 +2040,7 @@ async function updateGitBranch() {
   }
 }
 
-// ── Project context notes ─────────────────────────────────────────────────────
+// Project context notes
 async function loadContextNotes() {
   if (!state.workspace) return;
   try {
@@ -2073,7 +2073,7 @@ $('contextNotes').addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveContextNotes(); }
 });
 
-// ── Chat threads ──────────────────────────────────────────────────────────────
+// Chat threads
 function _threadWs() { return encodeURIComponent(state.workspace || ''); }
 
 /** Render thread list into #threadList. */
@@ -2280,7 +2280,7 @@ document.addEventListener('click', e => {
   }
 });
 
-// ── Sidebar toggles ───────────────────────────────────────────────────────────
+// Sidebar toggles
 function toggleFileTree() {
   dom.fileTree.classList.toggle('collapsed');
   $('btnToggleTree').classList.toggle('active', !dom.fileTree.classList.contains('collapsed'));
@@ -2291,7 +2291,7 @@ function toggleAIPanel() {
   $('btnToggleAI').classList.toggle('active', !dom.aiPanel.classList.contains('collapsed'));
 }
 
-// ── Toolbar buttons ───────────────────────────────────────────────────────────
+// Toolbar buttons
 $('btnToggleTree').addEventListener('click', toggleFileTree);
 $('btnToggleAI').addEventListener('click',   toggleAIPanel);
 $('btnCloseAI').addEventListener('click',    () => { dom.aiPanel.classList.add('collapsed'); $('btnToggleAI').classList.remove('active'); });
@@ -2414,7 +2414,7 @@ $('refactorModalClose').addEventListener('click', () => { $('refactorModal').sty
 $('refactorModal').addEventListener('click', e => { if (e.target === $('refactorModal')) $('refactorModal').style.display = 'none'; });
 $('refactorInstructions').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('refactorConfirm').click(); } });
 
-// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+// Keyboard shortcuts
 document.addEventListener('keydown', e => {
   const tag = e.target.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
@@ -2446,7 +2446,7 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// ── Resize handles ────────────────────────────────────────────────────────────
+// Resize handles
 function makeResizable(handle, getEl, getCssVar, dir) {
   let dragging = false, start = 0, startW = 0;
   handle.addEventListener('mousedown', e => {
@@ -2483,7 +2483,7 @@ document.addEventListener('mousemove', e => {
 });
 document.addEventListener('mouseup', () => { if (bottomDragging) { bottomDragging = false; saveSettings(); } });
 
-// ── Monaco Editor init ────────────────────────────────────────────────────────
+// Monaco Editor init
 function initMonaco() {
   return new Promise(resolve => {
     window.require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
@@ -2573,7 +2573,7 @@ function initMonaco() {
   });
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// Init
 (async () => {
   await initMonaco();
   // Load providers and last workspace in parallel; loadWorkspace() reads /api/fs/roots
@@ -2585,7 +2585,7 @@ function initMonaco() {
 // Save on page unload (tab close / navigation)
 window.addEventListener('beforeunload', () => { saveProjectState(); });
 
-// ── Expose inline-onclick handlers to global scope (required for type="module") ──
+// Expose inline-onclick handlers to global scope (required for type="module")
 // Functions used in innerHTML-injected onclick attributes must be on window.
 Object.assign(window, {
   toggleFwc, copyFwc, applyFwc,

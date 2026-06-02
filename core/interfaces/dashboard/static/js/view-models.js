@@ -12,7 +12,7 @@ const LocalModels = {
     _systemSpecs: null,
     _infoCache: {},
 
-    // ── Provider brand metadata ───────────────────────────────────────────────
+    // Provider brand metadata
     _PROVIDER_BRANDS: {
         Google:    { accent: '#4285f4', bg: 'rgba(66,133,244,0.08)',   icon: 'fab fa-google',   desc: 'Gemma series — Google\'s efficient open models for local inference' },
         Meta:      { accent: '#0082fb', bg: 'rgba(0,130,251,0.08)',    icon: 'fas fa-infinity',  desc: 'Llama series — Meta\'s open-weight foundation models' },

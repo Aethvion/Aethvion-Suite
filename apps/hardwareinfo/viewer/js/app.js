@@ -3,12 +3,12 @@
  * WebSocket-driven live dashboard with Chart.js charts.
  */
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// Constants
 const HISTORY_LEN  = 60;   // seconds of rolling history
 const WS_URL       = `ws://${location.host}/ws/live`;
 const GAUGE_CIRC   = 2 * Math.PI * 52;  // SVG circle r=52
 
-// ── State ─────────────────────────────────────────────────────────────────────
+// State
 const history = {
   cpu:       Array(HISTORY_LEN).fill(0),
   mem:       Array(HISTORY_LEN).fill(0),
@@ -23,10 +23,10 @@ let wsRetryTimer  = null;
 let staticInfo    = null;
 let charts        = {};
 
-// ── DOM refs ──────────────────────────────────────────────────────────────────
+// DOM refs
 const $ = id => document.getElementById(id);
 
-// ── Utility ───────────────────────────────────────────────────────────────────
+// Utility
 function push(arr, val) {
   arr.push(val);
   if (arr.length > HISTORY_LEN) arr.shift();
@@ -77,7 +77,7 @@ function timeLabels() {
   return Array.from({ length: HISTORY_LEN }, (_, i) => `${HISTORY_LEN - i}s`).reverse();
 }
 
-// ── Chart.js setup ────────────────────────────────────────────────────────────
+// Chart.js setup
 Chart.defaults.color           = '#52525b';
 Chart.defaults.font.family     = "'JetBrains Mono', monospace";
 Chart.defaults.font.size       = 10;
@@ -166,7 +166,7 @@ function updateChart(chart, ...histArrays) {
   chart.update('none');
 }
 
-// ── Static info rendering ─────────────────────────────────────────────────────
+// Static info rendering
 function renderStaticInfo(info) {
   staticInfo = info;
 
@@ -257,12 +257,12 @@ function renderNetIfaces(nets) {
   if (!el.children.length) el.innerHTML = '<span style="color:var(--text-dim);font-size:12px">No active interfaces found</span>';
 }
 
-// ── Live data rendering ───────────────────────────────────────────────────────
+// Live data rendering
 function renderLive(d) {
   // Uptime
   $('tbUptime').textContent = formatUptime(d.uptime_secs);
 
-  // ── CPU ────────────────────────────────────────────────────────
+  // CPU
   const cpu = d.cpu;
   push(history.cpu, cpu.total_pct);
   $('cpuPct').textContent  = `${cpu.total_pct}%`;
@@ -291,7 +291,7 @@ function renderLive(d) {
 
   updateChart(charts.cpu, history.cpu);
 
-  // ── Memory ─────────────────────────────────────────────────────
+  // Memory
   const mem = d.memory;
   push(history.mem, mem.percent);
 
@@ -304,7 +304,7 @@ function renderLive(d) {
   charts.mem.update('none');
   updateChart(charts.memLine, history.mem);
 
-  // ── GPU ────────────────────────────────────────────────────────
+  // GPU
   if (d.gpus.length > 0) {
     const g = d.gpus[0];
     $('gpuLoad').textContent     = `${g.load_pct}%`;
@@ -324,7 +324,7 @@ function renderLive(d) {
     $('gpuVramBar').style.background = usageColor(g.mem_pct);
   }
 
-  // ── Network ────────────────────────────────────────────────────
+  // Network
   const net = d.network;
   push(history.netUp,   net.up_mb_s);
   push(history.netDown, net.down_mb_s);
@@ -340,7 +340,7 @@ function renderLive(d) {
   charts.net.options.scales.y.max = Math.ceil(netMax * 1.2 * 10) / 10;
   updateChart(charts.net, history.netUp, history.netDown);
 
-  // ── Disk I/O ───────────────────────────────────────────────────
+  // Disk I/O
   const dio = d.disk_io;
   push(history.diskRead,  dio.read_mb_s);
   push(history.diskWrite, dio.write_mb_s);
@@ -352,7 +352,7 @@ function renderLive(d) {
   charts.disk.options.scales.y.max = Math.ceil(dMax * 1.2 * 10) / 10;
   updateChart(charts.disk, history.diskRead, history.diskWrite);
 
-  // ── Battery ────────────────────────────────────────────────────
+  // Battery
   const bat = d.battery;
   if (bat) {
     $('cardBattery').style.display = '';
@@ -373,7 +373,7 @@ function renderLive(d) {
     else             icon.style.color = pct < 20 ? 'var(--hw-crit)' : 'var(--hw-warn)';
   }
 
-  // ── Processes ──────────────────────────────────────────────────
+  // Processes
   renderProcesses(d.processes);
 }
 
@@ -394,7 +394,7 @@ function renderProcesses(procs) {
   }).join('');
 }
 
-// ── WebSocket ─────────────────────────────────────────────────────────────────
+// WebSocket
 function setWsStatus(state) {
   const dot   = document.querySelector('.ws-dot');
   const label = $('wsLabel');
@@ -429,7 +429,7 @@ function connectWS() {
   });
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// Init
 (async () => {
   initCharts();
 

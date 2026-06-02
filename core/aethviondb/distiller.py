@@ -40,7 +40,7 @@ from .name_index import NameIndex
 
 logger = get_logger(__name__)
 
-# ── System prompt ─────────────────────────────────────────────────────────────
+# System prompt
 
 _SYSTEM_PROMPT = """You are a knowledge extraction engine for a structured world-simulation database.
 

@@ -77,7 +77,6 @@ class TaskWorker:
                 task.started_at = datetime.now(timezone.utc)
                 task.worker_id  = self.worker_id
                 
-                # Actually, I can just update the code to pass the callback.
                 try:
                     # Execute task via orchestrator in executor (it's synchronous)
                     loop = asyncio.get_event_loop()
@@ -86,7 +85,7 @@ class TaskWorker:
                     if hasattr(self, 'save_callback') and self.save_callback:
                         self.save_callback(task)
                     
-                    # RETRIEVE SETTINGS: Prefer task metadata, fallback to thread
+                    # Settings: task metadata takes precedence over thread defaults
                     task_settings = task.metadata.get('settings')
                     thread = self.threads.get(task.thread_id)
                     
@@ -103,10 +102,8 @@ class TaskWorker:
                         context_window = int(settings.get('context_window', 5))
                         
                         if context_mode in ['full', 'smart'] and thread and thread.task_ids:
-                            # Fetch previous tasks
                             history_tasks = []
-                            # Wait, submit_task appends to thread.task_ids BEFORE queueing.
-                            # So we should exclude the current task ID.
+                            # submit_task appends to thread.task_ids before queueing, so exclude current task
                             previous_ids = [tid for tid in thread.task_ids if tid != task.id]
                             
                             if context_mode == 'smart':
@@ -126,7 +123,7 @@ class TaskWorker:
                                 context_prompt = f"Chat History:\n{history_str}\n\nCurrent Message:\n{task.prompt}"
                                 logger.info(f"[{task.id}] Injected context ({len(history_tasks)//2} turns)")
 
-                        # ── Persistent Memory Preparation ──────────────────────────────
+                        # Persistent Memory Preparation
                         pm_system_prompt = None
                         if settings.get('memory_mode') != 'nomemory':
                             from core.memory.persistent_memory import get_persistent_memory
@@ -148,9 +145,9 @@ class TaskWorker:
                                 pm_system_prompt = f"{pm_str}\n\n{pm_system_prompt}"
                             
                             logger.info(f"[{task.id}] Prepared persistent memory system prompt")
-                        # ── End Persistent Memory Preparation ──────────────────────────
+                        # End Persistent Memory Preparation
 
-                    # ── Folder Context Injection ───────────────────────────────────
+                    # Folder Context Injection
                     # Folder shared memory and extra context are stored in task
                     # metadata at submit time so workers don't need a live ref to
                     # the folders dict.
@@ -169,9 +166,9 @@ class TaskWorker:
                             )
                         context_prompt = "\n\n".join(_folder_parts) + "\n\n" + context_prompt
                         logger.info(f"[{task.id}] Injected folder context from '{_folder_title}'")
-                    # ── End Folder Context Injection ───────────────────────────────
+                    # End Folder Context Injection
 
-                    # ── Agent workspace routing ────────────────────────────────────
+                    # Agent workspace routing
                     # Note: context_prompt is NOT used for the agent path (AgentRunner
                     # uses task.prompt directly and builds its own rolling history).
                     ws_id = task.metadata.get('workspace_id')
@@ -202,7 +199,7 @@ class TaskWorker:
 
                     ws_id = task.metadata.get('workspace_id')
                     if ws_id:
-                        # ── Agent workspace task → run full agent loop ─────────────
+                        # Agent workspace task → run full agent loop
                         from core.orchestrator.agent_runner import AgentRunner
                         from core.orchestrator.agent_events import create_task_store, push_event, mark_task_done
 
@@ -256,12 +253,12 @@ class TaskWorker:
                             model_id=model_id,
                         )
                     else:
-                        # ── Regular chat task → orchestrator ───────────────────────
+                        # Regular chat task → orchestrator
                         internet_search = settings.get('internet_search', False)
                         _can_stream = (mode == 'chat_only' and not internet_search and not images)
 
                         if _can_stream:
-                            # ── Token-streaming path (chat_only, no search, no images) ──
+                            # Token-streaming path (chat_only, no search, no images)
                             from core.orchestrator.chat_token_store import create_token_queue
                             from core.providers.provider_manager import get_provider_manager
                             from core.memory.identity_manager import IdentityManager
@@ -310,7 +307,7 @@ class TaskWorker:
                                 model_id=model_id,
                             )
                         else:
-                            # ── Standard blocking path (agents/search/images) ──────────
+                            # Standard blocking path (agents/search/images)
                             result = await self.orchestrator.process_message(
                                 context_prompt,
                                 system_prompt=pm_system_prompt,
@@ -361,7 +358,7 @@ class TaskWorker:
                     # Update task with result
                     task.status = TaskStatus.COMPLETED
                     
-                    # ── Persistent Memory Extraction ──────────────────────────────
+                    # Persistent Memory Extraction
                     final_response = result_dict.get('response', '')
                     memory_updates = []
                     if settings.get('memory_mode') != 'nomemory' and final_response:
@@ -370,7 +367,7 @@ class TaskWorker:
                         final_response, memory_updates = pm.extract_and_update(final_response)
                         result_dict['response'] = final_response
                         result_dict['memory_updates'] = memory_updates
-                    # ── End Persistent Memory Extraction ──────────────────────────
+                    # End Persistent Memory Extraction
 
                     task.result = result_dict
 
@@ -379,7 +376,7 @@ class TaskWorker:
                         task.metadata['actual_model'] = result.model_id
                     task.completed_at = datetime.now(timezone.utc)
 
-                    # ── Save messages to agent thread ──────────────────────────────
+                    # Save messages to agent thread
                     _ws_id2 = task.metadata.get('workspace_id')
                     _ag_tid2 = task.metadata.get('agent_thread_id')
                     if _ws_id2 and _ag_tid2:
@@ -419,7 +416,7 @@ class TaskWorker:
                                 logger.error(f"[{task.id}] append_messages returned False for workspace {_ws_id2}, thread {_ag_tid2}")
                         except Exception as _ag_save_err:
                             logger.error(f"[{task.id}] Agent thread save failed (critical): {_ag_save_err}", exc_info=True)
-                    # ── End save messages to agent thread ──────────────────────────
+                    # End save messages to agent thread
 
                     logger.info(
                         f"Worker {self.worker_id} completed task {task.id} "
@@ -693,7 +690,7 @@ class TaskQueueManager:
         if is_incognito:
             task.metadata['is_incognito'] = True
 
-        # ── Inject folder context into task metadata ───────────────────────
+        # Inject folder context into task metadata
         _folder_id = getattr(self.threads[thread_id], 'folder_id', None)
         if _folder_id and _folder_id in self.folders:
             _folder = self.folders[_folder_id]
@@ -709,7 +706,7 @@ class TaskQueueManager:
                 for _k, _v in _folder.settings.items():
                     if _k not in thread_settings:
                         task.metadata.setdefault('settings', {})[_k] = _v
-        # ── End folder context injection ───────────────────────────────────
+        # End folder context injection
 
         # Save state ONLY if not incognito
         if not is_incognito:
@@ -978,7 +975,7 @@ class TaskQueueManager:
         except Exception as e:
             logger.error(f"Error loading tasks: {e}")
 
-    # ── Folder management ──────────────────────────────────────────────────────
+    # Folder management
 
     def create_folder(self, folder_id: str, title: str, color: str = "#6366f1",
                       context_extra: str = "", shared_memory: str = "",
@@ -1083,7 +1080,7 @@ class TaskQueueManager:
         except Exception as e:
             logger.error(f"Error loading folders: {e}")
 
-    # ── End Folder management ──────────────────────────────────────────────────
+    # End Folder management
 
 
 # Singleton instance

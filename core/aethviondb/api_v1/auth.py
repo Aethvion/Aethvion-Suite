@@ -29,7 +29,7 @@ from typing import Optional
 _KEYS_FILE = "api_keys.json"
 
 
-# ── Storage helpers ───────────────────────────────────────────────────────────
+# Storage helpers
 
 def _keys_path(db_root: Path) -> Path:
     return db_root / _KEYS_FILE
@@ -57,7 +57,7 @@ def _hash(key: str) -> str:
     return hashlib.sha256(key.encode()).hexdigest()
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 def has_keys(db_root: Path) -> bool:
     """True when at least one key is registered for this database."""
@@ -113,7 +113,7 @@ def revoke_key(db_root: Path, label: str) -> bool:
     return True
 
 
-# ── FastAPI dependency ────────────────────────────────────────────────────────
+# FastAPI dependency
 
 def check_auth(
     db_root:            Path,

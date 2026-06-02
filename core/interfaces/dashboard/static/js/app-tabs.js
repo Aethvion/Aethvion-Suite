@@ -28,11 +28,11 @@ console.log('[ATB] app-tabs.js loaded (v10.0.0)');
  */
 const ATB = (() => {
 
-    // ── App registry ──────────────────────────────────────────────────────────
+    // App registry
     // portKey MUST match the name passed to PortManager.bind_port() on the
     // server side.  No hardcoded port numbers — the actual port is discovered
     // at runtime via the PortManager registry.
-    // --- Running Services Logic ---
+    // Running Services Logic
     const ServiceMonitor = {
         init() {
             this.btn = document.getElementById('atb-services-btn');
@@ -129,7 +129,7 @@ const ATB = (() => {
     const HOME_PANEL = 'panel-home';
     let _active = HOME_PANEL;
 
-    // ── Dynamic port discovery ────────────────────────────────────────────────
+    // Dynamic port discovery
     // Returns { "Aethvion Code IDE": 8083, ... } and updates APPS[].port.
     async function refreshPorts() {
         try {
@@ -151,7 +151,7 @@ const ATB = (() => {
         }
     }
 
-    // ── Tab switching ─────────────────────────────────────────────────────────
+    // Tab switching
     function switchTo(panelId) {
         if (panelId === _active) return;
 
@@ -185,7 +185,7 @@ const ATB = (() => {
         _refreshMenuOpenStates();
     }
 
-    // ── Open an app ───────────────────────────────────────────────────────────
+    // Open an app
     async function openApp(appOrId) {
         const app = typeof appOrId === 'string'
             ? APPS.find(a => a.id === appOrId)
@@ -216,7 +216,7 @@ const ATB = (() => {
         switchTo(panelId);
     }
 
-    // ── Wait for the server to register its port, then load iframe ────────────
+    // Wait for the server to register its port, then load iframe
     // Polls /api/system/ports until the app's portKey appears.
     // This is identity-based (not port-based) so a different server running on
     // the expected port will never be loaded by mistake.
@@ -255,7 +255,7 @@ const ATB = (() => {
         _showError(loadingEl, app);
     }
 
-    // ── Build iframe panel ────────────────────────────────────────────────────
+    // Build iframe panel
     function _buildPanel(app, panelId) {
         const loadId = `${panelId}-loading`;
         const frmId  = `${panelId}-iframe`;
@@ -323,7 +323,7 @@ const ATB = (() => {
         return panel;
     }
 
-    // ── Error state ───────────────────────────────────────────────────────────
+    // Error state
     function _showError(loadingEl, app) {
         loadingEl.innerHTML = `
             <div class="app-iframe-error-icon">⚠️</div>
@@ -338,7 +338,7 @@ const ATB = (() => {
             </button>`;
     }
 
-    // ── Retry: tear down and rebuild ──────────────────────────────────────────
+    // Retry: tear down and rebuild
     function retryApp(appId) {
         const app     = APPS.find(a => a.id === appId);
         const panelId = `panel-app-${appId}`;
@@ -353,7 +353,7 @@ const ATB = (() => {
         if (app) openApp(app);
     }
 
-    // ── Refresh: Hard reload an app ───────────────────────────────────────────
+    // Refresh: Hard reload an app
     function refreshApp(appId) {
         const panelId = `panel-app-${appId}`;
         const iframe  = document.getElementById(`${panelId}-iframe`);
@@ -380,7 +380,7 @@ const ATB = (() => {
         }
     }
 
-    // ── Build tab button ──────────────────────────────────────────────────────
+    // Build tab button
     function _buildTab(app, panelId) {
         const tab     = document.createElement('button');
         tab.className = 'atb-tab';
@@ -411,7 +411,7 @@ const ATB = (() => {
         return tab;
     }
 
-    // ── Close tab ─────────────────────────────────────────────────────────────
+    // Close tab
     function _closeTab(panelId, tabEl) {
         // Extract app ID from panel ID (panel-app-ID)
         const appId = panelId.replace('panel-app-', '');
@@ -432,7 +432,7 @@ const ATB = (() => {
         _refreshMenuOpenStates();
     }
 
-    // ── Apps dropdown ─────────────────────────────────────────────────────────
+    // Apps dropdown
     function _buildAppsMenu() {
         const menu = document.getElementById('atb-apps-menu');
         if (!menu) return;
@@ -507,7 +507,7 @@ const ATB = (() => {
         isOpen ? _closeMenu() : _openMenu();
     }
 
-    // ── Suite page status dots ────────────────────────────────────────────────
+    // Suite page status dots
     async function _updateSuiteStatus() {
         try {
             const nameToPort = await refreshPorts();
@@ -549,7 +549,7 @@ const ATB = (() => {
         } catch (_) { /* ignore */ }
     }
 
-    // ── System Shutdown ────────────────────────────────────────────────────────
+    // System Shutdown
     async function quitSystem() {
         if (!confirm("Are you sure you want to shut down Aethvion Suite and all background services?")) {
             return;
@@ -622,7 +622,7 @@ const ATB = (() => {
         }
     }
 
-    // ── Init ──────────────────────────────────────────────────────────────────
+    // Init
     function init() {
         ServiceMonitor.init();
 

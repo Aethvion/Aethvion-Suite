@@ -34,7 +34,7 @@ router = APIRouter()
 _SAFE_RE = re.compile(r"^[a-zA-Z0-9_\-]{1,64}$")
 
 
-# ── Shared helpers ────────────────────────────────────────────────────────────
+# Shared helpers
 
 def _root(db: str) -> Path:
     if not _SAFE_RE.match(db):
@@ -61,7 +61,7 @@ def _ensure(db: str) -> None:
     (root / "chunks").mkdir(parents=True, exist_ok=True)
 
 
-# ── Keyword + filter helpers ──────────────────────────────────────────────────
+# Keyword + filter helpers
 
 def _keyword_score(query: str, entity: dict) -> float:
     if not query:
@@ -178,7 +178,7 @@ def _strip_embeddings(entity: dict) -> dict:
     }
 
 
-# ── Request schemas ───────────────────────────────────────────────────────────
+# Request schemas
 
 class RelationInput(BaseModel):
     kind:        str
@@ -259,7 +259,7 @@ class KeyRequest(BaseModel):
     scopes: list[str] = ["read", "write"]
 
 
-# ── Entity CRUD ───────────────────────────────────────────────────────────────
+# Entity CRUD
 
 @router.get("/{db}/raw/entities")
 async def list_entities(
@@ -535,7 +535,7 @@ async def batch_operations(
     )
 
 
-# ── Entity sub-resources ──────────────────────────────────────────────────────
+# Entity sub-resources
 
 @router.get("/{db}/raw/entities/{entity_id}/relations")
 async def entity_relations(
@@ -614,7 +614,7 @@ async def entity_timeline(
     )
 
 
-# ── Hybrid Search ─────────────────────────────────────────────────────────────
+# Hybrid Search
 
 @router.post("/{db}/raw/search")
 async def hybrid_search(
@@ -632,7 +632,7 @@ async def hybrid_search(
 
     offset = decode_cursor(req.cursor) if req.cursor else 0
 
-    # ── Keyword scoring ──
+    # Keyword scoring
     do_keyword = "keyword" in req.modes
     do_vector  = "vector"  in req.modes and req.vector_model
 
@@ -691,7 +691,7 @@ async def hybrid_search(
     )
 
 
-# ── Vector Similarity Search ──────────────────────────────────────────────────
+# Vector Similarity Search
 
 @router.post("/{db}/raw/vectors/search")
 async def vector_similarity_search(
@@ -740,7 +740,7 @@ async def vector_similarity_search(
     )
 
 
-# ── Graph ─────────────────────────────────────────────────────────────────────
+# Graph
 
 def _bfs(writer, start_id: str, depth: int, direction: str,
          relation_kinds: list[str] | None, filters: dict) -> dict[str, list[str]]:
@@ -946,7 +946,7 @@ async def graph_path(
     )
 
 
-# ── AI Distillation ───────────────────────────────────────────────────────────
+# AI Distillation
 
 @router.post("/{db}/raw/distill")
 async def distill_text(
@@ -972,7 +972,7 @@ async def distill_text(
     return envelope(result, db=db, took_start=t)
 
 
-# ── API Key management ────────────────────────────────────────────────────────
+# API Key management
 
 @router.get("/{db}/keys")
 async def list_keys_endpoint(

@@ -207,14 +207,10 @@ def build_full_registry() -> Dict[str, Any]:
     """
     suggested = load_suggested_models()
     
-    # We can reuse build_initial_registry by passing a fake defaults dict
-    # that contains every model for every provider.
     full_defaults = {}
     for p_id, info in suggested.items():
         full_defaults[p_id] = [m["id"] for m in info.get("models", [])]
-    
-    # Temporarily override load_defaults or just reimplement the loop.
-    # Reimplementing is cleaner than monkeypatching for a devtool helper.
+
     registry = {
         "providers": {},
         "profiles": {"chat_profiles": {"default": []}, "agent_profiles": {"default": []}},

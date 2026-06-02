@@ -35,7 +35,7 @@ router = APIRouter()
 _SAFE_RE = re.compile(r"^[a-zA-Z0-9_\-]{1,64}$")
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 def _root(db: str) -> Path:
     if not _SAFE_RE.match(db):
@@ -113,7 +113,7 @@ def _bake_filter(entities: list[dict], filters: dict) -> list[dict]:
     return result
 
 
-# ── Request schemas ───────────────────────────────────────────────────────────
+# Request schemas
 
 class TriggerBakeRequest(BaseModel):
     name:            str       = "default"
@@ -133,7 +133,7 @@ class BakeSearchRequest(BaseModel):
     limit:   int  = 20
 
 
-# ── List / trigger ────────────────────────────────────────────────────────────
+# List / trigger
 
 @router.get("/{db}/baked")
 async def list_bakes(
@@ -199,7 +199,7 @@ async def trigger_bake(
     )
 
 
-# ── Individual bake ───────────────────────────────────────────────────────────
+# Individual bake
 
 @router.get("/{db}/baked/{name}")
 async def get_bake(
@@ -258,7 +258,7 @@ async def rename_bake(
     return envelope({"renamed": True, "old_name": name, "new_name": req.new_name}, db=db, took_start=t)
 
 
-# ── Entities from snapshot ────────────────────────────────────────────────────
+# Entities from snapshot
 
 @router.get("/{db}/baked/{name}/entities")
 async def bake_entities(
@@ -290,7 +290,7 @@ async def bake_entities(
     )
 
 
-# ── Search within snapshot ────────────────────────────────────────────────────
+# Search within snapshot
 
 @router.post("/{db}/baked/{name}/search")
 async def bake_search(
@@ -333,7 +333,7 @@ async def bake_search(
     )
 
 
-# ── Download ──────────────────────────────────────────────────────────────────
+# Download
 
 @router.get("/{db}/baked/{name}/download")
 async def download_bake(

@@ -1041,7 +1041,7 @@
     color: var(--text-secondary);
 }
 
-/* ── Gauntlet response detail panel ──────────────────────────────────────── */
+/* Gauntlet response detail panel */
 
 /* Prompt preview shown while a category is running */
 .gauntlet-running-prompt {

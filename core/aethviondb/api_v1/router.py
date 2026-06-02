@@ -30,7 +30,7 @@ router.include_router(raw_router)
 router.include_router(baked_router)
 
 
-# ── Discovery endpoint ────────────────────────────────────────────────────────
+# Discovery endpoint
 
 @router.get("/")
 async def api_index():

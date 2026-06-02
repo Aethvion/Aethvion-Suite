@@ -300,7 +300,7 @@ async def declare_winner(request: DeclareWinnerRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── Gauntlet Mode ─────────────────────────────────────────────────────────────
+# Gauntlet Mode
 
 GAUNTLET_PRESETS: Dict[str, Dict] = {
     "general_intelligence": {
@@ -602,7 +602,7 @@ async def arena_gauntlet_stream(request: GauntletRequest, req: Request):
     trace_id = f"GAUNTLET_{uuid.uuid4().hex[:8]}"
 
     async def event_generator():
-        # ── Start ──────────────────────────────────────────────────────────────
+        # Start
         start_payload = {
             "type": "gauntlet_start",
             "trace_id": trace_id,
@@ -626,7 +626,7 @@ async def arena_gauntlet_stream(request: GauntletRequest, req: Request):
             cat_name = category["name"]
             cat_prompt = category["prompt"]
 
-            # ── Category start ──────────────────────────────────────────────
+            # Category start
             yield f"data: {json.dumps({'type': 'category_start', 'category_id': cat_id, 'category_name': cat_name, 'category_index': cat_index, 'total_categories': len(categories), 'prompt': cat_prompt})}\n\n"
 
             # Call all models in parallel for this category
@@ -646,7 +646,7 @@ async def arena_gauntlet_stream(request: GauntletRequest, req: Request):
                 except Exception as exc:
                     logger.error(f"Gauntlet {cat_id} model call failed: {exc}")
 
-            # ── Evaluate this category ──────────────────────────────────────
+            # Evaluate this category
             eval_trace = f"{trace_id}_e{cat_index}"
             scored = await _evaluate_responses(
                 provider_manager, cat_prompt, cat_responses,
@@ -662,10 +662,10 @@ async def arena_gauntlet_stream(request: GauntletRequest, req: Request):
                 if score is not None:
                     model_cat_scores[mid][cat_id] = score
 
-            # ── Category complete ───────────────────────────────────────────
+            # Category complete
             yield f"data: {json.dumps({'type': 'category_complete', 'category_id': cat_id, 'category_name': cat_name, 'category_index': cat_index, 'weight': category['weight'], 'scores': cat_scores, 'responses': scored})}\n\n"
 
-        # ── Compute composite scores ────────────────────────────────────────
+        # Compute composite scores
         composite_scores: Dict[str, float] = {}
         for mid in request.model_ids:
             weighted_sum = 0.0
@@ -687,7 +687,7 @@ async def arena_gauntlet_stream(request: GauntletRequest, req: Request):
         ranked = sorted(request.model_ids, key=lambda m: composite_scores.get(m, 0.0), reverse=True)
         winner_id = ranked[0] if ranked else None
 
-        # ── Persist gauntlet stats to leaderboard ───────────────────────────
+        # Persist gauntlet stats to leaderboard
         leaderboard = _load_leaderboard()
         gauntlet_data = leaderboard.setdefault("gauntlet", {})
         for mid in request.model_ids:
@@ -714,7 +714,7 @@ async def arena_gauntlet_stream(request: GauntletRequest, req: Request):
         leaderboard["gauntlet"] = gauntlet_data
         _save_leaderboard(leaderboard)
 
-        # ── Gauntlet complete ───────────────────────────────────────────────
+        # Gauntlet complete
         complete_payload = {
             "type": "gauntlet_complete",
             "results": results,
@@ -728,7 +728,7 @@ async def arena_gauntlet_stream(request: GauntletRequest, req: Request):
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
-# ── AI Conversations ───────────────────────────────────────────────────────────
+# AI Conversations
 
 class AIConvTurnRequest(BaseModel):
     """Request for a single turn in AI Conversation."""
@@ -794,7 +794,7 @@ async def aiconv_generate(request: AIConvTurnRequest, req: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── AI Conversation History ────────────────────────────────────────────────────
+# AI Conversation History
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

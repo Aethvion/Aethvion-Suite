@@ -33,7 +33,7 @@ from core.utils import fastapi_utils
 from core.utils.paths import LOGS_USAGE, MODEL_REGISTRY as PATHS_MODEL_REGISTRY
 from pydantic import BaseModel
 
-# ── Path setup ──────────────────────────────────────────────────────────────
+# Path setup
 MODULE_DIR   = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(MODULE_DIR, "..", ".."))
 for _p in (MODULE_DIR, PROJECT_ROOT):
@@ -42,7 +42,7 @@ for _p in (MODULE_DIR, PROJECT_ROOT):
 
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
-# ── Provider integration ─────────────────────────────────────────────────────
+# Provider integration
 try:
     from core.providers import get_provider_manager
     pm = get_provider_manager()
@@ -52,7 +52,7 @@ except Exception as _e:
     pm   = None
     HAS_PROVIDERS = False
 
-# ── FastAPI app ───────────────────────────────────────────────────────────────
+# FastAPI app
 app = FastAPI(title="Aethvion Code IDE", version="1.0.0")
 fastapi_utils.add_dev_cache_control(app)
 app.add_middleware(
@@ -67,7 +67,7 @@ ROOT       = Path(PROJECT_ROOT)
 # Workspace exposed in the file tree
 WORKSPACE = ROOT
 
-# ── Persistence helpers ────────────────────────────────────────────────────────
+# Persistence helpers
 DATA_DIR      = ROOT / "data" / "apps" / "code"
 PROJECTS_DIR  = DATA_DIR / "projects"
 SETTINGS_FILE = DATA_DIR / "settings.json"
@@ -191,7 +191,7 @@ def _scan_structure(workspace: str, max_files: int = 300) -> list[str]:
     _walk(root)
     return result
 
-# ── Language detection ────────────────────────────────────────────────────────
+# Language detection
 LANG_MAP: dict[str, str] = {
     ".py": "python",    ".pyw": "python",
     ".js": "javascript", ".mjs": "javascript", ".cjs": "javascript",
@@ -231,7 +231,7 @@ TREE_SKIP_DIRS  = {".git", "__pycache__", "node_modules", ".venv", "venv",
                    ".mypy_cache", ".pytest_cache", "dist", "build", ".tox"}
 TREE_SKIP_FILES = set()
 
-# ── File tree builder ─────────────────────────────────────────────────────────
+# File tree builder
 def _safe_is_file(entry: Path) -> bool:
     try:
         return entry.is_file()
@@ -288,7 +288,7 @@ def build_tree(root: Path, depth: int = 0, max_depth: int = 6) -> dict | None:
         "children": children,
     }
 
-# ── SSE streaming helper ──────────────────────────────────────────────────────
+# SSE streaming helper
 def _messages_to_prompt(messages: list, system: str = "") -> str:
     """
     Convert a list of {role, content} dicts to a flat text prompt.
@@ -437,7 +437,7 @@ def _get_provider(model_id: Optional[str] = None):
     mid = model_id or getattr(getattr(prov, "config", None), "model", None) or ""
     return prov, mid
 
-# ── /api/providers ────────────────────────────────────────────────────────────
+# /api/providers
 @app.get("/api/providers")
 async def get_providers():
     if not HAS_PROVIDERS or not pm:
@@ -453,7 +453,7 @@ async def get_providers():
             })
     return JSONResponse({"models": models, "available": bool(models)})
 
-# ── /api/registry/models ──────────────────────────────────────────────────────
+# /api/registry/models
 @app.get("/api/registry/models")
 async def get_registry_models():
     """Return chat models from the shared model registry (same format as dashboard)."""
@@ -485,7 +485,7 @@ async def get_registry_models():
     except Exception as exc:
         raise HTTPException(500, str(exc))
 
-# ── /api/settings ─────────────────────────────────────────────────────────────
+# /api/settings
 @app.get("/api/settings")
 async def get_settings():
     return JSONResponse(_read_settings())
@@ -504,7 +504,7 @@ async def save_settings(req: SettingsSaveReq):
     _write_settings(s)
     return JSONResponse({"status": "ok"})
 
-# ── /api/project ───────────────────────────────────────────────────────────────
+# /api/project
 @app.get("/api/project")
 async def get_project(workspace: str = ""):
     if not workspace:
@@ -576,7 +576,7 @@ async def scan_project(req: ProjectSaveReq):
     _write_project(data)
     return JSONResponse({"status": "ok", "files": len(data["structure"])})
 
-# ── /api/threads/* ────────────────────────────────────────────────────────────
+# /api/threads/*
 def _threads_dir(workspace: str) -> Path:
     return DATA_DIR / "projects" / _project_key(workspace or str(WORKSPACE)) / "threads"
 
@@ -641,7 +641,7 @@ async def delete_thread(tid: str, workspace: str = ""):
         path.unlink()
     return JSONResponse({"ok": True})
 
-# ── /api/fs/* ─────────────────────────────────────────────────────────────────
+# /api/fs/*
 @app.get("/api/fs/roots")
 async def fs_roots():
     settings = _read_settings()
@@ -885,7 +885,7 @@ async def fs_delete(req: DeleteReq):
         raise HTTPException(500, str(exc))
     return JSONResponse({"status": "success"})
 
-# ── /api/code/run ─────────────────────────────────────────────────────────────
+# /api/code/run
 class RunReq(BaseModel):
     path:     Optional[str] = None   # run a saved file
     code:     Optional[str] = None   # run an inline snippet
@@ -981,7 +981,7 @@ async def run_code(req: RunReq):
         if tmp_path:
             tmp_path.unlink(missing_ok=True)
 
-# ── /api/code/run/stream ──────────────────────────────────────────────────────
+# /api/code/run/stream
 async def _run_sse(cmd: list, cwd: str, timeout: int,
                    stdin_data: Optional[str]) -> AsyncGenerator[str, None]:
     """Run a subprocess and stream stdout/stderr line-by-line as SSE events."""
@@ -1094,7 +1094,7 @@ async def run_code_stream(req: RunReq):
     return StreamingResponse(_wrapped(), media_type="text/event-stream", headers=SSE_HEADERS)
 
 
-# ── /api/git/branch ───────────────────────────────────────────────────────────
+# /api/git/branch
 @app.get("/api/git/branch")
 async def git_branch(workspace: str = ""):
     base = workspace or str(WORKSPACE)
@@ -1111,7 +1111,7 @@ async def git_branch(workspace: str = ""):
         return JSONResponse({"branch": ""})
 
 
-# ── /api/ai/* ─────────────────────────────────────────────────────────────────
+# /api/ai/*
 SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 
 class ChatMsg(BaseModel):
@@ -1297,7 +1297,7 @@ async def ai_refactor(req: RefactorReq):
     return StreamingResponse(_sse(prov, msgs, mid, system, endpoint="/api/ai/refactor"),
                              media_type="text/event-stream", headers=SSE_HEADERS)
 
-# ── Static files + root ───────────────────────────────────────────────────────
+# Static files + root
 app.mount("/viewer", StaticFiles(directory=str(VIEWER_DIR)), name="viewer")
 
 @app.get("/", response_class=HTMLResponse)
@@ -1308,7 +1308,7 @@ async def index():
 async def favicon():
     return JSONResponse({"ok": True})
 
-# ── Launch ────────────────────────────────────────────────────────────────────
+# Launch
 def launch():
     from core.utils.port_manager import PortManager
     base_port = int(os.getenv("CODE_PORT", "8083"))

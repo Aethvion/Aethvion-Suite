@@ -4,9 +4,7 @@
 import { CanvasEngine } from './canvas_engine.js';
 import { FilterEngine  } from './filters.js';
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Workspace
-// ─────────────────────────────────────────────────────────────────────────────
 
 class Workspace {
     constructor(name, engine) {
@@ -17,9 +15,7 @@ class Workspace {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // AethvionPhoto
-// ─────────────────────────────────────────────────────────────────────────────
 
 class AethvionPhoto {
     constructor() {
@@ -68,7 +64,7 @@ class AethvionPhoto {
         this.initToolOptionsBar();
     }
 
-    // ─── Toast notification ────────────────────────────────────────
+    // Toast notification
 
     notify(message, type = 'success') {
         const container = document.getElementById('toast-container');
@@ -86,7 +82,7 @@ class AethvionPhoto {
         }, 3200);
     }
 
-    // ─── Workspace management ─────────────────────────────────────
+    // Workspace management
 
     addWorkspace(name, withInitialLayer = true) {
         const engine    = new CanvasEngine('main-canvas');
@@ -148,7 +144,7 @@ class AethvionPhoto {
         this.setActiveWorkspace(this.activeWorkspaceIndex);
     }
 
-    // ─── Tab strip ────────────────────────────────────────────────
+    // Tab strip
 
     updateTabStrip() {
         const strip  = document.getElementById('tab-bar');
@@ -166,7 +162,7 @@ class AethvionPhoto {
         });
     }
 
-    // ─── Canvas / zoom helpers ────────────────────────────────────
+    // Canvas / zoom helpers
 
     syncCanvasSettings() {
         const ws = this.getActiveWorkspace();
@@ -217,7 +213,7 @@ class AethvionPhoto {
         this.setZoom(Math.min(zoomW, zoomH, 1));
     }
 
-    // ─── Canvas coordinates helper ────────────────────────────────
+    // Canvas coordinates helper
 
     _canvasCoords(e) {
         const canvas = document.getElementById('main-canvas');
@@ -231,7 +227,7 @@ class AethvionPhoto {
         };
     }
 
-    // ─── Bind events ──────────────────────────────────────────────
+    // Bind events
 
     bindEvents() {
         // Tool palette buttons
@@ -571,7 +567,7 @@ class AethvionPhoto {
         this.notify('Canvas cropped');
     }
 
-    // ─── Text overlay ─────────────────────────────────────────────
+    // Text overlay
 
     _showTextOverlay(clientX, clientY) {
         const overlay = document.getElementById('text-overlay');
@@ -617,7 +613,7 @@ class AethvionPhoto {
         input.value = '';
     }
 
-    // ─── Keyboard shortcuts ───────────────────────────────────────
+    // Keyboard shortcuts
 
     bindKeyboard() {
         document.addEventListener('keydown', (e) => {
@@ -733,7 +729,7 @@ class AethvionPhoto {
         });
     }
 
-    // ─── Tool options bar ─────────────────────────────────────────
+    // Tool options bar
 
     initToolOptionsBar() {
         // Brush size slider
@@ -791,7 +787,7 @@ class AethvionPhoto {
         if (num)    num.value    = this.brushSize;
     }
 
-    // ─── Color picker ─────────────────────────────────────────────
+    // Color picker
 
     initColorPicker() {
         const fgPreview = document.getElementById('color-preview');
@@ -830,7 +826,7 @@ class AethvionPhoto {
         if (bgInput)   bgInput.value   = this.bgColor;
     }
 
-    // ─── Eyedropper ───────────────────────────────────────────────
+    // Eyedropper
 
     handleEyedropper(x, y) {
         const ws = this.getActiveWorkspace();
@@ -847,14 +843,14 @@ class AethvionPhoto {
         if (fgInput)   fgInput.value = hex;
     }
 
-    // ─── Coordinate display ───────────────────────────────────────
+    // Coordinate display
 
     updateCoords(e) {
         const { x, y } = this._canvasCoords(e);
         document.getElementById('coord-display').textContent = `${Math.round(x)} : ${Math.round(y)} px`;
     }
 
-    // ─── Menu dropdowns ───────────────────────────────────────────
+    // Menu dropdowns
 
     bindDropdowns() {
         document.querySelectorAll('.dropdown-content button').forEach(btn => {
@@ -967,7 +963,7 @@ class AethvionPhoto {
         }
     }
 
-    // ─── File operations ──────────────────────────────────────────
+    // File operations
 
     triggerFileOpen(type, isImport = false) {
         const input  = document.createElement('input');
@@ -1094,7 +1090,7 @@ class AethvionPhoto {
         this.notify(`Exported: ${ws.name}.png`);
     }
 
-    // ─── Filters ──────────────────────────────────────────────────
+    // Filters
 
     bindFilters() {
         let filterDragPushed = false;
@@ -1132,7 +1128,7 @@ class AethvionPhoto {
         });
     }
 
-    // ─── Layer stack UI ───────────────────────────────────────────
+    // Layer stack UI
 
     bindLayerActions() {
         const blendSel  = document.getElementById('layer-blend-mode');
@@ -1253,7 +1249,7 @@ class AethvionPhoto {
         });
     }
 
-    // ─── Navigator minimap ────────────────────────────────────────
+    // Navigator minimap
 
     updateNavigator() {
         const navCanvas = document.getElementById('nav-canvas');
@@ -1292,7 +1288,7 @@ class AethvionPhoto {
         }
     }
 
-    // ─── Sync helpers ─────────────────────────────────────────────
+    // Sync helpers
 
     syncCanvasSettings() {
         const ws = this.getActiveWorkspace();
@@ -1318,9 +1314,7 @@ class AethvionPhoto {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Bootstrap
-// ─────────────────────────────────────────────────────────────────────────────
 
 window.addEventListener('load', () => {
     window.photoApp = new AethvionPhoto();

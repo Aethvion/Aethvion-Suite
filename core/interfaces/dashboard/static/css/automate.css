@@ -17,7 +17,7 @@
     user-select: none;
 }
 
-/* ── Port tooltip ────────────────────────────────────────────────────────── */
+/* Port tooltip */
 
 .at-port-tooltip {
     position: fixed;
@@ -60,7 +60,7 @@
     margin-top: 0.22rem;
 }
 
-/* ── Toolbar ────────────────────────────────────────────────────────────── */
+/* Toolbar */
 
 .at-toolbar {
     display: flex;
@@ -166,7 +166,7 @@
 }
 .at-btn-run:not(:disabled):hover { background: rgba(52, 211, 153, 0.22); }
 
-/* ── Run split-button group ──────────────────────────────────────────────── */
+/* Run split-button group */
 
 .at-run-group {
     display: flex;
@@ -296,7 +296,7 @@
 .at-btn-icon { padding: 0.28rem 0.5rem; }
 .at-btn-sm   { padding: 0.22rem 0.5rem; font-size: 0.74rem; }
 
-/* ── Body ───────────────────────────────────────────────────────────────── */
+/* Body */
 
 .at-body {
     display: flex;
@@ -305,7 +305,7 @@
     overflow: hidden;
 }
 
-/* ── Workflow sidebar (left) ────────────────────────────────────────────── */
+/* Workflow sidebar (left) */
 
 .at-sidebar {
     width: 280px;
@@ -317,7 +317,7 @@
     overflow: hidden;
 }
 
-/* ── Sidebar nav dropdown ───────────────────────────────────────────────── */
+/* Sidebar nav dropdown */
 
 .at-sidebar-nav {
     position: relative;
@@ -440,7 +440,7 @@
     flex-shrink: 0;
 }
 
-/* ── Public Variables panel ─────────────────────────────────────────────── */
+/* Public Variables panel */
 
 .at-pubvars {
     display: flex;
@@ -746,7 +746,7 @@
     color: var(--text-muted, #64748b);
 }
 
-/* ── Node Inspector (replaces the old bottom props panel) ───────────────── */
+/* Node Inspector (replaces the old bottom props panel) */
 
 .at-inspector {
     display: flex;
@@ -860,7 +860,7 @@
     background: rgba(34,211,238,0.08) !important;
 }
 
-/* ── Canvas ─────────────────────────────────────────────────────────────── */
+/* Canvas */
 
 .at-canvas-wrap {
     flex: 1;
@@ -930,7 +930,7 @@
     font-size: 0.66rem;
 }
 
-/* ── Nodes ──────────────────────────────────────────────────────────────── */
+/* Nodes */
 
 .at-node {
     position: absolute;
@@ -1064,7 +1064,7 @@
     padding: 0 0.35rem;
 }
 
-/* ── AI node extras ─────────────────────────────────────────────────────── */
+/* AI node extras */
 
 .at-node-ai-bar {
     display: flex;
@@ -1170,7 +1170,7 @@
     object-fit: contain;
 }
 
-/* ── Connection paths (SVG) ─────────────────────────────────────────────── */
+/* Connection paths (SVG) */
 
 .at-conn {
     fill: none;
@@ -1237,7 +1237,7 @@
     stroke-dasharray: 10 5;
 }
 
-/* ── Palette (right) ────────────────────────────────────────────────────── */
+/* Palette (right) */
 
 .at-palette {
     width: 230px;
@@ -1382,7 +1382,7 @@
     padding: 0.25rem 0;
 }
 
-/* ── Toast ──────────────────────────────────────────────────────────────── */
+/* Toast */
 
 .at-toast {
     position: absolute;
@@ -1408,7 +1408,7 @@
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-/* ── Trigger selection highlight ────────────────────────────────────────── */
+/* Trigger selection highlight */
 
 /* Nodes inside the selected trigger's reachable chain */
 .at-node.at-trigger-highlight {
@@ -1429,7 +1429,7 @@
     box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.35), 0 0 16px rgba(96, 165, 250, 0.2), 0 4px 24px rgba(0,0,0,0.45);
 }
 
-/* ── Global node highlight ──────────────────────────────────────────────── */
+/* Global node highlight */
 
 /* Nodes wired to the selected global node */
 .at-node.at-global-highlight {
@@ -1464,7 +1464,7 @@
     margin-right: 4px;
 }
 
-/* ── Execution node states ──────────────────────────────────────────────── */
+/* Execution node states */
 
 .at-node.at-exec-running {
     border-color: rgba(34, 211, 238, 0.7);
@@ -1516,7 +1516,7 @@
 }
 .at-node-error-bar i { flex-shrink: 0; margin-top: 2px; }
 
-/* ── Execution log panel ─────────────────────────────────────────────────── */
+/* Execution log panel */
 
 .at-exec-panel {
     position: absolute;
@@ -1688,7 +1688,7 @@
 
 .hidden { display: none !important; }
 
-/* ── Toggle (checkbox pill) ─────────────────────────────────────────────── */
+/* Toggle (checkbox pill) */
 
 .at-prop-toggle {
     display: inline-flex;
@@ -1730,7 +1730,7 @@
     background: #22d3ee;
 }
 
-/* ── Props test row ─────────────────────────────────────────────────────── */
+/* Props test row */
 
 .at-prop-sep {
     width: 100%;
@@ -1749,7 +1749,7 @@
 .at-prop-test-input-wrap { flex: 1; min-width: 0; }
 .at-prop-test-input { width: 100%; box-sizing: border-box; }
 
-/* ── Schedule node card (compact view) ──────────────────────────────────── */
+/* Schedule node card (compact view) */
 
 .at-node-schedules {
     padding: 0.4rem 0.65rem 0.5rem;
@@ -1790,7 +1790,7 @@
     text-decoration: line-through;
 }
 
-/* ── Text / value preview strip (input.text, input.number, input.list) ── */
+/* Text / value preview strip (input.text, input.number, input.list) */
 
 .at-node-value-preview {
     padding: 0.3rem 0.65rem 0.38rem;
@@ -1816,7 +1816,7 @@
     white-space: normal;
 }
 
-/* ── Variable node strip ─────────────────────────────────────────────────── */
+/* Variable node strip */
 
 .at-node-var-strip {
     padding: 0.3rem 0.65rem 0.38rem;
@@ -1869,7 +1869,7 @@
     flex: 1;
 }
 
-/* ── Trigger name strip ──────────────────────────────────────────────────── */
+/* Trigger name strip */
 
 .at-node-trig-name {
     padding: 0.22rem 0.65rem 0.26rem;
@@ -1897,7 +1897,7 @@
     letter-spacing: 0.01em;
 }
 
-/* ── Schedule editor (properties panel) ─────────────────────────────────── */
+/* Schedule editor (properties panel) */
 
 .at-sched-editor {
     display: flex;
@@ -1942,7 +1942,7 @@
     margin-top: 0.15rem;
 }
 
-/* ── Schedule entry list ─────────────────────────────────────────────────── */
+/* Schedule entry list */
 
 .at-sched-list {
     display: flex;
@@ -2047,7 +2047,7 @@
     background: rgba(239, 68, 68, 0.1);
 }
 
-/* ── Property field — wired/overridden state ────────────────────────────── */
+/* Property field — wired/overridden state */
 
 /* The field itself is dimmed but stays fully interactive */
 .at-prop-input.at-prop-overridden,
@@ -2070,7 +2070,7 @@
 }
 .at-prop-overridden-badge i { font-size: 0.6rem; flex-shrink: 0; }
 
-/* ── Scrollbars ─────────────────────────────────────────────────────────── */
+/* Scrollbars */
 
 .at-wf-list::-webkit-scrollbar,
 .at-palette-list::-webkit-scrollbar,
@@ -2096,7 +2096,7 @@
     border-radius: 2px;
 }
 
-/* ── Property path row (text input + browse button) ────────────────────── */
+/* Property path row (text input + browse button) */
 
 .at-prop-path-row {
     display: flex;
@@ -2135,7 +2135,7 @@
 }
 .at-prop-browse-btn i { pointer-events: none; }
 
-/* ── Sidebar header action group ────────────────────────────────────────── */
+/* Sidebar header action group */
 
 .at-sidebar-hdr-actions {
     display: flex;
@@ -2143,7 +2143,7 @@
     gap: 2px;
 }
 
-/* ── Modal overlay + container ──────────────────────────────────────────── */
+/* Modal overlay + container */
 
 .at-modal-overlay {
     position: absolute;
@@ -2211,7 +2211,7 @@
 }
 .at-modal-sub strong { color: var(--text-secondary, #94a3b8); font-weight: 500; }
 
-/* ── Examples grid ──────────────────────────────────────────────────────── */
+/* Examples grid */
 
 .at-examples-grid {
     display: grid;
@@ -2280,7 +2280,7 @@
     white-space: nowrap;
 }
 
-/* ── Share modal ────────────────────────────────────────────────────────── */
+/* Share modal */
 
 .at-share-modal { width: 420px; }
 
@@ -2306,7 +2306,7 @@
     user-select: all;
 }
 
-/* ── Import modal ───────────────────────────────────────────────────────── */
+/* Import modal */
 
 .at-import-modal { width: 440px; }
 
@@ -2360,7 +2360,7 @@
     text-transform: uppercase;
 }
 
-/* ── Compile modal ───────────────────────────────────────────────────────── */
+/* Compile modal */
 
 .at-compile-modal { width: 460px; }
 

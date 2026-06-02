@@ -3,7 +3,7 @@
  * CSS-based avatar — expressions controlled via class switching
  */
 
-// ── Global State ──────────────────────────────────────────────────────────────
+// Global State
 let axiomChatHistory = [];
 let axiomMaxHistory = 20;
 let axiomTypingSpeed = 20;  // fallback; overridden by global companions speed
@@ -28,7 +28,7 @@ window.addEventListener('companionSettingsUpdated', (e) => {
     }
 });
 
-// ── Expression map ────────────────────────────────────────────────────────────
+// Expression map
 // Maps LLM emotion tag values → CSS class suffixes on #axiom-avatar
 
 const AXIOM_EXPRESSION_MAP = {
@@ -60,7 +60,7 @@ const AXIOM_EXPRESSION_MAP = {
     'default':    'neutral',
 };
 
-// ── Mood label map ────────────────────────────────────────────────────────────
+// Mood label map
 
 const AXIOM_MOOD_LABELS = {
     precise:    '◈ Precise',
@@ -71,7 +71,7 @@ const AXIOM_MOOD_LABELS = {
     warning:    '⚠ Warning',
 };
 
-// ── Initializer ───────────────────────────────────────────────────────────────
+// Initializer
 
 async function initializeAxiom() {
     if (hasInitializedAxiom) {
@@ -143,7 +143,7 @@ async function initializeAxiom() {
     console.log('[Axiom] Initialization complete.');
 }
 
-// ── Expression update ─────────────────────────────────────────────────────────
+// Expression update
 
 function updateAxiomExpression(expression) {
     const avatar = document.getElementById('axiom-avatar');
@@ -179,7 +179,7 @@ function updateAxiomExpression(expression) {
     localStorage.setItem('axiom_last_expression', key);
 }
 
-// ── Mood update ───────────────────────────────────────────────────────────────
+// Mood update
 
 function updateAxiomMood(mood) {
     if (mood === currentAxiomMood) return;
@@ -203,7 +203,7 @@ function updateAxiomMood(mood) {
     localStorage.setItem('axiom_last_mood', mood);
 }
 
-// ── History loading ───────────────────────────────────────────────────────────
+// History loading
 
 async function axiomLoadHistory(offsetDays, limitDays, isInitial) {
     try {
@@ -328,7 +328,7 @@ function axiomCreateMessageElement(role, text, timestamp = null) {
     return div;
 }
 
-// ── Text helpers ──────────────────────────────────────────────────────────────
+// Text helpers
 
 function axiomCleanDisplayText(text) {
     return text
@@ -361,7 +361,7 @@ function axiomFormatDate(dateStr) {
     }
 }
 
-// ── Streaming bubble helpers ──────────────────────────────────────────────────
+// Streaming bubble helpers
 
 function axiomCreateStreamingBubble() {
     const chatMessages = document.getElementById('axiom-chat-messages');
@@ -422,7 +422,7 @@ function axiomAddStaticMessage(role, text, timestamp = null) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// ── Send message ──────────────────────────────────────────────────────────────
+// Send message
 
 async function sendAxiomMessage() {
     if (isAxiomTyping) return;
@@ -603,7 +603,7 @@ async function sendAxiomMessage() {
     }
 }
 
-// ── Memory refresh ────────────────────────────────────────────────────────────
+// Memory refresh
 
 async function refreshAxiomMemory() {
     try {
@@ -645,7 +645,7 @@ window.toggleAxiomMemoryMode = function() {
     }
 };
 
-// ── Exports ───────────────────────────────────────────────────────────────────
+// Exports
 
 window.initializeAxiom = initializeAxiom;
 window.refreshAxiomMemory = refreshAxiomMemory;

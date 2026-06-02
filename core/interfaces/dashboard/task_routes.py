@@ -351,7 +351,7 @@ async def cancel_task(task_id: str):
     return {"ok": True, "task_id": task_id}
 
 
-# ── Folder endpoints ──────────────────────────────────────────────────────────
+# Folder endpoints
 
 class FolderCreateRequest(BaseModel):
     folder_id: str
@@ -453,7 +453,7 @@ async def set_thread_folder(thread_id: str, request: Dict[str, Any]):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── End Folder endpoints ───────────────────────────────────────────────────────
+# End Folder endpoints
 
 
 @router.get("/{task_id}/events")

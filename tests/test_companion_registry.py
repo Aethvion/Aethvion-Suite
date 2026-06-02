@@ -16,7 +16,7 @@ import pytest
 from core.companions.registry import CompanionConfig
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 def _write_companion_json(cfg_dir: Path, data: dict) -> Path:
     """Write a companion config JSON and return its path."""
@@ -38,9 +38,7 @@ MINIMAL_COMPANION = {
 }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # CompanionConfig.from_json
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TestCompanionConfigFromJson:
     def test_minimal_config_loads(self, companion_config_dir):
@@ -92,9 +90,7 @@ class TestCompanionConfigFromJson:
             CompanionConfig.from_json(p)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # CompanionConfig defaults
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TestCompanionConfigDefaults:
     def test_default_expression_fallback(self, tmp_path):

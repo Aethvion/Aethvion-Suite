@@ -14,13 +14,13 @@ from pathlib import Path
 
 import pytest
 
-# ── Make the project root importable without `pip install -e .` ──────────────
+# Make the project root importable without `pip install -e .`
 _PROJECT_ROOT = Path(__file__).parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 
-# ── AethvionDB fixtures ───────────────────────────────────────────────────────
+# AethvionDB fixtures
 
 @pytest.fixture()
 def db_dir(tmp_path: Path) -> Path:
@@ -46,7 +46,7 @@ def entity_writer(db_dir: Path, name_index):
     return EntityWriter(entities_dir=entities_dir, index=name_index)
 
 
-# ── Companion fixtures ────────────────────────────────────────────────────────
+# Companion fixtures
 
 @pytest.fixture()
 def companion_config_dir(tmp_path: Path) -> Path:

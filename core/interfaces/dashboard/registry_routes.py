@@ -45,7 +45,7 @@ ENV_EXAMPLE_PATH = PROJECT_ROOT / ".env.example"
 SYSTEM_SPECS_PATH = SYSTEM_SPECS
 
 
-# ===== .env Management =====
+# .env Management
 
 @router.get("/env/status")
 async def get_env_status():
@@ -171,7 +171,7 @@ async def update_env_key(data: Dict[str, Any], request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ===== Suggested Models =====
+# Suggested Models
 
 @router.get("/suggested")
 async def get_all_suggested_models():
@@ -445,7 +445,7 @@ async def update_provider(provider_name: str, updates: Dict[str, Any], request: 
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ===== Model CRUD =====
+# Model CRUD
 
 @router.post("/provider/{provider_name}/models")
 async def add_model(provider_name: str, model_data: Dict[str, Any], request: Request):
@@ -602,7 +602,7 @@ async def get_chat_models():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ===== Auto Routing Configuration =====
+# Auto Routing Configuration
 
 def _get_chat_model_ids(registry: Dict[str, Any]) -> Dict[str, Dict]:
     """Return all models with 'chat' capability: {model_id: {description, provider}}."""
@@ -687,7 +687,7 @@ async def save_auto_routing(data: Dict[str, Any], request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ===== Local Model Management =====
+# Local Model Management
 
 @router.get("/local/models/status")
 async def get_local_models_status():
@@ -1002,7 +1002,7 @@ async def register_local_model(data: Dict[str, Any], request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── Local inference config (n_gpu_layers, n_ctx, n_threads) ──────────────────
+# Local inference config (n_gpu_layers, n_ctx, n_threads)
 
 from core.utils.paths import LOCAL_INFERENCE_CONFIG as _INFERENCE_CFG_PATH
 from core.ai.call_contexts import CallSource
@@ -1119,7 +1119,7 @@ async def get_system_specs():
         "last_updated": utcnow_iso(),
     }
 
-    # ── CPU & RAM via psutil ─────────────────────────────────────────────────
+    # CPU & RAM via psutil
     try:
         import psutil
         specs["cpu_cores"]   = psutil.cpu_count(logical=False) or 0
@@ -1130,7 +1130,7 @@ async def get_system_specs():
     except Exception:
         pass
 
-    # ── CPU name ─────────────────────────────────────────────────────────────
+    # CPU name
     try:
         cpu_name = _platform.processor()
         if not cpu_name and os.name == "nt":
@@ -1149,7 +1149,7 @@ async def get_system_specs():
     except Exception:
         pass
 
-    # ── GPU via nvidia-smi ───────────────────────────────────────────────────
+    # GPU via nvidia-smi
     try:
         proc = subprocess.run(
             ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
@@ -1164,7 +1164,7 @@ async def get_system_specs():
     except Exception:
         pass
 
-    # ── Torch fallback ───────────────────────────────────────────────────────
+    # Torch fallback
     if not specs["cuda_available"]:
         try:
             import torch
@@ -1177,7 +1177,7 @@ async def get_system_specs():
         except Exception:
             pass
 
-    # ── Save to data/system_specs.json ───────────────────────────────────────
+    # Save to data/system_specs.json
     try:
         atomic_json_write(SYSTEM_SPECS_PATH, specs)
     except Exception as exc:

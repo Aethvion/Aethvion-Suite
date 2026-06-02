@@ -16,7 +16,7 @@ const CompanionCreator = (() => {
     let _chatHistory = [];    // [{role, content}] for the current chat session
     let _chatStreaming = false;
 
-    // ── Shell ─────────────────────────────────────────────────────────────────
+    // Shell
 
     function _renderShell() {
         _root.innerHTML = `
@@ -544,7 +544,7 @@ const CompanionCreator = (() => {
 </div><!-- /.cc-hub -->`;
     }
 
-    // ── List rendering ────────────────────────────────────────────────────────
+    // List rendering
 
     /** Format a "YYYY-MM-DD HH:MM:SS" timestamp into a human-readable "X ago" string. */
     function _timeSince(tsStr) {
@@ -652,7 +652,7 @@ const CompanionCreator = (() => {
         </div>`;
     }
 
-    // ── Range helpers ─────────────────────────────────────────────────────────
+    // Range helpers
 
     function _updateRangeDisplays() {
         [
@@ -666,7 +666,7 @@ const CompanionCreator = (() => {
         });
     }
 
-    // ── Form ──────────────────────────────────────────────────────────────────
+    // Form
 
     function _showForm(fillData = null, isBuiltin = false) {
         _isBuiltin = isBuiltin;
@@ -881,7 +881,7 @@ const CompanionCreator = (() => {
         };
     }
 
-    // ── Actions ───────────────────────────────────────────────────────────────
+    // Actions
 
     async function _editCompanion(id, isBuiltin = false) {
         _editingId = id;
@@ -900,7 +900,7 @@ const CompanionCreator = (() => {
         }
     }
 
-    // ── View orchestration ────────────────────────────────────────────────────
+    // View orchestration
 
     function _selectCompanion(data, isBuiltin) {
         // Show the active pane and update header
@@ -959,7 +959,7 @@ const CompanionCreator = (() => {
         }
     }
 
-    // ── Memory view ───────────────────────────────────────────────────────────
+    // Memory view
 
     async function _loadMemory(companionId) {
         const contentEl = document.getElementById('cc-mem-content');
@@ -1001,7 +1001,7 @@ const CompanionCreator = (() => {
             return `<div class="cc-mem-none">${msg}</div>`;
         }
 
-        // ── About (base_info) ──
+        // About (base_info)
         const aboutRows = [
             ['Core identity', bi.core_identity],
             ['Personality',   bi.personality],
@@ -1024,7 +1024,7 @@ const CompanionCreator = (() => {
         if (dislikes.length)  aboutHtml += `<div class="cc-mem-kv"><span class="cc-mem-key">Dislikes</span><span class="cc-mem-val">${dislikes.map(d => `<span class="cc-mem-tag cc-mem-tag-dislike">${_esc(d)}</span>`).join('')}</span></div>`;
         if (!aboutHtml)       aboutHtml  = emptyState('No identity data yet.');
 
-        // ── User info ──
+        // User info
         const uiEntries = Object.entries(userInfo);
         const uiHtml = uiEntries.length
             ? uiEntries.map(([k, v]) => `
@@ -1034,17 +1034,17 @@ const CompanionCreator = (() => {
                 </div>`).join('')
             : emptyState('Nothing recorded yet — keep chatting!');
 
-        // ── Observations ──
+        // Observations
         const obsHtml = obs.length
             ? obs.map(o => `<div class="cc-mem-obs-item"><i class="fas fa-circle-dot"></i>${_esc(o)}</div>`).join('')
             : emptyState('No observations yet.');
 
-        // ── Synthesis notes ──
+        // Synthesis notes
         const synthHtml = synth.length
             ? synth.map(s => `<div class="cc-mem-obs-item cc-mem-synth-item"><i class="fas fa-lightbulb"></i>${_esc(s)}</div>`).join('')
             : emptyState('No synthesis run yet.');
 
-        // ── Footer timestamps ──
+        // Footer timestamps
         let footer = '';
         if (lastUpd || lastSynth) {
             footer = `<div class="cc-mem-footer">`;
@@ -1114,7 +1114,7 @@ const CompanionCreator = (() => {
         if (portSubEl)  portSubEl.textContent  = isBuiltin ? 'Built-in' : '';
     }
 
-    // ── Chat ──────────────────────────────────────────────────────────────────
+    // Chat
 
     async function _loadHistory(companionId) {
         const msgsEl = document.getElementById('cc-chat-msgs');
@@ -1539,7 +1539,7 @@ const CompanionCreator = (() => {
         }
     }
 
-    // ── Expression images ─────────────────────────────────────────────────────
+    // Expression images
 
     function _renderExpressionImages(expressions, exprImages) {
         const grid = document.getElementById('cc-expr-images-grid');
@@ -1640,7 +1640,7 @@ const CompanionCreator = (() => {
         try { localStorage.setItem(`cc_last_expr_${_editingId}`, expression); } catch {}
     }
 
-    // ── Init ──────────────────────────────────────────────────────────────────
+    // Init
 
     function init() {
         _root = document.getElementById('companion-creator-root');
@@ -1649,14 +1649,14 @@ const CompanionCreator = (() => {
 
         _renderShell();
 
-        // ── Restore collapsed roster state ────────────────────────────────────
+        // Restore collapsed roster state
         if (localStorage.getItem('cc_roster_collapsed') === '1') {
             document.getElementById('cc-hub')?.classList.add('roster-collapsed');
             const icon = document.querySelector('#cc-roster-toggle i');
             if (icon) icon.className = 'fas fa-chevron-right';
         }
 
-        // ── Load list, then restore last selected companion ───────────────────
+        // Load list, then restore last selected companion
         _loadList().then(() => {
             try {
                 const saved = JSON.parse(localStorage.getItem('cc_last_companion') || 'null');
@@ -1816,7 +1816,7 @@ const CompanionCreator = (() => {
         });
     }
 
-    // ── Behaviour settings (prefs-backed, auto-save) ──────────────────────────
+    // Behaviour settings (prefs-backed, auto-save)
 
     /** Maps companionId → event prefix used by mode files (e.g. 'misaka', 'axiom') */
     function _evtPrefix(companionId) {
@@ -1950,7 +1950,7 @@ const CompanionCreator = (() => {
             () => _resetCompanion(companionId), { signal });
     }
 
-    // ── Workspace management ──────────────────────────────────────────────────
+    // Workspace management
 
     async function _loadCompanionWorkspaces(companionId) {
         try {
@@ -2033,7 +2033,7 @@ const CompanionCreator = (() => {
         }
     }
 
-    // ── Reset companion ───────────────────────────────────────────────────────
+    // Reset companion
 
     async function _resetCompanion(companionId) {
         const name      = _activeData?.name || companionId;

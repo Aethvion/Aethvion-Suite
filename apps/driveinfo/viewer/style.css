@@ -32,10 +32,10 @@ html, body {
     font-size: 13px;
 }
 
-/* ── Utility ────────────────────────────────────────────────── */
+/* Utility */
 .di-hidden { display: none !important; }
 
-/* ── Overlay (scan progress) ────────────────────────────────── */
+/* Overlay (scan progress) */
 .di-overlay {
     position: fixed; inset: 0;
     background: rgba(0,0,0,.75);
@@ -79,7 +79,7 @@ html, body {
 }
 .di-overlay-stats { font-size: 11px; color: var(--text-dim); }
 
-/* ── Buttons ────────────────────────────────────────────────── */
+/* Buttons */
 .di-btn {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 6px 14px; border-radius: 5px; border: 1px solid transparent;
@@ -97,7 +97,7 @@ html, body {
 }
 .di-btn-danger:hover  { background: rgba(255,68,68,.15); }
 
-/* ── Form elements ──────────────────────────────────────────── */
+/* Form elements */
 .di-input, .di-select {
     background: var(--bg-card); color: var(--text);
     border: 1px solid var(--border); border-radius: 5px;
@@ -108,7 +108,7 @@ html, body {
 .di-select { cursor: pointer; }
 .di-select option { background: var(--bg-card); }
 
-/* ── Header ─────────────────────────────────────────────────── */
+/* Header */
 .di-header {
     height: var(--header-h);
     background: var(--bg-panel);
@@ -126,7 +126,7 @@ html, body {
 .di-scan-controls { display: flex; align-items: center; gap: 8px; flex: 1; }
 .di-load-controls { display: flex; align-items: center; gap: 6px; }
 
-/* ── Breadcrumb ─────────────────────────────────────────────── */
+/* Breadcrumb */
 .di-breadcrumb {
     height: var(--crumb-h);
     background: var(--bg-panel);
@@ -152,14 +152,14 @@ html, body {
     color: var(--text-muted); font-size: 10px; padding: 0 2px; pointer-events: none;
 }
 
-/* ── Main split ─────────────────────────────────────────────── */
+/* Main split */
 .di-main {
     display: flex;
     height: calc(100vh - var(--header-h) - var(--crumb-h) - var(--footer-h));
     overflow: hidden;
 }
 
-/* ── Left panel ─────────────────────────────────────────────── */
+/* Left panel */
 .di-left-panel {
     width: var(--left-w);
     min-width: 160px;
@@ -281,7 +281,7 @@ html, body {
 .di-tree-children { display: none; }
 .di-tree-children.open { display: block; }
 
-/* ── Resize handle ──────────────────────────────────────────── */
+/* Resize handle */
 .di-resizer {
     width: var(--resizer-w);
     cursor: col-resize;
@@ -291,7 +291,7 @@ html, body {
 }
 .di-resizer:hover, .di-resizer.dragging { background: var(--primary); }
 
-/* ── Right panel (treemap) ──────────────────────────────────── */
+/* Right panel (treemap) */
 .di-right-panel {
     flex: 1; overflow: hidden; position: relative;
     background: var(--bg);
@@ -315,7 +315,7 @@ html, body {
 }
 .di-tooltip b { color: var(--primary); }
 
-/* ── Footer ─────────────────────────────────────────────────── */
+/* Footer */
 .di-footer {
     height: var(--footer-h);
     background: var(--bg-panel);
@@ -349,7 +349,7 @@ html, body {
     flex-shrink: 0;
 }
 
-/* ── Context menu ────────────────────────────────────────────── */
+/* Context menu */
 .di-ctx-menu {
     position: fixed;
     background: var(--bg-card);

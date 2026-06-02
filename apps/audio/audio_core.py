@@ -159,7 +159,7 @@ class Track:
         self.effects: List[dict] = []    # [{effect_id, op, params, enabled}, ...]
         self._waveform: Optional[list] = None
 
-    # --- Effects ---
+    # Effects
 
     def add_effect(self, op: str, params: dict) -> dict:
         fx = {"effect_id": _uid(), "op": op, "params": dict(params or {}), "enabled": True}
@@ -180,7 +180,7 @@ class Track:
         remainder = [f for f in self.effects if f["effect_id"] not in set(ordered_ids)]
         self.effects = ordered + remainder
 
-    # --- Audio ---
+    # Audio
 
     def get_rendered(self) -> "AudioSegment":
         """Return audio with all enabled effects applied (non-destructive)."""
@@ -191,7 +191,7 @@ class Track:
             self._waveform = _get_waveform(self.original, num_points)
         return self._waveform
 
-    # --- Serialise ---
+    # Serialise
 
     def to_dict(self, include_waveform: bool = True) -> dict:
         d = {
@@ -223,7 +223,7 @@ class MultiTrackSession:
         self._order: List[str] = []     # Display order (top → bottom)
         self.workspace_ms: float = 0.0  # Explicit workspace length
 
-    # --- Track management ---
+    # Track management
 
     def add_track(
         self, data: bytes, filename: str, start_ms: Optional[float] = None
@@ -266,7 +266,7 @@ class MultiTrackSession:
         rest = [i for i in self._order if i not in set(valid)]
         self._order = valid + rest
 
-    # --- Workspace ---
+    # Workspace
 
     def _auto_expand(self):
         """Expand workspace to cover all track content + 5 s padding. Never shrinks."""
@@ -281,7 +281,7 @@ class MultiTrackSession:
         self.workspace_ms = max(1000.0, ms)
         self._auto_expand()  # Prevent shrinking below content
 
-    # --- Mix ---
+    # Mix
 
     def mix(self) -> "AudioSegment":
         """Combine all non-muted tracks at their timeline positions."""
@@ -323,7 +323,7 @@ class MultiTrackSession:
             raise
         return buf.getvalue()
 
-    # --- Serialise ---
+    # Serialise
 
     def to_dict(self) -> dict:
         return {

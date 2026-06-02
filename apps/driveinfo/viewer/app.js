@@ -244,13 +244,13 @@ function _drawFile(node, x, y, w, h, hue) {
 function _drawDir(node, x, y, w, h, depth, hue) {
     const cx = x * DPR, cy = y * DPR, cw = w * DPR, ch = h * DPR;
 
-    // ── Body background — very dark tint of the section hue ──────
+    // Body background — very dark tint of the section hue
     // Progressively darker as depth increases so nesting is obvious
     const bgL = Math.max(4, 8 - depth * 0.8);
     ctx.fillStyle = `hsl(${hue}, 20%, ${bgL}%)`;
     ctx.fillRect(cx, cy, cw, ch);
 
-    // ── Header — taller at shallower depths ───────────────────────
+    // Header — taller at shallower depths
     const hdrH  = Math.min(depth === 0 ? 26 : depth === 1 ? 22 : DIR_HDR_H, h);
     const hdrPx = hdrH * DPR;
 
@@ -266,7 +266,7 @@ function _drawDir(node, x, y, w, h, depth, hue) {
     ctx.fillStyle = `hsl(${hue}, ${stripeS}%, ${stripeL}%)`;
     ctx.fillRect(cx, cy, stripeW, hdrPx);
 
-    // ── Outer border — section-hue tinted, fades with depth ───────
+    // Outer border — section-hue tinted, fades with depth
     const borderA = Math.max(0.12, 0.45 - depth * 0.07);
     ctx.strokeStyle = `hsla(${hue}, 55%, 50%, ${borderA})`;
     ctx.lineWidth   = 1;
@@ -282,7 +282,7 @@ function _drawDir(node, x, y, w, h, depth, hue) {
         ctx.stroke();
     }
 
-    // ── Label ─────────────────────────────────────────────────────
+    // Label
     if (w > 24) {
         const labelL  = Math.max(62, 82 - depth * 5);
         const labelColor = `hsl(${hue}, 65%, ${labelL}%)`;
@@ -310,7 +310,7 @@ function _drawDir(node, x, y, w, h, depth, hue) {
 
     hitCells.push({ node, x, y, w, h });
 
-    // ── Recurse — pass the same section hue down ──────────────────
+    // Recurse — pass the same section hue down
     const innerY = y + hdrH;
     const innerH = h - hdrH - 1;
     if (cw > MIN_CHILD && innerH > MIN_CHILD) {

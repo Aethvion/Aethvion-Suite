@@ -87,8 +87,6 @@ class DiscordWorker(commands.Bot):
         is_mention = self.user.mentioned_in(message)
         
         if not (is_dm or is_mention):
-            # Mirroring says "all Discord communications (both sent and received)".
-            # Let's mirror what involves her.
             return
 
         # Map user to social registry
@@ -295,7 +293,6 @@ class DiscordWorker(commands.Bot):
                 # Check memory for user preferences or recent events.
                 # Use a lightweight "should I talk?" check.
                 
-                # For now, let's implement a "Neural Pulse" every 1-4 hours
                 import random
                 wait_minutes = random.randint(60, 240)
                 await asyncio.sleep(wait_minutes * 60)

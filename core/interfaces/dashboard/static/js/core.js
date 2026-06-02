@@ -1,12 +1,6 @@
 // Handles WebSocket connections, global UI state, and initialization
 
-// ─── Toast System ─────────────────────────────────────────────────
-/**
- * Show a toast notification.
- * @param {string} message
- * @param {'success'|'error'|'warn'|'info'} type
- * @param {number} duration ms (default 3500)
- */
+// Toast System
 /**
  * Show a toast notification.
  * @param {string} message
@@ -79,7 +73,7 @@ function showToast(message, type = 'info', duration = 3500, opts = {}) {
 }
 window.showToast = showToast;
 
-// ─── Confirm Modal ────────────────────────────────────────────────
+// Confirm Modal
 /**
  * Non-blocking confirmation dialog (replaces window.confirm).
  * @param {string} title
@@ -144,7 +138,7 @@ function showConfirm(title, body, onConfirm, opts = {}) {
 }
 window.showConfirm = showConfirm;
 
-// ─── Keyboard Shortcuts Overlay ───────────────────────────────────
+// Keyboard Shortcuts Overlay
 function initKeyboardShortcuts() {
     const overlay = document.getElementById('kbd-overlay');
     if (!overlay) return;
@@ -368,7 +362,7 @@ let currentMainTab = 'chat';
 let dashboardMode = 'home'; // 'home' or 'ai'
 let devModeActive = true;
 
-// ─── Preferences API ─────────────────────────────────────────────────────────
+// Preferences API
 window.prefs = {
     data: {},
     async load() {
@@ -708,7 +702,7 @@ async function pollStartupStatus() {
     });
 }
 
-// ===== WebSocket Management =====
+// WebSocket Management
 
 function initializeWebSockets() {
     if (document.hidden) return;
@@ -783,7 +777,7 @@ function updateConnectionStatus(connected) {
     }
 }
 
-// ===== UI Initialization =====
+// UI Initialization
 
 function initializeUI() {
     // Main tab switching
@@ -1168,7 +1162,7 @@ async function setDashboardMode(mode, save = true, _tab = null) {
     await switchMainTab(targetTab, false);
 }
 
-// ─── AI Hub navigation — used by the "AI" header nav button ─────────────────
+// AI Hub navigation — used by the "AI" header nav button
 // Unlike setDashboardMode('ai') (which restores whatever tab was last saved,
 // including Chat/AethvionDB), this always lands on a sidebar-capable AI tab.
 // On refresh/restore the saved tab is respected exactly as-is; this only
@@ -1190,7 +1184,7 @@ function goToAIHub() {
 }
 window.goToAIHub = goToAIHub;
 
-// ─── Sidebar Category Collapse ───────────────────────────────────
+// Sidebar Category Collapse
 function initCategoryCollapse() {
     document.querySelectorAll('.sidebar-category[data-cat]').forEach(catEl => {
         const catId = catEl.dataset.cat;
@@ -1233,7 +1227,7 @@ function toggleCategory(catId) {
     }
 }
 
-// ─── Sidebar Section (Tier) Collapse ─────────────────────────────
+// Sidebar Section (Tier) Collapse
 function initSectionCollapse() {
     document.querySelectorAll('.sidebar-section-header[data-section]').forEach(secEl => {
         const secId = secEl.dataset.section;
@@ -1315,7 +1309,7 @@ function applyNavVisibility() {
 }
 window.applyNavVisibility = applyNavVisibility;
 
-// ─── Tab scroll-position memory ──────────────────────────────────
+// Tab scroll-position memory
 const _tabScrollPos = {};  // tabName → scrollTop
 
 function _saveTabScroll(tabName) {
@@ -1331,7 +1325,7 @@ function _restoreTabScroll(tabName) {
     });
 }
 
-// ─── Panel last-updated badge ─────────────────────────────────────
+// Panel last-updated badge
 const _panelFetchTimes = {};
 
 function markPanelUpdated(panelKey) {
@@ -1372,7 +1366,7 @@ async function switchMainTab(tabName, save = true) {
     let actualTabName = tabName;
     if (tabName === 'agent') actualTabName = 'chat'; // Legacy mapping
 
-    // ── Lazy-load panel partial if not yet injected ──────────────────────────
+    // Lazy-load panel partial if not yet injected
     if (window._partialLoader && !window._partialLoader.isLoaded(actualTabName)) {
         // Show the panel (spinner state) immediately so navigation feels instant
         document.querySelectorAll('.main-tab-panel').forEach(p => p.classList.remove('active'));
@@ -1449,7 +1443,7 @@ async function switchMainTab(tabName, save = true) {
         item.classList.toggle('active', item.dataset.subtab === actualTabName);
     });
 
-    // ── Update header primary nav active state ───────────────────────────────
+    // Update header primary nav active state
     // Companion tabs (no sidebar, accessed via Companions nav) map to the 'companions' button.
     const _COMPANION_TABS = new Set(['companion-creator', 'misaka-cipher', 'axiom', 'lyra']);
     const _hdrBtns = document.querySelectorAll('#hdr-nav .hdr-nav-btn');
@@ -1470,7 +1464,7 @@ async function switchMainTab(tabName, save = true) {
         }
     }
 
-    // ── Sidebar suppression — no sidebar on Chat, Code, AethvionDB, Companions, Automate ─
+    // Sidebar suppression — no sidebar on Chat, Code, AethvionDB, Companions, Automate
     const _NO_SIDEBAR = new Set(['chat', 'agents', 'aethviondb', 'automate',
         'companion-creator', 'misaka-cipher', 'axiom', 'lyra']);
     const _suppress = _NO_SIDEBAR.has(actualTabName) || actualTabName.startsWith('custom-companion-');
@@ -1729,7 +1723,7 @@ async function updateModuleStatusBadges() {
     }
 }
 
-// ===== Common Utilities =====
+// Common Utilities
 
 // Central Registry for "click outside to close" UI components (Performance Optimization)
 window._aeClickAwayManager = {
@@ -1765,7 +1759,7 @@ function formatCost(v) {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
 }
 
-// ===== Header Status =====
+// Header Status
 async function loadHeaderStatus() {
     const indicator = document.getElementById('home-status-indicator');
     const updateUI = (isOnline) => {
@@ -1816,7 +1810,7 @@ window.formatNumber = formatNumber;
 window.formatCost = formatCost;
 window.loadHeaderStatus = loadHeaderStatus;
 
-// ===== Initial Data Rendering =====
+// Initial Data Rendering
 async function loadInitialData() {
     if (typeof loadPreferences === 'function') await loadPreferences();
     if (typeof loadHeaderStatus === 'function') await loadHeaderStatus();
@@ -1848,7 +1842,7 @@ async function loadInitialData() {
     }
 }
 
-// ===== Common UI Utilities =====
+// Common UI Utilities
 
 /**
  * Generates HTML options string for a categorized model dropdown.
@@ -2079,7 +2073,7 @@ document.addEventListener('tabChanged', (e) => {
 })();
 
 
-// ===== Global Modal & Notification Handlers =====
+// Global Modal & Notification Handlers
 
 /**
  * Shows a toast notification.
@@ -2151,7 +2145,7 @@ function closeModal() {
     }
 }
 
-// ===== Voice Input =====
+// Voice Input
 
 // Voice input state
 let _voiceRecognition = null;
@@ -2325,7 +2319,7 @@ function _startMediaRecorderInput(voiceButton, model, provider) {
 window.startVoiceInput = startVoiceInput;
 window.stopVoiceInput = stopVoiceInput;
 
-// ─── Skeleton Loader Utility ──────────────────────────────────────
+// Skeleton Loader Utility
 /**
  * Show a skeleton placeholder inside a container element.
  * @param {string|HTMLElement} target  CSS selector or element
@@ -2355,7 +2349,7 @@ function hideSkeleton(target) {
 window.showSkeleton = showSkeleton;
 window.hideSkeleton = hideSkeleton;
 
-// ─── Column Resize Handles ────────────────────────────────────────
+// Column Resize Handles
 function initColumnResizeHandles() {
     const layout = document.querySelector('.three-column-layout');
     if (!layout) return;
@@ -2396,8 +2390,8 @@ function initColumnResizeHandles() {
     setupHandle('resize-chat-agents', '--col-agents', 200, 500, 'right');
 }
 
-// ── Preferences (defined here so all scripts can use `prefs` on load) ─────────
-// ─── Sidebar Search ───────────────────────────────────────────────────────────
+// Preferences (defined here so all scripts can use `prefs` on load)
+// Sidebar Search
 (function initSidebarSearch() {
     function run() {
         const input = document.getElementById('sidebar-search-input');

@@ -46,7 +46,7 @@ const ParticleSphere = (() => {
         return pts;
     })();
 
-    // ── Transforms ────────────────────────────────────────────────────────────
+    // Transforms
 
     function rotateY(x, z, a) {
         return {
@@ -66,7 +66,7 @@ const ParticleSphere = (() => {
         };
     }
 
-    // ── Main draw loop ─────────────────────────────────────────────────────────
+    // Main draw loop
 
     function draw() {
         if (!canvas || !ctx || !visible) return;
@@ -140,7 +140,7 @@ const ParticleSphere = (() => {
         animId = requestAnimationFrame(draw);
     }
 
-    // ── Public API ─────────────────────────────────────────────────────────────
+    // Public API
 
     return {
         /** Attach to a canvas element and begin rendering */

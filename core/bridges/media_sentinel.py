@@ -145,7 +145,7 @@ async def _get_current_session_info():
     except (ImportError, Exception) as e:
         return _get_media_info_powershell()
 
-# --- Standardized Command ---
+# Standardized Command
 
 def get_media_info(args: dict) -> str:
     """Read what's currently playing on Windows (YouTube, Spotify, etc.)."""

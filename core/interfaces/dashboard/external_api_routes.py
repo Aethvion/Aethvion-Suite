@@ -21,14 +21,14 @@ from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
 
-# ── OpenAI-compatible router (/v1) ────────────────────────────────────────────
+# OpenAI-compatible router (/v1)
 router = APIRouter(prefix="/v1", tags=["external-api"])
 
-# ── Management router (/api/external-api) ─────────────────────────────────────
+# Management router (/api/external-api)
 mgmt_router = APIRouter(prefix="/api/external-api", tags=["external-api-mgmt"])
 
 
-# ── Config & key helpers ──────────────────────────────────────────────────────
+# Config & key helpers
 
 def _load_config() -> dict:
     # require_auth defaults to True — new installs are secure out of the box.
@@ -68,7 +68,7 @@ def _check_auth(authorization: Optional[str]):
     raise HTTPException(status_code=401, detail="Invalid or revoked API key")
 
 
-# ── Pydantic models ───────────────────────────────────────────────────────────
+# Pydantic models
 
 class ChatMessage(BaseModel):
     role: str
@@ -83,7 +83,7 @@ class ChatCompletionRequest(BaseModel):
     stream: Optional[bool] = False
 
 
-# ── GET /v1/models ────────────────────────────────────────────────────────────
+# GET /v1/models
 
 @router.get("/models")
 async def list_models(authorization: Optional[str] = Header(None)):
@@ -106,7 +106,7 @@ async def list_models(authorization: Optional[str] = Header(None)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── POST /v1/chat/completions ─────────────────────────────────────────────────
+# POST /v1/chat/completions
 
 @router.post("/chat/completions")
 async def chat_completions(
@@ -207,7 +207,7 @@ async def _stream_chunks(req: ChatCompletionRequest, prompt: str, system_prompt:
         yield f"data: {json.dumps({'error': {'message': str(e), 'type': 'server_error'}})}\n\n"
 
 
-# ── Management endpoints ──────────────────────────────────────────────────────
+# Management endpoints
 
 @mgmt_router.get("/config")
 async def get_ext_config():

@@ -20,7 +20,7 @@ if (typeof window.prefs !== 'undefined') {
 let _proactiveSessionTimer = null;
 let _typingTimeout = null; // Timer to resume proactive check-ins after typing stops
 let _misakaAttachedFile = null;
-let currentToolBubble = null; // Added for tool status display
+let currentToolBubble = null;
 
 async function initializeMisakaCipher() {
     // Always deliver any queued proactive message when switching to this tab
@@ -1030,7 +1030,7 @@ function applyCharacterMode(hideCharacter) {
     }
 }
 
-// ===== PROACTIVE MESSAGING SYSTEM =====
+// PROACTIVE MESSAGING SYSTEM
 let _queuedProactiveMessage = null; // { response, mood } — pending delivery when user opens Misaka tab
 
 function _randomBetween(min, max) {
@@ -1082,7 +1082,7 @@ async function startProactiveScheduler() {
         return;
     }
 
-    // --- Startup check ---
+    // Startup check
     const hoursSince = await _getHoursSinceLastMessage();
     // hoursSince === null means no conversation history at all (first-ever use).
     // Always send a startup greeting in that case (guaranteed, not chance-based).
@@ -1098,7 +1098,7 @@ async function startProactiveScheduler() {
         }
     }
 
-    // --- Session check-in loop ---
+    // Session check-in loop
     function scheduleNextSession() {
         const intervalMinVal = Math.max(1, intervalMin);
         const intervalMaxVal = Math.max(intervalMinVal, intervalMax);
@@ -1245,7 +1245,7 @@ function deliverQueuedProactiveMessage() {
     }, 800);
 }
 
-// ===== FILE ATTACHMENT =====
+// FILE ATTACHMENT
 
 _misakaAttachedFile = null; // { name, file }
 
@@ -1274,7 +1274,7 @@ function clearMisakaAttachment() {
 
 window.clearMisakaAttachment = clearMisakaAttachment;
 
-// ── Voice Output ──────────────────────────────────────────────────────────────
+// Voice Output
 
 let _misakaVoiceEnabled = false;
 let _misakaAudio = null;

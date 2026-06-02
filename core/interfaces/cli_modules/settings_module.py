@@ -15,9 +15,7 @@ from core.utils.paths import MODEL_REGISTRY
 SETTINGS_FILE = MODEL_REGISTRY
 
 
-# ─────────────────────────────────────────────────
 # Settings helpers
-# ─────────────────────────────────────────────────
 
 def load_settings():
     """Load model registry / provider settings from disk."""
@@ -41,9 +39,7 @@ def save_settings(data):
         return False
 
 
-# ─────────────────────────────────────────────────
 # Sub-menus
-# ─────────────────────────────────────────────────
 
 def show_providers_menu():
     """Toggle provider active/disabled state."""
@@ -202,9 +198,7 @@ def show_raw_settings():
     pause()
 
 
-# ─────────────────────────────────────────────────
 # Main entry point
-# ─────────────────────────────────────────────────
 
 def settings_module():
     """Main entry point for Settings CLI module."""

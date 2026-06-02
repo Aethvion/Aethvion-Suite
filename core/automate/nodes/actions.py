@@ -256,7 +256,7 @@ def action_notify(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
         return {"out": in_val, "error": str(exc)}
 
 
-# ── Sprint 4: shell / filesystem / web ───────────────────────────────────────
+# Sprint 4: shell / filesystem / web
 
 def action_run_command(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p       = node.get("properties", {})
@@ -342,7 +342,7 @@ def action_file_list(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
         return {"out": "[]", "count": 0, "error": str(exc)}
 
 
-# ── Web scraper helpers ───────────────────────────────────────────────────────
+# Web scraper helpers
 
 _TAG_RE   = re.compile(r"<[^>]+>")
 _HEAD_RE  = re.compile(r"<head[^>]*>.*?</head>", re.IGNORECASE | re.DOTALL)
@@ -437,7 +437,7 @@ def action_web_scrape(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
     return {"out": out, "title": title, "error": ""}
 
 
-# ── Sprint 5: Run Agent ───────────────────────────────────────────────────────
+# Sprint 5: Run Agent
 
 def action_run_agent(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """

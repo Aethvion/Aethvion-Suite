@@ -2,7 +2,7 @@
 // Provides workspace + thread management and agent task submission
 // with the same polling pattern as threads.js pollTaskStatus.
 
-// ── Configure marked (same as mode-chat.js) ──────────────────
+// Configure marked (same as mode-chat.js)
 if (typeof marked !== 'undefined') {
     marked.setOptions({
         gfm: true,
@@ -13,7 +13,7 @@ if (typeof marked !== 'undefined') {
     });
 }
 
-// ── State ─────────────────────────────────────────────────────
+// State
 let _agentsWorkspaces = [];
 let _agentsCurrentWorkspace = null;  // workspace object
 let _agentsCurrentThread = null;     // thread metadata object (no messages)
@@ -24,7 +24,7 @@ let _agentsIsPolling = false;
 let _agentsAttachedFiles = [];       // [{filename, path, is_image, mime_type, content, size, _previewUrl}]
 let _agentsCurrentReplayTimestamp = null;
 
-// ── DOM helpers ───────────────────────────────────────────────
+// DOM helpers
 const _agEl = (id) => document.getElementById(id);
 
 function _agentsRenderMarkdown(text) {
@@ -39,7 +39,7 @@ function _agentsRenderMarkdown(text) {
         .replace(/\n/g, '<br>');
 }
 
-// ── Workspace list ────────────────────────────────────────────
+// Workspace list
 async function agentsLoadWorkspaces() {
     try {
         const resp = await fetch('/api/agents/workspaces');
@@ -156,7 +156,7 @@ async function _agentsOnWorkspaceSelectChange() {
     _agentsUpdateSubmitState();
 }
 
-// ── Thread list ───────────────────────────────────────────────
+// Thread list
 async function agentsLoadThreads(workspaceId) {
     try {
         const resp = await fetch(`/api/agents/workspaces/${workspaceId}/threads`);
@@ -287,7 +287,7 @@ async function agentsLoadThreadMessages(workspaceId, threadId) {
     }
 }
 
-// ── Thread token totals from history ──────────────────────────
+// Thread token totals from history
 function _agCalcThreadTotalsFromMessages(messages) {
     let totalIn = 0, totalOut = 0;
     for (const msg of messages) {
@@ -303,7 +303,7 @@ function _agCalcThreadTotalsFromMessages(messages) {
     return { in: totalIn, out: totalOut };
 }
 
-// ── Message rendering ─────────────────────────────────────────
+// Message rendering
 function _agentsRenderMessages(messages) {
     const container = _agEl('agents-messages');
     if (!container) return;
@@ -455,7 +455,7 @@ function _agentsShowEmptyState(title, sub) {
     container.appendChild(div);
 }
 
-// ── Typing indicator ──────────────────────────────────────────
+// Typing indicator
 function _agentsShowTyping() {
     _agentsHideTyping();
     const container = _agEl('agents-messages');
@@ -479,7 +479,7 @@ function _agentsHideTyping() {
     if (el) el.remove();
 }
 
-// ── Submit state ──────────────────────────────────────────────
+// Submit state
 function _agentsUpdateSubmitState() {
     const btn       = _agEl('agents-submit-btn');
     const stopBtn   = _agEl('agents-stop-btn');
@@ -514,7 +514,7 @@ async function agentsStopTask() {
     _agentsUpdateSubmitState();
 }
 
-// ── Auto-rename thread after first task ──────────────────────
+// Auto-rename thread after first task
 async function _agAutoRenameThread(wsId, threadId, name) {
     try {
         const res = await fetch(`/api/agents/workspaces/${wsId}/threads/${threadId}`, {
@@ -530,7 +530,7 @@ async function _agAutoRenameThread(wsId, threadId, name) {
     }
 }
 
-// ── Task submission & polling ─────────────────────────────────
+// Task submission & polling
 async function agentsSubmitTask() {
     if (_agentsIsPolling) return;
     if (!_agentsCurrentWorkspace || !_agentsCurrentThread) return;
@@ -714,7 +714,7 @@ function _agentsPollTask(taskId) {
     poll();
 }
 
-// ── Agent step rendering ──────────────────────────────────────
+// Agent step rendering
 function _htmlEscape(str) {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -725,7 +725,7 @@ let _agentsRenderState = null;
 // Thread-level thought counter — persists across tasks, resets on thread switch
 let _agentsThoughtTotal = 0;
 
-// ── Reset panels to empty state ───────────────────────────────
+// Reset panels to empty state
 function _agResetDashboard() {
     if (_agentsRenderState && _agentsRenderState.timerInterval) {
         clearInterval(_agentsRenderState.timerInterval);
@@ -752,7 +752,7 @@ function _agResetDashboard() {
     if (planList)     planList.innerHTML          = '';
 }
 
-// ── Bootstrap a new run ───────────────────────────────────────
+// Bootstrap a new run
 function _agInitRender(isReplay = false) {
     const container = _agEl('agents-messages');
     if (!container) return null;
@@ -828,8 +828,8 @@ function _agInitRender(isReplay = false) {
     return _agentsRenderState;
 }
 
-// ── Timeline (vertical, renders into left panel) ──────────────
-// ── Activity Log (right panel) ─────────────────────────────────
+// Timeline (vertical, renders into left panel)
+// Activity Log (right panel)
 // Adds a compact timestamped row. If `detail` is provided the row is
 // expandable — click it to reveal the full thought text.
 function _agActivityLogAdd(icon, label, variant = '', event = null, detail = null) {
@@ -903,7 +903,7 @@ function _agPhaseAdd(id, icon, label, event = null) {
 
 function _agRenderTimeline() { /* no-op */ }
 
-// ── Live LLM token streaming ─────────────────────────────────
+// Live LLM token streaming
 let _agLiveTokenText = '';   // accumulated raw LLM output for the current iteration
 let _agStreamCard    = null; // live streaming card in main chat (converts to static on finalize)
 
@@ -1165,7 +1165,7 @@ function _agRenderInlinePlan(s) {
     if (container) container.scrollTop = container.scrollHeight;
 }
 
-// ── Stats helpers ──────────────────────────────────────────────
+// Stats helpers
 function _agFmtNum(n) {
     if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
     if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'k';
@@ -1269,7 +1269,7 @@ function _agHandleUsage(event) {
     _agUpdateStats();
 }
 
-// ── Observation (image / context acknowledgement) ─────────────
+// Observation (image / context acknowledgement)
 function _agHandleObserve(event) {
     const s = _agentsRenderState;
     if (!s) return;
@@ -1306,14 +1306,14 @@ function _agHandleObserve(event) {
     s.activity.appendChild(item);
 }
 
-// ── File activity rows ─────────────────────────────────────────
+// File activity rows
 function _agFormatBytes(b) {
     if (b < 1024)        return `${b} B`;
     if (b < 1048576)     return `${(b / 1024).toFixed(1)} KB`;
     return `${(b / 1048576).toFixed(1)} MB`;
 }
 
-// ── Delete file activity row ───────────────────────────────────
+// Delete file activity row
 function _agHandleDeleteFile(event) {
     const s = _agentsRenderState;
     if (!s) return;
@@ -1423,7 +1423,7 @@ function _agHandleWriteFile(event) {
             res.textContent = event.result;
             expand.appendChild(res);
         }
-        // ── Inline diff view ──────────────────────────────────────
+        // Inline diff view
         if (event.diff) {
             const diffWrap = document.createElement('div');
             diffWrap.className = 'agent-act-diff';
@@ -1469,7 +1469,7 @@ function _agHandleWriteFile(event) {
     }
 }
 
-// ── Command activity rows ──────────────────────────────────────
+// Command activity rows
 function _agHandleCommand(event) {
     const s = _agentsRenderState;
     if (!s) return;
@@ -1528,7 +1528,7 @@ function _agHandleCommand(event) {
     _agActLogAppend(item);
 }
 
-// ── Read / list (compact dimmed, deduplicated) ─────────────────
+// Read / list (compact dimmed, deduplicated)
 function _agHandleReadFile(event) {
     const s = _agentsRenderState;
     if (!s) return;
@@ -1620,7 +1620,7 @@ function _agHandleListDir(event) {
     _agActLogAppend(item);
 }
 
-// ── Web search ─────────────────────────────────────────────────
+// Web search
 function _agHandleSearch(event) {
     const s = _agentsRenderState;
     if (!s) return;
@@ -1677,7 +1677,7 @@ function _agSearchToThought(query, rawResult, blocks) {
     _agAddThoughtCard(`🔍 Found ${topTitles.length} results`, md);
 }
 
-// ── URL fetch ──────────────────────────────────────────────────
+// URL fetch
 function _agHandleFetch(event) {
     const s = _agentsRenderState;
     if (!s) return;
@@ -1718,7 +1718,7 @@ function _agHandleFetch(event) {
     _agActLogAppend(item);
 }
 
-// ── Glob / move_file / create_directory ──────────────────────
+// Glob / move_file / create_directory
 function _agHandleGlob(event) {
     const s = _agentsRenderState;
     if (!s) return;
@@ -1820,7 +1820,7 @@ function _agHandleCreateDir(event) {
     _agActLogAppend(item);
 }
 
-// ── Blueprint scan ────────────────────────────────────────────
+// Blueprint scan
 function _agHandleBlueprint(event) {
     const s = _agentsRenderState;
     if (!s) return;
@@ -1850,7 +1850,7 @@ function _agHandleBlueprint(event) {
     _agActLogAppend(item);
 }
 
-// ── Codebase search ───────────────────────────────────────────
+// Codebase search
 function _agHandleSearchCodebase(event) {
     const s = _agentsRenderState;
     if (!s) return;
@@ -1903,7 +1903,7 @@ function _agHandleSearchCodebase(event) {
     _agActLogAppend(item);
 }
 
-// ── Restore file (undo) ────────────────────────────────────────
+// Restore file (undo)
 
 /**
  * Called when the user clicks the ↩ undo button on a file card.
@@ -1957,7 +1957,7 @@ function _agHandleRestoreFile(event) {
     _agActLogAppend(item);
 }
 
-// ── Completion ─────────────────────────────────────────────────
+// Completion
 function _agFinishRender(event, isReplay = false) {
     const s = _agentsRenderState;
     if (!s) return;
@@ -2002,7 +2002,7 @@ function _agFinishRender(event, isReplay = false) {
     }
 }
 
-// ── Main entry point (called for every SSE event) ─────────────
+// Main entry point (called for every SSE event)
 function renderAgentStep(event, isReplay = false) {
     const container = _agEl('agents-messages');
     if (!container) return;
@@ -2101,7 +2101,7 @@ function renderAgentStep(event, isReplay = false) {
     container.scrollTop = container.scrollHeight;
 }
 
-// ── Add Workspace modal ───────────────────────────────────────
+// Add Workspace modal
 function agentsShowAddWorkspaceModal(editMode = false) {
     const overlay = _agEl('agents-add-ws-overlay');
     const title = _agEl('agents-modal-title');
@@ -2135,7 +2135,7 @@ function agentsHideAddWorkspaceModal() {
     _agentsBrowserHide();
 }
 
-// ── Folder browser ────────────────────────────────────────────
+// Folder browser
 let _agentsBrowserOpen = false;
 
 async function _agentsBrowserNavigate(path) {
@@ -2399,7 +2399,7 @@ async function _agentsDoDeleteWorkspace() {
     }
 }
 
-// ── Thread actions ────────────────────────────────────────────
+// Thread actions
 async function agentsCreateThread() {
     if (!_agentsCurrentWorkspace) return;
     try {
@@ -2478,7 +2478,7 @@ async function _agentsDoDeleteThread() {
     }
 }
 
-// ── Model selector ────────────────────────────────────────────
+// Model selector
 async function agentsLoadModels() {
     try {
         const resp = await fetch('/api/registry/models/chat');
@@ -2512,7 +2512,7 @@ async function agentsLoadModels() {
     }
 }
 
-// ── File attachment helpers ────────────────────────────────────
+// File attachment helpers
 function _agentsRenderAttachStrip() {
     const strip = _agEl('agents-attach-strip');
     if (!strip) return;
@@ -2584,7 +2584,7 @@ async function _agentsHandleFileSelect(files) {
     _agentsRenderAttachStrip();
 }
 
-// ── Event wiring (called once after DOM is ready) ─────────────
+// Event wiring (called once after DOM is ready)
 function agentsInitEventHandlers() {
     // Workspace select change
     const wsSel = _agEl('agents-workspace-select');
@@ -2786,7 +2786,7 @@ function agentsInitEventHandlers() {
     }
 }
 
-// ── Project Memory ────────────────────────────────────────────
+// Project Memory
 
 const _PM_CAT_META = {
     rule:      { icon: '🔴', label: 'Rule'      },
@@ -3002,7 +3002,7 @@ function _pmHandleAgentSave(event) {
     }
 }
 
-// ── Checkpoint / Resume ───────────────────────────────────────
+// Checkpoint / Resume
 let _agentsCheckpointState = null;  // last fetched state from /state endpoint
 
 async function _agentsCheckCheckpoint(workspaceId, threadId) {
@@ -3108,7 +3108,7 @@ async function _agentsResumeTask() {
     }
 }
 
-// ── Inline warning card (stall / budget) ──────────────────────
+// Inline warning card (stall / budget)
 function _agRenderInlineWarn(cls, icon, title, detail) {
     const container = _agEl('agents-messages');
     if (!container) return;
@@ -3123,7 +3123,7 @@ function _agRenderInlineWarn(cls, icon, title, detail) {
     container.scrollTop = container.scrollHeight;
 }
 
-// ── Patch failure card in main activity ───────────────────────
+// Patch failure card in main activity
 function _agHandlePatchFailed(event) {
     const s = _agentsRenderState;
     if (!s) return;
@@ -3139,7 +3139,7 @@ function _agHandlePatchFailed(event) {
     _agActLogAppend(card);
 }
 
-// ── Agent respond action — visible message in main chat ───────
+// Agent respond action — visible message in main chat
 function _agHandleAgentResponse(event) {
     const content = event.content || '';
     if (!content) return;
@@ -3153,7 +3153,7 @@ function _agHandleAgentResponse(event) {
     }, true);
 }
 
-// ── Workspace IDE Tree & Editor Helpers ───────────────────────
+// Workspace IDE Tree & Editor Helpers
 let _agCurrentOpenFile = null;
 
 async function _agLoadWorkspaceTree() {
@@ -3427,7 +3427,7 @@ async function _agOpenFile(filePath, filename) {
     }
 }
 
-// ── Editor helpers ─────────────────────────────────────────────
+// Editor helpers
 
 function _agOnEditorInput() {
     // Update highlight layer
@@ -3626,14 +3626,14 @@ async function _agSearchWorkspace() {
     }
 }
 
-// ── Panel activation hook ─────────────────────────────────────
+// Panel activation hook
 // Called by the tab switcher when the Agents panel becomes active.
 function onAgentsPanelActivated() {
     agentsLoadWorkspaces();
     agentsLoadModels();
 }
 
-// ── Init ──────────────────────────────────────────────────────
+// Init
 let _agentsEventsDone = false;
 
 function _agentsBootstrapPanel() {

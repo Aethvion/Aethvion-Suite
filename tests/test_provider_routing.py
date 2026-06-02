@@ -18,9 +18,7 @@ import pytest
 from core.aethviondb.vectorizer import EMBEDDING_MODELS
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # EMBEDDING_MODELS registry shape
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TestEmbeddingModelsRegistry:
     def test_registry_is_not_empty(self):
@@ -72,9 +70,7 @@ class TestEmbeddingModelsRegistry:
                 )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Provider dispatch
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TestProviderDispatch:
     def test_unknown_model_falls_back_to_google(self):
@@ -112,9 +108,7 @@ class TestProviderDispatch:
                 os.environ["OPENAI_API_KEY"] = original
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Local model path (mocked — avoids downloading model weights in CI)
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TestLocalModelPath:
     def test_local_model_calls_sentence_transformers(self, monkeypatch):

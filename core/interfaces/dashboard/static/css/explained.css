@@ -362,7 +362,7 @@
     color: #000;
 }
 
-/* ── open folder button ─────────────────────────────────────────────────────── */
+/* open folder button */
 .es-folder-btn {
     display: flex;
     align-items: center;
@@ -527,7 +527,7 @@
     display: none !important;
 }
 
-/* ── build page button & wide variants ───────────────────── */
+/* build page button & wide variants */
 .primary-btn {
     background: var(--primary);
     color: #000;
@@ -652,7 +652,7 @@
    Edit Mode — Toolbar, Annotation Popup, Comments Tray
    ================================================================ */
 
-/* ── Edit Mode Toolbar ─────────────────────────────────────────── */
+/* Edit Mode Toolbar */
 
 .expl-edit-toolbar {
     display: flex;
@@ -722,7 +722,7 @@
     }
 }
 
-/* ── Annotation Popup ──────────────────────────────────────────── */
+/* Annotation Popup */
 
 .expl-annot-popup {
     position: fixed;
@@ -855,7 +855,7 @@
     filter: brightness(1.1);
 }
 
-/* ── Comments Tray ─────────────────────────────────────────────── */
+/* Comments Tray */
 
 .expl-comments-tray {
     flex-shrink: 0;

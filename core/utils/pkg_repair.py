@@ -34,7 +34,7 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent.parent
 
 
-# ── ANSI helpers (ASCII-safe, no dependencies) ────────────────────────────────
+# ANSI helpers (ASCII-safe, no dependencies)
 
 def _c(code: str, text: str) -> str:
     return f"\033[{code}m{text}\033[0m"
@@ -47,7 +47,7 @@ def _red(t: str)    -> str: return _c("31", t)
 def _dim(t: str)    -> str: return _c("2",  t)
 
 
-# ── pyproject.toml parsing ────────────────────────────────────────────────────
+# pyproject.toml parsing
 
 def _load_toml(path: Path) -> dict:
     """Parse pyproject.toml using tomllib (3.11+) or a simple line parser."""
@@ -153,7 +153,7 @@ def _read_pyproject_deps() -> tuple[list[str], list[str]]:
         return [], []
 
 
-# ── Installation checks ───────────────────────────────────────────────────────
+# Installation checks
 
 # Normalise a distribution name the same way pip / importlib.metadata does:
 # lowercase, replace [-_.] with a single hyphen.
@@ -216,7 +216,7 @@ def _pip_install(pip_spec: str) -> tuple[bool, str]:
     return result.returncode == 0, err
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 def repair(verbose: bool = True) -> dict[str, list]:
     """Check all pyproject.toml dependencies and install any that are missing.

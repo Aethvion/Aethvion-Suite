@@ -30,8 +30,6 @@ class IdentityManager:
         """Load personality and identity info."""
         path = _get_companion_dir(companion_id) / "base_info.json"
         if not path.exists():
-            # If default doesn't exist, try to load defaults from companion config?
-            # For now, just return empty to avoid crashes.
             return {}
         try:
             with open(path, "r", encoding="utf-8") as f:

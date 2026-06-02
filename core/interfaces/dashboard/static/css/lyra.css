@@ -15,7 +15,7 @@
     --lyra-user-bg:     rgba(74, 20, 110, 0.35);
 }
 
-/* ── layout ──────────────────────────────────────────────── */
+/* layout */
 
 .lyra-layout {
     display: flex;
@@ -349,7 +349,7 @@
     40%           { transform: translateY(-4px) rotate(10deg) scaleX(0.85); }
 }
 
-/* ── status line ─────────────────────────────────────────── */
+/* status line */
 
 .lyra-status-line {
     font-family: Georgia, 'Times New Roman', serif;
@@ -380,7 +380,7 @@
 }
 .lyra-mood-badge.visible { opacity: 1; }
 
-/* ── chat header ─────────────────────────────────────────── */
+/* chat header */
 
 .lyra-chat-header {
     border-bottom: 1px solid var(--lyra-border) !important;
@@ -405,7 +405,7 @@
     padding: 0.1rem 0.5rem;
 }
 
-/* ── chat bubbles ────────────────────────────────────────── */
+/* chat bubbles */
 
 .lyra-layout .chat-message.assistant .message-bubble {
     background: var(--lyra-bubble-bg);
@@ -428,7 +428,7 @@
     transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* ── input area ──────────────────────────────────────────── */
+/* input area */
 
 .lyra-input-area {
     border-top: 1px solid var(--lyra-border) !important;
@@ -508,7 +508,7 @@
     background: var(--lyra-secondary);
 }
 
-/* ── load more button ────────────────────────────────────── */
+/* load more button */
 
 .lyra-layout .load-more-btn {
     background: rgba(171,71,188,0.08);

@@ -18,7 +18,7 @@ from ._utils import _to_str
 from .ai import _simple_ai_call
 
 
-# ── Companion ─────────────────────────────────────────────────────────────────
+# Companion
 
 def companion_ask(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p            = node.get("properties", {})
@@ -73,7 +73,7 @@ def companion_ask(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     return {"out": resp.content, "error": ""}
 
 
-# ── Discord ───────────────────────────────────────────────────────────────────
+# Discord
 
 def integration_discord(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p           = node.get("properties", {})
@@ -118,7 +118,7 @@ def integration_discord(node: dict, inputs: dict[str, Any], ctx) -> dict[str, An
         return {"out": message, "error": str(exc)}
 
 
-# ── Slack ─────────────────────────────────────────────────────────────────────
+# Slack
 
 def integration_slack(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p           = node.get("properties", {})
@@ -161,7 +161,7 @@ def integration_slack(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
         return {"out": message, "error": str(exc)}
 
 
-# ── Email ─────────────────────────────────────────────────────────────────────
+# Email
 
 def integration_email(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p        = node.get("properties", {})

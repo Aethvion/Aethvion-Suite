@@ -91,7 +91,7 @@ from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# ── Canonical source identifiers ──────────────────────────────────────────────
+# Canonical source identifiers
 
 class CallSource:
     """
@@ -110,12 +110,12 @@ class CallSource:
         system_prompt=build_overlay_prompt(),
     )
     """
-    # ── Orchestrator-routed modes ──────────────────────────────────────────
+    # Orchestrator-routed modes
     CHAT          = "chat"            # Main chat — intent analysis path
     DISCORD       = "discord"         # Discord bot → persona chat path
     MISAKA_CIPHER = "misakacipher"    # Misaka Cipher synthesis → persona chat path
 
-    # ── Direct-call modes (bypass orchestrator) ───────────────────────────
+    # Direct-call modes (bypass orchestrator)
     COMPANION     = "companion"       # Floating Misaka assistant widget
     OVERLAY       = "overlay"         # Desktop overlay screen Q&A
     AGENT         = "agent"           # Software engineering agents
@@ -126,18 +126,18 @@ class CallSource:
     EXTERNAL_API  = "external_api"    # OpenAI-compatible external API
     MODEL_INFO    = "model_info"      # Model info / compatibility extraction
 
-    # ── Dashboard companions (direct-call, no orchestrator) ──────────────
+    # Dashboard companions (direct-call, no orchestrator)
     AXIOM         = "axiom"           # Axiom analytical companion
     LYRA          = "lyra"            # Lyra creative companion
 
-    # ── WorldSim knowledge distillation ─────────────────────────────────
+    # WorldSim knowledge distillation
     WORLDSIM      = "worldsim"        # Entity extraction / expansion / distillation
 
-    # ── Internal / meta ───────────────────────────────────────────────────
+    # Internal / meta
     AUTO_ROUTER   = "auto_router"     # Internal routing decision (recursive)
 
 
-# ── Isolation rules (used by validate_call_context) ──────────────────────────
+# Isolation rules (used by validate_call_context)
 # Each entry documents what a source SHOULD and SHOULD NOT have.
 # Keys: persona, memories, tools, identity, aethvion_internals
 #   True  = expected / allowed
@@ -310,7 +310,7 @@ PERSONA_SOURCES: frozenset[str] = frozenset({
 })
 
 
-# ── System-prompt builders ────────────────────────────────────────────────────
+# System-prompt builders
 
 def build_overlay_prompt() -> str:
     """
@@ -444,7 +444,7 @@ Sub IDs:  assistant, system, env, providers, profiles
     return context
 
 
-# ── Runtime validation ────────────────────────────────────────────────────────
+# Runtime validation
 
 def validate_call_context(
     source: str,

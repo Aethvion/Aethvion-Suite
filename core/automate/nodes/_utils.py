@@ -13,13 +13,13 @@ from typing import Any
 from core.providers import get_provider_manager as _get_pm  # noqa: PLC0415
 
 
-# ── Timestamp ─────────────────────────────────────────────────────────────────
+# Timestamp
 
 def _now() -> str:
     return datetime.now().strftime("%H:%M:%S.%f")[:-3]
 
 
-# ── Value coercion ────────────────────────────────────────────────────────────
+# Value coercion
 
 def _to_str(val: Any) -> str:
     """Coerce any value to a string, serialising dicts/lists as JSON."""
@@ -32,7 +32,7 @@ def _to_str(val: Any) -> str:
     return str(val)
 
 
-# ── Safe expression evaluator ─────────────────────────────────────────────────
+# Safe expression evaluator
 
 def _safe_eval(expr: str, local_vars: dict) -> Any:
     """Evaluate a simple expression in a restricted namespace (no builtins)."""

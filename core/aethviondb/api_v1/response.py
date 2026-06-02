@@ -12,7 +12,7 @@ import time
 from typing import Any
 
 
-# ── Envelope ──────────────────────────────────────────────────────────────────
+# Envelope
 
 def envelope(
     data:       Any,
@@ -40,7 +40,7 @@ def envelope(
     return {"ok": True, "data": data, "meta": meta}
 
 
-# ── Cursor codec ──────────────────────────────────────────────────────────────
+# Cursor codec
 
 def encode_cursor(offset: int) -> str:
     """Encode an offset into a URL-safe, opaque cursor string."""

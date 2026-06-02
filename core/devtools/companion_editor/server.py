@@ -23,11 +23,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# ── Project root on sys.path ──────────────────────────────────────────────────
+# Project root on sys.path
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# ── Patch companion_creator_routes BEFORE importing its router ────────────────
+# Patch companion_creator_routes BEFORE importing its router
 # Both _CUSTOM_DIR (user-created) and _CORE_CONFIG_DIR (built-ins) are pointed
 # at the same configs/ directory so every companion is fully editable.
 CONFIGS_DIR = PROJECT_ROOT / "core" / "companions" / "configs"
@@ -43,7 +43,7 @@ _cr._CORE_CONFIG_DIR = CONFIGS_DIR
 # (the mkdir call at module import already ran, so we just need the variable reassigned)
 # No side-effects from this — it's only used for mkdir at module-load time.
 
-# ── FastAPI app ───────────────────────────────────────────────────────────────
+# FastAPI app
 import uvicorn  # noqa: E402
 from fastapi import FastAPI  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
@@ -66,7 +66,7 @@ async def root():
 # Serve dashboard static assets (CSS, JS …)
 app.mount("/static", StaticFiles(directory=str(DASH_STATIC)), name="static")
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# Entry point
 if __name__ == "__main__":
     port = 8003
     print("\n" + "=" * 58)

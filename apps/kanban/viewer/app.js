@@ -10,7 +10,7 @@ let boardData = {
 let currentEditingTask = null;
 let currentEditingColumnId = null;
 
-// --- DOM Elements ---
+// DOM Elements
 const boardEl = document.getElementById('kb-board');
 const btnAddColumn = document.getElementById('btn-add-column');
 const taskModal = document.getElementById('task-modal');
@@ -24,7 +24,7 @@ const inputTaskName = document.getElementById('task-name');
 const inputTaskDesc = document.getElementById('task-desc');
 const inputTaskPriority = document.getElementById('task-priority');
 
-// --- Initialization ---
+// Initialization
 async function init() {
     setupEventListeners();
     await loadBoard();
@@ -57,7 +57,7 @@ async function saveBoard(silent = false) {
     }
 }
 
-// --- Rendering ---
+// Rendering
 function renderBoard() {
     boardEl.innerHTML = '';
     
@@ -164,7 +164,7 @@ function createTaskCard(task, colId) {
     return card;
 }
 
-// --- Actions ---
+// Actions
 function openTaskModal(task, colId) {
     currentEditingTask = task;
     currentEditingColumnId = colId;
@@ -302,7 +302,7 @@ function setupEventListeners() {
     };
 }
 
-// --- Utilities ---
+// Utilities
 function showNotification(msg, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `kb-toast kb-toast-${type}`;

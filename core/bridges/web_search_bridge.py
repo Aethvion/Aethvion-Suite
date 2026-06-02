@@ -43,7 +43,7 @@ def web_search(args: Dict[str, Any]) -> str:
         return f"[web_search ERROR] Could not fetch results: {e}"
 
 
-# ── DuckDuckGo Instant Answer + related topics ───────────────────────────────
+# DuckDuckGo Instant Answer + related topics
 
 def _ddg_search(query: str, count: int) -> str:
     encoded = urllib.parse.quote_plus(query)

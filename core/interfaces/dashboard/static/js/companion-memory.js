@@ -13,12 +13,12 @@
 (function () {
     'use strict';
 
-    // ── State ──────────────────────────────────────────────────────────────────
+    // State
     let _currentCompanion = 'misakacipher';
     let _initialized = false;
     let _companionMap = {}; // id -> { name, label }
 
-    // ── Public API (called from core.js on tab switch) ─────────────────────────
+    // Public API (called from core.js on tab switch)
     window.refreshCompanionMemory = async function () {
         if (!_initialized) {
             _initialized = true;
@@ -37,7 +37,7 @@
         await _fetchAndDisplay(companionId);
     };
 
-    // ── Internal ───────────────────────────────────────────────────────────────
+    // Internal
 
     async function _fetchAndDisplay(companionId) {
         const baseInfoEl    = document.getElementById('cm-base-info-viewer');

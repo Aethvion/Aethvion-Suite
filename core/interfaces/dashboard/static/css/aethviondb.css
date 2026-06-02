@@ -1742,7 +1742,7 @@
     border-top: 1px solid var(--border);
 }
 
-/* ── New Entity modal ─────────────────────────────────────────────────────── */
+/* New Entity modal */
 .adb-new-entity-modal { width: 500px; }
 
 .adb-ne-two-col {
@@ -1757,7 +1757,7 @@
     font-size: 0.78rem;
 }
 
-/* ── Column picker ── */
+/* Column picker */
 .adb-col-picker-wrap {
     position: relative;
 }
@@ -1828,7 +1828,7 @@
     max-width: 90px;
 }
 
-/* ── Busy overlay ── */
+/* Busy overlay */
 .adb-busy-overlay {
     position: absolute;
     inset: 0;
@@ -3830,7 +3830,7 @@
    Import Panel
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ─── Deepen / Expand inline context panel ──────────────────────────────── */
+/* Deepen / Expand inline context panel */
 
 .adb-deepen-ctx-panel {
     margin: 0 1.25rem 0;
@@ -3900,7 +3900,7 @@
     margin-left: auto;
 }
 
-/* ─── Deepen Selection context toggle ────────────────────────────────────── */
+/* Deepen Selection context toggle */
 
 .adb-ds-context-section {
     border-top: 1px solid var(--border);
@@ -3952,7 +3952,7 @@
     gap: 0.5rem;
 }
 
-/* ─── Deepen Selection Panel ─────────────────────────────────────────────── */
+/* Deepen Selection Panel */
 
 .adb-ds-list {
     padding: 0.75rem 1.25rem;
@@ -4018,7 +4018,6 @@
     background: rgba(34,211,238,0.07);
 }
 
-/* ─────────────────────────────────────────────────────────────────────────── */
 
 .adb-import-file-row {
     display: flex;
@@ -5046,7 +5045,7 @@
     padding: 0.35rem 0.45rem 0.45rem;
 }
 
-/* -- Per-entity error entries ------------------------------- */
+/* Per-entity error entries */
 
 .adb-val-err-entity {
     border-radius: 6px;
@@ -5375,7 +5374,7 @@
     max-width: 680px;
 }
 
-/* ── Always-included tests ── */
+/* Always-included tests */
 
 .adb-bench-fixed-tests {
     display: flex;
@@ -5414,7 +5413,7 @@
     font-size: 0.74rem;
 }
 
-/* ── Optional vector search ── */
+/* Optional vector search */
 
 .adb-bench-opt-tag {
     font-size: 0.68rem;
@@ -5448,7 +5447,7 @@
     flex-shrink: 0;
 }
 
-/* ── Bake rows ── */
+/* Bake rows */
 
 .adb-bench-bake-rows {
     display: flex;
@@ -5494,7 +5493,7 @@
 }
 .adb-bench-bake-remove:hover { opacity: 1; }
 
-/* ── Benchmark table ── */
+/* Benchmark table */
 
 .adb-bench-results {
     margin-top: 1rem;
@@ -5583,7 +5582,7 @@
     opacity: 0.8;
 }
 
-/* ── Foldout sections ── */
+/* Foldout sections */
 .adb-bench-sections {
     display: flex;
     flex-direction: column;
@@ -5654,7 +5653,7 @@
     flex-direction: column;
 }
 
-/* ── Individual test rows inside a section ── */
+/* Individual test rows inside a section */
 .adb-bench-test-row {
     padding: 0.5rem 0.7rem;
     border-bottom: 1px solid rgba(255,255,255,0.04);
@@ -5695,7 +5694,7 @@
     line-height: 1.4;
 }
 
-/* ── Match toggle (collapsed by default) ── */
+/* Match toggle (collapsed by default) */
 .adb-bench-match-wrap {
     margin-top: 0.25rem;
 }
@@ -5722,7 +5721,7 @@
     flex-shrink: 0;
 }
 
-/* ── Match block (paginated entity result list) ── */
+/* Match block (paginated entity result list) */
 .adb-bench-match-block.hidden { display: none; }
 .adb-bench-match-block {
     margin-top: 0.4rem;
@@ -5785,7 +5784,7 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* ── Chunk list ── */
+/* Chunk list */
 
 .adb-chunk-status {
     font-size: 0.78rem;

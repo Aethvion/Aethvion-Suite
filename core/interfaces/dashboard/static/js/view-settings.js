@@ -98,7 +98,7 @@ async function loadPreferences() {
     loadBridgeModules();
 }
 
-// ── Reusable binding helpers ──────────────────────────────────────────────────
+// Reusable binding helpers
 
 function _bindRangeWithDisplay(rangeId, displayId, prefKey, defaultVal, onChange) {
     const rangeEl   = document.getElementById(rangeId);
@@ -143,9 +143,9 @@ window._populateModelSelect = function(sel, prefModel) {
     }
 };
 
-// ===== Bridge Module Management =====
+// Bridge Module Management
 
-// ===== Bridge Module Management =====
+// Bridge Module Management
 
 async function loadBridgeModules() {
     const companionId = document.getElementById('bridge-companion-selector')?.value || 'misakacipher';
@@ -243,11 +243,11 @@ async function authorizeBridgeModule(companionId, moduleId) {
     }
 }
 
-// ===== Companion Workspace Management =====
+// Companion Workspace Management
 
 // Workspace management moved to companion-creator.js
 
-// ===== Global settings.json Management =====
+// Global settings.json Management
 
 async function loadGlobalSettings() {
     const container = document.getElementById('global-settings-container');
@@ -411,7 +411,7 @@ async function populateVoiceModelSelector(voiceSettings) {
     });
 }
 
-// ===== Developer Mode & .env Management =====
+// Developer Mode & .env Management
 
 
 
@@ -503,7 +503,7 @@ async function loadEnvStatus() {
     }
 }
 
-// ===== Tooltips =====
+// Tooltips
 
 function initTooltips() {
     document.querySelectorAll('.tooltip-trigger').forEach(trigger => {
@@ -514,7 +514,7 @@ function initTooltips() {
     });
 }
 
-// ===== Provider & Profile Management =====
+// Provider & Profile Management
 
 let _registryData = null;
 let _localModelsStatus = {}; // { filename: { exists: bool, size_mb: num } }
@@ -1509,7 +1509,7 @@ async function createNewProfile(type) {
     editProfile(name, type);
 }
 
-// ===== Enhanced Add Model Modal =====
+// Enhanced Add Model Modal
 
 async function openAddModelModal(providerName) {
     if (!_suggestedModels || !_registryData) return;
@@ -1683,7 +1683,7 @@ async function openAddModelModal(providerName) {
     };
 }
 
-// ===== Profile Reordering =====
+// Profile Reordering
 
 async function moveProfile(element, direction) {
     const name = element.dataset.name;
@@ -1718,7 +1718,7 @@ async function moveProfile(element, direction) {
 window.loadProviderSettings = loadProviderSettings;
 window.loadChatModels = loadChatModels;
 
-// ── Settings panel init (deferred until partial is injected) ─────────────────
+// Settings panel init (deferred until partial is injected)
 let _settingsInitDone = false;
 
 function _initSettingsPanel() {
@@ -1824,7 +1824,7 @@ async function switchSettingsSubTab(subTab, save = true) {
 // Attach to window
 window.switchSettingsSubTab = switchSettingsSubTab;
 
-// ===== Auto Routing Profile Management =====
+// Auto Routing Profile Management
 
 let _autoRoutingData = null;
 
@@ -1912,7 +1912,7 @@ async function saveAutoRoutingProfile(type) {
     }
 }
 
-// ===== Version Control & Update Checker =====
+// Version Control & Update Checker
 const REMOTE_VERSION_URL = "https://raw.githubusercontent.com/Aethvion/Aethvion-Suite/main/core/interfaces/dashboard/static/assets/system-status.json";
 
 async function checkForUpdates(manual = false) {
@@ -2297,7 +2297,7 @@ document.addEventListener('panelLoaded', function (e) {
 });
 
 
-// ===== Discord Worker Management =====
+// Discord Worker Management
 
 let _discordStatusInterval = null;
 
@@ -2431,10 +2431,10 @@ function updateDiscordUI(status) {
     }
 }
 
-// ===== Interface Settings (Sidebar Visibility) =====
+// Interface Settings (Sidebar Visibility)
 
 
-// ===== Display Timezone =====
+// Display Timezone
 
 async function loadDisplayTimezone() {
     const sel = document.getElementById('display-timezone-select');
@@ -2474,7 +2474,7 @@ async function loadDisplayTimezone() {
 }
 
 
-// ===== Notification Visibility Management =====
+// Notification Visibility Management
 
 function createNotifRow(id, label, icon, checked) {
     const row = document.createElement('div');
@@ -2531,7 +2531,7 @@ function loadNotificationSettings() {
     });
 }
 
-// ===== External API Settings =====
+// External API Settings
 
 async function loadExternalApiSettings() {
     try {
@@ -2664,7 +2664,7 @@ function _escHtml(str) {
     return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Desktop Overlay Settings ──────────────────────────────────────────────────
+// Desktop Overlay Settings
 
 async function loadOverlaySettings() {
     try {
@@ -2930,7 +2930,7 @@ window.overlayUpdatePreview     = overlayUpdatePreview;
 window.overlayInstallDeps       = overlayInstallDeps;
 window.overlayInstallLogCopy    = overlayInstallLogCopy;
 
-// ── Privacy Mode Toggle ────────────────────────────────────────────────────────
+// Privacy Mode Toggle
 async function initPrivacyToggle() {
     const toggle = document.getElementById('privacy-mode-toggle');
     const badge  = document.getElementById('privacy-mode-badge');

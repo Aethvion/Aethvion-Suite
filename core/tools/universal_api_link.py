@@ -58,7 +58,7 @@ _MAX_TIMEOUT        = int(os.getenv("AETHVION_API_MAX_TIMEOUT", "120"))
 _BLOCK_PRIVATE      = os.getenv("AETHVION_BLOCK_PRIVATE_HOSTS", "").lower() in ("1", "true", "yes")
 
 
-# ── Result type ───────────────────────────────────────────────────────────────
+# Result type
 
 class ApiResponse:
     """Structured result from a universal API call."""
@@ -97,7 +97,7 @@ class ApiResponse:
         return f"<ApiResponse {self.method} {self.url} → {self.status_code}>"
 
 
-# ── Main function ─────────────────────────────────────────────────────────────
+# Main function
 
 def send_http_request(
     url: str,
@@ -215,7 +215,7 @@ def send_http_request(
         )
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 def _parse_body(data: bytes, content_type: str) -> Any:
     """Try to parse response as JSON; fall back to UTF-8 string."""

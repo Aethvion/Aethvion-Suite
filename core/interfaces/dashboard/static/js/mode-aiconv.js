@@ -16,7 +16,7 @@ let aiconvState = {
     estCost: 0
 };
 
-// ─── Participant Chip Rendering ───────────────────────────────────────────────
+// Participant Chip Rendering
 
 function renderAIConvChips() {
     const container = document.getElementById('aiconv-model-chips');
@@ -103,7 +103,7 @@ function addHumanParticipant() {
     showToast('Added yourself to the conversation! It\'s your turn when the round reaches you.', 'info');
 }
 
-// ─── Start / Stop / Pause ────────────────────────────────────────────────────
+// Start / Stop / Pause
 
 async function startAIConv() {
     if (aiconvSelectedModels.length < 2) {
@@ -259,7 +259,7 @@ function continueAIConv() {
     runAIConvLoop();
 }
 
-// ─── Pause Inject Bar ────────────────────────────────────────────────────────
+// Pause Inject Bar
 
 function showPauseInjectBar() {
     if (document.getElementById('aiconv-inject-bar')) return;
@@ -309,7 +309,7 @@ function hidePauseInjectBar() {
     if (bar) bar.remove();
 }
 
-// ─── Human Turn Prompt ───────────────────────────────────────────────────────
+// Human Turn Prompt
 
 function waitForHumanInput(participant) {
     return new Promise((resolve) => {
@@ -356,7 +356,7 @@ function waitForHumanInput(participant) {
     });
 }
 
-// ─── Main Loop ───────────────────────────────────────────────────────────────
+// Main Loop
 
 async function runAIConvLoop() {
     const totalTarget = () => aiconvState.maxTurnsPerModel * aiconvSelectedModels.length;
@@ -365,7 +365,7 @@ async function runAIConvLoop() {
         const currentModel = aiconvSelectedModels[aiconvState.currentTurnIndex];
         const messagesContainer = document.getElementById('aiconv-messages');
 
-        // ── Human turn ──
+        // Human turn
         if (currentModel.isHuman) {
             const result = await waitForHumanInput(currentModel);
             if (!aiconvState.isRunning) break;
@@ -394,7 +394,7 @@ async function runAIConvLoop() {
             continue;
         }
 
-        // ── AI turn ──
+        // AI turn
         const loadingId = `aiconv-loading-${Date.now()}`;
         messagesContainer.insertAdjacentHTML('beforeend', `
             <div class="message ai-message" id="${loadingId}" style="border-left: 4px solid ${currentModel.color};">
@@ -491,7 +491,7 @@ async function runAIConvLoop() {
     }
 }
 
-// ─── Conversation History ────────────────────────────────────────────────────
+// Conversation History
 
 let aiconvCurrentId = null; // ID of the currently active (saved) conversation
 
@@ -765,7 +765,7 @@ function newAIConvConversation() {
     loadAIConvHistory();
 }
 
-// ─── Share / Export ──────────────────────────────────────────────────────────
+// Share / Export
 
 async function _compressToBase64url(obj) {
     const json = JSON.stringify(obj);
@@ -928,7 +928,7 @@ function _showShareModal(url) {
     });
 }
 
-// ─── Stats UI ────────────────────────────────────────────────────────────────
+// Stats UI
 
 function updateAIConvUI() {
     const totalTarget = aiconvState.maxTurnsPerModel * aiconvSelectedModels.length;
@@ -945,7 +945,7 @@ function updateAIConvUI() {
     if (shareBtn) shareBtn.style.display = aiconvState.totalTurnsCompleted > 0 ? '' : 'none';
 }
 
-// ─── Global Event Delegation ──────────────────────────────────────────────────
+// Global Event Delegation
 
 document.addEventListener('change', (e) => {
     // Arena Model Selector

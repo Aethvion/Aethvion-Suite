@@ -27,11 +27,11 @@ from .base import LocalAudioModel, VoiceInfo, TTSResult, STTResult
 
 logger = get_logger(__name__)
 
-# ── HuggingFace model IDs ────────────────────────────────────────────────────
+# HuggingFace model IDs
 HF_REALTIME = "microsoft/VibeVoice-Realtime-0.5B"
 HF_ASR      = "microsoft/VibeVoice-ASR"
 
-# ── Voice preset metadata ────────────────────────────────────────────────────
+# Voice preset metadata
 # Presets are pre-computed speaker embeddings (.pt files).
 _VOICE_PRESET_BASE = (
     "https://huggingface.co/spaces/anycoderapps/"
@@ -61,7 +61,7 @@ REALTIME_VOICES: List[VoiceInfo] = [
 ]
 
 
-# ── Helper ───────────────────────────────────────────────────────────────────
+# Helper
 
 def _download_file(url: str, dest: Path, desc: str = "") -> bool:
     """Download *url* to *dest*, returning True on success."""
@@ -79,7 +79,7 @@ def _download_file(url: str, dest: Path, desc: str = "") -> bool:
         return False
 
 
-# ── VibeVoice Realtime (0.5B) — TTS ─────────────────────────────────────────
+# VibeVoice Realtime (0.5B) — TTS
 
 class VibeVoiceRealtimeModel(LocalAudioModel):
     """
@@ -105,7 +105,7 @@ class VibeVoiceRealtimeModel(LocalAudioModel):
         self._model     = None
         self._processor = None
 
-    # ── Package detection ────────────────────────────────────────────────────
+    # Package detection
 
     @property
     def is_installed(self) -> bool:
@@ -115,7 +115,7 @@ class VibeVoiceRealtimeModel(LocalAudioModel):
         except ImportError:
             return False
 
-    # ── Load / Unload ─────────────────────────────────────────────────────────
+    # Load / Unload
 
     def load(self, device: str = "cuda") -> None:
         import torch
@@ -158,7 +158,7 @@ class VibeVoiceRealtimeModel(LocalAudioModel):
         self._processor = None
         self._loaded    = False
 
-    # ── Voices ────────────────────────────────────────────────────────────────
+    # Voices
 
     def list_voices(self) -> List[VoiceInfo]:
         # Mark voices that are already downloaded as available
@@ -191,7 +191,7 @@ class VibeVoiceRealtimeModel(LocalAudioModel):
                 if not ok and not silent:
                     logger.warning(f"Could not fetch preset for '{v.name}'.")
 
-    # ── TTS ───────────────────────────────────────────────────────────────────
+    # TTS
 
     def generate_tts(
         self,
@@ -266,7 +266,7 @@ class VibeVoiceRealtimeModel(LocalAudioModel):
         return outputs.speech_outputs[0].cpu().numpy()
 
 
-# ── VibeVoice ASR (9B) — STT ─────────────────────────────────────────────────
+# VibeVoice ASR (9B) — STT
 
 class VibeVoiceASRModel(LocalAudioModel):
     """
@@ -290,7 +290,7 @@ class VibeVoiceASRModel(LocalAudioModel):
         self._model     = None
         self._processor = None
 
-    # ── Package detection ────────────────────────────────────────────────────
+    # Package detection
 
     @property
     def is_installed(self) -> bool:
@@ -300,7 +300,7 @@ class VibeVoiceASRModel(LocalAudioModel):
         except ImportError:
             return False
 
-    # ── Load / Unload ─────────────────────────────────────────────────────────
+    # Load / Unload
 
     def load(self, device: str = "cuda") -> None:
         import torch
@@ -349,7 +349,7 @@ class VibeVoiceASRModel(LocalAudioModel):
         self._processor = None
         self._loaded    = False
 
-    # ── STT ───────────────────────────────────────────────────────────────────
+    # STT
 
     def transcribe(
         self,
@@ -434,7 +434,7 @@ class VibeVoiceASRModel(LocalAudioModel):
         return d
 
 
-# ── contextlib shim for Python < 3.7 ─────────────────────────────────────────
+# contextlib shim for Python < 3.7
 
 try:
     from contextlib import nullcontext as contextlib_nullcontext

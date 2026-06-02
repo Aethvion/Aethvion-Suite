@@ -132,7 +132,7 @@ function addMessage(sender, content, metadata = {}) {
     }
 }
 
-// ===== Log Handling =====
+// Log Handling
 
 function handleLogMessage(event) {
     try {
@@ -184,7 +184,7 @@ function handleLogMessage(event) {
     }
 }
 
-// ===== System Terminal =====
+// System Terminal
 
 // Expose to window for threads.js
 window.updateTerminalVisibility = function () {

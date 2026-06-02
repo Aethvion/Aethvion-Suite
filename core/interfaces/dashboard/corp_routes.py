@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/corp", tags=["corp"])
 
 
-# ── Request models ────────────────────────────────────────────────────────────
+# Request models
 
 class CreateCorpRequest(BaseModel):
     name: str
@@ -68,7 +68,7 @@ class SteerRequest(BaseModel):
     message: str
 
 
-# ── Corp CRUD ─────────────────────────────────────────────────────────────────
+# Corp CRUD
 
 @router.get("/list")
 async def list_corps():
@@ -105,7 +105,7 @@ async def delete_corp(corp_id: str):
     return {"ok": True}
 
 
-# ── Worker CRUD ───────────────────────────────────────────────────────────────
+# Worker CRUD
 
 @router.post("/{corp_id}/workers")
 async def add_worker(corp_id: str, req: AddWorkerRequest):
@@ -142,7 +142,7 @@ async def resume_worker(corp_id: str, worker_id: str):
     return {"ok": True}
 
 
-# ── Corp control ──────────────────────────────────────────────────────────────
+# Corp control
 
 @router.post("/{corp_id}/start")
 async def start_corp(corp_id: str):
@@ -161,7 +161,7 @@ async def stop_corp(corp_id: str):
     return {"ok": True, "status": "stopped"}
 
 
-# ── Task management ───────────────────────────────────────────────────────────
+# Task management
 
 @router.get("/{corp_id}/tasks")
 async def get_tasks(corp_id: str):
@@ -194,7 +194,7 @@ async def reject_task(corp_id: str, task_id: str):
     return {"ok": True}
 
 
-# ── Message log ───────────────────────────────────────────────────────────────
+# Message log
 
 @router.get("/{corp_id}/log")
 async def get_log(corp_id: str):
@@ -209,7 +209,7 @@ async def send_message(corp_id: str, req: SteerRequest):
     return {"ok": True}
 
 
-# ── Stats ─────────────────────────────────────────────────────────────────────
+# Stats
 
 @router.get("/{corp_id}/stats")
 async def get_stats(corp_id: str):
@@ -226,7 +226,7 @@ async def get_feed(corp_id: str, last_n: int = 200):
     return get_corp_manager().get_feed(corp_id, last_n=last_n)
 
 
-# ── SSE event stream ──────────────────────────────────────────────────────────
+# SSE event stream
 
 @router.get("/{corp_id}/events")
 async def corp_events(corp_id: str):

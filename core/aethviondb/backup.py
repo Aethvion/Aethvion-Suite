@@ -40,7 +40,7 @@ logger = get_logger(__name__)
 _BACKUP_META_FILE = "AethvionDB.BACKUP"
 
 
-# ── Internal helpers ──────────────────────────────────────────────────────────
+# Internal helpers
 
 def _now_stamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
@@ -76,7 +76,7 @@ def _dir_size(path: Path) -> int:
     return total
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 def create_backup(
     db_root: Path,

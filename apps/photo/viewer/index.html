@@ -12,7 +12,7 @@
 <body class="dark-theme">
 <div id="app">
 
-    <!-- ── Top Menu Bar ─────────────────────────────────────────── -->
+    <!-- Top Menu Bar -->
     <header id="top-bar">
         <div class="logo">
             <i class="fa-solid fa-wand-magic-sparkles"></i>
@@ -90,7 +90,7 @@
         </div>
     </header>
 
-    <!-- ── Tool Options Bar ──────────────────────────────────────── -->
+    <!-- Tool Options Bar -->
     <div id="tool-options-bar">
         <!-- Brush options -->
         <div class="tool-opt-group" id="tool-opts-brush">
@@ -137,14 +137,14 @@
         </div>
     </div>
 
-    <!-- ── Workspace Tabs ─────────────────────────────────────────── -->
+    <!-- Workspace Tabs -->
     <nav id="tab-bar">
         <button id="add-workspace-btn" title="New Workspace"><i class="fa-solid fa-plus"></i></button>
     </nav>
 
     <div class="main-container">
 
-        <!-- ── Left Tool Palette ───────────────────────────────────── -->
+        <!-- Left Tool Palette -->
         <aside id="tool-palette">
             <button class="tool-btn active" data-tool="select"      title="Move Tool (V)"><i class="fa-solid fa-arrow-pointer"></i></button>
             <button class="tool-btn"        data-tool="rect-select" title="Marquee Select (M)"><i class="fa-solid fa-vector-square"></i></button>
@@ -172,14 +172,14 @@
             </div>
         </aside>
 
-        <!-- ── Main Canvas Viewport ─────────────────────────────────── -->
+        <!-- Main Canvas Viewport -->
         <main id="editor-viewport">
             <div class="canvas-container">
                 <canvas id="main-canvas"></canvas>
             </div>
         </main>
 
-        <!-- ── Right Properties Panel ───────────────────────────────── -->
+        <!-- Right Properties Panel -->
         <aside id="properties-panel">
 
             <!-- Canvas settings -->
@@ -286,7 +286,7 @@
         </aside>
     </div>
 
-    <!-- ── Status Bar ────────────────────────────────────────────── -->
+    <!-- Status Bar -->
     <footer id="status-bar">
         <div id="zoom-controls">
             <button id="zoom-out-btn" title="Zoom Out (-)">−</button>
@@ -302,19 +302,19 @@
 
 </div><!-- /#app -->
 
-<!-- ── Toast Container ───────────────────────────────────────────── -->
+<!-- Toast Container -->
 <div id="toast-container"></div>
 
-<!-- ── Brush Cursor Ring ─────────────────────────────────────────── -->
+<!-- Brush Cursor Ring -->
 <div id="brush-cursor"></div>
 
-<!-- ── Text Input Overlay ────────────────────────────────────────── -->
+<!-- Text Input Overlay -->
 <div id="text-overlay">
     <textarea id="text-input" rows="1" spellcheck="false"
         placeholder="Type…  Ctrl+Enter = place  |  Esc = cancel"></textarea>
 </div>
 
-<!-- ── Project Picker Modal ──────────────────────────────────────── -->
+<!-- Project Picker Modal -->
 <div id="project-modal" class="ae-modal-overlay">
     <div class="ae-modal">
         <div class="ae-modal-header">

@@ -49,7 +49,7 @@ class ThreeDGenerationResponse(BaseModel):
     asset: Optional[ThreeDAssetResponse] = None
     error: Optional[str] = None
 
-# --- Worker Management ---
+# Worker Management
 _WORKER_PROCESS = {} # model -> subprocess.Popen
 _WORKER_PORT = {}    # model -> port
 
@@ -302,7 +302,7 @@ async def get_3d_engine_status():
 
 from core.utils.paths import LOCAL_MODELS_3D, LOGS_SYSTEM
 
-# --- Installation Logic Simulation ---
+# Installation Logic Simulation
 # For actual implementation, this would check if a specific directory exists
 # e.g., checkpoints/3d/trellis and return True/False
 @router.get("/active_services")
@@ -1006,7 +1006,7 @@ if __name__ == "__main__":
                 if line: yield f"data: {json.dumps({'line': line})}\n\n"
             await proc_u3d.wait()
 
-            # --- Windows Compatibility Hardening ---
+            # Windows Compatibility Hardening
             yield f"data: {json.dumps({'line': 'Fixing path normalization for Windows...'})}\n\n"
             try:
                 loader_file = repo_dir / "trellis" / "models" / "__init__.py"
@@ -1059,7 +1059,7 @@ if __name__ == "__main__":
                                 loader_file.write_text(patched_code, encoding='utf-8')
                                 yield f"data: {json.dumps({'line': 'Path patch complete.'})}\n\n"
 
-                # --- Attention Patches ---
+                # Attention Patches
                 yield f"data: {json.dumps({'line': 'Patching attention modules for SDPA support...'})}\n\n"
                 full_attn_patch = """
     elif ATTN == 'sdpa':

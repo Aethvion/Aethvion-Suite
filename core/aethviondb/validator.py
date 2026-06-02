@@ -81,7 +81,7 @@ class ValidationResult:
         }
 
 
-# ── Name helpers ─────────────────────────────────────────────────────────────
+# Name helpers
 
 _WHITESPACE = re.compile(r"\s+")
 
@@ -91,7 +91,7 @@ def _normalize_name(name: str) -> str:
     return _WHITESPACE.sub(" ", name.strip()).lower()
 
 
-# ── Date helpers ──────────────────────────────────────────────────────────────
+# Date helpers
 
 _BCE_RE    = re.compile(r"\bBC(E)?\b",             re.IGNORECASE)
 _BCE_STRIP = re.compile(r"\s*(?:AD|CE|BC|BCE)\s*$", re.IGNORECASE)
@@ -131,7 +131,7 @@ def _parse_year(date_str: str) -> Optional[int]:
     if s.startswith("~"):
         s = s[1:].strip()
 
-    # ── Natural-language geological age (checked before numeric patterns) ──────
+    # Natural-language geological age (checked before numeric patterns)
     m = _NATURAL_AGO_RE.match(s)
     if m:
         value      = float(m.group(1))
@@ -157,7 +157,7 @@ def _parse_year(date_str: str) -> Optional[int]:
     return None
 
 
-# ── Individual checks ─────────────────────────────────────────────────────────
+# Individual checks
 
 def _check_temporal(entity: dict[str, Any]) -> list[Issue]:
     issues: list[Issue] = []
@@ -407,7 +407,7 @@ def _check_type_consistency(entity: dict[str, Any]) -> list[Issue]:
     return issues
 
 
-# ── Cross-entity duplicate detection ─────────────────────────────────────────
+# Cross-entity duplicate detection
 
 def _entity_score(entity: dict[str, Any]) -> int:
     """
@@ -557,7 +557,7 @@ def _collect_duplicate_groups(
     return issues_by_id, groups
 
 
-# ── Main Validator class ──────────────────────────────────────────────────────
+# Main Validator class
 
 class Validator:
     """

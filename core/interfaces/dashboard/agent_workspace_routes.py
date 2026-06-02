@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api/agents", tags=["agents"])
 workspace_manager = AgentWorkspaceManager(HISTORY_AGENTS)
 
 
-# ── Request models ─────────────────────────────────────────────────────────────
+# Request models
 
 class WorkspaceCreateRequest(BaseModel):
     path: str
@@ -68,7 +68,7 @@ class ChecklistItemUpdateRequest(BaseModel):
     done: bool
 
 
-# ── Workspace endpoints ────────────────────────────────────────────────────────
+# Workspace endpoints
 
 @router.get("/workspaces")
 async def list_workspaces():
@@ -118,7 +118,7 @@ async def delete_workspace(workspace_id: str):
     return {"status": "deleted", "id": workspace_id}
 
 
-# ── Folder browser endpoints ──────────────────────────────────────────────────
+# Folder browser endpoints
 
 @router.get("/browse/native")
 async def browse_folder_native(initial: str = Query(default="")):
@@ -191,7 +191,7 @@ async def browse_folder(path: str = Query(default="")):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── Thread endpoints ───────────────────────────────────────────────────────────
+# Thread endpoints
 
 @router.get("/workspaces/{workspace_id}/threads")
 async def list_threads(workspace_id: str):
@@ -285,7 +285,7 @@ async def get_thread_history(workspace_id: str, thread_id: str, limit: int = 20)
     return {"messages": messages, "total": len(thread.get("messages", []))}
 
 
-# ── File restore (undo) ───────────────────────────────────────────────────────
+# File restore (undo)
 
 @router.post("/workspaces/{workspace_id}/restore")
 async def restore_workspace_file(workspace_id: str, request: RestoreFileRequest):
@@ -311,7 +311,7 @@ async def restore_workspace_file(workspace_id: str, request: RestoreFileRequest)
     return {"status": "restored", "path": rel}
 
 
-# ── File upload ─────────────────────────────────────────────────────────────
+# File upload
 
 _AGENTS_MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
@@ -373,7 +373,7 @@ async def upload_agent_file(
     }
 
 
-# ── Active Workspace Explorer & IDE Endpoints ─────────────────────────────────
+# Active Workspace Explorer & IDE Endpoints
 
 class FileSaveRequest(BaseModel):
     path: str
@@ -520,7 +520,7 @@ async def search_workspace_content(path: str, query: str):
 
 
 
-# ── Project Memory endpoints ──────────────────────────────────────────────────
+# Project Memory endpoints
 
 def _get_pm(workspace_id: str):
     """Return a ProjectMemory instance for the given workspace."""

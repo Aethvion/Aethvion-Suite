@@ -38,11 +38,11 @@ logger = get_logger(__name__)
 
 _VEC_INFO_FILE = "AethvionDB.VECINFO"
 
-# ── In-process task tracking ───────────────────────────────────────────────────
+# In-process task tracking
 
 _vec_tasks: dict[str, asyncio.Task] = {}   # str(db_root) → Task
 
-# ── Embedding model registry ───────────────────────────────────────────────────
+# Embedding model registry
 
 EMBEDDING_MODELS: dict[str, dict] = {
     # OpenAI
@@ -116,13 +116,13 @@ EMBEDDING_COSTS: dict[str, float] = {
 }
 
 
-# ── State helpers ──────────────────────────────────────────────────────────────
+# State helpers
 
 def is_vectorizing(db_root: Path) -> bool:
     return str(db_root) in _vec_tasks
 
 
-# ── Info sidecar ───────────────────────────────────────────────────────────────
+# Info sidecar
 
 def read_vec_info(db_root: Path) -> dict:
     """Return contents of AethvionDB.VECINFO, or {} if absent / unreadable."""
@@ -146,7 +146,7 @@ def write_vec_info(db_root: Path, data: dict) -> None:
         logger.warning(f"[Vectorizer] Could not write {_VEC_INFO_FILE}: {exc}")
 
 
-# ── Text builder ───────────────────────────────────────────────────────────────
+# Text builder
 
 def _entity_to_text(entity: dict) -> str:
     """
@@ -180,7 +180,7 @@ def _entity_to_text(entity: dict) -> str:
     return " ".join(parts)
 
 
-# ── Provider clients ───────────────────────────────────────────────────────────
+# Provider clients
 
 def _make_google_client():
     """
@@ -216,7 +216,7 @@ def _make_openai_client():
     return OpenAI(api_key=api_key)
 
 
-# ── Local model cache ──────────────────────────────────────────────────────────
+# Local model cache
 
 _local_model_cache: dict[str, object] = {}
 
@@ -237,7 +237,7 @@ def _get_local_model(model: str):
     return _local_model_cache[model]
 
 
-# ── Embedding ──────────────────────────────────────────────────────────────────
+# Embedding
 
 def _google_model_id(model: str) -> str:
     """Ensure the model ID has the required 'models/' prefix for the Google API."""
@@ -342,7 +342,7 @@ def _preflight_check(model: str) -> None:
         _make_google_client()
 
 
-# ── Background vectorization task ──────────────────────────────────────────────
+# Background vectorization task
 
 async def vectorize_all(
     db_root:       Path,
@@ -390,7 +390,7 @@ async def vectorize_all(
         _tracker = None
 
     try:
-        # ── Preflight: verify the embedding client works before touching any entity ──
+        # Preflight: verify the embedding client works before touching any entity
         try:
             _preflight_check(model)
         except Exception as preflight_exc:
@@ -538,7 +538,7 @@ async def vectorize_all(
         _vec_tasks.pop(key, None)
 
 
-# ── Sync embedding (usable from sync node handlers / threads) ─────────────────
+# Sync embedding (usable from sync node handlers / threads)
 
 def embed_sync(text: str, model: str) -> list[float]:
     """Embed *text* synchronously using the given model.
@@ -578,7 +578,7 @@ def embed_sync(text: str, model: str) -> list[float]:
         raise RuntimeError(f"Empty embedding response from model {model_id!r}: {result}")
 
 
-# ── Cancel ─────────────────────────────────────────────────────────────────────
+# Cancel
 
 def cancel_vectorize(db_root: Path) -> dict:
     """Cancel a running vectorization task and update VECINFO to status=cancelled."""

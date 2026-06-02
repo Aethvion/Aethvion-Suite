@@ -59,17 +59,17 @@ class EntityWriter:
         self._dir.mkdir(parents=True, exist_ok=True)
         self._index = index or get_index()
 
-    # ── Path helpers ───────────────────────────────────────────────────────────
+    # Path helpers
 
     def _path_for(self, entity_id: str) -> Path:
         return self._dir / f"{entity_id}.json"
 
-    # ── Atomic write ──────────────────────────────────────────────────────────
+    # Atomic write
 
     def _write(self, entity: dict[str, Any]) -> None:
         atomic_json_write(self._path_for(entity["id"]), entity)
 
-    # ── Public API ─────────────────────────────────────────────────────────────
+    # Public API
 
     def exists(self, entity_id: str) -> bool:
         return self._path_for(entity_id).exists()
@@ -245,7 +245,7 @@ class EntityWriter:
             logger.info(f"[EntityWriter] Hard-deleted {entity_id}")
         return True
 
-    # ── Bulk operations ───────────────────────────────────────────────────────
+    # Bulk operations
 
     def list_all(self, include_deleted: bool = False) -> list[dict[str, Any]]:
         """Return all entities. Expensive — use for admin/stats only."""

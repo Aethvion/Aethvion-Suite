@@ -19,11 +19,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# ── Project root on sys.path ──────────────────────────────────────────────────
+# Project root on sys.path
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# ── Patch automate_routes BEFORE importing its router ────────────────────────
+# Patch automate_routes BEFORE importing its router
 # Both the "examples" directory and the user "data" directory are redirected to
 # core/automate/config/ so saves go directly into the shipped defaults.
 CONFIG_DIR = PROJECT_ROOT / "core" / "automate" / "config"
@@ -34,7 +34,7 @@ import core.automate.automate_routes as _ar  # noqa: E402
 _ar._EXAMPLES_DIR = CONFIG_DIR   # /api/automate/examples/* reads from here
 _ar._DATA_DIR     = CONFIG_DIR   # /api/automate/workflows/* reads/writes here
 
-# ── FastAPI app ───────────────────────────────────────────────────────────────
+# FastAPI app
 import uvicorn  # noqa: E402
 from fastapi import FastAPI  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
@@ -58,7 +58,7 @@ async def root():
 # Serve dashboard static assets (CSS, JS, fonts …)
 app.mount("/static", StaticFiles(directory=str(DASH_STATIC)), name="static")
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# Entry point
 if __name__ == "__main__":
     port = 8002
     print("\n" + "=" * 58)

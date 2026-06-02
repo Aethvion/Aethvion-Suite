@@ -477,7 +477,7 @@ def run_test_orchestrator(run_id: str, python_exe: str):
     pre_test_sys_mem = psutil.virtual_memory().percent
     pre_test_gpu = get_gpu_usage()
 
-    # == Phase 1: Startup ==
+    # Phase 1: Startup
     add_log(run_id, "== Phase 1: Starting Aethvion Suite ==")
     with runs_lock:
         test_runs[run_id]["progress"] = 10
@@ -569,7 +569,7 @@ def run_test_orchestrator(run_id: str, python_exe: str):
     startup_resources = get_process_resource_usage(suite_proc.pid)
     add_log(run_id, f"Startup resource usage: Memory: {startup_resources['memory_mb']} MB, CPU: {startup_resources['cpu_percent']}%")
 
-    # == Phase 2: 60-Second Performance Profiling ==
+    # Phase 2: 60-Second Performance Profiling
     add_log(run_id, "== Phase 2: 60-Second Real-Time Telemetry Profiling ==")
     with runs_lock:
         test_runs[run_id]["progress"] = 30
@@ -588,7 +588,7 @@ def run_test_orchestrator(run_id: str, python_exe: str):
     task_error      = None
     temp_thread_id  = f"perf_test_thread_{uuid.uuid4().hex[:6]}"
 
-    # ── 60-second profiling loop ───────────────────────────────────────────────
+    # 60-second profiling loop
     for sec in range(1, 61):
         if suite_proc.poll() is not None:
             add_log(run_id, "CRITICAL: Suite process died during profiling run.")
@@ -661,7 +661,7 @@ def run_test_orchestrator(run_id: str, python_exe: str):
                 add_log(run_id, f"Load Injection Error: {submit_res['body']}")
                 task_error = str(submit_res["body"])
 
-        # ── Fill the remaining second with 200ms poll ticks ────────────────────
+        # Fill the remaining second with 200ms poll ticks
         # This catches task completion within 200ms instead of up to 1s.
         for _tick in range(5):
             if task_submitted and not task_success and not task_error:
@@ -688,7 +688,7 @@ def run_test_orchestrator(run_id: str, python_exe: str):
     avg_health_latency = round(sum(health_latencies) / len(health_latencies), 2) if health_latencies else 0.0
     add_log(run_id, f"Avg health latency (sampled during load): {avg_health_latency}ms over {len(health_latencies)} samples")
 
-    # == Phase 3: Graceful Shutdown & Cleanup ==
+    # Phase 3: Graceful Shutdown & Cleanup
     add_log(run_id, "== Phase 3: Graceful Shutdown & Cleanup ==")
     with runs_lock:
         test_runs[run_id]["progress"] = 90

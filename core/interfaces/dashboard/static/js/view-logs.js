@@ -10,7 +10,7 @@ async function initializeLogsView() {
     const scrollBtn = document.getElementById('scroll-to-bottom-btn');
     const modeBtns = document.querySelectorAll('.mode-btn');
 
-    // --- Mode Switching (Live vs Forensic) ---
+    // Mode Switching (Live vs Forensic)
     modeBtns.forEach(btn => {
         btn.onclick = () => {
             const mode = btn.dataset.mode;
@@ -32,7 +32,7 @@ async function initializeLogsView() {
 
     loadLogFileList();
 
-    // --- WebSocket Implementation (Live Feed) ---
+    // WebSocket Implementation (Live Feed)
     // These functions are called by core.js when messages arrive on /ws/logs
     window.handleLogMessage = (event) => {
         try {

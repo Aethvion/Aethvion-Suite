@@ -15,7 +15,7 @@
 (function () {
     'use strict';
 
-    // ── Constants ───────────────────────────────────────────────────────────
+    // Constants
     const MIN_SCALE    = 0.12;
     const MAX_SCALE    = 3.5;
     const ZOOM_STEP    = 0.12;
@@ -43,7 +43,7 @@
         { value: 'every_weekend',    label: 'Every weekend (Sat–Sun)',   hasParam: false },
     ];
 
-    // ── State ────────────────────────────────────────────────────────────────
+    // State
     let _nodeTypes      = [];   // [{ type, label, category, icon, color, inputs, outputs, properties }]
     let _availModels    = [];   // [{ id, provider_id, provider_name, label, description }]
     let _modelsBySource = {};   // cache: source-url → model list
@@ -71,12 +71,10 @@
         pubvars:   { label: 'Public Variables', icon: 'fa-dollar-sign' },
     };
 
-    // ── DOM refs ─────────────────────────────────────────────────────────────
+    // DOM refs
     let _e = {}; // filled by _init
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Initialisation
-    // ════════════════════════════════════════════════════════════════════════
 
     function _init() {
         _e = {
@@ -183,9 +181,7 @@
 
     function _$(id) { return document.getElementById(id); }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  API helpers
-    // ════════════════════════════════════════════════════════════════════════
 
     async function _apiFetchNodeTypes() {
         const r = await fetch('/api/automate/node-types');
@@ -291,7 +287,7 @@
         _updateToolbar();
     }
 
-    // ── Examples / Export / Import / Share API calls ──────────────────────────
+    // Examples / Export / Import / Share API calls
 
     async function _apiListExamples() {
         const r = await fetch('/api/automate/examples');
@@ -339,7 +335,7 @@
         return (await r.json()).workflow;
     }
 
-    // ── Examples modal ────────────────────────────────────────────────────────
+    // Examples modal
 
     function _openExamplesModal() {
         _e.examplesGrid.innerHTML =
@@ -394,7 +390,7 @@
         });
     }
 
-    // ── Compile modal ─────────────────────────────────────────────────────────
+    // Compile modal
 
     function _openCompileModal() {
         if (!_active) return;
@@ -516,7 +512,7 @@
         }
     }
 
-    // ── Share modal ───────────────────────────────────────────────────────────
+    // Share modal
 
     function _openShareModal(code) {
         _e.shareCode.textContent = code;
@@ -545,7 +541,7 @@
         }
     }
 
-    // ── Import modal ──────────────────────────────────────────────────────────
+    // Import modal
 
     function _openImportModal() {
         // Reset to file tab
@@ -609,9 +605,7 @@
         });
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Trigger reachability (mirrors the three-phase Python algorithm)
-    // ════════════════════════════════════════════════════════════════════════
 
     /**
      * Returns a Set of node IDs that would be executed if triggerId fires.
@@ -730,9 +724,7 @@
         });
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Workflow execution
-    // ════════════════════════════════════════════════════════════════════════
 
     async function _apiRunWorkflow() {
         if (!_active) return;
@@ -1035,7 +1027,7 @@
         wrap.style.display = '';
     }
 
-    // ── Execution log panel ───────────────────────────────────────────────────
+    // Execution log panel
 
     function _renderExecPanel(data) {
         var panel    = document.getElementById('at-exec-panel');
@@ -1071,9 +1063,7 @@
         panel.classList.add('at-open');
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Workflow list
-    // ════════════════════════════════════════════════════════════════════════
 
     function _relativeTime(iso) {
         if (!iso) return '';
@@ -1161,9 +1151,7 @@
         });
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Canvas visibility
-    // ════════════════════════════════════════════════════════════════════════
 
     function _showCanvas() {
         _e.canvasEmpty.style.display    = 'none';
@@ -1180,7 +1168,7 @@
         _showExplorer();
     }
 
-    // ── Unified sidebar navigation ────────────────────────────────────────────
+    // Unified sidebar navigation
 
     function _showPage(name) {
         _sidebarPage = name;
@@ -1217,9 +1205,7 @@
     function _showExplorer() { _showPage('workflows'); }
     function _showInspector() { _showPage('inspector'); }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Canvas / node rendering
-    // ════════════════════════════════════════════════════════════════════════
 
     function _renderCanvas() {
         // Remove old node elements (keep SVG)
@@ -1377,9 +1363,7 @@
                { label: typeStr, icon: 'fa-cube', color: '#64748b', inputs: [], outputs: [], properties: [] };
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Connection rendering (SVG)
-    // ════════════════════════════════════════════════════════════════════════
 
     function _renderConns() {
         // Remove existing connection paths (keep defs and temp line)
@@ -1469,12 +1453,12 @@
     function _updatePortMarkers() {
         if (!_active) return;
 
-        // ── Reset all states ──────────────────────────────────────────────────
+        // Reset all states
         _e.canvasInner.querySelectorAll('.at-port').forEach(function (p) {
             p.classList.remove('at-connected', 'at-port-wired', 'at-port-valued');
         });
 
-        // ── Build a set of wired input port keys ("nodeId:portName") ─────────
+        // Build a set of wired input port keys ("nodeId:portName")
         var wiredInputs = new Set();
         _active.connections.forEach(function (conn) {
             // Output port: mark source dot with the classic "connected" indicator
@@ -1490,7 +1474,7 @@
             }
         });
 
-        // ── Colour every input port dot ───────────────────────────────────────
+        // Colour every input port dot
         _e.canvasInner.querySelectorAll('.at-port-row.at-input').forEach(function (row) {
             var nodeId = row.dataset.nodeId;
             var port   = row.dataset.port;
@@ -1511,9 +1495,7 @@
         });
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Palette
-    // ════════════════════════════════════════════════════════════════════════
 
     function _renderPalette(filter) {
         const list = _e.paletteList;
@@ -1557,9 +1539,7 @@
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Node management
-    // ════════════════════════════════════════════════════════════════════════
 
     function _addNode(typeStr) {
         if (!_active) { _toast('Open or create a workflow first.'); return; }
@@ -1604,9 +1584,7 @@
         _markDirty();
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Selection
-    // ════════════════════════════════════════════════════════════════════════
 
     function _selectNode(nodeId) {
         _deselectAll(false);
@@ -1652,7 +1630,7 @@
         if (sel) sel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // ── Trigger selector dropdown ─────────────────────────────────────────────
+    // Trigger selector dropdown
 
     function _closeTriggerDrop() {
         if (_e.triggerDrop) _e.triggerDrop.classList.remove('at-drop-open');
@@ -1732,9 +1710,7 @@
         if (closeProps !== false) _closeProps();
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Properties panel
-    // ════════════════════════════════════════════════════════════════════════
 
     /** Returns true if an active connection is feeding into the given input port. */
     function _isPortWired(nodeId, portKey) {
@@ -2025,7 +2001,7 @@
 
             field.innerHTML = '<span class="at-prop-label">' + _esc(prop.label) + '</span>';
 
-            // ── Path picker button ──────────────────────────────────────────
+            // Path picker button
             if (prop.picker === 'file' || prop.picker === 'folder') {
                 var pathRow = document.createElement('div');
                 pathRow.className = 'at-prop-path-row';
@@ -2108,9 +2084,7 @@
         _e.inspectorIcon.innerHTML        = '<i class="fas fa-arrow-pointer"></i>';
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Inspector Results view
-    // ════════════════════════════════════════════════════════════════════════
 
     // Called by _showPage('results') — renders results into the shared inspector panel
     function _renderResults() {
@@ -2182,7 +2156,7 @@
                 card.appendChild(body);
             });
 
-            // ── Copy button ───────────────────────────────────────────────
+            // Copy button
             var copyBtn = card.querySelector('.at-exec-out-card-copy');
             copyBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
@@ -2201,7 +2175,7 @@
                 });
             });
 
-            // ── Card hover → highlight canvas node ────────────────────────
+            // Card hover → highlight canvas node
             card.addEventListener('mouseenter', function () {
                 var nodeEl = _e.canvasInner.querySelector('.at-node[data-node-id="' + nodeId + '"]');
                 if (nodeEl) nodeEl.classList.add('at-result-hover');
@@ -2229,9 +2203,7 @@
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  AI node result display
-    // ════════════════════════════════════════════════════════════════════════
 
     function _updateAINodeResult(nodeId, resultText, forceShow) {
         const nd      = _active && _active.nodes.find(function (n) { return n.id === nodeId; });
@@ -2254,9 +2226,7 @@
         if (badge && nd) badge.textContent = nd.properties['model'] || 'no model';
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Public Variables panel
-    // ════════════════════════════════════════════════════════════════════════
 
     function _renderPubVars() {
         if (!_e.pubvarsBody) return;
@@ -2299,12 +2269,12 @@
             var p       = nd.properties || {};
             var gKind   = nd.type.replace('global.', '');
 
-            // ── Card shell ────────────────────────────────────────────────
+            // Card shell
             var card = document.createElement('div');
             card.className = 'at-pubvar-card';
             card.dataset.pubvarId = nd.id;
 
-            // ── Header row ────────────────────────────────────────────────
+            // Header row
             var hdr = document.createElement('div');
             hdr.className = 'at-pubvar-card-hdr';
 
@@ -2334,7 +2304,7 @@
             hdr.appendChild(inspBtn);
             card.appendChild(hdr);
 
-            // ── Inline field helper ───────────────────────────────────────
+            // Inline field helper
             function _makeField(label, el) {
                 var row = document.createElement('div');
                 row.className = 'at-pubvar-field';
@@ -2361,7 +2331,7 @@
                     '<span class="at-var-default">' + _esc(gPreview) + '</span>';
             }
 
-            // ── Parameter name field ──────────────────────────────────────
+            // Parameter name field
             var nameInput = document.createElement('input');
             nameInput.type = 'text';
             nameInput.className = 'at-pubvar-input';
@@ -2376,7 +2346,7 @@
             });
             card.appendChild(_makeField('Name', nameInput));
 
-            // ── Default value field ───────────────────────────────────────
+            // Default value field
             var defEl;
             if (nd.type === 'global.toggle') {
                 var defWrap = document.createElement('label');
@@ -2413,7 +2383,7 @@
                 card.appendChild(_makeField('Default', defEl));
             }
 
-            // ── Description field ─────────────────────────────────────────
+            // Description field
             var descInput = document.createElement('input');
             descInput.type = 'text';
             descInput.className = 'at-pubvar-input';
@@ -2426,7 +2396,7 @@
             });
             card.appendChild(_makeField('Description', descInput));
 
-            // ── Always-public hint ────────────────────────────────────────
+            // Always-public hint
             var hintRow = document.createElement('div');
             hintRow.className = 'at-pubvar-field at-pubvar-field-pub';
             var hintSpan = document.createElement('span');
@@ -2498,9 +2468,7 @@
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Port connections
-    // ════════════════════════════════════════════════════════════════════════
 
     function _handlePortClick(portRow) {
         const nodeId   = portRow.dataset.nodeId;
@@ -2600,9 +2568,7 @@
         _markDirty();
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Pan / Zoom
-    // ════════════════════════════════════════════════════════════════════════
 
     function _applyTransform() {
         _e.canvasInner.style.transform =
@@ -2649,9 +2615,7 @@
         _applyTransform();
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  New workflow / rename
-    // ════════════════════════════════════════════════════════════════════════
 
     function _newWorkflow() {
         // Auto-generate an incremental name — no prompt, straight to the canvas.
@@ -2687,9 +2651,7 @@
         _markDirty();
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Toolbar state
-    // ════════════════════════════════════════════════════════════════════════
 
     function _updateToolbar() {
         const has = !!_active;
@@ -2706,9 +2668,7 @@
         _dirty = true;
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Toast
-    // ════════════════════════════════════════════════════════════════════════
 
     var _toastTimer = null;
     function _toast(msg, isError) {
@@ -2719,9 +2679,7 @@
         _toastTimer = setTimeout(function () { _e.toast.style.display = 'none'; }, 2800);
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Utilities
-    // ════════════════════════════════════════════════════════════════════════
 
     function _esc(s) {
         return String(s)
@@ -2736,9 +2694,7 @@
         return p && p.offsetParent !== null;
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Schedule node helpers
-    // ════════════════════════════════════════════════════════════════════════
 
     function _todayStr() {
         var d = new Date();
@@ -2876,7 +2832,7 @@
         var wrapper = document.createElement('div');
         wrapper.className = 'at-sched-editor';
 
-        // ── Add form ────────────────────────────────────────────────────────
+        // Add form
         var form = document.createElement('div');
         form.className = 'at-sched-form';
 
@@ -2958,7 +2914,7 @@
         form.appendChild(addBtn);
         wrapper.appendChild(form);
 
-        // ── Entry list ──────────────────────────────────────────────────────
+        // Entry list
         var listHdr = document.createElement('div');
         listHdr.className = 'at-sched-list-hdr';
         listHdr.textContent = 'Scheduled Entries';
@@ -2989,9 +2945,7 @@
         return wrapper;
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Port tooltip
-    // ════════════════════════════════════════════════════════════════════════
 
     function _showPortTooltip(portRow, mx, my) {
         if (!_e.portTooltip || !_active) return;
@@ -3055,18 +3009,16 @@
         if (_e.portTooltip) _e.portTooltip.classList.remove('at-pt-visible');
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Event wiring
-    // ════════════════════════════════════════════════════════════════════════
 
     function _wireEvents() {
-        // ── Toolbar buttons ────────────────────────────────────────────────
+        // Toolbar buttons
         _e.btnNew   .addEventListener('click', _newWorkflow);
         _e.btnSave  .addEventListener('click', _apiSaveWorkflow);
         _e.btnDelete.addEventListener('click', _apiDeleteWorkflow);
         _e.btnRun   .addEventListener('click', _apiRunWorkflow);
 
-        // ── Trigger selector dropdown ──────────────────────────────────────
+        // Trigger selector dropdown
         if (_e.triggerDropBtn) {
             _e.triggerDropBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
@@ -3097,12 +3049,12 @@
             _zoom(-1, r.left + r.width / 2, r.top + r.height / 2);
         });
 
-        // ── Sidebar ────────────────────────────────────────────────────────
+        // Sidebar
         _e.sidebarAdd.addEventListener('click', _newWorkflow);
         if (_e.wfCreateFirst) _e.wfCreateFirst.addEventListener('click', _newWorkflow);
         if (_e.canvasNewBtn)  _e.canvasNewBtn .addEventListener('click', _newWorkflow);
 
-        // ── Examples / Import / Export / Share buttons ─────────────────────
+        // Examples / Import / Export / Share buttons
         if (_e.btnExamples) _e.btnExamples.addEventListener('click', _openExamplesModal);
         if (_e.btnImport)   _e.btnImport  .addEventListener('click', _openImportModal);
         if (_e.btnExport)   _e.btnExport  .addEventListener('click', _apiExportWorkflow);
@@ -3176,12 +3128,12 @@
         }
         if (_e.compileBtn) _e.compileBtn.addEventListener('click', _doCompile);
 
-        // ── Palette search ─────────────────────────────────────────────────
+        // Palette search
         _e.paletteSearch.addEventListener('input', function () {
             _renderPalette(this.value.trim() || null);
         });
 
-        // ── Canvas pan (middle-mouse / Alt+left-drag) ──────────────────────
+        // Canvas pan (middle-mouse / Alt+left-drag)
         _e.canvas.addEventListener('mousedown', function (e) {
             if (e.button === 1 || (e.button === 0 && e.altKey)) {
                 e.preventDefault();
@@ -3193,13 +3145,13 @@
             }
         });
 
-        // ── Canvas wheel zoom ──────────────────────────────────────────────
+        // Canvas wheel zoom
         _e.canvas.addEventListener('wheel', function (e) {
             e.preventDefault();
             _zoom(e.deltaY < 0 ? 1 : -1, e.clientX, e.clientY);
         }, { passive: false });
 
-        // ── Canvas node hover ↔ inspector result card linking ──────────────
+        // Canvas node hover ↔ inspector result card linking
         _e.canvasInner.addEventListener('mouseover', function (e) {
             if (_sidebarPage !== 'results') return;
             var nodeEl = e.target.closest('.at-node');
@@ -3220,7 +3172,7 @@
             });
         });
 
-        // ── Port tooltips ──────────────────────────────────────────────────
+        // Port tooltips
         _e.canvasInner.addEventListener('mousemove', function (e) {
             var portRow = e.target.closest('.at-port-row');
             if (portRow) {
@@ -3231,7 +3183,7 @@
         });
         _e.canvasInner.addEventListener('mouseleave', _hidePortTooltip);
 
-        // ── Canvas-inner click delegation ──────────────────────────────────
+        // Canvas-inner click delegation
         _e.canvasInner.addEventListener('click', function (e) {
             // Port click
             const portRow = e.target.closest('.at-port-row');
@@ -3279,7 +3231,7 @@
             _cancelPending();
         });
 
-        // ── Node header drag ───────────────────────────────────────────────
+        // Node header drag
         _e.canvasInner.addEventListener('mousedown', function (e) {
             if (e.button !== 0) return;
             const hdr = e.target.closest('.at-node-hdr');
@@ -3300,7 +3252,7 @@
             _selectNode(nodeId);
         });
 
-        // ── SVG connection click ───────────────────────────────────────────
+        // SVG connection click
         _e.svg.addEventListener('click', function (e) {
             const path = e.target.closest('.at-conn');
             if (path) {
@@ -3309,10 +3261,10 @@
             }
         });
 
-        // ── Inspector close (deselect node) ──────────────────────────────
+        // Inspector close (deselect node)
         _e.inspectorClose.addEventListener('click', function () { _deselectAll(); });
 
-        // ── Sidebar nav dropdown ──────────────────────────────────────────
+        // Sidebar nav dropdown
         _e.sidebarNavBtn.addEventListener('click', function (e) {
             e.stopPropagation();
             _e.sidebarNav.classList.toggle('at-nav-open');
@@ -3345,7 +3297,7 @@
             }
         });
 
-        // ── Inspector body delegation (test button) ────────────────────────
+        // Inspector body delegation (test button)
         _e.inspectorBody.addEventListener('click', function (e) {
             const btn = e.target.closest('[data-prop-test-node]');
             if (btn) {
@@ -3354,7 +3306,7 @@
             }
         });
 
-        // ── Execution log panel ────────────────────────────────────────────
+        // Execution log panel
         var execClose = document.getElementById('at-exec-panel-close');
         if (execClose) {
             execClose.addEventListener('click', function () {
@@ -3403,7 +3355,7 @@
             });
         }
 
-        // ── Global mouse move + up ─────────────────────────────────────────
+        // Global mouse move + up
         document.addEventListener('mousemove', function (e) {
             // Node drag
             if (_dragging) {
@@ -3450,10 +3402,10 @@
             if (_panning)  { _panning = null; _e.canvas.classList.remove('at-panning'); }
         });
 
-        // ── Context menu suppression on canvas ────────────────────────────
+        // Context menu suppression on canvas
         _e.canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
-        // ── Keyboard shortcuts ─────────────────────────────────────────────
+        // Keyboard shortcuts
         document.addEventListener('keydown', function (e) {
             if (!_isAutomate()) return;
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' ||
@@ -3469,9 +3421,7 @@
         });
     }
 
-    // ════════════════════════════════════════════════════════════════════════
     //  Panel loaded entry point
-    // ════════════════════════════════════════════════════════════════════════
 
     document.addEventListener('panelLoaded', function (e) {
         if (e.detail && e.detail.tabName === 'automate') {

@@ -157,7 +157,7 @@
     align-self: center;
 }
 
-/* --- Filtering & UI Utilities --- */
+/* Filtering & UI Utilities */
 .faded-in-row {
     animation: fadeIn 0.3s ease-out;
 }
@@ -190,7 +190,7 @@
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 15px rgba(var(--primary-rgb), 0.1);
 }
 
-/* --- Grouping Styles --- */
+/* Grouping Styles */
 .group-header-v12 {
     background: rgba(255, 255, 255, 0.03);
     font-family: 'Outfit', sans-serif;

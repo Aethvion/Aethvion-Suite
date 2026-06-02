@@ -86,7 +86,7 @@
 }
 .usage-controls-actions { display: flex; gap: 0.5rem; margin-left: auto; }
 
-/* ── hero banner ──────────────────────────────── */
+/* hero banner */
 
 .usage-hero-banner {
     background: linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(0,217,255,0.08) 60%, rgba(0,0,0,0) 100%),
@@ -133,7 +133,7 @@
 }
 .hero-sparkline-wrap canvas { display: block; }
 
-/* ── stat cards ───────────────────────────────── */
+/* stat cards */
 
 .usage-stat-row {
     display: grid;
@@ -208,7 +208,7 @@
 .usage-insight-pill i { color: var(--primary); font-size: 0.75rem; }
 .usage-insight-pill b { color: var(--text-primary); font-weight: 600; }
 
-/* ── charts ───────────────────────────────────── */
+/* charts */
 
 .usage-charts-row {
     display: grid;
@@ -319,7 +319,7 @@
 .hm-cell.lv3 { background: rgba(99,102,241,0.78); }
 .hm-cell.lv4 { background: #a78bfa; box-shadow: 0 0 5px rgba(167,139,250,0.6); }
 
-/* ── tables ───────────────────────────────────── */
+/* tables */
 
 .usage-table-full {
     background: rgba(14,14,18,0.75);
@@ -389,7 +389,7 @@
 .source-badge.agent  { color: #a78bfa; background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.2); }
 .source-badge.corp   { color: #34d399; background: rgba(52,211,153,0.1);  border: 1px solid rgba(52,211,153,0.2);  }
 
-/* ── embedding costs section ──────────────────── */
+/* embedding costs section */
 
 .usage-embed-section {
     background: rgba(14,14,18,0.75);
@@ -479,7 +479,7 @@
     font-weight: 600;
 }
 
-/* ── responsive ───────────────────────────────── */
+/* responsive */
 
 @media (max-width: 1100px) {
     .usage-charts-row.ratio-3-1 { grid-template-columns: 2fr 1fr; }
@@ -1156,7 +1156,7 @@
     border: 1px solid rgba(249, 115, 22, 0.2);
 }
 
-/* ── layout ─────────────────────────────────────────────────── */
+/* layout */
 #schedule-panel {
     height: 100%;
     overflow: hidden;
@@ -1168,7 +1168,7 @@
     overflow: hidden;
 }
 
-/* ── sidebar ─────────────────────────────────────────────────── */
+/* sidebar */
 .sched-sidebar {
     width: 240px;
     min-width: 180px;
@@ -1450,7 +1450,7 @@
 }
 .sched-icon-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
 
-/* ── messages area ───────────────────────────────────────────── */
+/* messages area */
 .sched-messages {
     flex: 1;
     overflow-y: auto;
@@ -1582,7 +1582,7 @@
 }
 .sched-run-result p { margin: 0 0 0.3em; }
 
-/* ── input area ──────────────────────────────────────────────── */
+/* input area */
 .sched-input-area {
     border-top: 1px solid var(--border);
     padding: 0.7rem 1rem;

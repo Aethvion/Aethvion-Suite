@@ -1,4 +1,4 @@
-/* ===== sidebar search ===== */
+/* sidebar search */
 
 .sidebar-search-wrap {
     padding: 0.4rem 0.25rem 0.5rem;
@@ -68,7 +68,7 @@
 }
 .sidebar-search-empty.visible { display: block; }
 
-/* ===== sidebar navigation layout ===== */
+/* sidebar navigation layout */
 
 .content-wrapper {
     display: flex;
@@ -187,7 +187,7 @@
     margin-right: 0;
 }
 
-/* ── sidebar section headers (tier 1) ─────────────────────────── */
+/* sidebar section headers (tier 1) */
 .sidebar-section-header {
     display: flex;
     align-items: center;
@@ -255,7 +255,7 @@
     opacity: 0.3;
 }
 
-/* ── collapsed sidebar: show only the number, centered ─────────── */
+/* collapsed sidebar: show only the number, centered */
 .sidebar-nav.collapsed .sidebar-section-header {
     padding: 0.6rem 0 0.1rem;
     margin-top: 0;
@@ -284,7 +284,7 @@
     pointer-events: auto !important;
 }
 
-/* ── sidebar categories (tier 2) ───────────────────────────────── */
+/* sidebar categories (tier 2) */
 .sidebar-category {
     display: flex;
     align-items: center;
@@ -785,7 +785,7 @@
     color: rgba(255, 140, 140, 0.75);
 }
 
-/* ── customize / done toggle button ── */
+/* customize / done toggle button */
 .cust-toggle-btn {
     display: flex;
     align-items: center;

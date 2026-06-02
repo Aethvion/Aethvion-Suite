@@ -17,7 +17,7 @@
     const STORAGE_KEY = 'sidebar_profiles_v1';
     const OLD_KEY     = 'sidebar_v2';
 
-    // ── Tab Registry ─────────────────────────────────────────────────────────
+    // Tab Registry
     const TABS = [
         { id: 'suite-home',        label: 'Home',             icon: 'fas fa-house',              mode: ['home'] },
         { id: 'chat',              label: 'Chat',             icon: 'fas fa-comments',            mode: ['home'] },
@@ -56,7 +56,7 @@
 
     const TAB_MAP = Object.fromEntries(TABS.map(t => [t.id, t]));
 
-    // ── Preset Layouts ────────────────────────────────────────────────────────
+    // Preset Layouts
     const PRESETS = [
         {
             id: 'professional',
@@ -135,7 +135,7 @@
         },
     ];
 
-    // ── Default profile data ──────────────────────────────────────────────────
+    // Default profile data
     function defaultProfileData(name = 'Default') {
         return {
             name,
@@ -196,7 +196,7 @@
         return d;
     }
 
-    // ── Storage ───────────────────────────────────────────────────────────────
+    // Storage
     let isFirstTime = false;
 
     function storeLoad() {
@@ -279,7 +279,7 @@
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch (_) {}
     }
 
-    // ── State ─────────────────────────────────────────────────────────────────
+    // State
     let store           = null;
     let config          = null;  // alias → store.profiles[store.activeProfile]
     let editMode        = false;
@@ -292,7 +292,7 @@
 
     function syncConfig() { config = store.profiles[store.activeProfile]; }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // Helpers
     function getCurrentMode() {
         if (document.body.classList.contains('theme-ai'))   return 'ai';
         if (document.body.classList.contains('theme-home')) return 'home';
@@ -305,7 +305,7 @@
             .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    // ── Profile operations ────────────────────────────────────────────────────
+    // Profile operations
     function switchProfile(profileId) {
         if (!store.profiles[profileId]) return;
         store.activeProfile = profileId;
@@ -398,7 +398,7 @@
         });
     }
 
-    // ── Onboarding modal ──────────────────────────────────────────────────────
+    // Onboarding modal
     function showOnboardingModal() {
         selectedPreset = null;
         const overlay = document.getElementById('profile-onboarding-overlay');
@@ -473,7 +473,7 @@
         createFromPreset(selectedPreset, name);
     }
 
-    // ── Suite-home profiles widget ─────────────────────────────────────────────
+    // Suite-home profiles widget
     function refreshHomeWidget() {
         const chips = document.getElementById('spw-chips');
         if (!chips) return;
@@ -517,7 +517,7 @@
         check();
     }
 
-    // ── Profile Switcher (sidebar bottom) ─────────────────────────────────────
+    // Profile Switcher (sidebar bottom)
     function buildProfileSwitcher() {
         const wrapper = document.createElement('div');
         wrapper.id        = 'profile-switcher';
@@ -652,7 +652,7 @@
         target.appendChild(dropdown);
     }
 
-    // ── Tab list render ───────────────────────────────────────────────────────
+    // Tab list render
     let dropIndicator = null;
 
     function render() {
@@ -809,14 +809,14 @@
         return wrapper;
     }
 
-    // ── Mode visibility ───────────────────────────────────────────────────────
+    // Mode visibility
     function applyMode(mode) {
         document.querySelectorAll('#sidebar-tab-list .main-tab').forEach(btn => {
             btn.classList.toggle('mode-hidden', !btn.classList.contains(`mode-${mode}`));
         });
     }
 
-    // ── Folder operations ─────────────────────────────────────────────────────
+    // Folder operations
     function toggleFolder(id) {
         if (!config.folders[id]) return;
         config.folders[id].expanded = !config.folders[id].expanded;
@@ -864,7 +864,7 @@
         storeSave(); render();
     }
 
-    // ── Drag and drop ─────────────────────────────────────────────────────────
+    // Drag and drop
     function setupDragDrop(container) {
         dropIndicator = document.createElement('div');
         dropIndicator.className = 'drop-indicator';
@@ -1018,7 +1018,7 @@
         }
     }
 
-    // ── Edit mode ─────────────────────────────────────────────────────────────
+    // Edit mode
     function enterEditMode() {
         editMode = true;
         document.querySelector('.sidebar-nav')?.classList.add('sidebar-edit-mode');
@@ -1035,7 +1035,7 @@
         render();
     }
 
-    // ── Customize button ──────────────────────────────────────────────────────
+    // Customize button
     function buildToggleBtn() {
         const btn = document.createElement('button');
         btn.id = 'cust-toggle'; btn.className = 'cust-toggle-btn'; btn.title = 'Customize sidebar';
@@ -1052,7 +1052,7 @@
 
     function updateToggleBtn() { updateToggleBtnContent(document.getElementById('cust-toggle')); }
 
-    // ── Mode watcher ──────────────────────────────────────────────────────────
+    // Mode watcher
     function watchMode() {
         const obs = new MutationObserver(() => {
             applyMode(getCurrentMode());
@@ -1061,7 +1061,7 @@
         obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     }
 
-    // ── Init ──────────────────────────────────────────────────────────────────
+    // Init
     function init() {
         const sidebarBottom = document.querySelector('.sidebar-nav .sidebar-bottom');
         if (!sidebarBottom) return;

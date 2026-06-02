@@ -25,7 +25,7 @@ from typing import Any
 from ._utils import _to_str
 
 
-# ── global.text ────────────────────────────────────────────────────────────────
+# global.text
 
 def global_text(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Expose a text string as a named workflow parameter."""
@@ -38,7 +38,7 @@ def global_text(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     return {"out": val}
 
 
-# ── global.number ──────────────────────────────────────────────────────────────
+# global.number
 
 def global_number(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Expose a numeric value as a named workflow parameter."""
@@ -57,7 +57,7 @@ def global_number(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     return {"out": val}
 
 
-# ── global.toggle ──────────────────────────────────────────────────────────────
+# global.toggle
 
 def global_toggle(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Expose a boolean flag as a named workflow parameter."""
@@ -75,7 +75,7 @@ def global_toggle(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     return {"out": val}
 
 
-# ── global.database ────────────────────────────────────────────────────────────
+# global.database
 
 def global_database(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Expose an AethvionDB database name as a named workflow parameter.
@@ -92,7 +92,7 @@ def global_database(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     return {"out": val}
 
 
-# ── global.snapshot ────────────────────────────────────────────────────────────
+# global.snapshot
 
 def global_snapshot(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Expose an AethvionDB snapshot name as a named workflow parameter.

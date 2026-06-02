@@ -16,7 +16,7 @@ class AgentWorkspaceManager:
         self.base_dir = base_dir
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- Internal helpers ---
+    # Internal helpers
     def _ws_dir(self, workspace_id: str) -> Path:
         return self.base_dir / workspace_id
 
@@ -35,7 +35,7 @@ class AgentWorkspaceManager:
             ws["last_active"] = utcnow_iso()
             atomic_json_write(self._ws_file(workspace_id), ws)
 
-    # --- Workspace CRUD ---
+    # Workspace CRUD
     def list_workspaces(self) -> list:
         result = []
         if not self.base_dir.exists():
@@ -90,7 +90,7 @@ class AgentWorkspaceManager:
         shutil.rmtree(ws_dir)
         return True
 
-    # --- Thread CRUD ---
+    # Thread CRUD
     def list_threads(self, workspace_id: str) -> list:
         d = self._threads_dir(workspace_id)
         if not d.exists():

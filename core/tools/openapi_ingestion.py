@@ -49,7 +49,7 @@ router = APIRouter(prefix="/api/openapi", tags=["openapi"])
 _SPEC_CACHE: Dict[str, Dict] = {}
 
 
-# ── Public Python API ─────────────────────────────────────────────────────────
+# Public Python API
 
 def load_openapi_spec(source: str) -> Dict:
     """
@@ -157,7 +157,7 @@ def build_agent_context(
     return "\n".join(lines)
 
 
-# ── FastAPI routes ────────────────────────────────────────────────────────────
+# FastAPI routes
 
 class LoadSpecRequest(BaseModel):
     source: str        # file path or URL
@@ -229,7 +229,7 @@ async def delete_spec(spec_id: str):
     return {"success": True}
 
 
-# ── Internal helpers ──────────────────────────────────────────────────────────
+# Internal helpers
 
 def _parse_spec_text(raw: str, source: str) -> Dict:
     # Try JSON first

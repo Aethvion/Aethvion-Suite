@@ -43,7 +43,7 @@ from core.utils import get_logger
 
 logger = get_logger(__name__)
 
-# ── AethvionDB registry helper ────────────────────────────────────────────────
+# AethvionDB registry helper
 # Reads _db_registry.json directly so compiler.py stays self-contained with no
 # cross-module imports.
 
@@ -71,7 +71,7 @@ def _resolve_db_root(db_name: str) -> Path:
     return _DEFAULT_DB_ROOT / db_name
 
 
-# ── Dependency map ────────────────────────────────────────────────────────────
+# Dependency map
 # node_type → pip packages, required env-var keys, whether AethvionDB reader
 # is needed, and whether AI calls are needed in standalone mode.
 
@@ -148,7 +148,7 @@ NODE_DEPS: dict[str, dict] = {
 
 _BASE_REQS = ["fastapi", "uvicorn[standard]", "python-dotenv"]
 
-# ── Handler code blocks (lazy) ────────────────────────────────────────────────
+# Handler code blocks (lazy)
 # Loaded on first compile — not at import time — so startup pays no cost if
 # the user never compiles a workflow.
 _HANDLERS_DIR       = Path(__file__).parent.parent / "config" / "automate" / "handlers"
@@ -165,7 +165,7 @@ def _get_handler_code() -> dict[str, str]:
     return _handler_code_cache
 
 
-# ── Generator functions ───────────────────────────────────────────────────────
+# Generator functions
 
 def _analyze_workflow(workflow: dict) -> dict:
     """Return a summary of what the workflow uses."""
@@ -195,7 +195,7 @@ def _analyze_workflow(workflow: dict) -> dict:
     if "ai.google" in used_types or "ai.any" in used_types:
         needs_ai = True
 
-    # ── AethvionDB: distinguish live search vs. bundlable snapshot search ─────
+    # AethvionDB: distinguish live search vs. bundlable snapshot search
     has_live_db_search = False
     snapshot_nodes: list[dict] = []
 
@@ -425,7 +425,7 @@ def _generate_start_sh(workflow_name: str, has_packages: bool) -> str:
     )
 
 
-# ── Web UI HTML (lazy) ────────────────────────────────────────────────────────
+# Web UI HTML (lazy)
 _html_template_cache: str | None = None
 
 
@@ -438,7 +438,7 @@ def _get_html_template() -> str:
     return _html_template_cache
 
 
-# ── run.py generator ──────────────────────────────────────────────────────────
+# run.py generator
 
 def _generate_run_py(workflow: dict, analysis: dict) -> str:
     """Assemble the standalone run.py source code."""
@@ -1009,7 +1009,7 @@ if __name__ == "__main__":
     return src
 
 
-# ── Package downloader ────────────────────────────────────────────────────────
+# Package downloader
 
 def _download_packages(requirements: str, dest_dir: str) -> tuple[bool, str]:
     """Run pip download into dest_dir.  Returns (success, error_message)."""
@@ -1038,7 +1038,7 @@ def _download_packages(requirements: str, dest_dir: str) -> tuple[bool, str]:
             pass
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 def compile_workflow(workflow: dict, options: dict) -> tuple[bytes, list[str]]:
     """

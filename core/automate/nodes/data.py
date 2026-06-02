@@ -127,7 +127,7 @@ def data_extract_json(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
     if not key_path:
         return {"out": obj, "error": ""}
 
-    # ── Path resolver ─────────────────────────────────────────────────────────
+    # Path resolver
     # Supports dot-notation with optional bracket indices, e.g.:
     #   name          → obj["name"]
     #   0             → obj[0]          (root is a list)
@@ -163,7 +163,6 @@ def data_extract_json(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
                     raise IndexError(f"[{idx_str}] on non-list")
                 current = current[int(idx_str)]
         return current
-    # ─────────────────────────────────────────────────────────────────────────
 
     try:
         current = _resolve(obj, key_path)

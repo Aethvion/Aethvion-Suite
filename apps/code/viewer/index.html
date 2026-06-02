@@ -12,7 +12,7 @@
 <body>
 <div id="app">
 
-  <!-- ── Top bar ──────────────────────────────────────────────────── -->
+  <!-- Top bar -->
   <header id="topbar">
     <div class="tb-left">
       <div class="tb-logo">
@@ -54,7 +54,7 @@
     </div>
   </header>
 
-  <!-- ── Tab bar ──────────────────────────────────────────────────── -->
+  <!-- Tab bar -->
   <div id="tabBar">
     <div id="tabsScroll">
       <div id="tabsContainer"></div>
@@ -64,7 +64,7 @@
     </button>
   </div>
 
-  <!-- ── Main area ────────────────────────────────────────────────── -->
+  <!-- Main area -->
   <div id="mainArea">
 
     <!-- File tree sidebar -->
@@ -196,7 +196,7 @@
 
   </div><!-- /mainArea -->
 
-  <!-- ── Bottom panel ─────────────────────────────────────────────── -->
+  <!-- Bottom panel -->
   <div id="bottomPanel">
     <div class="bottom-tabs">
       <button class="btab active" data-btab="output">Output</button>
@@ -217,7 +217,7 @@
     </div>
   </div>
 
-  <!-- ── Status bar ──────────────────────────────────────────────── -->
+  <!-- Status bar -->
   <div id="statusBar" role="status" aria-label="Status bar">
     <div class="sb-left">
       <span id="sbBranch" class="sb-item sb-branch" title="Git branch" style="display:none">
@@ -235,7 +235,7 @@
 
 </div><!-- /app -->
 
-<!-- ── File palette (Ctrl+P) ────────────────────────────────────── -->
+<!-- File palette (Ctrl+P) -->
 <div id="filePalette" style="display:none" role="dialog" aria-modal="true" aria-label="Open file">
   <div class="palette-box">
     <div class="palette-input-wrap">
@@ -249,7 +249,7 @@
   </div>
 </div>
 
-<!-- ── Workspace root picker ────────────────────────────────────── -->
+<!-- Workspace root picker -->
 <div id="wsModal" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="wsModalTitle">
   <div class="modal modal-wide">
     <div class="modal-header">
@@ -280,7 +280,7 @@
   </div>
 </div>
 
-<!-- ── Refactor instructions modal ──────────────────────────────── -->
+<!-- Refactor instructions modal -->
 <div id="refactorModal" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="refactorModalTitle">
   <div class="modal">
     <div class="modal-header">
@@ -298,7 +298,7 @@
   </div>
 </div>
 
-<!-- ── Context menu ─────────────────────────────────────────────── -->
+<!-- Context menu -->
 <div id="contextMenu" role="menu" style="display:none">
   <div class="ctx-item" id="ctx-open"       role="menuitem"><i class="fa-solid fa-file-arrow-up" aria-hidden="true"></i> Open</div>
   <div class="ctx-item" id="ctx-rename"     role="menuitem"><i class="fa-solid fa-pen"           aria-hidden="true"></i> Rename</div>
@@ -313,7 +313,7 @@
   <div class="ctx-item" id="ctx-reveal"     role="menuitem"><i class="fa-solid fa-folder-open"   aria-hidden="true"></i> Open in Explorer</div>
 </div>
 
-<!-- ── Move-to folder picker modal ──────────────────────────────── -->
+<!-- Move-to folder picker modal -->
 <div id="moveModal" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="moveModalTitle">
   <div class="modal-wide" style="background:var(--bg-secondary);border-radius:10px;border:1px solid var(--border-color);max-height:80vh;display:flex;flex-direction:column;">
     <div class="modal-header">
@@ -331,7 +331,7 @@
   </div>
 </div>
 
-<!-- ── Name prompt modal (replaces window.prompt for file/folder/thread) ── -->
+<!-- Name prompt modal (replaces window.prompt for file/folder/thread) -->
 <div id="nameModal" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="nameModalTitle">
   <div class="modal">
     <div class="modal-header">
@@ -348,7 +348,7 @@
   </div>
 </div>
 
-<!-- ── Toast container ──────────────────────────────────────────── -->
+<!-- Toast container -->
 <div id="toastContainer" aria-live="assertive" aria-atomic="true"></div>
 
 <!-- Monaco Editor from CDN -->

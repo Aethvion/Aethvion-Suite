@@ -102,7 +102,7 @@ async def generate_explanation(req: ExplainedRequest, request: Request):
 
     task_manager = get_task_queue_manager()
 
-    # ── Resolve or create the underlying Agent workspace ─────────────────── #
+    # Resolve or create the underlying Agent workspace ─────────────────── #
     meta_path: Optional[Path] = None
     ws_id: Optional[str] = None
     ag_tid: Optional[str] = None
@@ -165,7 +165,7 @@ async def generate_explanation(req: ExplainedRequest, request: Request):
         except Exception:
             meta = {}
 
-    # ── Build the prompt for the agent ───────────────────────────────────── #
+    # Build the prompt for the agent ───────────────────────────────────── #
     if is_new:
         if deep_dive:
             prompt = _DEEP_DIVE_NEW_PROMPT.format(topic=req.topic)

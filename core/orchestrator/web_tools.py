@@ -108,7 +108,7 @@ def fetch_url(url: str) -> str:
     except Exception as e:
         return f"Fetch error: {e}"
 
-# ── file backup / restore ──────────────────────────────────────
+# file backup / restore
 
 
 def search_web(query: str, max_results: int = 6) -> str:

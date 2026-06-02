@@ -15,7 +15,7 @@ from core.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-# ── Workspace helpers ─────────────────────────────────────────────────────────
+# Workspace helpers
 
 def validate_path(target: str, workspaces: list[dict], permission: str) -> tuple[bool, str]:
     """Return (allowed, reason_string)."""
@@ -39,7 +39,7 @@ def validate_path(target: str, workspaces: list[dict], permission: str) -> tuple
 
 
 
-# ── Tool tag parsing ──────────────────────────────────────────────────────────
+# Tool tag parsing
 
 def parse_tool_blocks(text: str) -> list[tuple[int, int, str]]:
     """Return list of (start, end, raw_block) for every [tool:...] block in text."""
@@ -92,7 +92,7 @@ def parse_attrs(attr_str: str) -> dict[str, str]:
     return attrs
 
 
-# ── Single-tool execution (sync, runs in thread) ──────────────────────────────
+# Single-tool execution (sync, runs in thread)
 
 def _execute_one(tool_name: str, attrs: dict[str, str], workspaces: list[dict]) -> str:
     """Execute a single tool call synchronously. Called via asyncio.to_thread."""
@@ -189,7 +189,7 @@ def _execute_one(tool_name: str, attrs: dict[str, str], workspaces: list[dict]) 
         return f"[{tool_name} ERROR] {e}"
 
 
-# ── Async streaming tool executor ─────────────────────────────────────────────
+# Async streaming tool executor
 
 async def execute_tools_stream(
     content: str,
@@ -227,7 +227,7 @@ async def execute_tools_stream(
     yield {"type": "final_cleaned", "content": cleaned, "results": results}
 
 
-# ── Peripheral (screenshot / webcam) capture hook ────────────────────────────
+# Peripheral (screenshot / webcam) capture hook
 
 def extract_peripheral_captures(
     tool_results: list[str],

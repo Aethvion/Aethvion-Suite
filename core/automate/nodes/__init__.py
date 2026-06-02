@@ -20,7 +20,7 @@ from . import (
     inputs_outputs, integrations, logic, media, memory, triggers,
 )
 
-# ── Handler registry ──────────────────────────────────────────────────────────
+# Handler registry
 
 _REGISTRY: dict[str, Callable] = {
 

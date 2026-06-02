@@ -33,7 +33,7 @@ class CompanionMemory:
         self._base_path = data_dir / "base_info.json"
         self._mem_path = data_dir / "memory.json"
 
-    # ── Initialisation ────────────────────────────────────────────────────
+    # Initialisation
 
     def initialize(self) -> None:
         """Write default files if missing or empty. Safe to call multiple times."""
@@ -54,7 +54,7 @@ class CompanionMemory:
             }, indent=4)
             logger.info(f"{self._name}: Initialized memory.json")
 
-    # ── Load ──────────────────────────────────────────────────────────────
+    # Load
 
     def load(self) -> dict:
         """Return {"base_info": {...}, "memory": {...}}."""
@@ -72,7 +72,7 @@ class CompanionMemory:
             logger.error(f"{self._name}: Failed to load memory.json: {e}")
         return {"base_info": base_info, "memory": memory}
 
-    # ── XML tag extraction ────────────────────────────────────────────────
+    # XML tag extraction
 
     def update_from_xml(self, content: str) -> str:
         """
@@ -135,14 +135,14 @@ class CompanionMemory:
             flags=re.DOTALL | re.IGNORECASE,
         ).strip()
 
-    # ── Hard reset ────────────────────────────────────────────────────────
+    # Hard reset
 
     def reset(self) -> None:
         """Wipe dynamic memory.json only; keep base_info intact."""
         self._mem_path.write_text("{}", encoding="utf-8")
         logger.info(f"{self._name}: Dynamic memory reset.")
 
-    # ── Synthesis ─────────────────────────────────────────────────────────
+    # Synthesis
 
     async def run_synthesis(self, base_info: dict, memory: dict, model: str) -> dict:
         """

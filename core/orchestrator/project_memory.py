@@ -57,7 +57,7 @@ class ProjectMemory:
         self.workspace_id = workspace_id
         self._path = storage_root / workspace_id / "project_memory.json"
 
-    # ── I/O ───────────────────────────────────────────────────────────────────
+    # I/O
 
     def load(self) -> list[dict]:
         return load_json(self._path, default=[])
@@ -66,7 +66,7 @@ class ProjectMemory:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         atomic_json_write(self._path, items)
 
-    # ── CRUD ──────────────────────────────────────────────────────────────────
+    # CRUD
 
     def add_item(
         self,
@@ -118,7 +118,7 @@ class ProjectMemory:
             return True
         return False
 
-    # ── Checklist helpers ─────────────────────────────────────────────────────
+    # Checklist helpers
 
     def add_checklist_items(self, checklist_id: str, texts: list[str]) -> Optional[dict]:
         """Append new items to an existing checklist."""
@@ -153,7 +153,7 @@ class ProjectMemory:
                         return True
         return False
 
-    # ── System-prompt injection ───────────────────────────────────────────────
+    # System-prompt injection
 
     def get_injection_block(self) -> str:
         """Return a formatted block for injection at the top of the system prompt.

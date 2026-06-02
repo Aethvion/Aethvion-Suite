@@ -39,7 +39,7 @@ _BAKED_DIR     = "baked"
 _META_SUFFIX   = ".meta.json"
 _SAFE_NAME_RE  = re.compile(r"^[a-zA-Z0-9_\-]{1,64}$")
 
-# ── In-process task tracking ───────────────────────────────────────────────────
+# In-process task tracking
 
 _bake_tasks:        dict[str, asyncio.Task] = {}   # str(db_root) → Task
 _bake_current_name: dict[str, str]          = {}   # str(db_root) → bake name
@@ -53,7 +53,7 @@ def current_bake_name(db_root: Path) -> str | None:
     return _bake_current_name.get(str(db_root))
 
 
-# ── Path helpers ───────────────────────────────────────────────────────────────
+# Path helpers
 
 def bake_dir(db_root: Path) -> Path:
     return db_root / _BAKED_DIR
@@ -72,7 +72,7 @@ def safe_name(name: str) -> bool:
     return bool(_SAFE_NAME_RE.match(name))
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+# Helpers
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -85,7 +85,7 @@ def _fmt_size(b: int) -> str:
     return f"{b / 1024 ** 3:.2f} GB"
 
 
-# ── Metadata helpers ───────────────────────────────────────────────────────────
+# Metadata helpers
 
 def read_bake_meta(db_root: Path, name: str) -> dict:
     """Return the metadata for a named bake, or {} if absent."""
@@ -164,7 +164,7 @@ def rename_bake(db_root: Path, old_name: str, new_name: str) -> bool:
     return True
 
 
-# ── Entity flattening ──────────────────────────────────────────────────────────
+# Entity flattening
 
 def _flatten(
     entity:          dict,
@@ -219,7 +219,7 @@ def _flatten(
     }
 
 
-# ── Format renderers ───────────────────────────────────────────────────────────
+# Format renderers
 
 def _render_jsonl(entities: list[dict]) -> str:
     return "\n".join(json.dumps(e, ensure_ascii=False) for e in entities) + "\n"
@@ -316,7 +316,7 @@ def _render_txt(entities: list[dict], db_root: Path) -> str:
     return "\n".join(lines)
 
 
-# ── Core bake logic (sync — run via asyncio.to_thread) ────────────────────────
+# Core bake logic (sync — run via asyncio.to_thread)
 
 def bake_sync(
     db_root:         Path,
@@ -344,7 +344,6 @@ def bake_sync(
         "vector_models": vector_models or [],
     })
 
-    # Load entities
     all_entities = writer.list_all(include_deleted=False)
     if not include_stubs:
         all_entities = [e for e in all_entities if e.get("status") != "stub"]
@@ -352,16 +351,13 @@ def bake_sync(
     # Build id → name map for relation resolution
     id_to_name = {e["id"]: e["name"] for e in all_entities}
 
-    # Flatten each entity
     flat = [_flatten(e, id_to_name, include_vectors=include_vectors, vector_models=vector_models) for e in all_entities]
 
-    # Render
     if   fmt == "jsonl":    content = _render_jsonl(flat)
     elif fmt == "json":     content = _render_json(flat, db_root)
     elif fmt == "markdown": content = _render_markdown(flat, db_root)
     else:                   content = _render_txt(flat, db_root)
 
-    # Write output
     out_path = bake_output_path(db_root, name, fmt)
     out_path.write_text(content, encoding="utf-8")
     size_bytes = out_path.stat().st_size
@@ -385,7 +381,7 @@ def bake_sync(
     return info
 
 
-# ── Public async entry point ───────────────────────────────────────────────────
+# Public async entry point
 
 async def bake_database(
     db_root:         Path,

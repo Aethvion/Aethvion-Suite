@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/schedule", tags=["schedule"])
 
 
-# ── Request models ─────────────────────────────────────────────────────────────
+# Request models
 
 class CreateTaskRequest(BaseModel):
     model_id: Optional[str] = None
@@ -33,7 +33,7 @@ class UpdateSettingsRequest(BaseModel):
     prompt:     Optional[str] = None
 
 
-# ── AI system prompt ───────────────────────────────────────────────────────────
+# AI system prompt
 
 _SYSTEM_PROMPT = """\
 You are a scheduling assistant for Aethvion Suite. You help users set up recurring AI tasks.
@@ -128,7 +128,7 @@ def _parse_schedule_update(text: str) -> Optional[dict]:
         return None
 
 
-# ── Routes ─────────────────────────────────────────────────────────────────────
+# Routes
 
 @router.get("/tasks")
 async def list_tasks():

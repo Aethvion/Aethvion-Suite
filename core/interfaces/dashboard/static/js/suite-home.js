@@ -16,7 +16,7 @@
 
     const STORAGE_KEY = 'sidebar_profiles_v1';
 
-    // ── Tab metadata (mirrors sidebar-manager.js TABS) ────────────────────────
+    // Tab metadata (mirrors sidebar-manager.js TABS)
     const TAB_INFO = {
         'suite-home':        { label: 'Home',              icon: 'fas fa-house' },
         'chat':              { label: 'Chat',              icon: 'fas fa-comments' },
@@ -54,7 +54,7 @@
         'version':           { label: 'Version',           icon: 'fas fa-code-branch' },
     };
 
-    // ── Per-preset hero content ───────────────────────────────────────────────
+    // Per-preset hero content
     const PRESET_INFO = {
         professional: {
             subtitle: 'Professional workspace active — code, scheduling, and system management at your fingertips.',
@@ -108,7 +108,7 @@
         ],
     };
 
-    // ── Read active profile ───────────────────────────────────────────────────
+    // Read active profile
     function getActiveProfile() {
         try {
             const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -117,7 +117,7 @@
         } catch (_) { return null; }
     }
 
-    // ── Main update (called on profile switch + panel open) ───────────────────
+    // Main update (called on profile switch + panel open)
     function update() {
         const profile = getActiveProfile();
         if (!profile) return;
@@ -132,7 +132,7 @@
         renderRecentActivity();
     }
 
-    // ── Hero updates ──────────────────────────────────────────────────────────
+    // Hero updates
     function updateProfilePill(name) {
         const el = document.getElementById('sh-profile-name');
         if (el) el.textContent = name;
@@ -171,7 +171,7 @@
         if (el) el.textContent = name;
     }
 
-    // ── System Snapshot stats ─────────────────────────────────────────────────
+    // System Snapshot stats
     function updateSnapshot(profile) {
         // Count enabled tabs across the whole profile
         const order = profile.order || [];
@@ -240,7 +240,7 @@
         return new Date(dateStr).toLocaleDateString();
     }
 
-    // ── Recent Activity ───────────────────────────────────────────────────────
+    // Recent Activity
     async function renderRecentActivity() {
         const container = document.getElementById('sh-recent-list');
         if (!container) return;
@@ -313,10 +313,10 @@
         });
     }
 
-    // ── Public API ────────────────────────────────────────────────────────────
+    // Public API
     window._suiteHomeUpdate = update;
 
-    // ── Watch for the panel to load ───────────────────────────────────────────
+    // Watch for the panel to load
     function watchPanel() {
         const panel = document.getElementById('suite-home-panel');
         if (!panel) { setTimeout(watchPanel, 300); return; }

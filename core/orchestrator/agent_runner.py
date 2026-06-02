@@ -43,7 +43,7 @@ from core.orchestrator.agent_state import AgentState
 # Safety backstop — effectively unlimited; the Stop button is the user's control.
 MAX_ITERATIONS = 200
 
-# ── System prompt ─────────────────────────────────────────────────────────────
+# System prompt
 # Loaded from core/config/code/agent_system_prompt.txt at import time.
 # Edit the .txt file directly — no Python changes needed.
 SYSTEM_PROMPT: str = CODE_AGENT_PROMPT.read_text(encoding='utf-8')
@@ -135,7 +135,7 @@ class AgentRunner(FileOpsMixin):
             except Exception as _pm_err:
                 logger.warning("[AgentRunner] Could not load project memory: %s", _pm_err)
 
-    # ── cache helpers ─────────────────────────────────────────────
+    # cache helpers
 
     def _invalidate_read_cache(self, path: str) -> None:
         """Remove all read-dedup entries for `path` so the agent can re-read
@@ -144,12 +144,12 @@ class AgentRunner(FileOpsMixin):
         for k in keys:
             del self._read_cache[k]
 
-    # ── emit ──────────────────────────────────────────────────────
+    # emit
 
     def _emit(self, event: Dict[str, Any]) -> None:
         self.step_callback(event)
 
-    # ── LLM call ──────────────────────────────────────────────────
+    # LLM call
 
     def _render_conv_entry(self, entry: Any, current_turn: int) -> str:
         """Render one conversation entry, evicting stale large read_file payloads.
@@ -265,7 +265,7 @@ class AgentRunner(FileOpsMixin):
                 images=call_images,
             ):
                 chunks.append(chunk)
-                # ── Token-level streaming to UI ───────────────────────────
+                # Token-level streaming to UI
                 # Emit each chunk immediately so the frontend Thoughts panel
                 # shows the model "thinking" in real-time rather than waiting
                 # for the entire LLM call to complete.
@@ -301,7 +301,7 @@ class AgentRunner(FileOpsMixin):
             logger.error(f"AgentRunner LLM call failed: {e}")
             return f"(Error calling LLM: {e})"
 
-    # ── parsing ───────────────────────────────────────────────────
+    # parsing
 
     def _parse_actions(self, text: str) -> List[Dict[str, Any]]:
         """Find every ACTION: {...} using raw_decode so nested braces are handled."""
@@ -329,10 +329,10 @@ class AgentRunner(FileOpsMixin):
         raw = text[:idx].strip() if idx != -1 else text.strip()
         return raw.strip()
 
-    # ── tool execution ────────────────────────────────────────────
+    # tool execution
 
 
-    # ── Action handlers ──────────────────────────────────────────────────────
+    # Action handlers
 
     def _handle_set_plan(
         self, action: Dict[str, Any], iteration: int
@@ -958,7 +958,7 @@ class AgentRunner(FileOpsMixin):
 
         return {"type": t, "title": t, "detail": str(action)}
 
-    # ── main loop ─────────────────────────────────────────────────
+    # main loop
 
     # Iterations without a mark_done (with an active plan) before emitting a stall warning.
     _STALL_THRESHOLD = 8
@@ -966,7 +966,7 @@ class AgentRunner(FileOpsMixin):
     def run(self) -> str:
         self._emit({"type": "start", "title": "Starting task", "detail": self.task})
 
-        # ── Resume: inject context so the agent knows it's continuing ────────
+        # Resume: inject context so the agent knows it's continuing
         if self._resume and self.state.plan:
             incomplete = [s["text"] for s in self.state.plan if not s.get("done")]
             done_count = sum(1 for s in self.state.plan if s.get("done"))
@@ -987,7 +987,7 @@ class AgentRunner(FileOpsMixin):
             self._last_mark_done_iter = 0
 
         for iteration in range(MAX_ITERATIONS):
-            # ── Token budget check (before LLM call) ─────────────────────────
+            # Token budget check (before LLM call)
             if self._token_budget is not None:
                 used = self.run_input_tokens + self.run_output_tokens
                 pct = used / self._token_budget
@@ -1079,7 +1079,7 @@ class AgentRunner(FileOpsMixin):
                 action_type = action.get("type", "")
 
                 if action_type == "done":
-                    # ── Hard enforcement gate ─────────────────────────────────
+                    # Hard enforcement gate
                     # Block `done` if any file still has an unresolved patch/write
                     # failure.  The agent claimed completion without actually fixing
                     # the file — force it to go back and repair.
@@ -1111,7 +1111,7 @@ class AgentRunner(FileOpsMixin):
 
                 # Emit event first (before executing so UI updates immediately)
                 event = self._make_event(action)
-                # ── Error-recovery wrapper ────────────────────────────────
+                # Error-recovery wrapper
                 # Catch unexpected exceptions inside _execute so a single bad
                 # action doesn't terminate the entire task.  The error is fed
                 # back to the LLM as a result string so it can self-correct.
@@ -1175,7 +1175,7 @@ class AgentRunner(FileOpsMixin):
                 {"role": "assistant", "text": agent_line, "turn": iteration}
             )
             if results:
-                # ── Targeted recovery suffix ──────────────────────────────
+                # Targeted recovery suffix
                 # When one or more actions failed, replace the generic "keep
                 # going" nudge with a focused repair instruction so the LLM
                 # addresses the failure rather than blindly continuing.
@@ -1204,7 +1204,7 @@ class AgentRunner(FileOpsMixin):
                     "header":  "User: Results:",
                     "suffix":  suffix,
                 })
-            # ── Dynamic replanning ─────────────────────────────────────
+            # Dynamic replanning
             if has_failure:
                 self._consecutive_failures += 1
                 if self._consecutive_failures >= 2:
@@ -1223,7 +1223,7 @@ class AgentRunner(FileOpsMixin):
             else:
                 self._consecutive_failures = 0
 
-            # ── Stall detection ───────────────────────────────────────────────
+            # Stall detection
             # If the agent has an active plan but hasn't marked any step done
             # in _STALL_THRESHOLD iterations, emit a warning once.
             iters_since_progress = iteration - self._last_mark_done_iter

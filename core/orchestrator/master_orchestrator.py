@@ -167,7 +167,7 @@ class MasterOrchestrator:
             result.execution_time = execution_time
             self.execution_history.append(result)
             
-            # --- MEMORY STORAGE ---
+            # MEMORY STORAGE
             try:
                 if use_persona:
                     intent_type_val = "chat"
@@ -345,7 +345,7 @@ class MasterOrchestrator:
             "Do not introduce yourself or mention any AI product name."
         )
 
-        # ── Step 1: Pre-execute web search (if enabled) ───────────────────────
+        # Step 1: Pre-execute web search (if enabled)
         pre_search_context = ""
         if internet_search and allow_tools:
             try:
@@ -390,7 +390,7 @@ class MasterOrchestrator:
             except Exception as _search_err:
                 logger.warning(f"[{trace_id}] Web search pre-execution failed: {_search_err}")
 
-        # ── Step 2: Build system prompt ────────────────────────────────────────
+        # Step 2: Build system prompt
         aether_caps = PersonaManager._build_bridges_capabilities() if allow_tools else ""
 
         prompt_parts = [neutral_base, time_context]
@@ -418,10 +418,10 @@ class MasterOrchestrator:
         else:
             final_system_prompt = base_instructions
 
-        # ── Step 3: Build conversation prompt (search results injected inline) ─
+        # Step 3: Build conversation prompt (search results injected inline)
         full_history = f"{user_message}{pre_search_context}\n\nAssistant:"
 
-        # ── Step 4: LLM call loop (handles any remaining [tool:...] tags) ─────
+        # Step 4: LLM call loop (handles any remaining [tool:...] tags)
         accumulated_text = ""
         actions_taken = ["neutral_tool_chat"]
         if pre_search_context:
@@ -500,7 +500,7 @@ class MasterOrchestrator:
             actions_taken.append(f"tools_executed_{len(tool_results)}")
             full_history += f" {content}\n\n--- TOOL RESULTS ---\n{tool_results_str}\n\nAssistant:"
 
-        # ── Step 5: Return ─────────────────────────────────────────────────────
+        # Step 5: Return
         final_text = accumulated_text.strip()
         if not final_text:
             if len(actions_taken) > 1:

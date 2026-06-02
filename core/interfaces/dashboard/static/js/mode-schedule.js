@@ -6,14 +6,14 @@ if (typeof marked !== 'undefined') {
     marked.setOptions({ gfm: true, breaks: true, headerIds: false, mangle: false, sanitize: false });
 }
 
-// ── State ─────────────────────────────────────────────────────
+// State
 let _schedTasks        = [];          // list metadata (no thread/runs)
 let _schedCurrentId    = null;        // selected task id
 let _schedCurrentTask  = null;        // full task object (metadata only, thread loaded separately)
 let _schedIsSending    = false;
 let _schedModels       = {};          // model_id → cost info
 
-// ── DOM helpers ───────────────────────────────────────────────
+// DOM helpers
 const _sEl  = (id) => document.getElementById(id);
 const _sQ   = (sel, parent = document) => parent.querySelector(sel);
 
@@ -73,7 +73,7 @@ function _schedFmtTime(iso, opts = {}) {
     } catch (_) { return iso; }
 }
 
-// ── Load task list ────────────────────────────────────────────
+// Load task list
 async function scheduleLoadTasks() {
     try {
         const resp = await fetch('/api/schedule/tasks');
@@ -129,7 +129,7 @@ function _escHtml(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// ── Select / load a task ──────────────────────────────────────
+// Select / load a task
 async function scheduleSelectTask(taskId) {
     _schedCurrentId = taskId;
     _schedRenderTaskList();   // update active highlight
@@ -156,7 +156,7 @@ async function scheduleSelectTask(taskId) {
     }
 }
 
-// ── Info card ─────────────────────────────────────────────────
+// Info card
 function _schedUpdateInfoCard(task) {
     const name      = _sEl('sched-info-name');
     const badge     = _sEl('sched-status-badge');
@@ -240,7 +240,7 @@ function _schedUpdateInfoCard(task) {
     }
 }
 
-// ── Render conversation thread ────────────────────────────────
+// Render conversation thread
 function _schedRenderThread(thread) {
     const msgs = _sEl('sched-messages');
     if (!msgs) return;
@@ -336,7 +336,7 @@ function _schedAppendMessage(msg, scroll = true) {
     if (scroll) msgs.scrollTop = msgs.scrollHeight;
 }
 
-// ── Send message ──────────────────────────────────────────────
+// Send message
 async function scheduleSendMessage() {
     if (_schedIsSending || !_schedCurrentId) return;
     const inp  = _sEl('sched-input');
@@ -390,7 +390,7 @@ async function scheduleSendMessage() {
     }
 }
 
-// ── Create new task ───────────────────────────────────────────
+// Create new task
 async function scheduleNewTask() {
     try {
         const modelSel = _sEl('sched-model-select');
@@ -410,7 +410,7 @@ async function scheduleNewTask() {
     }
 }
 
-// ── Run now ───────────────────────────────────────────────────
+// Run now
 async function scheduleRunNow() {
     if (!_schedCurrentId) return;
     const btn = _sEl('sched-run-btn');
@@ -455,7 +455,7 @@ async function _schedRefreshRuns() {
     } catch (_) {}
 }
 
-// ── Pause / Resume ────────────────────────────────────────────
+// Pause / Resume
 async function scheduleTogglePause() {
     if (!_schedCurrentId || !_schedCurrentTask) return;
     const isPaused = _schedCurrentTask.status === 'paused';
@@ -473,7 +473,7 @@ async function scheduleTogglePause() {
     }
 }
 
-// ── Delete task ───────────────────────────────────────────────
+// Delete task
 async function scheduleDeleteTask() {
     if (!_schedCurrentId) return;
     const name = _schedCurrentTask?.name || 'this schedule';
@@ -493,7 +493,7 @@ async function scheduleDeleteTask() {
     }
 }
 
-// ── Save queue setting ────────────────────────────────────────
+// Save queue setting
 async function scheduleSaveQueueMax() {
     if (!_schedCurrentId) return;
     const inp = _sEl('sched-queue-max');
@@ -512,7 +512,7 @@ async function scheduleSaveQueueMax() {
     }
 }
 
-// ── Model population ──────────────────────────────────────────
+// Model population
 async function _schedLoadModels() {
     try {
         const resp = await fetch('/api/registry/models/chat');
@@ -546,7 +546,7 @@ async function _schedLoadModels() {
     }
 }
 
-// ── Overview (Knowledge tab) ──────────────────────────────────
+// Overview (Knowledge tab)
 async function scheduleLoadOverview() {
     try {
         const resp = await fetch('/api/schedule/tasks');
@@ -601,7 +601,7 @@ async function scheduleLoadOverview() {
     }
 }
 
-// ── Init & event wiring ───────────────────────────────────────
+// Init & event wiring
 function scheduleInit() {
     // Buttons
     const newBtn       = _sEl('sched-new-btn');
@@ -669,7 +669,7 @@ function scheduleInit() {
     });
 }
 
-// ── Panel activation hook (called by main tab switcher) ───────
+// Panel activation hook (called by main tab switcher)
 window._scheduleOnActivate = function () {
     scheduleLoadTasks();
 };
@@ -677,7 +677,7 @@ window._scheduleOverviewOnActivate = function () {
     scheduleLoadOverview();
 };
 
-// ── Bootstrap ─────────────────────────────────────────────────
+// Bootstrap
 // Wire up panel-agnostic listeners immediately (sidebar buttons are always in the DOM).
 // scheduleInit() itself (which queries panel elements) is deferred until the partial loads.
 document.addEventListener('DOMContentLoaded', () => {

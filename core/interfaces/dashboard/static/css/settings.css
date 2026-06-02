@@ -638,7 +638,7 @@ input::-webkit-inner-spin-button {
     gap: 0.4rem;
 }
 
-/* ===== enhanced add model modal ===== */
+/* enhanced add model modal */
 .add-model-modal {
     width: 550px !important;
     max-width: 90vw;

@@ -28,7 +28,7 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/overlay", tags=["overlay"])
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
+# Paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent   # used for .venv, cwd, logs
 
 _DEFAULT_CONFIG = {
@@ -62,7 +62,7 @@ def _overlay_running() -> bool:
     return False
 
 
-# ── Models ────────────────────────────────────────────────────────────────────
+# Models
 
 class HistoryPair(BaseModel):
     q: str
@@ -85,7 +85,7 @@ class OverlayConfigIn(BaseModel):
     font_size:          Optional[int]   = None   # 8 – 18
 
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+# Routes
 
 @router.post("/ask")
 async def overlay_ask(req: AskRequest):

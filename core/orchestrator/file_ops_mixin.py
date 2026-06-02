@@ -58,7 +58,7 @@ class FileOpsMixin:
                 return "Error: patch_file requires a non-empty 'old' string."
             content = fp.read_text(encoding="utf-8", errors="replace")
 
-            # ── Strategy 1: exact match ───────────────────────────────────
+            # Strategy 1: exact match
             if old in content:
                 count = content.count(old)
                 updated = content.replace(old, new, 1)
@@ -70,7 +70,7 @@ class FileOpsMixin:
                     msg += f"\n\n[WARNING] Syntax validation failed:\n{syntax_err}"
                 return msg
 
-            # ── Strategy 2: strip trailing whitespace per line ────────────
+            # Strategy 2: strip trailing whitespace per line
             # Covers the very common case where the LLM omits trailing spaces
             # that exist in the actual file (e.g. in Python docstrings, HTML).
             def _rstrip_lines(s: str) -> str:
@@ -96,7 +96,7 @@ class FileOpsMixin:
                         msg += f"\n\n[WARNING] Syntax validation failed:\n{syntax_err}"
                     return msg
 
-            # ── Strategy 3: strip all whitespace per line (indentation-agnostic) ──
+            # Strategy 3: strip all whitespace per line (indentation-agnostic)
             # or vice-versa.  The original file's indentation is preserved — only
             # the content of those lines is replaced.
             def _strip_lines(s: str) -> str:
@@ -160,7 +160,7 @@ class FileOpsMixin:
             return f"Syntax check failed: {e}"
         return None
 
-    # ── Path safety helper ────────────────────────────────────────────────
+    # Path safety helper
 
     def _safe_path(self, path: str) -> "tuple[Path | None, str | None]":
         """Resolve *path* relative to workspace and block directory traversal.
@@ -432,7 +432,7 @@ class FileOpsMixin:
         import re
         import time
 
-        # ── Safety guard: block catastrophically destructive patterns ────────
+        # Safety guard: block catastrophically destructive patterns
         for pattern in self._BLOCKED_COMMAND_PATTERNS:
             if re.search(pattern, command):
                 logger.warning(
@@ -514,6 +514,6 @@ class FileOpsMixin:
         except Exception as e:
             return f"Error: {e}"
 
-    # ── event builder ─────────────────────────────────────────────
+    # event builder
 
 

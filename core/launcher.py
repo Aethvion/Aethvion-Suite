@@ -69,7 +69,7 @@ def _log(msg):
 
 _log("--- Launcher script loaded ---")
 
-# -- Paths ---------------------------------------------------------------------
+# Paths
 
 ROOT      = Path(__file__).parent.parent
 VENV_DIR  = ROOT / ".venv" / "Scripts"
@@ -77,7 +77,7 @@ VENV_PY   = VENV_DIR / "python.exe"
 VENV_PYW  = VENV_DIR / "pythonw.exe"
 RESTART_EXIT_CODE = 42
 
-# -- App registry --------------------------------------------------------------
+# App registry
 # Each entry describes one server process.
 #   module   : run as `python -m <module>` (mutually exclusive with script)
 #   script   : path relative to ROOT, run as `python <script>`
@@ -130,7 +130,7 @@ APP_REGISTRY: dict[str, dict] = {
     },
 }
 
-# -- Windows Job Object (KillOnJobClose) ---------------------------------------
+# Windows Job Object (KillOnJobClose)
 
 def _install_job_object() -> None:
     """
@@ -210,7 +210,7 @@ def _install_job_object() -> None:
         print(f"[Launcher] Job Object setup skipped ({exc}); using atexit cleanup instead.")
 
 
-# -- Process Management Extras -------------------------------------------------
+# Process Management Extras
 
 def _is_running_aethvion(proc: psutil.Process) -> bool:
     """Check if a process looks like an Aethvion Suite component (excluding this launcher)."""
@@ -328,7 +328,7 @@ def _ensure_singleton() -> None:
         print(f"[Launcher] Singleton check failed: {e}")
 
 
-# -- Child-process tracking -----------------------------------------------------
+# Child-process tracking
 
 _child_procs: list[subprocess.Popen] = []
 _child_lock  = threading.Lock()
@@ -382,8 +382,6 @@ def _restart_suite() -> None:
     print("[Launcher] Waiting 2 seconds before system reload...")
     time.sleep(2.0)
     
-    # Replace the current process with a new instance of the launcher
-    # This ensures a fresh start with updated code
     print("[Launcher] Executing system reload...")
     try:
         if os.name == "nt":
@@ -409,7 +407,7 @@ def _signal_handler(sig: int, frame) -> None:  # type: ignore[type-arg]
 signal.signal(signal.SIGINT,  _signal_handler)
 signal.signal(signal.SIGTERM, _signal_handler)
 
-# -- Helpers --------------------------------------------------------------------
+# Helpers
 
 def _get_python(consumer: bool) -> str:
     if consumer:
@@ -427,7 +425,6 @@ def _build_env() -> dict[str, str]:
 
 
 def _launch_process(name: str, cfg: dict, consumer: bool) -> subprocess.Popen | None:
-    # Check the script exists before trying to launch
     if "script" in cfg:
         script_path = ROOT / cfg["script"]
         if not script_path.exists():
@@ -490,12 +487,12 @@ def _monitor_dashboard(proc: subprocess.Popen, consumer: bool) -> None:
                 proc = new
 
 
-# -- Main -----------------------------------------------------------------------
+# Main
 
 def main() -> None:
     _log("Main function entered")
 
-    # -- Package health check (silent; results written to diagnostic log) ------
+    # Package health check (silent; results written to diagnostic log)
     try:
         from core.utils.pkg_repair import repair as _repair_packages
         _log("[pkg_repair] Starting package health check...")
@@ -508,7 +505,6 @@ def main() -> None:
             _log("[pkg_repair] All packages OK")
     except Exception as _pkg_e:
         _log(f"[pkg_repair] Health check error: {_pkg_e}")
-    # --------------------------------------------------------------------------
 
     parser = argparse.ArgumentParser(
         description="Aethvion Suite Master Launcher",
@@ -553,22 +549,22 @@ def main() -> None:
     mode_label  = "CONSUMER" if consumer else "DEV"
     browser_mode: str = args.browser
 
-    # -- Ensure singleton and clean up ------------------------------------------
+    # Ensure singleton and clean up
     _log("Checking singleton and cleaning stale processes...")
     _ensure_singleton()
     _cleanup_stale_processes()
 
-    # -- Install Windows Job Object for reliable cleanup ------------------------
+    # Install Windows Job Object for reliable cleanup
     _log("Installing Job Object...")
     _install_job_object()
 
-    # -- Banner ----------------------------------------------------------------
+    # Banner
     print()
     print("=" * 60)
     print(f"  AETHVION SUITE LAUNCHER  [{mode_label} MODE]")
     print("=" * 60)
 
-    # -- Load .env -------------------------------------------------------------
+    # Load .env
     env_path = ROOT / ".env"
     if env_path.exists():
         try:
@@ -577,7 +573,7 @@ def main() -> None:
         except ImportError:
             pass
 
-    # -- Resolve which optional apps to start ----------------------------------
+    # Resolve which optional apps to start
     optional_keys = [k for k, v in APP_REGISTRY.items() if not v.get("required", False)]
 
     apps_arg = args.apps.strip().lower()
@@ -596,7 +592,7 @@ def main() -> None:
             else:
                 print(f"[Launcher] Unknown app '{name}'. Known: {', '.join(optional_keys)}")
 
-    # -- Launch dashboard first -------------------------------------------------
+    # Launch dashboard first
     _log("Launching dashboard...")
     print()
     dashboard_proc = _launch_process("dashboard", APP_REGISTRY["dashboard"], consumer)
@@ -605,13 +601,13 @@ def main() -> None:
     else:
         _log(f"Dashboard launched with PID {dashboard_proc.pid}")
 
-    # -- Stagger optional app launches (avoid port-registry race) --------------
+    # Stagger optional app launches (avoid port-registry race)
     for i, app_name in enumerate(extra_names):
         if i > 0:
             time.sleep(0.5)          # 500 ms gap between launches
         _launch_process(app_name, APP_REGISTRY[app_name], consumer)
 
-    # -- Auto-start overlay sidecar if configured ------------------------------
+    # Auto-start overlay sidecar if configured
     try:
         import json as _json
         _overlay_cfg_path = ROOT / "data" / "overlay" / "config.json"
@@ -624,7 +620,7 @@ def main() -> None:
 
     print()
 
-    # -- Open browser ----------------------------------------------------------
+    # Open browser
     if dashboard_proc and browser_mode != "none":
         dashboard_port = int(os.environ.get("PORT", APP_REGISTRY["dashboard"]["port"]))
 
@@ -703,7 +699,7 @@ def main() -> None:
             daemon=True,
         ).start()
 
-    # -- Keep launcher alive ---------------------------------------------------
+    # Keep launcher alive
     if consumer:
         try:
             while True:

@@ -175,7 +175,7 @@ app = FastAPI(
 )
 fastapi_utils.add_dev_cache_control(app)
 
-# ── Exception handlers ────────────────────────────────────────────────────────
+# Exception handlers
 # Registered once here; covers every router in the application.
 
 from core.exceptions import AethvionError  # noqa: E402

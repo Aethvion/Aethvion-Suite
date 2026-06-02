@@ -14,7 +14,7 @@
     scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
 }
 
-/* ── tab buttons ──────────────────────────────────────────────────── */
+/* tab buttons */
 .sidebar-nav .main-tab {
     display: flex;
     align-items: center;
@@ -113,7 +113,7 @@
     margin-right: 0;
 }
 
-/* ── sidebar bottom ──────────────────────────────────────────────── */
+/* sidebar bottom */
 .sidebar-bottom {
     margin-top: auto;
     padding: 0.4rem 0.25rem 0.3rem;
@@ -170,7 +170,7 @@
     opacity: 0.3;
 }
 
-/* ── folder header ──────────────────────────────────────────────── */
+/* folder header */
 .folder-header {
     display: flex;
     align-items: center;
@@ -262,7 +262,7 @@
     color: #f87070;
 }
 
-/* ── folder rename input ─────────────────────────────────────────── */
+/* folder rename input */
 .folder-rename-input {
     flex: 1;
     min-width: 0;
@@ -308,7 +308,7 @@
     pointer-events: auto !important;
 }
 
-/* ── add folder button ──────────────────────────────────────────── */
+/* add folder button */
 .sidebar-add-folder-btn {
     display: flex;
     align-items: center;
@@ -430,7 +430,7 @@
     opacity: 0.25;
 }
 
-/* ── customize / done button ────────────────────────────────────── */
+/* customize / done button */
 .cust-toggle-btn {
     display: flex;
     align-items: center;
@@ -515,7 +515,7 @@
     width: calc(100% - 0.6rem);
 }
 
-/* ── profile button (always visible) ───────────────────────────── */
+/* profile button (always visible) */
 .profile-btn {
     display: flex;
     align-items: center;
@@ -705,7 +705,7 @@
     font-family: inherit;
 }
 
-/* ── per-item action buttons ────────────────────────────────────── */
+/* per-item action buttons */
 .profile-item-actions {
     display: flex;
     gap: 0.1rem;
@@ -740,7 +740,7 @@
     color: #f87070;
 }
 
-/* ── dropdown divider + add button ─────────────────────────────── */
+/* dropdown divider + add button */
 .profile-dropdown-divider {
     height: 1px;
     background: rgba(255, 255, 255, 0.06);
@@ -798,7 +798,7 @@
     pointer-events: auto;
 }
 
-/* ── modal card ─────────────────────────────────────────────────── */
+/* modal card */
 .profile-onboarding-modal {
     background: rgba(12, 12, 24, 0.98);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -827,7 +827,7 @@
     }
 }
 
-/* ── header ─────────────────────────────────────────────────────── */
+/* header */
 .pon-header {
     display: flex;
     flex-direction: column;
@@ -1016,7 +1016,7 @@
     animation: ponShake 0.35s ease;
 }
 
-/* ── footer ─────────────────────────────────────────────────────── */
+/* footer */
 .pon-footer {
     display: flex;
     flex-direction: column;

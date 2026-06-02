@@ -529,7 +529,7 @@ async function notifySystemEvent(msg) {
     }
 }
 
-// ----- Simulation Loop ----- //
+// Simulation Loop ----- //
 
 async function startSimulation() {
     if (activePersonas.length < 1) {
@@ -731,7 +731,7 @@ function appendUiMessage(msg, traits = null) {
     advaiconvMessagesContainer.scrollTop = advaiconvMessagesContainer.scrollHeight;
 }
 
-// ----- Persona Creation UI ----- //
+// Persona Creation UI ----- //
 
 function openPersonaModal() {
     // Standard modal logic hooking into main app
@@ -835,7 +835,7 @@ window.saveNewPersona = async function () {
     }
 }
 
-// ── Init (deferred until partial is injected) ─────────────────────────────────
+// Init (deferred until partial is injected)
 let _advaiconvInitDone = false;
 
 function _initAdvaiconvPanel() {

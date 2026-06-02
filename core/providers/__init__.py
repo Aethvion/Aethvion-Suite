@@ -20,7 +20,7 @@ from .mistral_provider import MistralProvider
 from .openrouter_provider import OpenRouterProvider
 from .provider_manager import ProviderManager, get_provider_manager
 
-# ── Singleton ──────────────────────────────────────────────────────────────────
+# Singleton
 # All call sites should use get_provider_manager() instead of ProviderManager().
 # This ensures config is read from disk exactly once, all components share the
 # same routing/priority state, and changes like privacy-mode toggles propagate

@@ -16,7 +16,7 @@ import pytest
 from core.security.scanner import ContentScanner, ScanAction, ScanSeverity, ScanResult
 
 
-# ── Test pattern fixtures ─────────────────────────────────────────────────────
+# Test pattern fixtures
 
 BLOCK_PATTERN = {
     "pattern": r"drop\s+table",
@@ -47,9 +47,7 @@ def scanner_with_patterns():
     return ContentScanner(patterns=[BLOCK_PATTERN, ROUTE_PATTERN])
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # ContentScanner — empty patterns
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TestEmptyScanner:
     def test_plain_chat_allowed(self, empty_scanner):
@@ -70,9 +68,7 @@ class TestEmptyScanner:
         assert isinstance(result.action, ScanAction)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # ContentScanner — with patterns
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TestScannerWithPatterns:
     def test_safe_content_passes(self, scanner_with_patterns):
@@ -115,9 +111,7 @@ class TestScannerWithPatterns:
         assert result_mixed.action == ScanAction.BLOCK
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # IntelligenceFirewall — no config file (safe defaults)
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TestIntelligenceFirewall:
     def test_firewall_initializes_without_config(self, tmp_path):

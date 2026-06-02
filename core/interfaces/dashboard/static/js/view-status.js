@@ -84,13 +84,13 @@ async function loadSystemStatusTab() {
             `;
         };
 
-        // --- Core System Roadmap ---
+        // Core System Roadmap
         html += `<div class="section-label roadmap-full-width" style="margin-top: 1rem; margin-bottom: 1.5rem; justify-content: flex-start; font-size: 1.2rem; letter-spacing: 0.2em; color: var(--text-bright);">AETHVION SUITE</div>`;
         html += renderSection('FEATURES', roadmap.features || roadmap.working, 'working');
         html += renderSection('WORK IN PROGRESS', roadmap.wip, 'wip');
         html += renderSection('PLANNED', roadmap.planned, 'planned');
 
-        // --- Individual Module Roadmaps ---
+        // Individual Module Roadmaps
         const modules = roadmapData.modules || [];
         modules.forEach(mod => {
             html += `<div class="roadmap-divider roadmap-full-width" style="margin: 2.5rem 0; border-top: 1px solid var(--border-color); opacity: 0.5;"></div>`;

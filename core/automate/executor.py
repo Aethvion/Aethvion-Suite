@@ -54,7 +54,7 @@ class WorkflowExecutor:
         # Optional: callable(event: dict) fired for each node state change and log line
         self._event_callback                     = event_callback
 
-    # ── Public entry point ────────────────────────────────────────────────────
+    # Public entry point
 
     def execute(self) -> dict:
         name = self.workflow.get("name", "Workflow")
@@ -132,7 +132,7 @@ class WorkflowExecutor:
 
         return self._build_result()
 
-    # ── Graph traversal ───────────────────────────────────────────────────────
+    # Graph traversal
 
     def _reachable_from_triggers(self) -> set[str]:
         """Three-phase reachability — returns the set of node IDs to execute.
@@ -187,7 +187,7 @@ class WorkflowExecutor:
                         queue.append(nxt)
             return visited
 
-        # ── Phase 1: forward from active seeds ────────────────────────────────
+        # Phase 1: forward from active seeds
         if self._trigger_id:
             active_seeds = [self._trigger_id] if self._trigger_id in self.nodes else []
         else:
@@ -195,13 +195,13 @@ class WorkflowExecutor:
 
         forward: set[str] = _forward_bfs(active_seeds)
 
-        # ── Phase 2: forward from inactive triggers → "other territory" ───────
+        # Phase 2: forward from inactive triggers → "other territory"
         inactive_triggers = [t for t in all_triggers if t not in active_seeds]
         other_territory: set[str] = set()
         for t in inactive_triggers:
             other_territory |= _forward_bfs([t])
 
-        # ── Phase 3: backward from forward set ────────────────────────────────
+        # Phase 3: backward from forward set
         # Skip nodes that are trigger nodes OR belong to another trigger's chain.
         trigger_set = set(all_triggers)
         blocked     = trigger_set | other_territory
@@ -284,7 +284,7 @@ class WorkflowExecutor:
                     inputs[tgt_port] = val
         return inputs
 
-    # ── Dispatch ──────────────────────────────────────────────────────────────
+    # Dispatch
 
     def _execute_node(self, node: dict, inputs: dict[str, Any]) -> dict[str, Any]:
         from core.automate.nodes import get_handler  # noqa: PLC0415
@@ -295,7 +295,7 @@ class WorkflowExecutor:
         self._warn(f"Unknown node type: {t!r} — passing input through")
         return {"out": inputs.get("in", "")}
 
-    # ── Result builder ────────────────────────────────────────────────────────
+    # Result builder
 
     def _build_result(self, fatal: str | None = None) -> dict:
         return {
@@ -307,7 +307,7 @@ class WorkflowExecutor:
             "log":          self._log,
         }
 
-    # ── Event emission ────────────────────────────────────────────────────────
+    # Event emission
 
     def _emit(self, event: dict) -> None:
         """Fire event_callback if one was supplied (non-blocking best-effort)."""
@@ -317,7 +317,7 @@ class WorkflowExecutor:
             except Exception:
                 pass  # never let callback errors kill the executor
 
-    # ── Logging helpers ───────────────────────────────────────────────────────
+    # Logging helpers
 
     def _info(self, msg: str) -> None:
         entry = {"level": "info",    "msg": msg, "ts": _ts()}
@@ -335,7 +335,7 @@ class WorkflowExecutor:
         self._emit({"type": "log", **entry})
 
 
-# ── Module-level helpers (not part of the executor class) ─────────────────────
+# Module-level helpers (not part of the executor class)
 
 def _ts() -> str:
     return datetime.now().strftime("%H:%M:%S.%f")[:-3]

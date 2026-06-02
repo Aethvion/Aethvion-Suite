@@ -20,7 +20,7 @@
     let exCurrentDeepDive = false;
     let exCurrentPage     = 'index.html';
 
-    // ── Edit Mode State ────────────────────────────────────────────────────────
+    // Edit Mode State
     let _editModeActive      = false;
     let _sectionComments     = {};   // { sectionIdx: { heading, comment } }
     let _pendingPopupSection = null;
@@ -78,7 +78,7 @@
     color: #a5b4fc !important;
 }`;
 
-    // ── Init ───────────────────────────────────────────────────────────────────
+    // Init
 
     async function initExplained() {
         exSidebar    = document.getElementById('explained-sidebar');
@@ -175,7 +175,7 @@
         loadHistory();
     }
 
-    // ── Edit Mode ──────────────────────────────────────────────────────────────
+    // Edit Mode
 
     function toggleEditMode() {
         _editModeActive = !_editModeActive;
@@ -312,7 +312,7 @@
         } catch (e) {}
     }
 
-    // ── Annotation popup ───────────────────────────────────────────────────────
+    // Annotation popup
 
     function showAnnotationPopup(sectionIdx, heading, x, y, triggerBtn) {
         if (!exAnnotPopup) return;
@@ -376,7 +376,7 @@
         renderCommentsTray();
     }
 
-    // ── Comments tray ──────────────────────────────────────────────────────────
+    // Comments tray
 
     function renderCommentsTray() {
         const entries = Object.entries(_sectionComments);
@@ -468,7 +468,7 @@
         }
     }
 
-    // ── Core generation ────────────────────────────────────────────────────────
+    // Core generation
 
     function resetSession() {
         exCurrentThreadId = null;
@@ -643,7 +643,7 @@
         };
     }
 
-    // ── Page Navigator (Deep Dive) ─────────────────────────────────────────────
+    // Page Navigator (Deep Dive)
 
     async function refreshPageNav() {
         if (!exCurrentThreadId || !exCurrentDeepDive) { hidePageNav(); return; }
@@ -698,7 +698,7 @@
         if (exPageTabs) exPageTabs.innerHTML = '';
     }
 
-    // ── Utility ────────────────────────────────────────────────────────────────
+    // Utility
 
     function setLoading(loading) {
         exIsGenerating = loading;
@@ -801,7 +801,7 @@
             .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    // ── Panel load hook ────────────────────────────────────────────────────────
+    // Panel load hook
 
     document.addEventListener('panelLoaded', (e) => {
         if (e.detail.tabName === 'explained') initExplained();

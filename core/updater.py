@@ -31,9 +31,6 @@ def update_suite():
         print(f"Error fetching changes: {output}")
         return False
 
-    # 2. Check if update is actually needed (optional but good)
-    # For now, we'll proceed with pull regardless as requested
-
     # 3. Stash local changes
     print("Stashing local changes...")
     success, output = run_command("git stash", cwd=root)

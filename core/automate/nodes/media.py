@@ -30,7 +30,7 @@ def _file_to_data_uri(path: str, mime: str = "image/png") -> str:
         return ""
 
 
-# ── OCR — extract text from image ────────────────────────────────────────────
+# OCR — extract text from image
 
 def action_ocr(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Extract text from an image using Tesseract OCR (pytesseract + Pillow).
@@ -74,7 +74,7 @@ def action_ocr(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
         return {"out": "", "error": str(exc)}
 
 
-# ── Screenshot ────────────────────────────────────────────────────────────────
+# Screenshot
 
 def action_screenshot(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p         = node.get("properties", {})
@@ -114,7 +114,7 @@ def action_screenshot(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
         return {"out": "", "image": "", "width": 0, "height": 0, "error": str(exc)}
 
 
-# ── Camera capture ────────────────────────────────────────────────────────────
+# Camera capture
 
 def action_camera_capture(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p            = node.get("properties", {})
@@ -168,7 +168,7 @@ def action_camera_capture(node: dict, inputs: dict[str, Any], ctx) -> dict[str, 
         return {"out": "", "image": "", "width": 0, "height": 0, "error": str(exc)}
 
 
-# ── Vision — analyse image ────────────────────────────────────────────────────
+# Vision — analyse image
 
 _MIME_MAP = {
     ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
@@ -223,7 +223,7 @@ def ai_analyze_image(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     return {"out": resp.content, "error": ""}
 
 
-# ── Image generation ──────────────────────────────────────────────────────────
+# Image generation
 
 def ai_generate_image(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p            = node.get("properties", {})
@@ -277,7 +277,7 @@ def ai_generate_image(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
     }
 
 
-# ── Text-to-Speech ────────────────────────────────────────────────────────────
+# Text-to-Speech
 
 def ai_text_to_speech(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p         = node.get("properties", {})
@@ -324,7 +324,7 @@ def ai_text_to_speech(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]
     }
 
 
-# ── Speech-to-Text ────────────────────────────────────────────────────────────
+# Speech-to-Text
 
 def ai_speech_to_text(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     p          = node.get("properties", {})

@@ -23,7 +23,7 @@ def _url(path: str, base: str = _DEFAULT) -> str:
     return base.rstrip("/") + path
 
 
-# ── Status & model list ───────────────────────────────────────────────────────
+# Status & model list
 
 @router.get("/status")
 async def ollama_status():
@@ -51,7 +51,7 @@ async def ollama_models():
         raise HTTPException(503, f"Ollama not reachable: {exc}")
 
 
-# ── Pull a model (SSE streaming) ──────────────────────────────────────────────
+# Pull a model (SSE streaming)
 
 @router.post("/pull")
 async def ollama_pull(request: Request):
@@ -117,7 +117,7 @@ async def ollama_pull(request: Request):
     )
 
 
-# ── Delete a model ────────────────────────────────────────────────────────────
+# Delete a model
 
 @router.delete("/model")
 async def ollama_delete_model(request: Request):
@@ -134,7 +134,7 @@ async def ollama_delete_model(request: Request):
         raise HTTPException(500, str(exc))
 
 
-# ── Register / unregister in Aethvion registry ────────────────────────────────
+# Register / unregister in Aethvion registry
 
 @router.post("/register")
 async def ollama_register(request: Request):

@@ -21,7 +21,7 @@
     color: var(--text-primary);
 }
 
-/* ── Left roster panel ────────────────────────────────────────────────────── */
+/* Left roster panel */
 
 .cc-roster {
     width: 280px;
@@ -34,7 +34,7 @@
     transition: width 0.22s ease, min-width 0.22s ease, border-color 0.22s ease;
 }
 
-/* ── Collapsed roster ─────────────────────────────────────────────────────── */
+/* Collapsed roster */
 
 .cc-hub.roster-collapsed .cc-roster {
     width: 48px;
@@ -301,7 +301,7 @@
     line-height: 1.5;
 }
 
-/* ── Right detail panel ────────────────────────────────────────────────────── */
+/* Right detail panel */
 
 .cc-detail {
     flex: 1;
@@ -330,7 +330,7 @@
 .cc-empty-title { font-size: 1.1rem; font-weight: 600; color: var(--text-secondary); margin: 0; }
 .cc-empty-sub   { font-size: 0.85rem; margin: 0; max-width: 340px; }
 
-/* ── Active companion pane ─────────────────────────────────────────────────── */
+/* Active companion pane */
 
 .cc-active-pane {
     display: flex;
@@ -402,7 +402,7 @@
 }
 .cc-ptab:disabled { opacity: 0.35; cursor: not-allowed; }
 
-/* ── Chat view ──────────────────────────────────────────────────────────────── */
+/* Chat view */
 
 .cc-chat-view {
     display: flex; flex-direction: row;
@@ -578,7 +578,7 @@
 .cc-chat-send-btn:hover:not(:disabled) { filter: brightness(1.12); }
 .cc-chat-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* ── Settings view ──────────────────────────────────────────────────────────── */
+/* Settings view */
 
 .cc-settings-view {
     flex: 1; overflow-y: auto; display: flex; flex-direction: column;
@@ -587,7 +587,7 @@
 .cc-settings-view::-webkit-scrollbar { width: 5px; }
 .cc-settings-view::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-/* ── Memory view ──────────────────────────────────────────────────────────── */
+/* Memory view */
 .cc-memory-view {
     flex: 1;
     display: flex;
@@ -718,14 +718,14 @@
 .cc-mem-footer span { display: flex; align-items: center; gap: 0.3rem; }
 .cc-mem-footer i { font-size: 0.62rem; opacity: 0.7; }
 
-/* ── Form wrapper (inside settings view) ──────────────────────────────────── */
+/* Form wrapper (inside settings view) */
 
 .cc-form {
     padding: 1.5rem 2rem;
     max-width: 780px;
 }
 
-/* ── Form grid & fields ─────────────────────────────────────────────────────  */
+/* Form grid & fields */
 .cc-form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -770,7 +770,7 @@
 }
 .cc-color-hex { font-size: 0.8rem; color: var(--text-muted); font-family: monospace; }
 
-/* ── Avatar preview ─────────────────────────────────────────────────────────  */
+/* Avatar preview */
 .cc-avatar-preview-wrap { margin-top: 1.25rem; }
 .cc-avatar-preview-box {
     display: flex;
@@ -790,7 +790,7 @@
 }
 .cc-avatar-name-preview { font-size: 1rem; font-weight: 600; }
 
-/* ── Form actions row ───────────────────────────────────────────────────────  */
+/* Form actions row */
 .cc-form-actions {
     display: flex;
     justify-content: flex-end;
@@ -799,7 +799,7 @@
     flex-wrap: wrap;
 }
 
-/* ── Buttons ────────────────────────────────────────────────────────────────  */
+/* Buttons */
 .cc-btn {
     display: inline-flex; align-items: center; gap: 0.4rem;
     padding: 0.45rem 1rem;
@@ -831,7 +831,7 @@
 .cc-btn-full { width: 100%; justify-content: center; }
 .cc-btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
 
-/* ── Form messages ──────────────────────────────────────────────────────────  */
+/* Form messages */
 .cc-form-msg {
     margin-top: 0.75rem;
     padding: 0.55rem 0.75rem;
@@ -841,7 +841,7 @@
 .cc-form-msg-ok    { background: rgba(34,197,94,0.12); color: #4ade80; }
 .cc-form-msg-error { background: rgba(239,68,68,0.12); color: #f87171; }
 
-/* ── Section label used inside .cc-form area ────────────────────────────────  */
+/* Section label used inside .cc-form area */
 .cc-section-label {
     font-size: 0.7rem;
     font-weight: 600;
@@ -851,7 +851,7 @@
     margin-bottom: 0.25rem;
 }
 
-/* ── Builtin notice (locked) ────────────────────────────────────────────────  */
+/* Builtin notice (locked) */
 .cc-builtin-notice {
     display: flex;
     align-items: center;
@@ -867,7 +867,7 @@
 .cc-builtin-notice i { color: #64748b; flex-shrink: 0; }
 .cc-builtin-notice.hidden { display: none; }
 
-/* ── Icon picker ────────────────────────────────────────────────────────────  */
+/* Icon picker */
 .cc-icon-row { display: flex; align-items: center; gap: 1rem; }
 .cc-icon-thumb {
     width: 56px; height: 56px;
@@ -887,7 +887,7 @@
 .cc-icon-save-hint { font-size: 0.75rem; color: var(--text-muted); font-style: italic; }
 .cc-icon-save-hint.hidden { display: none; }
 
-/* ── Import dialog ──────────────────────────────────────────────────────────  */
+/* Import dialog */
 .cc-import-dialog {
     position: fixed; inset: 0; z-index: 9999;
     background: rgba(0,0,0,0.55);
@@ -955,12 +955,12 @@
     border-radius: 4px;
 }
 
-/* ── Range inputs ────────────────────────────────────────────────────────────  */
+/* Range inputs */
 .cc-range { width: 100%; accent-color: var(--accent, #6366f1); cursor: pointer; height: 4px; margin-top: 0.15rem; }
 .cc-range-val { font-family: monospace; font-size: 0.78rem; color: var(--accent, #6366f1); font-weight: 600; }
 .cc-range-hint { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.1rem; }
 
-/* ── Capability toggles ──────────────────────────────────────────────────────  */
+/* Capability toggles */
 .cc-caps-grid { display: flex; flex-direction: column; }
 .cc-toggle-row {
     display: flex; align-items: center; justify-content: space-between;
@@ -988,7 +988,7 @@
 .cc-toggle-input:checked + .cc-toggle-thumb { background: var(--accent, #6366f1); border-color: var(--accent, #6366f1); }
 .cc-toggle-input:checked + .cc-toggle-thumb::after { left: calc(100% - 16px); background: #fff; }
 
-/* ── System Prompts ──────────────────────────────────────────────────────────  */
+/* System Prompts */
 .cc-prompt-hint-text { font-size: 0.78rem; color: var(--text-muted); margin: 0 0 0.6rem; }
 .cc-prompt-vars { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 .cc-prompt-var {
@@ -1004,7 +1004,7 @@
     font-size: 0.82rem; min-height: 90px; line-height: 1.5;
 }
 
-/* ── Expression images grid ─────────────────────────────────────────────────  */
+/* Expression images grid */
 .cc-expr-images-wrap { margin-top: 0.75rem; }
 .cc-expr-images-grid {
     display: grid;

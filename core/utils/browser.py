@@ -27,7 +27,7 @@ import time
 import webbrowser
 from pathlib import Path
 
-# ── Browser executable search paths ───────────────────────────────────────────
+# Browser executable search paths
 
 _CHROME_PATHS: list[str] = [
     r"C:\Program Files\Google\Chrome\Application\chrome.exe",
@@ -65,7 +65,7 @@ def _find_app_browser() -> str | None:
     return None
 
 
-# ── Public API ─────────────────────────────────────────────────────────────────
+# Public API
 
 def open_app_window(
     url: str,

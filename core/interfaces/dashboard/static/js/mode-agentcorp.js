@@ -3,7 +3,7 @@
    Handles corp selection, worker dashboard, task board, live feed
 ═══════════════════════════════════════════════════════════════ */
 
-// ── Global state ─────────────────────────────────────────────────────────────
+// Global state
 
 let _corpList         = [];
 let _corpCurrent      = null;   // full config object
@@ -20,7 +20,7 @@ const CORP_FEED_MAX   = 200;
 let _corpWorkerColors = {};
 let _corpWorkerNames  = {};     // worker_id → name
 
-// ── Initialisation ────────────────────────────────────────────────────────────
+// Initialisation
 
 function onCorpPanelActivated() {
     corpLoadCorps();
@@ -121,7 +121,7 @@ async function corpOnSelect(corpId) {
     corpConnectSSE(corpId);
 }
 
-// ── Model loading ─────────────────────────────────────────────────────────────
+// Model loading
 
 async function corpLoadModels() {
     if (_corpModelsLoaded) return;
@@ -177,7 +177,7 @@ function corpShowEmpty() {
     if (goalBar) goalBar.style.display = 'none';
 }
 
-// ── SSE ───────────────────────────────────────────────────────────────────────
+// SSE
 
 function corpConnectSSE(corpId) {
     if (_corpSSE) { _corpSSE.close(); _corpSSE = null; }
@@ -252,7 +252,7 @@ function corpConnectSSE(corpId) {
     };
 }
 
-// ── Restore persisted state on load ──────────────────────────────────────────
+// Restore persisted state on load
 
 async function corpRestoreStats(corpId) {
     try {
@@ -296,7 +296,7 @@ async function corpRestoreFeed(corpId) {
     }
 }
 
-// ── Worker panel rendering ────────────────────────────────────────────────────
+// Worker panel rendering
 
 function corpRenderWorkers() {
     const panel = document.getElementById('corp-workers-panel');
@@ -419,7 +419,7 @@ function _corpUpdateWorkerStatus(workerId, status) {
     }
 }
 
-// ── Task board ────────────────────────────────────────────────────────────────
+// Task board
 
 async function corpRefreshTasks() {
     if (!_corpCurrent) return;
@@ -538,7 +538,7 @@ function _corpResolveAssigned(assigned_to) {
     return assigned_to;
 }
 
-// ── Live feed ─────────────────────────────────────────────────────────────────
+// Live feed
 
 function _corpAddFeedItem(type, data) {
     const feed = document.getElementById('corp-feed');
@@ -617,7 +617,7 @@ function _corpBuildFeedItem(type, data) {
     return div;
 }
 
-// ── Corp start / stop ─────────────────────────────────────────────────────────
+// Corp start / stop
 
 async function corpStartCorp() {
     if (!_corpCurrent) return;
@@ -672,7 +672,7 @@ function _corpFeedClear() {
     items.forEach(i => i.remove());
 }
 
-// ── Create corp modal ─────────────────────────────────────────────────────────
+// Create corp modal
 
 function corpShowCreateModal() {
     const m = document.getElementById('corp-create-modal');
@@ -707,7 +707,7 @@ async function corpSubmitCreate() {
     }
 }
 
-// ── Add worker modal ──────────────────────────────────────────────────────────
+// Add worker modal
 
 function corpShowAddWorkerModal() {
     if (!_corpCurrent) return;
@@ -768,7 +768,7 @@ async function corpSubmitAddWorker() {
     }
 }
 
-// ── Add task modal ────────────────────────────────────────────────────────────
+// Add task modal
 
 function corpShowAddTaskModal() {
     if (!_corpCurrent) return;
@@ -814,7 +814,7 @@ async function corpSubmitAddTask() {
     }
 }
 
-// ── Workspace ─────────────────────────────────────────────────────────────────
+// Workspace
 
 async function corpBrowseWorkspace() {
     const browseBtn = document.getElementById('corp-workspace-browse-btn');
@@ -919,9 +919,9 @@ async function corpSaveWorkspacePath() {
     }
 }
 
-// ── Event handler wiring ──────────────────────────────────────────────────────
+// Event handler wiring
 
-// ── Agent Corp panel init (deferred until partial is injected) ────────────────
+// Agent Corp panel init (deferred until partial is injected)
 let _corpInitDone = false;
 
 function _initCorpPanel() {
@@ -1011,7 +1011,7 @@ document.addEventListener('panelLoaded', function (e) {
     }
 });
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// Helpers
 
 function _esc(str) {
     if (!str) return '';
@@ -1044,7 +1044,7 @@ function _randomColor() {
     return palette[Math.floor(Math.random() * palette.length)];
 }
 
-// ── Worker pause/resume ────────────────────────────────────────────────────────
+// Worker pause/resume
 
 async function corpTogglePauseWorker(workerId) {
     if (!_corpCurrent) return;
@@ -1065,7 +1065,7 @@ async function corpTogglePauseWorker(workerId) {
     }
 }
 
-// ── Task reject ────────────────────────────────────────────────────────────────
+// Task reject
 
 function corpOpenTaskDetail(task) {
     const modal = document.getElementById('corp-task-detail-modal');
@@ -1115,7 +1115,7 @@ async function corpRejectTask(taskId) {
     }
 }
 
-// ── Company chat ───────────────────────────────────────────────────────────────
+// Company chat
 
 function corpToggleChat() {
     const popup = document.getElementById('corp-chat-popup');

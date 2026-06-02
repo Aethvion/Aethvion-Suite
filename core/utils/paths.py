@@ -5,12 +5,12 @@ Import constants from here instead of constructing paths manually.
 """
 from pathlib import Path
 
-# ── Root ──────────────────────────────────────────────────────────────────────
-# ── Root ──────────────────────────────────────────────────────────────────────
+# Root
+# Root
 _PROJECT = Path(__file__).parent.parent.parent
 DATA = _PROJECT / "data"
 
-# ── Committed config (lives in core/config/, version-controlled) ──────────────
+# Committed config (lives in core/config/, version-controlled)
 _CORE_CONFIG = _PROJECT / "core" / "config"
 MODEL_DEFAULTS_DIR       = _CORE_CONFIG / "model_defaults"
 SUGGESTED_MODELS_DIR    = MODEL_DEFAULTS_DIR / "suggested"
@@ -18,14 +18,14 @@ SUGGESTED_API_MODELS    = _CORE_CONFIG / "suggested_apimodels.json" # Legacy
 SUGGESTED_LOCAL_MODELS  = _CORE_CONFIG / "suggested_localmodels.json"
 SUGGESTED_AUDIO_MODELS  = _CORE_CONFIG / "suggested_localaudiomodels.json"
 
-# ── Local model storage (user-downloaded weights, separate from app data) ─────
+# Local model storage (user-downloaded weights, separate from app data)
 LOCAL_MODELS       = _PROJECT / "localmodels"
 LOCAL_MODELS_GGUF  = LOCAL_MODELS / "gguf"    # GGUF chat models (llama.cpp)
 LOCAL_MODELS_AUDIO = LOCAL_MODELS / "audio"   # TTS / STT / voice models
 LOCAL_MODELS_AUDIO_VOICES = LOCAL_MODELS_AUDIO / "voices"  # cloned voice WAVs
 LOCAL_MODELS_3D    = LOCAL_MODELS / "3d"      # 3D models and pipelines
 
-# ── Top-level directories ─────────────────────────────────────────────────────
+# Top-level directories
 APPS           = DATA / "apps"
 CONFIG         = DATA / "config"
 LOGS           = DATA / "logs"
@@ -34,7 +34,7 @@ MODES          = DATA / "modes"
 COMPANIONS     = DATA / "companions"   # Top-level — not a mode subdir
 DEFAULT_OUTPUT = DATA / "default_output"
 
-# ── Modes (Tab-specific state & history) ──────────────────────────────────────
+# Modes (Tab-specific state & history)
 MODE_CHAT         = MODES / "chat"
 MODE_AGENTS       = MODES / "agents"
 MODE_AGENT_CORP   = MODES / "agent_corp"
@@ -48,10 +48,10 @@ MODE_WORLDSIM     = MODES / "worldsim"
 WORLDSIM          = MODE_WORLDSIM   # kept for WorldSim (separate product)
 MODE_COMPANIONS   = COMPANIONS      # Alias kept for backward compatibility
 
-# ── AethvionDB data root ──────────────────────────────────────────────────────
+# AethvionDB data root
 AETHVIONDB        = DATA / "aethviondb"
 
-# ── Code IDE + Agent workspaces ───────────────────────────────────────────────
+# Code IDE + Agent workspaces
 # Standalone feature root — workspaces, threads, project memory, blueprints.
 # (Moved from data/modes/agents/ to give Code a proper top-level home.)
 CODE              = DATA / "code"
@@ -62,7 +62,7 @@ VAULT       = COMPANIONS
 WORKSPACES  = MODE_WORKSPACES
 CORP_ROOT   = MODE_AGENT_CORP
 
-# ── Apps ──────────────────────────────────────────────────────────────────────
+# Apps
 APP_ARENA     = APPS / "arena"
 APP_AUDIO     = APPS / "audio"
 APP_CODE      = APPS / "code"
@@ -71,14 +71,14 @@ APP_HARDWARE  = APPS / "hardwareinfo"
 APP_BRIDGES  = APPS / "nexus"
 APP_PHOTO     = APPS / "photo"
 
-# ── Config files ──────────────────────────────────────────────────────────────
+# Config files
 MODEL_REGISTRY         = CONFIG / "model_registry.json"
 SETTINGS               = CONFIG / "settings.json"
 LOCAL_INFERENCE_CONFIG = CONFIG / "local_inference_config.json"
 WEBHOOKS_CONFIG        = CONFIG / "webhooks.json"
 SYSTEM_SPECS           = CONFIG / "system_specs.json"
 
-# ── Mode Subpaths ─────────────────────────────────────────────────────────────
+# Mode Subpaths
 # Chat
 HISTORY_CHAT     = MODE_CHAT
 # AI Conversations
@@ -90,23 +90,23 @@ HISTORY_AGENTS   = CODE
 # Explained
 HISTORY_EXPLAINED = MODE_EXPLAINED
 
-# ── Scheduled Tasks ───────────────────────────────────────────────────────────
+# Scheduled Tasks
 SCHEDULED_TASKS  = MODE_SCHEDULE           # Recurring AI task definitions
 
-# ── Logs ──────────────────────────────────────────────────────────────────────
+# Logs
 LOGS_USAGE          = LOGS / "usage"          # AI API usage — YYYY-MM/usage_YYYY-MM-DD.json
 LOGS_NOTIFICATIONS  = LOGS / "notifications"  # Notifications — YYYY-MM/YYYY-MM-DD.json
 LAUNCHER_LOG        = LOGS / "launcher.log"
 CRASH_LOG           = LOGS / "crashlog.log"
 LOGS_SYSTEM         = LOGS                    # Unified system logs root
 
-# ── System runtime ────────────────────────────────────────────────────────────
+# System runtime
 LOCK_FILE    = SYSTEM / "aethvion.lock"
 PORTS_JSON   = SYSTEM / "ports.json"
 PORTS_LOCK   = SYSTEM / "ports.lock"
 
 
-# ── Companions (persistent brain) ─────────────────────────────────────────────
+# Companions (persistent brain)
 COMPANIONS_PERSONAS  = COMPANIONS / "personas"
 COMPANIONS_KNOWLEDGE = COMPANIONS / "knowledge"
 COMPANIONS_MEMORY    = COMPANIONS / "memory"
@@ -116,7 +116,7 @@ VAULT_MEMORY         = COMPANIONS_MEMORY
 VAULT_EPISODIC       = VAULT_MEMORY           # Legacy alias for memory storage
 VAULT_SEARCH         = VAULT_MEMORY           # Legacy alias for search storage
 
-# ── Legacy Companion Shortcuts (Deprecated: Use dynamic paths) ───────────────
+# Legacy Companion Shortcuts (Deprecated: Use dynamic paths)
 COMPANIONS_MISAKA        = COMPANIONS_PERSONAS / "misakacipher"
 PERSONA_MISAKA           = COMPANIONS_MISAKA
 PERSONA_MISAKA_KNOWLEDGE = COMPANIONS_KNOWLEDGE / "misakacipher"
@@ -129,7 +129,7 @@ KNOWLEDGE_SOCIAL   = VAULT_KNOWLEDGE / "social.json"
 KNOWLEDGE_INSIGHTS = VAULT_KNOWLEDGE / "insights.json"
 PERSISTENT_MEMORY_JSON = VAULT_KNOWLEDGE / "persistent_memory.json"
 
-# ── Workspaces ────────────────────────────────────────────────────────────────
+# Workspaces
 WS_OUTPUTS     = MODE_WORKSPACES / "outputs"
 WS_TOOLS       = MODE_WORKSPACES / "tools"
 WS_MEDIA       = MODE_WORKSPACES / "media"
@@ -139,26 +139,26 @@ WS_PREFERENCES = MODE_WORKSPACES / "preferences.json"
 WS_PACKAGES    = MODE_WORKSPACES / "packages.json"
 WS_FILES_INDEX = MODE_WORKSPACES / "files.json"
 
-# ── Code agent prompts ──────────────────────────────────────────────────────
+# Code agent prompts
 CODE_AGENT_PROMPT = _CORE_CONFIG / "code" / "agent_system_prompt.txt"
 CODE_CORP_PROMPT  = _CORE_CONFIG / "code" / "corp_system_prompt.txt"
 
-# ── External API ─────────────────────────────────────────────────────────────
+# External API
 EXT_API_DIR    = DATA / "external_api"
 EXT_API_KEYS   = EXT_API_DIR / "keys.json"
 EXT_API_CONFIG = EXT_API_DIR / "config.json"
 
-# ── Overlay ───────────────────────────────────────────────────────────────────
+# Overlay
 OVERLAY_DIR    = DATA / "overlay"
 OVERLAY_CONFIG = OVERLAY_DIR / "config.json"
 OVERLAY_SCRIPT = _PROJECT / "apps" / "overlay" / "main.py"
 
-# ── Performance Tests ─────────────────────────────────────────────────────────
+# Performance Tests
 PERFORMANCE_DIR = _PROJECT / "core" / "tests" / "performance"
 PERFORMANCE_REPORT_JSON = PERFORMANCE_DIR / "latest_report.json"
 PERFORMANCE_REPORT_MD = PERFORMANCE_DIR / "latest_report.md"
 
-# ── Default Output ────────────────────────────────────────────────────────────
+# Default Output
 OUT_IMAGES    = DEFAULT_OUTPUT / "images"
 OUT_MODELS    = DEFAULT_OUTPUT / "models"
 OUT_DOCS      = DEFAULT_OUTPUT / "documents"

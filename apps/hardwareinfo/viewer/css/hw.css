@@ -42,7 +42,7 @@
   --font-mono: 'JetBrains Mono', 'Consolas', monospace;
 }
 
-/* ── Reset & base ─────────────────────────────────────────────── */
+/* Reset & base */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -58,7 +58,7 @@ body {
   overflow-x: hidden;
 }
 
-/* ── Top bar ──────────────────────────────────────────────────── */
+/* Top bar */
 #topbar {
   position: sticky;
   top: 0;
@@ -131,7 +131,7 @@ body {
   50%      { opacity: 0.3; }
 }
 
-/* ── Dashboard grid ───────────────────────────────────────────── */
+/* Dashboard grid */
 #dashboard {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -146,7 +146,7 @@ body {
   margin: 0 auto;
 }
 
-/* ── Cards ────────────────────────────────────────────────────── */
+/* Cards */
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -194,7 +194,7 @@ body {
   color: var(--text-dim);
 }
 
-/* ── SVG Gauge ────────────────────────────────────────────────── */
+/* SVG Gauge */
 .gauge-wrap {
   position: relative;
   width: 120px;
@@ -233,7 +233,7 @@ body {
 }
 .gauge-sub { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
 
-/* ── Stat rows ────────────────────────────────────────────────── */
+/* Stat rows */
 .stat-row {
   display: flex;
   align-items: center;
@@ -246,7 +246,7 @@ body {
 .stat-val   { color: var(--text-primary); font-weight: 500; text-align: right; }
 .mono       { font-family: var(--font-mono); }
 
-/* ── CPU layout ───────────────────────────────────────────────── */
+/* CPU layout */
 .cpu-top {
   display: flex;
   align-items: flex-start;
@@ -282,12 +282,12 @@ body {
 }
 .core-val { font-size: 9px; color: var(--text-secondary); font-family: var(--font-mono); }
 
-/* ── Charts ───────────────────────────────────────────────────── */
+/* Charts */
 .chart-label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.06em; text-transform: uppercase; }
 .chart-wrap  { height: 80px; }
 .chart-wrap-net { height: 100px; }
 
-/* ── Memory donut ─────────────────────────────────────────────── */
+/* Memory donut */
 .donut-wrap {
   position: relative;
   width: 160px;
@@ -306,7 +306,7 @@ body {
 .donut-sub { font-size: 11px; color: var(--text-dim); }
 .mem-stats { display: flex; flex-direction: column; gap: 4px; }
 
-/* ── Network ──────────────────────────────────────────────────── */
+/* Network */
 .net-speeds {
   display: flex;
   gap: 12px;
@@ -345,7 +345,7 @@ body {
 .net-iface-ip   { color: var(--text-dim); font-family: var(--font-mono); }
 .net-iface-spd  { color: var(--text-secondary); }
 
-/* ── Storage ──────────────────────────────────────────────────── */
+/* Storage */
 .disk-list { display: flex; flex-direction: column; gap: 8px; }
 .disk-item {}
 .disk-top {
@@ -390,7 +390,7 @@ body {
 .io-val       { font-size: 15px; font-weight: 700; }
 .io-sep       { width: 1px; height: 40px; background: var(--border); }
 
-/* ── Battery ──────────────────────────────────────────────────── */
+/* Battery */
 .bat-gauge-wrap {
   display: flex;
   align-items: center;
@@ -414,7 +414,7 @@ body {
 .bat-pct   { font-size: 22px; font-weight: 700; font-family: var(--font-mono); flex-shrink: 0; }
 .bat-stats { display: flex; flex-direction: column; gap: 4px; }
 
-/* ── Processes table ──────────────────────────────────────────── */
+/* Processes table */
 .procs-table-wrap { overflow-x: auto; }
 .procs-table {
   width: 100%;
@@ -443,7 +443,7 @@ body {
 .proc-cpu-high { color: var(--hw-warn) !important; }
 .proc-cpu-crit { color: var(--hw-crit) !important; }
 
-/* ── Mini bar (GPU VRAM inline) ───────────────────────────────── */
+/* Mini bar (GPU VRAM inline) */
 .mini-bar-wrap {
   flex: 1;
   height: 5px;
@@ -458,7 +458,7 @@ body {
   transition: width 0.5s ease;
 }
 
-/* ── No data ──────────────────────────────────────────────────── */
+/* No data */
 .no-data-msg {
   font-size: 12px;
   color: var(--text-dim);
@@ -471,16 +471,16 @@ body {
   flex-wrap: wrap;
 }
 
-/* ── GPU top layout ───────────────────────────────────────────── */
+/* GPU top layout */
 .gpu-top { display: flex; align-items: flex-start; gap: 16px; }
 
-/* ── Temp colours ─────────────────────────────────────────────── */
+/* Temp colours */
 .temp-cool { color: #06b6d4; }
 .temp-ok   { color: var(--hw-good); }
 .temp-warn { color: var(--hw-warn); }
 .temp-hot  { color: var(--hw-crit); }
 
-/* ── Responsive ───────────────────────────────────────────────── */
+/* Responsive */
 @media (max-width: 1100px) {
   #dashboard {
     grid-template-columns: 1fr 1fr;

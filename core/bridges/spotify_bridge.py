@@ -42,7 +42,7 @@ def _get_spotify_client(settings: dict):
         raise Exception("Spotify session expired or not authorized. Please reconnect in settings.")
     return spotipy.Spotify(auth_manager=auth_manager)
 
-# --- Standardized Commands ---
+# Standardized Commands
 
 def get_current(args: dict) -> str:
     """Get info about the currently playing track."""

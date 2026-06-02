@@ -35,7 +35,7 @@ def _mgr():
         return None
 
 
-# ── Request models ────────────────────────────────────────────────────────────
+# Request models
 
 class LoadRequest(BaseModel):
     model_id: str
@@ -75,7 +75,7 @@ class SetDefaultRequest(BaseModel):
     voice_id: Optional[str] = None
 
 
-# ── Endpoints ─────────────────────────────────────────────────────────────────
+# Endpoints
 
 @router.get("/models")
 async def get_models():

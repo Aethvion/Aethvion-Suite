@@ -73,9 +73,7 @@ export class CanvasEngine {
         this.setupCanvas();
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Canvas setup
-    // ─────────────────────────────────────────────────────────────
 
     setupCanvas() {
         this.mainCanvas.width  = this.width;
@@ -89,9 +87,7 @@ export class CanvasEngine {
         this.setupCanvas();
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Undo / Redo
-    // ─────────────────────────────────────────────────────────────
 
     pushHistory() {
         // Discard any redo states beyond the current pointer
@@ -167,9 +163,7 @@ export class CanvasEngine {
     canUndo() { return this._undoPointer > 0; }
     canRedo() { return this._undoPointer < this._undoStack.length - 1; }
 
-    // ─────────────────────────────────────────────────────────────
     // Layer management
-    // ─────────────────────────────────────────────────────────────
 
     addLayer(name = 'New Layer', pushUndo = true) {
         if (pushUndo) this.pushHistory();
@@ -294,9 +288,7 @@ export class CanvasEngine {
         if (this.layers[index]) this.layers[index].locked = locked;
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Selection
-    // ─────────────────────────────────────────────────────────────
 
     setSelection(x, y, w, h) {
         // Normalise negative dimensions (drag direction)
@@ -407,9 +399,7 @@ export class CanvasEngine {
         return layer;
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Text
-    // ─────────────────────────────────────────────────────────────
 
     addTextLayer(text, options = {}) {
         if (!text || !text.trim()) return null;
@@ -453,9 +443,7 @@ export class CanvasEngine {
         return layer;
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Render
-    // ─────────────────────────────────────────────────────────────
 
     render() {
         this.mainCtx.clearRect(0, 0, this.mainCanvas.width, this.mainCanvas.height);
@@ -542,9 +530,7 @@ export class CanvasEngine {
         return map[mode] || 'source-over';
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Image loading
-    // ─────────────────────────────────────────────────────────────
 
     async loadImage(url, name = 'Image Layer', autoSize = false) {
         return new Promise((resolve, reject) => {
@@ -571,9 +557,7 @@ export class CanvasEngine {
         });
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Export / project serialisation
-    // ─────────────────────────────────────────────────────────────
 
     exportToPNG() {
         return this.mainCanvas.toDataURL('image/png');
@@ -638,9 +622,7 @@ export class CanvasEngine {
         this.render();
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Drawing tools
-    // ─────────────────────────────────────────────────────────────
 
     _toLayerCoords(x, y, layer) {
         const scaleX = layer.canvas.width  / layer.displayWidth;
@@ -728,9 +710,7 @@ export class CanvasEngine {
         this.render();
     }
 
-    // ─────────────────────────────────────────────────────────────
     // Image operations
-    // ─────────────────────────────────────────────────────────────
 
     flipHorizontal() {
         const layer = this.getActiveLayer();

@@ -32,7 +32,7 @@ def show_system_status(nexus: AetherCore, factory: AgentFactory):
 
     issues = []  # Track any problems for the health summary
 
-    # ── Aether Core ──────────────────────────────────────────────────────────
+    # Aether Core
     console.print("\n[bold cyan]═══ Aether Core ═══[/bold cyan]")
     status = nexus.get_status()
 
@@ -65,7 +65,7 @@ def show_system_status(nexus: AetherCore, factory: AgentFactory):
     if healthy_count == 0:
         issues.append("No providers are healthy")
 
-    # ── Factory ─────────────────────────────────────────────────────────────
+    # Factory
     console.print("\n[bold cyan]═══ The Factory ═══[/bold cyan]")
     try:
         agents       = factory.registry.get_all_agents()
@@ -80,7 +80,7 @@ def show_system_status(nexus: AetherCore, factory: AgentFactory):
         print_warning(f"Factory status unavailable: {str(e)}")
         issues.append(f"Factory: {str(e)}")
 
-    # ── Memory Tier ──────────────────────────────────────────────────────────
+    # Memory Tier
     console.print("\n[bold cyan]═══ The Memory Tier ═══[/bold cyan]")
     try:
         memory_store = get_episodic_memory()
@@ -103,7 +103,7 @@ def show_system_status(nexus: AetherCore, factory: AgentFactory):
         print_warning(f"Memory Tier status unavailable: {str(e)}")
         issues.append(f"Memory: {str(e)}")
 
-    # ── Chat History ─────────────────────────────────────────────────────────
+    # Chat History
     console.print("\n[bold cyan]═══ Chat History ═══[/bold cyan]")
     try:
         from core.memory.history_manager import HistoryManager
@@ -131,7 +131,7 @@ def show_system_status(nexus: AetherCore, factory: AgentFactory):
     except Exception as e:
         print_warning(f"History Manager unavailable: {str(e)}")
 
-    # ── Discord Worker ────────────────────────────────────────────────────────
+    # Discord Worker
     console.print("\n[bold cyan]═══ Discord Worker ═══[/bold cyan]")
     try:
         token = os.environ.get("DISCORD_TOKEN", "").strip()
@@ -165,7 +165,7 @@ def show_system_status(nexus: AetherCore, factory: AgentFactory):
     except Exception as e:
         print_warning(f"Discord status check failed: {str(e)}")
 
-    # ── Companions ───────────────────────────────────────────────────────────
+    # Companions
     console.print("\n[bold cyan]═══ Companions ═══[/bold cyan]")
     try:
         from core.companions.registry import COMPANIONS
@@ -186,7 +186,7 @@ def show_system_status(nexus: AetherCore, factory: AgentFactory):
         print_warning(f"Companion registry unavailable: {str(e)}")
         issues.append(f"Companions: {str(e)}")
 
-    # ── Overall Health ────────────────────────────────────────────────────────
+    # Overall Health
     console.print("\n" + "═" * 50)
 
     if not issues:

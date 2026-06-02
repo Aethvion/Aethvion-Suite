@@ -31,7 +31,7 @@
   --font-code:     'JetBrains Mono', 'Consolas', monospace;
 }
 
-/* ── Reset & base ─────────────────────────────────────────────── */
+/* Reset & base */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -84,7 +84,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 
-/* ── App grid ─────────────────────────────────────────────────── */
+/* App grid */
 #app {
   display: grid;
   grid-template-rows: var(--topbar-h) var(--tabbar-h) 1fr var(--bottom-h) var(--statusbar-h);
@@ -92,7 +92,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
   overflow: hidden;
 }
 
-/* ── Topbar ───────────────────────────────────────────────────── */
+/* Topbar */
 #topbar {
   display: flex;
   align-items: center;
@@ -192,7 +192,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 .model-sel optgroup { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; }
 .model-sel option   { font-size: 0.82rem; color: var(--text-primary); }
 
-/* ── Tab bar ──────────────────────────────────────────────────── */
+/* Tab bar */
 #tabBar {
   display: flex;
   align-items: stretch;
@@ -249,14 +249,14 @@ input:focus, textarea:focus { border-color: var(--accent); }
 }
 .new-tab-btn:hover { color: var(--text-primary); }
 
-/* ── Main area ────────────────────────────────────────────────── */
+/* Main area */
 #mainArea {
   display: flex;
   overflow: hidden;
   background: var(--bg-primary);
 }
 
-/* ── Shared sidebar styles ────────────────────────────────────── */
+/* Shared sidebar styles */
 #fileTree, #aiPanel {
   display: flex;
   flex-direction: column;
@@ -302,7 +302,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 }
 .sidebar-actions button:hover { background: var(--bg-hover); color: var(--text-primary); }
 
-/* ── Resize handles ────────────────────────────────────────────── */
+/* Resize handles */
 .resize-handle {
   width: 4px;
   background: var(--border);
@@ -312,7 +312,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 }
 .resize-handle:hover, .resize-handle.dragging { background: var(--accent); }
 
-/* ── File tree ────────────────────────────────────────────────── */
+/* File tree */
 #treeRoot { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 4px 0; }
 
 .tree-item {
@@ -368,7 +368,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
   outline: none;
 }
 
-/* ── Editor area ──────────────────────────────────────────────── */
+/* Editor area */
 #editorArea {
   flex: 1;
   display: flex;
@@ -380,7 +380,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 
 #monacoContainer { flex: 1; overflow: hidden; }
 
-/* ── Welcome screen ───────────────────────────────────────────── */
+/* Welcome screen */
 #welcomeScreen {
   flex: 1;
   display: flex;
@@ -444,7 +444,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
   color: var(--text-secondary);
 }
 
-/* ── AI Panel ─────────────────────────────────────────────────── */
+/* AI Panel */
 #aiPanel { position: relative; }
 
 #aiQuickActions {
@@ -594,7 +594,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 .chat-aux-btn:hover { color: var(--text-secondary); border-color: var(--border-bright); }
 .chat-aux-btn-active { color: var(--accent-hover) !important; border-color: var(--accent) !important; background: var(--accent-dim); }
 
-/* ── Message action buttons ──────────────────────────────────── */
+/* Message action buttons */
 .chat-msg-actions {
   display: flex;
   gap: 4px;
@@ -617,7 +617,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 }
 .chat-action-btn:hover { color: var(--text-secondary); background: var(--bg-hover); }
 
-/* ── Bottom panel ─────────────────────────────────────────────── */
+/* Bottom panel */
 #bottomPanel {
   display: flex;
   flex-direction: column;
@@ -680,7 +680,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 
 .no-problems { color: var(--text-dim); font-size: 12px; }
 
-/* ── Modals ───────────────────────────────────────────────────── */
+/* Modals */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -801,7 +801,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 }
 .btn-secondary:hover { background: var(--bg-tertiary); }
 
-/* ── Context menu ─────────────────────────────────────────────── */
+/* Context menu */
 #contextMenu {
   position: fixed;
   z-index: 9500;
@@ -829,7 +829,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 .ctx-item.ctx-danger i { color: var(--error); }
 .ctx-sep { height: 1px; background: var(--border); margin: 3px 0; }
 
-/* ── Move folder picker ───────────────────────────────────────── */
+/* Move folder picker */
 .move-folder-row {
   padding: 5px 8px;
   font-size: 12px;
@@ -847,7 +847,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
   color: var(--accent-primary);
 }
 
-/* ── Toast ────────────────────────────────────────────────────── */
+/* Toast */
 #toastContainer {
   position: fixed;
   bottom: 24px;
@@ -882,7 +882,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 @keyframes toastIn  { from { opacity:0; transform:translateX(20px); } to   { opacity:1; transform:translateX(0); } }
 @keyframes toastOut { from { opacity:1; transform:translateX(0); }    to   { opacity:0; transform:translateX(20px); } }
 
-/* ── Status bar ───────────────────────────────────────────────── */
+/* Status bar */
 #statusBar {
   display: flex;
   align-items: center;
@@ -911,7 +911,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 .sb-dirty  { color: #fbbf24; font-size: 14px; line-height: 1; padding: 0 2px; }
 .sb-encoding { opacity: 0.7; }
 
-/* ── File palette (Ctrl+P) ────────────────────────────────────── */
+/* File palette (Ctrl+P) */
 #filePalette {
   position: fixed;
   inset: 0;
@@ -965,7 +965,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; text-align: right; }
 .palette-empty { padding: 20px 14px; color: var(--text-dim); font-size: 13px; text-align: center; }
 
-/* ── Code block action buttons (in AI chat) ───────────────────── */
+/* Code block action buttons (in AI chat) */
 .code-block-wrap {
   margin: 6px 0;
   border: 1px solid var(--border);
@@ -989,7 +989,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
   letter-spacing: 0.06em;
   font-family: var(--font-code);
 }
-/* ── File Write Card (FWC) — collapsed file blocks in AI chat ─── */
+/* File Write Card (FWC) — collapsed file blocks in AI chat */
 .fwc {
   margin: 8px 0;
   border: 1px solid rgba(99,102,241,0.3);
@@ -1093,7 +1093,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 }
 .fwc-body pre code { background: none; padding: 0; }
 
-/* ── Python-exec cards ────────────────────────────────────────────────────── */
+/* Python-exec cards */
 .exec-card {
   background: #0d1117;
   border: 1px solid rgba(124,134,255,0.3);
@@ -1218,7 +1218,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 .chat-bubble .code-block-wrap pre code,
 .code-block-wrap pre code { background: none; padding: 0; }
 
-/* ── Thread bar ──────────────────────────────────────────────── */
+/* Thread bar */
 #threadBar {
   display: flex;
   align-items: center;
@@ -1323,7 +1323,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
 }
 .thread-date { font-size: 9px; color: var(--text-dim); flex-shrink: 0; }
 
-/* ── Project context notes ────────────────────────────────────── */
+/* Project context notes */
 #aiContextPanel {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;

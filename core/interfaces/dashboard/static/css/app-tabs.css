@@ -456,7 +456,7 @@ body {
     font-size: 0.95rem;
 }
 
-/* ── quit button ─────────────────────────────────────────────────────────── */
+/* quit button */
 .atb-quit-btn {
     display: flex;
     align-items: center;

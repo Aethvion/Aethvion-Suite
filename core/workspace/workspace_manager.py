@@ -67,7 +67,6 @@ class WorkspaceManager:
         
         self.workspace_root = Path(workspace_root)
         
-        # Create workspace and domain subdirectories if requested
         if create_dirs:
             self._initialize_workspace()
         
@@ -75,10 +74,7 @@ class WorkspaceManager:
     
     def _initialize_workspace(self):
         """Create workspace directory structure."""
-        # Create root
         self.workspace_root.mkdir(parents=True, exist_ok=True)
-        
-        # Create domain subdirectories
         for domain in self.ALLOWED_DOMAINS:
             domain_path = self.workspace_root / domain
             domain_path.mkdir(exist_ok=True)
@@ -95,12 +91,10 @@ class WorkspaceManager:
         Returns:
             Full path in outputfiles/{domain}/{filename}
         """
-        # Normalize domain
         if domain not in self.ALLOWED_DOMAINS:
             logger.warning(f"Unknown domain '{domain}', using 'General'")
             domain = 'General'
-        
-        # Ensure domain directory exists
+
         domain_path = self.workspace_root / domain
         domain_path.mkdir(parents=True, exist_ok=True)
         

@@ -12,7 +12,7 @@
     --brand-stability: #6D28D9;
 }
 
-/* ── global hub layout ────────────────────────────────────── */
+/* global hub layout */
 .hub-container {
     padding: 1.5rem 2rem;
     display: flex;
@@ -26,7 +26,7 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── premium header ─────────────────────────────────────────── */
+/* premium header */
 .hub-header {
     display: flex;
     justify-content: space-between;

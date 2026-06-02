@@ -120,7 +120,7 @@ class CompanionEngine:
                 bridges_block=bridges_block
             )
 
-            # ── Fallback system prompt for companions without one ──────────────
+            # Fallback system prompt for companions without one
             # Custom companions created via the UI typically have no chat_system set.
             # Build a sensible prompt from their stored base_info so they know who they are.
             if not system_prompt.strip():
@@ -140,7 +140,7 @@ class CompanionEngine:
                 parts.append(f"\n\nCurrent time: {datetime.datetime.now().strftime('%A, %d %B %Y — %H:%M')}")
                 system_prompt = "".join(parts)
 
-            # ── Expression awareness ──────────────────────────────────────────
+            # Expression awareness
             # Always tell the companion what expressions it has and how to signal them.
             # The engine strips <expression>...</expression> tags from the final content
             # and uses them to update the portrait image shown in the UI.
@@ -159,7 +159,7 @@ class CompanionEngine:
                     f"\nChoose the expression that best matches your current emotional state or the tone of your reply."
                 )
 
-            # ── Persistent memory instructions ───────────────────────────────
+            # Persistent memory instructions
             # Only appended when memory updates are enabled for this companion.
             # Tells the LLM exactly how to persist data so update_from_xml can find it.
             if capabilities.get("memory_updates_enabled", True):
@@ -187,7 +187,7 @@ class CompanionEngine:
                     "\n  - Do not emit the block just to confirm something you already knew"
                 )
 
-            # ── Multi-message style ───────────────────────────────────────────
+            # Multi-message style
             # Companions split responses into separate chat bubbles using <break>.
             # This is a core personality feature — use it actively to feel natural and human.
             system_prompt += (
@@ -212,7 +212,7 @@ class CompanionEngine:
             model = get_preferences_manager().get(config.id, {}).get("model", config.default_model)
             pm = get_provider_manager()
 
-            # ── Pre-flight validation: catch missing model / API key early ─────
+            # Pre-flight validation: catch missing model / API key early
             if not model:
                 yield json.dumps({
                     "type": "error",
@@ -249,7 +249,7 @@ class CompanionEngine:
                     ),
                 }) + "\n"
                 return
-            # ── end validation ────────────────────────────────────────────────
+            # end validation
 
             trace_id = f"{config.id}-chat-{uuid.uuid4().hex[:8]}"
 

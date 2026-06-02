@@ -26,7 +26,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from core.utils import fastapi_utils
 
-# ── Path setup ────────────────────────────────────────────────────────────────
+# Path setup
 MODULE_DIR   = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(MODULE_DIR, "..", ".."))
 for _p in (MODULE_DIR, PROJECT_ROOT):
@@ -36,7 +36,7 @@ for _p in (MODULE_DIR, PROJECT_ROOT):
 from dotenv import load_dotenv
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
-# ── Optional dependencies ─────────────────────────────────────────────────────
+# Optional dependencies
 try:
     import cpuinfo as _cpuinfo
     HAS_CPUINFO = True
@@ -49,7 +49,7 @@ try:
 except ImportError:
     HAS_GPUTIL = False
 
-# ── Subprocess helper: suppress CMD flashes on Windows ────────────────────────
+# Subprocess helper: suppress CMD flashes on Windows
 # GPUtil calls nvidia-smi via subprocess.Popen every poll cycle.  Without this
 # fix each call briefly flashes a black CMD window on Windows.
 import contextlib as _contextlib
@@ -81,7 +81,7 @@ except Exception:
     HAS_WMI  = False
     _wmi     = None
 
-# ── FastAPI app ───────────────────────────────────────────────────────────────
+# FastAPI app
 app = FastAPI(title="Aethvion Hardware Info", version="1.0.0")
 fastapi_utils.add_dev_cache_control(app)
 app.add_middleware(
@@ -92,11 +92,11 @@ app.add_middleware(
 BASE_DIR   = Path(__file__).parent
 VIEWER_DIR = BASE_DIR / "viewer"
 
-# ── Static system info (gathered once at startup) ─────────────────────────────
+# Static system info (gathered once at startup)
 def _get_static_info() -> dict:
     uname = platform.uname()
 
-    # ── CPU ─────────────────────────────────────────────────────────────────
+    # CPU
     cpu_name = uname.processor or platform.processor() or "Unknown CPU"
     cpu: dict = {
         "name":           cpu_name,
@@ -131,7 +131,7 @@ def _get_static_info() -> dict:
         except Exception:
             pass
 
-    # ── Memory ──────────────────────────────────────────────────────────────
+    # Memory
     vm   = psutil.virtual_memory()
     swap = psutil.swap_memory()
     memory = {
@@ -140,7 +140,7 @@ def _get_static_info() -> dict:
         "swap_total_gb":  round(swap.total / 1073741824, 1),
     }
 
-    # ── Disks ───────────────────────────────────────────────────────────────
+    # Disks
     disks = []
     for part in psutil.disk_partitions(all=False):
         try:
@@ -157,7 +157,7 @@ def _get_static_info() -> dict:
         except (PermissionError, OSError):
             pass
 
-    # ── GPU ─────────────────────────────────────────────────────────────────
+    # GPU
     gpus = []
     if HAS_GPUTIL:
         try:
@@ -184,7 +184,7 @@ def _get_static_info() -> dict:
         except Exception:
             pass
 
-    # ── Network interfaces ──────────────────────────────────────────────────
+    # Network interfaces
     nets = []
     addrs_map = psutil.net_if_addrs()
     stats_map = psutil.net_if_stats()
@@ -198,7 +198,7 @@ def _get_static_info() -> dict:
             "ipv4":       ipv4[0] if ipv4 else "",
         })
 
-    # ── Motherboard / OS ────────────────────────────────────────────────────
+    # Motherboard / OS
     board = {}
     if HAS_WMI:
         try:
@@ -225,7 +225,7 @@ def _get_static_info() -> dict:
 
 STATIC_INFO: dict = {}
 
-# ── Live data collector ───────────────────────────────────────────────────────
+# Live data collector
 class LiveCollector:
     """Collects a live hardware snapshot (non-blocking, uses delta since last call)."""
 
@@ -252,7 +252,7 @@ class LiveCollector:
         dt  = max(now - self._prev_time, 0.001)
         self._prev_time = now
 
-        # ── CPU ────────────────────────────────────────────────────────────
+        # CPU
         per_core = psutil.cpu_percent(percpu=True)
         total_pct = round(sum(per_core) / len(per_core), 1) if per_core else 0.0
         cpu_freq_mhz = 0
@@ -263,7 +263,7 @@ class LiveCollector:
         except Exception:
             pass
 
-        # ── Temperatures ───────────────────────────────────────────────────
+        # Temperatures
         cpu_temp = None
         all_temps: dict[str, list] = {}
         try:
@@ -294,11 +294,11 @@ class LiveCollector:
             except Exception:
                 pass
 
-        # ── Memory ─────────────────────────────────────────────────────────
+        # Memory
         vm   = psutil.virtual_memory()
         swap = psutil.swap_memory()
 
-        # ── Disk I/O ───────────────────────────────────────────────────────
+        # Disk I/O
         disk_r = disk_w = 0.0
         curr_disk = self._safe_disk_io()
         if curr_disk and self._prev_disk:
@@ -306,7 +306,7 @@ class LiveCollector:
             disk_w = max(0.0, (curr_disk.write_bytes - self._prev_disk.write_bytes) / dt / 1048576)
         self._prev_disk = curr_disk
 
-        # ── Network I/O ────────────────────────────────────────────────────
+        # Network I/O
         net_up = net_down = 0.0
         try:
             curr_net = psutil.net_io_counters()
@@ -316,7 +316,7 @@ class LiveCollector:
         except Exception:
             pass
 
-        # ── GPU ────────────────────────────────────────────────────────────
+        # GPU
         gpus = []
         if HAS_GPUTIL:
             try:
@@ -333,7 +333,7 @@ class LiveCollector:
             except Exception:
                 pass
 
-        # ── Battery ────────────────────────────────────────────────────────
+        # Battery
         battery = None
         try:
             bat = psutil.sensors_battery()
@@ -351,7 +351,7 @@ class LiveCollector:
         except Exception:
             pass
 
-        # ── Top processes ──────────────────────────────────────────────────
+        # Top processes
         procs = []
         try:
             raw_procs = sorted(
@@ -410,7 +410,7 @@ def _get_collector() -> LiveCollector:
         _collector = LiveCollector()
     return _collector
 
-# ── Endpoints ─────────────────────────────────────────────────────────────────
+# Endpoints
 @app.get("/api/info")
 async def get_info():
     return JSONResponse(STATIC_INFO)
@@ -433,7 +433,7 @@ async def ws_live(ws: WebSocket):
     except (WebSocketDisconnect, Exception):
         pass
 
-# ── Static files + root ───────────────────────────────────────────────────────
+# Static files + root
 app.mount("/viewer", StaticFiles(directory=str(VIEWER_DIR)), name="viewer")
 
 @app.get("/", response_class=HTMLResponse)
@@ -444,7 +444,7 @@ async def index():
 async def favicon():
     return JSONResponse({"ok": True})
 
-# ── Launch ────────────────────────────────────────────────────────────────────
+# Launch
 def launch():
     global STATIC_INFO
     print("[Hardware Info] Gathering static system info…")

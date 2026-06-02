@@ -64,7 +64,7 @@ _WEBHOOKS_FILE  = _ROOT / "data" / "config" / "webhooks.json"
 _DEFAULT_TIMEOUT = int(os.getenv("AETHVION_WEBHOOK_TIMEOUT", "30"))
 
 
-# ── Schemas ───────────────────────────────────────────────────────────────────
+# Schemas
 
 class WebhookResult:
     def __init__(self, *, success: bool, status_code: int, body: Any,
@@ -113,7 +113,7 @@ class TriggerByIdRequest(BaseModel):
     timeout: int = _DEFAULT_TIMEOUT
 
 
-# ── Persistence helpers ───────────────────────────────────────────────────────
+# Persistence helpers
 
 def _load_webhooks() -> Dict[str, Dict]:
     return load_json(_WEBHOOKS_FILE, default={})
@@ -123,7 +123,7 @@ def _save_webhooks(data: Dict[str, Dict]) -> None:
     atomic_json_write(_WEBHOOKS_FILE, data)
 
 
-# ── Public Python API ─────────────────────────────────────────────────────────
+# Public Python API
 
 def register_webhook(
     name: str,
@@ -247,7 +247,7 @@ def trigger_webhook(
                               webhook_id=resolved_id, url=resolved_url, error=str(e))
 
 
-# ── FastAPI routes ────────────────────────────────────────────────────────────
+# FastAPI routes
 
 @router.get("")
 async def list_webhooks():

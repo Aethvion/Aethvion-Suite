@@ -40,7 +40,7 @@ class AgentState:
 
         self._load()
 
-    # ── persistence ───────────────────────────────────────────────
+    # persistence
 
     def _load(self) -> None:
         if not self.state_path:
@@ -79,7 +79,7 @@ class AgentState:
         except Exception as e:
             logger.warning(f"[AgentState] Could not save state to {self.state_path}: {e}")
 
-    # ── file cache ────────────────────────────────────────────────
+    # file cache
 
     def is_cached(self, path: str) -> bool:
         return path in self.file_cache
@@ -148,7 +148,7 @@ class AgentState:
         for p in stale:
             del self.file_cache[p]
 
-    # ── plan ──────────────────────────────────────────────────────
+    # plan
 
     def set_plan(self, steps: List[str]) -> None:
         self.plan = [{"text": s, "done": False} for s in steps]
@@ -167,7 +167,7 @@ class AgentState:
                 item["done"] = True
                 return
 
-    # ── prior task history ────────────────────────────────────────
+    # prior task history
 
     def record_task(self, task: str, summary: str) -> None:
         """Append a completed task to the thread history (capped at 20)."""
@@ -178,7 +178,7 @@ class AgentState:
         if len(self.prior_tasks) > 20:
             self.prior_tasks = self.prior_tasks[-20:]
 
-    # ── notes ─────────────────────────────────────────────────────
+    # notes
 
     def update_file_digest(self, path: str, digest: str) -> None:
         """Store or update the semantic digest for a file.
@@ -195,7 +195,7 @@ class AgentState:
         if len(self.notes) > self._MAX_NOTES:
             self.notes = self.notes[-self._MAX_NOTES:]
 
-    # ── action log ────────────────────────────────────────────────
+    # action log
 
     def log_action(self, iteration: int, action_type: str, detail: str) -> None:
         self.action_log.append({
@@ -207,7 +207,7 @@ class AgentState:
         if len(self.action_log) > self._MAX_LOG:
             self.action_log = self.action_log[-self._MAX_LOG:]
 
-    # ── context builder ───────────────────────────────────────────
+    # context builder
 
     def build_context(self, current_turn: int = 0) -> str:
         """Return a compact context string injected into every prompt."""

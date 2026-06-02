@@ -1,4 +1,4 @@
-// ===== THREAD MANAGEMENT =====
+// THREAD MANAGEMENT
 
 window.currentThreadId = 'default';
 window.threads = {};
@@ -94,8 +94,6 @@ function initThreadManagement() {
 
     const chatInput = document.getElementById('chat-input');
     if (chatInput) {
-        // Clone/replace is risky for input if it has other bindings, but for now we just add listener
-        // Actually, let's just add the listener. The app.js one is commented out.
         chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -376,14 +374,14 @@ function renderThreadMessages() {
         }
         messageDiv.innerHTML = msg.html;
 
-        // ── Syntax highlighting ──────────────────────────────────────────────
+        // Syntax highlighting
         if (typeof hljs !== 'undefined') {
             messageDiv.querySelectorAll('pre code').forEach(block => {
                 hljs.highlightElement(block);
             });
         }
 
-        // ── Code copy buttons ────────────────────────────────────────────────
+        // Code copy buttons
         messageDiv.querySelectorAll('pre').forEach(pre => {
             if (pre.querySelector('.code-copy-btn')) return; // already injected
             const btn = document.createElement('button');
@@ -406,7 +404,7 @@ function renderThreadMessages() {
             pre.appendChild(btn);
         });
 
-        // ── Message hover action bar ─────────────────────────────────────────
+        // Message hover action bar
         if (msg.role === 'user' || msg.role === 'assistant') {
             const actions = document.createElement('div');
             actions.className = 'msg-actions';
@@ -743,7 +741,7 @@ async function loadThreadMessages(threadId) {
     }
 }
 
-// ─── Relative time helper ─────────────────────────────────────────
+// Relative time helper
 function relativeTime(dateStr) {
     if (!dateStr) return '';
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -774,7 +772,7 @@ function getThreadGroupName(dateStr) {
     return 'More than a year';
 }
 
-// ─── Thread search wiring (called once after DOM ready) ───────────
+// Thread search wiring (called once after DOM ready)
 function initThreadSearch() {
     const input = document.getElementById('threads-search');
     if (!input || input.dataset.bound) return;
@@ -1198,7 +1196,7 @@ async function sendMessage() {
 
     if (!message && !window._mainChatAttachedFile) return;
 
-    // --- Model / API-key validation (fail fast, before any UI changes) ---
+    // Model / API-key validation (fail fast, before any UI changes)
     const _modelSelectEl = document.getElementById('model-select');
     const _modelIdEarly  = _modelSelectEl ? _modelSelectEl.value : null;
     if (!_modelIdEarly) {
@@ -1220,7 +1218,7 @@ async function sendMessage() {
         );
         return;
     }
-    // --- end validation ---
+    // end validation
 
     // Lock UI immediately to prevent double-send
     setSendLoading(true);
@@ -1374,7 +1372,7 @@ function cancelTask(taskId) {
 }
 window.cancelTask = cancelTask;
 
-// ── Token streaming for chat_only tasks ──────────────────────────────────────
+// Token streaming for chat_only tasks
 
 /**
  * Open an SSE stream for a submitted chat task and show tokens in real time.
@@ -1782,9 +1780,7 @@ async function saveThreadSettings(threadId) {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // FOLDER MANAGEMENT
-// ═══════════════════════════════════════════════════════════════════════════
 
 window.folders = {};  // { folderId: folderObject }
 let _folderCollapsed = {};  // { folderId: bool }  — persisted in localStorage
@@ -1803,7 +1799,7 @@ function _loadFolderCollapseState() {
     } catch(e) { _folderCollapsed = {}; }
 }
 
-// ── Load folders from API ─────────────────────────────────────────────────
+// Load folders from API
 async function loadFolders() {
     try {
         const res = await fetch('/api/tasks/folders');
@@ -1818,7 +1814,7 @@ async function loadFolders() {
     }
 }
 
-// ── Show / hide the inline folder settings view ───────────────────────────
+// Show / hide the inline folder settings view
 function _openFolderView(folderId) {
     const view         = document.getElementById('folder-settings-view');
     const chatMessages = document.getElementById('chat-messages');
@@ -1878,7 +1874,7 @@ function _getSelectedFolderViewColor() {
     return sel ? sel.dataset.color : '#6366f1';
 }
 
-// ── Create a new folder ───────────────────────────────────────────────────
+// Create a new folder
 async function createFolder() {
     _openFolderView(null);
 }
@@ -1953,7 +1949,7 @@ async function deleteFolderById(folderId) {
     }
 }
 
-// ── Move thread to a folder ───────────────────────────────────────────────
+// Move thread to a folder
 async function moveThreadToFolder(threadId, folderId) {
     if (threads[threadId]) threads[threadId].folder_id = folderId || null;
     renderThreadList();
@@ -1969,7 +1965,7 @@ async function moveThreadToFolder(threadId, folderId) {
     }
 }
 
-// ── Folder picker popup (shown when clicking the folder icon on a thread) ─
+// Folder picker popup (shown when clicking the folder icon on a thread)
 function _showFolderPicker(threadId, anchorEl) {
     // Dismiss existing picker
     _dismissFolderPicker();
@@ -2044,7 +2040,7 @@ function _dismissFolderPicker() {
     if (_folderPickerCleanup) { _folderPickerCleanup(); _folderPickerCleanup = null; }
 }
 
-// ── Wire up inline folder settings view buttons ───────────────────────────
+// Wire up inline folder settings view buttons
 function _initFolderView() {
     _loadFolderCollapseState();
 
@@ -2065,7 +2061,7 @@ function _initFolderView() {
     });
 }
 
-// ── Updated renderThreadList — folders first, then unfoldered ────────────
+// Updated renderThreadList — folders first, then unfoldered
 // (replaces the existing renderThreadList declared earlier in this file)
 const _origRenderThreadList = renderThreadList;
 renderThreadList = function() {
@@ -2077,7 +2073,7 @@ renderThreadList = function() {
     const template = document.getElementById('thread-item-template');
     const hasFolders = Object.keys(folders).length > 0;
 
-    // ── 1. Render folders ───────────────────────────────────────────────
+    // 1. Render folders
     if (hasFolders) {
         const folderTemplate = document.getElementById('folder-group-template');
         const sortedFolders = Object.values(folders).sort((a, b) => a.title.localeCompare(b.title));
@@ -2130,7 +2126,7 @@ renderThreadList = function() {
         });
     }
 
-    // ── 2. Render unfoldered threads ──────────────────────────────────
+    // 2. Render unfoldered threads
     const unfolderedThreads = Object.values(threads).filter(t =>
         !t.id.startsWith('agents-') && (!t.folder_id || !folders[t.folder_id])
     ).sort((a, b) => {
@@ -2167,7 +2163,7 @@ renderThreadList = function() {
         fragment.appendChild(_buildThreadItem(template, thread, null));
     });
 
-    // ── Empty state ──────────────────────────────────────────────────
+    // Empty state
     const totalVisible = unfolderedThreads.length + (hasFolders ? fragment.querySelectorAll('.thread-item').length : 0);
     if (totalVisible === 0 && !hasFolders) {
         // PERF & UI FIX: If already showing empty state, don't re-render to avoid restarting CSS animations
@@ -2187,7 +2183,7 @@ renderThreadList = function() {
     threadsList.replaceChildren(fragment);
 };
 
-// ── Build a single thread DOM element ────────────────────────────────────
+// Build a single thread DOM element
 function _buildThreadItem(template, thread, folder) {
     const clone = template.content.cloneNode(true);
     const threadItem = clone.querySelector('.thread-item');
@@ -2215,7 +2211,7 @@ function _buildThreadItem(template, thread, folder) {
         previewEl.title = previewText;
     }
 
-    // ── Thread metadata row ──────────────────────────────────────────────────
+    // Thread metadata row
     const msgCount = msgs.filter(m => m.role === 'user' || m.role === 'assistant').length;
     const metaCountEl = clone.querySelector('.thread-meta-count');
     const metaTimeEl  = clone.querySelector('.thread-meta-time');
@@ -2358,7 +2354,7 @@ function _buildThreadItem(template, thread, folder) {
     return clone;
 }
 
-// ── Hook into initThreadManagement ────────────────────────────────────────
+// Hook into initThreadManagement
 // Patch loadThreads to also fetch folders so both are ready before first render.
 const _origLoadThreads = loadThreads;
 loadThreads = async function() {

@@ -9,7 +9,7 @@ let currentSort = { key: 'name', dir: 'asc' };
 let previousSort = { key: 'name', dir: 'asc' };
 let searchDebounceTimer = null;
 
-// ── Files panel init (deferred until partial is injected) ────────────────────
+// Files panel init (deferred until partial is injected)
 let _filesInitDone = false;
 
 function _initFilesPanel() {

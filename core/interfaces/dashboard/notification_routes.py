@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 
-# ── Storage path ──────────────────────────────────────────────────────────────
+# Storage path
 NOTIFICATIONS_DIR = LOGS_NOTIFICATIONS
 _lock = threading.Lock()
 
@@ -30,7 +30,7 @@ _active: Dict[str, Dict[str, Any]] = {}   # id -> notification
 _loaded_today = False
 
 
-# ── Pydantic models ───────────────────────────────────────────────────────────
+# Pydantic models
 
 class NotificationTarget(BaseModel):
     """Optional navigation target — what to open when the notification is clicked."""
@@ -46,7 +46,7 @@ class PushNotificationRequest(BaseModel):
     target: Optional[NotificationTarget] = None
 
 
-# ── Storage helpers ───────────────────────────────────────────────────────────
+# Storage helpers
 
 def _day_path(dt: Optional[datetime] = None) -> Path:
     dt = dt or datetime.utcnow()
@@ -118,7 +118,7 @@ def _update_in_day(notification_id: str, updates: Dict[str, Any]) -> None:
         _save_day(entries)
 
 
-# ── Internal Python API — call this from other modules ────────────────────────
+# Internal Python API — call this from other modules
 
 def notify(
     title: str,
@@ -169,7 +169,7 @@ def notify(
     return notification
 
 
-# ── API Endpoints ─────────────────────────────────────────────────────────────
+# API Endpoints
 
 @router.post("/", response_model=Dict[str, Any], summary="Push a new notification")
 async def push_notification(req: PushNotificationRequest):

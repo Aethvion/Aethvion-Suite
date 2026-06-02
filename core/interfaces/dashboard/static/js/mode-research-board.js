@@ -169,8 +169,6 @@ window.removeBoardMember = function(id) {
 }
 
 window.openAddMemberSelector = function() {
-    // Simple prompt-based or inline select for now, but we want it premium.
-    // Let's create a custom dropdown/overlay if possible.
     const unselected = rbAllPersonas.filter(p => !rbSelectedMemberIds.includes(p.id));
     if (unselected.length === 0) {
         showToast('No other personas available. Create one in the Sandbox!', 'info');

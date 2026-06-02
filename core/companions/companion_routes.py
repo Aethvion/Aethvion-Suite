@@ -116,7 +116,7 @@ async def upload_context(companion_id: str, file: UploadFile = File(...)):
 async def get_expressions(companion_id: str):
     return _get_cfg(companion_id).expressions
 
-# --- Managerial Routes (Workspaces & Bridges) ---
+# Managerial Routes (Workspaces & Bridges)
 
 @router.get("/{companion_id}/workspaces")
 async def list_companion_workspaces(companion_id: str):

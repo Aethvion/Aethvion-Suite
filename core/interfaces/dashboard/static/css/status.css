@@ -3,7 +3,7 @@
     color: var(--text);
 }
 
-/* ===== system status panel ===== */
+/* system status panel */
 
 .status-meta {
     display: flex;
@@ -281,7 +281,7 @@
     border-left: none;
 }
 
-/* --- split button dropdown --- */
+/* split button dropdown */
 .split-btn-group {
     display: flex;
     align-items: center;

@@ -12,7 +12,7 @@
     const API        = '/api/aethviondb';
     const BROWSE_API = '/api/agents/browse/native';
 
-    // ── State ─────────────────────────────────────────────────────────────────
+    // State
     let _currentEntityId     = null;
     let _currentEntityStatus = null;  // 'stub' | 'active' — set when entity detail opens
     let _currentEntity       = null;  // full entity object, cached when detail opens
@@ -28,7 +28,7 @@
     let _sortDir             = 'asc';    // 'asc' | 'desc'
     let _lastLoadedEntities  = [];       // last raw entity page — used by column picker re-render
 
-    // ── Explorer column picker ────────────────────────────────────────────────
+    // Explorer column picker
     const _COL_DEFS = [
         { id: 'tags',    label: 'Tags',       defaultOn: true  },
         { id: 'rel',     label: 'Relations',  defaultOn: true  },
@@ -51,15 +51,15 @@
         try { localStorage.setItem(_COL_STORAGE_KEY, JSON.stringify([...set])); } catch {}
     }
 
-    // ── Databases tab state ───────────────────────────────────────────────────
+    // Databases tab state
     let _dbmData    = [];            // raw list from last /databases fetch
     let _dbmSortCol = 'lastOpened'; // active sort column
     let _dbmSortDir = 'desc';       // 'asc' | 'desc'
 
-    // ── Search state ──────────────────────────────────────────────────────────
+    // Search state
     let _searchMode = 'keyword';    // 'keyword' | 'semantic'
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // Helpers
 
     function _el(id)   { return document.getElementById(id); }
     function _show(id) { _el(id)?.classList.remove('hidden'); }
@@ -132,7 +132,7 @@
         return p.toString();
     }
 
-    // ── HTML escaping ─────────────────────────────────────────────────────────
+    // HTML escaping
 
     function _escHtml(str) {
         return String(str ?? '')
@@ -145,7 +145,7 @@
 
     function _escAttr(str) { return _escHtml(str); }
 
-    // ── View switching ────────────────────────────────────────────────────────
+    // View switching
 
     function _showEntityList() {
         _currentEntityId     = null;
@@ -214,7 +214,7 @@
         }
     }
 
-    // ── DB indicator ──────────────────────────────────────────────────────────
+    // DB indicator
 
     function _updateDbIndicator() {
         const el = _el('adb-db-indicator-name');
@@ -236,7 +236,7 @@
         localStorage.setItem('aethviondb_last_db', val);
     }
 
-    // ── Database modal ────────────────────────────────────────────────────────
+    // Database modal
 
     let _dbmSettingsName = null;   // name of DB currently shown in settings view
 
@@ -256,7 +256,7 @@
         });
     }
 
-    // ── Databases table helpers ───────────────────────────────────────────────
+    // Databases table helpers
 
     function _dbmGetAllLastOpened() {
         try { return JSON.parse(localStorage.getItem('adb_last_opened') || '{}'); }
@@ -762,7 +762,7 @@
         _show('adb-stats-hint');
     }
 
-    // ── Stats ─────────────────────────────────────────────────────────────────
+    // Stats
 
     async function _refreshStats() {
         const refreshBtn = _el('adb-refresh-btn');
@@ -814,7 +814,7 @@
         } catch { /* cached info is optional — silently ignore network/parse errors */ }
     }
 
-    // ── Entity list (primary view) ────────────────────────────────────────────
+    // Entity list (primary view)
 
     function _setFilterActive(filter) {
         document.querySelectorAll('.adb-filter-btn').forEach(btn => {
@@ -1075,7 +1075,7 @@
         </table>`;
     }
 
-    // ── Selection & bulk actions ──────────────────────────────────────────────
+    // Selection & bulk actions
 
     function _updateBulkBar() {
         const bar     = _el('adb-bulk-bar');
@@ -1143,7 +1143,7 @@
         });
     }
 
-    // ── Bulk progress helpers ─────────────────────────────────────────────────
+    // Bulk progress helpers
 
     function _bulkProgShow(label, total) {
         const prog = _el('adb-bulk-prog');
@@ -1211,7 +1211,7 @@
         }
     }
 
-    // ── Bulk operations ───────────────────────────────────────────────────────
+    // Bulk operations
 
     async function _bulkExpandStubs() {
         const ids = [..._selectedIds];
@@ -1299,7 +1299,7 @@
         }, 800);
     }
 
-    // ── Search ────────────────────────────────────────────────────────────────
+    // Search
 
     /** Toggle between keyword and semantic (vector) search modes. */
     function _vsearchToggle() {
@@ -1504,7 +1504,7 @@
         </tr>`;
     }
 
-    // ── Entity detail ─────────────────────────────────────────────────────────
+    // Entity detail
 
     function _activateEntityTab(targetId) {
         document.querySelectorAll('.adb-ev-tab').forEach(btn => {
@@ -1709,7 +1709,7 @@
         }
     }
 
-    // ── Manual entity creation ────────────────────────────────────────────────
+    // Manual entity creation
 
     function _openNewEntityModal() {
         // Reset form
@@ -1787,7 +1787,7 @@
         }
     }
 
-    // ── Models ────────────────────────────────────────────────────────────────
+    // Models
 
     async function _fetchModels() {
         const sel = _el('adb-distill-model');
@@ -1811,7 +1811,7 @@
         }
     }
 
-    // ── Distillation ──────────────────────────────────────────────────────────
+    // Distillation
 
     async function _distill() {
         const content = _el('adb-distill-text')?.value?.trim();
@@ -1858,7 +1858,7 @@
         }
     }
 
-    // ── Entity edit mode ──────────────────────────────────────────────────────
+    // Entity edit mode
 
     let _editingEntity = null; // deep clone stored when edit mode is active
 
@@ -2332,7 +2332,7 @@
         }
     }
 
-    // ── Deepen preview ────────────────────────────────────────────────────────
+    // Deepen preview
 
     function _onDpBack() {
         _hide('adb-deepen-preview');
@@ -2489,9 +2489,9 @@
         }
     }
 
-    // ── Expansion ─────────────────────────────────────────────────────────────
+    // Expansion
 
-    // ── Smart expand dropdown ─────────────────────────────────────────────────
+    // Smart expand dropdown
 
     let _expandDdOpen = false;
 
@@ -2593,7 +2593,7 @@
         } finally { _hideBusy(); }
     }
 
-    // ── Deepen button helpers ─────────────────────────────────────────────────
+    // Deepen button helpers
 
     /** Show/hide the three deepen buttons based on current entity status. */
     function _updateDeepenButtons() {
@@ -2801,7 +2801,7 @@
     // Keep _deepenCurrent as an internal alias (used by new-entity create & expand flow)
     const _deepenCurrent = _deepenThis;
 
-    // ── Validation ────────────────────────────────────────────────────────────
+    // Validation
 
     async function _validateAll(opts = {}) {
         const summaryId = opts.summaryId || 'adb-val-summary';
@@ -2826,7 +2826,7 @@
             const timelineWarn     = warnSummary.find(w => w.check === 'temporal');
             const timelineCount    = timelineWarn ? timelineWarn.count : 0;
 
-            // ── Control panel (overview + fix toggles) ───────────────────────
+            // Control panel (overview + fix toggles)
             const sumEl = _el(summaryId);
             if (sumEl) {
                 const chips = [
@@ -2880,7 +2880,7 @@
                     </div>`;
             }
 
-            // ── Issues pane ──────────────────────────────────────────────────
+            // Issues pane
             const issueEl = _el(issuesId);
             if (!issueEl) return;
 
@@ -2890,7 +2890,7 @@
                 return;
             }
 
-            // ── Helpers shared by sections ───────────────────────────────────
+            // Helpers shared by sections
             const _statusBadge = s => {
                 const cls = s === 'active' ? 'adb-val-dup-badge-active'
                           : s === 'stub'   ? 'adb-val-dup-badge-stub'
@@ -2908,7 +2908,7 @@
 
             let html = '';
 
-            // ── 1. Duplicate groups ──────────────────────────────────────────
+            // 1. Duplicate groups
             if (dupGroups.length) {
                 html += `
                 <div class="adb-val-dup-group adb-val-collapsible" data-collapsed="true">
@@ -2978,7 +2978,7 @@
                 </div>`;
             }
 
-            // ── 2. Integrity errors ──────────────────────────────────────────
+            // 2. Integrity errors
             if (errEntities.length) {
                 if (dupGroups.length) html += '<div class="adb-val-section-sep"></div>';
 
@@ -3034,7 +3034,7 @@
                 </div>`;
             }
 
-            // ── 3. Warnings summary (grouped by check type) ──────────────────
+            // 3. Warnings summary (grouped by check type)
             if (warnSummary.length) {
                 if (dupGroups.length || errEntities.length) html += '<div class="adb-val-section-sep"></div>';
                 html += `
@@ -3076,7 +3076,7 @@
                 </div>`;
             }
 
-            // ── 4. Orphan stubs ──────────────────────────────────────────────
+            // 4. Orphan stubs
             if (orphanStubs.length) {
                 if (dupGroups.length || errEntities.length || warnSummary.length) html += '<div class="adb-val-section-sep"></div>';
                 html += `
@@ -3100,7 +3100,7 @@
                 </div>`;
             }
 
-            // ── 5. Deleted files pending purge ───────────────────────────────
+            // 5. Deleted files pending purge
             if (deletedEntities.length) {
                 if (dupGroups.length || errEntities.length || warnSummary.length || orphanStubs.length) html += '<div class="adb-val-section-sep"></div>';
                 const shown = deletedEntities.slice(0, 200);
@@ -3263,7 +3263,7 @@
                 }
             });
 
-            // ── Quick fix: Fix All Broken Relations ──────────────────────────
+            // Quick fix: Fix All Broken Relations
             issueEl.querySelector('.adb-val-fix-all-rels')?.addEventListener('click', async (ev) => {
                 ev.stopPropagation();
                 const btn = ev.currentTarget;
@@ -3282,7 +3282,7 @@
                 }
             });
 
-            // ── Quick fix: Fix Broken Relations for a single entity ───────────
+            // Quick fix: Fix Broken Relations for a single entity
             issueEl.querySelectorAll('.adb-val-fix-rel-btn').forEach(btn => {
                 btn.addEventListener('click', async (ev) => {
                     ev.stopPropagation();
@@ -3328,7 +3328,7 @@
         } finally { _hideBusy(); }
     }
 
-    // ── Graph view ────────────────────────────────────────────────────────────
+    // Graph view
 
     /** Entity-type → fill colour (matches badge palette). */
     const _GRAPH_COLORS = {
@@ -3381,7 +3381,7 @@
     function _gNodeRadius(d)    { return Math.max(5, Math.min(22, 5 + (d.rel_count || 0) * 1.8)); }
     function _gEdgeColor(kind)  { return _EDGE_COLORS[kind]  || 'rgba(100,116,139,0.4)'; }
 
-    // ── D3 lazy loader ────────────────────────────────────────────────────────
+    // D3 lazy loader
 
     async function _graphLoadD3() {
         if (window.d3) return;
@@ -3394,7 +3394,7 @@
         });
     }
 
-    // ── View helpers ──────────────────────────────────────────────────────────
+    // View helpers
 
     async function _openGraph() {
         _show('adb-graph-loading');
@@ -3414,7 +3414,7 @@
         _showEntityList();
     }
 
-    // ── Data loading ──────────────────────────────────────────────────────────
+    // Data loading
 
     async function _graphLoad(entityId = null) {
         _graphFocusId = entityId;
@@ -3457,7 +3457,7 @@
         }
     }
 
-    // ── Render (D3 force graph) ───────────────────────────────────────────────
+    // Render (D3 force graph)
 
     function _graphRender(data) {
         if (_graphSim) { _graphSim.stop(); _graphSim = null; }
@@ -3473,7 +3473,7 @@
 
         svg.selectAll('*').remove();
 
-        // ── Defs: arrowhead markers + edge glow filter ──
+        // Defs: arrowhead markers + edge glow filter
         const defs = svg.append('defs');
 
         // Default arrow (muted)
@@ -3511,7 +3511,7 @@
         glowMerge.append('feMergeNode').attr('in', 'blur');
         glowMerge.append('feMergeNode').attr('in', 'SourceGraphic');
 
-        // ── Zoom / pan ──
+        // Zoom / pan
         const g    = svg.append('g');
         const zoom = d3.zoom()
             .scaleExtent([0.04, 8])
@@ -3519,12 +3519,12 @@
         svg.call(zoom)
             .on('dblclick.zoom', null);  // disable double-click zoom (we use it to open entity)
 
-        // ── Node and link data (cloned so D3 can mutate source/target) ──
+        // Node and link data (cloned so D3 can mutate source/target)
         const nodes = data.nodes.map(d => ({ ...d }));
         const links = data.edges.map(d => ({ ...d }));
         _graphLinkData = links;
 
-        // ── Edges ──
+        // Edges
         const linkG   = g.append('g').attr('class', 'adb-graph-link-g');
         const linkEl  = linkG.selectAll('line')
             .data(links)
@@ -3535,7 +3535,7 @@
             .attr('marker-end',     'url(#adb-graph-arrow)');
         _graphLinkSel = linkEl;
 
-        // ── Nodes ──
+        // Nodes
         const nodeG  = g.append('g').attr('class', 'adb-graph-node-g');
         const nodeEl = nodeG.selectAll('circle')
             .data(nodes)
@@ -3569,7 +3569,7 @@
             .on('click', (evt, d)  => { evt.stopPropagation(); _graphSelectNode(d); });
         _graphNodeSel = nodeEl;
 
-        // ── Labels ──
+        // Labels
         const showLbls = _el('adb-graph-labels-cb')?.checked ?? true;
         const labelEl  = g.append('g').attr('class', 'adb-graph-label-g')
             .attr('display', showLbls ? null : 'none')
@@ -3589,7 +3589,7 @@
         // Dismiss card on background click
         svg.on('click', () => _hide('adb-graph-card'));
 
-        // ── Force simulation ──
+        // Force simulation
         _graphSim = d3.forceSimulation(nodes)
             .force('link',      d3.forceLink(links).id(d => d.id).distance(85).strength(0.45))
             .force('charge',    d3.forceManyBody().strength(nodes.length > 150 ? -80 : -200))
@@ -3637,13 +3637,13 @@
         });
     }
 
-    // ── Hover highlight ───────────────────────────────────────────────────────
+    // Hover highlight
 
     function _graphHighlight(focusId, on) {
         if (!_graphNodeSel || !_graphLinkSel) return;
 
         if (!on || !focusId) {
-            // ── Reset to baseline ──────────────────────────────────────────
+            // Reset to baseline
             _graphNodeSel
                 .attr('opacity',        1)
                 .attr('stroke',         d => _gNodeColor(d.type))
@@ -3659,7 +3659,7 @@
             return;
         }
 
-        // ── Build neighbour sets ───────────────────────────────────────────
+        // Build neighbour sets
         const connected = new Set([focusId]);
         (_graphLinkData || []).forEach(d => {
             const s = typeof d.source === 'object' ? d.source.id : d.source;
@@ -3674,7 +3674,7 @@
             return s === focusId || t === focusId;
         };
 
-        // ── Nodes: no dimming — white ring on hovered node, slightly bolder ──
+        // Nodes: no dimming — white ring on hovered node, slightly bolder
         // ring on direct neighbours; everything else stays fully visible.
         _graphNodeSel
             .attr('opacity',        1)
@@ -3682,7 +3682,7 @@
             .attr('stroke-width',   d => d.id === focusId ? 3.5 : connected.has(d.id) ? 2 : 1.5)
             .attr('stroke-opacity', d => d.id === focusId ? 1 : d.status === 'stub' ? 0.5 : 0.7);
 
-        // ── Edges: connected ones glow; others fade to nearly invisible ───
+        // Edges: connected ones glow; others fade to nearly invisible
         _graphLinkSel
             .attr('stroke-opacity', d => _isHot(d) ? 1.0  : 0.04)
             .attr('stroke-width',   d => _isHot(d) ? 3.0  : 1.0)
@@ -3690,14 +3690,14 @@
             .attr('filter',         d => _isHot(d) ? 'url(#adb-graph-edge-glow)' : null)
             .attr('marker-end',     d => _isHot(d) ? 'url(#adb-graph-arrow-hover)' : 'url(#adb-graph-arrow)');
 
-        // ── Labels: fully visible at all times ───────────────────────────
+        // Labels: fully visible at all times
         _graphLabelSel?.attr('opacity', 1);
     }
 
-    // ── Node selection card ───────────────────────────────────────────────────
+    // Node selection card
 
     function _graphSelectNode(d) {
-        // ── Header: type badge + name ─────────────────────────────────────────
+        // Header: type badge + name
         const typeEl = _el('adb-graph-card-type');
         if (typeEl) {
             typeEl.textContent = d.type || 'other';
@@ -3706,11 +3706,11 @@
         const nameEl = _el('adb-graph-card-name');
         if (nameEl) nameEl.textContent = d.name;
 
-        // ── Summary ───────────────────────────────────────────────────────────
+        // Summary
         const sumEl = _el('adb-graph-card-summary');
         if (sumEl) sumEl.textContent = d.summary || '(no summary)';
 
-        // ── Categories ────────────────────────────────────────────────────────
+        // Categories
         const catsEl = _el('adb-graph-card-categories');
         if (catsEl) {
             const cats = d.categories || [];
@@ -3722,7 +3722,7 @@
             }
         }
 
-        // ── Tags ──────────────────────────────────────────────────────────────
+        // Tags
         const tagsEl = _el('adb-graph-card-tags');
         if (tagsEl) {
             const tags = d.tags || [];
@@ -3734,7 +3734,7 @@
             }
         }
 
-        // ── Aliases ───────────────────────────────────────────────────────────
+        // Aliases
         const aliasEl = _el('adb-graph-card-aliases');
         if (aliasEl) {
             const aliases = d.aliases || [];
@@ -3747,7 +3747,7 @@
             }
         }
 
-        // ── Meta: status badge + relation count + source + date ──────────────
+        // Meta: status badge + relation count + source + date
         const metaEl = _el('adb-graph-card-meta');
         if (metaEl) {
             const isStub = d.status === 'stub';
@@ -3760,7 +3760,7 @@
             metaEl.innerHTML = parts.join('');
         }
 
-        // ── Connected relations (from already-loaded graph data) ───────────────
+        // Connected relations (from already-loaded graph data)
         const relsEl = _el('adb-graph-card-rels');
         if (relsEl && _graphLinkData) {
             const connected = [];
@@ -3796,7 +3796,7 @@
             }
         }
 
-        // ── Action buttons ────────────────────────────────────────────────────
+        // Action buttons
         const openBtn = _el('adb-graph-card-open');
         if (openBtn) openBtn.onclick = () => { _closeGraph(); _loadEntity(d.id); };
 
@@ -3819,14 +3819,14 @@
 
                 try {
                     if (isStub) {
-                        // ── Expand stub directly ───────────────────────────
+                        // Expand stub directly
                         const res = await fetch(`${API}/entities/${d.id}/expand?${_dbParam()}`, { method: 'POST' });
                         if (!res.ok) {
                             let msg; try { msg = (await res.json()).detail; } catch { msg = `HTTP ${res.status}`; }
                             throw new Error(msg);
                         }
                     } else {
-                        // ── Deepen active entity directly ──────────────────
+                        // Deepen active entity directly
                         const res = await fetch(`${API}/entities/${d.id}/deepen?${_dbParam({ max_stubs: 5 })}`, { method: 'POST' });
                         if (!res.ok) {
                             let msg; try { msg = (await res.json()).detail; } catch { msg = `HTTP ${res.status}`; }
@@ -3884,7 +3884,7 @@
         _show('adb-graph-card');
     }
 
-    // ── Focus search ──────────────────────────────────────────────────────────
+    // Focus search
 
     async function _graphFocusSearch() {
         const q = _el('adb-graph-search')?.value?.trim();
@@ -3908,7 +3908,7 @@
         }
     }
 
-    // ── Graph wiring ──────────────────────────────────────────────────────────
+    // Graph wiring
 
     function _graphWire() {
         _el('adb-graph-close-btn') ?.addEventListener('click', _closeGraph);
@@ -3969,7 +3969,7 @@
         } catch { /* non-fatal — chunk dropdown stays as "All" */ }
     }
 
-    // ── Folder distillation ───────────────────────────────────────────────────
+    // Folder distillation
 
     /**
      * File extensions the backend will distil (mirrored from folder_distiller.py).
@@ -3997,7 +3997,7 @@
         });
     }
 
-    // ── Browse ────────────────────────────────────────────────────────────────
+    // Browse
 
     async function _fdBrowse() {
         const btn   = _fdEl('adb-fd-browse-btn');
@@ -4015,7 +4015,7 @@
         }
     }
 
-    // ── Scan ──────────────────────────────────────────────────────────────────
+    // Scan
 
     async function _fdScan() {
         const folder   = _fdEl('adb-fd-path-input')?.value?.trim();
@@ -4095,7 +4095,7 @@
         if (src && dest) dest.innerHTML = src.innerHTML;
     }
 
-    // ── Start ─────────────────────────────────────────────────────────────────
+    // Start
 
     async function _fdStart() {
         const folder      = _fdScanData?.folder_path || _fdEl('adb-fd-path-input')?.value?.trim();
@@ -4123,7 +4123,7 @@
         }
     }
 
-    // ── Pause / Resume / Cancel ───────────────────────────────────────────────
+    // Pause / Resume / Cancel
 
     async function _fdPause() {
         try {
@@ -4157,7 +4157,7 @@
         }
     }
 
-    // ── Polling ───────────────────────────────────────────────────────────────
+    // Polling
 
     function _fdStartPolling() {
         _fdStopPolling();
@@ -4180,7 +4180,7 @@
         } catch { /* ignore transient poll errors */ }
     }
 
-    // ── Render progress view ──────────────────────────────────────────────────
+    // Render progress view
 
     function _fdApplyStatus(data) {
         if (!data || data.status === 'idle') {
@@ -4283,7 +4283,7 @@
         _fdEl('adb-fd-new-btn')   ?.classList.toggle('hidden', !isDone);
     }
 
-    // ── Init check (restore state from DISTILLINFO on load) ──────────────────
+    // Init check (restore state from DISTILLINFO on load)
 
     async function _fdCheckExistingJob() {
         try {
@@ -4296,7 +4296,7 @@
         } catch { /* ignore */ }
     }
 
-    // ── Wire ──────────────────────────────────────────────────────────────────
+    // Wire
 
     function _fdWire() {
         _fdEl('adb-fd-browse-btn')   ?.addEventListener('click', _fdBrowse);
@@ -4310,7 +4310,7 @@
         _fdEl('adb-fd-new-btn')      ?.addEventListener('click', () => { _fdStopPolling(); _fdSection('adb-fd-pick'); });
     }
 
-    // ── Vector search ─────────────────────────────────────────────────────────────
+    // Vector search
 
     let _vecPollHandle = null;
 
@@ -4531,7 +4531,7 @@
         _el('adb-vec-cancel-btn')  ?.addEventListener('click', _vecCancel);
     }
 
-    // ── Bake ─────────────────────────────────────────────────────────────────
+    // Bake
 
     let _bakePollHandle = null;
 
@@ -4592,7 +4592,7 @@
         }
     }
 
-    // ── Baked datasets list ───────────────────────────────────────────────────
+    // Baked datasets list
 
     async function _bakeLoadList() {
         const listEl = _el('adb-bake-list');
@@ -4905,9 +4905,7 @@
         _el('adb-bake-name')?.addEventListener('input', _bakeHideOverwriteConfirm);
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
     // Import
-    // ══════════════════════════════════════════════════════════════════════════
 
     let _importContent  = null;
     let _importFilename = null;
@@ -5054,13 +5052,11 @@
         _el('adb-import-btn')?.addEventListener('click', _runImport);
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
     // API Explorer
-    // ══════════════════════════════════════════════════════════════════════════
 
     const _API_V1 = '/api/v1';
 
-    // ── Endpoint definitions ──────────────────────────────────────────────────
+    // Endpoint definitions
 
     const _EP = [
         {
@@ -5193,7 +5189,7 @@
         },
     ];
 
-    // ── State ─────────────────────────────────────────────────────────────────
+    // State
 
     let _apiCurrentEp   = null;   // selected endpoint definition
     let _apiCurrentLang = 'python';
@@ -5214,7 +5210,7 @@
     let _apiPickerParam  = null;  // which param name the picker is filling
     let _apiPickerTimer  = null;  // debounce handle
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // Helpers
 
     function _apiEl(id) { return document.getElementById(id); }
 
@@ -5266,7 +5262,7 @@
         return (b/1024/1024).toFixed(1) + ' MB';
     }
 
-    // ── Smart param control ───────────────────────────────────────────────────
+    // Smart param control
 
     /**
      * Returns an HTML string for the appropriate input control for a given
@@ -5371,7 +5367,7 @@
             value="${esc(val)}" placeholder="${placeholder}" style="width:130px">`;
     }
 
-    // ── Smart params pane ─────────────────────────────────────────────────────
+    // Smart params pane
 
     function _apiRenderSmartParams(ep) {
         const cont = _apiEl('adb-api-params-content');
@@ -5439,7 +5435,7 @@
         });
     }
 
-    // ── DB list + context loading ─────────────────────────────────────────────
+    // DB list + context loading
 
     async function _apiLoadDatabases() {
         const sel = _apiEl('adb-api-db-select');
@@ -5486,7 +5482,7 @@
     async function _apiLoadDbContext() {
         const db = _apiCurrentDb();
 
-        // ── Entity types + counts ──
+        // Entity types + counts
         // When _apiDb is null and the global explorer has a path-based database,
         // pass ?path= so the legacy endpoint reads the right directory AND
         // triggers register_path_db() — priming the registry for all v1 calls.
@@ -5501,7 +5497,7 @@
             _apiDbTypes = Object.keys(data.by_type || {}).sort();
         } catch { _apiDbStats = {}; _apiDbTypes = []; }
 
-        // ── Bake names ──
+        // Bake names
         try {
             const res  = await fetch(`${_API_V1}/${encodeURIComponent(db)}/baked`);
             const data = await res.json();
@@ -5509,7 +5505,7 @@
             _apiDbBakes = (data?.data?.bakes || data?.data?.snapshots || []).map(s => s.name).filter(Boolean);
         } catch { _apiDbBakes = []; }
 
-        // ── Key labels ──
+        // Key labels
         try {
             const res  = await fetch(`${_API_V1}/${encodeURIComponent(db)}/keys`);
             const data = await res.json();
@@ -5543,7 +5539,7 @@
         }
     }
 
-    // ── Entity picker ─────────────────────────────────────────────────────────
+    // Entity picker
 
     function _apiPickerOpen(paramName) {
         _apiPickerParam = paramName;
@@ -5627,7 +5623,7 @@
         _apiPickerClose();
     }
 
-    // ── Render endpoint tree ──────────────────────────────────────────────────
+    // Render endpoint tree
 
     function _apiRenderTree() {
         const treeEl = _apiEl('adb-api-tree');
@@ -5671,7 +5667,7 @@
         }
     }
 
-    // ── Select endpoint ───────────────────────────────────────────────────────
+    // Select endpoint
 
     function _apiSelectEndpoint(ep) {
         _apiCurrentEp    = ep;
@@ -5721,7 +5717,7 @@
         _apiGenerateCode(_apiCurrentLang);
     }
 
-    // ── Render params tab ─────────────────────────────────────────────────────
+    // Render params tab
 
     function _apiRenderParams(ep) {
         const cont = _apiEl('adb-api-params-content');
@@ -5794,7 +5790,7 @@
         urlDisplay.innerHTML = html;
     }
 
-    // ── Destructive-method check ──────────────────────────────────────────────
+    // Destructive-method check
 
     const _DESTRUCTIVE = new Set(['PATCH', 'DELETE']);
 
@@ -5803,7 +5799,7 @@
         return _DESTRUCTIVE.has(ep?.method);
     }
 
-    // ── Send request ──────────────────────────────────────────────────────────
+    // Send request
 
     async function _apiSend(force = false) {
         if (!_apiCurrentEp) return;
@@ -5831,7 +5827,7 @@
             }
         }
 
-        // ── Dry-run guard for destructive methods ──
+        // Dry-run guard for destructive methods
         if (!force && _apiIsDestructive(ep)) {
             _apiShowDryRun(ep, url, headers, body);
             _apiGenerateCode(_apiCurrentLang);
@@ -5866,7 +5862,7 @@
         _apiGenerateCode(_apiCurrentLang);
     }
 
-    // ── Dry-run preview ───────────────────────────────────────────────────────
+    // Dry-run preview
 
     function _apiShowDryRun(ep, url, headers, body) {
         const statusEl = _apiEl('adb-api-res-status');
@@ -5912,7 +5908,7 @@
         }
     }
 
-    // ── Show response ─────────────────────────────────────────────────────────
+    // Show response
 
     function _apiShowResponse(status, ms, rawText) {
         const statusEl = _apiEl('adb-api-res-status');
@@ -5939,7 +5935,7 @@
         }
     }
 
-    // ── Code generator ────────────────────────────────────────────────────────
+    // Code generator
 
     function _apiGenerateCode(lang) {
         _apiCurrentLang = lang;
@@ -6003,7 +5999,7 @@
         });
     }
 
-    // ── API Key management ────────────────────────────────────────────────────
+    // API Key management
 
     async function _apiLoadKeys() {
         const listEl = _apiEl('adb-apikey-list');
@@ -6075,7 +6071,7 @@
         }
     }
 
-    // ── Request sub-tab switching ─────────────────────────────────────────────
+    // Request sub-tab switching
 
     function _apiSwitchReqPane(pane) {
         ['body','params','headers'].forEach(p => {
@@ -6086,7 +6082,7 @@
         });
     }
 
-    // ── Wire ──────────────────────────────────────────────────────────────────
+    // Wire
 
     function _apiWire() {
         // Send button
@@ -6140,7 +6136,7 @@
             _apiGenerateCode(_apiCurrentLang);
         });
 
-        // ── DB selector bar ──
+        // DB selector bar
         _apiEl('adb-api-db-select')?.addEventListener('change', e => {
             _apiSetDb(e.target.value);
         });
@@ -6150,7 +6146,7 @@
             _apiLoadDbContext();
         });
 
-        // ── Entity picker ──
+        // Entity picker
         _apiEl('adb-api-picker-close')?.addEventListener('click', _apiPickerClose);
 
         _apiEl('adb-api-picker-search')?.addEventListener('input', e => {
@@ -6164,9 +6160,7 @@
         });
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
     // Test tab — Speed Benchmark
-    // ══════════════════════════════════════════════════════════════════════════
 
     let _benchBakeOptions = [];   // [{name, format, size_fmt, include_vectors}, …]
 
@@ -6176,7 +6170,7 @@
         _testLoadVecModels();
     }
 
-    // ── Bake rows ─────────────────────────────────────────────────────────────
+    // Bake rows
 
     /** Fetch the list of completed bakes and initialise the first bake row. */
     async function _testLoadBakes() {
@@ -6247,7 +6241,7 @@
         rowsEl.appendChild(row);
     }
 
-    // ── Vec model discovery ───────────────────────────────────────────────────
+    // Vec model discovery
 
     /** Fetch embedded models for this DB and pre-select in the dropdown. */
     async function _testLoadVecModels() {
@@ -6271,7 +6265,7 @@
         } catch { /* non-fatal */ }
     }
 
-    // ── Benchmark ─────────────────────────────────────────────────────────────
+    // Benchmark
 
     async function _testRunBench() {
         const btn      = _el('adb-bench-run-btn');
@@ -6404,12 +6398,12 @@
         sectionsEl.innerHTML = '';
 
         cats.forEach(({ cat, rows: catRows }) => {
-            // ── Section container ──
+            // Section container
             const section = document.createElement('div');
             section.className = 'adb-bench-section';
             section.dataset.collapsed = 'false';
 
-            // ── Clickable header ──
+            // Clickable header
             const hdr = document.createElement('div');
             hdr.className = 'adb-bench-section-hdr';
             hdr.innerHTML = `
@@ -6421,7 +6415,7 @@
                 section.dataset.collapsed = section.dataset.collapsed === 'true' ? 'false' : 'true';
             });
 
-            // ── Section body ──
+            // Section body
             const body = document.createElement('div');
             body.className = 'adb-bench-section-body';
 
@@ -6480,9 +6474,7 @@
         resultsEl.classList.remove('hidden');
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
     // Smart Chunks (lives in Tools tab)
-    // ══════════════════════════════════════════════════════════════════════════
 
     async function _testBuildChunks() {
         const btn = _el('adb-chunk-build-btn');
@@ -6568,7 +6560,7 @@
         }
     }
 
-    // ── Tools sub-navigation ──────────────────────────────────────────────────
+    // Tools sub-navigation
 
     const _TOOL_PAGE_IDS = ['distill', 'distill-folder', 'vectors', 'import', 'validate', 'chunks', 'bake', 'test'];
 
@@ -6600,7 +6592,7 @@
         });
     }
 
-    // ── Wiring ────────────────────────────────────────────────────────────────
+    // Wiring
 
     function _wire() {
         // Distill
@@ -6678,7 +6670,7 @@
             });
         });
 
-        // ── Column picker ──────────────────────────────────────────────────────
+        // Column picker
         (function _initColPicker() {
             const btn    = _el('adb-col-picker-btn');
             const picker = _el('adb-col-picker');
@@ -6859,7 +6851,7 @@
         _el('adb-dbm-delete-btn')?.addEventListener('click', _dbmDeleteDatabase);
     }
 
-    // ── Init ──────────────────────────────────────────────────────────────────
+    // Init
 
     const _VALID_SUBTABS = new Set(['databases', 'tools', 'explorer', 'graph', 'api']);
 

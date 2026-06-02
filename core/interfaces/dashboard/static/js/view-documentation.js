@@ -1,6 +1,6 @@
 // Handles fetching and rendering repository documentation
 
-// ── View switching ────────────────────────────────────────────────────────────
+// View switching
 
 var _docCurrentView = localStorage.getItem('doc_view') || 'repo';
 

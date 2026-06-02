@@ -33,7 +33,7 @@ MAX_RUNS_STORED = 50   # keep last N run records per task
 POLL_INTERVAL   = 30   # seconds between scheduler checks
 
 
-# ── Cron utilities ─────────────────────────────────────────────────────────────
+# Cron utilities
 
 def _field_matches(field: str, value: int, allow_7_as_0: bool = False) -> bool:
     """Return True if `value` satisfies the cron field expression."""
@@ -118,7 +118,7 @@ def next_run_after(cron_expr: str, after: datetime = None, tz_name: str = 'UTC')
     return None
 
 
-# ── Schedule Manager ───────────────────────────────────────────────────────────
+# Schedule Manager
 
 class ScheduleManager:
     def __init__(self, data_dir: Path):
@@ -138,7 +138,7 @@ class ScheduleManager:
 
 
 
-    # ── Startup catch-up ───────────────────────────────────────────
+    # Startup catch-up
 
     def _startup_catchup(self):
         """On startup, fire missed runs for active tasks whose next_run_at is in the past.
@@ -180,7 +180,7 @@ class ScheduleManager:
             except Exception as exc:
                 logger.warning("[ScheduleManager] Catch-up error for %s: %s", p.name, exc)
 
-    # ── Storage helpers ────────────────────────────────────────────
+    # Storage helpers
 
     def _path(self, task_id: str) -> Path:
         return self.data_dir / f"{task_id}.json"
@@ -202,7 +202,7 @@ class ScheduleManager:
         from core.utils import atomic_json_write
         atomic_json_write(self._path(task['id']), task)
 
-    # ── CRUD ──────────────────────────────────────────────────────
+    # CRUD
 
     def _refresh_next_run(self, task: dict) -> bool:
         """If the task is active and next_run_at is stale (in the past or missing),
@@ -312,7 +312,7 @@ class ScheduleManager:
             return True
         return False
 
-    # ── Execution ──────────────────────────────────────────────────
+    # Execution
 
     def run_now(self, task_id: str) -> dict:
         """Manually trigger a run — ignores queue_max."""
@@ -410,7 +410,7 @@ class ScheduleManager:
                     self._save(t2)
             logger.info("[ScheduleManager] Run %s → %s", run_id, status)
 
-            # ── Notify: task completed ─────────────────────────────────
+            # Notify: task completed
             if _notify:
                 try:
                     # Truncate result to a readable preview
@@ -440,7 +440,7 @@ class ScheduleManager:
         threading.Thread(target=_do, daemon=True, name=f"sched-run-{run_id[:8]}").start()
         return run
 
-    # ── Background loop ────────────────────────────────────────────
+    # Background loop
 
     def _loop(self):
         while not self._stop_evt.is_set():
@@ -487,7 +487,7 @@ class ScheduleManager:
         self._stop_evt.set()
 
 
-# ── Singleton ──────────────────────────────────────────────────────────────────
+# Singleton
 
 _instance: Optional[ScheduleManager] = None
 

@@ -50,7 +50,7 @@ function initializeArena() {
     if (_arenaInitialized) return;
     _arenaInitialized = true;
 
-    // ── Battle ───────────────────────────────────────────────────────────────
+    // Battle
     const sendBtn = document.getElementById('arena-send');
     if (sendBtn) sendBtn.addEventListener('click', sendArenaPrompt);
 
@@ -99,17 +99,17 @@ function initializeArena() {
     const clearBtn = document.getElementById('arena-clear-leaderboard');
     if (clearBtn) clearBtn.addEventListener('click', clearArenaLeaderboard);
 
-    // ── Mode switcher ─────────────────────────────────────────────────────────
+    // Mode switcher
     document.querySelectorAll('.arena-mode-btn').forEach(btn => {
         btn.addEventListener('click', () => setArenaMode(btn.dataset.mode));
     });
 
-    // ── Leaderboard tabs ──────────────────────────────────────────────────────
+    // Leaderboard tabs
     document.querySelectorAll('.lb-tab').forEach(btn => {
         btn.addEventListener('click', () => setLbTab(btn.dataset.tab));
     });
 
-    // ── Gauntlet ──────────────────────────────────────────────────────────────
+    // Gauntlet
     const gauntletAdd = document.getElementById('gauntlet-model-add');
     if (gauntletAdd) {
         gauntletAdd.addEventListener('change', () => {
@@ -156,7 +156,7 @@ async function loadArenaModels() {
         const gauntletEval = document.getElementById('gauntlet-evaluator');
         if (gauntletEval) gauntletEval.innerHTML = '<option value="">Select evaluator...</option>' + chatOptions;
 
-        // ── Restore saved evaluator selections ───────────────────────────────
+        // Restore saved evaluator selections
         const savedBattleEval = localStorage.getItem('arena_battle_evaluator');
         if (savedBattleEval && evalSelect) {
             // Only restore if the option actually exists in the populated list
@@ -623,9 +623,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
 // GAUNTLET MODE
-// ══════════════════════════════════════════════════════════════════════════════
 
 let arenaMode = 'battle';
 let arenaLbTab = 'battle';
@@ -642,7 +640,7 @@ const MODEL_COLORS = [
     '#ef4444', '#a855f7', '#3b82f6', '#ec4899',
 ];
 
-// ── Mode / tab switching ──────────────────────────────────────────────────────
+// Mode / tab switching
 
 function setArenaMode(mode) {
     arenaMode = mode;
@@ -668,7 +666,7 @@ function setLbTab(tab) {
     );
 }
 
-// ── Preset loading & preview ──────────────────────────────────────────────────
+// Preset loading & preview
 
 async function loadGauntletPresets() {
     try {
@@ -707,7 +705,7 @@ function updateGauntletPresetPreview(presetId) {
         </ul>`;
 }
 
-// ── Gauntlet model chips ──────────────────────────────────────────────────────
+// Gauntlet model chips
 
 function renderGauntletChips() {
     const el = document.getElementById('gauntlet-model-chips');
@@ -724,7 +722,7 @@ function removeGauntletModel(modelId) {
     renderGauntletChips();
 }
 
-// ── Start gauntlet ────────────────────────────────────────────────────────────
+// Start gauntlet
 
 async function startGauntlet() {
     if (gauntletRunning) return;
@@ -808,7 +806,7 @@ async function startGauntlet() {
     }
 }
 
-// ── Gauntlet SSE handlers ─────────────────────────────────────────────────────
+// Gauntlet SSE handlers
 
 function _gauntletInitDisplay(ev) {
     _gauntletCatData = {};
@@ -988,7 +986,7 @@ function _gauntletComplete(ev, categories) {
     resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── Gauntlet response detail panel ───────────────────────────────────────────
+// Gauntlet response detail panel
 
 window.toggleGauntletCatPanel = function toggleGauntletCatPanel(catId) {
     const panel = document.getElementById(`gauntlet-cat-panel-${catId}`);
@@ -1049,7 +1047,7 @@ function _buildGauntletResponsePanel(catId) {
         </div>`;
 }
 
-// ── Radar chart (pure SVG) ────────────────────────────────────────────────────
+// Radar chart (pure SVG)
 
 function renderRadarChart(containerId, categories, modelsData, rankedIds) {
     const container = document.getElementById(containerId);
@@ -1123,7 +1121,7 @@ function renderRadarChart(containerId, categories, modelsData, rankedIds) {
         <div class="radar-legend">${legend}</div>`;
 }
 
-// ── Gauntlet leaderboard ──────────────────────────────────────────────────────
+// Gauntlet leaderboard
 
 function renderGauntletLeaderboard(gauntletData) {
     const container = document.getElementById('gauntlet-leaderboard');
@@ -1161,7 +1159,7 @@ async function loadGauntletLeaderboard() {
     }
 }
 
-// ── Initialise when the arena partial is first injected ───────────────────────
+// Initialise when the arena partial is first injected
 // The partial loader fetches arena.html + mode-arena.js lazily on first visit.
 // DOMContentLoaded fires before these load, so initializeArena() must be called
 // here — exactly as every other lazy-loaded JS module does via panelLoaded.

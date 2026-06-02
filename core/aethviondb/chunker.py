@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-# ── Constants ─────────────────────────────────────────────────────────────────
+# Constants
 
 CHUNKS_DIR    = "chunks"
 MANIFEST_FILE = "manifest.json"
@@ -67,7 +67,7 @@ _STOPWORDS = frozenset(
 )
 
 
-# ── Tokenisation helpers ──────────────────────────────────────────────────────
+# Tokenisation helpers
 
 def _tokenize(text: str) -> list[str]:
     """Lowercase → split on non-alphanumeric → filter stopwords & shorts."""
@@ -97,20 +97,20 @@ def _entity_tokens(entity: dict) -> list[str]:
     return tokens
 
 
-# ── Chunk ID ──────────────────────────────────────────────────────────────────
+# Chunk ID
 
 def _chunk_id(label: str) -> str:
     """Deterministic 12-char ID for a chunk label."""
     return CHUNK_PREFIX + hashlib.sha1(label.encode()).hexdigest()[:12]
 
 
-# ── ISO timestamp ─────────────────────────────────────────────────────────────
+# ISO timestamp
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-# ── Inverted index builder ────────────────────────────────────────────────────
+# Inverted index builder
 
 def _build_index(entities: list[dict]) -> dict[str, list[str]]:
     """Build inverted index: term → sorted unique entity IDs."""
@@ -122,7 +122,7 @@ def _build_index(entities: list[dict]) -> dict[str, list[str]]:
     return {term: sorted(ids) for term, ids in sorted(index.items())}
 
 
-# ── Auto-chunking algorithm ───────────────────────────────────────────────────
+# Auto-chunking algorithm
 
 def _auto_chunk(entities: list[dict]) -> list[dict]:
     """
@@ -131,7 +131,7 @@ def _auto_chunk(entities: list[dict]) -> list[dict]:
     Returns:
         list of {label, entity_ids, type, strategy, group_key, group_val}
     """
-    # ── Step 1: group by entity type ─────────────────────────────────────────
+    # Step 1: group by entity type
     by_type: dict[str, list[dict]] = defaultdict(list)
     for e in entities:
         by_type[e.get("type", "other")].append(e)
@@ -152,7 +152,7 @@ def _auto_chunk(entities: list[dict]) -> list[dict]:
             })
             continue
 
-        # ── Step 2: find dominant property key ───────────────────────────────
+        # Step 2: find dominant property key
         prop_counts: Counter = Counter()
         for e in type_ents:
             props = (e.get("sections") or {}).get("properties", {})
@@ -192,7 +192,7 @@ def _auto_chunk(entities: list[dict]) -> list[dict]:
                 })
             continue
 
-        # ── Step 3: sub-group by most-frequent tags ───────────────────────────
+        # Step 3: sub-group by most-frequent tags
         tag_counts: Counter = Counter()
         for e in type_ents:
             for tag in (e.get("sections") or {}).get("core", {}).get("tags", []):
@@ -233,7 +233,7 @@ def _auto_chunk(entities: list[dict]) -> list[dict]:
                 })
             continue
 
-        # ── Step 4: alphabetical split for large type groups ─────────────────
+        # Step 4: alphabetical split for large type groups
         if len(type_ents) > ALPHA_THRESH:
             first  = [e for e in type_ents if e.get("name", "Z")[0].upper() < "N"]
             second = [e for e in type_ents if e.get("name", "Z")[0].upper() >= "N"]
@@ -268,7 +268,7 @@ def _auto_chunk(entities: list[dict]) -> list[dict]:
     return chunks
 
 
-# ── Path helpers ──────────────────────────────────────────────────────────────
+# Path helpers
 
 def chunk_dir(db_root: Path) -> Path:
     return db_root / CHUNKS_DIR
@@ -282,7 +282,7 @@ def chunk_file_path(db_root: Path, chunk_id: str) -> Path:
     return chunk_dir(db_root) / f"{chunk_id}.json"
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 def read_manifest(db_root: Path) -> dict | None:
     """Return the chunk manifest dict, or None if it doesn't exist / is corrupt."""

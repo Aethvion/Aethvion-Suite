@@ -63,7 +63,7 @@ def _default_db_entry(name: str, path: str) -> dict:
     }
 
 
-# ── Internal helpers ──────────────────────────────────────────────────────────
+# Internal helpers
 
 def _read_raw() -> dict:
     """Read the registry file; returns {} on any error."""
@@ -113,7 +113,7 @@ def _write(registry: dict) -> None:
         logger.debug(f"[DBRegistry] Write failed: {exc}")
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 def register_db(
     name:        str,
@@ -217,7 +217,7 @@ def resolve_db_root(db: str) -> Path:
     return AETHVIONDB / db
 
 
-# ── Backward-compat shims ─────────────────────────────────────────────────────
+# Backward-compat shims
 
 def register_path_db(path: str | Path) -> None:
     """Register a path-based database by its folder name.

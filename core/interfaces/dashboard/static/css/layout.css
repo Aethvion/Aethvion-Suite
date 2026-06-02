@@ -1,4 +1,4 @@
-/* ===== modern dashboard layout ===== */
+/* modern dashboard layout */
 
 /* Columns: threads | handle | chat */
 .three-column-layout {
@@ -292,7 +292,7 @@
     transform: translateY(-1px);
 }
 
-/* ── folder groups (sidebar) ───────────────────────────────────────────────── */
+/* folder groups (sidebar) */
 
 .folder-group { margin-bottom: 0.2rem; }
 
@@ -1005,7 +1005,7 @@ pre:hover .code-copy-btn {
     text-overflow: ellipsis;
 }
 
-/* ── right group: action buttons ── */
+/* right group: action buttons */
 .panel-actions {
     display: flex;
     align-items: center;

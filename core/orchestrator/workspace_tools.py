@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Optional
 
-# ── Blueprint / search constants ──────────────────────────────────────────────
+# Blueprint / search constants
 BLUEPRINT_IGNORE_DIRS = frozenset({
     '.git', 'node_modules', '__pycache__', '.next', 'dist', 'build',
     '.venv', 'venv', 'env', '.tox', '.pytest_cache', '.mypy_cache',
@@ -158,7 +158,7 @@ def build_workspace_blueprint(
 
     return result
 
-# ── Digest + search utilities ────────────────────────────────────────────────
+# Digest + search utilities
 import re as _ws_re  # noqa: E402 (appended section)
 from datetime import datetime as _ws_dt
 
@@ -255,7 +255,7 @@ def generate_file_digest(path: str, content: str,
     last = f"\n  last: {last_action} @ {ts}" if last_action else ""
     return f"{header}{body}{last}"
 
-# ── emit ──────────────────────────────────────────────────────
+# emit
 
 
 def search_codebase(workspace: Path, query: str, path: str = "", context_lines: int = 1, max_results: int = 30) -> str:

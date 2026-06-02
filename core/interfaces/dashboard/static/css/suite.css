@@ -5,7 +5,7 @@
     width: 100%;
 }
 
-/* ── hero ─────────────────────────────────────────────────────────────────── */
+/* hero */
 .hub-hero {
     display: flex;
     flex-direction: column;
@@ -127,7 +127,7 @@
     flex: 1;
 }
 
-/* ── footer row ───────────────────────────────────────────────────────────── */
+/* footer row */
 .sac-footer {
     display: flex;
     align-items: center;
@@ -162,7 +162,7 @@
     transform: translateX(0);
 }
 
-/* ── status dot (per card) ────────────────────────────────────────────────── */
+/* status dot (per card) */
 .sac-status {
     width: 7px;
     height: 7px;
@@ -183,7 +183,7 @@
     opacity: 0.25;
 }
 
-/* ── section header ───────────────────────────────────────────────────────── */
+/* section header */
 .suite-section-header {
     display: flex;
     align-items: center;
@@ -233,7 +233,7 @@
     z-index: 1;
 }
 
-/* ── meta row: profile pill + server status ──────────────────────────────── */
+/* meta row: profile pill + server status */
 .sh-hero-meta {
     display: flex;
     align-items: center;
@@ -289,7 +289,7 @@
     transition: opacity 0.18s ease;
 }
 
-/* ── cta buttons ──────────────────────────────────────────────────────────── */
+/* cta buttons */
 .sh-ctas {
     display: flex;
     align-items: center;
@@ -745,7 +745,7 @@
     background: rgba(255,255,255,0.03);
 }
 
-/* ── states ──────────────────────────────────────────────────────────────── */
+/* states */
 .sh-overview-loading, .sh-overview-empty {
     display: flex;
     flex-direction: column;

@@ -1,4 +1,4 @@
-/* ── CSS Variables ────────────────────────────────────────────────── */
+/* CSS Variables */
 :root {
     --bg-darker:  #0c0d12;
     --bg-dark:    #14161f;
@@ -16,13 +16,13 @@
     --status-h:   26px;
 }
 
-/* ── Scrollbars ───────────────────────────────────────────────────── */
+/* Scrollbars */
 ::-webkit-scrollbar { width:8px; height:8px; }
 ::-webkit-scrollbar-track  { background: var(--bg-darker); }
 ::-webkit-scrollbar-thumb  { background:#3a3e4a; border-radius:8px; border:2px solid var(--bg-darker); }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-/* ── Reset ────────────────────────────────────────────────────────── */
+/* Reset */
 /* NOTE: font-family must NOT be set on *::before/*::after — it would
    override Font Awesome's glyph font, turning icons into squares.
    Set it on body so it inherits normally, and FA's own classes win. */
@@ -38,7 +38,7 @@ body {
 
 #app { display:flex; flex-direction:column; height:100%; }
 
-/* ── Header ───────────────────────────────────────────────────────── */
+/* Header */
 #top-bar {
     height: var(--topbar-h);
     background: var(--bg-darker);
@@ -61,7 +61,7 @@ body {
     white-space: nowrap;
 }
 
-/* ── Menu bar / Dropdowns ─────────────────────────────────────────── */
+/* Menu bar / Dropdowns */
 .menu-bar { display:flex; gap:8px; }
 
 .dropdown { position:relative; display:inline-block; }
@@ -138,7 +138,7 @@ body {
 }
 .btn-primary:hover { background: var(--accent-h); }
 
-/* ── Tool Options Bar ─────────────────────────────────────────────── */
+/* Tool Options Bar */
 #tool-options-bar {
     height: var(--toolopt-h);
     background: var(--bg-dark);
@@ -224,7 +224,7 @@ body {
     font-style: italic;
 }
 
-/* ── Tab Bar ──────────────────────────────────────────────────────── */
+/* Tab Bar */
 #tab-bar {
     height: var(--tabbar-h);
     background: var(--bg-dark);
@@ -270,10 +270,10 @@ body {
 }
 #add-workspace-btn:hover { color: var(--text-main); }
 
-/* ── Layout ───────────────────────────────────────────────────────── */
+/* Layout */
 .main-container { flex:1; display:flex; overflow:hidden; }
 
-/* ── Tool Palette ─────────────────────────────────────────────────── */
+/* Tool Palette */
 #tool-palette {
     width: var(--tool-w);
     background: var(--bg-dark);
@@ -305,7 +305,7 @@ body {
 
 .tool-sep { height:1px; width:70%; background: var(--border); margin:2px 0; }
 
-/* ── Color Picker ─────────────────────────────────────────────────── */
+/* Color Picker */
 .color-picker-container {
     display: flex;
     flex-direction: column;
@@ -369,7 +369,7 @@ body {
     pointer-events: none;
 }
 
-/* ── Canvas Viewport ──────────────────────────────────────────────── */
+/* Canvas Viewport */
 #editor-viewport {
     flex: 1;
     background: #0e0f16;
@@ -404,7 +404,7 @@ body {
     transform-origin: 0 0;
 }
 
-/* ── Crop confirm overlay button ──────────────────────────────────── */
+/* Crop confirm overlay button */
 .crop-confirm-overlay {
     position: absolute;
     bottom: 16px;
@@ -417,7 +417,7 @@ body {
     font-size: 13px;
 }
 
-/* ── Properties Panel ─────────────────────────────────────────────── */
+/* Properties Panel */
 #properties-panel {
     width: var(--panel-w);
     background: var(--bg-dark);
@@ -530,7 +530,7 @@ body {
 }
 .header-actions button:hover { background: var(--bg-light); color: var(--text-main); }
 
-/* ── Navigator ────────────────────────────────────────────────────── */
+/* Navigator */
 .nav-body { padding: 8px; }
 
 #nav-canvas {
@@ -549,7 +549,7 @@ body {
     background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
 }
 
-/* ── Layer blend-mode row ─────────────────────────────────────────── */
+/* Layer blend-mode row */
 .layer-blend-row {
     display: flex;
     align-items: center;
@@ -582,10 +582,10 @@ body {
 
 .opacity-pct { font-size: 11px; color: var(--text-dim); }
 
-/* ── Layer panel section ──────────────────────────────────────────── */
+/* Layer panel section */
 #layers { display: flex; flex-direction: column; }
 
-/* ── Layer list ───────────────────────────────────────────────────── */
+/* Layer list */
 .layer-list-body { overflow-y:visible; padding:6px 8px; min-height: 80px; }
 
 #layer-stack { list-style: none; display: flex; flex-direction: column; gap: 3px; }
@@ -660,7 +660,7 @@ body {
 }
 .layer-vis:hover { color: var(--text-main); }
 
-/* ── Layer actions footer ─────────────────────────────────────────── */
+/* Layer actions footer */
 .layer-actions-footer {
     display: flex;
     gap: 4px;
@@ -686,7 +686,7 @@ body {
 }
 .layer-actions-footer button:hover { background: var(--bg-light); color: var(--text-main); }
 
-/* ── Status bar ───────────────────────────────────────────────────── */
+/* Status bar */
 #status-bar {
     height: var(--status-h);
     background: var(--bg-darker);
@@ -722,7 +722,7 @@ body {
 
 #zoom-display { min-width: 42px; text-align: center; font-weight: 600; color: var(--text-main); }
 
-/* ── Toast notifications ──────────────────────────────────────────── */
+/* Toast notifications */
 #toast-container {
     position: fixed;
     bottom: 42px;
@@ -765,7 +765,7 @@ body {
 .ae-toast-warn    i { color: #ffb74d; }
 .ae-toast-info    i { color: var(--accent); }
 
-/* ── Brush cursor ring ────────────────────────────────────────────── */
+/* Brush cursor ring */
 #brush-cursor {
     position: fixed;
     border: 1.5px solid rgba(255,255,255,.85);
@@ -777,7 +777,7 @@ body {
     display: none;
 }
 
-/* ── Text overlay ─────────────────────────────────────────────────── */
+/* Text overlay */
 #text-overlay {
     position: fixed;
     display: none;
@@ -802,7 +802,7 @@ body {
 
 #text-input::placeholder { color: rgba(160,160,200,.5); }
 
-/* ── Project modal ────────────────────────────────────────────────── */
+/* Project modal */
 .ae-modal-overlay {
     display: none;
     position: fixed;

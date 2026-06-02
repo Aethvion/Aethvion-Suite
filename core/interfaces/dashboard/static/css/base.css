@@ -218,13 +218,13 @@ h6 {
     color: var(--text-tertiary);
 }
 
-/* ── Header primary left wrapper ─────────────────────────────────── */
+/* Header primary left wrapper */
 .hdr-left {
     display: flex;
     align-items: center;
 }
 
-/* ── Header primary nav (Home / Chat / AI / AethvionDB) ──────────── */
+/* Header primary nav (Home / Chat / AI / AethvionDB) */
 .hdr-nav {
     display: flex;
     align-items: center;
@@ -269,7 +269,7 @@ h6 {
     text-shadow: 0 0 8px color-mix(in srgb, var(--primary) 30%, transparent);
 }
 
-/* ── Header settings button ──────────────────────────────────────── */
+/* Header settings button */
 .hdr-settings-btn {
     display: flex;
     align-items: center;
@@ -944,7 +944,7 @@ select optgroup {
     }
 }
 
-/* ── confirm modal ────────────────────────────────────────────────── */
+/* confirm modal */
 .confirm-modal-overlay {
     position: fixed;
     inset: 0;
@@ -1242,7 +1242,7 @@ kbd {
     background: rgba(239, 68, 68, 0.25);
 }
 
-/* ── thread empty search state ───────────────────────────────────── */
+/* thread empty search state */
 .threads-empty-state {
     display: flex;
     align-items: center;
@@ -1282,7 +1282,7 @@ kbd {
     background: rgba(99, 102, 241, 0.4);
 }
 
-/* ── retry error state ───────────────────────────────────────────── */
+/* retry error state */
 .error-retry-state {
     display: flex;
     flex-direction: column;
@@ -1363,7 +1363,7 @@ kbd {
     max-width: 160px;
 }
 
-/* ── hub card status dot ──────────────────────────────────────────── */
+/* hub card status dot */
 .entry-status-dot {
     width: 8px;
     height: 8px;
@@ -1411,7 +1411,7 @@ kbd {
     border-radius: 4px;
 }
 
-/* ── table pagination controls ────────────────────────────────────── */
+/* table pagination controls */
 .table-pagination {
     display: flex;
     align-items: center;
@@ -1428,7 +1428,7 @@ kbd {
     text-align: center;
 }
 
-/* ── bulk-select checkboxes (packages table) ──────────────────────── */
+/* bulk-select checkboxes (packages table) */
 .pkg-select-col {
     width: 32px;
     text-align: center;
@@ -1462,7 +1462,7 @@ kbd {
     white-space: nowrap;
 }
 
-/* ── responsive breakpoints ───────────────────────────────────────── */
+/* responsive breakpoints */
 @media (max-width: 1200px) {
     .three-column-layout:not(.threads-collapsed) {
         --col-threads: 220px;
@@ -1534,7 +1534,7 @@ kbd {
     }
 }
 
-/* ── app suite categorization headers ─────────────────────────────────── */
+/* app suite categorization headers */
 .app-suite-section {
     display: block;
     width: 100%;
@@ -1687,7 +1687,7 @@ kbd {
     background: transparent;
 }
 
-/* ── micro-animations ─────────────────────────────────────────────────────── */
+/* micro-animations */
 
 /* Button press feedback */
 button:active:not(:disabled),
@@ -1740,7 +1740,7 @@ body.stop-animations-global *::after {
     animation-play-state: paused !important;
 }
 
-/* ── System Shutdown Overlay ──────────────────────────────────────────────── */
+/* System Shutdown Overlay */
 .shutdown-overlay {
     position: fixed;
     top: 0;

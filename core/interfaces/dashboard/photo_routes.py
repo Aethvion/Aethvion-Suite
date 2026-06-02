@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/photo", tags=["photo"])
 
-# ── Local SD backend URLs — override via environment variables ────────────────
+# Local SD backend URLs — override via environment variables
 _SD_WEBUI_URL = os.environ.get("SD_WEBUI_URL", "http://127.0.0.1:7860")   # AUTOMATIC1111 / Forge
 _COMFYUI_URL  = os.environ.get("COMFYUI_URL",  "http://127.0.0.1:8188")   # ComfyUI
 
@@ -166,7 +166,7 @@ async def generate_image(req: ImageGenerationRequest):
     logger.info(f"[{trace_id}] Image generation request: {req.model} - {req.prompt[:50]}...")
     
     try:
-        # ── Local SD WebUI path (bypasses ProviderManager entirely) ────────────
+        # Local SD WebUI path (bypasses ProviderManager entirely)
         if _is_local_sd_model(req.model):
             logger.info(f"[{trace_id}] Routing to local SD WebUI: {req.model}")
 
@@ -302,48 +302,23 @@ async def generate_image(req: ImageGenerationRequest):
         workspace = get_workspace_manager()
         saved_images = []
         
-        # Create output directory: outputfiles/images/YYYY-MM-DD
         date_str = datetime.now().strftime("%Y-%m-%d")
-        
-        # Iterate and save
+
         for idx, img_bytes in enumerate(raw_images):
-            # Filename: {model}-{trace_id}-{i}.png
-            # Sanitize model name
             safe_model = req.model.replace(":", "-").replace("/", "-")
             filename = f"{safe_model}-{trace_id}-{idx}.png"
-            
-            # Save to 'images/YYYY-MM-DD' domain/folder
-            # WorkspaceManager takes domain. We can use "Images/{date_str}" or just "Images"
-            # WorkspaceManager structure is {root}/{domain}/{filename}
-            # The user asked for "data/outputfiles".
-            # workspace.get_output_path("Images", filename) -> outputfiles/Images/filename
-            # We want outputfiles/images/... 
-            # Let's use domain="images" (lowercase usually normalized)
-            
-            # To support subfolders in domain, we can hack the domain or filename.
-            # WorkspaceManager normalizes domain.
-            # Let's just use "images" domain.
-            
+
             path = workspace.save_output(
-                domain="images", 
-                filename=filename, 
+                domain="images",
+                filename=filename,
                 content=img_bytes,
                 trace_id=trace_id
             )
-            
-            # Use path relative to static mount for URL
-            # stored at c:\...\outputfiles\images\filename
-            # served at /outputfiles/... if mounted?
-            # We need to ensure outputfiles is served statically.
-            # Current static mount is /static -> web/static
-            # We should verify if outputfiles is served.
-            # For now assume /api/files/ serves it or we add one.
-            
-            # Let's return the absolute path and a guessed URL
+
             saved_images.append({
                 "path": str(path),
                 "filename": filename,
-                "url": f"/api/photo/serve/{filename}" # Helper endpoint we might need
+                "url": f"/api/photo/serve/{filename}"
             })
 
         return ImageGenerationResponse(

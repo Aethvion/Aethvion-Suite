@@ -3,7 +3,7 @@
  * CSS-based avatar — expressions controlled via class switching
  */
 
-// ── Global State ──────────────────────────────────────────────────────────────
+// Global State
 let lyraChatHistory = [];
 let lyraMaxHistory = 20;
 let lyraTypingSpeed = 20;  // fallback; overridden by global companions speed
@@ -28,7 +28,7 @@ window.addEventListener('companionSettingsUpdated', (e) => {
     }
 });
 
-// ── Expression map ────────────────────────────────────────────────────────────
+// Expression map
 
 const LYRA_EXPRESSION_MAP = {
     // direct
@@ -74,7 +74,7 @@ const LYRA_EXPRESSION_MAP = {
     'default':     'joyful',
 };
 
-// ── Mood label map ────────────────────────────────────────────────────────────
+// Mood label map
 
 const LYRA_MOOD_LABELS = {
     ethereal:    '✦ Ethereal',
@@ -85,7 +85,7 @@ const LYRA_MOOD_LABELS = {
     serene:      '◈ Serene',
 };
 
-// ── Status messages per expression ───────────────────────────────────────────
+// Status messages per expression
 
 const LYRA_STATUS_BY_EXPRESSION = {
     joyful:      "I'm here — what shall we discover today?",
@@ -102,7 +102,7 @@ const LYRA_STATUS_BY_EXPRESSION = {
     wink:        "I have a feeling about this.",
 };
 
-// ── Initializer ───────────────────────────────────────────────────────────────
+// Initializer
 
 async function initializeLyra() {
     if (hasInitializedLyra) {
@@ -174,7 +174,7 @@ async function initializeLyra() {
     console.log('[Lyra] Initialization complete.');
 }
 
-// ── Expression update ─────────────────────────────────────────────────────────
+// Expression update
 
 function updateLyraExpression(expression) {
     const avatar = document.getElementById('lyra-avatar');
@@ -200,7 +200,7 @@ function updateLyraExpression(expression) {
     localStorage.setItem('lyra_last_expression', key);
 }
 
-// ── Mood update ───────────────────────────────────────────────────────────────
+// Mood update
 
 function updateLyraMood(mood) {
     if (mood === currentLyraMood) return;
@@ -224,7 +224,7 @@ function updateLyraMood(mood) {
     localStorage.setItem('lyra_last_mood', mood);
 }
 
-// ── History loading ───────────────────────────────────────────────────────────
+// History loading
 
 async function lyraLoadHistory(offsetDays, limitDays, isInitial) {
     try {
@@ -348,7 +348,7 @@ function lyraCreateMessageElement(role, text, timestamp = null) {
     return div;
 }
 
-// ── Text helpers ──────────────────────────────────────────────────────────────
+// Text helpers
 
 function lyraCleanDisplayText(text) {
     return text
@@ -380,7 +380,7 @@ function lyraFormatDate(dateStr) {
     }
 }
 
-// ── Streaming bubble helpers ──────────────────────────────────────────────────
+// Streaming bubble helpers
 
 function lyraCreateStreamingBubble() {
     const chatMessages = document.getElementById('lyra-chat-messages');
@@ -440,7 +440,7 @@ function lyraAddStaticMessage(role, text, timestamp = null) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// ── Send message ──────────────────────────────────────────────────────────────
+// Send message
 
 async function sendLyraMessage() {
     if (isLyraTyping) return;
@@ -611,7 +611,7 @@ async function sendLyraMessage() {
     }
 }
 
-// ── Memory refresh ────────────────────────────────────────────────────────────
+// Memory refresh
 
 async function refreshLyraMemory() {
     try {
@@ -653,7 +653,7 @@ window.toggleLyraMemoryMode = function() {
     }
 };
 
-// ── Exports ───────────────────────────────────────────────────────────────────
+// Exports
 
 window.initializeLyra = initializeLyra;
 window.refreshLyraMemory = refreshLyraMemory;

@@ -1,4 +1,4 @@
-/* ── bell button ─────────────────────────────────────────────── */
+/* bell button */
 .notif-bell-btn {
     position: relative;
     display: flex;
@@ -89,7 +89,7 @@
     pointer-events: all;
 }
 
-/* ── panel header ────────────────────────────────────────────── */
+/* panel header */
 .notif-panel-header {
     display: flex;
     align-items: center;
@@ -154,7 +154,7 @@
 .notif-list::-webkit-scrollbar-track { background: transparent; }
 .notif-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
 
-/* ── empty state ─────────────────────────────────────────────── */
+/* empty state */
 .notif-empty {
     display: flex;
     flex-direction: column;
@@ -303,7 +303,7 @@
     font-weight: 400;
 }
 
-/* ── dismiss button ──────────────────────────────────────────── */
+/* dismiss button */
 .notif-dismiss-btn {
     width: 22px;
     height: 22px;
@@ -353,7 +353,7 @@
     border-left-color: rgba(255,255,255,0.1) !important;
 }
 
-/* ── panel footer ────────────────────────────────────────────── */
+/* panel footer */
 .notif-panel-footer {
     padding: 10px 14px;
     border-top: 1px solid var(--border-color, rgba(255,255,255,0.06));

@@ -32,7 +32,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-# ── Project root ──────────────────────────────────────────────────────────────
+# Project root
 ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
@@ -40,7 +40,7 @@ OVERLAY_HISTORY_DIR = ROOT / "data" / "overlay" / "history"
 _CONFIG_PATH        = ROOT / "data" / "overlay" / "config.json"
 _HIST_PAGE_SIZE     = 10
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# Config
 
 def _load_overlay_config() -> dict:
     defaults = {"bg_opacity": 0.93, "text_opacity": 1.0, "font_size": 11,
@@ -55,7 +55,7 @@ def _load_overlay_config() -> dict:
         pass
     return defaults
 
-# ── Persistent history helpers ────────────────────────────────────────────────
+# Persistent history helpers
 
 def _new_session_id() -> str:
     return f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{secrets.token_hex(3)}"
@@ -148,7 +148,7 @@ def load_session_full(session_id: str) -> Optional[dict]:
     except Exception:
         return None
 
-# ── Dashboard port discovery ──────────────────────────────────────────────────
+# Dashboard port discovery
 
 def _find_dashboard_port() -> int:
     try:
@@ -164,7 +164,7 @@ def _find_dashboard_port() -> int:
 
 DASHBOARD_URL = f"http://localhost:{_find_dashboard_port()}"
 
-# ── Qt ────────────────────────────────────────────────────────────────────────
+# Qt
 try:
     from PyQt6.QtWidgets import (
         QApplication, QWidget, QVBoxLayout, QHBoxLayout,
@@ -177,7 +177,7 @@ try:
 except ImportError:
     HAS_QT = False
 
-# ── Screenshot / thumbnail ────────────────────────────────────────────────────
+# Screenshot / thumbnail
 
 def list_monitors() -> list[dict]:
     try:
@@ -227,7 +227,7 @@ def make_thumb(screenshot_b64: str, max_width: int = 200) -> Optional[str]:
     except Exception:
         return None
 
-# ── API worker ────────────────────────────────────────────────────────────────
+# API worker
 
 class AskWorker(QObject):
     finished = pyqtSignal(str)
@@ -267,7 +267,7 @@ class AskWorker(QObject):
         except Exception as e:
             self.error.emit(str(e))
 
-# ── Chat input ────────────────────────────────────────────────────────────────
+# Chat input
 
 class ChatInput(QTextEdit):
     send_requested = pyqtSignal()
@@ -295,7 +295,7 @@ class ChatInput(QTextEdit):
         else:
             super().keyPressEvent(event)
 
-# ── Main overlay window ───────────────────────────────────────────────────────
+# Main overlay window
 
 _RESIZE_GRIP   = 18
 _CAPTURE_NEW   = "new_thread"   # _capture_mode values
@@ -341,7 +341,7 @@ class OverlayWindow(QWidget):
         self._request_capture.connect(self._on_request_capture)
         self._replace_shot.connect(self._on_replace_shot)
 
-    # ── Appearance ────────────────────────────────────────────────────────────
+    # Appearance
 
     def _apply_appearance(self) -> None:
         bg_a   = int(self._bg_opacity * 255)
@@ -396,7 +396,7 @@ class OverlayWindow(QWidget):
         """Text alpha scaled by text_opacity."""
         return int(base * self._text_opacity * 255)
 
-    # ── UI construction ───────────────────────────────────────────────────────
+    # UI construction
 
     def _build_ui(self) -> None:
         self.setWindowFlags(
@@ -421,7 +421,7 @@ class OverlayWindow(QWidget):
         layout.setContentsMargins(16, 14, 16, 12)
         layout.setSpacing(10)
 
-        # ── Title bar ─────────────────────────────────────────────────────────
+        # Title bar
         title_row = QHBoxLayout()
         title_row.setSpacing(8)
         dot   = QLabel("◈")
@@ -460,7 +460,7 @@ class OverlayWindow(QWidget):
         title_row.addWidget(close_btn)
         layout.addLayout(title_row)
 
-        # ── Action row (screen selector + two screenshot buttons) ─────────────
+        # Action row (screen selector + two screenshot buttons)
         action_row = QHBoxLayout()
         action_row.setSpacing(6)
 
@@ -516,7 +516,7 @@ class OverlayWindow(QWidget):
         sep.setStyleSheet("background:rgba(99,102,241,55);")
         layout.addWidget(sep)
 
-        # ── Response area ──────────────────────────────────────────────────────
+        # Response area
         self._response = QTextBrowser()
         self._response.setOpenExternalLinks(False)
         self._response.setReadOnly(True)
@@ -525,7 +525,7 @@ class OverlayWindow(QWidget):
         self._response.anchorClicked.connect(self._on_anchor_clicked)
         layout.addWidget(self._response, 1)
 
-        # ── Input row ─────────────────────────────────────────────────────────
+        # Input row
         self._input_row_widget = QWidget()
         ir = QHBoxLayout(self._input_row_widget)
         ir.setContentsMargins(0, 0, 0, 0)
@@ -549,7 +549,7 @@ class OverlayWindow(QWidget):
         ir.addWidget(self._send_btn)
         layout.addWidget(self._input_row_widget)
 
-        # ── Bottom: status + resize grip ──────────────────────────────────────
+        # Bottom: status + resize grip
         bot = QHBoxLayout()
         bot.setContentsMargins(0, 0, 0, 0)
         self._status = QLabel("")
@@ -568,7 +568,7 @@ class OverlayWindow(QWidget):
             sg = scr.availableGeometry()
             self.move(sg.center().x() - self.width() // 2, sg.center().y() - self.height() // 2)
 
-    # ── Screen helpers ────────────────────────────────────────────────────────
+    # Screen helpers
 
     def _populate_screen_combo(self) -> None:
         self._screen_combo.blockSignals(True)
@@ -586,7 +586,7 @@ class OverlayWindow(QWidget):
         if idx is not None:
             self._selected_monitor = idx
 
-    # ── Capture flow ──────────────────────────────────────────────────────────
+    # Capture flow
 
     def _take_new_screenshot_same_thread(self) -> None:
         """Capture new screenshot, stay in current session."""
@@ -623,7 +623,7 @@ class OverlayWindow(QWidget):
         self._new_thread_btn.setEnabled(True)
         self._new_thread_btn.setText("⊕ New Thread")
 
-    # ── Session lifecycle ─────────────────────────────────────────────────────
+    # Session lifecycle
 
     def _on_show_overlay(self, screenshot_b64: str) -> None:
         """New thread: reload config, store screenshot, show immediately."""
@@ -680,7 +680,7 @@ class OverlayWindow(QWidget):
         else:
             self._show_screenshot_preview()
 
-    # ── Screenshot preview (before first question) ───────────────────────────
+    # Screenshot preview (before first question)
 
     def _show_screenshot_preview(self) -> None:
         """Display the current screenshot as a preview in the response area."""
@@ -697,7 +697,7 @@ class OverlayWindow(QWidget):
             f"</div>"
         )
 
-    # ── History toggle ────────────────────────────────────────────────────────
+    # History toggle
 
     def _on_history_toggled(self, checked: bool) -> None:
         self._show_history        = checked
@@ -715,7 +715,7 @@ class OverlayWindow(QWidget):
                 self._show_screenshot_preview()
             self._status.setText("Type your question and press Enter.")
 
-    # ── History list (paginated disk read) ────────────────────────────────────
+    # History list (paginated disk read)
 
     def _load_and_render_history_list(self) -> None:
         entries, total_pages = load_history_page(self._hist_page)
@@ -797,7 +797,7 @@ class OverlayWindow(QWidget):
         self._status.setText(f"History — {page_info}, {count} session(s) on this page")
         self._response.verticalScrollBar().setValue(0)
 
-    # ── Session renderer ──────────────────────────────────────────────────────
+    # Session renderer
 
     def _render_session(self, session: dict) -> None:
         """Render a full session (current or historical) into the response area."""
@@ -871,7 +871,7 @@ class OverlayWindow(QWidget):
             self._response.verticalScrollBar().maximum()
         )
 
-    # ── Anchor / link handling ────────────────────────────────────────────────
+    # Anchor / link handling
 
     def _on_anchor_clicked(self, url: QUrl) -> None:
         s = url.toString()
@@ -916,7 +916,7 @@ class OverlayWindow(QWidget):
             self._input_row_widget.setVisible(False)
             self._load_and_render_history_list()
 
-    # ── Send / receive ────────────────────────────────────────────────────────
+    # Send / receive
 
     def _send(self) -> None:
         question = self._input.toPlainText().strip()
@@ -983,7 +983,7 @@ class OverlayWindow(QWidget):
             entry = dict(self._current_entry)
             threading.Thread(target=save_session, args=(entry,), daemon=True).start()
 
-    # ── Drag & resize ─────────────────────────────────────────────────────────
+    # Drag & resize
 
     def _in_title_area(self, pos: QPoint) -> bool:
         return pos.y() < 52
@@ -1011,7 +1011,7 @@ class OverlayWindow(QWidget):
         self._resize_start_global = None; self._resize_start_size = None
 
 
-# ── Hotkey ────────────────────────────────────────────────────────────────────
+# Hotkey
 
 def start_hotkey_listener(window: OverlayWindow) -> None:
     def _run():
@@ -1030,7 +1030,7 @@ def start_hotkey_listener(window: OverlayWindow) -> None:
     threading.Thread(target=_run, daemon=True, name="overlay-hotkey").start()
 
 
-# ── Tray ──────────────────────────────────────────────────────────────────────
+# Tray
 
 def _make_tray_image():
     from PIL import Image, ImageDraw
@@ -1067,7 +1067,7 @@ def start_tray(window: OverlayWindow, qt_app: QApplication) -> None:
     threading.Thread(target=_run, daemon=True, name="overlay-tray").start()
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# Entry point
 
 def main() -> None:
     if not HAS_QT:

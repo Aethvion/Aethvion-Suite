@@ -39,7 +39,7 @@ FEED_MAX_LINES = 500   # cap the on-disk feed so it never grows unbounded
 _PRIORITY_ORDER = {"urgent": 0, "high": 1, "medium": 2, "low": 3}
 
 
-# ── Cost estimation ──────────────────────────────────────────────────────────
+# Cost estimation
 
 # Module-level cache: {model_id: (input_cost_per_1m, output_cost_per_1m)}
 _MODEL_PRICE_CACHE: Dict[str, tuple] = {}
@@ -73,7 +73,7 @@ def _estimate_cost(tokens_in: int, tokens_out: int, model: str) -> float:
     return (tokens_in / 1_000_000) * in_p + (tokens_out / 1_000_000) * out_p
 
 
-# ── Worker stats ─────────────────────────────────────────────────────────────
+# Worker stats
 
 class WorkerStats:
     # Fields that are cumulative and must survive restarts
@@ -94,7 +94,7 @@ class WorkerStats:
         self.session_start: float = time.time()
         self._last_token_time: Optional[float] = None
 
-    # ── persistence ───────────────────────────────────────────────
+    # persistence
 
     def save(self, path: Path) -> None:
         """Persist cumulative counters to disk."""
@@ -117,7 +117,7 @@ class WorkerStats:
         except Exception as e:
             logger.warning(f"[WorkerStats] Could not load stats from {path}: {e}")
 
-    # ── runtime ───────────────────────────────────────────────────
+    # runtime
 
     def add_tokens(
         self, in_tok: int, out_tok: int, model: str, llm_elapsed_s: float = 0.0
@@ -152,7 +152,7 @@ class WorkerStats:
         }
 
 
-# ── Corp Manager ─────────────────────────────────────────────────────────────
+# Corp Manager
 
 class CorpManager:
     """Singleton that manages all corps and their worker loops."""
@@ -170,7 +170,7 @@ class CorpManager:
         self._paused_workers: Dict[str, set] = {}   # corp_id → set of paused worker_ids
         self._active_workers: Dict[str, set] = {}   # corp_id → set of running worker_ids
 
-    # ── path helpers ──────────────────────────────────────────────────────────
+    # path helpers
 
     def _corp_dir(self, corp_id: str) -> Path:
         return CORP_ROOT / corp_id
@@ -212,7 +212,7 @@ class CorpManager:
     def _state_path(self, corp_id: str, worker_id: str) -> Path:
         return self._worker_dir(corp_id, worker_id) / "state.json"
 
-    # ── corp CRUD ─────────────────────────────────────────────────────────────
+    # corp CRUD
 
     def list_corps(self) -> List[Dict[str, Any]]:
         CORP_ROOT.mkdir(parents=True, exist_ok=True)
@@ -279,7 +279,7 @@ class CorpManager:
         if d.exists():
             shutil.rmtree(d)
 
-    # ── worker CRUD ───────────────────────────────────────────────────────────
+    # worker CRUD
 
     def add_worker(self, corp_id: str, name: str, role: str,
                    model: str, personality: str, color: str,
@@ -340,7 +340,7 @@ class CorpManager:
             "status":    "idle",
         })
 
-    # ── task management ───────────────────────────────────────────────────────
+    # task management
 
     def get_tasks(self, corp_id: str) -> List[Dict[str, Any]]:
         p = self._tasks_path(corp_id)
@@ -415,7 +415,7 @@ class CorpManager:
         ))
         return eligible[0]
 
-    # ── message log ──────────────────────────────────────────────────────────
+    # message log
 
     def post_to_log(self, corp_id: str, worker_id: str,
                     worker_name: str, message: str, to: str = "All") -> None:
@@ -468,7 +468,7 @@ class CorpManager:
         content_lines = [l for l in lines if l.strip() and not l.startswith("#")]
         return "\n".join(content_lines[-last_n:])
 
-    # ── shared memory ────────────────────────────────────────────────────────
+    # shared memory
 
     def read_shared_memory(self, corp_id: str, key: str = "", raw: bool = False):
         """Return shared-memory entries.
@@ -513,7 +513,7 @@ class CorpManager:
         atomic_json_write(p, data)
         return f"Shared memory updated: [{key}]"
 
-    # ── persistent feed ──────────────────────────────────────────────────────
+    # persistent feed
 
     # Event types that are worth persisting across reloads.
     _FEED_PERSIST_TYPES = frozenset({
@@ -565,7 +565,7 @@ class CorpManager:
             logger.warning(f"[CorpManager] feed read error: {e}")
             return []
 
-    # ── worker stats persistence ──────────────────────────────────────────────
+    # worker stats persistence
 
     def _save_worker_stats(self, corp_id: str, worker_id: str) -> None:
         stats = self._stats.get(worker_id)
@@ -592,7 +592,7 @@ class CorpManager:
                 result[wid] = stats.to_dict()
         return result
 
-    # ── worker memory ─────────────────────────────────────────────────────────
+    # worker memory
 
     def read_worker_memory(self, corp_id: str, worker_id: str) -> str:
         p = self._memory_path(corp_id, worker_id)
@@ -605,7 +605,7 @@ class CorpManager:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(content, encoding="utf-8")
 
-    # ── SSE broadcast ─────────────────────────────────────────────────────────
+    # SSE broadcast
 
     def emit(self, corp_id: str, event: Dict[str, Any]) -> None:
         """Broadcast event to all live SSE subscribers and persist to feed.jsonl."""
@@ -638,7 +638,7 @@ class CorpManager:
             except (KeyError, ValueError):
                 pass
 
-    # ── corp control ──────────────────────────────────────────────────────────
+    # corp control
 
     async def start_corp(self, corp_id: str) -> None:
         cfg = self.get_corp(corp_id)
@@ -720,7 +720,7 @@ class CorpManager:
         self._active_workers.pop(corp_id, None)
         self._finalize_stop(corp_id)
 
-    # ── worker loop ───────────────────────────────────────────────────────────
+    # worker loop
 
     async def _run_worker_loop(self, corp_id: str, worker: Dict) -> None:
         worker_id   = worker["id"]
@@ -784,7 +784,7 @@ class CorpManager:
                     goal     = cfg_fresh.get("goal", "").strip()
 
                     if can_plan and goal:
-                        # ── Autonomous planning run ────────────────────────
+                        # Autonomous planning run
                         stats.current_thought = "Planning next tasks…"
                         stats.status = "running"
                         self.emit(corp_id, {
@@ -860,7 +860,7 @@ class CorpManager:
                         })
                         await asyncio.sleep(2)
                     else:
-                        # ── Standard idle wait ─────────────────────────────
+                        # Standard idle wait
                         if corp_id in self._stopping:
                             break   # soft-stop: no pending tasks, exit cleanly
                         stats.current_thought = "Waiting for tasks…"
@@ -875,7 +875,7 @@ class CorpManager:
                         await asyncio.sleep(4)
                     continue
 
-                # ── Mark task in-progress ──────────────────────────────────
+                # Mark task in-progress
                 self.update_task(corp_id, task["task_id"],
                                  status="in_progress",
                                  worker_id=worker_id,
@@ -891,10 +891,10 @@ class CorpManager:
                     "color":       worker_col,
                 })
 
-                # ── Build prompt ───────────────────────────────────────────
+                # Build prompt
                 prompt = self._build_worker_prompt(corp_id, worker, task)
 
-                # ── Run the agent ──────────────────────────────────────────
+                # Run the agent
                 task_start = time.time()
 
                 def step_cb(event: Dict) -> None:
@@ -982,7 +982,7 @@ class CorpManager:
                     stats.tasks_failed += 1
                     logger.error(f"[CorpManager] Worker {worker_name} task failed: {e}")
 
-                # ── Mark task done ─────────────────────────────────────────
+                # Mark task done
                 self.update_task(corp_id, task["task_id"],
                                  status=task_status,
                                  completed_at=utcnow_iso(),
@@ -1050,7 +1050,7 @@ class CorpManager:
         if corp_id in self._stopping and not self._active_workers.get(corp_id):
             self._finalize_stop(corp_id)
 
-    # ── prompt builder ────────────────────────────────────────────────────────
+    # prompt builder
 
     def _build_worker_prompt(self, corp_id: str, worker: Dict, task: Dict) -> str:
         """Build the iteration-0 task prompt for a corp worker.
@@ -1086,7 +1086,7 @@ class CorpManager:
         if cfg.get("goal", "").strip():
             goal_section = f"Goal: {cfg['goal'].strip()}\n"
 
-        # ── Workspace blueprint (compact tree — replaces dozens of list_dir calls) ──
+        # Workspace blueprint (compact tree — replaces dozens of list_dir calls)
         ws = self._workspace_path(corp_id)
         blueprint_section = ""
         if ws.exists():
@@ -1098,7 +1098,7 @@ class CorpManager:
             except Exception:
                 pass
 
-        # ── Shared memory: split into completed-work log vs knowledge entries ────
+        # Shared memory: split into completed-work log vs knowledge entries
         shared_raw = self.read_shared_memory(corp_id, raw=True)   # returns dict or {}
         completed_section = ""
         knowledge_section = ""
@@ -1222,7 +1222,7 @@ class CorpManager:
 
 
 
-# ── Global singleton ──────────────────────────────────────────────────────────
+# Global singleton
 
 _corp_manager: Optional[CorpManager] = None
 

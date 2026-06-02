@@ -52,7 +52,7 @@ class CompanionHistory:
         self._time_formatter: Callable[[int], str] = time_formatter or _default_time_formatter
         self._dir.mkdir(parents=True, exist_ok=True)
 
-    # ── Internal helpers ──────────────────────────────────────────────────
+    # Internal helpers
 
     def _today_file(self) -> Path:
         now = datetime.datetime.now()
@@ -67,7 +67,7 @@ class CompanionHistory:
                 files.extend(sorted(month_dir.glob("chat_*.json"), reverse=True))
         return files
 
-    # ── Write ─────────────────────────────────────────────────────────────
+    # Write
 
     def save_message(
         self,
@@ -100,7 +100,7 @@ class CompanionHistory:
         except Exception as e:
             logger.error(f"{self._name}: Failed to save history message: {e}")
 
-    # ── Read ──────────────────────────────────────────────────────────────
+    # Read
 
     def load_days(self, offset: int = 0, limit: int = 3) -> dict:
         all_files = self._all_files()
@@ -125,7 +125,7 @@ class CompanionHistory:
             pass
         return 0
 
-    # ── Time since last ───────────────────────────────────────────────────
+    # Time since last
 
     def time_since_last(self) -> str:
         try:
@@ -147,7 +147,7 @@ class CompanionHistory:
             logger.warning(f"{self._name}: time_since_last error: {e}")
             return "Some time ago"
 
-    # ── Clear / Reset ─────────────────────────────────────────────────────
+    # Clear / Reset
 
     def clear(self) -> None:
         if self._dir.exists():

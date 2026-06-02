@@ -3,7 +3,7 @@
  * Partial-loader aware: init deferred until ports-panel partial is injected.
  */
 
-// ── Module-scope references (populated in _initPorts) ────────────────────────
+// Module-scope references (populated in _initPorts)
 let _portsRefreshBtn = null;
 let _portsTbody      = null;
 let _portsCount      = null;
@@ -124,7 +124,7 @@ window.terminatePortApp = async function (port, name) {
     }
 };
 
-// ── Init (safe to call multiple times — guards against double-setup) ──────────
+// Init (safe to call multiple times — guards against double-setup)
 function _initPorts() {
     const refreshBtn = document.getElementById('refresh-ports-btn');
     if (!refreshBtn || _portsInitDone) return;   // partial not loaded yet, or already set up

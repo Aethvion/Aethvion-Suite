@@ -36,7 +36,7 @@ _ALLOWED_ICON_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 _MAX_ICON_BYTES    = 2 * 1024 * 1024   # 2 MB
 
 
-# ── Schema ─────────────────────────────────────────────────────────────────────
+# Schema
 
 class BehaviorConfig(BaseModel):
     temperature: float = 0.85
@@ -99,7 +99,7 @@ class ImportRequest(BaseModel):
     config: dict  # full exported companion config
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+# Helpers
 
 _SAFE_ID_RE = re.compile(r"^[a-z0-9_]{1,64}$")
 
@@ -219,7 +219,7 @@ def _load_config(companion_id: str) -> dict:
     raise HTTPException(status_code=404, detail=f"Companion '{companion_id}' not found")
 
 
-# ── Endpoints ──────────────────────────────────────────────────────────────────
+# Endpoints
 
 @router.get("/all")
 async def list_all_companions():
@@ -317,7 +317,7 @@ async def update_builtin_companion(companion_id: str, req: BuiltinUpdateRequest)
     )
 
 
-# ── Icon endpoints (must come before /{companion_id} catch-all) ───────────────
+# Icon endpoints (must come before /{companion_id} catch-all)
 
 def _find_icon(companion_dir: Path) -> Path | None:
     """Return the icon file path if one exists, else None."""
@@ -411,7 +411,7 @@ async def delete_companion_icon(companion_id: str):
     return {"success": True, "removed": removed}
 
 
-# ── Expression image endpoints ────────────────────────────────────────────────
+# Expression image endpoints
 
 _SAFE_EXPR_RE = re.compile(r"^[a-z0-9_]{1,32}$")
 _MAX_EXPR_BYTES = 5 * 1024 * 1024   # 5 MB

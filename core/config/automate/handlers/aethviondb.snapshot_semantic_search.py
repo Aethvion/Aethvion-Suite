@@ -18,7 +18,7 @@ def _h_aethviondb_snapshot_semantic_search(node, inputs, ctx):
     if not snap_files:
         return {"out": "[]", "count": 0, "speed": "0ms", "error": "No snapshot found"}
     t0 = _time.perf_counter()
-    # ── Embed query ────────────────────────────────────────────────────────────
+    # Embed query
     _openai_models = {"text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"}
     try:
         if model in _openai_models:
@@ -38,14 +38,14 @@ def _h_aethviondb_snapshot_semantic_search(node, inputs, ctx):
             query_vec = list(_result.embeddings[0].values)
     except Exception as exc:
         return {"out": "[]", "count": 0, "speed": "0ms", "error": f"Embedding failed ({model}): {exc}"}
-    # ── Load entities from snapshot ────────────────────────────────────────────
+    # Load entities from snapshot
     entities = []
     for line in snap_files[0].read_text(encoding="utf-8").splitlines():
         if line.strip():
             try: entities.append(json.loads(line))
             except Exception: pass
     if entity_type: entities = [e for e in entities if e.get("type") == entity_type]
-    # ── Cosine similarity (baked format: entity["vectors"][model]["embedding"]) ─
+    # Cosine similarity (baked format: entity["vectors"][model]["embedding"])
     def _cosine(a, b):
         dot = sum(x * y for x, y in zip(a, b))
         ma = _math.sqrt(sum(x * x for x in a))
