@@ -31,6 +31,27 @@ _gpu_backend: str = "none"   # "pynvml" | "nvidia-smi" | "none"
 _nvml_handle = None          # pynvml device handle
 _nvidia_smi_path: Optional[str] = None  # cached path so shutil.which runs once
 
+# Tokenizer — cached at module level so it's only loaded once
+_tokenizer = None
+_tokenizer_name: str = "chars÷4 (estimate)"
+_tokenizer_loaded: bool = False
+
+
+def _get_tokenizer():
+    """Load tiktoken cl100k_base once; fall back to None if unavailable."""
+    global _tokenizer, _tokenizer_name, _tokenizer_loaded
+    if _tokenizer_loaded:
+        return _tokenizer, _tokenizer_name
+    _tokenizer_loaded = True
+    try:
+        import tiktoken
+        _tokenizer = tiktoken.get_encoding("cl100k_base")
+        _tokenizer_name = "cl100k_base (tiktoken)"
+    except Exception:
+        _tokenizer = None
+        _tokenizer_name = "chars÷4 (estimate)"
+    return _tokenizer, _tokenizer_name
+
 # Add project root to sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -211,7 +232,7 @@ def kill_process_tree(pid: int):
         pass
 
 def get_repository_stats() -> Dict[str, Any]:
-    """Scans the repository to compile file counts and lines of code by language."""
+    """Scans the repository to compile file counts, LOC, and token counts by language."""
     extensions = {
         ".py": "Python",
         ".js": "JavaScript",
@@ -220,16 +241,19 @@ def get_repository_stats() -> Dict[str, Any]:
         ".cs": "C#",
         ".bat": "Batch"
     }
-    
+
+    enc, tokenizer_name = _get_tokenizer()
+
     total_files = 0
     total_loc = 0
-    by_lang = {}
-    
+    total_tokens = 0
+    by_lang: Dict[str, Any] = {}
+
     for lang in extensions.values():
-        by_lang[lang] = {"files": 0, "loc": 0}
-        
+        by_lang[lang] = {"files": 0, "loc": 0, "tokens": 0}
+
     exclude_dirs = {".venv", ".git", ".pytest_cache", "dist", "setup", "__pycache__", "node_modules"}
-    
+
     try:
         for root, dirs, files in os.walk(PROJECT_ROOT):
             dirs[:] = [d for d in dirs if d not in exclude_dirs]
@@ -241,18 +265,23 @@ def get_repository_stats() -> Dict[str, Any]:
                     by_lang[lang]["files"] += 1
                     total_files += 1
                     try:
-                        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                            loc = sum(1 for _ in f)
-                            by_lang[lang]["loc"] += loc
-                            total_loc += loc
+                        text = file_path.read_text(encoding="utf-8", errors="ignore")
+                        loc = len(text.splitlines())
+                        tokens = len(enc.encode(text, disallowed_special=())) if enc else len(text) // 4
+                        by_lang[lang]["loc"] += loc
+                        by_lang[lang]["tokens"] += tokens
+                        total_loc += loc
+                        total_tokens += tokens
                     except Exception:
                         pass
     except Exception:
         pass
-        
+
     return {
         "total_files": total_files,
         "total_loc": total_loc,
+        "total_tokens": total_tokens,
+        "tokenizer": tokenizer_name,
         "by_language": by_lang
     }
 
@@ -355,6 +384,8 @@ def generate_markdown_report(report_data: Dict[str, Any]) -> str:
     repo_stats = report_data.get("repository_stats", {})
     total_files = repo_stats.get("total_files", 0)
     total_loc = repo_stats.get("total_loc", 0)
+    total_tokens = repo_stats.get("total_tokens", 0)
+    tokenizer_name = repo_stats.get("tokenizer", "unknown")
     
     md = []
     md.append(f"# Aethvion Suite Tester - Performance Report")
@@ -397,21 +428,44 @@ def generate_markdown_report(report_data: Dict[str, Any]) -> str:
     md.append(f"")
     md.append(f"- **Total Files Tracked**: `{total_files:,}`")
     md.append(f"- **Total Lines of Code (LOC)**: `{total_loc:,}`")
+    md.append(f"- **Total Tokens**: `{total_tokens:,}` *(tokenizer: {tokenizer_name})*")
     md.append(f"")
+
+    # Context window fit table
+    context_windows = [
+        ("Claude 3.x (Sonnet / Haiku / Opus)", 200_000),
+        ("GPT-4o / GPT-4", 128_000),
+        ("Gemini 1.5 / 2.0 Pro", 1_000_000),
+        ("Llama 3.1 70B / DeepSeek V3", 128_000),
+        ("Mistral Large", 128_000),
+    ]
+    md.append(f"### Context Window Fit")
+    md.append(f"")
+    md.append(f"| Model | Context Window | Fits? | Remaining |")
+    md.append(f"| :--- | :---: | :---: | :---: |")
+    for model_name, ctx in context_windows:
+        fits = total_tokens <= ctx
+        remaining = ctx - total_tokens
+        fits_str = "✓ Yes" if fits else "✗ No"
+        rem_str = f"{remaining:+,}" if fits else "—"
+        md.append(f"| {model_name} | {ctx:,} | {fits_str} | {rem_str} |")
+    md.append(f"")
+
     md.append(f"### Language Breakdown")
     md.append(f"")
-    md.append(f"| Language | Files | Lines of Code (LOC) | Code Ratio |")
-    md.append(f"| :--- | :---: | :---: | :---: |")
-    
+    md.append(f"| Language | Files | LOC | Tokens | Token Share |")
+    md.append(f"| :--- | :---: | :---: | :---: | :---: |")
+
     by_lang = repo_stats.get("by_language", {})
-    for lang, stats in sorted(by_lang.items(), key=lambda x: x[1].get("loc", 0), reverse=True):
+    for lang, stats in sorted(by_lang.items(), key=lambda x: x[1].get("tokens", 0), reverse=True):
         l_files = stats.get("files", 0)
         l_loc = stats.get("loc", 0)
+        l_tokens = stats.get("tokens", 0)
         if l_files == 0:
             continue
-        ratio = (l_loc / total_loc * 100) if total_loc > 0 else 0.0
-        md.append(f"| **{lang}** | {l_files:,} | {l_loc:,} | {ratio:.1f}% |")
-        
+        token_ratio = (l_tokens / total_tokens * 100) if total_tokens > 0 else 0.0
+        md.append(f"| **{lang}** | {l_files:,} | {l_loc:,} | {l_tokens:,} | {token_ratio:.1f}% |")
+
     return "\n".join(md)
 
 def run_test_orchestrator(run_id: str, python_exe: str):
@@ -716,9 +770,9 @@ def run_test_orchestrator(run_id: str, python_exe: str):
     except Exception as e:
         add_log(run_id, f"Error during process tree cleanup: {e}")
 
-    # Scan project source stats
-    add_log(run_id, "Scanning repository codebase stats...")
+    add_log(run_id, "Scanning repository codebase stats (LOC + token count)...")
     repo_stats = get_repository_stats()
+    add_log(run_id, f"Codebase: {repo_stats['total_files']} files, {repo_stats['total_loc']:,} LOC, {repo_stats['total_tokens']:,} tokens ({repo_stats['tokenizer']})")
 
     # Compile report and calculate averages
     p_cpus    = [s["process_cpu"] for s in timeseries_data]
@@ -963,7 +1017,9 @@ async def compare_reports(base_id: str, compare_id: str):
         c_tot_files = c_repo.get("total_files", 0)
         b_tot_loc = b_repo.get("total_loc", 0)
         c_tot_loc = c_repo.get("total_loc", 0)
-        
+        b_tot_tokens = b_repo.get("total_tokens", 0)
+        c_tot_tokens = c_repo.get("total_tokens", 0)
+
         repo_compare = {
             "total_files": {
                 "base": b_tot_files,
@@ -975,22 +1031,30 @@ async def compare_reports(base_id: str, compare_id: str):
                 "comp": c_tot_loc,
                 "delta": c_tot_loc - b_tot_loc
             },
+            "total_tokens": {
+                "base": b_tot_tokens,
+                "comp": c_tot_tokens,
+                "delta": c_tot_tokens - b_tot_tokens
+            },
             "languages": {}
         }
-        
+
         b_langs = b_repo.get("by_language", {})
         c_langs = c_repo.get("by_language", {})
         all_langs = set(list(b_langs.keys()) + list(c_langs.keys()))
         for lang in all_langs:
-            bl = b_langs.get(lang, {"files": 0, "loc": 0})
-            cl = c_langs.get(lang, {"files": 0, "loc": 0})
+            bl = b_langs.get(lang, {"files": 0, "loc": 0, "tokens": 0})
+            cl = c_langs.get(lang, {"files": 0, "loc": 0, "tokens": 0})
             repo_compare["languages"][lang] = {
                 "files_base": bl.get("files", 0),
                 "files_comp": cl.get("files", 0),
                 "files_delta": cl.get("files", 0) - bl.get("files", 0),
                 "loc_base": bl.get("loc", 0),
                 "loc_comp": cl.get("loc", 0),
-                "loc_delta": cl.get("loc", 0) - bl.get("loc", 0)
+                "loc_delta": cl.get("loc", 0) - bl.get("loc", 0),
+                "tokens_base": bl.get("tokens", 0),
+                "tokens_comp": cl.get("tokens", 0),
+                "tokens_delta": cl.get("tokens", 0) - bl.get("tokens", 0),
             }
 
         # Helper to structure min / max / avg deltas for telemetry keys

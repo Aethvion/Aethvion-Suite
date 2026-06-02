@@ -803,7 +803,7 @@
                 <!-- Detail grids -->
                 <div class="sections-container">
                     
-                    <!-- Repostory stats -->
+                    <!-- Repository LOC stats -->
                     <div class="section-card">
                         <h3>
                             Repository Codebase Stats
@@ -824,6 +824,25 @@
                             </span>
                         </div>
                         <div id="repo-lang-breakdown">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Repository token stats -->
+                    <div class="section-card">
+                        <h3>
+                            Repository Codebase Token Stats
+                            <span id="repo-token-diff-summary" style="font-size: 0.8rem; font-weight: normal;"></span>
+                        </h3>
+                        <div class="metric-row">
+                            <span class="metric-name">Total Tokens <span id="inspect-repo-tokenizer" style="font-size:0.72rem;opacity:0.55;font-weight:normal;"></span></span>
+                            <span class="metric-value">
+                                <span id="inspect-repo-tokens">0</span>
+                                <span id="diff-repo-tokens"></span>
+                            </span>
+                        </div>
+                        <div id="repo-ctx-windows" style="margin-top:0.6rem;"></div>
+                        <div id="repo-token-lang-breakdown" style="margin-top:0.4rem;">
                             <!-- Populated dynamically -->
                         </div>
                     </div>
@@ -1058,51 +1077,79 @@
             }
         }
 
+        const CONTEXT_WINDOWS = [
+            { name: 'Claude 3.x (Sonnet/Haiku/Opus)', tokens: 200_000 },
+            { name: 'GPT-4o / GPT-4', tokens: 128_000 },
+            { name: 'Llama 3.1 70B / DeepSeek V3', tokens: 128_000 },
+            { name: 'Mistral Large', tokens: 128_000 },
+            { name: 'Gemini 1.5 / 2.0 Pro', tokens: 1_000_000 },
+        ];
+
+        function _diffTag(delta, unit = '') {
+            if (delta === 0) return '';
+            const sign = delta > 0 ? '+' : '';
+            const cls = delta > 0 ? 'diff-added' : 'diff-removed';
+            return `<span class="${cls}">(${sign}${delta.toLocaleString()}${unit})</span>`;
+        }
+
         function renderRepoStats(repo, diffStats = null) {
+            const totalTokens = repo.total_tokens || 0;
+
+            // Scalar metrics
             document.getElementById('inspect-repo-files').textContent = repo.total_files;
             document.getElementById('inspect-repo-loc').textContent = repo.total_loc.toLocaleString();
-            
-            // Clear inline diff tags
+            document.getElementById('inspect-repo-tokens').textContent = totalTokens.toLocaleString();
+            const tokLabel = document.getElementById('inspect-repo-tokenizer');
+            if (tokLabel && repo.tokenizer) tokLabel.textContent = `(${repo.tokenizer})`;
+
+            // Clear diff tags
             document.getElementById('diff-repo-files').innerHTML = '';
             document.getElementById('diff-repo-loc').innerHTML = '';
+            document.getElementById('diff-repo-tokens').innerHTML = '';
             document.getElementById('repo-diff-summary').innerHTML = '';
+            document.getElementById('repo-token-diff-summary').innerHTML = '';
 
-            // Handle diff render if comparison active
             if (diffStats) {
-                const filesDiff = diffStats.total_files.delta;
-                const locDiff = diffStats.total_loc.delta;
-                
-                document.getElementById('diff-repo-files').innerHTML = filesDiff === 0 ? 
-                    '' : (filesDiff > 0 ? `<span class="diff-added">(+${filesDiff})</span>` : `<span class="diff-removed">(${filesDiff})</span>`);
-                    
-                document.getElementById('diff-repo-loc').innerHTML = locDiff === 0 ? 
-                    '' : (locDiff > 0 ? `<span class="diff-added">(+${locDiff.toLocaleString()} LOC)</span>` : `<span class="diff-removed">(${locDiff.toLocaleString()} LOC)</span>`);
-                
-                document.getElementById('repo-diff-summary').textContent = `[Files delta: ${filesDiff > 0 ? '+':''}${filesDiff} | LOC delta: ${locDiff > 0 ? '+':''}${locDiff.toLocaleString()}]`;
+                const fD = diffStats.total_files.delta;
+                const lD = diffStats.total_loc.delta;
+                const tD = (diffStats.total_tokens || {}).delta || 0;
+
+                document.getElementById('diff-repo-files').innerHTML = _diffTag(fD);
+                document.getElementById('diff-repo-loc').innerHTML = _diffTag(lD, ' LOC');
+                document.getElementById('diff-repo-tokens').innerHTML = _diffTag(tD, ' tok');
+
+                const locParts = [];
+                if (fD !== 0) locParts.push(`Files: ${fD > 0 ? '+' : ''}${fD}`);
+                if (lD !== 0) locParts.push(`LOC: ${lD > 0 ? '+' : ''}${lD.toLocaleString()}`);
+                if (locParts.length) document.getElementById('repo-diff-summary').textContent = `[${locParts.join(' | ')}]`;
+
+                if (tD !== 0) document.getElementById('repo-token-diff-summary').textContent =
+                    `[Tokens: ${tD > 0 ? '+' : ''}${tD.toLocaleString()}]`;
             }
 
-            const breakdownDiv = document.getElementById('repo-lang-breakdown');
-            breakdownDiv.innerHTML = '';
-            
-            for (const [lang, stats] of Object.entries(repo.by_language)) {
-                if (stats.files === 0) continue;
+            // LOC language breakdown
+            const locDiv = document.getElementById('repo-lang-breakdown');
+            locDiv.innerHTML = '';
+
+            const sortedByLoc = Object.entries(repo.by_language)
+                .filter(([, s]) => s.files > 0)
+                .sort((a, b) => b[1].loc - a[1].loc);
+
+            for (const [lang, stats] of sortedByLoc) {
                 const pct = repo.total_loc > 0 ? (stats.loc / repo.total_loc) * 100 : 0;
-                
+
                 let diffHtml = '';
                 if (diffStats && diffStats.languages[lang]) {
-                    const lDiff = diffStats.languages[lang].loc_delta;
-                    const fDiff = diffStats.languages[lang].files_delta;
-                    
-                    if (lDiff !== 0 || fDiff !== 0) {
-                        const lSign = lDiff > 0 ? '+' : '';
-                        const fSign = fDiff > 0 ? '+' : '';
-                        const lClass = lDiff > 0 ? 'diff-added' : 'diff-removed';
-                        const fClass = fDiff > 0 ? 'diff-added' : 'diff-removed';
-                        
-                        diffHtml = `<span style="font-size:0.75rem; margin-left: 0.5rem;">[Files: <span class="${fClass}">${fSign}${fDiff}</span> | LOC: <span class="${lClass}">${lSign}${lDiff}</span>]</span>`;
+                    const lD = diffStats.languages[lang].loc_delta;
+                    const fD = diffStats.languages[lang].files_delta;
+                    if (lD !== 0 || fD !== 0) {
+                        const parts = [];
+                        if (fD !== 0) parts.push(`Files: <span class="${fD>0?'diff-added':'diff-removed'}">${fD>0?'+':''}${fD}</span>`);
+                        if (lD !== 0) parts.push(`LOC: <span class="${lD>0?'diff-added':'diff-removed'}">${lD>0?'+':''}${lD.toLocaleString()}</span>`);
+                        diffHtml = `<span style="font-size:0.72rem;margin-left:0.4rem;">[${parts.join(' | ')}]</span>`;
                     }
                 }
-                
+
                 const row = document.createElement('div');
                 row.className = 'metric-row';
                 row.innerHTML = `
@@ -1111,11 +1158,75 @@
                         ${stats.loc.toLocaleString()} lines
                         ${diffHtml}
                         <div class="loc-bar-container">
-                            <div class="loc-bar" style="width: ${pct}%"></div>
+                            <div class="loc-bar" style="width:${pct.toFixed(1)}%"></div>
                         </div>
-                    </span>
-                `;
-                breakdownDiv.appendChild(row);
+                    </span>`;
+                locDiv.appendChild(row);
+            }
+
+            // Context window fit widget
+            const ctxDiv = document.getElementById('repo-ctx-windows');
+            ctxDiv.innerHTML = '';
+            if (totalTokens > 0) {
+                const header = document.createElement('div');
+                header.style.cssText = 'font-size:0.72rem;opacity:0.55;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.35rem;';
+                header.textContent = 'Context window fit';
+                ctxDiv.appendChild(header);
+
+                for (const model of CONTEXT_WINDOWS) {
+                    const fits = totalTokens <= model.tokens;
+                    const pct = Math.min(100, (totalTokens / model.tokens) * 100);
+                    const remaining = model.tokens - totalTokens;
+                    const remStr = fits
+                        ? `${remaining.toLocaleString()} remaining`
+                        : `${Math.abs(remaining).toLocaleString()} over`;
+
+                    const row = document.createElement('div');
+                    row.style.cssText = 'margin-bottom:0.4rem;';
+                    row.innerHTML = `
+                        <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.78rem;margin-bottom:2px;">
+                            <span style="opacity:0.8;">${model.name}</span>
+                            <span style="font-family:var(--font-mono);font-size:0.72rem;opacity:0.65;">${fits ? '✓' : '✗'} ${remStr}</span>
+                        </div>
+                        <div class="loc-bar-container">
+                            <div class="loc-bar" style="width:${pct.toFixed(1)}%;background:${fits ? 'var(--accent)' : '#e05555'};"></div>
+                        </div>`;
+                    ctxDiv.appendChild(row);
+                }
+            }
+
+            // Token language breakdown
+            const tokDiv = document.getElementById('repo-token-lang-breakdown');
+            tokDiv.innerHTML = '';
+
+            const sortedByTokens = Object.entries(repo.by_language)
+                .filter(([, s]) => s.files > 0)
+                .sort((a, b) => (b[1].tokens || 0) - (a[1].tokens || 0));
+
+            for (const [lang, stats] of sortedByTokens) {
+                const langTokens = stats.tokens || 0;
+                const pct = totalTokens > 0 ? (langTokens / totalTokens) * 100 : 0;
+
+                let diffHtml = '';
+                if (diffStats && diffStats.languages[lang]) {
+                    const tD = diffStats.languages[lang].tokens_delta || 0;
+                    if (tD !== 0) {
+                        diffHtml = `<span style="font-size:0.72rem;margin-left:0.4rem;">[Tok: <span class="${tD>0?'diff-added':'diff-removed'}">${tD>0?'+':''}${tD.toLocaleString()}</span>]</span>`;
+                    }
+                }
+
+                const row = document.createElement('div');
+                row.className = 'metric-row';
+                row.innerHTML = `
+                    <span class="metric-name">${lang} (${stats.files} files)</span>
+                    <span class="metric-value">
+                        ${langTokens.toLocaleString()} tok
+                        ${diffHtml}
+                        <div class="loc-bar-container">
+                            <div class="loc-bar" style="width:${pct.toFixed(1)}%"></div>
+                        </div>
+                    </span>`;
+                tokDiv.appendChild(row);
             }
         }
 
