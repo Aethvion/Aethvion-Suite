@@ -1,14 +1,12 @@
-/**
- * companion-memory.js
- * ════════════════════
- * Handles the Companion Memory tab — lets the user switch between
- * companions and view each one's base_info.json and memory.json.
- *
- * API contract:
- *   GET /api/companions/list          → [{ id, name, ... }]
- *   GET /api/companions/{id}/memory   → { base_info, memory }
- *   GET /api/companions/{id}/history  → [{ date, messages }]
- */
+/*
+   companion-memory.js
+   Handles the Companion Memory tab — lets the user switch between
+   companions and view each one's base_info.json and memory.json.
+   API contract:
+   GET /api/companions/list          → [{ id, name, ... }]
+   GET /api/companions/{id}/memory   → { base_info, memory }
+   GET /api/companions/{id}/history  → [{ date, messages }]
+*/
 
 (function () {
     'use strict';

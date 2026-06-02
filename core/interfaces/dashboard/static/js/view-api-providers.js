@@ -1,4 +1,4 @@
-/* ── API Providers View ─────────────────────────────────────────── */
+/* API Providers View */
 (function () {
     const REGISTRY_URL       = '/api/registry';
     const AVAIL_TYPES_URL    = '/api/registry/available_types';
@@ -62,7 +62,7 @@
     let _suggested       = {};
     let _suggestedPanelOpen = false;
 
-    /* ── Helpers ──────────────────────────────────────────────────── */
+    /* Helpers */
     function iconFor(id)  { return ICONS[id]  || DEFAULT_ICON; }
     function descFor(id)  { return DESCRIPTIONS[id] || DEFAULT_DESC; }
     function labelFor(id) {
@@ -93,7 +93,7 @@
         return String(s).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
     }
 
-    /* ── Fetch ────────────────────────────────────────────────────── */
+    /* Fetch */
     async function fetchRegistry() {
         const r = await fetch(REGISTRY_URL);
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -110,7 +110,7 @@
         return r.json().catch(() => ({}));
     }
 
-    /* ── Render selector row ──────────────────────────────────────── */
+    /* Render selector row */
     function renderSelectorRow(activeKeys, availTypes) {
         const row = document.getElementById('ap-selector-row');
         if (!row) return;
@@ -143,7 +143,7 @@
         row.innerHTML = html || '<span style="color:var(--text-tertiary);font-size:0.82rem;">No providers configured.</span>';
     }
 
-    /* ── Render content panel ─────────────────────────────────────── */
+    /* Render content panel */
     function renderContentPanel(providerId) {
         const panel = document.getElementById('ap-content-panel');
         if (!panel) return;
@@ -232,7 +232,7 @@
         _suggestedPanelOpen = false;
     }
 
-    /* ── Suggested models panel ───────────────────────────────────── */
+    /* Suggested models panel */
     window.apToggleSuggested = function (providerId) {
         const panel = document.getElementById('ap-suggested-panel');
         if (!panel) return;
@@ -340,7 +340,7 @@
         }
     };
 
-    /* ── Init ─────────────────────────────────────────────────────── */
+    /* Init */
     async function apInit() {
         const row = document.getElementById('ap-selector-row');
         if (!row) return;
@@ -373,7 +373,7 @@
         }
     }
 
-    /* ── Select provider ──────────────────────────────────────────── */
+    /* Select provider */
     window.apSelectProvider = function (providerId) {
         _activeProvider = providerId;
         _suggestedPanelOpen = false;
@@ -383,7 +383,7 @@
         renderContentPanel(providerId);
     };
 
-    /* ── Add provider (available tile) ───────────────────────────── */
+    /* Add provider (available tile) */
     window.apAddProvider = async function (typeId, btn) {
         btn.disabled = true;
         const orig = btn.innerHTML;
@@ -407,7 +407,7 @@
         }
     };
 
-    /* ── Delete model ─────────────────────────────────────────────── */
+    /* Delete model */
     window.apDeleteModel = async function (providerId, modelId, btn) {
         if (!confirm(`Remove "${modelId}" from ${labelFor(providerId)}?`)) return;
         btn.disabled = true;
@@ -430,7 +430,7 @@
         }
     };
 
-    /* ── Add model (manual form) ──────────────────────────────────── */
+    /* Add model (manual form) */
     window.apAddModel = async function (providerId, btn) {
         const idEl  = document.getElementById('ap-newid');
         const inEl  = document.getElementById('ap-incost');
@@ -475,7 +475,7 @@
         }
     };
 
-    /* ── Helpers ──────────────────────────────────────────────────── */
+    /* Helpers */
     function refreshModelTable(providerId) {
         const tbody = document.getElementById('ap-tbody');
         if (!tbody) return;
@@ -517,7 +517,7 @@
         }
     }
 
-    /* ── Register with tab system ─────────────────────────────────── */
+    /* Register with tab system */
     if (typeof registerTabInit === 'function') {
         registerTabInit('api-providers', apInit);
     }

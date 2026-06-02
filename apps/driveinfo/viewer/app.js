@@ -1,10 +1,10 @@
-/* =============================================================
+/*
    Aethvion Drive Info — Frontend
    Squarified treemap + directory tree, mirrors WinDirStat.
-   ============================================================= */
+*/
 (function () {
 
-/* ── DOM refs ─────────────────────────────────────────────────── */
+/* DOM refs */
 const $ = id => document.getElementById(id);
 const overlay       = $("di-overlay");
 const ovTitle       = $("ov-title");
@@ -28,7 +28,7 @@ const diResizer     = $("di-resizer");
 const diRight       = $("di-right");
 const ctx           = canvas.getContext("2d");
 
-/* ── State ────────────────────────────────────────────────────── */
+/* State */
 let currentScan  = null;   // full .eathscan payload
 let navStack     = [];     // breadcrumb node history
 let hitCells     = [];     // [{node, x,y,w,h}] for mouse hit-testing
@@ -37,7 +37,7 @@ let pollTimer    = null;
 let hoveredNode  = null;   // node currently under mouse (tree or canvas)
 let searchTimer  = null;
 
-/* ── Extension colour map ─────────────────────────────────────── */
+/* Extension colour map */
 const EXT_COLORS_NAMED = {
     ".exe":"#e05252", ".dll":"#e07a52", ".sys":"#e05252",
     ".bat":"#e0a052", ".cmd":"#e0a052", ".ps1":"#5b7ce0",
@@ -65,7 +65,7 @@ function extColor(ext) {
     return `hsl(${Math.abs(h) % 360},55%,48%)`;
 }
 
-/* ── Utilities ────────────────────────────────────────────────── */
+/* Utilities */
 function fmtBytes(b) {
     if (b == null) return "–";
     const units = ["B","KB","MB","GB","TB"];
@@ -78,7 +78,7 @@ function escHtml(s) {
     return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
-/* ── Squarified treemap layout ────────────────────────────────── */
+/* Squarified treemap layout */
 /* Returns items with ._x ._y ._w ._h set (in-place). */
 function squarify(items, x, y, w, h) {
     if (!items.length || w < 1 || h < 1) return;
@@ -138,7 +138,7 @@ function _worst(row, rowSum, strip, sw) {
     return w;
 }
 
-/* ── Treemap rendering ────────────────────────────────────────── */
+/* Treemap rendering */
 const DPR       = window.devicePixelRatio || 1;
 const DIR_HDR_H = 20;   // px — directory label bar height (base)
 const MIN_LABEL = 32;   // min rect size to draw a label
@@ -333,7 +333,7 @@ function _drawLabel(text, cx, cy, maxW, maxH, color, size) {
     ctx.restore();
 }
 
-/* ── Hit-testing ──────────────────────────────────────────────── */
+/* Hit-testing */
 function hitTest(mouseX, mouseY) {
     // Search in reverse (topmost drawn = last in array = files on top)
     for (let i = hitCells.length - 1; i >= 0; i--) {
@@ -346,7 +346,7 @@ function hitTest(mouseX, mouseY) {
     return null;
 }
 
-/* ── Tooltip ──────────────────────────────────────────────────── */
+/* Tooltip */
 function showTooltip(node, mouseX, mouseY) {
     let html = `<b>${escHtml(node.name)}</b><br>`;
     html += `Size: <b>${fmtBytes(node.size)}</b><br>`;
@@ -372,7 +372,7 @@ function positionTooltip(mx, my) {
     tooltip.style.top  = ly + "px";
 }
 
-/* ── Breadcrumb ───────────────────────────────────────────────── */
+/* Breadcrumb */
 function renderBreadcrumb() {
     breadcrumb.innerHTML = "";
     navStack.forEach((node, idx) => {
@@ -397,7 +397,7 @@ function renderBreadcrumb() {
     });
 }
 
-/* ── Tree view ────────────────────────────────────────────────── */
+/* Tree view */
 function buildSortedChildren(node) {
     const dirs  = (node.children || []).filter(c => c.type === "dir");
     const files = (node.children || []).filter(c => c.type === "file");
@@ -566,7 +566,7 @@ function syncHoverToTree(path) {
     }
 }
 
-/* ── Extension legend ─────────────────────────────────────────── */
+/* Extension legend */
 function renderLegend(extensions) {
     legend.innerHTML = "";
     const entries = Object.entries(extensions).slice(0, 20);
@@ -581,7 +581,7 @@ function renderLegend(extensions) {
     }
 }
 
-/* ── Load & display a scan ────────────────────────────────────── */
+/* Load & display a scan */
 function displayScan(scan) {
     currentScan = scan;
     navStack    = [scan.tree];
@@ -596,7 +596,7 @@ function displayScan(scan) {
         + `${fmtBytes(m.total_size)}  ·  Scanned: ${m.root_path}`;
 }
 
-/* ── Saved scans dropdown ─────────────────────────────────────── */
+/* Saved scans dropdown */
 async function loadSavedScans() {
     try {
         const res = await fetch("/api/scans");
@@ -616,7 +616,7 @@ async function loadSavedScans() {
     }
 }
 
-/* ── Drive list ───────────────────────────────────────────────── */
+/* Drive list */
 async function loadDrives() {
     try {
         const drives = await fetch("/api/drives").then(r => r.json());
@@ -631,7 +631,7 @@ async function loadDrives() {
     } catch (_) {}
 }
 
-/* ── Scan flow ────────────────────────────────────────────────── */
+/* Scan flow */
 async function startScan(path) {
     if (!path.trim()) return;
 
@@ -708,7 +708,7 @@ async function pollScan() {
     }
 }
 
-/* ── Sort buttons ─────────────────────────────────────────────── */
+/* Sort buttons */
 document.querySelectorAll(".di-sort-btn").forEach(btn => {
     btn.addEventListener("click", () => {
         document.querySelectorAll(".di-sort-btn").forEach(b => b.classList.remove("active"));
@@ -718,7 +718,7 @@ document.querySelectorAll(".di-sort-btn").forEach(btn => {
     });
 });
 
-/* ── Mouse interaction on canvas ─────────────────────────────── */
+/* Mouse interaction on canvas */
 canvas.addEventListener("mousemove", e => {
     const rect = canvas.getBoundingClientRect();
     const mx   = e.clientX - rect.left;
@@ -777,7 +777,7 @@ canvas.addEventListener("dblclick", () => {
     }
 });
 
-/* ── Header controls ──────────────────────────────────────────── */
+/* Header controls */
 driveSelect.addEventListener("change", () => {
     if (driveSelect.value) scanPathInput.value = driveSelect.value;
 });
@@ -826,7 +826,7 @@ btnDelScan.addEventListener("click", async () => {
     await loadSavedScans();
 });
 
-/* ── Resize handle (left/right split) ────────────────────────── */
+/* Resize handle (left/right split) */
 let resizing = false, resizeStartX = 0, resizeStartW = 0;
 
 diResizer.addEventListener("mousedown", e => {
@@ -851,10 +851,10 @@ document.addEventListener("mouseup", () => {
     }
 });
 
-/* ── Window resize ────────────────────────────────────────────── */
+/* Window resize */
 window.addEventListener("resize", () => renderTreemap());
 
-/* ── Search Logic ────────────────────────────────────────────── */
+/* Search Logic */
 const treeSearchInput = $("tree-search");
 const btnClearSearch  = $("btn-clear-search");
 const searchResults   = $("search-results");
@@ -928,7 +928,7 @@ function findNodeByPath(root, path) {
     return null;
 }
 
-/* ── Context Menu ─────────────────────────────────────────────── */
+/* Context Menu */
 const ctxMenu     = $("di-ctx-menu");
 const ctxOpenExpl = $("ctx-open-explorer");
 const ctxCopyPath = $("ctx-copy-path");
@@ -1047,7 +1047,7 @@ function _fallbackCopy(text) {
     document.body.removeChild(ta);
 }
 
-/* ── Init ─────────────────────────────────────────────────────── */
+/* Init */
 loadDrives();
 loadSavedScans();
 renderTreemap();   // draws empty state

@@ -515,5 +515,3 @@ class FileOpsMixin:
             return f"Error: {e}"
 
     # event builder
-
-

@@ -148,7 +148,7 @@ async function loadDocumentation() {
 
 // Add CSS for documentation
 const docStyles = `
-/* ── View toggle ── */
+/* View toggle */
 #doc-view-toggle {
     display: flex;
     gap: 6px;
@@ -191,7 +191,7 @@ const docStyles = `
     border-radius: 0;
 }
 
-/* ── Markdown docs ── */
+/* Markdown docs */
 .doc-folder-section {
     margin-bottom: 2rem;
 }

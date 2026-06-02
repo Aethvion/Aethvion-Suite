@@ -925,9 +925,7 @@
     background: rgba(var(--primary-rgb, 99, 102, 241), 0.2);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   dashboard layout
-   ══════════════════════════════════════════════════════════════ */
+/* dashboard layout */
 
 .agents-body {
     display: flex;
@@ -1238,9 +1236,7 @@
     opacity: 0.45;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   main area — messages + activity
-   ══════════════════════════════════════════════════════════════ */
+/* main area — messages + activity */
 
 .agents-dash-main {
     flex: 1;
@@ -2211,9 +2207,7 @@
 }
 
 
-/* ══════════════════════════════════════════════════════════════════════════
-   Active Workspace Explorer & Editor Tabs (Code V2)
-   ══════════════════════════════════════════════════════════════════════════ */
+/* Active Workspace Explorer & Editor Tabs (Code V2) */
 
 .agents-main-tabs {
     display: flex;
@@ -2891,9 +2885,7 @@
 }
 
 
-/* ══════════════════════════════════════════════════════════════
-   Resume banner
-   ══════════════════════════════════════════════════════════════ */
+/* Resume banner */
 
 .agents-resume-banner {
     display: flex;
@@ -2964,9 +2956,7 @@
     color: var(--text-primary);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Token budget input
-   ══════════════════════════════════════════════════════════════ */
+/* Token budget input */
 
 .agents-budget-wrap {
     display: flex;
@@ -3012,9 +3002,7 @@
     opacity: 0.5;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Inline warning cards (stall / budget)
-   ══════════════════════════════════════════════════════════════ */
+/* Inline warning cards (stall / budget) */
 
 .agent-inline-warn {
     display: flex;
@@ -3058,9 +3046,7 @@
     margin-bottom: 0.15rem;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Project Memory panel (left sidebar — always visible)
-   ══════════════════════════════════════════════════════════════ */
+/* Project Memory panel (left sidebar — always visible) */
 
 .agents-project-memory {
     border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -3325,9 +3311,7 @@
     margin: 0.15rem 0;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Memory tab panel
-   ══════════════════════════════════════════════════════════════ */
+/* Memory tab panel */
 
 .agents-memory-container {
     height: 100%;
@@ -3421,9 +3405,7 @@
     line-height: 1.45;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Patch failure card in main activity stream
-   ══════════════════════════════════════════════════════════════ */
+/* Patch failure card in main activity stream */
 
 .agent-patch-fail-card {
     display: flex;
@@ -3452,9 +3434,7 @@
     color: #f87171;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Agent respond action — visible message in main chat
-   ══════════════════════════════════════════════════════════════ */
+/* Agent respond action — visible message in main chat */
 
 .agents-message.agents-message--respond {
     background: rgba(99, 102, 241, 0.05);
@@ -3471,9 +3451,7 @@
     white-space: pre-wrap;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Activity Log (replaces left-sidebar timeline)
-   ══════════════════════════════════════════════════════════════ */
+/* Activity Log (replaces left-sidebar timeline) */
 
 .agents-dash-section--log {
     flex: 1;
@@ -3552,9 +3530,7 @@
 .agent-alog-entry--active .agent-alog-label { color: var(--text-primary); }
 .agent-alog-entry--fail   .agent-alog-label { color: #fb923c; }
 
-/* ══════════════════════════════════════════════════════════════
-   Inline thought card (replaces right-panel Thoughts)
-   ══════════════════════════════════════════════════════════════ */
+/* Inline thought card (replaces right-panel Thoughts) */
 
 .agent-thought-inline {
     margin: 0.3rem 0;
@@ -3635,9 +3611,7 @@
     word-break: break-all;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Right panel — Plan (top) + Activity Log (bottom)
-   ══════════════════════════════════════════════════════════════ */
+/* Right panel — Plan (top) + Activity Log (bottom) */
 
 .agents-dash-right {
     width: 240px;
@@ -3748,10 +3722,10 @@
     padding-left: 0.2rem;
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/*
    PLAIN TEXT CHAT — strip ALL decorative chrome from messages
    Matches the look of Claude Code / Cursor: just readable text.
-   ═══════════════════════════════════════════════════════════════ */
+*/
 
 /* Base bubble: no box, no border, no background */
 .agents-bubble {

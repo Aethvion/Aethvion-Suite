@@ -296,5 +296,3 @@ class AgentState:
                 )
 
         return "\n".join(parts)
-
-

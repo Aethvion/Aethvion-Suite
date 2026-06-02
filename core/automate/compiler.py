@@ -453,7 +453,7 @@ def _generate_run_py(workflow: dict, analysis: dict) -> str:
     # ai_model shared impl — included if any AI node uses it
     if needs_ai:
         ai_model_shared = '''\
-# ── Shared AI model handler (used by ai.google and ai.any) ───────────────────
+# Shared AI model handler (used by ai.google and ai.any)
 def _h_ai_model(node, inputs, ctx):
     p = node.get("properties", {})
     def _inp(port, prop, default=""):
@@ -494,7 +494,7 @@ def _h_ai_model(node, inputs, ctx):
     ai_section = ""
     if needs_ai:
         ai_section = '''\
-# ── Standalone AI client ──────────────────────────────────────────────────────
+# Standalone AI client
 _ai_client = None
 
 def _get_ai_client():
@@ -564,14 +564,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# ── Load .env ─────────────────────────────────────────────────────────────────
+# Load .env
 try:
     from dotenv import load_dotenv
     load_dotenv(Path(__file__).parent / ".env")
 except ImportError:
     pass  # python-dotenv not installed — set env vars manually
 
-# ── Utilities ─────────────────────────────────────────────────────────────────
+# Utilities
 
 def _to_str(val: Any) -> str:
     if isinstance(val, str): return val
@@ -617,7 +617,7 @@ def _output_summary(outputs: dict) -> str:
             return _fmt(port, s)
     return ""
 
-# ── WorkflowExecutor ──────────────────────────────────────────────────────────
+# WorkflowExecutor
 
 class WorkflowExecutor:
     def __init__(self, workflow: dict, variables: dict | None = None,
@@ -755,34 +755,34 @@ class WorkflowExecutor:
     def _warn(self, msg): self._log.append({{"level":"warning", "msg": msg, "ts": _ts()}})
     def _error(self, msg): self._log.append({{"level":"error",  "msg": msg, "ts": _ts()}})
 
-# ── Runtime state ─────────────────────────────────────────────────────────────
+# Runtime state
 _INPUT_OVERRIDES: dict[str, Any] = {{}}
 _OUTPUT_RESULTS:  list[dict]     = []
 _MEMORY_STORE:    dict[str, Any] = {{}}
 
 {ai_section}
-# ── Node handlers ─────────────────────────────────────────────────────────────
+# Node handlers
 {"".join(handler_blocks)}
-# ── Handler registry ──────────────────────────────────────────────────────────
+# Handler registry
 _REGISTRY: dict[str, Any] = {{
 {"".join(registry_lines)}
 }}
 
-# ── Workflow ──────────────────────────────────────────────────────────────────
+# Workflow
 with open(Path(__file__).parent / "workflow.json", encoding="utf-8") as _f:
     _WORKFLOW = json.load(_f)
 
 _INPUT_NODES = [n for n in _WORKFLOW.get("nodes", []) if n.get("type","").startswith("input.")]
 
-# ── Public variables (baked in at compile time) ───────────────────────────────
+# Public variables (baked in at compile time)
 # Each entry: {{name, varType, default, description}}
 _PUBLIC_VARS: list[dict] = {public_vars_json}
 
-# ── Named triggers (baked in at compile time) ─────────────────────────────────
+# Named triggers (baked in at compile time)
 # Each entry: {{id, name, slug, type}}
 _TRIGGERS: list[dict] = {triggers_json}
 
-# ── FastAPI server ────────────────────────────────────────────────────────────
+# FastAPI server
 try:
     from fastapi import FastAPI, Request
     from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse

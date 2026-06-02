@@ -535,9 +535,7 @@
     }
 }
 
-/* ══════════════════════════════════════════════════════════════════════════════
-   GAUNTLET MODE
-   ══════════════════════════════════════════════════════════════════════════════ */
+/* GAUNTLET MODE */
 
 /* Middle column wrapper — lets battle-area and gauntlet-area share the same slot */
 .arena-middle-col {

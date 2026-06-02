@@ -31,9 +31,7 @@
 html, body { height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif;
     background: var(--bg); color: var(--text); font-size: 13px; }
 
-/* ═══════════════════════════════════
-   LAYOUT SKELETON
-═══════════════════════════════════ */
+/* LAYOUT SKELETON */
 
 #app {
     display: flex;

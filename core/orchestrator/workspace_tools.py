@@ -340,4 +340,3 @@ def parse_dir_entries(listing: str) -> List[str]:
         if line:
             entries.append(line)
     return entries
-

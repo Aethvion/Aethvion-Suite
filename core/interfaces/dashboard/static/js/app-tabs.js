@@ -1,31 +1,24 @@
 'use strict';
 console.log('[ATB] app-tabs.js loaded (v10.0.0)');
 
-/**
- * Aethvion App Tab System  (app-tabs.js)
- * ───────────────────────────────────────
- * Manages the top tab bar that lets users open Aethvion apps inside the
- * main dashboard window without losing any app state.
- *
- * Key design rules
- * ────────────────
- * • Each app gets ONE iframe, created on first open and never destroyed until
- *   the tab is explicitly closed.  Tab switching only toggles CSS display.
- *
- * • Ports are FULLY DYNAMIC — no hardcoded ports anywhere.  The iframe src is
- *   only set once the app's portKey appears in the PortManager registry
- *   (/api/system/ports).  This prevents loading the wrong app if an expected
- *   port is occupied by something else.
- *
- * • The Nexus tab is permanent and cannot be closed.
- *
- * Public API (window.ATB)
- * ───────────────────────
- *   ATB.openApp(appId)      – open (or focus) an app by id
- *   ATB.switchTo(panelId)   – switch the visible panel by DOM id
- *   ATB.retryApp(appId)     – tear down and rebuild a failed app tab
- *   ATB.refreshPorts()      – re-fetch ports; returns { name → port } map
- */
+/*
+   Aethvion App Tab System  (app-tabs.js)
+   Manages the top tab bar that lets users open Aethvion apps inside the
+   main dashboard window without losing any app state.
+   Key design rules
+   • Each app gets ONE iframe, created on first open and never destroyed until
+   the tab is explicitly closed.  Tab switching only toggles CSS display.
+   • Ports are FULLY DYNAMIC — no hardcoded ports anywhere.  The iframe src is
+   only set once the app's portKey appears in the PortManager registry
+   (/api/system/ports).  This prevents loading the wrong app if an expected
+   port is occupied by something else.
+   • The Nexus tab is permanent and cannot be closed.
+   Public API (window.ATB)
+   ATB.openApp(appId)      – open (or focus) an app by id
+   ATB.switchTo(panelId)   – switch the visible panel by DOM id
+   ATB.retryApp(appId)     – tear down and rebuild a failed app tab
+   ATB.refreshPorts()      – re-fetch ports; returns { name → port } map
+*/
 const ATB = (() => {
 
     // App registry

@@ -1,4 +1,4 @@
-# ── Aethvion Suite — headless / server-only Docker image ─────────────────────
+# Aethvion Suite — headless / server-only Docker image
 #
 # This image runs the FastAPI dashboard + REST API without a GUI.
 # The desktop GUI (CustomTkinter launcher) and Windows-only integrations
@@ -15,7 +15,6 @@
 #     aethvion-suite
 #
 # The dashboard will be available at http://localhost:8000
-# ─────────────────────────────────────────────────────────────────────────────
 
 FROM python:3.11-slim AS base
 
@@ -29,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# ── Install Python dependencies ───────────────────────────────────────────────
+# Install Python dependencies
 COPY pyproject.toml ./
 
 # Install headless opencv (avoids pulling in X11 libs)
@@ -60,13 +59,13 @@ RUN pip install --no-cache-dir \
         "sentence-transformers>=2.2.0" \
         "networkx>=3.0"
 
-# ── Copy source ───────────────────────────────────────────────────────────────
+# Copy source
 COPY . .
 
 # Install the package itself (editable) so `core.*` imports resolve
 RUN pip install --no-cache-dir -e . --no-deps
 
-# ── Runtime config ────────────────────────────────────────────────────────────
+# Runtime config
 # Persist user data outside the container
 VOLUME ["/app/data", "/app/assets"]
 
@@ -77,7 +76,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/system/version-info')" || exit 1
 
-# ── Entrypoint ────────────────────────────────────────────────────────────────
+# Entrypoint
 # Start the web server. Browser auto-open is skipped in a headless environment
 # (open_app_window fails silently). PORT env var sets the listen port.
 ENV PORT=8000

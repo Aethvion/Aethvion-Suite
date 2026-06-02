@@ -1985,7 +1985,7 @@
         }
     }
 
-    /* ── Tag editor (aliases / categories / tags) ── */
+    /* Tag editor (aliases / categories / tags) */
 
     function _renderTagEditor(id, label, items) {
         const chips = items.map(item =>
@@ -2037,7 +2037,7 @@
         if (tagEl)   { tagEl.innerHTML   = _renderTagEditor('adb-edit-tags',       'Tags',        core.tags       || []); _wireTagEditor(tagEl,   'adb-edit-tags');       }
     }
 
-    /* ── Timeline editor ── */
+    /* Timeline editor */
 
     function _tlRow(ev) {
         return `<div class="adb-edit-tl-row">
@@ -2077,7 +2077,7 @@
         _wireTimelineEditor(tlEl);
     }
 
-    /* ── Relations editor ── */
+    /* Relations editor */
 
     function _relRow(rel) {
         const opts = _RELATION_KINDS.map(k =>
@@ -2137,7 +2137,7 @@
         });
     }
 
-    /* ── Properties editor ── */
+    /* Properties editor */
 
     function _propRow(k, v) {
         return `<div class="adb-edit-prop-row">
@@ -2178,7 +2178,7 @@
         _wirePropEditor(propEl);
     }
 
-    /* ── Stubs editor ── */
+    /* Stubs editor */
 
     function _stubRow(s) {
         return `<div class="adb-edit-stub-row">
@@ -2218,7 +2218,7 @@
         _wireStubEditor(stubEl);
     }
 
-    /* ── Collect & save ── */
+    /* Collect & save */
 
     async function _saveEdit() {
         if (!_currentEntityId) return;

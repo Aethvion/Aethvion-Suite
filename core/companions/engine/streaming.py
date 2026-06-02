@@ -62,5 +62,3 @@ def build_bridges_capabilities(capabilities: dict | None = None) -> str:
     except Exception:
         return ""
 
-
-

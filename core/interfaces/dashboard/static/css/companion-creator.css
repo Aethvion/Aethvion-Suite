@@ -1,6 +1,4 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   Companions Hub — full-height two-column layout
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* Companions Hub — full-height two-column layout */
 
 /* Let the hub manage its own scrolling — override the panel's outer scroll */
 #companion-creator-panel {
@@ -921,9 +919,7 @@
 .cc-import-dialog textarea:focus { outline: none; border-color: var(--accent, #6366f1); }
 .cc-import-actions { display: flex; justify-content: flex-end; }
 
-/* ═══════════════════════════════════════════════
-   Advanced / collapsible sections
-   ═══════════════════════════════════════════════ */
+/* Advanced / collapsible sections */
 
 .cc-sections { margin-top: 1.25rem; display: flex; flex-direction: column; gap: 0.4rem; }
 

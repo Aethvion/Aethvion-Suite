@@ -511,9 +511,7 @@
     display: none !important;
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   sidebar visual redesign
-   ══════════════════════════════════════════════════════════════════ */
+/* sidebar visual redesign */
 
 .sidebar-section-header {
     display: flex;
@@ -764,9 +762,7 @@
 .sidebar-nav.collapsed .tab-label { display: none; }
 .sidebar-nav.collapsed .tab-icon { margin-right: 0; }
 
-/* ══════════════════════════════════════════════════════════════════
-   sidebar manager — inline edit mode
-   ══════════════════════════════════════════════════════════════════ */
+/* sidebar manager — inline edit mode */
 
 /* Hidden tabs — truly hidden in normal mode */
 .tab-hidden { display: none !important; }
@@ -887,9 +883,7 @@
     background: color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   sidebar manager — dynamic customization layer
-   ══════════════════════════════════════════════════════════════ */
+/* sidebar manager — dynamic customization layer */
 
 /* Hidden tabs (set by sidebar-manager.js) */
 .tab-hidden {

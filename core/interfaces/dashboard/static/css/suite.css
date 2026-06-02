@@ -206,9 +206,7 @@
 
 .sac-kanban { background: #3b82f6; box-shadow: 0 0 10px rgba(59,130,246,0.6); }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   mission control — hero
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* mission control — hero */
 
 .sh-hero {
     position: relative;
@@ -354,9 +352,7 @@
 }
 .sh-cta-secondary:active { transform: translateY(0); }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   mission control — section headers
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* mission control — section headers */
 
 .sh-section-header {
     display: flex;
@@ -634,9 +630,7 @@
     letter-spacing: 0.03em;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   mission control — layout overview
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* mission control — layout overview */
 
 .sh-section-action {
     display: flex;

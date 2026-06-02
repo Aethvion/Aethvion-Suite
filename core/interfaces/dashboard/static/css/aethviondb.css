@@ -4823,9 +4823,7 @@
     line-height: 1.5;
 }
 
-/* ---------------------------------------------------------------
-   Validation — Control panel (overview chips + Quick Fix box)
-   -------------------------------------------------------------- */
+/* Validation — Control panel (overview chips + Quick Fix box) */
 
 /* Outer wrapper for the whole summary area */
 .adb-val-ctrl {
@@ -4913,9 +4911,7 @@
     flex-shrink: 0;
 }
 
-/* ---------------------------------------------------------------
-   Validation — Issue group cards (errors + warnings sections)
-   -------------------------------------------------------------- */
+/* Validation — Issue group cards (errors + warnings sections) */
 
 .adb-val-issue-group {
     border-radius: 8px;
@@ -5102,9 +5098,7 @@
     white-space: nowrap;
 }
 
-/* ---------------------------------------------------------------
-   Validation — Quick-fix buttons inside error rows
-   -------------------------------------------------------------- */
+/* Validation — Quick-fix buttons inside error rows */
 
 /* Row above the entity list, used for "Fix All" scope buttons */
 .adb-val-quick-fix-row {
@@ -5147,9 +5141,7 @@
     padding: 0.15rem 0.5rem;
 }
 
-/* ---------------------------------------------------------------
-   Validation — Warnings grouped list
-   -------------------------------------------------------------- */
+/* Validation — Warnings grouped list */
 
 .adb-val-warn-list {
     display: flex;
@@ -5202,9 +5194,7 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════════════
-   Validation — Collapsible issue sections
-   ══════════════════════════════════════════════════════════════ */
+/* Validation — Collapsible issue sections */
 
 /* Clickable header that toggles the section */
 .adb-val-collapse-hdr {
@@ -5273,9 +5263,7 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════════════
-   Validation — Warnings expandable entity list
-   ══════════════════════════════════════════════════════════════ */
+/* Validation — Warnings expandable entity list */
 
 /* Each warning type is its own collapsible group */
 .adb-val-warn-group {
@@ -5356,9 +5344,7 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════════════
-   Test tab — Speed Benchmark + Smart Chunks
-   ══════════════════════════════════════════════════════════════ */
+/* Test tab — Speed Benchmark + Smart Chunks */
 
 .adb-test-layout {
     display: flex;

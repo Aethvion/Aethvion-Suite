@@ -193,9 +193,7 @@
     50%       { opacity: 1; }
 }
 
-/* ══════════════════════════════════════════════════════════
-   expression states
-   ══════════════════════════════════════════════════════════ */
+/* expression states */
 
 .axiom-expr-neutral .axiom-hex-outer {
     box-shadow: 0 0 30px var(--axiom-glow), 0 0 60px rgba(0,188,212,0.1);

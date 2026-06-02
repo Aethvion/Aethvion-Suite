@@ -1,7 +1,7 @@
-/* ═══════════════════════════════════════════════════════════════
+/*
    Agent Corp — frontend module
    Handles corp selection, worker dashboard, task board, live feed
-═══════════════════════════════════════════════════════════════ */
+*/
 
 // Global state
 

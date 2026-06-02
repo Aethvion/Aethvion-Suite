@@ -341,7 +341,7 @@ body {
     display: block;
 }
 
-/* Loading / error states ──────────────────────────────────────────────────── */
+/* Loading / error states */
 .app-iframe-loading {
     position: absolute;
     inset: 0;

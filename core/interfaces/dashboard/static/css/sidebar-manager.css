@@ -1,6 +1,4 @@
-/* ══════════════════════════════════════════════════════════════════
-   sidebar manager — tab list container
-   ══════════════════════════════════════════════════════════════════ */
+/* sidebar manager — tab list container */
 
 .sidebar-nav .main-tabs {
     flex: 1;
@@ -155,9 +153,7 @@
     padding: 0.4rem 0;
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   sidebar manager — folder system
-   ══════════════════════════════════════════════════════════════════ */
+/* sidebar manager — folder system */
 
 .sidebar-folder {
     display: flex;
@@ -337,9 +333,7 @@
     opacity: 0.7;
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   sidebar manager — edit mode controls
-   ══════════════════════════════════════════════════════════════════ */
+/* sidebar manager — edit mode controls */
 
 /* Hidden tabs: truly invisible in normal mode */
 .tab-hidden {
@@ -505,9 +499,7 @@
     box-shadow: 0 0 6px rgba(99, 102, 241, 0.5);
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   sidebar profiles — switcher
-   ══════════════════════════════════════════════════════════════════ */
+/* sidebar profiles — switcher */
 
 .profile-switcher {
     position: relative;
@@ -773,9 +765,7 @@
     opacity: 0.7;
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   profile onboarding modal
-   ══════════════════════════════════════════════════════════════════ */
+/* profile onboarding modal */
 
 .profile-onboarding-overlay {
     position: fixed;

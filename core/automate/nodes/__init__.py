@@ -24,14 +24,14 @@ from . import (
 
 _REGISTRY: dict[str, Callable] = {
 
-    # Triggers ─────────────────────────────────────────────────────────────────
+    # Triggers
     "trigger.app_event":  triggers.trigger_app_event,
     "trigger.file_watch": triggers.trigger_file_watch,
     "trigger.manual":     triggers.trigger_manual,
     "trigger.schedule":   triggers.trigger_schedule,
     "trigger.webhook":    triggers.trigger_webhook,
 
-    # Logic ────────────────────────────────────────────────────────────────────
+    # Logic
     "logic.delay":     logic.logic_delay,
     "logic.if":        logic.logic_if,
     "logic.loop":      logic.logic_loop,
@@ -40,14 +40,14 @@ _REGISTRY: dict[str, Callable] = {
     "logic.switch":    logic.logic_switch,
     "logic.try_catch": logic.logic_try_catch,
 
-    # Global — public workflow parameters ─────────────────────────────────────
+    # Global — public workflow parameters
     "global.text":      global_nodes.global_text,
     "global.number":    global_nodes.global_number,
     "global.toggle":    global_nodes.global_toggle,
     "global.database":  global_nodes.global_database,
     "global.snapshot":  global_nodes.global_snapshot,
 
-    # Data ─────────────────────────────────────────────────────────────────────
+    # Data
     "data.csv_parse":     data.data_csv_parse,
     "data.extract_json":  data.data_extract_json,
     "data.filter":        data.data_filter,
@@ -62,7 +62,7 @@ _REGISTRY: dict[str, Callable] = {
     "data.type_convert":  data.data_type_convert,
     "transform.combine":  data.transform_combine,
 
-    # Actions ──────────────────────────────────────────────────────────────────
+    # Actions
     "action.camera_capture": media.action_camera_capture,
     "action.clipboard":      actions.action_clipboard,
     "action.file_list":      actions.action_file_list,
@@ -78,7 +78,7 @@ _REGISTRY: dict[str, Callable] = {
     "action.screenshot":     media.action_screenshot,
     "action.web_scrape":     actions.action_web_scrape,
 
-    # AI ───────────────────────────────────────────────────────────────────────
+    # AI
     "ai.analyze_image":   media.ai_analyze_image,
     "ai.any":             ai.ai_model,
     "ai.classify":        ai.ai_classify,
@@ -89,44 +89,44 @@ _REGISTRY: dict[str, Callable] = {
     "ai.summarize":       ai.ai_summarize,
     "ai.text_to_speech":  media.ai_text_to_speech,
 
-    # Memory ───────────────────────────────────────────────────────────────────
+    # Memory
     "memory.retrieve":        memory.memory_retrieve,
     "memory.search_semantic": memory.memory_search_semantic,
     "memory.store":           memory.memory_store,
 
-    # Inputs ───────────────────────────────────────────────────────────────────
+    # Inputs
     "input.file":   inputs_outputs.input_file,
     "input.list":   inputs_outputs.input_list,
     "input.number": inputs_outputs.input_number,
     "input.text":   inputs_outputs.input_text,
 
-    # Outputs ──────────────────────────────────────────────────────────────────
+    # Outputs
     "output.clipboard": inputs_outputs.output_clipboard,
     "output.display":   inputs_outputs.output_display,
     "output.file":      inputs_outputs.output_file,
 
-    # AethvionDB — search ───────────────────────────────────────────────────────
+    # AethvionDB — search
     "aethviondb.search":                    aethviondb.aethviondb_search,
     "aethviondb.semantic_search":           aethviondb.aethviondb_semantic_search,
     "aethviondb.snapshot_search":           aethviondb.aethviondb_snapshot_search,
     "aethviondb.snapshot_semantic_search":  aethviondb.aethviondb_snapshot_semantic_search,
-    # AethvionDB — database ─────────────────────────────────────────────────────
+    # AethvionDB — database
     "aethviondb.create_database":    aethviondb.aethviondb_create_database,
     "aethviondb.get_stats":          aethviondb.aethviondb_get_stats,
-    # AethvionDB — entity CRUD ──────────────────────────────────────────────────
+    # AethvionDB — entity CRUD
     "aethviondb.list_entities":      aethviondb.aethviondb_list_entities,
     "aethviondb.get_entity":         aethviondb.aethviondb_get_entity,
     "aethviondb.create_entity":      aethviondb.aethviondb_create_entity,
     "aethviondb.update_entity":      aethviondb.aethviondb_update_entity,
     "aethviondb.delete_entity":      aethviondb.aethviondb_delete_entity,
-    # AethvionDB — AI operations ────────────────────────────────────────────────
+    # AethvionDB — AI operations
     "aethviondb.distill":            aethviondb.aethviondb_distill,
     "aethviondb.expand_entity":      aethviondb.aethviondb_expand_entity,
     "aethviondb.deepen_entity":      aethviondb.aethviondb_deepen_entity,
-    # AethvionDB — snapshots ────────────────────────────────────────────────────
+    # AethvionDB — snapshots
     "aethviondb.create_snapshot":    aethviondb.aethviondb_create_snapshot,
     "aethviondb.list_snapshots":     aethviondb.aethviondb_list_snapshots,
-    # AethvionDB — maintenance ──────────────────────────────────────────────────
+    # AethvionDB — maintenance
     "aethviondb.validate":           aethviondb.aethviondb_validate,
     "aethviondb.generate_vectors":   aethviondb.aethviondb_generate_vectors,
     "companion.ask":              integrations.companion_ask,

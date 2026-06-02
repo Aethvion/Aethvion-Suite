@@ -145,4 +145,3 @@ _BLOCKED_COMMAND_PATTERNS = [
     r"(?i)\bshutdown\b",
     r"(?i)\breboot\b",
 ]
-

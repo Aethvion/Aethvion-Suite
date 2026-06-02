@@ -1,16 +1,14 @@
-/* =============================================================
-   Aethvion Audio Editor — Multi-Track Frontend
-   ============================================================= */
+/* Aethvion Audio Editor — Multi-Track Frontend */
 
 "use strict";
 
-/* ── Constants ─────────────────────────────────────────────── */
+/* Constants */
 const RULER_H   = 26;    // px  (matches CSS --ruler-h)
 const TRACK_H   = 82;    // px  (matches CSS --track-h)
 const MIN_PX_MS = 0.02;
 const MAX_PX_MS = 2.0;
 
-/* ── State ─────────────────────────────────────────────────── */
+/* State */
 let state = {
     session:      null,     // full /api/session payload
     pxPerMs:      0.10,     // zoom level (pixels per millisecond)
@@ -20,7 +18,7 @@ let state = {
     workMs:       30000,    // cached workspace length for ruler redraws
 };
 
-/* ── DOM refs ──────────────────────────────────────────────── */
+/* DOM refs */
 const $ = id => document.getElementById(id);
 const headersBody    = $("headers-body");
 const rowsBody       = $("rows-body");
@@ -61,7 +59,7 @@ const btnExportMp3   = $("btn-export-mp3");
 const mixPlayIcon    = $("mix-play-icon");
 const mixPlayLabel   = $("mix-play-label");
 
-/* ── Utility ───────────────────────────────────────────────── */
+/* Utility */
 function fmtMs(ms) {
     const total = ms / 1000;
     const m = Math.floor(total / 60);
@@ -93,7 +91,7 @@ function escHtml(s) {
         .replace(/>/g, "&gt;");
 }
 
-/* ── API helpers ───────────────────────────────────────────── */
+/* API helpers */
 async function api(path, opts = {}) {
     const r = await fetch(path, opts);
     if (!r.ok) {
@@ -104,7 +102,7 @@ async function api(path, opts = {}) {
     return r.json();
 }
 
-/* ── Session load / full re-render ─────────────────────────── */
+/* Session load / full re-render */
 async function loadSession() {
     try {
         state.session = await api("/api/session");
@@ -147,7 +145,7 @@ function render() {
     syncPlayheadHeight();
 }
 
-/* ── Ruler ─────────────────────────────────────────────────── */
+/* Ruler */
 /* The ruler canvas is always viewport-wide and redraws on scroll so
    we never allocate a massive canvas buffer at high zoom levels.    */
 function renderRuler(workMs) {
@@ -225,7 +223,7 @@ ruler.addEventListener("click", e => {
     seekToMs(x / state.pxPerMs);
 });
 
-/* ── Track headers (left column) ───────────────────────────── */
+/* Track headers (left column) */
 function renderHeaders(tracks) {
     headersBody.innerHTML = "";
     tracks.forEach(t => {
@@ -277,7 +275,7 @@ function renderHeaders(tracks) {
     });
 }
 
-/* ── Track rows (timeline) ─────────────────────────────────── */
+/* Track rows (timeline) */
 function renderRows(tracks, totalPx) {
     rowsBody.innerHTML = "";
     tracks.forEach(t => {
@@ -323,14 +321,14 @@ function renderRows(tracks, totalPx) {
     renderVisibleWaveforms();
 }
 
-/* ── Virtual waveform renderer ───────────────────────────────────────────
+/*
+   Virtual waveform renderer
    Only the portion of each waveform that is currently visible in the
    horizontal scroll viewport is drawn onto the canvas.  The canvas is
    repositioned (CSS left) to sit over that visible strip, and its buffer
    is sized to the strip width × DPR — never exceeding 8192 px.
-
    Called once after renderRows and again on every horizontal scroll event.
-   ─────────────────────────────────────────────────────────────────────── */
+*/
 function renderVisibleWaveforms() {
     const scrollX  = timelineScroll.scrollLeft;
     const visWidth = timelineScroll.clientWidth || 800;
@@ -398,13 +396,14 @@ function renderVisibleWaveforms() {
     });
 }
 
-/* ── Waveform renderer — professional dual-layer (peak + RMS) ────────────
+/*
+   Waveform renderer — professional dual-layer (peak + RMS)
    Matches what Ableton / Reaper / FL Studio display:
-     Layer 1 — Peak envelope  (faint outer fill)  shows raw transients
-     Layer 2 — RMS body       (bright inner fill)  shows perceived loudness
-     Layer 3 — Peak outline   (crisp 1px strokes)  defines the edges cleanly
-     Layer 4 — Centre line    (subtle 0.5px)        visual reference
-   ─────────────────────────────────────────────────────────────────────── */
+   Layer 1 — Peak envelope  (faint outer fill)  shows raw transients
+   Layer 2 — RMS body       (bright inner fill)  shows perceived loudness
+   Layer 3 — Peak outline   (crisp 1px strokes)  defines the edges cleanly
+   Layer 4 — Centre line    (subtle 0.5px)        visual reference
+*/
 function drawWaveform(canvas, waveform, color, muted) {
     /* accept both new {peaks, rms} format and old plain array (fallback) */
     const peaks = Array.isArray(waveform) ? waveform
@@ -481,7 +480,7 @@ function drawWaveform(canvas, waveform, color, muted) {
     ctx.stroke();
 }
 
-/* ── Clip drag-to-reposition ─────────────────────────────────── */
+/* Clip drag-to-reposition */
 function makeDraggable(clipEl, trackId, startMs) {
     let dragging = false;
     let startX   = 0;
@@ -512,7 +511,7 @@ function makeDraggable(clipEl, trackId, startMs) {
     });
 }
 
-/* ── FX panel ──────────────────────────────────────────────── */
+/* FX panel */
 function renderFxPanel() {
     const track = state.session?.tracks.find(t => t.track_id === state.selectedId);
 
@@ -572,7 +571,7 @@ function fmtParams(fx) {
     return "";
 }
 
-/* ── FX param inputs (dynamic) ─────────────────────────────── */
+/* FX param inputs (dynamic) */
 const FX_PARAMS = {
     fade_in:      [{ key: "duration_ms", label: "Duration (ms)", default: 1000, min: 10, max: 10000 }],
     fade_out:     [{ key: "duration_ms", label: "Duration (ms)", default: 1000, min: 10, max: 10000 }],
@@ -607,7 +606,7 @@ function renderFxParams() {
     });
 }
 
-/* ── Track actions ─────────────────────────────────────────── */
+/* Track actions */
 function selectTrack(id) {
     state.selectedId = id;
     render();
@@ -646,7 +645,7 @@ async function patchTrack(id, body) {
     }
 }
 
-/* ── Effect actions ────────────────────────────────────────── */
+/* Effect actions */
 async function addEffect() {
     if (!state.selectedId) return;
     const op     = fxOpSelect.value;
@@ -699,7 +698,7 @@ async function removeEffect(trackId, effectId) {
     }
 }
 
-/* ── File upload ─────────────────────────────────────────────── */
+/* File upload */
 async function uploadFiles(files) {
     if (!files || files.length === 0) return;
     showLoading(`UPLOADING ${files.length > 1 ? files.length + " FILES" : "FILE"}...`);
@@ -731,7 +730,7 @@ async function uploadFiles(files) {
     }
 }
 
-/* ── Live mix reload (re-render and resume at current position) ── */
+/* Live mix reload (re-render and resume at current position) */
 async function reloadMixLive() {
     if (!state.playing && !mixAudio.src) return;
     const savedSec  = mixAudio.currentTime;
@@ -749,7 +748,7 @@ async function reloadMixLive() {
     } catch { /* silent — playback will just continue with stale mix */ }
 }
 
-/* ── Mix playback ────────────────────────────────────────────── */
+/* Mix playback */
 async function playMix() {
     const startMs = state.playheadMs; // remember seek position before stopMix resets it
     const hadSrc  = !!mixAudio.src;
@@ -811,7 +810,7 @@ function syncPlayheadHeight() {
     playhead.style.height = total + "px";
 }
 
-/* ── Playhead animation ─────────────────────────────────────── */
+/* Playhead animation */
 mixAudio.addEventListener("timeupdate", () => {
     const cur = mixAudio.currentTime;
     const dur = mixAudio.duration || 0;
@@ -838,7 +837,7 @@ mixProgressWrap.addEventListener("click", e => {
     seekToMs(ms);
 });
 
-/* ── Export ──────────────────────────────────────────────────── */
+/* Export */
 async function exportMix(fmt) {
     showLoading(`EXPORTING ${fmt.toUpperCase()}...`);
     try {
@@ -862,7 +861,7 @@ async function exportMix(fmt) {
     }
 }
 
-/* ── Workspace ───────────────────────────────────────────────── */
+/* Workspace */
 async function setWorkspace(sec) {
     const ms = Math.max(1, sec) * 1000;
     try {
@@ -877,13 +876,13 @@ async function setWorkspace(sec) {
     }
 }
 
-/* ── Zoom ────────────────────────────────────────────────────── */
+/* Zoom */
 function zoom(factor) {
     state.pxPerMs = Math.min(MAX_PX_MS, Math.max(MIN_PX_MS, state.pxPerMs * factor));
     render();
 }
 
-/* ── Drag-and-drop onto app ──────────────────────────────────── */
+/* Drag-and-drop onto app */
 const dropTarget = document.getElementById("app");
 dropTarget.addEventListener("dragover", e => e.preventDefault());
 dropTarget.addEventListener("drop", e => {
@@ -895,7 +894,7 @@ dropTarget.addEventListener("drop", e => {
     if (files.length) uploadFiles(files);
 });
 
-/* ── Event wiring ────────────────────────────────────────────── */
+/* Event wiring */
 btnAddTrack.addEventListener("click",    () => fileInput.click());
 btnAddTrackRow.addEventListener("click", () => fileInput.click());
 
@@ -932,5 +931,5 @@ timelineScroll.addEventListener("scroll", () => {
 
 window.addEventListener("resize", () => { _drawRuler(); renderVisibleWaveforms(); });
 
-/* ── Init ─────────────────────────────────────────────────────── */
+/* Init */
 loadSession();
