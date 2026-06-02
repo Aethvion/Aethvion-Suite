@@ -414,7 +414,6 @@ async function populateVoiceModelSelector(voiceSettings) {
 // Developer Mode & .env Management
 
 
-
 async function loadEnvStatus() {
     const container = document.getElementById('env-status-container');
     if (!container) return;
@@ -1913,8 +1912,6 @@ async function saveAutoRoutingProfile(type) {
 }
 
 // Version Control & Update Checker
-const REMOTE_VERSION_URL = "https://raw.githubusercontent.com/Aethvion/Aethvion-Suite/main/core/interfaces/dashboard/static/assets/system-status.json";
-
 async function checkForUpdates(manual = false) {
     try {
         // 1. Fetch local version & commit info from our version API
@@ -1932,11 +1929,6 @@ async function checkForUpdates(manual = false) {
             btn.disabled = true;
         }
 
-        // 2. Fetch remote version + changelog
-        const remoteResp = await fetch(REMOTE_VERSION_URL, { cache: "no-store" });
-        if (!remoteResp.ok) throw new Error("Failed to fetch remote status");
-        
-        const remoteData   = await remoteResp.json();
         const remoteCommit = localInfo.remote.commit || "Unknown"; // from our server git ls-remote check
 
         // Update available when remote commit hash differs from local
@@ -1956,7 +1948,7 @@ async function checkForUpdates(manual = false) {
         if (dot) dot.style.display = isUpdateAvailable ? 'block' : 'none';
 
         if (manual || document.getElementById('settings-version-banner')) {
-            renderVersionTabContent(localInfo.local, remoteData, remoteCommit, isUpdateAvailable);
+            renderVersionTabContent(localInfo.local, remoteCommit, isUpdateAvailable);
         }
 
         return isUpdateAvailable;
@@ -2158,7 +2150,7 @@ async function renderPerformanceReport(container) {
     }
 }
 
-async function renderVersionTabContent(localInfo = null, remoteData = null, remoteCommit = "Unknown", isUpdateAvailable = false) {
+async function renderVersionTabContent(localInfo = null, remoteCommit = "Unknown", isUpdateAvailable = false) {
     if (!localInfo) {
         try {
             const resp = await fetch('/api/system/version-info?v=' + Date.now());
@@ -2204,7 +2196,7 @@ async function renderVersionTabContent(localInfo = null, remoteData = null, remo
 
     // 2. Render Update Banner
     if (versionBanner) {
-        if (isUpdateAvailable && remoteData) {
+        if (isUpdateAvailable && remoteCommit !== "Unknown") {
             versionBanner.innerHTML = `
                 <div style="margin-top: 15px; padding: 15px; background: rgba(85, 239, 196, 0.1); border-left: 4px solid #55efc4; border-radius: 4px; display: flex; align-items: center; gap: 15px;">
                     <div style="font-size: 1.5rem;">🛠️</div>
@@ -2225,7 +2217,7 @@ async function renderVersionTabContent(localInfo = null, remoteData = null, remo
                 const updateBtn = document.getElementById('trigger-self-update-btn');
                 if (updateBtn) updateBtn.onclick = () => triggerSelfUpdate();
             }, 100);
-        } else if (remoteData) {
+        } else if (remoteCommit !== "Unknown") {
             versionBanner.innerHTML = `
                 <div style="margin-top: 15px; padding: 12px; border-radius: 4px; border: 1px solid var(--border); background: rgba(255,255,255,0.02); display: flex; align-items: center; gap: 10px;">
                     <i class="fas fa-check-circle" style="color:#55efc4;"></i>
@@ -3027,6 +3019,3 @@ document.addEventListener('tabChanged', (e) => {
         loadChatModels();
     }
 });
-
-
-
