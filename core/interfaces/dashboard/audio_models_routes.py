@@ -82,7 +82,8 @@ async def get_models():
     mgr = _mgr()
     if mgr is None:
         return {"models": []}
-    return {"models": mgr.get_all_statuses()}
+    statuses = await asyncio.to_thread(mgr.get_all_statuses)
+    return {"models": statuses}
 
 
 @router.get("/suggested")
@@ -168,7 +169,8 @@ async def get_voices(model_id: str):
     if not mgr:
         return {"voices": []}
     try:
-        return {"voices": mgr.list_voices(model_id)}
+        voices = await asyncio.to_thread(mgr.list_voices, model_id)
+        return {"voices": voices}
     except Exception as e:
         return {"voices": [], "error": str(e)}
 
