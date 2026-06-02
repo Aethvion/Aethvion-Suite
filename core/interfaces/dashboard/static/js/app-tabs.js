@@ -114,9 +114,7 @@ const ATB = (() => {
         { id: 'photo',        label: 'Photo Studio',   emoji: '🎨', category: 'Creative & Production',    port: null, portKey: 'Aethvion Photo'        },
         { id: 'audio',        label: 'Audio Studio',   emoji: '🎙️', category: 'Creative & Production',    port: null, portKey: 'Aethvion Audio'        },
         { id: 'hardwareinfo', label: 'Hardware Info',  emoji: '🖥️', category: 'System & Analytics',       port: null, portKey: 'Aethvion Hardware Info' },
-        { id: 'linkmap',      label: 'LinkMap',        emoji: '🗺️', category: 'System & Analytics',       port: null, portKey: 'Aethvion LinkMap'      },
         { id: 'driveinfo',    label: 'Drive Info',     emoji: '💿', category: 'System & Analytics',       port: null, portKey: 'Aethvion Drive Info'   },
-        { id: 'kanban',       label: 'Kanban',         emoji: '📋', category: 'Professional Development', port: null, portKey: 'Aethvion Kanban'       },
     ];
 
     const HOME_PANEL = 'panel-home';
