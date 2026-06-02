@@ -17,6 +17,11 @@ _DDG_API     = "https://api.duckduckgo.com/"
 _DDG_HEADERS = {"User-Agent": "AethvionSuite/1.0 (local AI assistant)"}
 _TIMEOUT     = 12   # seconds
 
+# Shared session — reuses TCP connections across calls and ensures responses are
+# always closed via the context-manager protocol.
+_SESSION = requests.Session()
+_SESSION.headers.update(_DDG_HEADERS)
+
 
 def web_search(args: Dict[str, Any]) -> str:
     """
@@ -52,9 +57,9 @@ def _ddg_search(query: str, count: int) -> str:
         "no_html":        "1",
         "skip_disambig":  "1",
     }
-    resp = requests.get(_DDG_API, params=params, headers=_DDG_HEADERS, timeout=_TIMEOUT)
-    resp.raise_for_status()
-    data = resp.json()
+    with _SESSION.get(_DDG_API, params=params, timeout=_TIMEOUT) as resp:
+        resp.raise_for_status()
+        data = resp.json()
 
     sections: list[str] = []
 
