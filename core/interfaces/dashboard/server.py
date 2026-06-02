@@ -30,49 +30,65 @@ factory = None
 
 def _import_remaining_routers():
     """Import all non-critical route modules. Runs in a thread pool so it
-    does NOT block the event loop during startup."""
-    from .routes.preferences_routes import router as preferences_router
-    from .routes.workspace_routes import router as workspace_router
-    from .task_routes import router as task_router
-    from .memory_routes import router as memory_router
-    from .registry_routes import router as registry_router
-    from .usage_routes import router as usage_router
-    from .arena_routes import router as arena_router
-    from .settings_routes import router as settings_router
-    from .photo_routes import router as photo_router
-    from .advanced_aiconv_routes import router as adv_aiconv_router
-    from .research_board_routes import router as board_router
-    from .assistant_routes import router as assistant_router
-    from .ollama_routes import router as ollama_router
-    from .audio_models_routes import router as audio_router
-    from .corp_routes import router as corp_router
-    from .overlay_routes import router as overlay_router
-    from .schedule_routes import router as schedule_router
-    from .three_d_routes import router as threed_router
-    from .agent_workspace_routes import router as agent_ws_router
-    from .notification_routes import router as notification_router
-    from .explained_routes import router as explained_router
-    from .external_api_routes import router as ext_api_router, mgmt_router as ext_api_mgmt_router
-    from .persistent_memory_routes import router as persistent_memory_router
-    from .discord_routes import router as discord_router
-    from .logs_routes import router as logs_router
-    from .documentation_routes import router as documentation_router
-    from core.companions.companion_routes import router as companion_router
-    from core.companions.companion_creator_routes import router as companion_creator_router
-    from core.aethviondb.aethviondb_routes import router as aethviondb_router
-    from core.aethviondb.api_v1.router import router as aethviondb_v1_router
-    from core.automate.automate_routes import router as automate_router
-    return [
-        preferences_router, workspace_router, task_router, memory_router,
-        registry_router, usage_router, arena_router, settings_router,
-        photo_router, adv_aiconv_router, board_router, assistant_router,
-        ollama_router, audio_router, corp_router, overlay_router,
-        schedule_router, threed_router, agent_ws_router, notification_router,
-        explained_router, ext_api_router, ext_api_mgmt_router,
-        persistent_memory_router, discord_router, logs_router,
-        documentation_router, companion_router, companion_creator_router,
-        aethviondb_router, aethviondb_v1_router, automate_router,
+    does NOT block the event loop during startup. Each import is isolated so
+    a single broken module degrades that feature without killing the server."""
+    _ROUTES = [
+        ("routes.preferences_routes",          "router",     "preferences_router"),
+        ("routes.workspace_routes",             "router",     "workspace_router"),
+        ("task_routes",                         "router",     "task_router"),
+        ("memory_routes",                       "router",     "memory_router"),
+        ("registry_routes",                     "router",     "registry_router"),
+        ("usage_routes",                        "router",     "usage_router"),
+        ("arena_routes",                        "router",     "arena_router"),
+        ("settings_routes",                     "router",     "settings_router"),
+        ("photo_routes",                        "router",     "photo_router"),
+        ("advanced_aiconv_routes",              "router",     "adv_aiconv_router"),
+        ("research_board_routes",               "router",     "board_router"),
+        ("assistant_routes",                    "router",     "assistant_router"),
+        ("ollama_routes",                       "router",     "ollama_router"),
+        ("audio_models_routes",                 "router",     "audio_router"),
+        ("corp_routes",                         "router",     "corp_router"),
+        ("overlay_routes",                      "router",     "overlay_router"),
+        ("schedule_routes",                     "router",     "schedule_router"),
+        ("three_d_routes",                      "router",     "threed_router"),
+        ("agent_workspace_routes",              "router",     "agent_ws_router"),
+        ("notification_routes",                 "router",     "notification_router"),
+        ("explained_routes",                    "router",     "explained_router"),
+        ("external_api_routes",                 "router",     "ext_api_router"),
+        ("external_api_routes",                 "mgmt_router","ext_api_mgmt_router"),
+        ("persistent_memory_routes",            "router",     "persistent_memory_router"),
+        ("discord_routes",                      "router",     "discord_router"),
+        ("logs_routes",                         "router",     "logs_router"),
+        ("documentation_routes",                "router",     "documentation_router"),
     ]
+    _CORE_ROUTES = [
+        ("core.companions.companion_routes",            "router", "companion_router"),
+        ("core.companions.companion_creator_routes",    "router", "companion_creator_router"),
+        ("core.aethviondb.aethviondb_routes",           "router", "aethviondb_router"),
+        ("core.aethviondb.api_v1.router",               "router", "aethviondb_v1_router"),
+        ("core.automate.automate_routes",               "router", "automate_router"),
+    ]
+
+    import importlib
+    routers = []
+
+    _pkg = "core.interfaces.dashboard"
+    for mod_suffix, attr, label in _ROUTES:
+        full_mod = f"{_pkg}.{mod_suffix}"
+        try:
+            mod = importlib.import_module(full_mod)
+            routers.append(getattr(mod, attr))
+        except Exception as exc:
+            logger.warning("Router '%s' failed to load — feature disabled: %s", label, exc)
+
+    for full_mod, attr, label in _CORE_ROUTES:
+        try:
+            mod = importlib.import_module(full_mod)
+            routers.append(getattr(mod, attr))
+        except Exception as exc:
+            logger.warning("Router '%s' failed to load — feature disabled: %s", label, exc)
+
+    return routers
 
 
 async def register_all_routers(app: FastAPI):
