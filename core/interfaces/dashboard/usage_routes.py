@@ -164,31 +164,3 @@ async def get_daily_breakdown(
         logger.error(f"Failed to get daily breakdown: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@router.get("/tools")
-async def get_tool_usage():
-    """Get tool usage statistics from the tool registry."""
-    try:
-        from core.forge.tool_registry import get_tool_registry
-        registry = get_tool_registry()
-        tools = registry.list_tools()
-
-        # Sort by usage count (if tracked)
-        tool_list = []
-        for tool in tools:
-            tool_list.append({
-                "name": tool.get("name", "unknown"),
-                "domain": tool.get("domain", ""),
-                "usage_count": tool.get("usage_count", 0),
-                "last_used": tool.get("last_used"),
-                "created": tool.get("created"),
-                "file_path": tool.get("file_path", "")
-            })
-
-        # Most used first
-        tool_list.sort(key=lambda x: x["usage_count"], reverse=True)
-
-        return {"tools": tool_list}
-    except Exception as e:
-        logger.error(f"Failed to get tool usage: {e}")
-        raise HTTPException(status_code=500, detail=str(e))

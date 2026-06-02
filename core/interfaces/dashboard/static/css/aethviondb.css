@@ -2770,7 +2770,7 @@
     flex: 1;
 }
 
-/* â”€â”€ WorldSim placeholder (worldsim.css reuses these) â”€â”€ */
+/* WorldSim placeholder */
 .wsph-root {
     display: flex;
     align-items: center;
