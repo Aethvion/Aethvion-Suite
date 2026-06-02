@@ -31,8 +31,8 @@ def ensure_registry_initialized() -> bool:
                 data = json.load(f)
                 if data and "providers" in data:
                     return False
-        except Exception:
-            logger.warning(f"Existing registry at {registry_path} is invalid. Re-initializing.")
+        except Exception as e:
+            logger.warning(f"Existing registry at {registry_path} is invalid — re-initializing. Reason: {e}", exc_info=True)
             
     try:
         logger.info("Initializing new model registry from defaults...")
@@ -45,7 +45,7 @@ def ensure_registry_initialized() -> bool:
         logger.info(f"Model registry initialized successfully at {registry_path}")
         return True
     except Exception as e:
-        logger.error(f"Failed to initialize model registry: {e}")
+        logger.error(f"Failed to initialize model registry: {e}", exc_info=True)
         return False
 
 # Keep legacy name for compatibility with current turn's changes if needed

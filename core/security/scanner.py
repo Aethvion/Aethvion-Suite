@@ -102,7 +102,7 @@ class ContentScanner:
                     'severity': ScanSeverity(pattern_config.get('severity', 'medium')),
                     'original': pattern_config['pattern']
                 })
-            except Exception as e:
+            except (re.error, ValueError, KeyError) as e:
                 logger.error(f"Failed to compile pattern {pattern_config.get('pattern')}: {str(e)}")
         
         # Compile intent patterns
