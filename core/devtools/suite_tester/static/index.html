@@ -841,7 +841,6 @@
                                 <span id="diff-repo-tokens"></span>
                             </span>
                         </div>
-                        <div id="repo-ctx-windows" style="margin-top:0.6rem;"></div>
                         <div id="repo-token-lang-breakdown" style="margin-top:0.4rem;">
                             <!-- Populated dynamically -->
                         </div>
@@ -1120,14 +1119,6 @@
             }
         }
 
-        const CONTEXT_WINDOWS = [
-            { name: 'Claude 3.x (Sonnet/Haiku/Opus)', tokens: 200_000 },
-            { name: 'GPT-4o / GPT-4', tokens: 128_000 },
-            { name: 'Llama 3.1 70B / DeepSeek V3', tokens: 128_000 },
-            { name: 'Mistral Large', tokens: 128_000 },
-            { name: 'Gemini 1.5 / 2.0 Pro', tokens: 1_000_000 },
-        ];
-
         function _diffTag(delta, unit = '') {
             if (delta === 0) return '';
             const sign = delta > 0 ? '+' : '';
@@ -1205,37 +1196,6 @@
                         </div>
                     </span>`;
                 locDiv.appendChild(row);
-            }
-
-            // Context window fit widget
-            const ctxDiv = document.getElementById('repo-ctx-windows');
-            ctxDiv.innerHTML = '';
-            if (totalTokens > 0) {
-                const header = document.createElement('div');
-                header.style.cssText = 'font-size:0.72rem;opacity:0.55;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.35rem;';
-                header.textContent = 'Context window fit';
-                ctxDiv.appendChild(header);
-
-                for (const model of CONTEXT_WINDOWS) {
-                    const fits = totalTokens <= model.tokens;
-                    const pct = Math.min(100, (totalTokens / model.tokens) * 100);
-                    const remaining = model.tokens - totalTokens;
-                    const remStr = fits
-                        ? `${remaining.toLocaleString()} remaining`
-                        : `${Math.abs(remaining).toLocaleString()} over`;
-
-                    const row = document.createElement('div');
-                    row.style.cssText = 'margin-bottom:0.4rem;';
-                    row.innerHTML = `
-                        <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.78rem;margin-bottom:2px;">
-                            <span style="opacity:0.8;">${model.name}</span>
-                            <span style="font-family:var(--font-mono);font-size:0.72rem;opacity:0.65;">${fits ? '✓' : '✗'} ${remStr}</span>
-                        </div>
-                        <div class="loc-bar-container">
-                            <div class="loc-bar" style="width:${pct.toFixed(1)}%;background:${fits ? 'var(--accent)' : '#e05555'};"></div>
-                        </div>`;
-                    ctxDiv.appendChild(row);
-                }
             }
 
             // Token language breakdown

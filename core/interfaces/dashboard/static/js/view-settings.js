@@ -2032,31 +2032,6 @@ async function renderPerformanceReport(container) {
                 </tr>`;
             }).join('');
 
-        // Context window fit bars
-        const CTX_MODELS = [
-            { name: 'Claude 3.x',           ctx: 200_000 },
-            { name: 'GPT-4o / GPT-4',        ctx: 128_000 },
-            { name: 'Llama / DeepSeek V3',   ctx: 128_000 },
-            { name: 'Gemini 1.5/2.0 Pro',    ctx: 1_000_000 },
-        ];
-        const ctxBars = totalTokens > 0 ? CTX_MODELS.map(m => {
-            const fits = totalTokens <= m.ctx;
-            const pct  = Math.min(100, (totalTokens / m.ctx) * 100).toFixed(1);
-            const rem  = m.ctx - totalTokens;
-            const remStr = fits
-                ? `${rem.toLocaleString()} tok remaining`
-                : `${Math.abs(rem).toLocaleString()} tok over`;
-            return `<div style="margin-bottom: 10px;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 3px;">
-                    <span style="color: var(--text-bright);">${m.name} <span style="opacity:0.5;">(${(m.ctx/1000).toFixed(0)}k)</span></span>
-                    <span style="color: ${fits ? 'var(--primary)' : '#e05555'}; font-family: monospace; font-size: 0.72rem;">${fits ? '✓' : '✗'} ${remStr}</span>
-                </div>
-                <div style="height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden;">
-                    <div style="height: 100%; width: ${pct}%; background: ${fits ? 'var(--primary)' : '#e05555'}; border-radius: 3px; transition: width 0.4s;"></div>
-                </div>
-            </div>`;
-        }).join('') : '<span style="color:var(--text-secondary); font-size:0.8rem;">No token data — re-run performance test.</span>';
-
         const offlineBaseline = vitals.pre_test_baseline || {};
         const offlineGpu      = offlineBaseline.gpu || {};
 
@@ -2176,14 +2151,6 @@ async function renderPerformanceReport(container) {
                 </table>
             </div>
 
-            <!-- Context window fit -->
-            ${sectionHead('fa-expand-arrows-alt', 'Context Window Fit')}
-            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px;">
-                Can the entire codebase fit inside a model's context window at once?
-            </div>
-            <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border); border-radius: 6px; padding: 15px 18px; margin-bottom: 10px;">
-                ${ctxBars}
-            </div>
         `;
     } catch (e) {
         console.error("Failed to render performance report:", e);

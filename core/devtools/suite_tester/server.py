@@ -518,26 +518,6 @@ def generate_markdown_report(report_data: Dict[str, Any]) -> str:
     md.append(f"- **Total Tokens**: `{total_tokens:,}` *(tokenizer: {tokenizer_name})*")
     md.append(f"")
 
-    # Context window fit table
-    context_windows = [
-        ("Claude 3.x (Sonnet / Haiku / Opus)", 200_000),
-        ("GPT-4o / GPT-4", 128_000),
-        ("Gemini 1.5 / 2.0 Pro", 1_000_000),
-        ("Llama 3.1 70B / DeepSeek V3", 128_000),
-        ("Mistral Large", 128_000),
-    ]
-    md.append(f"### Context Window Fit")
-    md.append(f"")
-    md.append(f"| Model | Context Window | Fits? | Remaining |")
-    md.append(f"| :--- | :---: | :---: | :---: |")
-    for model_name, ctx in context_windows:
-        fits = total_tokens <= ctx
-        remaining = ctx - total_tokens
-        fits_str = "✓ Yes" if fits else "✗ No"
-        rem_str = f"{remaining:+,}" if fits else "—"
-        md.append(f"| {model_name} | {ctx:,} | {fits_str} | {rem_str} |")
-    md.append(f"")
-
     md.append(f"### Language Breakdown")
     md.append(f"")
     md.append(f"| Language | Files | LOC | Tokens | Token Share |")
