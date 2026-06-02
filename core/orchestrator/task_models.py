@@ -27,26 +27,6 @@ class TaskStatus(Enum):
     CANCELLED = "cancelled"
 
 
-@dataclass
-class Task:
-    """
-    Represents a task in the queue.
-    
-    A task is a user request that will be executed by a worker.
-    Multiple tasks can run in parallel.
-    """
-    id: str
-    thread_id: str  # Chat thread ID
-    prompt: str
-    status: TaskStatus = TaskStatus.QUEUED
-    created_at: datetime = field(default_factory=_utcnow)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    worker_id: Optional[str] = None
-    result: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
 def _sanitize_for_json(data: Any) -> Any:
     """Recursively sanitize data for JSON serialization."""
     if isinstance(data, dict):
