@@ -158,7 +158,7 @@ class ProviderManager:
             logger.info(f"Agent Priority: {self.agent_priority_order}")
                     
         except Exception as e:
-            logger.error(f"Failed to load model registry overrides: {str(e)}")
+            logger.error(f"Failed to load model registry overrides: {str(e)}", exc_info=True)
             # Fallback to default behavior if failed
             self.chat_priority_order = []
             self.agent_priority_order = []
@@ -169,42 +169,24 @@ class ProviderManager:
     def reload_config(self):
         """Reload configuration from disk and update active providers."""
         logger.info("Reloading provider configuration...")
-        
-        # 0. Reload base providers.yaml
         project_root = Path(__file__).parent.parent.parent
         config_path = project_root / "core" / "config" / "providers.yaml"
         if config_path.exists():
+            # _load_config reads providers.yaml then calls _load_registry_overrides,
+            # which reads model_registry.json and populates self.registry.
             self._load_config(config_path)
-            # Re-run initialization to pick up NEW providers
             self._initialize_providers()
-            
-        # 1. Reload registry overrides (Priorities, Model Maps)
-        self._load_registry_overrides()
 
-        # 2. Update active provider instances with new config
-        registry_path = MODEL_REGISTRY
-        
-        if not registry_path.exists():
-            return
-            
-        try:
-            with open(registry_path, 'r') as f:
-                registry = json.load(f)
-            
-            for name, reg_config in registry.get('providers', {}).items():
-                if name in self.providers:
-                    provider = self.providers[name]
-                    
-                    # Update Max Retries
-                    if 'retries_per_step' in reg_config:
-                        provider.config.max_retries = int(reg_config['retries_per_step'])
-                        logger.debug(f"Updated {name} max_retries to {provider.config.max_retries}")
-                        
-                    
-            logger.info("Provider configuration reload complete")
-            
-        except Exception as e:
-            logger.error(f"Failed to reload provider config: {e}")
+        # Update active provider instances — self.registry already loaded above,
+        # no need to open model_registry.json again.
+        for name, reg_config in self.registry.get('providers', {}).items():
+            if name in self.providers:
+                provider = self.providers[name]
+                if 'retries_per_step' in reg_config:
+                    provider.config.max_retries = int(reg_config['retries_per_step'])
+                    logger.debug(f"Updated {name} max_retries to {provider.config.max_retries}")
+
+        logger.info("Provider configuration reload complete")
 
     def _initialize_providers(self):
         """Initialize only providers that are defined in the model registry."""
