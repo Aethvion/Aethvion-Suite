@@ -26,6 +26,7 @@ from core.utils import get_logger
 import asyncio
 import json
 import os
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -179,60 +180,71 @@ def _entity_to_text(entity: dict) -> str:
     return " ".join(parts)
 
 
-# Provider clients
+# Provider clients — cached, one instance per process
 
-def _make_google_client():
-    """
-    Create a google-genai Client (google-genai>=1.0.0).
-    Uses GOOGLE_AI_API_KEY env var.
-    """
-    from google import genai  # google-genai>=1.0.0
-
-    api_key = os.getenv("GOOGLE_AI_API_KEY", "")
-    if not api_key:
-        raise RuntimeError(
-            "GOOGLE_AI_API_KEY is not set. Add it to your .env file."
-        )
-    return genai.Client(api_key=api_key, http_options={"api_version": "v1"})
+_client_lock          = threading.Lock()
+_google_client:  object = None
+_openai_client:  object = None
 
 
-def _make_openai_client():
-    """
-    Create an OpenAI client.
-    Uses OPENAI_API_KEY env var.
-    """
-    try:
-        from openai import OpenAI
-    except ImportError:
-        raise RuntimeError(
-            "openai package is not installed. Run: pip install openai"
-        )
-    api_key = os.getenv("OPENAI_API_KEY", "")
-    if not api_key:
-        raise RuntimeError(
-            "OPENAI_API_KEY is not set. Add it to your .env file."
-        )
-    return OpenAI(api_key=api_key)
+def _get_google_client():
+    """Return a cached google-genai Client (constructed once per process)."""
+    global _google_client
+    if _google_client is None:
+        with _client_lock:
+            if _google_client is None:
+                from google import genai  # google-genai>=1.0.0
+                api_key = os.getenv("GOOGLE_AI_API_KEY", "")
+                if not api_key:
+                    raise RuntimeError(
+                        "GOOGLE_AI_API_KEY is not set. Add it to your .env file."
+                    )
+                _google_client = genai.Client(api_key=api_key, http_options={"api_version": "v1"})
+    return _google_client
 
 
-# Local model cache
+def _get_openai_client():
+    """Return a cached OpenAI client (constructed once per process)."""
+    global _openai_client
+    if _openai_client is None:
+        with _client_lock:
+            if _openai_client is None:
+                try:
+                    from openai import OpenAI
+                except ImportError:
+                    raise RuntimeError(
+                        "openai package is not installed. Run: pip install openai"
+                    )
+                api_key = os.getenv("OPENAI_API_KEY", "")
+                if not api_key:
+                    raise RuntimeError(
+                        "OPENAI_API_KEY is not set. Add it to your .env file."
+                    )
+                _openai_client = OpenAI(api_key=api_key)
+    return _openai_client
+
+
+# Local model cache — thread-safe
 
 _local_model_cache: dict[str, object] = {}
+_local_model_lock = threading.Lock()
 
 
 def _get_local_model(model: str):
     """Load and cache a sentence-transformers model (one load per process)."""
     if model not in _local_model_cache:
-        try:
-            from sentence_transformers import SentenceTransformer
-        except ImportError:
-            raise RuntimeError(
-                "sentence-transformers is not installed. "
-                "Run: pip install sentence-transformers"
-            )
-        logger.info(f"[Vectorizer] Loading local model {model!r} (first use — may download)…")
-        _local_model_cache[model] = SentenceTransformer(model)
-        logger.info(f"[Vectorizer] Local model {model!r} ready.")
+        with _local_model_lock:
+            if model not in _local_model_cache:
+                try:
+                    from sentence_transformers import SentenceTransformer
+                except ImportError:
+                    raise RuntimeError(
+                        "sentence-transformers is not installed. "
+                        "Run: pip install sentence-transformers"
+                    )
+                logger.info(f"[Vectorizer] Loading local model {model!r} (first use — may download)…")
+                _local_model_cache[model] = SentenceTransformer(model)
+                logger.info(f"[Vectorizer] Local model {model!r} ready.")
     return _local_model_cache[model]
 
 
@@ -245,7 +257,7 @@ def _google_model_id(model: str) -> str:
 
 async def _embed_google(text: str, model: str) -> list[float]:
     def _sync_embed() -> list[float]:
-        client = _make_google_client()
+        client = _get_google_client()
         model_id = _google_model_id(model)
         result = client.models.embed_content(model=model_id, contents=text)
         if not result:
@@ -262,7 +274,7 @@ async def _embed_google(text: str, model: str) -> list[float]:
 
 async def _embed_openai(text: str, model: str) -> list[float]:
     def _sync_embed() -> list[float]:
-        client = _make_openai_client()
+        client = _get_openai_client()
         response = client.embeddings.create(model=model, input=text)
         return response.data[0].embedding
     return await asyncio.to_thread(_sync_embed)
@@ -293,7 +305,7 @@ def _estimate_tokens(text: str) -> int:
 async def _embed_openai_counted(text: str, model: str) -> tuple[list[float], int]:
     """Embed via OpenAI and return (embedding, actual_token_count)."""
     def _sync() -> tuple[list[float], int]:
-        client   = _make_openai_client()
+        client   = _get_openai_client()
         response = client.embeddings.create(model=model, input=text)
         tokens   = getattr(response.usage, "total_tokens", None) or _estimate_tokens(text)
         return response.data[0].embedding, int(tokens)
@@ -327,7 +339,7 @@ def _preflight_check(model: str) -> None:
     """Verify the provider client can be constructed. Raises on failure."""
     provider = EMBEDDING_MODELS.get(model, {}).get("provider", "google")
     if provider == "openai":
-        _make_openai_client()
+        _get_openai_client()
     elif provider == "local":
         # Importing is enough — model download happens lazily at first embed call
         try:
@@ -338,7 +350,7 @@ def _preflight_check(model: str) -> None:
                 "Run: pip install sentence-transformers"
             )
     else:
-        _make_google_client()
+        _get_google_client()
 
 
 # Background vectorization task
@@ -547,34 +559,20 @@ def embed_sync(text: str, model: str) -> list[float]:
     """
     provider = EMBEDDING_MODELS.get(model, {}).get("provider", "google")
     if provider == "openai":
-        try:
-            from openai import OpenAI  # noqa: PLC0415
-        except ImportError:
-            raise RuntimeError("openai package is not installed. Run: pip install openai")
-        api_key = os.getenv("OPENAI_API_KEY", "")
-        if not api_key:
-            raise RuntimeError("OPENAI_API_KEY is not set — add it to your .env file.")
-        client = OpenAI(api_key=api_key)
-        response = client.embeddings.create(model=model, input=text)
+        response = _get_openai_client().embeddings.create(model=model, input=text)
         return response.data[0].embedding
-    elif provider == "local":
-        m = _get_local_model(model)
-        return m.encode(text, normalize_embeddings=True).tolist()
-    else:
-        from google import genai  # noqa: PLC0415
-        api_key = os.getenv("GOOGLE_AI_API_KEY", "")
-        if not api_key:
-            raise RuntimeError("GOOGLE_AI_API_KEY is not set — add it to your .env file.")
-        client = genai.Client(api_key=api_key, http_options={"api_version": "v1"})
-        model_id = _google_model_id(model)
-        result = client.models.embed_content(model=model_id, contents=text)
-        if not result:
-            raise RuntimeError(f"Null response from Google embedding model {model_id!r}")
-        if hasattr(result, "embeddings") and result.embeddings:
-            return list(result.embeddings[0].values)
-        if hasattr(result, "embedding") and result.embedding:
-            return list(result.embedding.values)
-        raise RuntimeError(f"Empty embedding response from model {model_id!r}: {result}")
+    if provider == "local":
+        return _get_local_model(model).encode(text, normalize_embeddings=True).tolist()
+    # google
+    model_id = _google_model_id(model)
+    result = _get_google_client().models.embed_content(model=model_id, contents=text)
+    if not result:
+        raise RuntimeError(f"Null response from Google embedding model {model_id!r}")
+    if hasattr(result, "embeddings") and result.embeddings:
+        return list(result.embeddings[0].values)
+    if hasattr(result, "embedding") and result.embedding:
+        return list(result.embedding.values)
+    raise RuntimeError(f"Empty embedding response from model {model_id!r}: {result}")
 
 
 # Cancel
