@@ -363,6 +363,116 @@ const CompanionCreator = (() => {
             </div>
           </div>
 
+          <!-- ── Runtime Behaviour ─────────────────────────────────────── -->
+          <div class="cc-adv-section" id="cc-s-runtime">
+            <div class="cc-adv-toggle">
+              <span><i class="fas fa-gauge-high"></i> Runtime Behaviour</span>
+              <i class="fas fa-chevron-down cc-adv-chevron"></i>
+            </div>
+            <div class="cc-adv-body">
+              <div class="cc-form-grid" style="margin-top:0">
+                <div class="cc-field">
+                  <label>Typing Speed&nbsp;<span class="cc-range-val" id="cc-typing-speed-val">75</span></label>
+                  <input type="range" id="cc-typing-speed" min="0" max="100" value="75" class="cc-range">
+                  <span class="cc-range-hint">Controls message display animation speed</span>
+                </div>
+                <div class="cc-field">
+                  <label>Memory Length&nbsp;<span class="cc-range-val" id="cc-context-limit-val">6</span>&nbsp;messages</label>
+                  <input type="range" id="cc-context-limit" min="1" max="50" value="6" class="cc-range">
+                  <span class="cc-range-hint">How many past messages the companion considers</span>
+                </div>
+              </div>
+              <div class="cc-caps-grid" style="margin-top:0.75rem">
+                <label class="cc-toggle-row" for="cc-rt-hide-character">
+                  <div><div class="cc-cap-label">Hide Character</div><div class="cc-cap-desc">Collapse the portrait panel in the chat view</div></div>
+                  <span class="cc-toggle-wrap"><input type="checkbox" id="cc-rt-hide-character" class="cc-toggle-input"><span class="cc-toggle-thumb"></span></span>
+                </label>
+                <label class="cc-toggle-row" for="cc-rt-proactive-tools">
+                  <div><div class="cc-cap-label">Allow Proactive Tools</div><div class="cc-cap-desc">Permit tool use during auto-initiated messages</div></div>
+                  <span class="cc-toggle-wrap"><input type="checkbox" id="cc-rt-proactive-tools" class="cc-toggle-input"><span class="cc-toggle-thumb"></span></span>
+                </label>
+              </div>
+              <p class="cc-hint" style="margin:0.6rem 0 0">Saved automatically — no need to click Save.</p>
+            </div>
+          </div>
+
+          <!-- ── Workspace Directories ─────────────────────────────────── -->
+          <div class="cc-adv-section" id="cc-s-workspaces">
+            <div class="cc-adv-toggle">
+              <span><i class="fas fa-folder-open"></i> Workspace Directories</span>
+              <i class="fas fa-chevron-down cc-adv-chevron"></i>
+            </div>
+            <div class="cc-adv-body">
+              <div id="cc-ws-list" style="margin-bottom:0.75rem"></div>
+              <div style="display:flex;gap:0.5rem;margin-bottom:0.4rem;flex-wrap:wrap">
+                <input type="text" id="cc-ws-path"  class="control-input" placeholder="Absolute path (e.g. C:\Projects\myapp)" style="flex:2;min-width:140px">
+                <input type="text" id="cc-ws-label" class="control-input" placeholder="Label (optional)" style="flex:1;min-width:100px">
+              </div>
+              <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:0.6rem;font-size:0.82rem">
+                <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer"><input type="checkbox" id="cc-ws-perm-read" checked> Read</label>
+                <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer"><input type="checkbox" id="cc-ws-perm-write"> Write</label>
+                <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer"><input type="checkbox" id="cc-ws-perm-delete"> Delete</label>
+                <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer"><input type="checkbox" id="cc-ws-recursive" checked> Include subdirectories</label>
+              </div>
+              <button type="button" id="cc-ws-add-btn" class="cc-btn cc-btn-ghost cc-btn-sm">
+                <i class="fas fa-plus"></i> Add Workspace
+              </button>
+            </div>
+          </div>
+
+          <!-- ── Proactive Messages ─────────────────────────────────────── -->
+          <div class="cc-adv-section" id="cc-s-proactive">
+            <div class="cc-adv-toggle">
+              <span><i class="fas fa-bell"></i> Proactive Messages</span>
+              <i class="fas fa-chevron-down cc-adv-chevron"></i>
+            </div>
+            <div class="cc-adv-body">
+              <div class="cc-caps-grid" style="margin-bottom:0.9rem">
+                <label class="cc-toggle-row" for="cc-proactive-enabled">
+                  <div><div class="cc-cap-label">Enabled</div><div class="cc-cap-desc">Allow this companion to initiate conversations</div></div>
+                  <span class="cc-toggle-wrap"><input type="checkbox" id="cc-proactive-enabled" class="cc-toggle-input"><span class="cc-toggle-thumb"></span></span>
+                </label>
+                <label class="cc-toggle-row" for="cc-proactive-popup">
+                  <div><div class="cc-cap-label">Show as popup</div><div class="cc-cap-desc">Display proactive messages as a floating notification</div></div>
+                  <span class="cc-toggle-wrap"><input type="checkbox" id="cc-proactive-popup" class="cc-toggle-input" checked><span class="cc-toggle-thumb"></span></span>
+                </label>
+              </div>
+              <div class="cc-form-grid" style="margin-top:0">
+                <div class="cc-adv-subsection-label cc-field-full" style="margin:0 0 0.4rem;font-size:0.78rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em">On startup</div>
+                <div class="cc-field">
+                  <label>Min hours away&nbsp;<span class="cc-range-val" id="cc-startup-hours-val">4</span>h</label>
+                  <input type="range" id="cc-startup-hours" min="1" max="48" value="4" class="cc-range">
+                </div>
+                <div class="cc-field">
+                  <label>Chance&nbsp;<span class="cc-range-val" id="cc-startup-chance-val">75</span>%</label>
+                  <input type="range" id="cc-startup-chance" min="10" max="100" value="75" class="cc-range">
+                </div>
+                <div class="cc-field">
+                  <label>Min delay&nbsp;<span class="cc-range-val" id="cc-startup-delay-min-val">10</span>s</label>
+                  <input type="range" id="cc-startup-delay-min" min="5" max="120" value="10" class="cc-range">
+                </div>
+                <div class="cc-field">
+                  <label>Max delay&nbsp;<span class="cc-range-val" id="cc-startup-delay-max-val">45</span>s</label>
+                  <input type="range" id="cc-startup-delay-max" min="10" max="180" value="45" class="cc-range">
+                </div>
+                <div class="cc-adv-subsection-label cc-field-full" style="margin:0.5rem 0 0.4rem;font-size:0.78rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em">During session</div>
+                <div class="cc-field">
+                  <label>Min interval&nbsp;<span class="cc-range-val" id="cc-session-interval-min-val">45</span>m</label>
+                  <input type="range" id="cc-session-interval-min" min="1" max="120" value="45" class="cc-range">
+                </div>
+                <div class="cc-field">
+                  <label>Max interval&nbsp;<span class="cc-range-val" id="cc-session-interval-max-val">90</span>m</label>
+                  <input type="range" id="cc-session-interval-max" min="1" max="240" value="90" class="cc-range">
+                </div>
+                <div class="cc-field">
+                  <label>Chance&nbsp;<span class="cc-range-val" id="cc-session-chance-val">60</span>%</label>
+                  <input type="range" id="cc-session-chance" min="10" max="100" value="60" class="cc-range">
+                </div>
+              </div>
+              <p class="cc-hint" style="margin:0.6rem 0 0">Saved automatically — no need to click Save.</p>
+            </div>
+          </div>
+
         </div><!-- /.cc-sections -->
 
         <div id="cc-avatar-preview-wrap" class="cc-avatar-preview-wrap">
@@ -387,6 +497,19 @@ const CompanionCreator = (() => {
         </div>
         <div id="cc-form-msg" class="cc-form-msg" style="display:none"></div>
         </form>
+
+      <!-- Danger Zone — outside the form so it never submits accidentally -->
+      <div class="cc-danger-zone" id="cc-danger-zone" style="display:none">
+        <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--error,#f87171);margin-bottom:0.4rem">
+          <i class="fas fa-triangle-exclamation"></i> Danger Zone
+        </div>
+        <p class="cc-hint" style="margin:0 0 0.75rem">Permanently deletes all conversation history and memory for
+          <strong id="cc-danger-companion-name"></strong>. This cannot be undone.</p>
+        <button type="button" id="cc-reset-companion-btn" class="cc-btn cc-btn-danger cc-btn-sm">
+          <i class="fas fa-trash-alt"></i> Reset companion
+        </button>
+      </div>
+
       </div><!-- /.cc-settings-view -->
 
       <!-- Memory view (shown when Memory tab is active) -->
@@ -657,7 +780,15 @@ const CompanionCreator = (() => {
                 _renderExpressionImages(fillData.expressions || [], fillData.expression_images || {});
             }
 
+            // Load prefs-backed behaviour settings and wire auto-save listeners
+            _loadBehaviourSettings(fillData.id);
+            _wireBehaviourSettings(fillData.id);
+
         } else {
+            // Hide danger zone and abort behaviour listeners for new companions
+            document.getElementById('cc-danger-zone').style.display = 'none';
+            if (_behaviourCtrl) { _behaviourCtrl.abort(); _behaviourCtrl = null; }
+
             form.reset();
             set('cc-accent-color',  '#6366f1');
             set('cc-avatar-symbol', '✦');
@@ -1683,6 +1814,256 @@ const CompanionCreator = (() => {
                 }, 900);
             });
         });
+    }
+
+    // ── Behaviour settings (prefs-backed, auto-save) ──────────────────────────
+
+    /** Maps companionId → event prefix used by mode files (e.g. 'misaka', 'axiom') */
+    function _evtPrefix(companionId) {
+        return companionId === 'misakacipher' ? 'misaka' : companionId;
+    }
+
+    /** Read a value from window.prefs, falling back to defaultVal. */
+    function _prefGet(key, defaultVal) {
+        return window.prefs?.get?.(key, defaultVal) ?? defaultVal;
+    }
+
+    /** Save a value to window.prefs and persist. */
+    async function _prefSet(key, val) {
+        if (window.prefs?.set) window.prefs.set(key, val);
+        if (typeof savePreference === 'function') await savePreference(key, val);
+    }
+
+    /**
+     * Fill the Runtime Behaviour, Proactive Messages, and Workspace sections
+     * with values from prefs for the given companion.
+     */
+    function _loadBehaviourSettings(companionId) {
+        const pfx         = companionId;
+        const isMisaka    = companionId === 'misakacipher';
+        const defaultCtx  = isMisaka ? 6 : 8;
+
+        const _set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        const _chk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+        const _dsp = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+        // Runtime Behaviour
+        const speed = _prefGet(`${pfx}.typing_speed`, 75);
+        _set('cc-typing-speed', speed);
+        _dsp('cc-typing-speed-val', speed);
+
+        const ctx = _prefGet(`${pfx}.context_limit`, defaultCtx);
+        _set('cc-context-limit', ctx);
+        _dsp('cc-context-limit-val', ctx);
+
+        _chk('cc-rt-hide-character',  _prefGet(`${pfx}.hide_character`,      false));
+        _chk('cc-rt-proactive-tools', _prefGet(`${pfx}.allow_proactive_tools`, false));
+
+        // Proactive Messages
+        _chk('cc-proactive-enabled', _prefGet(`${pfx}.proactive_enabled`, isMisaka));
+        _chk('cc-proactive-popup',   _prefGet(`${pfx}.proactive_popup`, true));
+
+        const proactiveRanges = [
+            ['cc-startup-hours',        `${pfx}.startup_trigger_hours`, 'cc-startup-hours-val',        4],
+            ['cc-startup-chance',       `${pfx}.startup_chance`,        'cc-startup-chance-val',       75],
+            ['cc-startup-delay-min',    `${pfx}.startup_delay_min`,     'cc-startup-delay-min-val',    10],
+            ['cc-startup-delay-max',    `${pfx}.startup_delay_max`,     'cc-startup-delay-max-val',    45],
+            ['cc-session-interval-min', `${pfx}.session_interval_min`,  'cc-session-interval-min-val', 45],
+            ['cc-session-interval-max', `${pfx}.session_interval_max`,  'cc-session-interval-max-val', 90],
+            ['cc-session-chance',       `${pfx}.session_chance`,        'cc-session-chance-val',       60],
+        ];
+        proactiveRanges.forEach(([inputId, prefKey, valId, def]) => {
+            const v = _prefGet(prefKey, def);
+            _set(inputId, v);
+            _dsp(valId, v);
+        });
+
+        // Update the danger zone companion name
+        const dangerName = document.getElementById('cc-danger-companion-name');
+        if (dangerName && _activeData) dangerName.textContent = _activeData.name;
+
+        // Load workspaces from the API
+        _loadCompanionWorkspaces(companionId);
+    }
+
+    /** AbortController for the current companion's auto-save listeners. */
+    let _behaviourCtrl = null;
+
+    /**
+     * Wire auto-save listeners for all Runtime Behaviour and Proactive Message
+     * inputs. Aborts previous companion's listeners before re-wiring.
+     */
+    function _wireBehaviourSettings(companionId) {
+        if (_behaviourCtrl) _behaviourCtrl.abort();
+        _behaviourCtrl = new AbortController();
+        const { signal } = _behaviourCtrl;
+        const pfx        = companionId;
+        const evtPfx     = _evtPrefix(companionId);
+
+        function _autoRange(inputId, valId, prefKey, eventKey) {
+            const input = document.getElementById(inputId);
+            const disp  = document.getElementById(valId);
+            if (!input) return;
+            input.addEventListener('input', async () => {
+                const v = parseFloat(input.value);
+                if (disp) disp.textContent = v;
+                await _prefSet(prefKey, v);
+                window.dispatchEvent(new CustomEvent(`${evtPfx}SettingsUpdated`, { detail: { [eventKey]: v } }));
+            }, { signal });
+        }
+
+        function _autoToggle(inputId, prefKey, eventKey) {
+            const el = document.getElementById(inputId);
+            if (!el) return;
+            el.addEventListener('change', async () => {
+                const v = el.checked;
+                await _prefSet(prefKey, v);
+                window.dispatchEvent(new CustomEvent(`${evtPfx}SettingsUpdated`, { detail: { [eventKey]: v } }));
+            }, { signal });
+        }
+
+        // Runtime Behaviour
+        _autoRange  ('cc-typing-speed',    'cc-typing-speed-val',    `${pfx}.typing_speed`,       'typing_speed');
+        _autoRange  ('cc-context-limit',   'cc-context-limit-val',   `${pfx}.context_limit`,      'context_limit');
+        _autoToggle ('cc-rt-hide-character',  `${pfx}.hide_character`,       'hide_character');
+        _autoToggle ('cc-rt-proactive-tools', `${pfx}.allow_proactive_tools`, 'allow_proactive_tools');
+
+        // Proactive Messages
+        _autoToggle ('cc-proactive-enabled', `${pfx}.proactive_enabled`,    'proactive_enabled');
+        _autoToggle ('cc-proactive-popup',   `${pfx}.proactive_popup`,      'proactive_popup');
+        _autoRange  ('cc-startup-hours',        'cc-startup-hours-val',        `${pfx}.startup_trigger_hours`, 'startup_trigger_hours');
+        _autoRange  ('cc-startup-chance',       'cc-startup-chance-val',       `${pfx}.startup_chance`,        'startup_chance');
+        _autoRange  ('cc-startup-delay-min',    'cc-startup-delay-min-val',    `${pfx}.startup_delay_min`,     'startup_delay_min');
+        _autoRange  ('cc-startup-delay-max',    'cc-startup-delay-max-val',    `${pfx}.startup_delay_max`,     'startup_delay_max');
+        _autoRange  ('cc-session-interval-min', 'cc-session-interval-min-val', `${pfx}.session_interval_min`,  'session_interval_min');
+        _autoRange  ('cc-session-interval-max', 'cc-session-interval-max-val', `${pfx}.session_interval_max`,  'session_interval_max');
+        _autoRange  ('cc-session-chance',       'cc-session-chance-val',       `${pfx}.session_chance`,        'session_chance');
+
+        // Workspace add button
+        document.getElementById('cc-ws-add-btn')?.addEventListener('click',
+            () => _addCompanionWorkspace(companionId), { signal });
+
+        // Reset button — show danger zone for existing companions only
+        const dangerZone = document.getElementById('cc-danger-zone');
+        if (dangerZone) dangerZone.style.display = _editingId ? '' : 'none';
+        document.getElementById('cc-reset-companion-btn')?.addEventListener('click',
+            () => _resetCompanion(companionId), { signal });
+    }
+
+    // ── Workspace management ──────────────────────────────────────────────────
+
+    async function _loadCompanionWorkspaces(companionId) {
+        try {
+            const res = await fetch(`/api/companions/${companionId}/workspaces`);
+            if (!res.ok) return;
+            const data = await res.json();
+            _renderCompanionWorkspaces(companionId, data.workspaces || []);
+        } catch (e) {
+            console.warn(`[CompanionCreator] Could not load workspaces for ${companionId}:`, e);
+        }
+    }
+
+    function _renderCompanionWorkspaces(companionId, workspaces) {
+        const container = document.getElementById('cc-ws-list');
+        if (!container) return;
+        if (!workspaces.length) {
+            container.innerHTML = '<span style="color:var(--text-secondary);font-size:0.8rem;font-style:italic">No workspaces configured.</span>';
+            return;
+        }
+        container.innerHTML = '';
+        for (const ws of workspaces) {
+            const perms = (ws.permissions || []).map(p =>
+                `<span style="background:rgba(0,217,255,0.1);border:1px solid rgba(0,217,255,0.25);border-radius:4px;padding:1px 6px;font-size:0.7rem;color:var(--primary)">${p}</span>`
+            ).join(' ');
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;gap:0.6rem;padding:0.5rem 0.6rem;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:6px;font-size:0.82rem;margin-bottom:0.35rem';
+            row.innerHTML = `
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(ws.label)}</div>
+                <div style="color:var(--text-secondary);font-size:0.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${_esc(ws.path)}">${_esc(ws.path)}</div>
+              </div>
+              <div style="display:flex;gap:0.3rem;flex-shrink:0">${perms}</div>
+              <span style="color:var(--text-secondary);font-size:0.7rem;flex-shrink:0">${ws.recursive ? '↳ recursive' : 'folder only'}</span>
+              <button data-wsid="${ws.id}" title="Remove workspace" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:0.85rem;padding:0.2rem 0.4rem;transition:color 0.2s"
+                onmouseover="this.style.color='#ff4444'" onmouseout="this.style.color=''">✕</button>`;
+            row.querySelector('button').onclick = () => _deleteCompanionWorkspace(companionId, ws.id);
+            container.appendChild(row);
+        }
+    }
+
+    async function _addCompanionWorkspace(companionId) {
+        const path  = document.getElementById('cc-ws-path')?.value?.trim();
+        const label = document.getElementById('cc-ws-label')?.value?.trim() || path;
+        if (!path) return;
+
+        const permissions = [];
+        if (document.getElementById('cc-ws-perm-read')?.checked)   permissions.push('read');
+        if (document.getElementById('cc-ws-perm-write')?.checked)  permissions.push('write');
+        if (document.getElementById('cc-ws-perm-delete')?.checked) permissions.push('delete');
+        const recursive = document.getElementById('cc-ws-recursive')?.checked ?? true;
+
+        try {
+            const res = await fetch(`/api/companions/${companionId}/workspaces`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label, path, permissions, recursive })
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                if (typeof showToast === 'function') showToast('Error: ' + (err.detail || 'Unknown error'), 'error');
+                return;
+            }
+            const pathEl  = document.getElementById('cc-ws-path');
+            const labelEl = document.getElementById('cc-ws-label');
+            if (pathEl)  pathEl.value  = '';
+            if (labelEl) labelEl.value = '';
+            await _loadCompanionWorkspaces(companionId);
+        } catch (e) {
+            console.error(`[CompanionCreator] Failed to add workspace for ${companionId}:`, e);
+        }
+    }
+
+    async function _deleteCompanionWorkspace(companionId, wsId) {
+        if (!confirm('Remove this workspace?')) return;
+        try {
+            await fetch(`/api/companions/${companionId}/workspaces/${wsId}`, { method: 'DELETE' });
+            await _loadCompanionWorkspaces(companionId);
+        } catch (e) {
+            console.error(`[CompanionCreator] Failed to delete workspace from ${companionId}:`, e);
+        }
+    }
+
+    // ── Reset companion ───────────────────────────────────────────────────────
+
+    async function _resetCompanion(companionId) {
+        const name      = _activeData?.name || companionId;
+        const confirmed = confirm(
+            `This will permanently delete all of ${name}'s conversation history and memory.\n\nAre you sure?`
+        );
+        if (!confirmed) return;
+
+        const btn = document.getElementById('cc-reset-companion-btn');
+        if (!btn) return;
+        btn.disabled = true;
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting…';
+
+        try {
+            const res = await fetch(`/api/companions/${companionId}/reset`, { method: 'POST' });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.detail || `HTTP ${res.status}`);
+            }
+            btn.innerHTML = '<i class="fas fa-check"></i> Reset complete';
+            btn.style.cssText = 'background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.4);color:rgba(34,197,94,0.9)';
+            setTimeout(() => { btn.disabled = false; btn.innerHTML = orig; btn.style.cssText = ''; }, 3000);
+            if (typeof showToast === 'function') showToast(`${name} has been reset.`, 'success');
+        } catch (e) {
+            btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Reset failed';
+            btn.style.cssText = 'background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.4);color:rgba(239,68,68,0.9)';
+            setTimeout(() => { btn.disabled = false; btn.innerHTML = orig; btn.style.cssText = ''; }, 3000);
+            console.error(`[CompanionCreator] Reset failed:`, e);
+        }
     }
 
     return { init };

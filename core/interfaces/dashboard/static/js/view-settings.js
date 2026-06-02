@@ -77,105 +77,7 @@ async function loadPreferences() {
         };
     }
 
-    // ── Companion Settings Loop ──────────────────────────────────────────────
-    const COMPANIONS = [
-        { id: 'misakacipher', prefix: 'misaka',  prefPrefix: 'misakacipher' },
-        { id: 'axiom',        prefix: 'axiom',   prefPrefix: 'axiom' },
-        { id: 'lyra',         prefix: 'lyra',    prefPrefix: 'lyra' }
-    ];
-
-    for (const comp of COMPANIONS) {
-        const id = comp.id;
-        const prefix = comp.prefix;
-        const pfx = comp.prefPrefix;
-
-        // Helper: wrap an onChange callback to also flash the "Saved ✓" indicator
-        const _saved = () => _flashCompanionSaved(prefix);
-        const _wrapSave = (fn) => (val) => { _saved(); if (fn) fn(val); };
-
-        // Model Selection
-        const modelEl = document.getElementById(`setting-${pfx}-model`);
-        if (modelEl) {
-            modelEl.onchange = async (e) => {
-                await savePreference(`${pfx}.model`, e.target.value);
-                _saved();
-                window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { model: e.target.value } }));
-            };
-        }
-
-        // Typing Speed
-        _bindRangeWithDisplay(
-            `setting-${pfx}-typing-speed`,
-            `setting-${pfx}-typing-speed-val`,
-            `${pfx}.typing_speed`,
-            75,
-            _wrapSave((val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { typing_speed: val } })))
-        );
-
-        // Memory Context Limit
-        _bindRangeWithDisplay(
-            `setting-${pfx}-context-limit`,
-            `setting-${pfx}-context-limit-val`,
-            `${pfx}.context_limit`,
-            (id === 'misakacipher' ? 6 : 8),
-            _wrapSave((val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { context_limit: val } })))
-        );
-
-        // Hide Character (if exists)
-        _bindToggle(`setting-${pfx}-hide-character`, `${pfx}.hide_character`, false,
-            _wrapSave((val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { hide_character: val } })))
-        );
-
-        // Proactive Settings
-        const proactiveItems = [
-            { suffix: '-proactive-enabled',    key: 'proactive_enabled',     type: 'toggle', default: (id === 'misakacipher') },
-            { suffix: '-proactive-popup',      key: 'proactive_popup',       type: 'toggle', default: true },
-            { suffix: '-startup-hours',        key: 'startup_trigger_hours', type: 'range',  default: 4,  hasVal: true },
-            { suffix: '-startup-chance',       key: 'startup_chance',        type: 'range',  default: 75, hasVal: true },
-            { suffix: '-startup-delay-min',    key: 'startup_delay_min',     type: 'range',  default: 10, hasVal: true },
-            { suffix: '-startup-delay-max',    key: 'startup_delay_max',     type: 'range',  default: 45, hasVal: true },
-            { suffix: '-session-interval-min', key: 'session_interval_min',  type: 'range',  default: 45, hasVal: true },
-            { suffix: '-session-interval-max', key: 'session_interval_max',  type: 'range',  default: 90, hasVal: true },
-            { suffix: '-session-chance',       key: 'session_chance',        type: 'range',  default: 60, hasVal: true },
-            { suffix: '-proactive-tools',      key: 'allow_proactive_tools', type: 'toggle', default: false }
-        ];
-
-        for (const item of proactiveItems) {
-            const elId = `setting-${prefix}${item.suffix}`;
-            const prefKey = `${pfx}.${item.key}`;
-            if (item.type === 'toggle') {
-                _bindToggle(elId, prefKey, item.default,
-                    _wrapSave((val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { [item.key]: val } })))
-                );
-            } else {
-                _bindRangeWithDisplay(elId, `${elId}-val`, prefKey, item.default,
-                    _wrapSave((val) => window.dispatchEvent(new CustomEvent(`${prefix}SettingsUpdated`, { detail: { [item.key]: val } })))
-                );
-            }
-        }
-
-        // Reset Button
-        const resetBtn = document.getElementById(`${prefix}-reset-btn`);
-        if (resetBtn) {
-            resetBtn.onclick = () => resetCompanion(id, resetBtn);
-        }
-
-        // Workspaces
-        loadCompanionWorkspaces(id);
-    }
-
-    // ── Global Companion Settings ────────────────────────────────────────────
-    _bindRangeWithDisplay(
-        'setting-companions-global-typing-speed',
-        'setting-companions-global-typing-speed-val',
-        'companions.global.typing_speed',
-        75,
-        (val) => window.dispatchEvent(new CustomEvent('companionSettingsUpdated', { detail: { typing_speed: val } }))
-    );
-
-    _bindToggle('setting-companions-global-typing-indicator', 'companions.global.typing_indicator', true);
-    _bindToggle('setting-companions-global-sounds',           'companions.global.sounds',           false);
-    _bindToggle('setting-companions-global-popups',           'companions.global.popups',           true);
+    // Companion settings are now managed on the Companions page itself.
 
     const infoModel = document.getElementById('setting-info-model');
     if (infoModel) {
@@ -194,92 +96,6 @@ async function loadPreferences() {
     loadGlobalSettings();
     initDevMode();
     loadBridgeModules();
-}
-
-async function resetCompanion(companionId, btn) {
-    const displayName = companionId.charAt(0).toUpperCase() + companionId.slice(1).replace('cipher', '');
-    const confirmed = confirm(
-        `This will permanently delete all of ${displayName}'s conversation history and memory.\n\nAre you sure?`
-    );
-    if (!confirmed) return;
-
-    btn.disabled = true;
-    const originalHtml = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting…';
-
-    try {
-        const res = await fetch(`/api/companions/${companionId}/reset`, { method: 'POST' });
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.detail || `HTTP ${res.status}`);
-        }
-        btn.innerHTML = '<i class="fas fa-check"></i> Reset complete';
-        btn.style.background = 'rgba(34,197,94,0.15)';
-        btn.style.borderColor = 'rgba(34,197,94,0.4)';
-        btn.style.color = 'rgba(34,197,94,0.9)';
-        setTimeout(() => {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-            btn.style.cssText = '';
-        }, 3000);
-    } catch (e) {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Reset failed';
-        btn.style.background = 'rgba(239,68,68,0.15)';
-        btn.style.borderColor = 'rgba(239,68,68,0.4)';
-        btn.style.color = 'rgba(239,68,68,0.9)';
-        console.error(`[${companionId} Reset]`, e);
-        setTimeout(() => {
-            btn.innerHTML = originalHtml;
-            btn.style.cssText = '';
-        }, 3000);
-    }
-}
-
-// ── Companion Accordion toggle ────────────────────────────────────────────────
-
-function toggleCompanionAccordion(id) {
-    const body    = document.getElementById(`accordion-body-${id}`);
-    const chevron = document.getElementById(`chevron-${id}`);
-    if (!body) return;
-    const isOpen = body.style.display !== 'none';
-    body.style.display = isOpen ? 'none' : '';
-    if (chevron) chevron.classList.toggle('open', !isOpen);
-}
-
-// ── Companion auto-save feedback ─────────────────────────────────────────────
-
-/**
- * Flash a brief "Saved ✓" chip inside the given companion accordion header.
- * Multiple rapid saves are debounced — only one chip is visible at a time.
- */
-const _companionSaveTimers = {};
-function _flashCompanionSaved(companionPrefix) {
-    const headerId = `chevron-${companionPrefix}`;
-    const chevron  = document.getElementById(headerId);
-    if (!chevron) return;
-    const header = chevron.closest('.companions-accordion-header');
-    if (!header) return;
-
-    // Remove any existing chip
-    const old = header.querySelector('.companion-autosaved-chip');
-    if (old) old.remove();
-    clearTimeout(_companionSaveTimers[companionPrefix]);
-
-    const chip = document.createElement('span');
-    chip.className  = 'companion-autosaved-chip';
-    chip.textContent = 'Saved ✓';
-    chip.style.cssText = (
-        'font-size:0.72rem;color:var(--accent-green,#4ade80);' +
-        'margin-right:0.5rem;opacity:1;transition:opacity 0.4s;pointer-events:none;'
-    );
-    // Insert before the chevron
-    header.insertBefore(chip, chevron);
-
-    _companionSaveTimers[companionPrefix] = setTimeout(() => {
-        chip.style.opacity = '0';
-        setTimeout(() => chip.remove(), 400);
-    }, 2000);
 }
 
 // ── Reusable binding helpers ──────────────────────────────────────────────────
@@ -429,90 +245,7 @@ async function authorizeBridgeModule(companionId, moduleId) {
 
 // ===== Companion Workspace Management =====
 
-async function loadCompanionWorkspaces(companionId) {
-    const prefix = (companionId === 'misakacipher') ? 'misaka' : companionId;
-    try {
-        const res = await fetch(`/api/companions/${companionId}/workspaces`);
-        if (!res.ok) return;
-        const data = await res.json();
-        renderWorkspaces(companionId, data.workspaces || []);
-
-        const addBtn = document.getElementById(`${prefix}-ws-add-btn`);
-        if (addBtn) addBtn.onclick = () => addCompanionWorkspace(companionId);
-    } catch (e) {
-        console.warn(`Could not load workspaces for ${companionId}:`, e);
-    }
-}
-
-function renderWorkspaces(companionId, workspaces) {
-    const prefix = (companionId === 'misakacipher') ? 'misaka' : companionId;
-    const container = document.getElementById(`${prefix}-workspace-list`);
-    if (!container) return;
-    if (!workspaces.length) {
-        container.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">No workspaces configured.</span>';
-        return;
-    }
-    container.innerHTML = '';
-    for (const ws of workspaces) {
-        const perms = ws.permissions.map(p => `<span style="background: rgba(0,217,255,0.1); border: 1px solid rgba(0,217,255,0.25); border-radius: 4px; padding: 1px 6px; font-size: 0.7rem; color: var(--primary);">${p}</span>`).join(' ');
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0.6rem; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:6px; font-size:0.82rem;';
-        row.innerHTML = `
-            <div style="flex:1; min-width:0;">
-                <div style="font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ws.label}</div>
-                <div style="color:var(--text-secondary); font-size:0.75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${ws.path}">${ws.path}</div>
-            </div>
-            <div style="display:flex; gap:0.3rem; flex-shrink:0;">${perms}</div>
-            <span style="color:var(--text-secondary); font-size:0.7rem; flex-shrink:0;">${ws.recursive ? '↳ recursive' : 'folder only'}</span>
-            <button data-wsid="${ws.id}" title="Remove workspace" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:0.85rem; padding:0.2rem 0.4rem; transition:color 0.2s;" onmouseover="this.style.color='#ff4444'" onmouseout="this.style.color=''">✕</button>
-        `;
-        row.querySelector('button').onclick = () => deleteCompanionWorkspace(companionId, ws.id);
-        container.appendChild(row);
-    }
-}
-
-async function addCompanionWorkspace(companionId) {
-    const prefix = (companionId === 'misakacipher') ? 'misaka' : companionId;
-    const path = document.getElementById(`${prefix}-ws-add-path`)?.value?.trim();
-    const label = document.getElementById(`${prefix}-ws-add-label`)?.value?.trim() || path;
-    if (!path) return;
-
-    const permissions = [];
-    if (document.getElementById(`${prefix}-ws-perm-read`)?.checked) permissions.push('read');
-    if (document.getElementById(`${prefix}-ws-perm-write`)?.checked) permissions.push('write');
-    if (document.getElementById(`${prefix}-ws-perm-delete`)?.checked) permissions.push('delete');
-    const recursive = document.getElementById(`${prefix}-ws-recursive`)?.checked ?? true;
-
-    try {
-        const res = await fetch(`/api/companions/${companionId}/workspaces`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ label, path, permissions, recursive })
-        });
-        if (!res.ok) {
-            const err = await res.json();
-            showToast('Error: ' + (err.detail || 'Unknown error'), 'error');
-            return;
-        }
-        const pathInput = document.getElementById(`${prefix}-ws-add-path`);
-        const labelInput = document.getElementById(`${prefix}-ws-add-label`);
-        if (pathInput) pathInput.value = '';
-        if (labelInput) labelInput.value = '';
-        await loadCompanionWorkspaces(companionId);
-    } catch (e) {
-        console.error(`Failed to add workspace for ${companionId}:`, e);
-    }
-}
-
-async function deleteCompanionWorkspace(companionId, id) {
-    if (!confirm('Remove this workspace?')) return;
-    try {
-        await fetch(`/api/companions/${companionId}/workspaces/${id}`, { method: 'DELETE' });
-        await loadCompanionWorkspaces(companionId);
-    } catch (e) {
-        console.error(`Failed to delete workspace from ${companionId}:`, e);
-    }
-}
+// Workspace management moved to companion-creator.js
 
 // ===== Global settings.json Management =====
 
@@ -1984,7 +1717,6 @@ async function moveProfile(element, direction) {
 // Expose so other views can trigger a fresh reload of registry data + re-render
 window.loadProviderSettings = loadProviderSettings;
 window.loadChatModels = loadChatModels;
-window.toggleCompanionAccordion = toggleCompanionAccordion;
 
 // ── Settings panel init (deferred until partial is injected) ─────────────────
 let _settingsInitDone = false;

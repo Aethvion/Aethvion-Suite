@@ -267,7 +267,7 @@
 
 <body>
 
-    <!-- ── App Tab Bar ─────────────────────────────────────────────────────────── -->
+    <!-- App Tab Bar -->
     <div id="app-tab-bar">
         <div class="atb-brand" onclick="ATB.switchTo('panel-home')" title="Go Home">
             <span class="atb-brand-logo">✦</span>
@@ -319,7 +319,7 @@
         </div>
     </div>
 
-    <!-- ── Nexus Panel ─────────────────────────────────────────────────────────── -->
+    <!-- Nexus Panel -->
     <!-- Wraps the existing dashboard (header + content-wrapper). The app-panel CSS
      makes it position:fixed below the tab bar, matching the old body layout. -->
     <div id="panel-home" class="app-panel app-panel--home">
@@ -679,15 +679,15 @@
 
     </div><!-- /panel-nexus -->
 
-    <!-- ── App Iframe Panels ─────────────────────────────────────────────────── -->
+    <!-- App Iframe Panels -->
     <!-- Iframe panels for each opened app are injected here by app-tabs.js.
      Each panel is position:fixed with display:none until its tab is active. -->
     <div id="app-panels"></div>
 
-    <!-- ── Toast Container ───────────────────────────────────────────── -->
+    <!-- Toast Container -->
     <div id="toast-container"></div>
 
-    <!-- ── Confirm Modal ─────────────────────────────────────────────── -->
+    <!-- Confirm Modal -->
     <div id="confirm-modal" class="confirm-modal-overlay" style="display:none;" role="dialog" aria-modal="true">
         <div class="confirm-modal">
             <div class="confirm-modal-icon">
@@ -702,7 +702,7 @@
         </div>
     </div>
 
-    <!-- ── Keyboard Shortcuts Overlay ───────────────────────────────── -->
+    <!-- Keyboard Shortcuts Overlay -->
     <div id="kbd-overlay" class="kbd-overlay" style="display:none;" role="dialog" aria-modal="true">
         <div class="kbd-panel">
             <h2><i class="fas fa-keyboard"></i> Keyboard Shortcuts <small>Press ? or Esc to close</small></h2>
@@ -745,7 +745,7 @@
         </div>
     </div>
 
-    <!-- ── App Tab System ────────────────────────────────────────────────────── -->
+    <!-- App Tab System -->
     <script src="/static/js/app-tabs.js?v=__VNUM__" defer></script>
 
     <!-- Update Progress Overlay -->
@@ -765,7 +765,7 @@
 
     <script>
         document.addEventListener('systemReady', () => {
-            // initResearchBoard queries elements inside researchboard partial —
+            // initResearchBoard queries elements inside researchboard partial
             // defer until that partial has been injected into the DOM.
             const rbPanelId = 'researchboard-panel';
             const rbPanel = document.getElementById(rbPanelId);
@@ -785,16 +785,16 @@
     </script>
 
     <script>
-        // ── Custom Companions: Panel + Settings Dynamic Loader ────────────────────────
+        // Custom Companions: Panel + Settings Dynamic Loader
         async function loadCustomCompanionsSidebar() {
             try {
-                // Use companion-creator endpoint — returns raw configs with has_icon at top level
+                // Use companion-creator endpoint - returns raw configs with has_icon at top level
                 const res = await fetch('/api/companion-creator/list');
                 if (!res.ok) return;
                 const data = await res.json();
                 const companions = (data.companions || []).filter(c => !['misakacipher', 'axiom', 'lyra'].includes(c.id));
 
-                // ── Panels only (companions are accessed via the Companions nav tab) ─────
+                // Panels only (companions are accessed via the Companions nav tab)
                 document.querySelectorAll('.custom-companion-panel').forEach(el => el.remove());
 
                 companions.forEach(c => {
@@ -804,7 +804,7 @@
                         ? `<div style="width:88px;height:88px;border-radius:18px;overflow:hidden;margin:0 auto;flex-shrink:0"><img src="/api/companion-creator/${c.id}/icon?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover"></div>`
                         : `<div style="font-size:3.5rem;line-height:1;">${c.avatar_symbol || '✦'}</div>`;
 
-                    // Panel — must use class 'main-tab-panel' so switchMainTab's
+                    // Panel - must use class 'main-tab-panel' so switchMainTab's
                     // querySelectorAll('.main-tab-panel') hides it when leaving.
                     if (!document.getElementById(`${tabId}-panel`)) {
                         const panel = document.createElement('div');
@@ -826,177 +826,6 @@
                         mainContent.appendChild(panel);
                     }
                 });
-
-                // ── Settings panel: inject custom companion accordions ────────────────
-                const settingsPanel = document.getElementById('settings-panel-companions');
-                if (settingsPanel) {
-                    settingsPanel.querySelectorAll('.custom-companion-card').forEach(el => el.remove());
-
-                    companions.forEach(c => {
-                        const id = c.id;
-                        const pk = `custom_companion.${id}`;   // prefs key prefix
-                        const color = c.accent_color || '#6366f1';
-                        const esc = c.name.replace(/'/g, "\\'");
-                        const miniAvHtml = c.has_icon
-                            ? `<span class="companion-avatar-mini" style="background:transparent;padding:0;overflow:hidden"><img src="/api/companion-creator/${id}/icon?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></span>`
-                            : `<span class="companion-avatar-mini" style="background:${color};color:#fff;">${c.avatar_symbol || '✦'}</span>`;
-
-                        const card = document.createElement('div');
-                        card.className = 'setting-card companions-accordion custom-companion-card';
-                        card.id = `card-companion-custom-${id}`;
-                        card.innerHTML = `
-<div class="card-header companions-accordion-header" onclick="toggleCompanionAccordion('custom-${id}')">
-    <div class="header-title">
-        ${miniAvHtml}
-        <span>${c.name}</span>
-        <span class="companion-tag">custom</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:0.75rem;">
-        <button class="settings-open-chat-btn" title="Go to ${c.name} panel"
-            onclick="event.stopPropagation(); if(typeof switchMainTab==='function') switchMainTab('custom-companion-${id}')">
-            <i class="fas fa-comment-dots"></i> Chat
-        </button>
-        <i class="fas fa-chevron-down companions-accordion-chevron" id="chevron-custom-${id}"></i>
-    </div>
-</div>
-<div class="card-content companions-accordion-body" id="accordion-body-custom-${id}" style="display:none;">
-    <div class="compact-item">
-        <div class="item-label">
-            <span>Primary Model</span>
-            <i class="fas fa-info-circle tooltip-trigger" title="The LLM used to power ${c.name}."></i>
-        </div>
-        <select id="setting-custom-${id}-model" class="control-select"></select>
-    </div>
-    <div class="compact-item">
-        <div class="item-label">
-            <span>Context Window</span>
-            <span class="range-display" id="setting-custom-${id}-context-limit-val">8</span>
-        </div>
-        <input type="range" id="setting-custom-${id}-context-limit" min="1" max="50" value="8">
-    </div>
-
-    <div style="margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1rem;">
-        <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);margin-bottom:0.75rem;font-family:'Orbitron',sans-serif;">Proactive Messages</div>
-        <div class="compact-item toggle-item" style="margin-bottom:0.5rem;">
-            <div class="item-label">
-                <span>Proactive Messages</span>
-                <i class="fas fa-info-circle tooltip-trigger" title="Allows ${c.name} to initiate conversations on its own."></i>
-            </div>
-            <label class="switch small">
-                <input type="checkbox" id="setting-custom-${id}-proactive-enabled">
-                <span class="slider round"></span>
-            </label>
-        </div>
-        <div class="compact-item toggle-item" style="margin-bottom:0.5rem;">
-            <div class="item-label">
-                <span>Popup Notification</span>
-                <i class="fas fa-info-circle tooltip-trigger" title="Show a popup when ${c.name} sends a proactive message."></i>
-            </div>
-            <label class="switch small">
-                <input type="checkbox" id="setting-custom-${id}-proactive-popup" checked>
-                <span class="slider round"></span>
-            </label>
-        </div>
-        <div class="compact-item">
-            <div class="item-label"><span>Startup — Min Hours Away</span><span class="range-display" id="setting-custom-${id}-startup-hours-val">4</span></div>
-            <input type="range" id="setting-custom-${id}-startup-hours" min="1" max="48" value="4">
-        </div>
-        <div class="compact-item">
-            <div class="item-label"><span>Startup — Chance (%)</span><span class="range-display" id="setting-custom-${id}-startup-chance-val">75</span></div>
-            <input type="range" id="setting-custom-${id}-startup-chance" min="10" max="100" value="75">
-        </div>
-        <div class="compact-item">
-            <div class="item-label"><span>Startup — Min Delay (s)</span><span class="range-display" id="setting-custom-${id}-startup-delay-min-val">10</span></div>
-            <input type="range" id="setting-custom-${id}-startup-delay-min" min="5" max="120" value="10">
-        </div>
-        <div class="compact-item">
-            <div class="item-label"><span>Startup — Max Delay (s)</span><span class="range-display" id="setting-custom-${id}-startup-delay-max-val">45</span></div>
-            <input type="range" id="setting-custom-${id}-startup-delay-max" min="10" max="180" value="45">
-        </div>
-        <div class="compact-item">
-            <div class="item-label"><span>Session — Min Interval (min)</span><span class="range-display" id="setting-custom-${id}-session-interval-min-val">45</span></div>
-            <input type="range" id="setting-custom-${id}-session-interval-min" min="1" max="120" value="45">
-        </div>
-        <div class="compact-item">
-            <div class="item-label"><span>Session — Max Interval (min)</span><span class="range-display" id="setting-custom-${id}-session-interval-max-val">90</span></div>
-            <input type="range" id="setting-custom-${id}-session-interval-max" min="1" max="240" value="90">
-        </div>
-        <div class="compact-item">
-            <div class="item-label"><span>Session — Chance (%)</span><span class="range-display" id="setting-custom-${id}-session-chance-val">60</span></div>
-            <input type="range" id="setting-custom-${id}-session-chance" min="10" max="100" value="60">
-        </div>
-    </div>
-
-    <div class="misaka-reset-zone">
-        <div class="misaka-reset-label">Manage</div>
-        <p class="misaka-reset-desc">Edit this companion's persona in the Creator, or permanently delete it.</p>
-        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.5rem;">
-            <button class="settings-open-chat-btn"
-                onclick="if(typeof switchMainTab==='function') switchMainTab('companion-creator')">
-                <i class="fas fa-pencil-alt"></i> Edit in Creator
-            </button>
-            <button class="misaka-reset-btn"
-                onclick="_deleteCustomCompanion('${id}','${esc}')">
-                <i class="fas fa-trash-alt"></i> Delete
-            </button>
-        </div>
-    </div>
-</div>`;
-                        settingsPanel.insertBefore(card, settingsPanel.querySelector('.custom-companion-card') || null);
-
-                        // ── Bind all settings controls ────────────────────────────
-                        const sp = window.savePreference;
-                        const prefs = window.prefs;
-
-                        // Model select
-                        const modelSel = card.querySelector(`#setting-custom-${id}-model`);
-                        if (modelSel) {
-                            const prefModel = prefs ? prefs.get(`${pk}.model`, c.default_model || 'gemini-1.5-flash') : (c.default_model || 'gemini-1.5-flash');
-                            if (window._populateModelSelect) {
-                                window._populateModelSelect(modelSel, prefModel);
-                            } else {
-                                const opt = document.createElement('option');
-                                opt.value = prefModel; opt.textContent = prefModel;
-                                modelSel.appendChild(opt);
-                            }
-                            modelSel.onchange = e => sp && sp(`${pk}.model`, e.target.value);
-                        }
-
-                        // Range helpers
-                        const bindRange = (elId, prefKey, defaultVal) => {
-                            const el = card.querySelector(`#${elId}`);
-                            const disp = card.querySelector(`#${elId}-val`);
-                            if (!el) return;
-                            const val = prefs ? prefs.get(prefKey, defaultVal) : defaultVal;
-                            el.value = val;
-                            if (disp) disp.textContent = val;
-                            el.addEventListener('input', () => {
-                                if (disp) disp.textContent = el.value;
-                                if (sp) sp(prefKey, parseInt(el.value, 10));
-                            });
-                        };
-
-                        bindRange(`setting-custom-${id}-context-limit`, `${pk}.context_limit`, 8);
-                        bindRange(`setting-custom-${id}-startup-hours`, `${pk}.startup_hours`, 4);
-                        bindRange(`setting-custom-${id}-startup-chance`, `${pk}.startup_chance`, 75);
-                        bindRange(`setting-custom-${id}-startup-delay-min`, `${pk}.startup_delay_min`, 10);
-                        bindRange(`setting-custom-${id}-startup-delay-max`, `${pk}.startup_delay_max`, 45);
-                        bindRange(`setting-custom-${id}-session-interval-min`, `${pk}.session_interval_min`, 45);
-                        bindRange(`setting-custom-${id}-session-interval-max`, `${pk}.session_interval_max`, 90);
-                        bindRange(`setting-custom-${id}-session-chance`, `${pk}.session_chance`, 60);
-
-                        // Checkbox helpers
-                        const bindCheck = (elId, prefKey, defaultVal) => {
-                            const el = card.querySelector(`#${elId}`);
-                            if (!el) return;
-                            el.checked = prefs ? prefs.get(prefKey, defaultVal) : defaultVal;
-                            el.addEventListener('change', () => sp && sp(prefKey, el.checked));
-                        };
-
-                        bindCheck(`setting-custom-${id}-proactive-enabled`, `${pk}.proactive_enabled`, false);
-                        bindCheck(`setting-custom-${id}-proactive-popup`, `${pk}.proactive_popup`, true);
-                    });
-                }
             } catch (e) {
                 console.warn('[CustomCompanions] Could not load:', e);
             }
@@ -1013,44 +842,23 @@
             }
         }
 
-        // ── Update built-in companion avatar minis in Settings with real icons ───
-        async function _loadBuiltinCompanionIcons() {
-            try {
-                const res = await fetch('/api/companion-creator/all');
-                if (!res.ok) return;
-                const data = await res.json();
-                const builtins = (data.companions || []).filter(c => c._builtin && c.has_icon);
-                const idToCardMap = { misakacipher: 'card-companion-misaka', axiom: 'card-companion-axiom', lyra: 'card-companion-lyra' };
-                for (const c of builtins) {
-                    const cardId = idToCardMap[c.id];
-                    if (!cardId) continue;
-                    const miniEl = document.querySelector(`#${cardId} .companion-avatar-mini`);
-                    if (!miniEl) continue;
-                    miniEl.textContent = '';
-                    miniEl.style.cssText += ';background:transparent!important;padding:0;overflow:hidden';
-                    miniEl.innerHTML = `<img src="/api/companion-creator/${c.id}/icon?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-                }
-            } catch { /* non-fatal */ }
-        }
-
-        // Re-run settings-panel injection when the settings partial is lazy-loaded
+        // Re-run sidebar refresh when the settings partial is lazy-loaded
         document.addEventListener('panelLoaded', (e) => {
             if (e.detail && e.detail.tabName === 'settings') {
                 loadCustomCompanionsSidebar();
-                _loadBuiltinCompanionIcons();
             }
         });
 
         // Load on DOMContentLoaded and also after systemReady
-        document.addEventListener('DOMContentLoaded', () => { loadCustomCompanionsSidebar(); _loadBuiltinCompanionIcons(); });
-        document.addEventListener('systemReady',       () => { loadCustomCompanionsSidebar(); _loadBuiltinCompanionIcons(); });
+        document.addEventListener('DOMContentLoaded', () => { loadCustomCompanionsSidebar(); });
+        document.addEventListener('systemReady',       () => { loadCustomCompanionsSidebar(); });
         // Refresh after companion-creator tab operations
         window.addEventListener('customCompanionCreated', loadCustomCompanionsSidebar);
         window.addEventListener('customCompanionDeleted', loadCustomCompanionsSidebar);
     </script>
 
 
-    <!-- ── Profile Onboarding Modal ───────────────────────────────── -->
+    <!-- Profile Onboarding Modal -->
     <div id="profile-onboarding-overlay" class="profile-onboarding-overlay" aria-hidden="true">
         <div class="profile-onboarding-modal" role="dialog" aria-modal="true" aria-label="Create a sidebar layout">
             <div class="pon-header">
