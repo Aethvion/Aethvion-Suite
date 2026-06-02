@@ -1977,38 +1977,100 @@ async function renderPerformanceReport(container) {
         const resp = await fetch('/api/system/performance-report?v=' + Date.now());
         if (!resp.ok) throw new Error("HTTP " + resp.status);
         const data = await resp.json();
-        
+
         if (!data || Object.keys(data).length === 0) {
             container.innerHTML = '<div style="color:var(--text-secondary); padding: 15px; text-align: center;">No performance report available. Run performance tests to generate metrics.</div>';
             return;
         }
 
-        const vitals = data.vitals || {};
-        const averages = vitals.averages || {};
-        const repo = data.repository_stats || {};
-        const git = data.git || {};
+        const vitals      = data.vitals || {};
+        const averages    = vitals.averages || {};
+        const repo        = data.repository_stats || {};
+        const git         = data.git || {};
+        const dev         = data.device || {};
+        const totalLoc    = repo.total_loc || 0;
+        const totalTokens = repo.total_tokens || 0;
+        const totalFiles  = repo.total_files || 0;
 
-        // Calculate language ratio
-        const totalLoc = repo.total_loc || 1;
-        const languagesHtml = Object.entries(repo.by_language || {})
-            .sort((a, b) => b[1].loc - a[1].loc)
-            .map(([lang, info]) => {
-                const ratio = ((info.loc / totalLoc) * 100).toFixed(1);
-                return `
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
-                        <td style="padding: 10px 12px; font-weight: bold; color: var(--text-bright);">${lang}</td>
-                        <td style="padding: 10px 12px; text-align: center;">${info.files}</td>
-                        <td style="padding: 10px 12px; text-align: center; font-family: monospace;">${info.loc.toLocaleString()}</td>
-                        <td style="padding: 10px 12px; text-align: right; color: var(--primary); font-weight: bold;">${ratio}%</td>
-                    </tr>
-                `;
+        // Helper: section heading
+        const sectionHead = (icon, label) =>
+            `<h4 style="margin: 22px 0 10px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-bright); display: flex; align-items: center; gap: 8px;">
+                <i class="fas ${icon}" style="color: var(--primary);"></i> ${label}
+            </h4>`;
+
+        // Helper: stat card
+        const statCard = (label, main, sub, color = 'var(--primary)') =>
+            `<div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border); border-radius: 6px; padding: 12px 15px;">
+                <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px; letter-spacing: 0.5px;">${label}</div>
+                <div style="font-size: 1.4rem; font-weight: bold; color: ${color};">${main}</div>
+                <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px;">${sub}</div>
+            </div>`;
+
+        // Helper: device row
+        const devRow = (label, value) =>
+            `<div style="display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.82rem;">
+                <span style="color: var(--text-secondary); min-width: 90px;">${label}</span>
+                <span style="color: var(--text-bright); font-weight: 500; text-align: right;">${value}</span>
+            </div>`;
+
+        // Codebase language table rows — LOC + tokens side by side
+        const byLang = repo.by_language || {};
+        const langRows = Object.entries(byLang)
+            .filter(([, s]) => s.files > 0)
+            .sort((a, b) => (b[1].tokens || b[1].loc) - (a[1].tokens || a[1].loc))
+            .map(([lang, s]) => {
+                const locRatio   = totalLoc    > 0 ? ((s.loc    / totalLoc)    * 100).toFixed(1) : '0.0';
+                const tokRatio   = totalTokens > 0 ? ((s.tokens / totalTokens) * 100).toFixed(1) : '0.0';
+                const tokDisplay = s.tokens ? s.tokens.toLocaleString() : '—';
+                return `<tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                    <td style="padding: 9px 12px; font-weight: bold; color: var(--text-bright);">${lang}</td>
+                    <td style="padding: 9px 12px; text-align: center;">${s.files}</td>
+                    <td style="padding: 9px 12px; text-align: center; font-family: monospace;">${s.loc.toLocaleString()}</td>
+                    <td style="padding: 9px 12px; text-align: center; color: var(--primary);">${locRatio}%</td>
+                    <td style="padding: 9px 12px; text-align: center; font-family: monospace;">${tokDisplay}</td>
+                    <td style="padding: 9px 12px; text-align: right; color: var(--primary);">${tokRatio}%</td>
+                </tr>`;
             }).join('');
 
+        // Context window fit bars
+        const CTX_MODELS = [
+            { name: 'Claude 3.x',           ctx: 200_000 },
+            { name: 'GPT-4o / GPT-4',        ctx: 128_000 },
+            { name: 'Llama / DeepSeek V3',   ctx: 128_000 },
+            { name: 'Gemini 1.5/2.0 Pro',    ctx: 1_000_000 },
+        ];
+        const ctxBars = totalTokens > 0 ? CTX_MODELS.map(m => {
+            const fits = totalTokens <= m.ctx;
+            const pct  = Math.min(100, (totalTokens / m.ctx) * 100).toFixed(1);
+            const rem  = m.ctx - totalTokens;
+            const remStr = fits
+                ? `${rem.toLocaleString()} tok remaining`
+                : `${Math.abs(rem).toLocaleString()} tok over`;
+            return `<div style="margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 3px;">
+                    <span style="color: var(--text-bright);">${m.name} <span style="opacity:0.5;">(${(m.ctx/1000).toFixed(0)}k)</span></span>
+                    <span style="color: ${fits ? 'var(--primary)' : '#e05555'}; font-family: monospace; font-size: 0.72rem;">${fits ? '✓' : '✗'} ${remStr}</span>
+                </div>
+                <div style="height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden;">
+                    <div style="height: 100%; width: ${pct}%; background: ${fits ? 'var(--primary)' : '#e05555'}; border-radius: 3px; transition: width 0.4s;"></div>
+                </div>
+            </div>`;
+        }).join('') : '<span style="color:var(--text-secondary); font-size:0.8rem;">No token data — re-run performance test.</span>';
+
         const offlineBaseline = vitals.pre_test_baseline || {};
-        const offlineGpu = offlineBaseline.gpu || {};
+        const offlineGpu      = offlineBaseline.gpu || {};
+
+        // Device info string helpers
+        const gpuLine = dev.gpu_name && dev.gpu_name !== 'N/A'
+            ? (dev.gpu_vram_total_gb ? `${dev.gpu_name} (${dev.gpu_vram_total_gb} GB VRAM)` : dev.gpu_name)
+            : 'N/A';
+        const coresLine = dev.cpu_physical_cores
+            ? `${dev.cpu_physical_cores} physical / ${dev.cpu_logical_cores} logical`
+            : 'N/A';
 
         container.innerHTML = `
-            <div style="background: rgba(0, 217, 255, 0.04); border: 1px solid rgba(0, 217, 255, 0.15); border-radius: 6px; padding: 15px; margin-bottom: 20px;">
+            <!-- Report header -->
+            <div style="background: rgba(0,217,255,0.04); border: 1px solid rgba(0,217,255,0.15); border-radius: 6px; padding: 15px; margin-bottom: 20px;">
                 <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px;">Report Source Commit</div>
                 <div style="font-size: 1.1rem; font-weight: bold; color: var(--text-bright); margin-top: 5px; display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-tag" style="color: var(--primary);"></i>
@@ -2022,32 +2084,43 @@ async function renderPerformanceReport(container) {
                 </div>
             </div>
 
-            <div style="display: grid; gap: 15px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 20px;">
-                <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border); border-radius: 6px; padding: 12px 15px;">
-                    <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px; letter-spacing: 0.5px;">Process Memory (RAM)</div>
-                    <div style="font-size: 1.4rem; font-weight: bold; color: var(--primary);">${averages.process_mem_avg ? averages.process_mem_avg.toFixed(2) + ' MB' : 'N/A'}</div>
-                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px;">Peak: ${averages.process_mem_max ? averages.process_mem_max.toFixed(2) + ' MB' : 'N/A'}</div>
-                </div>
-                <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border); border-radius: 6px; padding: 12px 15px;">
-                    <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px; letter-spacing: 0.5px;">Startup & Stress Latency</div>
-                    <div style="font-size: 1.4rem; font-weight: bold; color: #fdcb6e;">${vitals.startup_duration_s ? vitals.startup_duration_s.toFixed(2) + 's' : 'N/A'}</div>
-                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px;">API: ${data.api_routing && data.api_routing[0] ? data.api_routing[0].avg_latency_ms.toFixed(2) + ' ms' : 'N/A'}</div>
-                </div>
-                <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border); border-radius: 6px; padding: 12px 15px;">
-                    <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px; letter-spacing: 0.5px;">Tracked Codebase Size</div>
-                    <div style="font-size: 1.4rem; font-weight: bold; color: var(--text-bright);">${(repo.total_loc || 0).toLocaleString()} LOC</div>
-                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px;">Across ${repo.total_files || 0} files</div>
-                </div>
+            <!-- Test device -->
+            ${sectionHead('fa-desktop', 'Test Device')}
+            <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border); border-radius: 6px; padding: 4px 15px 0; margin-bottom: 20px;">
+                ${devRow('OS', dev.os || 'N/A')}
+                ${devRow('CPU', dev.cpu_name || 'N/A')}
+                ${devRow('CPU Cores', coresLine)}
+                ${devRow('RAM', dev.ram_total_gb ? dev.ram_total_gb + ' GB' : 'N/A')}
+                ${devRow('GPU', gpuLine)}
+                ${devRow('Python', dev.python_version || 'N/A')}
             </div>
 
-            <h4 style="margin-top: 20px; margin-bottom: 10px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-bright); display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-chart-area" style="color: var(--primary);"></i> System Telemetry Baseline vs Active
-            </h4>
+            <!-- Summary stat cards -->
+            <div style="display: grid; gap: 15px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+                ${statCard('Process Memory (RAM)',
+                    averages.process_mem_avg ? averages.process_mem_avg.toFixed(2) + ' MB' : 'N/A',
+                    'Peak: ' + (averages.process_mem_max ? averages.process_mem_max.toFixed(2) + ' MB' : 'N/A'))}
+                ${statCard('Startup & API Latency',
+                    vitals.startup_duration_s ? vitals.startup_duration_s.toFixed(2) + 's' : 'N/A',
+                    'API avg: ' + (data.api_routing?.[0] ? data.api_routing[0].avg_latency_ms.toFixed(2) + ' ms' : 'N/A'),
+                    '#fdcb6e')}
+                ${statCard('Lines of Code',
+                    totalLoc.toLocaleString() + ' LOC',
+                    'Across ' + totalFiles + ' files',
+                    'var(--text-bright)')}
+                ${statCard('Total Tokens',
+                    totalTokens > 0 ? totalTokens.toLocaleString() : 'N/A',
+                    repo.tokenizer ? repo.tokenizer : 'no tokenizer data',
+                    'var(--text-bright)')}
+            </div>
+
+            <!-- Telemetry table -->
+            ${sectionHead('fa-chart-area', 'System Telemetry — Baseline vs Active')}
             <div style="overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 25px; background: rgba(0,0,0,0.1);">
                 <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem;">
                     <thead>
-                        <tr style="background: rgba(255, 255, 255, 0.02); border-bottom: 1px solid var(--border);">
-                            <th style="padding: 10px 15px; font-weight: bold; color: var(--text-bright);">Metric Stream</th>
+                        <tr style="background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border);">
+                            <th style="padding: 10px 15px; font-weight: bold; color: var(--text-bright);">Metric</th>
                             <th style="padding: 10px 15px; font-weight: bold; color: var(--text-bright); text-align: center;">Offline Baseline</th>
                             <th style="padding: 10px 15px; font-weight: bold; color: var(--text-bright); text-align: center;">Active Average</th>
                             <th style="padding: 10px 15px; font-weight: bold; color: var(--text-bright); text-align: center;">Active Peak</th>
@@ -2073,7 +2146,7 @@ async function renderPerformanceReport(container) {
                             <td style="padding: 10px 15px; text-align: center;">${averages.gpu_util_max !== undefined ? averages.gpu_util_max + '%' : '—'}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 10px 15px; font-weight: bold; color: var(--text-bright);">GPU VRAM Allocation</td>
+                            <td style="padding: 10px 15px; font-weight: bold; color: var(--text-bright);">GPU VRAM</td>
                             <td style="padding: 10px 15px; text-align: center; color: var(--text-secondary);">${offlineGpu.vram_used_mb !== undefined ? (offlineGpu.vram_used_mb / 1024).toFixed(2) + ' GB' : '—'}</td>
                             <td style="padding: 10px 15px; text-align: center;">${averages.gpu_vram_avg !== undefined ? averages.gpu_vram_avg.toFixed(1) + ' MB' : '—'}</td>
                             <td style="padding: 10px 15px; text-align: center;">${averages.gpu_vram_max !== undefined ? averages.gpu_vram_max.toFixed(1) + ' MB' : '—'}</td>
@@ -2082,26 +2155,34 @@ async function renderPerformanceReport(container) {
                 </table>
             </div>
 
-            <h4 style="margin-top: 20px; margin-bottom: 10px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-bright); display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-folder-open" style="color: var(--primary);"></i> Codebase Distribution
-            </h4>
+            <!-- Codebase distribution -->
+            ${sectionHead('fa-folder-open', 'Codebase Distribution')}
             <div style="margin-bottom: 10px; font-size: 0.8rem; color: var(--text-secondary);">
-                Tracked Files: <strong>${repo.total_files || 0}</strong> | Total Lines of Code (LOC): <strong>${(repo.total_loc || 0).toLocaleString()}</strong>
+                ${totalFiles} tracked files &nbsp;·&nbsp; ${totalLoc.toLocaleString()} LOC &nbsp;·&nbsp; ${totalTokens > 0 ? totalTokens.toLocaleString() + ' tokens' : 'no token data'}
             </div>
-            <div style="overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; background: rgba(0,0,0,0.1);">
+            <div style="overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; background: rgba(0,0,0,0.1); margin-bottom: 25px;">
                 <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem;">
                     <thead>
-                        <tr style="background: rgba(255, 255, 255, 0.02); border-bottom: 1px solid var(--border);">
-                            <th style="padding: 10px 12px; font-weight: bold; color: var(--text-bright);">Language</th>
-                            <th style="padding: 10px 12px; font-weight: bold; color: var(--text-bright); text-align: center;">Files</th>
-                            <th style="padding: 10px 12px; font-weight: bold; color: var(--text-bright); text-align: center;">Lines of Code (LOC)</th>
-                            <th style="padding: 10px 12px; font-weight: bold; color: var(--text-bright); text-align: right;">Code Ratio</th>
+                        <tr style="background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border);">
+                            <th style="padding: 9px 12px; font-weight: bold; color: var(--text-bright);">Language</th>
+                            <th style="padding: 9px 12px; font-weight: bold; color: var(--text-bright); text-align: center;">Files</th>
+                            <th style="padding: 9px 12px; font-weight: bold; color: var(--text-bright); text-align: center;">LOC</th>
+                            <th style="padding: 9px 12px; font-weight: bold; color: var(--text-bright); text-align: center;">LOC %</th>
+                            <th style="padding: 9px 12px; font-weight: bold; color: var(--text-bright); text-align: center;">Tokens</th>
+                            <th style="padding: 9px 12px; font-weight: bold; color: var(--text-bright); text-align: right;">Token %</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${languagesHtml}
-                    </tbody>
+                    <tbody>${langRows}</tbody>
                 </table>
+            </div>
+
+            <!-- Context window fit -->
+            ${sectionHead('fa-expand-arrows-alt', 'Context Window Fit')}
+            <div style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px;">
+                Can the entire codebase fit inside a model's context window at once?
+            </div>
+            <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--border); border-radius: 6px; padding: 15px 18px; margin-bottom: 10px;">
+                ${ctxBars}
             </div>
         `;
     } catch (e) {

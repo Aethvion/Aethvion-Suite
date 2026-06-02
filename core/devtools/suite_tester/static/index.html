@@ -847,6 +847,35 @@
                         </div>
                     </div>
 
+                    <!-- Test device hardware -->
+                    <div class="section-card">
+                        <h3>Test Device</h3>
+                        <div class="metric-row">
+                            <span class="metric-name">Operating System</span>
+                            <span class="metric-value" id="inspect-device-os">N/A</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">CPU</span>
+                            <span class="metric-value" id="inspect-device-cpu">N/A</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">CPU Cores</span>
+                            <span class="metric-value" id="inspect-device-cores">N/A</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">RAM</span>
+                            <span class="metric-value" id="inspect-device-ram">N/A</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">GPU</span>
+                            <span class="metric-value" id="inspect-device-gpu">N/A</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Python</span>
+                            <span class="metric-value" id="inspect-device-python">N/A</span>
+                        </div>
+                    </div>
+
                     <!-- Git / specs details -->
                     <div class="section-card">
                         <h3>Environment & Specs</h3>
@@ -1003,6 +1032,20 @@
                 const healthLatency = healthTest ? healthTest.avg_latency_ms : 0.0;
                 document.getElementById('vital-health').innerHTML = `${healthLatency.toFixed(1)}<span class="vital-unit">ms</span>`;
                 
+                // Test device
+                const dev = activeReport.device || {};
+                document.getElementById('inspect-device-os').textContent = dev.os || 'N/A';
+                document.getElementById('inspect-device-cpu').textContent = dev.cpu_name || 'N/A';
+                document.getElementById('inspect-device-cores').textContent =
+                    dev.cpu_physical_cores ? `${dev.cpu_physical_cores} physical / ${dev.cpu_logical_cores} logical` : 'N/A';
+                document.getElementById('inspect-device-ram').textContent =
+                    dev.ram_total_gb ? `${dev.ram_total_gb} GB` : 'N/A';
+                const gpuStr = dev.gpu_name && dev.gpu_name !== 'N/A'
+                    ? (dev.gpu_vram_total_gb ? `${dev.gpu_name} (${dev.gpu_vram_total_gb} GB VRAM)` : dev.gpu_name)
+                    : 'N/A';
+                document.getElementById('inspect-device-gpu').textContent = gpuStr;
+                document.getElementById('inspect-device-python').textContent = dev.python_version || 'N/A';
+
                 // Details Card specs
                 document.getElementById('inspect-git-ver').textContent = activeReport.git.version;
                 document.getElementById('inspect-git-hash').textContent = activeReport.git.commit_hash;

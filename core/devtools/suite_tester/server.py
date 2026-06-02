@@ -231,6 +231,78 @@ def kill_process_tree(pid: int):
     except Exception:
         pass
 
+def get_device_info() -> Dict[str, Any]:
+    """Collect static hardware and OS info for the machine running the test."""
+    import platform
+
+    info: Dict[str, Any] = {
+        "os": "Unknown",
+        "os_version": "Unknown",
+        "python_version": sys.version.split()[0],
+        "cpu_name": "Unknown",
+        "cpu_physical_cores": psutil.cpu_count(logical=False) or 0,
+        "cpu_logical_cores": psutil.cpu_count(logical=True) or 0,
+        "ram_total_gb": round(psutil.virtual_memory().total / (1024 ** 3), 1),
+        "gpu_name": "N/A",
+        "gpu_vram_total_gb": 0.0,
+    }
+
+    # OS
+    info["os"] = f"{platform.system()} {platform.release()}"
+    info["os_version"] = platform.version()
+
+    # CPU name — wmic on Windows gives the friendly model string
+    cpu_name = platform.processor() or ""
+    if os.name == "nt":
+        try:
+            out = subprocess.check_output(
+                ["wmic", "cpu", "get", "name", "/value"],
+                text=True, stderr=subprocess.DEVNULL,
+                creationflags=0x08000000,
+            ).strip()
+            for line in out.splitlines():
+                if "=" in line:
+                    val = line.split("=", 1)[1].strip()
+                    if val:
+                        cpu_name = val
+                        break
+        except Exception:
+            pass
+    info["cpu_name"] = cpu_name or "Unknown"
+
+    # GPU name + total VRAM
+    if _gpu_backend == "pynvml":
+        try:
+            import pynvml
+            name = pynvml.nvmlDeviceGetName(_nvml_handle)
+            if isinstance(name, bytes):
+                name = name.decode("utf-8")
+            mem = pynvml.nvmlDeviceGetMemoryInfo(_nvml_handle)
+            info["gpu_name"] = name
+            info["gpu_vram_total_gb"] = round(mem.total / (1024 ** 3), 1)
+        except Exception:
+            pass
+    elif _gpu_backend == "nvidia-smi":
+        try:
+            kwargs: Dict[str, Any] = {"text": True, "stderr": subprocess.DEVNULL}
+            if os.name == "nt":
+                kwargs["creationflags"] = 0x08000000
+            out = subprocess.check_output(
+                [_nvidia_smi_path,
+                 "--query-gpu=name,memory.total",
+                 "--format=csv,noheader,nounits"],
+                **kwargs,
+            ).strip()
+            parts = [p.strip() for p in out.split(",")]
+            if len(parts) >= 2:
+                info["gpu_name"] = parts[0]
+                info["gpu_vram_total_gb"] = round(int(parts[1]) / 1024, 1)
+        except Exception:
+            pass
+
+    return info
+
+
 def get_repository_stats() -> Dict[str, Any]:
     """Scans the repository to compile file counts, LOC, and token counts by language."""
     extensions = {
@@ -387,6 +459,8 @@ def generate_markdown_report(report_data: Dict[str, Any]) -> str:
     total_tokens = repo_stats.get("total_tokens", 0)
     tokenizer_name = repo_stats.get("tokenizer", "unknown")
     
+    device = report_data.get("device", {})
+
     md = []
     md.append(f"# Aethvion Suite Tester - Performance Report")
     md.append(f"")
@@ -395,6 +469,19 @@ def generate_markdown_report(report_data: Dict[str, Any]) -> str:
     md.append(f"- **Commit**: `{git_meta.get('commit_hash', 'unknown')}`")
     md.append(f"- **Commit Message**: `{git_meta.get('commit_msg', 'unknown')}`")
     md.append(f"- **Version**: `{git_meta.get('version', 'unknown')}`")
+    md.append(f"")
+    md.append(f"## 🖥️ Test Device")
+    md.append(f"")
+    md.append(f"| Component | Details |")
+    md.append(f"| :--- | :--- |")
+    md.append(f"| **OS** | {device.get('os', 'N/A')} |")
+    md.append(f"| **CPU** | {device.get('cpu_name', 'N/A')} ({device.get('cpu_physical_cores', '?')}P / {device.get('cpu_logical_cores', '?')}L cores) |")
+    md.append(f"| **RAM** | {device.get('ram_total_gb', 0)} GB |")
+    gpu_name = device.get('gpu_name', 'N/A')
+    gpu_vram = device.get('gpu_vram_total_gb', 0)
+    gpu_str = f"{gpu_name} ({gpu_vram} GB VRAM)" if gpu_name != 'N/A' and gpu_vram else gpu_name
+    md.append(f"| **GPU** | {gpu_str} |")
+    md.append(f"| **Python** | {device.get('python_version', 'N/A')} |")
     md.append(f"")
     md.append(f"## 📊 Telemetry Summary")
     md.append(f"")
@@ -525,6 +612,8 @@ def run_test_orchestrator(run_id: str, python_exe: str):
 
     # Initialise GPU backend once — pynvml if available, nvidia-smi otherwise
     _init_gpu_backend()
+    device_info = get_device_info()
+    add_log(run_id, f"Device: {device_info['cpu_name']} | {device_info['ram_total_gb']} GB RAM | GPU: {device_info['gpu_name']}")
 
     # Capture absolute baseline (Pre-Test System state while Aethvion is Offline)
     pre_test_sys_cpu = psutil.cpu_percent(interval=0.1)
@@ -797,6 +886,7 @@ def run_test_orchestrator(run_id: str, python_exe: str):
         "epoch": int(time.time()),
         "status": "passed" if startup_success and graceful_success else "failed",
         "git": git_meta,
+        "device": device_info,
         "repository_stats": repo_stats,
         "vitals": {
             "startup_duration_s": round(startup_duration, 2),
