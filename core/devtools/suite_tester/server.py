@@ -323,7 +323,7 @@ def get_repository_stats() -> Dict[str, Any]:
     for lang in extensions.values():
         by_lang[lang] = {"files": 0, "loc": 0, "tokens": 0}
 
-    exclude_dirs = {".venv", ".git", ".pytest_cache", "dist", "setup", "__pycache__", "node_modules"}
+    exclude_dirs = {".venv", ".git", ".pytest_cache", "dist", "setup", "__pycache__", "node_modules", "data", "tests"}
 
     try:
         for root, dirs, files in os.walk(PROJECT_ROOT):
