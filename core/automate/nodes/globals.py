@@ -1,6 +1,5 @@
 """
 core/automate/nodes/globals.py
-═══════════════════════════════
 Handlers for Global (public-variable) workflow nodes.
 
 Global nodes are the *public interface* of a compiled workflow.  Every

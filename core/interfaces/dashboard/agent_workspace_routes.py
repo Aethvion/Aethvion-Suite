@@ -519,7 +519,6 @@ async def search_workspace_content(path: str, query: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
 # Project Memory endpoints
 
 def _get_pm(workspace_id: str):

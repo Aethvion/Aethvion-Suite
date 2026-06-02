@@ -1,6 +1,5 @@
 """
 core/automate/nodes/data.py
-════════════════════════════
 Handler functions for all data.* and transform.* node types.
 """
 from __future__ import annotations

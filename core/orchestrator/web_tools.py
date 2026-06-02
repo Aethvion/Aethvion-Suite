@@ -1,6 +1,5 @@
 """
 core/orchestrator/web_tools.py
-══════════════════════════════
 Web fetch and search utilities for the Code agent runner.
 Pure functions — no AgentRunner state required.
 """

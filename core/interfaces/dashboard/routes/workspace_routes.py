@@ -1,6 +1,5 @@
 """
 core/interfaces/dashboard/routes/workspace_routes.py
-══════════════════════════════════════════════════════
 API routes for workspace file management and exploration.
 """
 from fastapi import APIRouter, HTTPException, Request

@@ -1,6 +1,5 @@
 """
 core/aethviondb/api_v1/baked_routes.py
-════════════════════════════════════════
 AethvionDB v1 API — /baked/ endpoints.
 
 Operations on baked dataset snapshots:

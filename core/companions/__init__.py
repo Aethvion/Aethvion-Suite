@@ -1,6 +1,5 @@
 """
 core/companions
-═══════════════
 Dynamic, data-driven Companion system for Aethvion Suite.
 """
 

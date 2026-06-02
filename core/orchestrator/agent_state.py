@@ -1,6 +1,5 @@
 """
 core/orchestrator/agent_state.py
-═════════════════════════════════
 AgentState — persistent session state for the Code agent runner.
 Handles file cache, plan tracking, context building, and JSON-backed persistence.
 """

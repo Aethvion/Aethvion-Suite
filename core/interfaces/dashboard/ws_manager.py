@@ -1,6 +1,5 @@
 """
 core/interfaces/dashboard/ws_manager.py
-═══════════════════════════════════════
 WebSocket connection management and log streaming.
 """
 from __future__ import annotations

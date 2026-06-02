@@ -1,6 +1,5 @@
 """
 core/aethviondb/name_index.py
-═══════════════════════════════
 Global name-to-ID lookup for AethvionDB entities.
 
 The index MUST exist and be consulted before any entity file is created.

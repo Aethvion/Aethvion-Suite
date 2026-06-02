@@ -1,6 +1,5 @@
 """
 core/orchestrator/file_ops_mixin.py
-════════════════════════════════════
 FileOpsMixin — all file, directory, and shell operation methods
 for the Code agent runner. Mixed into AgentRunner via multiple inheritance.
 

@@ -1,6 +1,5 @@
 """
 core/automate/nodes/__init__.py
-════════════════════════════════
 Node handler registry for the Automate workflow executor.
 
 Each entry maps a node type string to a handler function with signature:

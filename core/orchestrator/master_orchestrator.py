@@ -329,7 +329,6 @@ class MasterOrchestrator:
         """Handle neutral chat — with optional pre-fetched web search context (no persona/identity).
 
         Architecture:
-        ─────────────
         When internet_search=True, web search is executed BEFORE the LLM call and
         the results are injected directly into the prompt context.  This is more
         reliable than asking the model to emit [tool:web_search ...] tags because

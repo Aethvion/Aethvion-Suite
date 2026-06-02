@@ -1,6 +1,5 @@
 """
 core/companions/engine/tools.py
-════════════════════════════════
 Tool execution — file operations + bridge module dispatch.
 Shared by ALL companions; workspaces gate file permissions per companion instance.
 """
@@ -34,9 +33,6 @@ def validate_path(target: str, workspaces: list[dict], permission: str) -> tuple
         except ValueError:
             continue
     return False, f"'{target}' is not inside any workspace with '{permission}' permission."
-
-
-
 
 
 # Tool tag parsing

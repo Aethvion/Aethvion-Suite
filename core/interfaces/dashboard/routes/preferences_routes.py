@@ -1,6 +1,5 @@
 """
 core/interfaces/dashboard/routes/preferences_routes.py
-══════════════════════════════════════════════════════
 API routes for user preferences and settings.
 """
 from fastapi import APIRouter, HTTPException

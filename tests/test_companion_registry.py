@@ -1,6 +1,5 @@
 """
 tests/test_companion_registry.py
-══════════════════════════════════
 Unit tests for the CompanionRegistry and CompanionConfig.
 
 Tests use isolated tmp directories so they never read or write live companion

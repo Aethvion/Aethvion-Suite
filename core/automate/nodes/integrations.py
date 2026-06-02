@@ -1,6 +1,5 @@
 """
 core/automate/nodes/integrations.py
-═════════════════════════════════════
 Handler functions for companion.ask, integration.discord,
 integration.slack, and integration.email node types.
 """

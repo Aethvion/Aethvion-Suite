@@ -1,6 +1,5 @@
 """
 core/aethviondb/expansion_engine.py
-═════════════════════════════════════
 Autonomous stub-to-entity expansion engine for AethvionDB.
 
 Works in two modes:

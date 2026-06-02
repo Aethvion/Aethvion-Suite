@@ -103,7 +103,6 @@ function initThreadManagement() {
     }
 
 
-
     // Set up thread list click delegation
     // Note: _buildThreadItem (used when folders are present) attaches its own click
     // listeners per item. This delegation acts as the fallback for un-foldered threads
@@ -325,7 +324,6 @@ function switchThread(threadId) {
         });
     }
 }
-
 
 
 function toggleChatInput(enabled) {

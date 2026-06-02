@@ -210,4 +210,3 @@ def suggest_tool_name(name: str) -> str:
 # Export allowed domains and actions for external use
 ALLOWED_DOMAINS = _naming_validator.allowed_domains
 ALLOWED_ACTIONS = _naming_validator.allowed_actions
-

@@ -1,6 +1,5 @@
 """
 core/aethviondb/api_v1/router.py
-══════════════════════════════════
 Assembles the AethvionDB v1 public API router.
 
 Mounted at /api/v1 in server.py.

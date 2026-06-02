@@ -1,6 +1,5 @@
 """
 core/automate/executor.py
-═════════════════════════
 Workflow execution engine — graph traversal and node dispatch only.
 
 Node implementations live in core/automate/nodes/ (one file per category).

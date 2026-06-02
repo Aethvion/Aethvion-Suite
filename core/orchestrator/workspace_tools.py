@@ -1,6 +1,5 @@
 """
 core/orchestrator/workspace_tools.py
-═════════════════════════════════════
 Blueprint generation and workspace scanning utilities.
 Extracted from agent_runner.py — shared by AgentRunner and CorpManager.
 """

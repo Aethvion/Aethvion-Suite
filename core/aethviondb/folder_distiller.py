@@ -1,6 +1,5 @@
 """
 core/aethviondb/folder_distiller.py
-══════════════════════════════════════
 Distil an entire folder of documents into an AethvionDB database.
 
 Persistence model

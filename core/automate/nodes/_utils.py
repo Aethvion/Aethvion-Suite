@@ -1,6 +1,5 @@
 """
 core/automate/nodes/_utils.py
-══════════════════════════════
 Shared utilities for all node implementations.
 Imported by every category file — keep this lean.
 """

@@ -1,6 +1,5 @@
 """
 core/aethviondb/backup.py
-══════════════════════════
 Create, list, restore and delete database backups.
 
 A backup is a folder snapshot stored under:

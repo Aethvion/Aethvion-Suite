@@ -1,6 +1,5 @@
 """
 core/aethviondb/api_v1/response.py
-════════════════════════════════════
 Standard response envelope and cursor codec for the v1 API.
 """
 

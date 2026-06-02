@@ -838,7 +838,6 @@ class AgentRunner(FileOpsMixin):
         return f"[check_checklist_item] Item not found (checklist_id={checklist_id!r}, item_id={item_id!r})."
 
 
-
     _HANDLER_MAP = {
         "set_plan": "_handle_set_plan",
         "mark_done": "_handle_mark_done",

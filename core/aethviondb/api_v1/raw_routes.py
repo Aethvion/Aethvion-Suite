@@ -1,6 +1,5 @@
 """
 core/aethviondb/api_v1/raw_routes.py
-══════════════════════════════════════
 AethvionDB v1 API — /raw/ endpoints.
 
 Operations on the live fractal database:

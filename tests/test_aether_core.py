@@ -1,6 +1,5 @@
 """
 tests/test_aether_core.py
-═════════════════════════
 Unit tests for Aether Core's routing and streaming firewall pipeline.
 """
 from __future__ import annotations

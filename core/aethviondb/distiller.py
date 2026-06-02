@@ -1,6 +1,5 @@
 """
 core/aethviondb/distiller.py
-═══════════════════════════════
 General content distiller for AethvionDB.
 
 Paste any text — a book excerpt, an article, raw notes, a document — and

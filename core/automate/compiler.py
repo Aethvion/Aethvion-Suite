@@ -1,6 +1,5 @@
 """
 core/automate/compiler.py
-═════════════════════════
 Compile a workflow into a standalone runnable bundle (zip file).
 
 Bundle layout:
@@ -13,7 +12,6 @@ Bundle layout:
   packages/         — pre-downloaded wheels (if include_packages=True)
 
 Implementation note — `except Exception` patterns
-───────────────────────────────────────────────────
 The majority of `except Exception` clauses in this file live inside Python
 *template strings* (the `_HANDLER_CODE` dict and the run.py generation
 template).  These strings are *data* — they are written verbatim into the

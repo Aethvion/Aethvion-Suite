@@ -1,6 +1,5 @@
 """
 core/aethviondb/baker.py
-════════════════════════
 Bake an AethvionDB database into a single optimised export file.
 
 All baked files live in  db_root/baked/

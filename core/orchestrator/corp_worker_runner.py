@@ -7,7 +7,6 @@ read_log, read_task_board) on top of the standard agent toolkit.
 Any capability added to AgentRunner automatically flows through here.
 
 TOKEN OPTIMISATIONS vs base AgentRunner
-────────────────────────────────────────
 • CORP_SYSTEM_PROMPT   ~1,400 chars  (vs 6,025 for full SYSTEM_PROMPT)
 • _task_short          ~200  chars   (vs ~7,000 for full worker context)
   Full context only in iteration 0; subsequent iterations use short reminder.
@@ -33,7 +32,6 @@ logger = get_logger(__name__)
 # ~1,400 chars vs the full SYSTEM_PROMPT. Edit core/config/code/corp_system_prompt.txt.
 from core.utils.paths import CODE_CORP_PROMPT
 CORP_SYSTEM_PROMPT: str = CODE_CORP_PROMPT.read_text(encoding='utf-8')
-
 
 
 class CorpWorkerRunner(AgentRunner):

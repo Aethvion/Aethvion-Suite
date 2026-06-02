@@ -1,6 +1,5 @@
 """
 core/bridges/web_search_bridge.py
-══════════════════════════════════
 Internet search bridge — queries DuckDuckGo's Instant Answer API (no API key
 required) and falls back to a HTML snippet scrape for queries that return no
 direct answer.

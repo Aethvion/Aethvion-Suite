@@ -1,6 +1,5 @@
 """
 core/companions/engine/history.py
-══════════════════════════════════
 CompanionHistory — per-day JSON chat history for any companion.
 
 history_dir/
@@ -16,8 +15,6 @@ from typing import Callable
 from core.utils import get_logger, atomic_json_write
 
 logger = get_logger(__name__)
-
-
 
 
 def _default_time_formatter(total_seconds: int) -> str:

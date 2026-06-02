@@ -1,6 +1,5 @@
 """
 core/automate/nodes/memory.py
-══════════════════════════════
 Handler functions for memory.store and memory.retrieve.
 
 The backing store is a single JSON file at:

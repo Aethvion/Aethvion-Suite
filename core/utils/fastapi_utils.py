@@ -1,6 +1,5 @@
 """
 core/utils/fastapi_utils.py
-─────────────────────────
 Common utilities for Aethvion Suite FastAPI applications.
 """
 

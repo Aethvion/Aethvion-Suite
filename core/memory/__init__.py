@@ -29,4 +29,3 @@ __all__ = [
     'Heartbeat',
     'get_heartbeat',
 ]
-

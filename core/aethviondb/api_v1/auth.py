@@ -1,6 +1,5 @@
 """
 core/aethviondb/api_v1/auth.py
-════════════════════════════════
 API key management for the AethvionDB v1 developer API.
 
 Keys are stored per-database in  <db_root>/api_keys.json.

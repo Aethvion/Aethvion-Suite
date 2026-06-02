@@ -1,6 +1,5 @@
 """
 core/automate/nodes/logic.py
-═════════════════════════════
 Handler functions for all logic.* node types.
 """
 from __future__ import annotations

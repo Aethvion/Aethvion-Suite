@@ -1392,4 +1392,3 @@ input:focus, textarea:focus { border-color: var(--accent); }
 .problem-item.problem-warn i { color: var(--warning); }
 .problem-item-msg { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .problem-item-loc { font-family: var(--font-code); color: var(--text-dim); font-size: 11px; }
-

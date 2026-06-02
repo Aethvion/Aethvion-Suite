@@ -1220,8 +1220,6 @@ class CorpManager:
         )
 
 
-
-
 # Global singleton
 
 _corp_manager: Optional[CorpManager] = None

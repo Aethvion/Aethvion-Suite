@@ -1,6 +1,5 @@
 """
 apps/overlay/main.py
-────────────────────
 Aethvion Suite — Desktop Overlay Sidecar
 
 Hotkey : Ctrl+Shift+Space  (captures screen → opens floating input window)

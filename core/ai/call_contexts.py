@@ -1,20 +1,17 @@
 """
 core/ai/call_contexts.py
-════════════════════════
 Aethvion Suite — AI Call Context Registry
 ==========================================
 
 SINGLE SOURCE OF TRUTH for every AI call mode in the suite.
 
 Rules
-─────
   • Import CallSource constants instead of writing source strings directly.
   • Import system-prompt builders from here instead of building them inline.
   • Never call pm.call_with_failover() without passing a source= from CallSource.
   • If you add a new feature that calls the AI, add an entry here first.
 
 Call-mode overview
-──────────────────
 
   CHAT            Orchestrator path — intent analysis → agent plan or direct LLM.
                   System prompt:  built by the orchestrator / PersonaManager.
@@ -344,7 +341,6 @@ def build_companion_prompt(
     assistant_routes._build_assistant_context() delegates here.
 
     What is included
-    ────────────────
       ✓  Misaka's own identity and personality
       ✓  Live system statistics (file counts, token usage, project size)
       ✓  Assistant tools documentation
@@ -353,7 +349,6 @@ def build_companion_prompt(
       ✓  Optional: dashboard navigation commands
 
     What is NOT included
-    ────────────────────
       ✗  Aethvion's internal routing / orchestration details
       ✗  Agent engineering prompts
       ✗  Persistent memory (widget sessions are stateless)
@@ -456,7 +451,6 @@ def validate_call_context(
     Never raises; never blocks a call. Only used for early detection during dev.
 
     Checks
-    ──────
       1. source is a known CallSource value
       2. source that expects a system_prompt actually has one
       3. source that goes through the orchestrator is not calling the provider directly

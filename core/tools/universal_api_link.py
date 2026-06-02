@@ -1,6 +1,5 @@
 """
 core/tools/universal_api_link.py
-═════════════════════════════════
 Layer 2 — Universal REST API Bridge
 
 Provides a generic HTTP tool that lets any AI agent interact with external
@@ -11,7 +10,6 @@ products from training. You just provide the user's API key and the agent
 constructs the correct request.
 
 Usage (from agent/tool-call context):
-──────────────────────────────────────
     from core.tools.universal_api_link import send_http_request
 
     # Simple GET
@@ -30,7 +28,6 @@ Usage (from agent/tool-call context):
     )
 
 Security
-────────
 - No credentials are stored here — callers must supply auth headers each call.
 - Private-network requests (127.x, 10.x, 192.168.x, ::1) are allowed to
   support self-hosted enterprise software.  Set AETHVION_BLOCK_PRIVATE_HOSTS=1

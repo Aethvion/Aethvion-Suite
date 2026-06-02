@@ -1,6 +1,5 @@
 """
 core/automate/nodes/ai.py
-══════════════════════════
 Handler functions for all ai.* node types.
 
 Both ai.google and ai.any share the same execution logic — they differ only in

@@ -223,7 +223,6 @@ async def add_suggested_model(data: Dict[str, Any], request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
 def _load_registry() -> Dict[str, Any]:
     """Load model registry from disk."""
     try:
@@ -312,7 +311,6 @@ async def update_registry(updates: Dict[str, Any], request: Request):
 async def get_available_types():
     """Get list of supported provider types."""
     return ["google_ai", "openai", "anthropic", "grok", "groq", "mistral", "openrouter", "local"]
-
 
 
 @router.post("/providers")

@@ -1,6 +1,5 @@
 """
 core/orchestrator/project_memory.py
-═════════════════════════════════════
 Workspace-level persistent memory for the Code / Agent workspace.
 
 Every workspace gets a single  project_memory.json  file that lives in:

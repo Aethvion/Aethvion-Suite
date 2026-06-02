@@ -1,6 +1,5 @@
 """
 core/companions/registry.py
-═══════════════════════════
 Dynamic, data-driven registry for all Aethvion companions.
 Scans for JSON configurations in core blueprints and runtime data directories.
 """

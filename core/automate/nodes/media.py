@@ -1,6 +1,5 @@
 """
 core/automate/nodes/media.py
-═════════════════════════════
 Handler functions for screenshot, camera, vision, image generation,
 text-to-speech, and speech-to-text node types.
 

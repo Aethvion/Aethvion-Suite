@@ -1,6 +1,5 @@
 """
 core/aethviondb/aethviondb_routes.py
-══════════════════════════════════════
 FastAPI routes for the AethvionDB dashboard tab.
 
 Prefix: /api/aethviondb

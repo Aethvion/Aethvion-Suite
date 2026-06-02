@@ -1,6 +1,5 @@
 """
 core/aethviondb/importer.py
-════════════════════════════
 Import entities into an AethvionDB database from exported files.
 
 Supported input formats

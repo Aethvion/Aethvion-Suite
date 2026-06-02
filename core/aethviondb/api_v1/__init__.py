@@ -1,6 +1,5 @@
 """
 core/aethviondb/api_v1
-══════════════════════
 AethvionDB public developer API — version 1.
 
 Mounted at /api/v1 by core/aethviondb/api_v1/router.py.

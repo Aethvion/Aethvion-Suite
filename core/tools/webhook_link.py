@@ -1,6 +1,5 @@
 """
 core/tools/webhook_link.py
-═══════════════════════════
 Layer 4 — Webhook / n8n Hand-off
 
 Sends a structured JSON payload to an automation platform (n8n, Make, Zapier,
@@ -8,14 +7,12 @@ or any webhook receiver) so that Aethvion agents can trigger complex cross-platf
 workflows without native integrations.
 
 Strategy
-─────────
   Aethvion → webhook_link → n8n / Make / Zapier → Stripe / Jira / Slack / …
 
 The agent decides WHAT to do; the automation platform handles the actual
 multi-step API calls to third-party services.
 
 Usage
-──────
     from core.tools.webhook_link import trigger_webhook, register_webhook
 
     # Register a named webhook (persisted in data/config/webhooks.json)
@@ -31,7 +28,6 @@ Usage
                                    payload={"event": "user_signup", "email": "user@example.com"})
 
 Dashboard API
-─────────────
     GET  /api/webhooks              → list registered webhooks
     POST /api/webhooks/register     → register a new webhook
     POST /api/webhooks/trigger/{id} → fire a registered webhook

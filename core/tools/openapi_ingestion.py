@@ -1,6 +1,5 @@
 """
 core/tools/openapi_ingestion.py
-════════════════════════════════
 Layer 3 — OpenAPI / Swagger Ingestion
 
 Parses an OpenAPI 3.x or Swagger 2.x JSON/YAML spec and converts it into a
@@ -10,7 +9,6 @@ The agent reads this fragment, then uses universal_api_link.send_http_request()
 to call the correct endpoint without any hand-written Python bridge.
 
 Usage
-──────
     from core.tools.openapi_ingestion import load_openapi_spec, build_agent_context
 
     spec   = load_openapi_spec("/path/to/openapi.json")          # from file
@@ -19,7 +17,6 @@ Usage
     # Inject `context` into the agent's system prompt.
 
 Dashboard API
-─────────────
     POST /api/openapi/load    body: { "source": "<path or url>" }
     GET  /api/openapi/specs   → list of loaded specs (in-memory cache)
     GET  /api/openapi/<id>    → agent context string for a spec

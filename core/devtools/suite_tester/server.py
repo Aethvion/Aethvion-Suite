@@ -1,6 +1,5 @@
 """
 core/devtools/suite_tester/server.py
-────────────────────────────────────
 Aethvion DevTool — Suite Tester Server (Port: 8004)
 
 Starts up a temporary Aethvion Suite instance on port 18080, launches a browser

@@ -1,6 +1,5 @@
 """
 core/companions/companion_routes.py
-═════════════════════════════════════
 Unified dynamic router for all Aethvion companions.
 """
 

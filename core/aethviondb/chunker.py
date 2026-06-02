@@ -1,6 +1,5 @@
 """
 core/aethviondb/chunker.py
-══════════════════════════
 Smart entity chunking for AethvionDB.
 
 Chunks are logical groupings stored as an index layer on top of raw entity
@@ -13,12 +12,10 @@ Auto-detection strategy (applied in order):
   4. Alpha     — if > ALPHA_THRESH entities with no sub-grouping: A–M / N–Z
 
 Output layout
-─────────────
   db_root/chunks/manifest.json   — chunk list + metadata (no raw index data)
   db_root/chunks/{chunk_id}.json — entity IDs + inverted term index per chunk
 
 Inverted index
-──────────────
 Each chunk file stores a term → [entity_id, …] mapping built from:
   name, aliases, summary (first 300 chars), tags, categories, type, top
   property values.

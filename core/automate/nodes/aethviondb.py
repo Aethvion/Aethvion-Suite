@@ -1,6 +1,5 @@
 """
 core/automate/nodes/aethviondb.py
-══════════════════════════════════
 Handlers for AethvionDB workflow nodes.
 
   aethviondb_search          — keyword search over live (raw) entity files

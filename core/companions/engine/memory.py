@@ -1,6 +1,5 @@
 """
 core/companions/engine/memory.py
-════════════════════════════════
 CompanionMemory — base_info.json + memory.json for any companion.
 One instance per companion; handles init, load, XML-tag extraction, and synthesis.
 """
@@ -13,8 +12,6 @@ from pathlib import Path
 from core.utils import get_logger, utcnow_iso, atomic_json_write
 
 logger = get_logger(__name__)
-
-
 
 
 class CompanionMemory:

@@ -1,6 +1,5 @@
 """
 core/automate/nodes/actions.py
-════════════════════════════════
 Handler functions for all action.* node types.
 """
 from __future__ import annotations

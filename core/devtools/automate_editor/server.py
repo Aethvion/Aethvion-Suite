@@ -1,6 +1,5 @@
 """
 core/devtools/automate_editor/server.py
-────────────────────────────────────────
 Aethvion Dev Tool — Automate Workflow Editor
 
 Standalone FastAPI server that mounts the existing automate_routes router

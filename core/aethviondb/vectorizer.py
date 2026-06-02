@@ -1,6 +1,5 @@
 """
 core/aethviondb/vectorizer.py
-══════════════════════════════
 Generate and store embedding vectors for AethvionDB entities.
 
 Supported providers:

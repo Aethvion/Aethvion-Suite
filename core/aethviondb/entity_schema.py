@@ -1,6 +1,5 @@
 """
 core/aethviondb/entity_schema.py
-════════════════════════════════
 Canonical schema for AethvionDB Layer-1 entity files.
 
 Every entity — from a universe to a subatomic particle — shares this

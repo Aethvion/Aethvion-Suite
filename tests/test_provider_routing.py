@@ -1,6 +1,5 @@
 """
 tests/test_provider_routing.py
-════════════════════════════════
 Unit tests for AethvionDB vectorizer provider routing.
 
 Checks that:

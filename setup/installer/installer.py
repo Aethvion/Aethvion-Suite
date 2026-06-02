@@ -1,6 +1,5 @@
 """
 Aethvion Suite - Professional Installer v10
-════════════════════════════════════════════
 Simple, clear language with active loading indicators and ultra-compact UI.
 """
 

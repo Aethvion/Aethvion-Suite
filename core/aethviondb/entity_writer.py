@@ -1,6 +1,5 @@
 """
 core/aethviondb/entity_writer.py
-══════════════════════════════════
 Layer-1 entity file creator and updater for AethvionDB.
 
 Layer 1 files are the source of truth — they are append-only in spirit:

@@ -14,7 +14,6 @@ logger = get_logger(__name__)
 SETTINGS_FILE = SETTINGS
 
 
-
 class SettingsManager:
     """
     Manages system settings and user preferences.

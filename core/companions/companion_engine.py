@@ -1,6 +1,5 @@
 """
 core/companions/companion_engine.py
-═══════════════════════════════════
 Unified, data-driven engine for all Aethvion companions.
 Handles LLM logic, tool execution, and dynamic personality evolution.
 """

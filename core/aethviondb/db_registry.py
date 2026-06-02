@@ -1,6 +1,5 @@
 """
 core/aethviondb/db_registry.py
-════════════════════════════════
 Database registry — maps named databases to filesystem paths and stores
 per-database metadata (description, backup settings, etc.).
 

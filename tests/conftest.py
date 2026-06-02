@@ -1,6 +1,5 @@
 """
 tests/conftest.py
-═════════════════
 Shared pytest fixtures for the Aethvion Suite test suite.
 
 All fixtures that touch the filesystem use isolated tmp_path directories so

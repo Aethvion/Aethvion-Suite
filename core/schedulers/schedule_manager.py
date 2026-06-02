@@ -137,7 +137,6 @@ class ScheduleManager:
                          name="ScheduleManager-catchup").start()
 
 
-
     # Startup catch-up
 
     def _startup_catchup(self):

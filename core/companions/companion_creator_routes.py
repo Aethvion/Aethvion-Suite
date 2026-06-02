@@ -115,8 +115,6 @@ def _validate_companion_id(companion_id: str) -> None:
         )
 
 
-
-
 def _slug(name: str) -> str:
     s = name.lower().strip()
     s = re.sub(r"[^a-z0-9]+", "_", s)

@@ -1,6 +1,5 @@
 """
 core/automate/nodes/inputs_outputs.py
-══════════════════════════════════════
 Handler functions for input.* and output.* node types.
 """
 from __future__ import annotations

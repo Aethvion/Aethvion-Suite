@@ -1,6 +1,5 @@
 """
 core/aethviondb/validator.py
-════════════════════════════
 Code-only integrity validator for AethvionDB entities.
 
 No AI calls — purely deterministic rule checks. Run on every write or

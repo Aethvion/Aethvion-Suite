@@ -1016,7 +1016,7 @@ if __name__ == "__main__":
                         fragile_block = 'is_local = os.path.exists'
                         if fragile_block in code:
                             new_body = """
-    # --- Aethvion Windows Path Patch (Directory-Aware) ---
+    # Aethvion Windows Path Patch (Directory-Aware)
     path_norm = os.path.normpath(path)
     # Check for directory structure first: path/config.json + path/model.safetensors
     d_json = os.path.join(path_norm, "config.json")
@@ -1050,7 +1050,7 @@ if __name__ == "__main__":
         model_name = '/'.join(path_parts[2:])
         config_file = hf_hub_download(repo_id, f"{model_name}.json")
         model_file = hf_hub_download(repo_id, f"{model_name}.safetensors")
-    # --- End Patch ---
+    # End Patch
 """
                             s_idx = code.find(fragile_block)
                             e_idx = code.find('with open(config_file')
@@ -1148,11 +1148,11 @@ import base64
 import traceback
 import threading
 
-# --- Attention backend: use PyTorch built-in SDPA (no flash_attn required) ---
+# Attention backend: use PyTorch built-in SDPA (no flash_attn required)
 os.environ.setdefault("ATTN_BACKEND", "sdpa")
 os.environ.setdefault("SPARSE_ATTN_BACKEND", "sdpa")
 
-# --- Tell transformers flash_attn is not available (avoids import-time crash) ---
+# Tell transformers flash_attn is not available (avoids import-time crash)
 try:
     import transformers.utils.import_utils as _iu
     _iu.is_flash_attn_2_available = lambda: False
@@ -1161,7 +1161,7 @@ try:
 except Exception:
     pass
 
-# --- Path setup --------------------------------------------------------------
+# Path setup
 _HERE    = os.path.dirname(os.path.abspath(__file__))
 _REPO    = os.path.join(_HERE, "{MODEL_ID}")
 _WEIGHTS = os.path.join(_HERE, "weights")
@@ -1172,7 +1172,7 @@ if _REPO not in sys.path:
 print(f"[{MODEL_ID}] Repo:    {_REPO}")
 print(f"[{MODEL_ID}] Weights: {_WEIGHTS}")
 
-# --- Import pipeline class ---------------------------------------------------
+# Import pipeline class
 _Pipeline     = None
 _import_error = None
 try:
@@ -1183,7 +1183,7 @@ except Exception:
     _import_error = traceback.format_exc()
     print(f"[{MODEL_ID}] IMPORT FAILED:\n{_import_error}")
 
-# --- FastAPI service ----------------------------------------------------------
+# FastAPI service
 import torch
 import uvicorn
 from contextlib import asynccontextmanager

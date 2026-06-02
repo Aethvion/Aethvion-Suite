@@ -1,6 +1,5 @@
 """
 tests/test_aethviondb_crud.py
-══════════════════════════════
 Unit tests for AethvionDB entity CRUD operations:
   - NameIndex  (name → ID lookup, dedup, normalization)
   - EntityWriter (create, get, update)

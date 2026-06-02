@@ -1,6 +1,5 @@
 """
 core/utils/browser.py
-─────────────────────
 Open a URL in browser "App Mode" — no URL bar, no tab strip, no bookmarks bar.
 Tries Chrome first, then Edge, then falls back to the default system browser.
 
@@ -8,7 +7,6 @@ Respects the AETHVION_NO_BROWSER=1 environment variable so the master launcher
 can suppress per-server browser opens when it manages the suite itself.
 
 Usage
-─────
     from core.utils.browser import open_app_window
 
     # Non-blocking — returns immediately, opens after `delay` seconds

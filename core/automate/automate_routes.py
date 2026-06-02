@@ -1,6 +1,5 @@
 """
 core/automate/automate_routes.py
-════════════════════════════════
 Isolated Automate module backend.
 Handles workflow CRUD, node type registry, model listing, and node test-execution.
 

@@ -1,6 +1,5 @@
 """
 core/automate/nodes/triggers.py
-════════════════════════════════
 Handler functions for all trigger.* node types.
 """
 from __future__ import annotations

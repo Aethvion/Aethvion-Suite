@@ -1,6 +1,5 @@
 """
 core/devtools/companion_editor/server.py
-────────────────────────────────────────
 Aethvion Dev Tool — Companion Editor
 
 Standalone FastAPI server that mounts the existing companion_creator_routes

@@ -1,6 +1,5 @@
 """
 core/interfaces/dashboard/routes/system_routes.py
-══════════════════════════════════════════════════════
 API routes for system management, telemetry, and health.
 """
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File

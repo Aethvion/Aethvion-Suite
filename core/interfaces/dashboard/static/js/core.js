@@ -932,7 +932,6 @@ function initializeUI() {
     // if (refreshFilesList) refreshFilesList.addEventListener('click', loadFiles);
 
 
-
     // Voice Mode Toggle
     const voiceButton = document.getElementById('voice-mode-toggle');
     if (voiceButton) {
@@ -1583,7 +1582,6 @@ function ensureTabAndSubTab(mainTab, subTab = null) {
 
 // Attach to window
 window.ensureTabAndSubTab = ensureTabAndSubTab;
-
 
 
 /**

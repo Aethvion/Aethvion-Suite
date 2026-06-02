@@ -1,6 +1,5 @@
 """
 core/version.py
-══════════════
 Auto-computed version derived from the git history at startup.
 
 Format:  YYYY.MM.count (shorthash)

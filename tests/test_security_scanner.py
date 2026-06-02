@@ -1,6 +1,5 @@
 """
 tests/test_security_scanner.py
-════════════════════════════════
 Unit tests for the Intelligence Firewall content scanner.
 
 Tests cover:
