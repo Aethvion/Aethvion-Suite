@@ -971,14 +971,14 @@ class OverlayWindow(QWidget):
             self._load_and_render_history_list()
 
     def _fetch_promoted_tasks(self, thread_id: str) -> None:
-        """Background: fetch post-promotion Chat tasks and queue a UI update."""
+        """Background: fetch post-promotion Chat tasks, pre-fetch image bytes, queue UI update."""
         try:
             import requests as _req
+            import urllib.parse as _ul
             res = _req.get(f"{DASHBOARD_URL}/api/tasks/thread/{thread_id}", timeout=6)
             if not res.ok:
                 return
             tasks = res.json().get("tasks", [])
-            # Only show tasks that are NOT the original overlay seeds
             new_tasks = [
                 t for t in tasks
                 if t.get("metadata", {}).get("source") != "overlay"
@@ -988,6 +988,29 @@ class OverlayWindow(QWidget):
             if not new_tasks:
                 return
             new_tasks.sort(key=lambda t: t.get("created_at", ""))
+
+            # Pre-fetch attached images as base64 so QTextBrowser can render them
+            for task in new_tasks:
+                for att in (task.get("metadata") or {}).get("attached_files", []):
+                    if not att.get("is_image"):
+                        continue
+                    url = att.get("url", "")
+                    if not url and att.get("path"):
+                        url = "/api/workspace/files/serve?path=" + _ul.quote(att["path"])
+                    if not url:
+                        continue
+                    full_url = (DASHBOARD_URL + url) if url.startswith("/") else url
+                    try:
+                        img_res = _req.get(full_url, timeout=5)
+                        if img_res.ok:
+                            mime = img_res.headers.get("content-type", "image/png")
+                            att["_data_uri"] = (
+                                f"data:{mime};base64,"
+                                + base64.b64encode(img_res.content).decode("utf-8")
+                            )
+                    except Exception:
+                        pass
+
             self._pending_chat_tasks = new_tasks
         except Exception as e:
             print(f"[Overlay] Could not fetch promoted tasks: {e}")
@@ -1014,15 +1037,30 @@ class OverlayWindow(QWidget):
         )
 
         for task in tasks:
-            q_esc = _html_mod.escape(task.get("prompt", ""))
-            a     = (task.get("result") or {}).get("response", "")
-            fs    = self._font_size - 1
+            q_esc    = _html_mod.escape(task.get("prompt", ""))
+            a        = (task.get("result") or {}).get("response", "")
+            fs       = self._font_size - 1
+            attached = (task.get("metadata") or {}).get("attached_files", [])
 
             self._response.append(
                 f"<div style='color:rgba(13,148,136,0.85);font-weight:600;"
                 f"font-size:{fs}px;margin-bottom:2px;'>◈ You (Chat)</div>"
                 f"<div style='color:rgba(220,220,245,0.8);margin-bottom:5px;'>{q_esc}</div>"
             )
+
+            # Render images — use pre-fetched data URI (QTextBrowser can't load HTTP)
+            for att in attached:
+                if not att.get("is_image"):
+                    continue
+                src = att.get("_data_uri", "")
+                if not src:
+                    continue
+                self._response.append(
+                    f"<div style='margin-bottom:6px;'>"
+                    f"<img src='{src}' width='200' "
+                    f"style='border-radius:7px;border:1px solid rgba(13,148,136,0.3);display:block;'>"
+                    f"</div>"
+                )
             self._response.append(
                 "<div style='display:flex;align-items:center;gap:6px;margin:4px 0 6px;'>"
                 "<div style='flex:1;border-top:1px solid rgba(13,148,136,0.25);'></div>"
