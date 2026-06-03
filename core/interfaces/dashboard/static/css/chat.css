@@ -423,3 +423,42 @@
 .incognito-thread.active {
     background: rgba(139, 92, 246, 0.15) !important;
 }
+
+/* Drag-and-drop overlay for chat column */
+.chat-column.drag-over {
+    position: relative;
+}
+
+.chat-column.drag-over::after {
+    content: 'Drop files here to attach';
+    position: absolute;
+    inset: 1rem;
+    background: rgba(99, 102, 241, 0.08);
+    border: 2px dashed rgba(99, 102, 241, 0.45);
+    border-radius: var(--radius-lg, 12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary, #6366f1);
+    font-size: 1.25rem;
+    font-weight: 600;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 1000;
+    pointer-events: none;
+    animation: dragOverPulse 1.5s infinite ease-in-out;
+}
+
+@keyframes dragOverPulse {
+    0%, 100% {
+        border-color: rgba(99, 102, 241, 0.4);
+        background: rgba(99, 102, 241, 0.08);
+        box-shadow: 0 0 10px rgba(99, 102, 241, 0.05);
+    }
+    50% {
+        border-color: rgba(99, 102, 241, 0.85);
+        background: rgba(99, 102, 241, 0.16);
+        box-shadow: 0 0 25px rgba(99, 102, 241, 0.2);
+    }
+}
+

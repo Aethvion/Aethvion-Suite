@@ -245,7 +245,6 @@ h6 {
     font-weight: 600;
     font-family: 'Inter', sans-serif;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
     letter-spacing: 0.025em;
 }
@@ -258,7 +257,6 @@ h6 {
     color: var(--text-primary);
     background: rgba(255, 255, 255, 0.06);
     border-color: color-mix(in srgb, var(--primary) 25%, rgba(255, 255, 255, 0.12));
-    transform: translateY(-1px);
 }
 
 .hdr-nav-btn.active {
