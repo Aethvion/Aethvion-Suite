@@ -535,8 +535,14 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
     if (attachments && attachments.length > 0) {
         attachmentsHtml += '<div class="message-attachments" style="margin-top:8px; margin-bottom: 4px; display:flex; flex-wrap:wrap; gap:8px;">';
         attachments.forEach(att => {
-            if (att.is_image && att.url) {
-                attachmentsHtml += `<img src="${att.url}" class="chat-attached-image" style="max-width:100%; max-height:250px; border-radius:8px; object-fit:contain;">`;
+            if (att.is_image) {
+                let imgUrl = att.url;
+                if (!imgUrl && att.path) {
+                    imgUrl = `/api/workspace/files/serve?path=${encodeURIComponent(att.path)}`;
+                }
+                if (imgUrl) {
+                    attachmentsHtml += `<img src="${imgUrl}" class="chat-attached-image" style="max-width:100%; max-height:250px; border-radius:8px; object-fit:contain;">`;
+                }
             } else if (att.filename) {
                 attachmentsHtml += `<div class="chat-attached-file-pill" style="font-size:0.85em; padding:4px 8px; background:rgba(255,255,255,0.1); border-radius:4px;">📄 ${att.filename}</div>`;
             }
@@ -744,7 +750,7 @@ async function loadThreadMessages(threadId) {
             sortedTasks.forEach(task => {
                 const ts = task.created_at || task.updated_at;
                 // Add user message
-                addMessageToThread(threadId, 'user', task.prompt, task.id, null, null, ts);
+                addMessageToThread(threadId, 'user', task.prompt, task.id, task, task.metadata ? task.metadata.attached_files : null, ts);
 
                 // Add assistant response if completed
                 if (task.status === 'completed' && task.result) {
@@ -1265,6 +1271,9 @@ async function sendMessage() {
             });
             if (uploadRes.ok) {
                 const uploadData = await uploadRes.json();
+                if (uploadData.path) {
+                    uploadData.url = `/api/workspace/files/serve?path=${encodeURIComponent(uploadData.path)}`;
+                }
                 attachedFiles = [uploadData];
             } else {
                 console.warn('File upload failed:', await uploadRes.text());

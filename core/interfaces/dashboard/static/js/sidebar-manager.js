@@ -1,1096 +1,324 @@
 /**
- * Aethvion Suite — Sidebar Manager (Profiles + Onboarding Edition)
+ * Aethvion Suite — Sidebar Navigation (Drill-down edition)
  *
- * Adds:
- *  - Named sidebar profiles (fully independent configs)
- *  - 5 premade preset layouts + Custom (blank) option
- *  - Profile onboarding modal (auto-shown on first launch)
- *  - Suite-home profiles widget (chip row + Add Layout button)
+ * Two-level navigation:
+ *   Root  → category rows (Workspace, Research, …)
+ *   Drill → back button + tabs for that category
  *
- * Storage key: 'sidebar_profiles_v1'
- * Migrates old 'sidebar_v2' format automatically.
+ * No profiles, no customization layer, no drag-drop.
+ * State persisted to localStorage key 'snav_v1'.
  */
 
 (function () {
     'use strict';
 
-    const STORAGE_KEY = 'sidebar_profiles_v1';
-    const OLD_KEY     = 'sidebar_v2';
+    // ── Tab registry ───────────────────────────────────────────────────────
+    const TABS = {
+        'suite-home':        { label: 'Home',           icon: 'fas fa-house' },
+        'agent-corp':        { label: 'Agent Corp',     icon: 'fas fa-building' },
+        'schedule':          { label: 'Schedule',       icon: 'fas fa-calendar-alt' },
+        'photo':             { label: 'Photo',          icon: 'fas fa-image' },
+        'audio':             { label: 'Audio',          icon: 'fas fa-microphone' },
+        '3d-gen':            { label: '3D Workspace',   icon: 'fas fa-vector-square' },
+        'advaiconv':         { label: 'Adv. AI Conv.',  icon: 'fas fa-flask' },
+        'researchboard':     { label: 'Directors',      icon: 'fas fa-balance-scale' },
+        'arena':             { label: 'Arena',          icon: 'fas fa-shield-halved' },
+        'aiconv':            { label: 'AI Conv.',       icon: 'fas fa-masks-theater' },
+        'explained':         { label: 'Explained',      icon: 'fas fa-lightbulb' },
+        'memory':            { label: 'Memory',         icon: 'fas fa-book' },
+        'persistent-memory': { label: 'Persistent',     icon: 'fas fa-brain' },
+        'sched-overview':    { label: 'Scheduled',      icon: 'fas fa-calendar-check' },
+        'output':            { label: 'Output',         icon: 'fas fa-upload' },
+        'screenshots':       { label: 'Gallery',        icon: 'fas fa-camera-retro' },
+        'camera':            { label: 'Camera',         icon: 'fas fa-camera' },
+        'uploads':           { label: 'Uploads',        icon: 'fas fa-folder' },
+        'local-models':      { label: 'Text & Chat',    icon: 'fas fa-microchip' },
+        'image-models':      { label: 'Image Models',   icon: 'fas fa-mountain-sun' },
+        'audio-models':      { label: 'Audio & Speech', icon: 'fas fa-volume-high' },
+        'api-providers':     { label: 'API Providers',  icon: 'fas fa-plug' },
+        '3d-models':         { label: '3D Models',      icon: 'fas fa-cube' },
+        'logs':              { label: 'Logs',            icon: 'fas fa-scroll' },
+        'documentation':     { label: 'Docs',           icon: 'fas fa-book-open' },
+        'usage':             { label: 'Usage',          icon: 'fas fa-chart-bar' },
+        'status':            { label: 'Status',         icon: 'fas fa-traffic-light' },
+        'ports':             { label: 'Ports',          icon: 'fas fa-ethernet' },
+        'worldsim':          { label: 'WorldSim',       icon: 'fas fa-globe' },
+    };
 
-    // Tab Registry
-    const TABS = [
-        { id: 'suite-home',        label: 'Home',             icon: 'fas fa-house',              mode: ['home'] },
-        { id: 'chat',              label: 'Chat',             icon: 'fas fa-comments',            mode: ['home'] },
-        { id: 'agents',            label: 'Code',             icon: 'fas fa-code',               mode: ['home'] },
-        { id: 'agent-corp',        label: 'Agent Corp',       icon: 'fas fa-building',           mode: ['home'] },
-        { id: 'schedule',          label: 'Schedule',         icon: 'fas fa-calendar-alt',       mode: ['home'] },
-        { id: 'photo',             label: 'Photo',            icon: 'fas fa-image',              mode: ['home'] },
-        { id: 'audio',             label: 'Audio',            icon: 'fas fa-microphone',         mode: ['home'] },
-        { id: 'advaiconv',         label: 'Adv. AI Conv.',    icon: 'fas fa-flask',              mode: ['home'] },
-        { id: 'researchboard',     label: 'Directors',        icon: 'fas fa-balance-scale',      mode: ['home'] },
-        { id: 'arena',             label: 'Arena',            icon: 'fas fa-shield-halved',      mode: ['home'] },
-        { id: 'aiconv',            label: 'AI Conv.',         icon: 'fas fa-masks-theater',      mode: ['home'] },
-        { id: 'explained',         label: 'Explained',        icon: 'fas fa-lightbulb',          mode: ['home'] },
-        { id: 'aethviondb',        label: 'AethvionDB',       icon: 'fas fa-circle-nodes',       mode: ['home'] },
-        { id: 'worldsim',          label: 'WorldSim',         icon: 'fas fa-globe',              mode: ['home'] },
-        // Companion tabs are now top-level nav items (Companions button) — not in sidebar
-        { id: 'memory',            label: 'Memory',           icon: 'fas fa-book',               mode: ['home'] },
-        { id: 'persistent-memory', label: 'Persistent',       icon: 'fas fa-brain',              mode: ['home'] },
-        { id: 'sched-overview',    label: 'Scheduled',        icon: 'fas fa-calendar-check',     mode: ['home'] },
-        { id: 'output',            label: 'Output',           icon: 'fas fa-upload',             mode: ['home'] },
-        { id: 'screenshots',       label: 'Gallery',          icon: 'fas fa-camera-retro',       mode: ['home'] },
-        { id: 'camera',            label: 'Camera',           icon: 'fas fa-camera',             mode: ['home'] },
-        { id: 'uploads',           label: 'Uploads',          icon: 'fas fa-folder',             mode: ['home'] },
-        { id: 'local-models',      label: 'Text & Chat',      icon: 'fas fa-microchip',          mode: ['home'] },
-        { id: 'image-models',      label: 'Image Models',     icon: 'fas fa-mountain-sun',       mode: ['home'] },
-        { id: 'audio-models',      label: 'Audio & Speech',   icon: 'fas fa-volume-high',        mode: ['home'] },
-        { id: 'api-providers',     label: 'API Providers',    icon: 'fas fa-plug',               mode: ['home'] },
-        { id: '3d-models',         label: '3D Models',        icon: 'fas fa-cube',               mode: ['home'] },
-        { id: '3d-gen',            label: '3D Workspace',     icon: 'fas fa-vector-square',      mode: ['home'] },
-        { id: 'logs',              label: 'Logs',             icon: 'fas fa-scroll',             mode: ['home'] },
-        { id: 'documentation',     label: 'Docs',             icon: 'fas fa-book-open',          mode: ['home'] },
-        { id: 'usage',             label: 'Usage',            icon: 'fas fa-chart-bar',          mode: ['home'] },
-        { id: 'status',            label: 'Status',           icon: 'fas fa-traffic-light',      mode: ['home'] },
-        { id: 'ports',             label: 'Ports',            icon: 'fas fa-plug',               mode: ['home'] },
-    ];
-
-    const TAB_MAP = Object.fromEntries(TABS.map(t => [t.id, t]));
-
-    // Preset Layouts
-    const PRESETS = [
+    // ── Category definitions ───────────────────────────────────────────────
+    const CATEGORIES = [
         {
-            id: 'professional',
-            name: 'Professional',
+            id: 'workspace',
+            label: 'Workspace',
             icon: 'fas fa-briefcase',
-            accent: '#6366f1',
-            description: 'Productivity workspace with code, scheduling, and system management.',
-            highlights: ['Chat & Code', 'Schedule', 'Model Hub', 'System'],
-            folders: [
-                { name: 'Workspace', expanded: true,  tabs: ['agent-corp', 'schedule'] },
-                { name: 'Models',    expanded: false, tabs: ['local-models', 'api-providers'] },
-                { name: 'System',    expanded: false, tabs: ['logs', 'status', 'ports'] },
-            ],
-            enabled: new Set(['suite-home', 'agent-corp', 'schedule',
-                              'local-models', 'api-providers', '3d-models', 'logs', 'status', 'ports']),
+            tabs: ['agent-corp', 'schedule', 'photo', 'audio', '3d-gen'],
         },
         {
-            id: 'creative',
-            name: 'Creative Studio',
-            icon: 'fas fa-palette',
-            accent: '#ec4899',
-            description: 'Photo, audio, and AI tools built for artists and content creators.',
-            highlights: ['Photo Studio', 'Audio', 'AI Conversations', 'Output'],
-            folders: [
-                { name: 'Studio',   expanded: true,  tabs: ['photo', 'audio', 'output', 'screenshots'] },
-                { name: 'AI Tools', expanded: false, tabs: ['explained', 'advaiconv'] },
-            ],
-            enabled: new Set(['suite-home', 'photo', 'audio', 'explained',
-                              'advaiconv', 'output', 'screenshots']),
-        },
-        {
-            id: 'researcher',
-            name: 'Researcher',
+            id: 'research',
+            label: 'Research',
             icon: 'fas fa-microscope',
-            accent: '#10b981',
-            description: 'Deep analysis, model comparisons, and knowledge management for advanced research.',
-            highlights: ['Directors', 'Arena', 'AI Conv.', 'Explained', 'Persistent Memory'],
-            folders: [
-                { name: 'Research',  expanded: true,  tabs: ['advaiconv', 'researchboard', 'arena', 'aiconv', 'explained'] },
-                { name: 'Knowledge', expanded: false, tabs: ['persistent-memory', 'documentation'] },
-            ],
-            enabled: new Set(['suite-home', 'advaiconv', 'researchboard', 'arena',
-                              'aiconv', 'explained', 'persistent-memory', 'documentation']),
+            tabs: ['advaiconv', 'researchboard', 'arena', 'aiconv', 'explained'],
         },
         {
-            id: 'companion',
-            name: 'Companion Hub',
-            icon: 'fas fa-heart',
-            accent: '#a855f7',
-            description: 'Companions and memory — use the Companions tab for your AI companions.',
-            highlights: ['Companions Tab', 'Memory'],
-            folders: [
-                { name: 'Memory',        expanded: true,  tabs: ['memory'] },
-            ],
-            enabled: new Set(['suite-home', 'memory']),
+            id: 'memory',
+            label: 'Memory',
+            icon: 'fas fa-brain',
+            tabs: ['memory', 'persistent-memory', 'sched-overview'],
         },
         {
-            id: 'full',
-            name: 'Full Suite',
-            icon: 'fas fa-layer-group',
-            accent: '#f59e0b',
-            description: 'Everything enabled with the complete default folder layout. Nothing hidden.',
-            highlights: ['All Tabs', 'All Folders', 'Full Access'],
-            folders: null, // uses default
-            enabled: null, // all enabled
+            id: 'storage',
+            label: 'Storage',
+            icon: 'fas fa-folder-open',
+            tabs: ['output', 'screenshots', 'camera', 'uploads'],
         },
         {
-            id: 'custom',
-            name: 'Custom',
-            icon: 'fas fa-sliders',
-            accent: '#6b7280',
-            description: 'Start blank — every tab disabled. Build your perfect sidebar from scratch.',
-            highlights: ['Start fresh', 'Full control', 'Your layout'],
-            folders: [],   // no folders
-            enabled: new Set(['suite-home']), // only home tab visible
+            id: 'model-hub',
+            label: 'Model Hub',
+            icon: 'fas fa-microchip',
+            tabs: ['local-models', 'image-models', 'audio-models', 'api-providers', '3d-models'],
+        },
+        {
+            id: 'system',
+            label: 'System',
+            icon: 'fas fa-server',
+            tabs: ['logs', 'documentation', 'usage', 'status', 'ports'],
+        },
+        {
+            id: 'experimental',
+            label: 'Experimental',
+            icon: 'fas fa-flask-vial',
+            tabs: ['worldsim'],
         },
     ];
 
-    // Default profile data
-    function defaultProfileData(name = 'Default') {
-        return {
-            name,
-            // chat, agents, aethviondb, and companions live in the header nav — keep them out of the sidebar
-            hidden: { chat: true, agents: true, aethviondb: true,
-                      'misaka-cipher': true, axiom: true, lyra: true, 'companion-creator': true },
-            folders: {
-                'f-workspace':  { name: 'Workspace',    expanded: true  },
-                'f-research':   { name: 'Research',     expanded: false },
-                'f-memory':     { name: 'Memory',       expanded: false },
-                'f-storage':    { name: 'Storage',      expanded: false },
-                'f-models':     { name: 'Model Hub',    expanded: false },
-                'f-system':     { name: 'System',       expanded: false },
-            },
-            order: [
-                { type: 'tab',    id: 'suite-home' },
-                { type: 'folder', id: 'f-workspace',  children: ['agent-corp','schedule','photo','audio','3d-gen'] },
-                { type: 'folder', id: 'f-research',   children: ['advaiconv','researchboard','arena','aiconv','explained'] },
-                { type: 'folder', id: 'f-memory',     children: ['memory','persistent-memory','sched-overview'] },
-                { type: 'folder', id: 'f-storage',    children: ['output','screenshots','camera','uploads'] },
-                { type: 'folder', id: 'f-models',     children: ['local-models','image-models','audio-models','3d-models','api-providers'] },
-                { type: 'folder', id: 'f-system',     children: ['logs','documentation','usage','status','ports'] },
-            ],
-        };
-    }
+    // ── State ──────────────────────────────────────────────────────────────
+    let _depth     = 'root';   // 'root' | 'category'
+    let _activeCat = null;     // category id when drilled in
+    let _activeTab = null;     // currently active tab id
+    let _searching = false;
 
-    /** Build a profile config from a preset definition. */
-    function buildPresetConfig(preset, name) {
-        if (preset.id === 'full') return defaultProfileData(name);
-
-        const d = defaultProfileData(name);
-
-        if (preset.id === 'custom') {
-            // Hide everything except suite-home
-            TABS.forEach(t => { if (t.id !== 'suite-home') d.hidden[t.id] = true; });
-            d.folders = {};
-            d.order   = [{ type: 'tab', id: 'suite-home' }];
-            return d;
-        }
-
-        // Hide tabs not in this preset's enabled set
-        TABS.forEach(t => {
-            if (!preset.enabled.has(t.id)) d.hidden[t.id] = true;
-        });
-
-        // Build folder structure from preset definition
-        d.folders = {};
-        d.order   = [{ type: 'tab', id: 'suite-home' }];
-        preset.folders.forEach((def, i) => {
-            const fid = `f-preset-${i}`;
-            d.folders[fid] = { name: def.name, expanded: def.expanded };
-            d.order.push({ type: 'folder', id: fid, children: def.tabs });
-        });
-
-        // Ensure all missing tabs are appended as flat entries (usually hidden)
-        surfaceNewTabs(d);
-
-        return d;
-    }
-
-    // Storage
-    let isFirstTime = false;
-
-    function storeLoad() {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                const saved = JSON.parse(raw);
-                if (saved?.profiles) {
-                    const _NAV_TABS = ['chat', 'agents', 'aethviondb',
-                        'misaka-cipher', 'axiom', 'lyra', 'companion-creator'];
-                    Object.values(saved.profiles).forEach(profile => {
-                        // Migration: header-nav items (Chat, AethvionDB, Companions) are not in sidebar
-                        profile.hidden = profile.hidden || {};
-                        _NAV_TABS.forEach(id => { profile.hidden[id] = true; });
-                        // Remove from any folder children so they don't clutter edit mode either
-                        if (profile.order) {
-                            profile.order.forEach(entry => {
-                                if (entry.type === 'folder' && Array.isArray(entry.children)) {
-                                    entry.children = entry.children.filter(
-                                        id => !_NAV_TABS.includes(id)
-                                    );
-                                }
-                            });
-                            // Remove the companions folder itself (f-companions) if present
-                            const fcompIdx = profile.order.findIndex(
-                                e => e.type === 'folder' && e.id === 'f-companions'
-                            );
-                            if (fcompIdx >= 0) profile.order.splice(fcompIdx, 1);
-                            if (profile.folders) delete profile.folders['f-companions'];
-                            // Remove the entertainment folder itself (f-fun) if present
-                            const ffunIdx = profile.order.findIndex(
-                                e => e.type === 'folder' && e.id === 'f-fun'
-                            );
-                            if (ffunIdx >= 0) profile.order.splice(ffunIdx, 1);
-                            if (profile.folders) delete profile.folders['f-fun'];
-                        }
-                        surfaceNewTabs(profile);
-                    });
-                    return saved;
-                }
-            }
-
-            // Migrate old single-config format
-            const old = localStorage.getItem(OLD_KEY);
-            if (old) {
-                const parsed = JSON.parse(old);
-                localStorage.removeItem(OLD_KEY);
-                return {
-                    activeProfile: 'default',
-                    profiles: { default: { ...parsed, name: 'Default' } },
-                };
-            }
-
-            // Brand new user
-            isFirstTime = true;
-            return {
-                activeProfile: 'default',
-                profiles: { default: defaultProfileData('Default') },
-            };
-        } catch (_) {
-            isFirstTime = true;
-            return {
-                activeProfile: 'default',
-                profiles: { default: defaultProfileData('Default') },
-            };
-        }
-    }
-
-    function surfaceNewTabs(profile) {
-        if (!profile?.order) return;
-        const placed = new Set();
-        for (const e of profile.order) {
-            if (e.type === 'tab')    placed.add(e.id);
-            else if (e.type === 'folder') (e.children || []).forEach(id => placed.add(id));
-        }
-        TABS.forEach(t => { if (!placed.has(t.id)) profile.order.push({ type: 'tab', id: t.id }); });
-    }
-
-    function storeSave() {
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch (_) {}
-    }
-
-    // State
-    let store           = null;
-    let config          = null;  // alias → store.profiles[store.activeProfile]
-    let editMode        = false;
-    let dropdownOpen    = false;
-    let selectedPreset  = null;  // id of the preset currently highlighted in the modal
-
-    // Drag state
-    let dragging    = null;
-    let dropCurrent = null;
-
-    function syncConfig() { config = store.profiles[store.activeProfile]; }
-
-    // Helpers
-    function getCurrentMode() {
-        if (document.body.classList.contains('theme-ai'))   return 'ai';
-        if (document.body.classList.contains('theme-home')) return 'home';
-        return window.dashboardMode || 'home';
-    }
-
+    // ── Helpers ────────────────────────────────────────────────────────────
     function esc(s) {
         return String(s)
-            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // Profile operations
-    function switchProfile(profileId) {
-        if (!store.profiles[profileId]) return;
-        store.activeProfile = profileId;
-        syncConfig();
-        storeSave();
-        closeProfileDropdown();
-        render();
-        updateProfileSwitcherBtn();
-        refreshHomeWidget();
-        window._suiteHomeUpdate?.();
+    function catForTab(tabId) {
+        return CATEGORIES.find(c => c.tabs.includes(tabId)) || null;
     }
 
-    function createFromPreset(presetId, profileName) {
-        const preset = PRESETS.find(p => p.id === presetId);
-        if (!preset) return;
-        const id  = 'p-' + Date.now();
-        const cfg = buildPresetConfig(preset, profileName || preset.name);
-        cfg.presetId = preset.id;   // store preset type for home page awareness
-        store.profiles[id] = cfg;
-        store.activeProfile = id;
-        syncConfig();
-        storeSave();
-        hideOnboardingModal();
-        render();
-        updateProfileSwitcherBtn();
-        refreshHomeWidget();
-        window._suiteHomeUpdate?.();
-    }
-
-    function createProfile() {
-        const id = 'p-' + Date.now();
-        store.profiles[id] = defaultProfileData('New Profile');
-        store.activeProfile = id;
-        syncConfig();
-        storeSave();
-        closeProfileDropdown();
-        render();
-        updateProfileSwitcherBtn();
-        refreshHomeWidget();
-        setTimeout(() => startProfileRename(id), 50);
-    }
-
-    function duplicateProfile(srcId) {
-        const src = store.profiles[srcId];
-        if (!src) return;
-        const id = 'p-' + Date.now();
-        store.profiles[id] = JSON.parse(JSON.stringify(src));
-        store.profiles[id].name = src.name + ' (copy)';
-        store.activeProfile = id;
-        syncConfig();
-        storeSave();
-        closeProfileDropdown();
-        render();
-        updateProfileSwitcherBtn();
-        refreshHomeWidget();
-    }
-
-    function deleteProfile(profileId) {
-        if (Object.keys(store.profiles).length <= 1) return;
-        delete store.profiles[profileId];
-        if (store.activeProfile === profileId) {
-            store.activeProfile = Object.keys(store.profiles)[0];
-            syncConfig();
-        }
-        storeSave();
-        renderProfileDropdown();
-        updateProfileSwitcherBtn();
-        refreshHomeWidget();
-    }
-
-    function startProfileRename(profileId) {
-        const item = document.querySelector(`.profile-item[data-profile-id="${profileId}"] .profile-item-name`);
-        if (!item) return;
-        const current = store.profiles[profileId]?.name || '';
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'profile-rename-input';
-        input.value = current;
-        item.replaceWith(input);
-        input.focus(); input.select();
-        function commit() {
-            const newName = input.value.trim() || current;
-            if (store.profiles[profileId]) store.profiles[profileId].name = newName;
-            storeSave(); renderProfileDropdown(); updateProfileSwitcherBtn(); refreshHomeWidget();
-        }
-        input.addEventListener('blur', commit);
-        input.addEventListener('keydown', e => {
-            if (e.key === 'Enter')  input.blur();
-            if (e.key === 'Escape') { input.value = current; input.blur(); }
-        });
-    }
-
-    // Onboarding modal
-    function showOnboardingModal() {
-        selectedPreset = null;
-        const overlay = document.getElementById('profile-onboarding-overlay');
-        if (!overlay) return;
-
-        // Render preset cards
-        const grid = document.getElementById('pon-preset-grid');
-        if (grid) {
-            grid.innerHTML = '';
-            PRESETS.forEach(preset => {
-                const card = document.createElement('div');
-                card.className = 'pon-preset-card';
-                card.dataset.presetId = preset.id;
-                card.style.setProperty('--preset-accent', preset.accent);
-                card.innerHTML = `
-                    <div class="pon-card-icon"><i class="${preset.icon}"></i></div>
-                    <div class="pon-card-name">${esc(preset.name)}</div>
-                    <div class="pon-card-desc">${esc(preset.description)}</div>
-                    <div class="pon-card-tags">${preset.highlights.map(h => `<span class="pon-tag">${esc(h)}</span>`).join('')}</div>
-                `;
-                card.addEventListener('click', () => selectPreset(preset.id, preset.name));
-                grid.appendChild(card);
-            });
-        }
-
-        // Name input default
-        const nameInput = document.getElementById('pon-name-input');
-        if (nameInput) nameInput.value = '';
-
-        // Wire footer buttons
-        const skipBtn   = document.getElementById('pon-skip-btn');
-        const createBtn = document.getElementById('pon-create-btn');
-        if (skipBtn)   skipBtn.onclick   = hideOnboardingModal;
-        if (createBtn) createBtn.onclick = handleOnboardingCreate;
-
-        // Show
-        overlay.classList.add('visible');
-        overlay.setAttribute('aria-hidden', 'false');
-        overlay.addEventListener('click', e => { if (e.target === overlay) hideOnboardingModal(); }, { once: true });
-    }
-
-    function hideOnboardingModal() {
-        const overlay = document.getElementById('profile-onboarding-overlay');
-        if (!overlay) return;
-        overlay.classList.remove('visible');
-        overlay.setAttribute('aria-hidden', 'true');
-        selectedPreset = null;
-    }
-
-    function selectPreset(presetId, presetName) {
-        selectedPreset = presetId;
-        // Highlight selected card
-        document.querySelectorAll('.pon-preset-card').forEach(c => {
-            c.classList.toggle('selected', c.dataset.presetId === presetId);
-        });
-        // Pre-fill name input if it's empty or has the previous preset's name
-        const nameInput = document.getElementById('pon-name-input');
-        if (nameInput && (!nameInput.value.trim() || PRESETS.some(p => p.name === nameInput.value.trim()))) {
-            nameInput.value = presetName;
-        }
-    }
-
-    function handleOnboardingCreate() {
-        if (!selectedPreset) {
-            // Wiggle the grid to indicate selection needed
-            const grid = document.getElementById('pon-preset-grid');
-            if (grid) { grid.classList.add('pon-shake'); setTimeout(() => grid.classList.remove('pon-shake'), 400); }
-            return;
-        }
-        const nameInput = document.getElementById('pon-name-input');
-        const name = nameInput?.value.trim() || PRESETS.find(p => p.id === selectedPreset)?.name || 'My Profile';
-        createFromPreset(selectedPreset, name);
-    }
-
-    // Suite-home profiles widget
-    function refreshHomeWidget() {
-        const chips = document.getElementById('spw-chips');
-        if (!chips) return;
-
-        chips.innerHTML = '';
-
-        Object.entries(store.profiles).forEach(([id, profile]) => {
-            const isActive = id === store.activeProfile;
-            const chip = document.createElement('button');
-            chip.className = `spw-chip${isActive ? ' active' : ''}`;
-            chip.title = `Switch to ${profile.name}`;
-            chip.innerHTML = `
-                <span class="spw-chip-dot${isActive ? ' active' : ''}"></span>
-                <span class="spw-chip-name">${esc(profile.name)}</span>
-            `;
-            chip.addEventListener('click', () => {
-                if (id !== store.activeProfile) switchProfile(id);
-            });
-            chips.appendChild(chip);
-        });
-
-        // Wire "Add Layout" button
-        const addBtn = document.getElementById('spw-add-btn');
-        if (addBtn) {
-            addBtn.onclick = showOnboardingModal;
-        }
-    }
-
-    function watchSuiteHomePanel() {
-        const panel = document.getElementById('suite-home-panel');
-        if (!panel) return;
-
-        function check() {
-            if (panel.classList.contains('active') && !panel.querySelector('.partial-loading')) {
-                refreshHomeWidget();
-            }
-        }
-
-        const obs = new MutationObserver(check);
-        obs.observe(panel, { attributes: true, attributeFilter: ['class'], childList: true });
-        check();
-    }
-
-    // Profile Switcher (sidebar bottom)
-    function buildProfileSwitcher() {
-        const wrapper = document.createElement('div');
-        wrapper.id        = 'profile-switcher';
-        wrapper.className = 'profile-switcher';
-
-        const btn = document.createElement('button');
-        btn.id        = 'profile-btn';
-        btn.className = 'profile-btn';
-        updateProfileBtnContent(btn);
-        btn.addEventListener('click', e => { e.stopPropagation(); toggleProfileDropdown(wrapper); });
-
-        wrapper.appendChild(btn);
-        return wrapper;
-    }
-
-    function updateProfileSwitcherBtn() {
-        const btn = document.getElementById('profile-btn');
-        if (btn) updateProfileBtnContent(btn);
-    }
-
-    function updateProfileBtnContent(btn) {
-        const name  = store.profiles[store.activeProfile]?.name || 'Default';
-        btn.innerHTML = `
-            <span class="profile-dot"></span>
-            <span class="profile-btn-name">${esc(name)}</span>
-            <i class="fas fa-chevron-up profile-chevron"></i>
-        `;
-    }
-
-    function toggleProfileDropdown(wrapper) {
-        if (dropdownOpen) { closeProfileDropdown(); return; }
-        dropdownOpen = true;
-        document.getElementById('profile-btn')?.classList.add('is-active');
-        renderProfileDropdown(wrapper);
-        setTimeout(() => {
-            document.addEventListener('click', outsideDropdownClose, { capture: true, once: true });
-        }, 30);
-    }
-
-    function closeProfileDropdown() {
-        dropdownOpen = false;
-        document.getElementById('profile-btn')?.classList.remove('is-active');
-        document.getElementById('profile-dropdown')?.remove();
-    }
-
-    function outsideDropdownClose(e) {
-        const dropdown = document.getElementById('profile-dropdown');
-        const btn      = document.getElementById('profile-btn');
-        if (dropdown && !dropdown.contains(e.target) && btn && !btn.contains(e.target)) {
-            closeProfileDropdown();
-        } else if (dropdownOpen) {
-            setTimeout(() => document.addEventListener('click', outsideDropdownClose, { capture: true, once: true }), 30);
-        }
-    }
-
-    function renderProfileDropdown(wrapper) {
-        document.getElementById('profile-dropdown')?.remove();
-        const target = wrapper || document.getElementById('profile-switcher');
-        if (!target) return;
-
-        const dropdown = document.createElement('div');
-        dropdown.id        = 'profile-dropdown';
-        dropdown.className = 'profile-dropdown';
-
-        const profileIds = Object.keys(store.profiles);
-
-        profileIds.forEach(id => {
-            const profile  = store.profiles[id];
-            const isActive = id === store.activeProfile;
-
-            const item = document.createElement('div');
-            item.className = `profile-item${isActive ? ' active' : ''}`;
-            item.dataset.profileId = id;
-
-            const dot = document.createElement('span');
-            dot.className = `profile-item-dot${isActive ? ' active' : ''}`;
-            item.appendChild(dot);
-
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'profile-item-name';
-            nameSpan.textContent = profile.name;
-            item.appendChild(nameSpan);
-
-            const actions = document.createElement('span');
-            actions.className = 'profile-item-actions';
-
-            const dupBtn = document.createElement('button');
-            dupBtn.className = 'profile-action-btn';
-            dupBtn.title = 'Duplicate';
-            dupBtn.innerHTML = '<i class="fas fa-copy"></i>';
-            dupBtn.addEventListener('click', e => { e.stopPropagation(); duplicateProfile(id); });
-            actions.appendChild(dupBtn);
-
-            if (editMode) {
-                const renBtn = document.createElement('button');
-                renBtn.className = 'profile-action-btn';
-                renBtn.title = 'Rename';
-                renBtn.innerHTML = '<i class="fas fa-pen"></i>';
-                renBtn.addEventListener('click', e => { e.stopPropagation(); startProfileRename(id); });
-                actions.appendChild(renBtn);
-
-                if (profileIds.length > 1) {
-                    const delBtn = document.createElement('button');
-                    delBtn.className = 'profile-action-btn danger';
-                    delBtn.title = 'Delete';
-                    delBtn.innerHTML = '<i class="fas fa-trash"></i>';
-                    delBtn.addEventListener('click', e => { e.stopPropagation(); deleteProfile(id); });
-                    actions.appendChild(delBtn);
-                }
-            }
-
-            item.appendChild(actions);
-            item.addEventListener('click', () => {
-                if (id !== store.activeProfile) switchProfile(id);
-                else closeProfileDropdown();
-            });
-
-            dropdown.appendChild(item);
-        });
-
-        // Divider + New Profile
-        const div = document.createElement('div');
-        div.className = 'profile-dropdown-divider';
-        dropdown.appendChild(div);
-
-        const addBtn = document.createElement('button');
-        addBtn.className = 'profile-add-btn';
-        addBtn.innerHTML = '<i class="fas fa-plus"></i><span>New Profile</span>';
-        addBtn.addEventListener('click', e => { e.stopPropagation(); showOnboardingModal(); closeProfileDropdown(); });
-        dropdown.appendChild(addBtn);
-
-        target.appendChild(dropdown);
-    }
-
-    // Tab list render
-    let dropIndicator = null;
-
-    function render() {
+    // ── Render ─────────────────────────────────────────────────────────────
+    function render(direction) {
         const container = document.getElementById('sidebar-tab-list');
         if (!container) return;
-        clearDropHighlights();
+
+        const view = document.createElement('div');
+        view.className = 'snav-view';
+        if (direction === 'in')  view.classList.add('snav-slide-in');
+        if (direction === 'out') view.classList.add('snav-slide-out');
+
+        if (_depth === 'root') buildRoot(view);
+        else                   buildCategory(view, _activeCat);
+
         container.innerHTML = '';
-
-        const mode = getCurrentMode();
-
-        for (const entry of config.order) {
-            if (entry.type === 'tab') {
-                const el = renderTab(entry.id, null, mode);
-                if (el) container.appendChild(el);
-            } else if (entry.type === 'folder') {
-                const el = renderFolder(entry, mode);
-                if (el) container.appendChild(el);
-            }
-        }
-
-        if (editMode) {
-            const addBtn = document.createElement('button');
-            addBtn.className = 'sidebar-add-folder-btn';
-            addBtn.innerHTML = '<i class="fas fa-folder-plus"></i><span>New Folder</span>';
-            addBtn.addEventListener('click', addFolder);
-            container.appendChild(addBtn);
-        }
-
-        applyMode(mode);
-        if (editMode) setupDragDrop(container);
+        container.appendChild(view);
     }
 
-    function renderTab(tabId, folderId, mode) {
-        const tab = TAB_MAP[tabId];
-        if (!tab) return null;
-        const isHidden = config.hidden[tabId] === true;
-        if (!editMode && isHidden) return null;
+    function buildRoot(view) {
+        // Home tab — always at the top
+        view.appendChild(makeTabBtn('suite-home'));
 
-        const modeClasses = tab.mode.map(m => `mode-${m}`).join(' ');
+        // Divider
+        const div = document.createElement('div');
+        div.className = 'snav-divider';
+        view.appendChild(div);
+
+        // Category rows
+        CATEGORIES.forEach(cat => {
+            const hasActive = _activeTab && cat.tabs.includes(_activeTab);
+            const row = document.createElement('button');
+            row.className = 'snav-cat-row' + (hasActive ? ' has-active' : '');
+            row.dataset.catId = cat.id;
+            row.title = cat.label;
+            row.innerHTML =
+                `<span class="snav-cat-icon"><i class="${esc(cat.icon)}"></i></span>` +
+                `<span class="snav-cat-label">${esc(cat.label)}</span>` +
+                (cat.tabs.length
+                    ? `<i class="fas fa-chevron-right snav-cat-chevron"></i>`
+                    : `<span class="snav-cat-badge">new</span>`);
+            row.addEventListener('click', () => drillInto(cat.id));
+            view.appendChild(row);
+        });
+    }
+
+    function buildCategory(view, catId) {
+        const cat = CATEGORIES.find(c => c.id === catId);
+        if (!cat) { _depth = 'root'; render(); return; }
+
+        // Back + title row
+        const header = document.createElement('div');
+        header.className = 'snav-cat-header';
+        header.innerHTML =
+            `<button class="snav-back-btn" title="Back"><i class="fas fa-arrow-left"></i></button>` +
+            `<i class="${esc(cat.icon)} snav-cat-header-icon"></i>` +
+            `<span class="snav-cat-header-label">${esc(cat.label)}</span>`;
+        header.querySelector('.snav-back-btn').addEventListener('click', goBack);
+        view.appendChild(header);
+
+        const sep = document.createElement('div');
+        sep.className = 'snav-sep';
+        view.appendChild(sep);
+
+        if (cat.tabs.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'snav-empty';
+            empty.innerHTML =
+                `<i class="fas fa-flask-vial"></i>` +
+                `<span>No features yet</span>` +
+                `<span class="snav-empty-sub">New experimental features will appear here</span>`;
+            view.appendChild(empty);
+            return;
+        }
+
+        cat.tabs.forEach(tabId => view.appendChild(makeTabBtn(tabId)));
+    }
+
+    function makeTabBtn(tabId) {
+        const tab = TABS[tabId];
+        if (!tab) return document.createDocumentFragment();
         const btn = document.createElement('button');
-        btn.className = `main-tab ${modeClasses}`;
+        btn.className = 'main-tab mode-home' + (_activeTab === tabId ? ' active' : '');
         btn.dataset.maintab = tabId;
         btn.dataset.tooltip  = tab.label;
-        if (folderId) btn.dataset.folderId = folderId;
-        if (editMode && isHidden) btn.classList.add('edit-hidden');
-
-        if (editMode) {
-            const grip = document.createElement('span');
-            grip.className = 'drag-grip';
-            grip.draggable = true;
-            grip.innerHTML = '<i class="fas fa-grip-vertical"></i>';
-            btn.appendChild(grip);
-        }
-
-        const icon = document.createElement('span');
-        icon.className = 'tab-icon';
-        icon.innerHTML = `<i class="${tab.icon}"></i>`;
-        btn.appendChild(icon);
-
-        const label = document.createElement('span');
-        label.className = 'tab-label';
-        label.textContent = tab.label;
-        btn.appendChild(label);
-
-        if (editMode) {
-            const eye = document.createElement('button');
-            eye.className = 'vis-toggle';
-            eye.title = isHidden ? 'Enable' : 'Disable';
-            eye.innerHTML = `<i class="fas ${isHidden ? 'fa-eye-slash' : 'fa-eye'}"></i>`;
-            eye.addEventListener('click', e => { e.stopPropagation(); toggleTabVisibility(tabId); });
-            btn.appendChild(eye);
-        }
-
-        btn.addEventListener('click', e => {
-            if (e.target.closest('.drag-grip') || e.target.closest('.vis-toggle')) return;
-            if (dragging) return;
-            if (typeof switchMainTab === 'function') switchMainTab(tabId);
-        });
-
+        btn.innerHTML =
+            `<span class="tab-icon"><i class="${esc(tab.icon)}"></i></span>` +
+            `<span class="tab-label">${esc(tab.label)}</span>`;
+        btn.addEventListener('click', () => activateTab(tabId));
         return btn;
     }
 
-    function renderFolder(entry, mode) {
-        const folder = config.folders[entry.id];
-        if (!folder) return null;
-        const children = entry.children || [];
-
-        if (!editMode) {
-            const hasVisible = children.some(id => {
-                if (config.hidden[id]) return false;
-                const t = TAB_MAP[id];
-                return t && t.mode.includes(mode);
-            });
-            if (!hasVisible) return null;
-        }
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'sidebar-folder';
-        wrapper.dataset.folderId = entry.id;
-
-        const header = document.createElement('div');
-        header.className = 'folder-header';
-        header.dataset.folderId = entry.id;
-
-        if (editMode) {
-            const grip = document.createElement('span');
-            grip.className = 'drag-grip folder-drag-grip';
-            grip.innerHTML = '<i class="fas fa-grip-vertical"></i>';
-            header.appendChild(grip);
-        }
-
-        const chevron = document.createElement('i');
-        chevron.className = `fas fa-chevron-right folder-chevron${folder.expanded ? ' expanded' : ''}`;
-        header.appendChild(chevron);
-
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'folder-name';
-        nameSpan.textContent = folder.name;
-        header.appendChild(nameSpan);
-
-        if (editMode) {
-            const actions = document.createElement('span');
-            actions.className = 'folder-actions';
-            actions.innerHTML = `
-                <button class="folder-rename-btn" title="Rename"><i class="fas fa-pen"></i></button>
-                <button class="folder-delete-btn" title="Delete"><i class="fas fa-trash"></i></button>
-            `;
-            actions.querySelector('.folder-rename-btn').addEventListener('click', e => {
-                e.stopPropagation(); startFolderRename(entry.id, nameSpan);
-            });
-            actions.querySelector('.folder-delete-btn').addEventListener('click', e => {
-                e.stopPropagation(); deleteFolder(entry.id);
-            });
-            header.appendChild(actions);
-        }
-
-        header.addEventListener('click', e => {
-            if (e.target.closest('.folder-actions') || e.target.closest('.drag-grip') || dragging) return;
-            toggleFolder(entry.id);
-        });
-
-        wrapper.appendChild(header);
-
-        const body = document.createElement('div');
-        body.className = `folder-body${folder.expanded ? ' expanded' : ''}`;
-        body.dataset.folderId = entry.id;
-
-        for (const tabId of children) {
-            const tabEl = renderTab(tabId, entry.id, mode);
-            if (tabEl) body.appendChild(tabEl);
-        }
-
-        wrapper.appendChild(body);
-        return wrapper;
+    // ── Navigation ─────────────────────────────────────────────────────────
+    function drillInto(catId) {
+        _depth = 'category';
+        _activeCat = catId;
+        saveState();
+        render('in');
     }
 
-    // Mode visibility
-    function applyMode(mode) {
-        document.querySelectorAll('#sidebar-tab-list .main-tab').forEach(btn => {
-            btn.classList.toggle('mode-hidden', !btn.classList.contains(`mode-${mode}`));
+    function goBack() {
+        _depth = 'root';
+        _activeCat = null;
+        saveState();
+        render('out');
+    }
+
+    function activateTab(tabId) {
+        _activeTab = tabId;
+        if (typeof switchMainTab === 'function') switchMainTab(tabId);
+        // Update active class on visible tab buttons (core.js also does this globally)
+        document.querySelectorAll('#sidebar-tab-list .main-tab[data-maintab]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.maintab === tabId);
+        });
+        // Update category row highlight at root
+        document.querySelectorAll('.snav-cat-row').forEach(row => {
+            const cat = CATEGORIES.find(c => c.id === row.dataset.catId);
+            row.classList.toggle('has-active', !!(cat && cat.tabs.includes(tabId)));
         });
     }
 
-    // Folder operations
-    function toggleFolder(id) {
-        if (!config.folders[id]) return;
-        config.folders[id].expanded = !config.folders[id].expanded;
-        storeSave(); render();
-    }
+    // ── Public API (called by core.js switchMainTab) ───────────────────────
+    window._sidebarNav = {
+        getTotalTabCount() {
+            return CATEGORIES.reduce((sum, c) => sum + c.tabs.length, 0);
+        },
+        setActiveTab(tabId) {
+            _activeTab = tabId;
+            document.querySelectorAll('#sidebar-tab-list .main-tab[data-maintab]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.maintab === tabId);
+            });
+            document.querySelectorAll('.snav-cat-row').forEach(row => {
+                const cat = CATEGORIES.find(c => c.id === row.dataset.catId);
+                row.classList.toggle('has-active', !!(cat && cat.tabs.includes(tabId)));
+            });
+        },
+    };
 
-    function addFolder() {
-        const id = 'f-' + Date.now();
-        config.folders[id] = { name: 'New Folder', expanded: true };
-        config.order.push({ type: 'folder', id, children: [] });
-        storeSave(); render();
-        const nameSpan = document.querySelector(`.sidebar-folder[data-folder-id="${id}"] .folder-name`);
-        if (nameSpan) startFolderRename(id, nameSpan);
-    }
+    // ── Search ─────────────────────────────────────────────────────────────
+    // When the user types, temporarily show all tabs so core.js's applyFilter
+    // can do text matching. Clearing search restores the navigation state.
+    function setupSearch() {
+        const input   = document.getElementById('sidebar-search-input');
+        const clearEl = document.getElementById('sidebar-search-clear');
+        if (!input) return;
 
-    function startFolderRename(folderId, nameSpan) {
-        const current = config.folders[folderId]?.name || '';
-        const input = document.createElement('input');
-        input.type = 'text'; input.className = 'folder-rename-input'; input.value = current;
-        nameSpan.replaceWith(input);
-        input.focus(); input.select();
-        function commit() {
-            if (config.folders[folderId]) config.folders[folderId].name = input.value.trim() || current;
-            storeSave(); render();
-        }
-        input.addEventListener('blur', commit);
-        input.addEventListener('keydown', e => {
-            if (e.key === 'Enter')  input.blur();
-            if (e.key === 'Escape') { input.value = current; input.blur(); }
-        });
-    }
-
-    function deleteFolder(folderId) {
-        const entry = config.order.find(e => e.type === 'folder' && e.id === folderId);
-        if (!entry) return;
-        const idx    = config.order.indexOf(entry);
-        const orphans = (entry.children || []).map(id => ({ type: 'tab', id }));
-        config.order.splice(idx, 1, ...orphans);
-        delete config.folders[folderId];
-        storeSave(); render();
-    }
-
-    function toggleTabVisibility(tabId) {
-        config.hidden[tabId] = !config.hidden[tabId];
-        storeSave(); render();
-    }
-
-    // Drag and drop
-    function setupDragDrop(container) {
-        dropIndicator = document.createElement('div');
-        dropIndicator.className = 'drop-indicator';
-        dropIndicator.style.display = 'none';
-        document.body.appendChild(dropIndicator);
-        container.addEventListener('dragstart', onDragStart, true);
-        container.addEventListener('dragend',   onDragEnd,   true);
-        container.addEventListener('dragover',  onDragOver,  true);
-        container.addEventListener('drop',      onDrop,      true);
-    }
-
-    function onDragStart(e) {
-        const grip = e.target.closest('.drag-grip');
-        if (!grip) { e.preventDefault(); return; }
-        const tab    = grip.closest('.main-tab');
-        const fhdr   = grip.closest('.folder-header');
-        if (tab) {
-            dragging = { type: 'tab', id: tab.dataset.maintab, srcFolderId: tab.dataset.folderId || null };
-            tab.classList.add('is-dragging');
-        } else if (fhdr && grip.classList.contains('folder-drag-grip')) {
-            dragging = { type: 'folder', id: fhdr.dataset.folderId };
-            fhdr.closest('.sidebar-folder')?.classList.add('is-dragging');
-        } else { e.preventDefault(); return; }
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', '');
-    }
-
-    function onDragEnd() {
-        clearDropHighlights();
-        if (dropIndicator) { dropIndicator.remove(); dropIndicator = null; }
-        dragging = null; dropCurrent = null;
-    }
-
-    function onDragOver(e) {
-        e.preventDefault();
-        if (!dragging) return;
-        clearDropHighlights();
-        if (!dropIndicator) return;
-
-        const tab    = e.target.closest('.main-tab:not(.is-dragging)');
-        const fhdr   = e.target.closest('.folder-header');
-        const fbody  = e.target.closest('.folder-body');
-        const cont   = document.getElementById('sidebar-tab-list');
-
-        if (dragging.type === 'tab') {
-            if (fhdr && !tab) {
-                fhdr.classList.add('drop-target-folder');
-                dropCurrent = { type: 'into-folder', folderId: fhdr.dataset.folderId };
-                dropIndicator.style.display = 'none';
-            } else if (tab) {
-                const r = tab.getBoundingClientRect();
-                const after = e.clientY > r.top + r.height / 2;
-                positionIndicator(tab, after);
-                dropCurrent = { type: after ? 'after-tab' : 'before-tab', tabId: tab.dataset.maintab, folderId: tab.dataset.folderId || null };
-            } else if (fbody && !tab) {
-                fbody.classList.add('drop-target-folder');
-                dropCurrent = { type: 'into-folder', folderId: fbody.dataset.folderId };
-                dropIndicator.style.display = 'none';
-            } else if (cont) {
-                positionAtRoot(e.clientY, cont);
-            }
-        } else if (dragging.type === 'folder') {
-            const tf = e.target.closest('.sidebar-folder:not(.is-dragging)');
-            if (tf) {
-                const r = tf.getBoundingClientRect();
-                const after = e.clientY > r.top + r.height / 2;
-                positionIndicator(tf, after);
-                dropCurrent = { type: after ? 'after-folder' : 'before-folder', folderId: tf.dataset.folderId };
-            }
-        }
-    }
-
-    function positionIndicator(el, after) {
-        if (!dropIndicator) return;
-        const r = el.getBoundingClientRect();
-        dropIndicator.style.display  = 'block';
-        dropIndicator.style.position = 'fixed';
-        dropIndicator.style.left     = r.left + 'px';
-        dropIndicator.style.width    = r.width + 'px';
-        dropIndicator.style.top      = (after ? r.bottom - 1 : r.top) + 'px';
-    }
-
-    function positionAtRoot(clientY, container) {
-        const children = [...container.children].filter(el =>
-            !el.classList.contains('drop-indicator') && !el.classList.contains('sidebar-add-folder-btn')
-        );
-        let before = null;
-        for (const child of children) {
-            const r = child.getBoundingClientRect();
-            if (clientY < r.top + r.height / 2) { before = child; break; }
-        }
-        const ref = before || children[children.length - 1];
-        if (ref) positionIndicator(ref, !before);
-        dropCurrent = { type: 'root' };
-    }
-
-    function clearDropHighlights() {
-        document.querySelectorAll('.drop-target-folder').forEach(el => el.classList.remove('drop-target-folder'));
-        document.querySelectorAll('.is-dragging').forEach(el => el.classList.remove('is-dragging'));
-        if (dropIndicator) dropIndicator.style.display = 'none';
-    }
-
-    function onDrop(e) {
-        e.preventDefault();
-        if (!dragging || !dropCurrent) { onDragEnd(); return; }
-        if (dragging.type === 'tab') {
-            const { id, srcFolderId } = dragging;
-            const dc = dropCurrent;
-            removeTabFromConfig(id, srcFolderId);
-            if (dc.type === 'into-folder') {
-                const fe = config.order.find(e => e.type === 'folder' && e.id === dc.folderId);
-                if (fe) { fe.children.push(id); if (config.folders[dc.folderId]) config.folders[dc.folderId].expanded = true; }
-            } else if (dc.type === 'before-tab' || dc.type === 'after-tab') {
-                insertTabNearTab(id, dc.tabId, dc.folderId, dc.type === 'after-tab');
+        input.addEventListener('input', () => {
+            const q = input.value.trim();
+            if (q) {
+                if (!_searching) { _searching = true; showAllTabsForSearch(); }
             } else {
-                config.order.push({ type: 'tab', id });
+                if (_searching) { _searching = false; render(); }
             }
-        } else if (dragging.type === 'folder') {
-            const dc = dropCurrent;
-            if (dc.type === 'before-folder' || dc.type === 'after-folder') {
-                const src = config.order.find(e => e.type === 'folder' && e.id === dragging.id);
-                const tgt = config.order.find(e => e.type === 'folder' && e.id === dc.folderId);
-                if (src && tgt) {
-                    config.order.splice(config.order.indexOf(src), 1);
-                    const ti = config.order.indexOf(tgt);
-                    config.order.splice(dc.type === 'after-folder' ? ti + 1 : ti, 0, src);
-                }
-            }
-        }
-        storeSave(); onDragEnd(); render();
-    }
+        }, true); // capture — runs before core.js bubble listener
 
-    function removeTabFromConfig(tabId, srcFolderId) {
-        if (srcFolderId) {
-            const e = config.order.find(e => e.type === 'folder' && e.id === srcFolderId);
-            if (e) e.children = e.children.filter(id => id !== tabId);
-        } else {
-            const i = config.order.findIndex(e => e.type === 'tab' && e.id === tabId);
-            if (i >= 0) config.order.splice(i, 1);
+        if (clearEl) {
+            clearEl.addEventListener('click', () => {
+                if (_searching) { _searching = false; render(); }
+            });
         }
     }
 
-    function insertTabNearTab(tabId, nearId, nearFolderId, after) {
-        if (nearFolderId) {
-            const e = config.order.find(e => e.type === 'folder' && e.id === nearFolderId);
-            if (e) { const i = e.children.indexOf(nearId); e.children.splice(after ? i + 1 : i, 0, tabId); }
-        } else {
-            const i = config.order.findIndex(e => e.type === 'tab' && e.id === nearId);
-            if (i >= 0) config.order.splice(after ? i + 1 : i, 0, { type: 'tab', id: tabId });
-            else config.order.push({ type: 'tab', id: tabId });
-        }
-    }
-
-    // Edit mode
-    function enterEditMode() {
-        editMode = true;
-        document.querySelector('.sidebar-nav')?.classList.add('sidebar-edit-mode');
-        updateToggleBtn();
-        if (dropdownOpen) renderProfileDropdown();
-        render();
-    }
-
-    function exitEditMode() {
-        editMode = false;
-        document.querySelector('.sidebar-nav')?.classList.remove('sidebar-edit-mode');
-        updateToggleBtn();
-        if (dropdownOpen) renderProfileDropdown();
-        render();
-    }
-
-    // Customize button
-    function buildToggleBtn() {
-        const btn = document.createElement('button');
-        btn.id = 'cust-toggle'; btn.className = 'cust-toggle-btn'; btn.title = 'Customize sidebar';
-        updateToggleBtnContent(btn);
-        btn.addEventListener('click', () => editMode ? exitEditMode() : enterEditMode());
-        return btn;
-    }
-
-    function updateToggleBtnContent(btn) {
-        if (!btn) return;
-        if (editMode) { btn.innerHTML = '<i class="fas fa-check"></i><span>Done</span>'; btn.classList.add('edit-active'); }
-        else          { btn.innerHTML = '<i class="fas fa-sliders"></i><span>Customize</span>'; btn.classList.remove('edit-active'); }
-    }
-
-    function updateToggleBtn() { updateToggleBtnContent(document.getElementById('cust-toggle')); }
-
-    // Mode watcher
-    function watchMode() {
-        const obs = new MutationObserver(() => {
-            applyMode(getCurrentMode());
-            if (!editMode) render();
+    function showAllTabsForSearch() {
+        const container = document.getElementById('sidebar-tab-list');
+        if (!container) return;
+        const view = document.createElement('div');
+        view.className = 'snav-view';
+        // Render every tab across every category so core.js text filter can work
+        CATEGORIES.forEach(cat => {
+            cat.tabs.forEach(tabId => view.appendChild(makeTabBtn(tabId)));
         });
-        obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+        container.innerHTML = '';
+        container.appendChild(view);
     }
 
-    // Init
+    // ── State persistence ──────────────────────────────────────────────────
+    const STATE_KEY = 'snav_v1';
+
+    function saveState() {
+        try {
+            localStorage.setItem(STATE_KEY, JSON.stringify({ depth: _depth, cat: _activeCat }));
+        } catch (_) {}
+    }
+
+    function loadState() {
+        try {
+            const s = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
+            _depth = s.depth === 'category' ? 'category' : 'root';
+            _activeCat = s.cat || null;
+            if (_depth === 'category' && !CATEGORIES.find(c => c.id === _activeCat)) {
+                _depth = 'root'; _activeCat = null;
+            }
+        } catch (_) {}
+
+        // Restore active tab from the preference core.js saves
+        try {
+            const raw = localStorage.getItem('aethvion_preferences') || '{}';
+            const prefs = JSON.parse(raw);
+            _activeTab = prefs['active_tab_home'] || prefs['active_tab_ai'] || null;
+        } catch (_) {}
+    }
+
+    // ── Init ───────────────────────────────────────────────────────────────
     function init() {
-        const sidebarBottom = document.querySelector('.sidebar-nav .sidebar-bottom');
-        if (!sidebarBottom) return;
-
-        store = storeLoad();
-        syncConfig();
-
-        sidebarBottom.prepend(buildToggleBtn());
-        sidebarBottom.prepend(buildProfileSwitcher());
-
-        // Expose public API for home-page buttons
-        window._sidebarMgr = {
-            showOnboarding: showOnboardingModal,
-            enterEdit:      enterEditMode,
-            switchProfile,
-        };
-        watchMode();
-        watchSuiteHomePanel();
+        loadState();
         render();
-
+        setupSearch();
         document.dispatchEvent(new CustomEvent('sidebar-ready'));
-
-        // First-time users start with the default profile immediately — no modal.
-        // The "New Layout" button in Settings › Sidebar lets them choose a preset any time.
     }
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
-        setTimeout(init, 120);
+        setTimeout(init, 0);
     }
 })();

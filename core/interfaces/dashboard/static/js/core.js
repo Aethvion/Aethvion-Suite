@@ -922,14 +922,26 @@ function initializeUI() {
             addFileBtn.parentNode.insertBefore(pill, addFileBtn);
         }
 
+        const isImage = file.type && file.type.startsWith('image/');
+        let iconOrPreview = '<i class="fas fa-file-alt"></i>';
+        let previewUrl = null;
+
+        if (isImage) {
+            previewUrl = URL.createObjectURL(file);
+            iconOrPreview = `<img src="${previewUrl}" class="chat-file-pill-preview" style="width: 22px; height: 22px; border-radius: 4px; object-fit: cover; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); vertical-align: middle;">`;
+        }
+
         pill.innerHTML = `
-            <i class="fas fa-file-alt"></i>
+            ${iconOrPreview}
             <span>${file.name}</span>
             <button class="pill-clear" title="Remove attachment">✕</button>
         `;
 
         pill.querySelector('.pill-clear').addEventListener('click', (ev) => {
             ev.stopPropagation();
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+            }
             window.clearMainChatAttachment();
         });
     }
@@ -1443,6 +1455,9 @@ async function switchMainTab(tabName, save = true) {
             tab.classList.toggle('active', tab.dataset.maintab === actualTabName);
         }
     });
+
+    // Notify drill-down sidebar nav so category rows update their highlight
+    window._sidebarNav?.setActiveTab(actualTabName);
 
     // Update Nav Dropdown active state
     document.querySelectorAll('.nav-dropdown-item').forEach(item => {
