@@ -2500,7 +2500,8 @@ async function loadOverlaySessions(tab, page) {
         _renderOverlaySessions(data.sessions || [], list);
         _renderOverlayPagination();
     } catch (e) {
-        list.innerHTML = '<div class="ov-error"><i class="fas fa-exclamation-triangle"></i> Could not load overlay history</div>';
+        console.error('[Overlay] loadOverlaySessions failed:', e);
+        list.innerHTML = `<div class="ov-error"><i class="fas fa-exclamation-triangle"></i> Could not load overlay history<br><small style="opacity:0.6">${e.message}</small></div>`;
     }
 }
 
@@ -2530,40 +2531,69 @@ function _makeOvCard(session) {
         ? `<img class="ov-card-thumb" src="data:image/jpeg;base64,${session.thumb_b64}" alt="">`
         : `<div class="ov-card-thumb ov-thumb-placeholder"><i class="fas fa-desktop"></i></div>`;
 
-    card.innerHTML = `
-        ${thumbEl}
-        <div class="ov-card-body">
-            <div class="ov-card-meta">
-                <span class="ov-card-ts">${_ovEsc(ts)}</span>
-                <span class="ov-card-count">${label}</span>
-                ${session.is_pinned   ? '<i class="fas fa-thumbtack ov-pin-indicator" title="Pinned"></i>' : ''}
-                ${session.promoted    ? '<i class="fas fa-arrow-up-right-from-square ov-promoted-indicator" title="In Chat"></i>' : ''}
-            </div>
-            <div class="ov-card-preview">${_ovEsc(preview)}</div>
-        </div>
-        <div class="ov-card-actions">
-            <button class="ov-action-btn ov-pin-btn${session.is_pinned ? ' active' : ''}"
-                    title="${session.is_pinned ? 'Unpin' : 'Pin'}">
-                <i class="fas fa-thumbtack"></i>
-            </button>
-            <button class="ov-action-btn ov-promote-btn${session.promoted ? ' promoted' : ''}"
-                    title="${session.promoted ? 'Open in Chat' : 'Promote to Chat'}">
-                <i class="fas fa-${session.promoted ? 'check' : 'arrow-up-right-from-square'}"></i>
-            </button>
-        </div>`;
+    // Thumbnail
+    if (session.thumb_b64) {
+        const img = document.createElement('img');
+        img.className = 'ov-card-thumb';
+        img.alt = '';
+        img.src = 'data:image/jpeg;base64,' + session.thumb_b64;
+        card.appendChild(img);
+    } else {
+        const ph = document.createElement('div');
+        ph.className = 'ov-card-thumb ov-thumb-placeholder';
+        ph.innerHTML = '<i class="fas fa-desktop"></i>';
+        card.appendChild(ph);
+    }
 
-    card.addEventListener('click', e => {
-        if (e.target.closest('.ov-card-actions')) return;
+    // Body
+    const body = document.createElement('div');
+    body.className = 'ov-card-body';
+
+    const meta = document.createElement('div');
+    meta.className = 'ov-card-meta';
+    meta.innerHTML =
+        `<span class="ov-card-ts">${_ovEsc(ts)}</span>` +
+        `<span class="ov-card-count">${label}</span>` +
+        (session.is_pinned ? '<i class="fas fa-thumbtack ov-pin-indicator" title="Pinned"></i>' : '') +
+        (session.promoted  ? '<i class="fas fa-arrow-up-right-from-square ov-promoted-indicator" title="In Chat"></i>' : '');
+
+    const previewEl = document.createElement('div');
+    previewEl.className = 'ov-card-preview';
+    previewEl.textContent = preview;
+
+    body.appendChild(meta);
+    body.appendChild(previewEl);
+    card.appendChild(body);
+
+    // Action buttons — built with createElement to avoid innerHTML/querySelector fragility
+    const actions = document.createElement('div');
+    actions.className = 'ov-card-actions';
+
+    const pinBtn = document.createElement('button');
+    pinBtn.className = 'ov-action-btn ov-pin-btn' + (session.is_pinned ? ' active' : '');
+    pinBtn.title = session.is_pinned ? 'Unpin' : 'Pin';
+    pinBtn.innerHTML = '<i class="fas fa-thumbtack"></i>';
+    pinBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        _ovTogglePin(session.id, card, session);
+    });
+
+    const promoteBtn = document.createElement('button');
+    promoteBtn.className = 'ov-action-btn ov-promote-btn' + (session.promoted ? ' promoted' : '');
+    promoteBtn.title = session.promoted ? 'Open in Chat' : 'Promote to Chat';
+    promoteBtn.innerHTML = `<i class="fas fa-${session.promoted ? 'check' : 'arrow-up-right-from-square'}"></i>`;
+    promoteBtn.addEventListener('click', e => {
+        e.stopPropagation();
         if (session.promoted && session.promoted_thread_id) _ovOpenPromoted(session.promoted_thread_id);
         else _ovPromote(session.id, card, session);
     });
 
-    card.querySelector('.ov-pin-btn').addEventListener('click', e => {
-        e.stopPropagation();
-        _ovTogglePin(session.id, card, session);
-    });
-    card.querySelector('.ov-promote-btn').addEventListener('click', e => {
-        e.stopPropagation();
+    actions.appendChild(pinBtn);
+    actions.appendChild(promoteBtn);
+    card.appendChild(actions);
+
+    card.addEventListener('click', e => {
+        if (e.target.closest('.ov-card-actions')) return;
         if (session.promoted && session.promoted_thread_id) _ovOpenPromoted(session.promoted_thread_id);
         else _ovPromote(session.id, card, session);
     });
@@ -2648,7 +2678,6 @@ async function _ovPromote(sessionId, cardEl, session) {
 
 function _ovOpenPromoted(threadId) {
     if (!threadId) return;
-    // Flip the toggle back to Chat
     const toggle = document.getElementById('thread-source-toggle');
     if (toggle) {
         toggle.querySelectorAll('.tsrc-btn').forEach(b => {
@@ -2656,8 +2685,23 @@ function _ovOpenPromoted(threadId) {
         });
     }
     _showChatPanel();
-    // Reload thread list, then open the promoted thread
     loadThreads().then(() => {
         if (typeof switchThread === 'function') switchThread(threadId);
     });
+}
+
+function _renderOverlayPagination() {
+    const el = document.getElementById('overlay-pagination');
+    if (!el) return;
+    if (_ovTotal <= 1) { el.innerHTML = ''; return; }
+    el.innerHTML =
+        `<button class="ov-page-btn" ${_ovPage <= 0 ? 'disabled' : ''}
+                 onclick="loadOverlaySessions(_ovTab, ${_ovPage - 1})">
+             <i class="fas fa-chevron-left"></i>
+         </button>
+         <span class="ov-page-info">${_ovPage + 1} / ${_ovTotal}</span>
+         <button class="ov-page-btn" ${_ovPage >= _ovTotal - 1 ? 'disabled' : ''}
+                 onclick="loadOverlaySessions(_ovTab, ${_ovPage + 1})">
+             <i class="fas fa-chevron-right"></i>
+         </button>`;
 }
