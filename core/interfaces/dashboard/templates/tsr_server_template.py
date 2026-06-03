@@ -8,6 +8,10 @@ import base64
 import traceback
 import threading
 
+# Placeholders defined for Python syntax validation/linting
+MODEL_ID = "{MODEL_ID}"
+MODEL_NAME = "{MODEL_NAME}"
+
 # Attention backend: use PyTorch built-in SDPA (no flash_attn required)
 os.environ.setdefault("ATTN_BACKEND", "sdpa")
 os.environ.setdefault("SPARSE_ATTN_BACKEND", "sdpa")
