@@ -167,18 +167,8 @@ function initKeyboardShortcuts() {
                 e.preventDefault();
                 const nav = document.getElementById('sidebar-nav');
                 if (nav) {
-                    if (nav.classList.contains('hidden')) {
-                        nav.classList.remove('hidden');
-                        const hideBtn = document.getElementById('sidebar-hide-toggle');
-                        if (hideBtn) {
-                            hideBtn.innerHTML = '<i class="fas fa-angles-left"></i>';
-                            hideBtn.title = 'Hide Sidebar';
-                        }
-                        savePreference('sidebar_hidden', false);
-                    } else {
-                        const collapsed = nav.classList.toggle('collapsed');
-                        if (typeof savePreference === 'function') savePreference('sidebar_collapsed', collapsed);
-                    }
+                    const isHidden = nav.classList.toggle('hidden');
+                    if (typeof savePreference === 'function') savePreference('sidebar_hidden', isHidden);
                 }
                 return;
             }
@@ -497,20 +487,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 4. Restore other sidebar/UI states from preferences
         if (window.prefs && typeof window.prefs.get === 'function') {
-            const sidebarCollapsed = window.prefs.get('sidebar_collapsed', false);
             const sidebarHidden = window.prefs.get('sidebar_hidden', false);
             const sidebarNav = document.getElementById('sidebar-nav');
             if (sidebarNav) {
-                if (sidebarCollapsed === true || sidebarCollapsed === 'true') {
-                    sidebarNav.classList.add('collapsed');
-                }
                 if (sidebarHidden === true || sidebarHidden === 'true') {
                     sidebarNav.classList.add('hidden');
-                    const hideBtn = document.getElementById('sidebar-hide-toggle');
-                    if (hideBtn) {
-                        hideBtn.innerHTML = '<i class="fas fa-angles-right"></i>';
-                        hideBtn.title = 'Show Sidebar';
-                    }
                 }
             }
 
@@ -824,38 +805,11 @@ function initializeUI() {
 
     // Sidebar Toggle
     const sidebarToggleBtn = document.getElementById('sidebar-toggle');
-    const sidebarHideBtn = document.getElementById('sidebar-hide-toggle');
     const sidebarNav = document.getElementById('sidebar-nav');
 
     if (sidebarToggleBtn && sidebarNav) {
         sidebarToggleBtn.addEventListener('click', () => {
-            // If hidden, show it first
-            if (sidebarNav.classList.contains('hidden')) {
-                sidebarNav.classList.remove('hidden');
-                if (sidebarHideBtn) {
-                    sidebarHideBtn.innerHTML = '<i class="fas fa-angles-left"></i>';
-                    sidebarHideBtn.title = 'Hide Sidebar';
-                }
-                savePreference('sidebar_hidden', false);
-            }
-
-            sidebarNav.classList.toggle('collapsed');
-            if (typeof savePreference === 'function') {
-                savePreference('sidebar_collapsed', sidebarNav.classList.contains('collapsed'));
-            }
-        });
-    }
-
-    if (sidebarHideBtn && sidebarNav) {
-        sidebarHideBtn.addEventListener('click', () => {
             const isHidden = sidebarNav.classList.toggle('hidden');
-            if (isHidden) {
-                sidebarHideBtn.innerHTML = '<i class="fas fa-angles-right"></i>';
-                sidebarHideBtn.title = 'Show Sidebar';
-            } else {
-                sidebarHideBtn.innerHTML = '<i class="fas fa-angles-left"></i>';
-                sidebarHideBtn.title = 'Hide Sidebar';
-            }
             if (typeof savePreference === 'function') {
                 savePreference('sidebar_hidden', isHidden);
             }
@@ -950,6 +904,36 @@ function initializeUI() {
         }
     };
 
+    function _attachFileToMainChat(file) {
+        if (!file) return;
+
+        window._mainChatAttachedFile = { name: file.name, file: file };
+
+        const addFileBtn = document.querySelector('.add-file-btn');
+        if (!addFileBtn) return;
+
+        // Find or create the pill
+        let pill = document.getElementById('chat-file-pill');
+        if (!pill) {
+            pill = document.createElement('div');
+            pill.id = 'chat-file-pill';
+            pill.className = 'chat-file-pill';
+            // Insert it before the add-file-btn
+            addFileBtn.parentNode.insertBefore(pill, addFileBtn);
+        }
+
+        pill.innerHTML = `
+            <i class="fas fa-file-alt"></i>
+            <span>${file.name}</span>
+            <button class="pill-clear" title="Remove attachment">✕</button>
+        `;
+
+        pill.querySelector('.pill-clear').addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            window.clearMainChatAttachment();
+        });
+    }
+
     function _bindChatFileListeners() {
         const addFileBtn = document.querySelector('.add-file-btn');
         const chatFileInput = document.getElementById('chat-file-input');
@@ -960,35 +944,52 @@ function initializeUI() {
 
             chatFileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
-                if (!file) return;
-
-                window._mainChatAttachedFile = { name: file.name, file: file };
-
-                // Find or create the pill
-                let pill = document.getElementById('chat-file-pill');
-                if (!pill) {
-                    pill = document.createElement('div');
-                    pill.id = 'chat-file-pill';
-                    pill.className = 'chat-file-pill';
-                    // Insert it before the add-file-btn
-                    addFileBtn.parentNode.insertBefore(pill, addFileBtn);
+                if (file) {
+                    _attachFileToMainChat(file);
                 }
-
-                pill.innerHTML = `
-                    <i class="fas fa-file-alt"></i>
-                    <span>${file.name}</span>
-                    <button class="pill-clear" title="Remove attachment">✕</button>
-                `;
-
-                pill.querySelector('.pill-clear').addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    window.clearMainChatAttachment();
-                });
-
                 // Reset input
                 e.target.value = '';
             });
             addFileBtn._bound = true;
+        }
+
+        // Bind drag and drop events on .chat-column
+        const chatCol = document.querySelector('.chat-column');
+        if (chatCol && !chatCol._dragBound) {
+            let dragCounter = 0;
+
+            chatCol.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                dragCounter++;
+                if (dragCounter === 1) {
+                    chatCol.classList.add('drag-over');
+                }
+            });
+
+            chatCol.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+
+            chatCol.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                dragCounter--;
+                if (dragCounter === 0) {
+                    chatCol.classList.remove('drag-over');
+                }
+            });
+
+            chatCol.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dragCounter = 0;
+                chatCol.classList.remove('drag-over');
+
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    const file = e.dataTransfer.files[0];
+                    _attachFileToMainChat(file);
+                }
+            });
+
+            chatCol._dragBound = true;
         }
     }
 

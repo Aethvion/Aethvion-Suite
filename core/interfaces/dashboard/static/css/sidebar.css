@@ -491,21 +491,6 @@
     color: var(--text-primary);
 }
 
-.sidebar-open-icon {
-    display: block;
-}
-
-.sidebar-close-icon {
-    display: none;
-}
-
-.sidebar-nav.collapsed~* .sidebar-open-icon {
-    display: none;
-}
-
-.sidebar-nav.collapsed~* .sidebar-close-icon {
-    display: block;
-}
 
 .nav-hidden {
     display: none !important;
