@@ -53,6 +53,17 @@ class WorkflowExecutor:
         # Optional: callable(event: dict) fired for each node state change and log line
         self._event_callback                     = event_callback
 
+        # Pre-build forward / reverse adjacency once — reused by _topo_sort,
+        # _reachable_from_triggers, and _sibling_trigger_territory so that
+        # connections are iterated once instead of four times per execute().
+        self._fwd: dict[str, list[str]] = {nid: [] for nid in self.nodes}
+        self._rev: dict[str, list[str]] = {nid: [] for nid in self.nodes}
+        for conn in self.connections:
+            src, tgt = conn.get("sourceNodeId"), conn.get("targetNodeId")
+            if src in self.nodes and tgt in self.nodes:
+                self._fwd[src].append(tgt)
+                self._rev[tgt].append(src)
+
     # Public entry point
 
     def execute(self) -> dict:
@@ -164,14 +175,6 @@ class WorkflowExecutor:
               backward walk from Summarize → finds Scrape_2 (in other_territory) → skipped ✓
               Result: {Run_1, Scrape_1, Summarize, Summary, URL_1} ✓
         """
-        fwd: dict[str, list[str]] = {nid: [] for nid in self.nodes}
-        rev: dict[str, list[str]] = {nid: [] for nid in self.nodes}
-        for conn in self.connections:
-            src, tgt = conn.get("sourceNodeId"), conn.get("targetNodeId")
-            if src in self.nodes and tgt in self.nodes:
-                fwd[src].append(tgt)
-                rev[tgt].append(src)
-
         all_triggers = [nid for nid, n in self.nodes.items()
                         if n.get("type", "").startswith("trigger.")]
 
@@ -180,7 +183,7 @@ class WorkflowExecutor:
             queue = list(seeds)
             while queue:
                 nid = queue.pop(0)
-                for nxt in fwd[nid]:
+                for nxt in self._fwd[nid]:
                     if nxt not in visited:
                         visited.add(nxt)
                         queue.append(nxt)
@@ -209,7 +212,7 @@ class WorkflowExecutor:
         queue = [nid for nid in forward if nid not in trigger_set]
         while queue:
             nid = queue.pop(0)
-            for upstream in rev[nid]:
+            for upstream in self._rev[nid]:
                 if upstream not in reachable and upstream not in blocked:
                     reachable.add(upstream)
                     queue.append(upstream)
@@ -223,12 +226,6 @@ class WorkflowExecutor:
         trigger is being run — those nodes simply aren't part of this run; they
         should not have their canvas state or display output disturbed.
         """
-        fwd: dict[str, list[str]] = {nid: [] for nid in self.nodes}
-        for conn in self.connections:
-            src, tgt = conn.get("sourceNodeId"), conn.get("targetNodeId")
-            if src in self.nodes and tgt in self.nodes:
-                fwd[src].append(tgt)
-
         sibling_triggers = [
             nid for nid, n in self.nodes.items()
             if n.get("type", "").startswith("trigger.") and nid != self._trigger_id
@@ -241,18 +238,14 @@ class WorkflowExecutor:
                 nid = queue.pop(0)
                 if nid not in territory:
                     territory.add(nid)
-                    queue.extend(fwd.get(nid, []))
+                    queue.extend(self._fwd.get(nid, []))
         return territory
 
     def _topo_sort(self) -> list[str] | None:
         """Kahn's algorithm. Returns execution order, or None if a cycle exists."""
-        in_deg: dict[str, int]       = {nid: 0 for nid in self.nodes}
-        adj:    dict[str, list[str]] = {nid: [] for nid in self.nodes}
-
-        for conn in self.connections:
-            src, tgt = conn.get("sourceNodeId"), conn.get("targetNodeId")
-            if src in self.nodes and tgt in self.nodes:
-                adj[src].append(tgt)
+        in_deg: dict[str, int] = {nid: 0 for nid in self.nodes}
+        for nid in self.nodes:
+            for tgt in self._fwd[nid]:
                 in_deg[tgt] += 1
 
         queue  = [nid for nid, d in in_deg.items() if d == 0]
@@ -261,7 +254,7 @@ class WorkflowExecutor:
         while queue:
             nid = queue.pop(0)
             result.append(nid)
-            for neighbour in adj[nid]:
+            for neighbour in self._fwd[nid]:
                 in_deg[neighbour] -= 1
                 if in_deg[neighbour] == 0:
                     queue.append(neighbour)

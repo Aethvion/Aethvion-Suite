@@ -5,6 +5,7 @@ Abstract base class for all agents
 
 from abc import ABC, abstractmethod
 from typing import Optional
+import threading
 import time
 
 from .agent_spec import AgentSpec
@@ -16,13 +17,19 @@ from core.utils import get_logger, get_trace_manager, utcnow_iso
 class BaseAgent(ABC):
     """
     Abstract base class for all Misaka Cipher agents.
-    
+
     All agents must:
     - Follow Aethvion naming: [Domain]_[Action]_[Object]
     - Route all requests through Aether Core
     - Execute statelessly (no persistent state between runs)
     - Clean up resources after execution
     """
+
+    # Class-level KG tools cache: domain → list of tool dicts.
+    # Tool lists are static for the process lifetime; caching avoids repeating
+    # identical Knowledge Graph queries each time an agent is spawned.
+    _kg_tools_cache: dict = {}
+    _kg_tools_lock = threading.Lock()
     
     def __init__(self, spec: AgentSpec, nexus: AetherCore, trace_id: str):
         """
@@ -88,30 +95,33 @@ class BaseAgent(ABC):
                 ''  # Empty filename - agent will choose filename
             )
             
-            # Get available tools from Knowledge Graph
-            graph = get_knowledge_graph()
-            tool_names = graph.get_tools_by_domain(self.spec.domain)
-            
-            tools_full = []
-            for name in tool_names:
-                # Get basic info from knowledge graph
-                info = graph.get_node_info(name)
-                if info:
-                    info['name'] = name  # Ensure name is in dict
-                    tools_full.append(info)
-            
-            # ALWAYS inject standard Data tools (for file ops)
-            if self.spec.domain != 'Data':
-                data_tool_names = graph.get_tools_by_domain('Data')
-                for name in data_tool_names:
-                    # Only include standard file ops
-                    if name in ['Data_Save_File', 'Data_Read_File']:
+            # Get available tools from Knowledge Graph — cached per domain.
+            # Tool lists are static; no need to re-query on every agent spawn.
+            with BaseAgent._kg_tools_lock:
+                if self.spec.domain not in BaseAgent._kg_tools_cache:
+                    graph = get_knowledge_graph()
+                    tool_names = graph.get_tools_by_domain(self.spec.domain)
+
+                    tools_full = []
+                    for name in tool_names:
                         info = graph.get_node_info(name)
                         if info:
                             info['name'] = name
                             tools_full.append(info)
-            
-            context['available_tools'] = tools_full
+
+                    # Always inject standard Data tools (file ops) for non-Data domains
+                    if self.spec.domain != 'Data':
+                        for name in graph.get_tools_by_domain('Data'):
+                            if name in ['Data_Save_File', 'Data_Read_File']:
+                                info = graph.get_node_info(name)
+                                if info:
+                                    info['name'] = name
+                                    tools_full.append(info)
+
+                    BaseAgent._kg_tools_cache[self.spec.domain] = tools_full
+
+            # Shallow copy so callers can't mutate the cached list
+            context['available_tools'] = list(BaseAgent._kg_tools_cache[self.spec.domain])
             
             # Get recent activity from Episodic Memory
             episodic = get_episodic_memory()

@@ -3,6 +3,7 @@ Aethvion Suite - Episodic Memory
 Vector-based semantic memory storage using ChromaDB
 """
 
+import asyncio
 import yaml
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -77,9 +78,18 @@ class EpisodicMemoryStore:
                 break
             except Exception as e:
                 if attempt < max_retries - 1:
-                    logger.warning(f"ChromaDB connection attempt {attempt + 1} failed: {e}. Retrying in {retry_delay}s...")
-                    time.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
+                    logger.warning(f"ChromaDB connection attempt {attempt + 1} failed: {e}. Retrying...")
+                    # Only sleep between retries when safely in a background thread.
+                    # asyncio.get_running_loop() raises RuntimeError inside
+                    # asyncio.to_thread — the normal/safe context for this code.
+                    # If we're somehow on the event-loop thread, skip the sleep so
+                    # we don't stall the entire server.
+                    try:
+                        asyncio.get_running_loop()
+                        logger.warning("Skipping retry delay — running on event-loop thread.")
+                    except RuntimeError:
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
                 else:
                     logger.error(f"CRITICAL: Failed to connect to ChromaDB after {max_retries} attempts: {e}")
                     self.enabled = False

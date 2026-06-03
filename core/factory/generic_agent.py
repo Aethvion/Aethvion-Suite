@@ -18,8 +18,10 @@ from core.utils import utcnow_iso
 
 from core.tools.standard.file_ops import WORKSPACE_ROOT
 
-# Add workspace root to path for tool imports
-sys.path.append(str(Path(__file__).parent.parent))
+# Add workspace root to path for tool imports (guarded to prevent duplicate entries)
+_ws_root = str(Path(__file__).parent.parent)
+if _ws_root not in sys.path:
+    sys.path.append(_ws_root)
 
 
 class GenericAgent(BaseAgent):
