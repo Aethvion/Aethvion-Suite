@@ -4,17 +4,15 @@ CompanionMemory — base_info.json + memory.json for any companion.
 One instance per companion; handles init, load, XML-tag extraction, and synthesis.
 """
 from __future__ import annotations
-import datetime
 import json
 import re
 import uuid
 from pathlib import Path
-from core.utils import get_logger, utcnow_iso, atomic_json_write
+from core.utils import utcnow_iso, atomic_json_write
+from .base import CompanionComponent
 
-logger = get_logger(__name__)
 
-
-class CompanionMemory:
+class CompanionMemory(CompanionComponent):
     """
     Manages a companion's persistent memory files.
 
@@ -24,23 +22,21 @@ class CompanionMemory:
     """
 
     def __init__(self, data_dir: Path, default_base_info: dict, companion_name: str = "Companion"):
-        self._dir = data_dir
+        super().__init__(data_dir, companion_name)
         self._default_base_info = default_base_info
-        self._name = companion_name
         self._base_path = data_dir / "base_info.json"
-        self._mem_path = data_dir / "memory.json"
+        self._mem_path  = data_dir / "memory.json"
 
     # Initialisation
 
     def initialize(self) -> None:
         """Write default files if missing or empty. Safe to call multiple times."""
-        self._dir.mkdir(parents=True, exist_ok=True)
-
+        # _dir already created by CompanionComponent.__init__
         if not self._base_path.exists() or self._base_path.stat().st_size == 0:
-            # Unwrap if double-nested before writing:
+            # Unwrap if double-nested before writing
             default_to_write = self._default_base_info.get("base_info", self._default_base_info)
             atomic_json_write(self._base_path, default_to_write, indent=4)
-            logger.info(f"{self._name}: Initialized base_info.json")
+            self._info("Initialized base_info.json")
 
         if not self._mem_path.exists() or self._mem_path.stat().st_size == 0:
             atomic_json_write(self._mem_path, {
@@ -49,7 +45,7 @@ class CompanionMemory:
                 "synthesis_notes": [],
                 "last_updated": utcnow_iso(),
             }, indent=4)
-            logger.info(f"{self._name}: Initialized memory.json")
+            self._info("Initialized memory.json")
 
     # Load
 
@@ -61,12 +57,12 @@ class CompanionMemory:
             if self._base_path.exists():
                 base_info = json.loads(self._base_path.read_text(encoding="utf-8"))
         except Exception as e:
-            logger.error(f"{self._name}: Failed to load base_info.json: {e}")
+            self._error(f"Failed to load base_info.json: {e}")
         try:
             if self._mem_path.exists():
                 memory = json.loads(self._mem_path.read_text(encoding="utf-8"))
         except Exception as e:
-            logger.error(f"{self._name}: Failed to load memory.json: {e}")
+            self._error(f"Failed to load memory.json: {e}")
         return {"base_info": base_info, "memory": memory}
 
     # XML tag extraction
@@ -81,13 +77,15 @@ class CompanionMemory:
             content,
             re.DOTALL | re.IGNORECASE,
         )
-        
+
         raw = ""
         if match:
             raw = match.group(1).strip()
         else:
-            # Fallback: Look for bare JSON containing memory keys
-            json_match = re.search(r'(\{\s*"(?:user_info|recent_observations|base_info)"[\s\S]*?\})', content)
+            # Fallback: look for bare JSON containing memory keys
+            json_match = re.search(
+                r'(\{\s*"(?:user_info|recent_observations|base_info)"[\s\S]*?\})', content
+            )
             if json_match:
                 raw = json_match.group(1).strip()
 
@@ -95,7 +93,6 @@ class CompanionMemory:
             return content
 
         try:
-            # Strip markdown fences if present (raw already extracted above)
             raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.MULTILINE)
             raw = re.sub(r"```\s*$", "", raw, flags=re.MULTILINE).strip()
             data = json.loads(raw)
@@ -121,9 +118,9 @@ class CompanionMemory:
             existing_mem["last_updated"] = utcnow_iso()
             atomic_json_write(self._mem_path, existing_mem, indent=4)
 
-            logger.info(f"{self._name}: Memory updated from XML tag.")
+            self._info("Memory updated from XML tag.")
         except Exception as e:
-            logger.error(f"{self._name}: Memory XML update failed: {e}")
+            self._error(f"Memory XML update failed: {e}")
 
         return re.sub(
             r"<memory_update>.*?</memory_update>",
@@ -137,7 +134,7 @@ class CompanionMemory:
     def reset(self) -> None:
         """Wipe dynamic memory.json only; keep base_info intact."""
         self._mem_path.write_text("{}", encoding="utf-8")
-        logger.info(f"{self._name}: Dynamic memory reset.")
+        self._info("Dynamic memory reset.")
 
     # Synthesis
 
@@ -178,7 +175,7 @@ class CompanionMemory:
                 source=f"{self._name.lower().replace(' ', '_')}-synthesis",
             )
             if not resp.success:
-                logger.error(f"{self._name}: Synthesis LLM call failed: {resp.error}")
+                self._error(f"Synthesis LLM call failed: {resp.error}")
                 return memory
 
             raw = resp.content.strip()
@@ -188,13 +185,13 @@ class CompanionMemory:
 
             if "base_info" in data:
                 atomic_json_write(self._base_path, data["base_info"], indent=4)
-                logger.info(f"{self._name}: Identity updated during synthesis.")
+                self._info("Identity updated during synthesis.")
 
             synthesized: dict = data.get("memory", {})
             synthesized["last_synthesis"] = utcnow_iso()
             atomic_json_write(self._mem_path, synthesized, indent=4)
-            logger.info(f"{self._name}: Memory synthesis complete.")
+            self._info("Memory synthesis complete.")
             return synthesized
         except Exception as e:
-            logger.error(f"{self._name}: Synthesis failed: {e}")
+            self._error(f"Synthesis failed: {e}")
             return memory

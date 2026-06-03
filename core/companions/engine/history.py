@@ -12,9 +12,8 @@ import json
 import shutil
 from pathlib import Path
 from typing import Callable
-from core.utils import get_logger, atomic_json_write
-
-logger = get_logger(__name__)
+from core.utils import atomic_json_write
+from .base import CompanionComponent
 
 
 def _default_time_formatter(total_seconds: int) -> str:
@@ -32,7 +31,7 @@ def _default_time_formatter(total_seconds: int) -> str:
     return f"{d} days ago"
 
 
-class CompanionHistory:
+class CompanionHistory(CompanionComponent):
     """
     Manages daily chat history JSON files for a single companion.
     Thread-safe for reads; writes are append-only per session.
@@ -44,10 +43,8 @@ class CompanionHistory:
         companion_name: str = "Companion",
         time_formatter: Callable[[int], str] | None = None,
     ):
-        self._dir = history_dir
-        self._name = companion_name
+        super().__init__(history_dir, companion_name)
         self._time_formatter: Callable[[int], str] = time_formatter or _default_time_formatter
-        self._dir.mkdir(parents=True, exist_ok=True)
 
     # Internal helpers
 
@@ -95,7 +92,7 @@ class CompanionHistory:
             history.append(entry)
             atomic_json_write(day_file, history, indent=4)
         except Exception as e:
-            logger.error(f"{self._name}: Failed to save history message: {e}")
+            self._error(f"Failed to save history message: {e}")
 
     # Read
 
@@ -109,7 +106,7 @@ class CompanionHistory:
                 messages = json.loads(f.read_text(encoding="utf-8"))
                 data.append({"date": date_str, "messages": messages})
             except Exception as e:
-                logger.error(f"{self._name}: Error reading {f.name}: {e}")
+                self._error(f"Error reading {f.name}: {e}")
         return {"history": data, "has_more": len(all_files) > (offset + limit)}
 
     def get_total_message_count(self) -> int:
@@ -141,7 +138,7 @@ class CompanionHistory:
             delta = int((datetime.datetime.now() - last_ts).total_seconds())
             return self._time_formatter(delta)
         except Exception as e:
-            logger.warning(f"{self._name}: time_since_last error: {e}")
+            self._warning(f"time_since_last error: {e}")
             return "Some time ago"
 
     # Clear / Reset
@@ -150,4 +147,4 @@ class CompanionHistory:
         if self._dir.exists():
             shutil.rmtree(self._dir)
         self._dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"{self._name}: History cleared.")
+        self._info("History cleared.")

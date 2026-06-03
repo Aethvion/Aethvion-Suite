@@ -22,7 +22,7 @@ const CompanionCreator = (() => {
         _root.innerHTML = `
 <div class="cc-hub" id="cc-hub">
 
-  <!-- ── Left roster panel ────────────────────────────────────────────── -->
+  <!-- Left roster panel -->
   <div class="cc-roster" id="cc-roster">
     <div class="cc-roster-hdr">
       <div class="cc-roster-title">
@@ -63,7 +63,7 @@ const CompanionCreator = (() => {
     </div>
   </div>
 
-  <!-- ── Right panel ──────────────────────────────────────────────────── -->
+  <!-- Right panel -->
   <div class="cc-detail" id="cc-detail">
 
     <!-- Empty state (no companion selected) -->
@@ -134,7 +134,7 @@ const CompanionCreator = (() => {
           Built-in companion — your changes are saved as overrides and don't modify core files.
         </div>
 
-        <!-- ── Identity ─────────────────────────────────────── -->
+        <!-- Identity -->
         <div class="cc-form-grid">
           <div class="cc-field cc-field-full">
             <label>Name <span class="cc-required" id="cc-name-req">*</span></label>
@@ -205,7 +205,7 @@ const CompanionCreator = (() => {
           </div>
         </div>
 
-        <!-- ── Advanced sections ─────────────────────────────── -->
+        <!-- Advanced sections -->
         <div class="cc-sections">
 
           <!-- Behavior & Mood -->
@@ -363,7 +363,7 @@ const CompanionCreator = (() => {
             </div>
           </div>
 
-          <!-- ── Runtime Behaviour ─────────────────────────────────────── -->
+          <!-- Runtime Behaviour -->
           <div class="cc-adv-section" id="cc-s-runtime">
             <div class="cc-adv-toggle">
               <span><i class="fas fa-gauge-high"></i> Runtime Behaviour</span>
@@ -396,7 +396,7 @@ const CompanionCreator = (() => {
             </div>
           </div>
 
-          <!-- ── Workspace Directories ─────────────────────────────────── -->
+          <!-- Workspace Directories -->
           <div class="cc-adv-section" id="cc-s-workspaces">
             <div class="cc-adv-toggle">
               <span><i class="fas fa-folder-open"></i> Workspace Directories</span>
@@ -420,7 +420,7 @@ const CompanionCreator = (() => {
             </div>
           </div>
 
-          <!-- ── Proactive Messages ─────────────────────────────────────── -->
+          <!-- Proactive Messages -->
           <div class="cc-adv-section" id="cc-s-proactive">
             <div class="cc-adv-toggle">
               <span><i class="fas fa-bell"></i> Proactive Messages</span>
