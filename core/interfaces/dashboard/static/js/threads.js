@@ -32,88 +32,124 @@ function initThreadManagement() {
     // Load threads from API
     loadThreads();
 
-    // Set up    // Listeners
-    document.getElementById('new-thread-button').addEventListener('click', createNewThread);
-    const incognitoBtn = document.getElementById('incognito-thread-button');
-    if (incognitoBtn) incognitoBtn.addEventListener('click', createIncognitoThread);
-    const headerNewBtn = document.getElementById('header-new-thread-btn');
-    if (headerNewBtn) headerNewBtn.addEventListener('click', createNewThread);
+    // DOM listeners — every element below lives inside chat.html, which is a
+    // lazy-loaded partial (data-partial="chat"). The panel is an empty spinner
+    // shell at startup and only gets injected on the first chat tab visit.
+    //
+    // _bindChatDOMListeners() is called immediately (all getElementById calls
+    // return null → silently skipped) AND again via panelLoaded so the actual
+    // binding happens as soon as the HTML arrives in the DOM.
+    // The _bound flag prevents double-binding if both paths somehow fire.
+    function _bindChatDOMListeners() {
+        const newThreadBtn = document.getElementById('new-thread-button');
+        if (newThreadBtn && !newThreadBtn._bound) {
+            newThreadBtn.addEventListener('click', createNewThread);
+            newThreadBtn._bound = true;
+        }
+        const incognitoBtn = document.getElementById('incognito-thread-button');
+        if (incognitoBtn && !incognitoBtn._bound) {
+            incognitoBtn.addEventListener('click', createIncognitoThread);
+            incognitoBtn._bound = true;
+        }
+        const headerNewBtn = document.getElementById('header-new-thread-btn');
+        if (headerNewBtn && !headerNewBtn._bound) {
+            headerNewBtn.addEventListener('click', createNewThread);
+            headerNewBtn._bound = true;
+        }
 
-    const activeThreadTitle = document.getElementById('active-thread-title');
-    if (activeThreadTitle) {
-        activeThreadTitle.addEventListener('dblclick', () => {
-            if (!currentThreadId || currentThreadId === 'default') return;
-            const thread = threads[currentThreadId];
-            if (!thread) return;
-            activeThreadTitle.contentEditable = 'true';
-            activeThreadTitle.focus();
-            const r = document.createRange();
-            r.selectNodeContents(activeThreadTitle);
-            window.getSelection().removeAllRanges();
-            window.getSelection().addRange(r);
-            const commit = () => {
-                activeThreadTitle.contentEditable = 'false';
-                const t = activeThreadTitle.textContent.trim();
-                if (t && t !== thread.title) editThreadTitle(thread.id, t);
-                else activeThreadTitle.textContent = thread.title;
-            };
-            activeThreadTitle.addEventListener('blur', commit, { once: true });
-            activeThreadTitle.addEventListener('keydown', (ev) => {
-                if (ev.key === 'Enter')  { ev.preventDefault(); activeThreadTitle.blur(); }
-                if (ev.key === 'Escape') { activeThreadTitle.textContent = thread.title; activeThreadTitle.blur(); }
+        const activeThreadTitle = document.getElementById('active-thread-title');
+        if (activeThreadTitle && !activeThreadTitle._bound) {
+            activeThreadTitle.addEventListener('dblclick', () => {
+                if (!currentThreadId || currentThreadId === 'default') return;
+                const thread = threads[currentThreadId];
+                if (!thread) return;
+                activeThreadTitle.contentEditable = 'true';
+                activeThreadTitle.focus();
+                const r = document.createRange();
+                r.selectNodeContents(activeThreadTitle);
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(r);
+                const commit = () => {
+                    activeThreadTitle.contentEditable = 'false';
+                    const t = activeThreadTitle.textContent.trim();
+                    if (t && t !== thread.title) editThreadTitle(thread.id, t);
+                    else activeThreadTitle.textContent = thread.title;
+                };
+                activeThreadTitle.addEventListener('blur', commit, { once: true });
+                activeThreadTitle.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter')  { ev.preventDefault(); activeThreadTitle.blur(); }
+                    if (ev.key === 'Escape') { activeThreadTitle.textContent = thread.title; activeThreadTitle.blur(); }
+                });
             });
-        });
-        activeThreadTitle.style.cursor = 'text';
-        activeThreadTitle.title = 'Double-click to edit title';
-    }
+            activeThreadTitle.style.cursor = 'text';
+            activeThreadTitle.title = 'Double-click to edit title';
+            activeThreadTitle._bound = true;
+        }
 
-    // Global Settings Listeners
-    ['global-ctx-mode', 'global-ctx-window', 'chat-memory-mode'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('change', () => saveGlobalChatSettings());
-    });
-
-    const searchToggle = document.getElementById('search-toggle');
-    if (searchToggle) {
-        searchToggle.addEventListener('click', () => {
-            searchToggle.classList.toggle('active');
-            saveGlobalChatSettings();
-        });
-    }
-
-    // Load persisted global settings
-    loadGlobalChatSettings();
-
-    // Bind Send Button explicitly
-    const sendButton = document.getElementById('send-button');
-    if (sendButton) {
-        const newBtn = sendButton.cloneNode(true);
-        sendButton.parentNode.replaceChild(newBtn, sendButton);
-        newBtn.addEventListener('click', sendMessage);
-    }
-
-    const chatInput = document.getElementById('chat-input');
-    if (chatInput) {
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
+        // Global Settings
+        ['global-ctx-mode', 'global-ctx-window', 'chat-memory-mode'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && !el._bound) {
+                el.addEventListener('change', () => saveGlobalChatSettings());
+                el._bound = true;
             }
         });
+
+        const searchToggle = document.getElementById('search-toggle');
+        if (searchToggle && !searchToggle._bound) {
+            searchToggle.addEventListener('click', () => {
+                searchToggle.classList.toggle('active');
+                saveGlobalChatSettings();
+            });
+            searchToggle._bound = true;
+        }
+
+        // Send button — cloneNode clears any stale duplicate listeners from prior loads
+        const sendButton = document.getElementById('send-button');
+        if (sendButton && !sendButton._bound) {
+            const newBtn = sendButton.cloneNode(true);
+            sendButton.parentNode.replaceChild(newBtn, sendButton);
+            newBtn.addEventListener('click', sendMessage);
+            newBtn._bound = true;
+        }
+
+        const chatInput = document.getElementById('chat-input');
+        if (chatInput && !chatInput._bound) {
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+            chatInput._bound = true;
+        }
+
+        // Thread list click delegation — fallback for un-foldered threads.
+        // _buildThreadItem attaches its own per-item listeners; this covers the rest.
+        const threadsList = document.getElementById('threads-list');
+        if (threadsList && !threadsList._bound) {
+            threadsList.addEventListener('click', (e) => {
+                if (e.target.closest('.thread-actions') || e.target.closest('.folder-header') || e.target.closest('.folder-actions')) return;
+                const threadItem = e.target.closest('.thread-item');
+                if (threadItem && !threadItem._folderListenerAttached) {
+                    const threadId = threadItem.dataset.threadId;
+                    if (threadId) switchThread(threadId);
+                }
+            });
+            threadsList._bound = true;
+        }
     }
 
+    _bindChatDOMListeners();
 
-    // Set up thread list click delegation
-    // Note: _buildThreadItem (used when folders are present) attaches its own click
-    // listeners per item. This delegation acts as the fallback for un-foldered threads
-    // rendered by the original renderThreadList path (no folders). Guard against
-    // action-button clicks to avoid double handling.
-    document.getElementById('threads-list').addEventListener('click', (e) => {
-        if (e.target.closest('.thread-actions') || e.target.closest('.folder-header') || e.target.closest('.folder-actions')) return;
-        const threadItem = e.target.closest('.thread-item');
-        if (threadItem && !threadItem._folderListenerAttached) {
-            const threadId = threadItem.dataset.threadId;
-            if (threadId) switchThread(threadId);
+    // Re-bind once the chat partial is injected into the DOM (first tab visit).
+    // Also applies persisted settings and wires the search box at that point.
+    document.addEventListener('panelLoaded', function _onChatPanel(e) {
+        if (e.detail && e.detail.tabName === 'chat') {
+            _bindChatDOMListeners();
+            if (typeof loadGlobalChatSettings === 'function') loadGlobalChatSettings();
+            if (typeof initThreadSearch      === 'function') initThreadSearch();
+            document.removeEventListener('panelLoaded', _onChatPanel);
         }
     });
 
@@ -121,9 +157,6 @@ function initThreadManagement() {
     setInterval(() => {
         if (!document.hidden) refreshThreadStatus();
     }, 3000);
-
-    // Wire thread search
-    initThreadSearch();
 }
 
 // Load threads from API

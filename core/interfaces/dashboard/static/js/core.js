@@ -941,47 +941,7 @@ function initializeUI() {
     }
 
     // Add File Button (Main Chat)
-    const addFileBtn = document.querySelector('.add-file-btn');
-    const chatFileInput = document.getElementById('chat-file-input');
     window._mainChatAttachedFile = null;
-
-    if (addFileBtn && chatFileInput) {
-        addFileBtn.addEventListener('click', () => {
-            chatFileInput.click();
-        });
-
-        chatFileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            window._mainChatAttachedFile = { name: file.name, file: file };
-
-            // Find or create the pill
-            let pill = document.getElementById('chat-file-pill');
-            if (!pill) {
-                pill = document.createElement('div');
-                pill.id = 'chat-file-pill';
-                pill.className = 'chat-file-pill';
-                // Insert it before the add-file-btn
-                addFileBtn.parentNode.insertBefore(pill, addFileBtn);
-            }
-
-            pill.innerHTML = `
-                <i class="fas fa-file-alt"></i>
-                <span>${file.name}</span>
-                <button class="pill-clear" title="Remove attachment">✕</button>
-            `;
-
-            pill.querySelector('.pill-clear').addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                window.clearMainChatAttachment();
-            });
-
-            // Reset input
-            e.target.value = '';
-        });
-    }
-
     window.clearMainChatAttachment = function () {
         window._mainChatAttachedFile = null;
         const pill = document.getElementById('chat-file-pill');
@@ -989,6 +949,57 @@ function initializeUI() {
             pill.remove();
         }
     };
+
+    function _bindChatFileListeners() {
+        const addFileBtn = document.querySelector('.add-file-btn');
+        const chatFileInput = document.getElementById('chat-file-input');
+        if (addFileBtn && chatFileInput && !addFileBtn._bound) {
+            addFileBtn.addEventListener('click', () => {
+                chatFileInput.click();
+            });
+
+            chatFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                window._mainChatAttachedFile = { name: file.name, file: file };
+
+                // Find or create the pill
+                let pill = document.getElementById('chat-file-pill');
+                if (!pill) {
+                    pill = document.createElement('div');
+                    pill.id = 'chat-file-pill';
+                    pill.className = 'chat-file-pill';
+                    // Insert it before the add-file-btn
+                    addFileBtn.parentNode.insertBefore(pill, addFileBtn);
+                }
+
+                pill.innerHTML = `
+                    <i class="fas fa-file-alt"></i>
+                    <span>${file.name}</span>
+                    <button class="pill-clear" title="Remove attachment">✕</button>
+                `;
+
+                pill.querySelector('.pill-clear').addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    window.clearMainChatAttachment();
+                });
+
+                // Reset input
+                e.target.value = '';
+            });
+            addFileBtn._bound = true;
+        }
+    }
+
+    _bindChatFileListeners();
+
+    // Re-bind when the chat partial is injected/loaded
+    document.addEventListener('panelLoaded', (e) => {
+        if (e.detail && e.detail.tabName === 'chat') {
+            _bindChatFileListeners();
+        }
+    });
 
     // Package tab switching
     document.querySelectorAll('.package-tab').forEach(tab => {
