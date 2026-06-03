@@ -2406,6 +2406,7 @@ loadThreads = async function() {
 document.addEventListener('panelLoaded', function(e) {
     if (e.detail && e.detail.panelId === 'chat-panel') {
         _initFolderView();
+        _initOverlayToggle();
         if (typeof window.loadChatModels === 'function') {
             window.loadChatModels();
         }
@@ -2415,8 +2416,243 @@ document.addEventListener('panelLoaded', function(e) {
 window.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         _initFolderView();
+        _initOverlayToggle();
         if (typeof window.loadChatModels === 'function' && document.getElementById('model-select')) {
             window.loadChatModels();
         }
-    }, 500); // Give it a bit more time for partials
+    }, 500);
 });
+
+// ── Overlay History Panel ─────────────────────────────────────────────────────
+
+let _ovMode  = false;
+let _ovTab   = 'history';
+let _ovPage  = 0;
+let _ovTotal = 1;
+
+function _initOverlayToggle() {
+    const toggle = document.getElementById('thread-source-toggle');
+    if (!toggle || toggle._ovBound) return;
+    toggle._ovBound = true;
+    toggle.querySelectorAll('.tsrc-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            toggle.querySelectorAll('.tsrc-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (btn.dataset.source === 'overlay') _showOverlayPanel();
+            else                                   _showChatPanel();
+        });
+    });
+}
+
+function _showOverlayPanel() {
+    _ovMode = true;
+    const threadsList  = document.getElementById('threads-list');
+    const threadSearch = document.querySelector('.threads-search-box');
+    const ovPanel      = document.getElementById('overlay-panel');
+    if (threadsList)  threadsList.style.display  = 'none';
+    if (threadSearch) threadSearch.style.display = 'none';
+    if (ovPanel)      ovPanel.style.display      = 'flex';
+    _initOverlaySubnav();
+    loadOverlaySessions(_ovTab, 0);
+}
+
+function _showChatPanel() {
+    _ovMode = false;
+    const threadsList  = document.getElementById('threads-list');
+    const threadSearch = document.querySelector('.threads-search-box');
+    const ovPanel      = document.getElementById('overlay-panel');
+    if (threadsList)  threadsList.style.display  = '';
+    if (threadSearch) threadSearch.style.display = '';
+    if (ovPanel)      ovPanel.style.display      = 'none';
+}
+
+function _initOverlaySubnav() {
+    const subnav = document.getElementById('overlay-subnav');
+    if (!subnav || subnav._ovBound) return;
+    subnav._ovBound = true;
+    subnav.querySelectorAll('.ov-subnav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            subnav.querySelectorAll('.ov-subnav-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            _ovTab = btn.dataset.tab;
+            loadOverlaySessions(_ovTab, 0);
+        });
+    });
+}
+
+async function loadOverlaySessions(tab, page) {
+    _ovTab  = tab  || 'history';
+    _ovPage = page || 0;
+    const list = document.getElementById('overlay-session-list');
+    if (!list) return;
+    list.innerHTML = '<div class="ov-loading"><i class="fas fa-spinner fa-spin"></i></div>';
+    try {
+        const pinned = (_ovTab === 'pinned');
+        const res  = await fetch(`/api/overlay/history?page=${_ovPage}&pinned=${pinned}`);
+        if (!res.ok) throw new Error(res.statusText);
+        const data = await res.json();
+        _ovTotal = data.total_pages || 1;
+        _renderOverlaySessions(data.sessions || [], list);
+        _renderOverlayPagination();
+    } catch (e) {
+        list.innerHTML = '<div class="ov-error"><i class="fas fa-exclamation-triangle"></i> Could not load overlay history</div>';
+    }
+}
+
+function _renderOverlaySessions(sessions, container) {
+    container.innerHTML = '';
+    if (!sessions.length) {
+        const msg = (_ovTab === 'pinned')
+            ? 'No pinned sessions yet.'
+            : 'No overlay sessions yet. Use the overlay hotkey to start one.';
+        container.innerHTML = `<div class="ov-empty"><i class="fas fa-desktop"></i><span>${msg}</span></div>`;
+        return;
+    }
+    sessions.forEach(s => container.appendChild(_makeOvCard(s)));
+}
+
+function _makeOvCard(session) {
+    const card = document.createElement('div');
+    card.className = 'ov-session-card' + (session.is_pinned ? ' ov-pinned' : '');
+    card.dataset.sessionId = session.id;
+
+    const count    = session.pairs_count || 0;
+    const label    = `${count} exchange${count !== 1 ? 's' : ''}`;
+    const ts       = [session.date, session.time].filter(Boolean).join(' ');
+    const preview  = (session.first_q || '').slice(0, 90)
+                     + (session.first_q && session.first_q.length > 90 ? '…' : '');
+    const thumbEl  = session.thumb_b64
+        ? `<img class="ov-card-thumb" src="data:image/jpeg;base64,${session.thumb_b64}" alt="">`
+        : `<div class="ov-card-thumb ov-thumb-placeholder"><i class="fas fa-desktop"></i></div>`;
+
+    card.innerHTML = `
+        ${thumbEl}
+        <div class="ov-card-body">
+            <div class="ov-card-meta">
+                <span class="ov-card-ts">${_ovEsc(ts)}</span>
+                <span class="ov-card-count">${label}</span>
+                ${session.is_pinned   ? '<i class="fas fa-thumbtack ov-pin-indicator" title="Pinned"></i>' : ''}
+                ${session.promoted    ? '<i class="fas fa-arrow-up-right-from-square ov-promoted-indicator" title="In Chat"></i>' : ''}
+            </div>
+            <div class="ov-card-preview">${_ovEsc(preview)}</div>
+        </div>
+        <div class="ov-card-actions">
+            <button class="ov-action-btn ov-pin-btn${session.is_pinned ? ' active' : ''}"
+                    title="${session.is_pinned ? 'Unpin' : 'Pin'}">
+                <i class="fas fa-thumbtack"></i>
+            </button>
+            <button class="ov-action-btn ov-promote-btn${session.promoted ? ' promoted' : ''}"
+                    title="${session.promoted ? 'Open in Chat' : 'Promote to Chat'}">
+                <i class="fas fa-${session.promoted ? 'check' : 'arrow-up-right-from-square'}"></i>
+            </button>
+        </div>`;
+
+    card.addEventListener('click', e => {
+        if (e.target.closest('.ov-card-actions')) return;
+        if (session.promoted && session.promoted_thread_id) _ovOpenPromoted(session.promoted_thread_id);
+        else _ovPromote(session.id, card, session);
+    });
+
+    card.querySelector('.ov-pin-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        _ovTogglePin(session.id, card, session);
+    });
+    card.querySelector('.ov-promote-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        if (session.promoted && session.promoted_thread_id) _ovOpenPromoted(session.promoted_thread_id);
+        else _ovPromote(session.id, card, session);
+    });
+
+    return card;
+}
+
+function _ovEsc(s) {
+    return String(s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function _ovTogglePin(sessionId, cardEl, session) {
+    try {
+        const res  = await fetch(`/api/overlay/history/${sessionId}/pin`, { method: 'POST' });
+        if (!res.ok) throw new Error(res.statusText);
+        const data = await res.json();
+        session.is_pinned = data.is_pinned;
+
+        cardEl.classList.toggle('ov-pinned', data.is_pinned);
+        const pinBtn = cardEl.querySelector('.ov-pin-btn');
+        if (pinBtn) {
+            pinBtn.classList.toggle('active', data.is_pinned);
+            pinBtn.title = data.is_pinned ? 'Unpin' : 'Pin';
+        }
+
+        const meta = cardEl.querySelector('.ov-card-meta');
+        const existing = cardEl.querySelector('.ov-pin-indicator');
+        if (data.is_pinned && !existing && meta) {
+            const ind = document.createElement('i');
+            ind.className = 'fas fa-thumbtack ov-pin-indicator';
+            ind.title = 'Pinned';
+            meta.appendChild(ind);
+        } else if (!data.is_pinned && existing) {
+            existing.remove();
+        }
+
+        // Remove card from Pinned tab when unpinned
+        if (_ovTab === 'pinned' && !data.is_pinned) {
+            cardEl.style.transition = 'opacity 0.2s';
+            cardEl.style.opacity    = '0';
+            setTimeout(() => cardEl.remove(), 200);
+        }
+    } catch (e) {
+        console.error('overlay pin error:', e);
+    }
+}
+
+async function _ovPromote(sessionId, cardEl, session) {
+    const btn = cardEl.querySelector('.ov-promote-btn');
+    if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
+    try {
+        const res  = await fetch(`/api/overlay/history/${sessionId}/promote`, { method: 'POST' });
+        if (!res.ok) throw new Error(res.statusText);
+        const data = await res.json();
+        session.promoted           = true;
+        session.promoted_thread_id = data.thread_id;
+
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check"></i>';
+            btn.title     = 'Open in Chat';
+            btn.classList.add('promoted');
+            btn.disabled  = false;
+        }
+        const meta = cardEl.querySelector('.ov-card-meta');
+        if (meta && !meta.querySelector('.ov-promoted-indicator')) {
+            const ind = document.createElement('i');
+            ind.className = 'fas fa-arrow-up-right-from-square ov-promoted-indicator';
+            ind.title = 'In Chat';
+            meta.appendChild(ind);
+        }
+        _ovOpenPromoted(data.thread_id);
+    } catch (e) {
+        console.error('overlay promote error:', e);
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-arrow-up-right-from-square"></i>';
+            btn.disabled  = false;
+        }
+    }
+}
+
+function _ovOpenPromoted(threadId) {
+    if (!threadId) return;
+    // Flip the toggle back to Chat
+    const toggle = document.getElementById('thread-source-toggle');
+    if (toggle) {
+        toggle.querySelectorAll('.tsrc-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.source === 'chat');
+        });
+    }
+    _showChatPanel();
+    // Reload thread list, then open the promoted thread
+    loadThreads().then(() => {
+        if (typeof switchThread === 'function') switchThread(threadId);
+    });
+}

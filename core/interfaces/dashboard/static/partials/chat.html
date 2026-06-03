@@ -10,12 +10,36 @@
                                 <i class="fas fa-folder-plus" aria-hidden="true"></i>
                             </button>
                         </div>
+                        <!-- Source toggle: Chat | Overlay -->
+                        <div class="thread-source-toggle" id="thread-source-toggle">
+                            <button class="tsrc-btn active" data-source="chat">
+                                <i class="fas fa-comments"></i><span>Chat</span>
+                            </button>
+                            <button class="tsrc-btn" data-source="overlay">
+                                <i class="fas fa-desktop"></i><span>Overlay</span>
+                            </button>
+                        </div>
+
                         <div class="threads-search-box">
                             <i class="fas fa-search"></i>
                             <input type="text" id="threads-search" placeholder="Search threads…" autocomplete="off">
                         </div>
                         <div class="threads-list" id="threads-list">
                             <!-- Threads will be populated here -->
+                        </div>
+
+                        <!-- Overlay history panel -->
+                        <div id="overlay-panel" class="overlay-panel" style="display:none">
+                            <div class="overlay-subnav" id="overlay-subnav">
+                                <button class="ov-subnav-btn active" data-tab="history">
+                                    <i class="fas fa-clock-rotate-left"></i><span>History</span>
+                                </button>
+                                <button class="ov-subnav-btn" data-tab="pinned">
+                                    <i class="fas fa-thumbtack"></i><span>Pinned</span>
+                                </button>
+                            </div>
+                            <div id="overlay-session-list" class="overlay-session-list"></div>
+                            <div id="overlay-pagination" class="overlay-pagination"></div>
                         </div>
                     </div>
 

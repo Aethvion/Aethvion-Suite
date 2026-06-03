@@ -1,0 +1,321 @@
+/* Aethvion Suite — Overlay history panel in Chat tab */
+
+/* ── Source toggle (Chat | Overlay) ──────────────────────────────────────── */
+.thread-source-toggle {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.5rem 0.8rem 0;
+    flex-shrink: 0;
+}
+
+.tsrc-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.38rem 0.5rem;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: var(--radius-md, 8px);
+    color: var(--text-tertiary);
+    font-size: 0.76rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    font-family: inherit;
+}
+
+.tsrc-btn:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.tsrc-btn.active {
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    border-color: color-mix(in srgb, var(--primary) 28%, transparent);
+    color: var(--primary, #6366f1);
+    font-weight: 600;
+}
+
+.tsrc-btn i {
+    font-size: 0.72rem;
+    flex-shrink: 0;
+}
+
+/* ── Overlay panel container ─────────────────────────────────────────────── */
+.overlay-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* ── Sub-nav (History | Pinned) ──────────────────────────────────────────── */
+.overlay-subnav {
+    display: flex;
+    gap: 0;
+    padding: 0.55rem 0.8rem 0.4rem;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ov-subnav-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.4rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-tertiary);
+    font-size: 0.73rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    font-family: inherit;
+    margin-bottom: -1px;
+}
+
+.ov-subnav-btn:hover {
+    color: var(--text-secondary);
+}
+
+.ov-subnav-btn.active {
+    color: var(--primary, #6366f1);
+    border-bottom-color: var(--primary, #6366f1);
+    font-weight: 600;
+}
+
+.ov-subnav-btn i {
+    font-size: 0.68rem;
+}
+
+/* ── Session list ────────────────────────────────────────────────────────── */
+.overlay-session-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 0.4rem 0.5rem;
+    gap: 0.35rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+/* ── Loading / empty / error states ─────────────────────────────────────── */
+.ov-loading,
+.ov-error,
+.ov-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 2.5rem 1rem;
+    color: var(--text-muted, rgba(255, 255, 255, 0.25));
+    font-size: 0.78rem;
+    text-align: center;
+}
+
+.ov-loading i,
+.ov-empty i {
+    font-size: 1.4rem;
+    opacity: 0.4;
+}
+
+.ov-error {
+    color: rgba(248, 113, 113, 0.6);
+}
+
+/* ── Session card ────────────────────────────────────────────────────────── */
+.ov-session-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.55rem 0.6rem 0.55rem 0.55rem;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-md, 8px);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.ov-session-card:hover {
+    background: rgba(255, 255, 255, 0.045);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.ov-session-card.ov-pinned {
+    border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+    background: color-mix(in srgb, var(--primary) 5%, transparent);
+}
+
+/* Thumbnail */
+.ov-card-thumb {
+    width: 58px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.ov-thumb-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-muted, rgba(255, 255, 255, 0.2));
+    font-size: 1rem;
+}
+
+/* Card body */
+.ov-card-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.ov-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.ov-card-ts {
+    font-size: 0.68rem;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.ov-card-count {
+    font-size: 0.65rem;
+    color: var(--text-muted, rgba(255, 255, 255, 0.3));
+}
+
+.ov-pin-indicator {
+    font-size: 0.58rem;
+    color: var(--primary, #6366f1);
+    opacity: 0.8;
+}
+
+.ov-promoted-indicator {
+    font-size: 0.58rem;
+    color: #10b981;
+    opacity: 0.8;
+}
+
+.ov-card-preview {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+
+/* Card action buttons (pin + promote) */
+.ov-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.ov-session-card:hover .ov-card-actions {
+    opacity: 1;
+}
+
+.ov-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm, 6px);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 0.65rem;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.ov-action-btn:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.ov-pin-btn.active {
+    color: var(--primary, #6366f1);
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.ov-promote-btn.promoted {
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.ov-promote-btn:not(.promoted):hover {
+    color: var(--primary, #6366f1);
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+.overlay-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.8rem 0.6rem;
+    flex-shrink: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ov-page-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm, 6px);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.7rem;
+    transition: background 0.15s, color 0.15s;
+}
+
+.ov-page-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+}
+
+.ov-page-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.ov-page-info {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    min-width: 42px;
+    text-align: center;
+}
