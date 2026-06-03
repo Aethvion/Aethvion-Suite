@@ -230,6 +230,17 @@
         } catch (_) { return []; }
     }
 
+    async function _apiFetchCompanions() {
+        try {
+            const r = await fetch('/api/companion-creator/all');
+            if (!r.ok) return [];
+            const d = await r.json();
+            return (d.companions || []).map(function (c) {
+                return { id: c.id, label: c.name || c.id };
+            });
+        } catch (_) { return []; }
+    }
+
     async function _apiTestNode(node, inputData) {
         const r = await fetch('/api/automate/node/test', {
             method: 'POST',
@@ -1846,6 +1857,37 @@
                     });
                 });
 
+            } else if (prop.type === 'companion_select') {
+                // Async-populated companion selector
+                inputEl = document.createElement('select');
+                inputEl.className = 'at-prop-select at-prop-companion-select';
+                const compLoading = document.createElement('option');
+                compLoading.value = '';
+                compLoading.textContent = 'Loading companions…';
+                inputEl.appendChild(compLoading);
+
+                _apiFetchCompanions().then(function (companions) {
+                    inputEl.innerHTML = '';
+                    const blank = document.createElement('option');
+                    blank.value = '';
+                    blank.textContent = prop.placeholder || 'Select companion…';
+                    inputEl.appendChild(blank);
+                    companions.forEach(function (c) {
+                        const o = document.createElement('option');
+                        o.value = c.id;
+                        o.textContent = c.label;
+                        o.selected = (c.id === String(val));
+                        inputEl.appendChild(o);
+                    });
+                    if (val && !companions.find(function (c) { return c.id === val; })) {
+                        const miss = document.createElement('option');
+                        miss.value = String(val);
+                        miss.textContent = String(val) + ' (not found)';
+                        miss.selected = true;
+                        inputEl.appendChild(miss);
+                    }
+                });
+
             } else if (prop.type === 'toggle') {
                 // Checkbox toggle rendered as a pill
                 const wrapper = document.createElement('label');
@@ -1906,7 +1948,9 @@
             } else {
                 inputEl = document.createElement('input');
                 inputEl.className   = 'at-prop-input';
-                inputEl.type        = prop.type === 'number' ? 'number' : 'text';
+                inputEl.type        = prop.type === 'number' ? 'number'
+                                    : prop.type === 'password' ? 'password'
+                                    : 'text';
                 inputEl.placeholder = prop.placeholder || '';
                 inputEl.value       = String(val);
             }
