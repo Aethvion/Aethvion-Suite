@@ -145,9 +145,9 @@ async function loadFiles(category = 'output', refresh = false) {
 
     // 1. Clear grid immediately and show loading indicator
     grid.innerHTML = `
-        <div class="loading-container" style="text-align: center; padding: 3rem;">
-            <div class="loading-spinner"></div>
-            <p style="margin-top: 1rem; color: var(--text-secondary);">Scanning ${category}...</p>
+        <div class="ae-loading">
+            <i class="fas fa-circle-notch fa-spin"></i>
+            <span>Scanning ${category}…</span>
         </div>
     `;
 
@@ -158,12 +158,18 @@ async function loadFiles(category = 'output', refresh = false) {
         const data = await response.json();
 
         if (data.count === 0) {
-            let placeholder = 'No files yet. Ask Misaka to create reports, analysis, or other outputs!';
-            if (category === 'screenshots') placeholder = 'No screenshots found in media/screenshots.';
-            if (category === 'camera') placeholder = 'No webcam captures found in media/webcam.';
-            if (category === 'uploads') placeholder = 'No uploaded files found in workspace/uploads.';
-
-            grid.innerHTML = `<p class="placeholder-text">${placeholder}</p>`;
+            const emptyMsgs = {
+                screenshots: { icon: 'fa-camera',    title: 'No screenshots yet',         desc: 'Screenshots captured via the overlay will appear here.' },
+                camera:      { icon: 'fa-video',     title: 'No webcam captures yet',      desc: 'Webcam snapshots saved to media/webcam will appear here.' },
+                uploads:     { icon: 'fa-upload',    title: 'No uploads yet',              desc: 'Files you upload to workspace/uploads will appear here.' },
+            };
+            const m = emptyMsgs[category] || { icon: 'fa-folder-open', title: 'No files yet', desc: 'Ask Aethvion to create reports, analysis, or other outputs.' };
+            grid.innerHTML = `
+                <div class="ae-empty">
+                    <div class="ae-empty-icon"><i class="fas ${m.icon}"></i></div>
+                    <div class="ae-empty-title">${m.title}</div>
+                    <div class="ae-empty-desc">${m.desc}</div>
+                </div>`;
             renderStats({}, 0);
             return;
         }
@@ -177,7 +183,12 @@ async function loadFiles(category = 'output', refresh = false) {
         console.error('Files load error:', error);
         const grid = document.getElementById('files-grid');
         if (grid) {
-            grid.innerHTML = '<p class="placeholder-text" style="color: var(--danger);">Error loading files</p>';
+            grid.innerHTML = `
+                <div class="ae-empty">
+                    <div class="ae-empty-icon error"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="ae-empty-title">Failed to load files</div>
+                    <div class="ae-empty-desc">${error.message}</div>
+                </div>`;
         }
     }
 }
@@ -230,7 +241,12 @@ function renderFiles() {
     if (!container) return;
 
     if (currentFiles.length === 0) {
-        container.innerHTML = '<p class="placeholder-text">No files found.</p>';
+        container.innerHTML = `
+            <div class="ae-empty">
+                <div class="ae-empty-icon"><i class="fas fa-folder-open"></i></div>
+                <div class="ae-empty-title">No files found</div>
+                <div class="ae-empty-desc">Try a different category or refresh the file index.</div>
+            </div>`;
         return;
     }
 
@@ -255,7 +271,12 @@ function renderFiles() {
     }
 
     if (filteredFiles.length === 0) {
-        container.innerHTML = '<p class="placeholder-text">No files match your filters.</p>';
+        container.innerHTML = `
+            <div class="ae-empty">
+                <div class="ae-empty-icon"><i class="fas fa-filter"></i></div>
+                <div class="ae-empty-title">No files match your filters</div>
+                <div class="ae-empty-desc">Try clearing the search or changing the type filter.</div>
+            </div>`;
         return;
     }
 
@@ -473,7 +494,7 @@ async function performSemanticSearch() {
     }
 
     if (container) {
-        container.innerHTML = '<div class="loading-container" style="text-align: center; padding: 2rem;"><div class="loading-spinner"></div><p style="margin-top: 1rem; color: var(--text-secondary);">Searching semantically...</p></div>';
+        container.innerHTML = `<div class="ae-loading"><i class="fas fa-circle-notch fa-spin"></i><span>Searching…</span></div>`;
     }
 
     try {
@@ -508,6 +529,11 @@ async function performSemanticSearch() {
 
     } catch (e) {
         console.error("Semantic search failed", e);
-        if (container) container.innerHTML = '<p class="placeholder-text" style="color: var(--danger);">Search failed.</p>';
+        if (container) container.innerHTML = `
+            <div class="ae-empty">
+                <div class="ae-empty-icon error"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="ae-empty-title">Search failed</div>
+                <div class="ae-empty-desc">${e.message}</div>
+            </div>`;
     }
 }

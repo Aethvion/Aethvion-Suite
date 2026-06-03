@@ -19,7 +19,9 @@
                 </div>
                 <div class="panel-content" style="padding: 1.5rem; overflow-y: auto; height: calc(100% - 110px);">
                     <div class="memory-grid" id="persistent-memory-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;">
-                        <!-- Topic cards will be injected here -->
-                        <div class="loading-placeholder">Loading persistent memory topics...</div>
+                        <div class="ae-loading" style="grid-column: 1/-1;">
+                            <i class="fas fa-circle-notch fa-spin"></i>
+                            <span>Loading memory topics…</span>
+                        </div>
                     </div>
                 </div>

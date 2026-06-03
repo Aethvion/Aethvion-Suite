@@ -22,7 +22,7 @@ const PersistentMemory = {
 
     async load() {
         const grid = document.getElementById('persistent-memory-grid');
-        if (grid) grid.innerHTML = '<div class="loading-placeholder">Searching neural nodes...</div>';
+        if (grid) grid.innerHTML = `<div class="ae-loading" style="grid-column:1/-1;"><i class="fas fa-circle-notch fa-spin"></i><span>Loading memory topics…</span></div>`;
 
         console.log("[PersistentMemory] Fetching from API...");
         try {

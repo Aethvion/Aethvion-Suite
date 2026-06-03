@@ -177,18 +177,13 @@
     margin: 1rem;
 }
 
-.agents-empty-state::before {
-    content: '⚙️';
-    font-size: 3rem;
-    margin-bottom: 0.5rem;
-    opacity: 0.75;
-    animation: rotateEmptyCog 12s linear infinite;
-    text-shadow: 0 0 20px color-mix(in srgb, var(--primary) 30%, transparent);
+.agents-empty-state .ae-empty-icon i {
+    animation: rotateEmptyCog 10s linear infinite;
 }
 
 @keyframes rotateEmptyCog {
     from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    to   { transform: rotate(360deg); }
 }
 
 .agents-empty-title {

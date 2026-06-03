@@ -1657,6 +1657,35 @@ kbd {
     margin-top: 0.5rem;
 }
 
+/* ── Consistent loading state (pair to .ae-empty) ──────────────────────── */
+.ae-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    padding: 3rem 2rem;
+    color: var(--text-tertiary);
+    font-size: 0.82rem;
+    animation: ae-panel-enter 0.2s ease both;
+    user-select: none;
+}
+
+.ae-loading i {
+    font-size: 1.5rem;
+    color: var(--primary);
+    opacity: 0.5;
+}
+
+/* ── Shared placeholder-text (legacy compat) ───────────────────────────── */
+.placeholder-text {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 3rem 2rem;
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
 * {
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
