@@ -551,7 +551,7 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
     }
 
     if (role === 'user') {
-        messageContent = `<strong>You:</strong> <div style="display:inline-block; width:100%;">${content}</div>${attachmentsHtml}`;
+        messageContent = `<div class="message-content">${content}</div>${attachmentsHtml}`;
     } else if (role === 'assistant') {
         let parsedContent = content;
         try {
@@ -565,22 +565,10 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
             parsedContent = content; // Fallback to raw text
         }
 
-        // Build model label if available
-        const actualModel = taskData?.metadata?.actual_model || taskData?.result?.model_id;
-        const isAutoRouted = taskData?.metadata?.selected_model === 'auto';
-        let modelLabel = '';
-        if (actualModel) {
-            const display = isAutoRouted ? `${actualModel}*` : actualModel;
-            const title = isAutoRouted ? 'Auto-routed model (*)' : 'Selected model';
-            modelLabel = `<span class="msg-model-label" title="${title}">${display}</span>`;
-        }
-
-        // Wrap in a div to ensure block styles work correctly after the strong tag
         const isOverlaySrc = taskData?.metadata?.source === 'overlay';
         const sourceLabel  = isOverlaySrc
             ? `<span class="msg-source-badge msg-source-overlay"><i class="fas fa-desktop"></i> Overlay</span>`
-            : `<strong>Chat:</strong>`;
-        messageContent = `${modelLabel} ${sourceLabel} <div style="display:inline-block; width:100%;">`;
+            : `<span class="msg-source-badge msg-source-chat"><i class="fas fa-comment-dots"></i> Chat</span>`;
 
         // Show a clear internet search indicator when search was actually performed
         const actionsArr = taskData?.result?.actions_taken || [];
@@ -588,11 +576,14 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
                              actionsArr.some(a => a.startsWith('tools_executed'));
         const searchSettings = taskData?.metadata?.settings;
         const searchEnabled = searchSettings?.internet_search === true;
-        if (didWebSearch || searchEnabled) {
-            messageContent += `<div class="web-search-badge"><i class="fas fa-globe"></i> Web Search</div>`;
-        }
 
-        messageContent += `${parsedContent}</div>`;
+        let bodyHtml = '';
+        if (didWebSearch || searchEnabled) {
+            bodyHtml += `<div class="web-search-badge"><i class="fas fa-globe"></i> Web Search</div>`;
+        }
+        bodyHtml += parsedContent;
+
+        messageContent = `<div class="msg-header">${sourceLabel}</div><div class="message-content">${bodyHtml}</div>`;
 
 
         // Add persistent memory updates
@@ -1446,9 +1437,14 @@ function streamChatTokens(taskId, threadId) {
         streamBubble.className = 'message ai-message streaming-bubble';
         streamBubble.dataset.taskId = taskId;
 
+        const streamHeader = document.createElement('div');
+        streamHeader.className = 'msg-header';
+        streamHeader.innerHTML = '<span class="msg-source-badge msg-source-chat"><i class="fas fa-comment-dots"></i> Chat</span>';
+        streamBubble.appendChild(streamHeader);
+
         streamContent = document.createElement('div');
         streamContent.className = 'message-content stream-content';
-        streamContent.innerHTML = '<strong>Chat:</strong> <div class="stream-text" style="display:inline-block;width:100%;"></div>';
+        streamContent.innerHTML = '<div class="stream-text"></div>';
 
         streamBubble.appendChild(streamContent);
         messagesEl.appendChild(streamBubble);

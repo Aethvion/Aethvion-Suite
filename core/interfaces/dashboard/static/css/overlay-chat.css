@@ -1,34 +1,55 @@
 /* Aethvion Suite — Overlay history panel in Chat tab + message color coding */
 
-/* ── Overlay-sourced message color coding ────────────────────────────────── */
+/* ── Source badges ───────────────────────────────────────────────────────── */
 
-/* Teal left border + subtle tint for both roles */
-.message.overlay-sourced {
-    border-left: 2px solid rgba(13, 148, 136, 0.55) !important;
-    background: color-mix(in srgb, #0d9488 5%, transparent) !important;
-}
-
-/* "Overlay" source badge replacing "Chat:" */
 .msg-source-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.28rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    padding: 0.08rem 0.4rem;
+    gap: 0.22rem;
+    font-size: 0.63rem;
+    font-weight: 500;
+    padding: 0.06rem 0.42rem;
     border-radius: 999px;
-    vertical-align: middle;
-    margin-right: 0.25rem;
+    letter-spacing: 0.01em;
+    opacity: 0.72;
 }
 
+.msg-source-badge i {
+    font-size: 0.58rem;
+}
+
+/* Chat source badge */
+.msg-source-chat {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.22);
+    color: #a5b4fc;
+}
+
+/* Overlay source badge */
 .msg-source-overlay {
-    background: rgba(13, 148, 136, 0.14);
-    border: 1px solid rgba(13, 148, 136, 0.35);
+    background: rgba(13, 148, 136, 0.1);
+    border: 1px solid rgba(13, 148, 136, 0.28);
     color: #2dd4bf;
 }
 
-.msg-source-overlay i {
-    font-size: 0.65rem;
+/* msg-header only shows when there's a source badge */
+.msg-header:empty {
+    display: none;
+}
+
+/* ── Overlay-sourced message color coding ────────────────────────────────── */
+
+/* AI response from Overlay: teal left accent */
+.message.ai-message.overlay-sourced {
+    border-left: 2px solid rgba(13, 148, 136, 0.6) !important;
+    background: rgba(13, 148, 136, 0.06) !important;
+}
+
+/* User message from Overlay: teal gradient (overrides indigo) */
+.message.user-message.overlay-sourced {
+    background: linear-gradient(135deg, #0d9488, #0891b2) !important;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25) !important;
 }
 
 /* ── Source toggle (Chat | Overlay) ──────────────────────────────────────── */
@@ -184,8 +205,12 @@
 }
 
 .ov-session-card.ov-pinned {
-    border-color: color-mix(in srgb, var(--primary) 30%, transparent);
-    background: color-mix(in srgb, var(--primary) 5%, transparent);
+    border-color: rgba(13, 148, 136, 0.45);
+    background: rgba(13, 148, 136, 0.07);
+}
+
+.ov-session-card.ov-pinned .ov-card-preview {
+    color: var(--text-primary);
 }
 
 /* Thumbnail */

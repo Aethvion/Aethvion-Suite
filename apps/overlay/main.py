@@ -23,6 +23,7 @@ import base64
 import html as _html_mod
 import io
 import json
+import re as _re
 import secrets
 import sys
 import threading
@@ -176,7 +177,7 @@ try:
         QTextBrowser, QSizeGrip,
     )
     from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal, pyqtSlot, QObject, QPoint, QSize, QUrl
-    from PyQt6.QtGui import QFont, QTextCursor
+    from PyQt6.QtGui import QFont
     HAS_QT = True
 except ImportError:
     HAS_QT = False
@@ -718,12 +719,16 @@ class OverlayWindow(QWidget):
         if checked:
             self._hist_detail_session = None
             self._hist_pinned_only    = False
+            self._pinned_btn.blockSignals(True)
             self._pinned_btn.setChecked(False)
+            self._pinned_btn.blockSignals(False)
             self._input_row_widget.setVisible(False)
             self._hist_page = 0
             self._load_and_render_history_list()
         else:
+            self._pinned_btn.blockSignals(True)
             self._pinned_btn.setChecked(False)
+            self._pinned_btn.blockSignals(False)
             self._input_row_widget.setVisible(True)
             if self._current_entry:
                 self._render_session(self._current_entry)
@@ -736,13 +741,18 @@ class OverlayWindow(QWidget):
         if checked:
             self._hist_detail_session = None
             self._show_history = True
-            self._hist_btn.setChecked(False)  # deactivate history btn visually
+            self._hist_btn.blockSignals(True)
+            self._hist_btn.setChecked(False)
+            self._hist_btn.blockSignals(False)
             self._input_row_widget.setVisible(False)
             self._hist_page = 0
             self._load_and_render_history_list()
         else:
-            # Switch back to full history
+            self._hist_btn.blockSignals(True)
             self._hist_btn.setChecked(True)
+            self._hist_btn.blockSignals(False)
+            self._hist_pinned_only = False
+            self._load_and_render_history_list()
 
     # History list (paginated disk read)
 
@@ -766,25 +776,34 @@ class OverlayWindow(QWidget):
 
         for e in entries:
             sid       = e.get("id", "")
-            q_esc     = _html_mod.escape((e.get("first_q") or "")[:80])
-            if len(e.get("first_q", "")) > 80:
+            q_esc     = _html_mod.escape((e.get("first_q") or "")[:75])
+            if len(e.get("first_q", "")) > 75:
                 q_esc += "…"
             n         = e.get("pairs_count", 0)
             label     = f"{n} exchange{'s' if n != 1 else ''}"
             is_cur    = sid == current_sid
             is_pinned = bool(e.get("is_pinned"))
-            border    = "rgba(99,102,241,0.55)" if is_cur else (
-                        "rgba(13,148,136,0.45)" if is_pinned else "rgba(99,102,241,0.2)")
-            bg        = "rgba(13,148,136,0.07)" if is_pinned else "rgba(99,102,241,0.06)"
-            cur_tag   = "<span style='color:#818cf8;font-size:10px;'> ◈ current</span>" if is_cur else ""
-            pin_ind   = "<span style='color:#2dd4bf;font-size:10px;margin-left:4px;'>📌</span>" if is_pinned else ""
+
+            if is_cur:
+                border = "rgba(99,102,241,0.7)"
+                bg     = "rgba(99,102,241,0.1)"
+            elif is_pinned:
+                border = "rgba(13,148,136,0.55)"
+                bg     = "rgba(13,148,136,0.08)"
+            else:
+                border = "rgba(99,102,241,0.18)"
+                bg     = "rgba(20,20,35,0.5)"
+
+            cur_tag  = (" &nbsp;<span style='color:rgba(148,150,255,0.8);font-size:10px;"
+                        "font-weight:600;'>◈ active</span>") if is_cur else ""
+            pin_ind  = (" &nbsp;<span style='color:#2dd4bf;font-size:10px;'>📌</span>") if is_pinned else ""
             pin_label = "Unpin" if is_pinned else "Pin"
+            pin_color = "#2dd4bf" if is_pinned else "rgba(160,160,190,0.45)"
+            pin_icon  = "📌" if is_pinned else "📍"
             pin_link  = (
-                f"<a href='pin://{sid}' style='text-decoration:none;float:right;margin-left:6px;'"
-                f" title='{pin_label}'>"
-                f"<span style='font-size:11px;color:{'#2dd4bf' if is_pinned else 'rgba(140,140,170,0.5)'};"
-                f"padding:1px 4px;border-radius:4px;border:1px solid {'rgba(13,148,136,0.35)' if is_pinned else 'rgba(255,255,255,0.08)'};'>"
-                f"{'📌' if is_pinned else '📍'}</span></a>"
+                f"<a href='pin://{sid}' style='text-decoration:none;'>"
+                f"<span style='font-size:12px;color:{pin_color};padding:0 3px;'>"
+                f"{pin_icon}</span></a>"
             )
 
             # Thumbnail from disk
@@ -796,30 +815,36 @@ class OverlayWindow(QWidget):
                     try:
                         b64 = base64.b64encode(tp.read_bytes()).decode()
                         thumb_html = (
-                            f"<img src='data:image/jpeg;base64,{b64}' width='110' "
-                            f"style='border-radius:5px;border:1px solid rgba(99,102,241,0.22);"
-                            f"vertical-align:middle;margin-right:10px;'>"
+                            f"<img src='data:image/jpeg;base64,{b64}' width='96' "
+                            f"style='border-radius:5px;border:1px solid rgba(99,102,241,0.2);"
+                            f"vertical-align:top;margin-right:9px;flex-shrink:0;'>"
                         )
                     except Exception:
                         pass
 
-            # Display date nicely
             date_str = e.get("date", "")
             time_str = e.get("time", "")
             ts_label = f"{date_str} {time_str}".strip() if date_str else time_str
 
             self._response.append(
-                f"<a href='session://{sid}' style='text-decoration:none;'>"
-                f"<div style='padding:8px 10px;margin:3px 0;border:1px solid {border};"
-                f"border-radius:9px;background:{bg};'>"
-                f"{thumb_html}"
-                f"<div style='display:inline-block;vertical-align:middle;max-width:calc(100% - 130px);'>"
-                f"<div style='color:rgba(180,182,255,0.9);font-weight:600;font-size:12px;'>"
-                f"{ts_label}{cur_tag}{pin_ind}"
-                f"{pin_link}</div>"
-                f"<div style='color:rgba(210,210,235,0.75);font-size:11px;margin-top:2px;'>{q_esc}</div>"
-                f"<div style='color:rgba(140,140,170,0.65);font-size:10px;margin-top:2px;'>{label}</div>"
-                f"</div></div></a>"
+                f"<a href='session://{sid}' style='text-decoration:none;display:block;"
+                f"margin:4px 0;'>"
+                f"<div style='padding:9px 10px;border:1px solid {border};"
+                f"border-radius:10px;background:{bg};'>"
+                f"<table width='100%' border='0' cellspacing='0' cellpadding='0'><tr>"
+                f"<td style='vertical-align:top;width:106px;'>{thumb_html}</td>"
+                f"<td style='vertical-align:top;'>"
+                f"<table width='100%' border='0' cellspacing='0' cellpadding='0'"
+                f" style='margin-bottom:3px;'><tr>"
+                f"<td><span style='color:rgba(180,182,255,0.85);font-weight:600;font-size:11px;'>"
+                f"{ts_label}{cur_tag}{pin_ind}</span></td>"
+                f"<td align='right'>{pin_link}</td>"
+                f"</tr></table>"
+                f"<div style='color:rgba(210,215,240,0.78);font-size:11px;line-height:1.4;"
+                f"margin-bottom:3px;'>{q_esc}</div>"
+                f"<div style='color:rgba(140,140,170,0.55);font-size:10px;'>{label}</div>"
+                f"</td></tr></table>"
+                f"</div></a>"
             )
 
         # Pagination controls
@@ -840,75 +865,116 @@ class OverlayWindow(QWidget):
         self._status.setText(f"History — {page_info}, {count} session(s) on this page")
         self._response.verticalScrollBar().setValue(0)
 
+    # Markdown → inline HTML helper (avoids split append/insertMarkdown calls)
+
+    def _md_html(self, text: str) -> str:
+        """Convert markdown text to an embeddable HTML fragment for QTextBrowser.
+
+        Uses Qt's own markdown parser (QTextDocument.setMarkdown) then extracts
+        the body HTML so we can embed it inside table cells without the
+        append() / insertMarkdown() split that leaks raw closing tags.
+        """
+        from PyQt6.QtGui import QTextDocument  # local import — Qt must be up
+        doc = QTextDocument()
+        try:
+            doc.setMarkdown(text)
+        except Exception:
+            return _html_mod.escape(text).replace("\n", "<br>")
+        full = doc.toHtml()
+        m = _re.search(r"<body[^>]*>(.*?)</body>", full, _re.DOTALL)
+        if not m:
+            return _html_mod.escape(text).replace("\n", "<br>")
+        body = m.group(1).strip()
+        # Qt adds default inline colours/fonts — strip them so our dark-theme
+        # container colour shows through instead.
+        body = _re.sub(r'\s*style="[^"]*"', "", body)
+        # Remove empty leading/trailing <p></p>
+        body = _re.sub(r"^(<p>\s*</p>\s*)+", "", body)
+        body = _re.sub(r"(<p>\s*</p>\s*)+$", "", body)
+        return body
+
     # Session renderer
 
     def _render_session(self, session: dict) -> None:
-        """Render a full session (current or historical) into the response area."""
+        """Render a full session with left (AI) / right (user) bubble layout.
+
+        Every Q/A pair is emitted as one self-contained HTML string so that
+        QTextBrowser never sees dangling closing tags from a prior append().
+        """
         self._response.clear()
-        txt_a = self._ta(1.0)
-        dim_a = self._ta(0.6)
-        acc_a = self._ta(0.8)
+        dim_a = 0.55
 
-        # Initial screenshot (only if it's the very first part of the session)
         pairs = session.get("pairs", [])
-        show_root_thumb = True
-        if pairs and pairs[0].get("type") == "screenshot":
-            show_root_thumb = False
+        show_root_thumb = not (pairs and pairs[0].get("type") == "screenshot")
 
+        # Screenshot at top
         thumb = session.get("thumb_b64") or self._pending_thumb
         if thumb and show_root_thumb:
+            date_str = f"{session.get('date','')} {session.get('time','')}".strip()
             self._response.append(
-                f"<div style='margin-bottom:8px;'>"
-                f"<img src='data:image/jpeg;base64,{thumb}' width='200' "
-                f"style='border-radius:7px;border:1px solid rgba(99,102,241,0.28);display:block;'>"
+                f"<div style='margin-bottom:10px;'>"
+                f"<img src='data:image/jpeg;base64,{thumb}' width='190' "
+                f"style='border-radius:8px;border:1px solid rgba(99,102,241,0.3);display:block;'>"
                 f"<div style='color:rgba(140,140,170,{dim_a});font-size:10px;margin-top:3px;'>"
-                f"📷 {session.get('date', '')} {session.get('time', '')}".strip() + "</div>"
+                f"📷 {date_str}</div>"
                 f"</div>"
             )
 
-        for j, item in enumerate(pairs):
-            if j > 0 or (j == 0 and not show_root_thumb):
-                self._response.append(
-                    "<div style='border-top:1px solid rgba(99,102,241,0.18);margin:10px 0 8px;'></div>"
-                )
+        fs = self._font_size
 
+        for item in pairs:
+            # ── Inline screenshot separator ──────────────────────────────────
             if item.get("type") == "screenshot":
-                # Display inline screenshot
                 it_thumb = item.get("thumb_b64")
+                ts = item.get("time", "")
+                sep_html = (
+                    f"<p style='text-align:center;color:rgba(120,120,150,{dim_a});"
+                    f"font-size:9px;margin:8px 0 4px;'>"
+                    f"── 📷 new screenshot {ts} ──</p>"
+                )
                 if it_thumb:
-                    self._response.append(
-                        f"<div style='margin-bottom:6px;'>"
-                        f"<div style='color:rgba(120,120,150,{dim_a});font-size:9px;margin-bottom:4px;'>"
-                        f"── New screenshot captured at {item.get('time','')} ──</div>"
-                        f"<img src='data:image/jpeg;base64,{it_thumb}' width='180' "
-                        f"style='border-radius:6px;border:1px solid rgba(99,102,241,0.2);display:block;'>"
-                        f"</div>"
+                    sep_html += (
+                        f"<img src='data:image/jpeg;base64,{it_thumb}' width='170' "
+                        f"style='border-radius:6px;border:1px solid rgba(99,102,241,0.22);"
+                        f"display:block;margin-bottom:6px;'>"
                     )
+                self._response.append(sep_html)
                 continue
 
-            # Regular Q/A
+            # ── User bubble (right-shifted via empty left column) ────────────
             q_esc = _html_mod.escape(item.get("q", ""))
-            self._response.append(
-                f"<div style='color:rgba(99,102,241,{acc_a});font-weight:600;"
-                f"font-size:{self._font_size - 1}px;margin-bottom:2px;'>◈ Me</div>"
-                f"<div style='color:rgba(220,220,245,{txt_a});margin-bottom:5px;'>{q_esc}</div>"
+            user_html = (
+                f"<table width='100%' border='0' cellspacing='0' cellpadding='0'"
+                f" style='margin:6px 0 2px;'><tr>"
+                f"<td width='20%'></td>"
+                f"<td style='background-color:rgba(42,38,95,1);border:1px solid rgba(99,102,241,0.5);"
+                f"border-radius:12px;padding:8px 11px;'>"
+                f"<p style='color:rgba(148,150,255,1);font-size:9px;font-weight:600;"
+                f"letter-spacing:1px;margin:0 0 4px 0;'>YOU</p>"
+                f"<p style='color:rgba(228,228,250,1);font-size:{fs}px;"
+                f"line-height:1.5;margin:0;'>{q_esc}</p>"
+                f"</td></tr></table>"
             )
-            # Q → A divider
-            self._response.append(
-                "<div style='display:flex;align-items:center;gap:6px;margin:4px 0 6px;'>"
-                "<div style='flex:1;border-top:1px solid rgba(99,102,241,0.25);'></div>"
-                "<span style='color:rgba(99,102,241,0.4);font-size:10px;'>▸ Response</span>"
-                "<div style='flex:1;border-top:1px solid rgba(99,102,241,0.25);'></div>"
-                "</div>"
-            )
+            self._response.append(user_html)
+
+            # ── AI bubble (left, with left-border accent) ────────────────────
             if item.get("a") is None:
-                self._response.append(
-                    f"<div style='color:rgba(99,102,241,{acc_a});font-style:italic;'>Thinking…</div>"
-                )
+                a_html = (f"<p style='color:rgba(99,102,241,0.7);font-style:italic;"
+                          f"font-size:{fs}px;margin:0;'>Thinking…</p>")
             else:
-                cursor = QTextCursor(self._response.document())
-                cursor.movePosition(QTextCursor.MoveOperation.End)
-                cursor.insertMarkdown(item["a"])
+                a_html = self._md_html(item["a"])
+
+            ai_html = (
+                f"<table width='100%' border='0' cellspacing='0' cellpadding='0'"
+                f" style='margin:2px 0 10px;'><tr>"
+                f"<td width='80%' style='border-left:2px solid rgba(99,102,241,0.35);"
+                f"padding:6px 10px;'>"
+                f"<p style='color:rgba(148,150,255,0.55);font-size:9px;font-weight:600;"
+                f"letter-spacing:1px;margin:0 0 5px 0;'>◈ AETHVION</p>"
+                f"{a_html}"
+                f"</td><td width='20%'></td></tr></table>"
+            )
+            self._response.append(ai_html)
 
         self._response.verticalScrollBar().setValue(
             self._response.verticalScrollBar().maximum()
@@ -1036,42 +1102,57 @@ class OverlayWindow(QWidget):
             "── continued in Chat ──</span></div>"
         )
 
+        fs = self._font_size
         for task in tasks:
             q_esc    = _html_mod.escape(task.get("prompt", ""))
             a        = (task.get("result") or {}).get("response", "")
-            fs       = self._font_size - 1
             attached = (task.get("metadata") or {}).get("attached_files", [])
 
-            self._response.append(
-                f"<div style='color:rgba(13,148,136,0.85);font-weight:600;"
-                f"font-size:{fs}px;margin-bottom:2px;'>◈ You (Chat)</div>"
-                f"<div style='color:rgba(220,220,245,0.8);margin-bottom:5px;'>{q_esc}</div>"
-            )
-
-            # Render images — use pre-fetched data URI (QTextBrowser can't load HTTP)
+            # Build any attached-image HTML — each image in its own <p> so
+            # QTextBrowser renders it as a proper block below the prompt text.
+            img_html = ""
             for att in attached:
                 if not att.get("is_image"):
                     continue
                 src = att.get("_data_uri", "")
-                if not src:
-                    continue
-                self._response.append(
-                    f"<div style='margin-bottom:6px;'>"
-                    f"<img src='{src}' width='200' "
-                    f"style='border-radius:7px;border:1px solid rgba(13,148,136,0.3);display:block;'>"
-                    f"</div>"
-                )
+                if src:
+                    img_html += (
+                        f"<p style='margin:6px 0 0;'>"
+                        f"<img src='{src}' width='180' "
+                        f"style='border-radius:6px;border:1px solid rgba(13,148,136,0.3);'>"
+                        f"</p>"
+                    )
+
+            # User bubble — teal tint (from Chat) — complete in one string
             self._response.append(
-                "<div style='display:flex;align-items:center;gap:6px;margin:4px 0 6px;'>"
-                "<div style='flex:1;border-top:1px solid rgba(13,148,136,0.25);'></div>"
-                "<span style='color:rgba(13,148,136,0.4);font-size:10px;'>▸ Chat Response</span>"
-                "<div style='flex:1;border-top:1px solid rgba(13,148,136,0.25);'></div>"
-                "</div>"
+                f"<table width='100%' border='0' cellspacing='0' cellpadding='0'"
+                f" style='margin:6px 0 2px;'><tr>"
+                f"<td width='20%'></td>"
+                f"<td style='background-color:rgba(8,46,46,1);border:1px solid rgba(13,148,136,0.45);"
+                f"border-radius:12px;padding:8px 11px;'>"
+                f"<p style='color:rgba(45,212,191,0.65);font-size:9px;font-weight:600;"
+                f"letter-spacing:1px;margin:0 0 4px 0;'>YOU · CHAT</p>"
+                f"<p style='color:rgba(220,248,248,1);font-size:{fs}px;"
+                f"line-height:1.5;margin:0;'>{q_esc}</p>"
+                f"{img_html}"
+                f"</td></tr></table>"
             )
-            if a:
-                cursor = QTextCursor(self._response.document())
-                cursor.movePosition(QTextCursor.MoveOperation.End)
-                cursor.insertMarkdown(a)
+
+            # AI bubble — teal left border (Chat response) — complete in one string
+            a_html = self._md_html(a) if a else (
+                f"<p style='color:rgba(45,212,191,0.5);font-style:italic;margin:0;'>"
+                f"No response recorded.</p>"
+            )
+            self._response.append(
+                f"<table width='100%' border='0' cellspacing='0' cellpadding='0'"
+                f" style='margin:2px 0 10px;'><tr>"
+                f"<td width='80%' style='border-left:2px solid rgba(13,148,136,0.35);"
+                f"padding:6px 10px;'>"
+                f"<p style='color:rgba(45,212,191,0.45);font-size:9px;font-weight:600;"
+                f"letter-spacing:1px;margin:0 0 5px 0;'>◈ AETHVION · CHAT</p>"
+                f"{a_html}"
+                f"</td><td width='20%'></td></tr></table>"
+            )
 
         self._response.verticalScrollBar().setValue(
             self._response.verticalScrollBar().maximum()
