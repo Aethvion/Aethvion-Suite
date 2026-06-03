@@ -943,6 +943,13 @@ class OverlayWindow(QWidget):
                     f"Continuing session from {full.get('date','')} — "
                     f"{len(full.get('pairs',[]))} Q/A(s)"
                 )
+                # If promoted, fetch any new Chat messages in the background
+                if full.get("promoted") and full.get("promoted_thread_id"):
+                    threading.Thread(
+                        target=self._fetch_promoted_tasks,
+                        args=(full["promoted_thread_id"],),
+                        daemon=True,
+                    ).start()
             else:
                 self._status.setText(f"Could not load session {sid}")
 
@@ -962,6 +969,75 @@ class OverlayWindow(QWidget):
             self._hist_detail_session = None
             self._input_row_widget.setVisible(False)
             self._load_and_render_history_list()
+
+    def _fetch_promoted_tasks(self, thread_id: str) -> None:
+        """Background: fetch post-promotion Chat tasks and queue a UI update."""
+        try:
+            import requests as _req
+            res = _req.get(f"{DASHBOARD_URL}/api/tasks/thread/{thread_id}", timeout=6)
+            if not res.ok:
+                return
+            tasks = res.json().get("tasks", [])
+            # Only show tasks that are NOT the original overlay seeds
+            new_tasks = [
+                t for t in tasks
+                if t.get("metadata", {}).get("source") != "overlay"
+                and t.get("status") == "completed"
+                and t.get("result", {}).get("response")
+            ]
+            if not new_tasks:
+                return
+            new_tasks.sort(key=lambda t: t.get("created_at", ""))
+            self._pending_chat_tasks = new_tasks
+        except Exception as e:
+            print(f"[Overlay] Could not fetch promoted tasks: {e}")
+            return
+        from PyQt6.QtCore import QMetaObject, Qt as _Qt
+        QMetaObject.invokeMethod(
+            self, "_append_promoted_tasks",
+            _Qt.ConnectionType.QueuedConnection,
+        )
+
+    @pyqtSlot()
+    def _append_promoted_tasks(self) -> None:
+        """Main-thread: render post-promotion Chat messages after the overlay pairs."""
+        tasks = getattr(self, "_pending_chat_tasks", [])
+        if not tasks:
+            return
+        self._pending_chat_tasks = []
+
+        self._response.append(
+            "<div style='border-top:1px solid rgba(13,148,136,0.4);margin:14px 0 8px;"
+            "text-align:center;'>"
+            "<span style='color:rgba(13,148,136,0.7);font-size:10px;letter-spacing:0.05em;'>"
+            "── continued in Chat ──</span></div>"
+        )
+
+        for task in tasks:
+            q_esc = _html_mod.escape(task.get("prompt", ""))
+            a     = (task.get("result") or {}).get("response", "")
+            fs    = self._font_size - 1
+
+            self._response.append(
+                f"<div style='color:rgba(13,148,136,0.85);font-weight:600;"
+                f"font-size:{fs}px;margin-bottom:2px;'>◈ You (Chat)</div>"
+                f"<div style='color:rgba(220,220,245,0.8);margin-bottom:5px;'>{q_esc}</div>"
+            )
+            self._response.append(
+                "<div style='display:flex;align-items:center;gap:6px;margin:4px 0 6px;'>"
+                "<div style='flex:1;border-top:1px solid rgba(13,148,136,0.25);'></div>"
+                "<span style='color:rgba(13,148,136,0.4);font-size:10px;'>▸ Chat Response</span>"
+                "<div style='flex:1;border-top:1px solid rgba(13,148,136,0.25);'></div>"
+                "</div>"
+            )
+            if a:
+                cursor = QTextCursor(self._response.document())
+                cursor.movePosition(QTextCursor.MoveOperation.End)
+                cursor.insertMarkdown(a)
+
+        self._response.verticalScrollBar().setValue(
+            self._response.verticalScrollBar().maximum()
+        )
 
     def _toggle_pin(self, session_id: str) -> None:
         """Toggle pin state via the dashboard API, then refresh the history list."""

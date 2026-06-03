@@ -426,8 +426,21 @@ def _create_chat_thread_from_overlay(session: dict) -> str:
         raise RuntimeError(f"Failed to create thread {thread_id}")
 
     now = datetime.now(timezone.utc)
+    thumb_path = _month_dir_for(sid) / "thumbs" / f"{sid}.jpg"
+
     for i, pair in enumerate(pairs):
         task_id = f"ovl-{sid}-{i}"
+        meta: dict = {
+            "source":             "overlay",
+            "overlay_session_id": sid,
+        }
+        # Attach the session thumbnail to the first message so it shows in Chat
+        if i == 0 and thumb_path.exists():
+            meta["attached_files"] = [{
+                "is_image": True,
+                "url":      f"/api/overlay/thumb/{sid}",
+                "filename": "overlay_screenshot.jpg",
+            }]
         task = Task(
             id=task_id,
             thread_id=thread_id,
@@ -441,10 +454,7 @@ def _create_chat_thread_from_overlay(session: dict) -> str:
                 "actions_taken": [],
                 "model_id":      "overlay",
             },
-            metadata={
-                "source":             "overlay",
-                "overlay_session_id": sid,
-            },
+            metadata=meta,
         )
         tm.tasks[task_id] = task
         thread.task_ids.append(task_id)
@@ -540,3 +550,13 @@ async def overlay_promote_session(session_id: str):
         "thread_id":        thread_id,
         "already_promoted": False,
     }
+
+
+@router.get("/thumb/{session_id}")
+async def overlay_get_thumb(session_id: str):
+    """Serve the thumbnail JPEG for an overlay session (used by promoted Chat tasks)."""
+    from fastapi.responses import FileResponse
+    tp = _month_dir_for(session_id) / "thumbs" / f"{session_id}.jpg"
+    if not tp.exists():
+        raise HTTPException(status_code=404, detail="Thumbnail not found")
+    return FileResponse(str(tp), media_type="image/jpeg")
