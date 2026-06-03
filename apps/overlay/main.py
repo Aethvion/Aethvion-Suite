@@ -108,7 +108,7 @@ def save_session(session: dict) -> None:
     index_path.write_text(json.dumps(index, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def load_history_page(page: int) -> tuple[list[dict], int]:
+def load_history_page(page: int, pinned_only: bool = False) -> tuple[list[dict], int]:
     """Return (entries, total_pages) for the given page (0-indexed)."""
     if not OVERLAY_HISTORY_DIR.exists():
         return [], 1
@@ -128,6 +128,8 @@ def load_history_page(page: int) -> tuple[list[dict], int]:
     except Exception:
         pass
     all_entries.sort(key=lambda e: e.get("id", ""), reverse=True)
+    if pinned_only:
+        all_entries = [e for e in all_entries if e.get("is_pinned")]
     total = len(all_entries)
     total_pages = max(1, (total + _HIST_PAGE_SIZE - 1) // _HIST_PAGE_SIZE)
     page = max(0, min(page, total_pages - 1))
@@ -173,7 +175,7 @@ try:
         QTextEdit, QPushButton, QLabel, QFrame, QComboBox,
         QTextBrowser, QSizeGrip,
     )
-    from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal, QObject, QPoint, QSize, QUrl
+    from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal, pyqtSlot, QObject, QPoint, QSize, QUrl
     from PyQt6.QtGui import QFont, QTextCursor
     HAS_QT = True
 except ImportError:
@@ -328,6 +330,7 @@ class OverlayWindow(QWidget):
 
         # History panel state
         self._show_history        = False
+        self._hist_pinned_only    = False
         self._hist_page           = 0
         self._hist_total_pages    = 1
         self._hist_detail_session: Optional[dict] = None  # full session loaded from disk
@@ -433,17 +436,25 @@ class OverlayWindow(QWidget):
         self._hotkey_lbl = QLabel("Ctrl+Shift+Space")
         self._hotkey_lbl.setStyleSheet("color:rgba(120,120,150,180);font-size:11px;")
 
-        self._hist_btn = QPushButton("🕐")
-        self._hist_btn.setFixedSize(26, 26)
-        self._hist_btn.setCheckable(True)
-        self._hist_btn.setToolTip("Browse history")
-        self._hist_btn.setStyleSheet("""
+        _icon_btn_css = """
             QPushButton { background:transparent; color:rgba(160,160,200,200);
                 border:none; border-radius:13px; font-size:13px; }
             QPushButton:hover   { background:rgba(99,102,241,120); }
             QPushButton:checked { background:rgba(99,102,241,180); color:white; }
-        """)
+        """
+        self._hist_btn = QPushButton("🕐")
+        self._hist_btn.setFixedSize(26, 26)
+        self._hist_btn.setCheckable(True)
+        self._hist_btn.setToolTip("Browse history")
+        self._hist_btn.setStyleSheet(_icon_btn_css)
         self._hist_btn.toggled.connect(self._on_history_toggled)
+
+        self._pinned_btn = QPushButton("📌")
+        self._pinned_btn.setFixedSize(26, 26)
+        self._pinned_btn.setCheckable(True)
+        self._pinned_btn.setToolTip("Pinned sessions")
+        self._pinned_btn.setStyleSheet(_icon_btn_css)
+        self._pinned_btn.toggled.connect(self._on_pinned_toggled)
 
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(26, 26)
@@ -458,6 +469,7 @@ class OverlayWindow(QWidget):
         title_row.addWidget(title)
         title_row.addStretch()
         title_row.addWidget(self._hotkey_lbl)
+        title_row.addWidget(self._pinned_btn)
         title_row.addWidget(self._hist_btn)
         title_row.addWidget(close_btn)
         layout.addLayout(title_row)
@@ -702,25 +714,41 @@ class OverlayWindow(QWidget):
     # History toggle
 
     def _on_history_toggled(self, checked: bool) -> None:
-        self._show_history        = checked
+        self._show_history = checked
         if checked:
             self._hist_detail_session = None
+            self._hist_pinned_only    = False
+            self._pinned_btn.setChecked(False)
             self._input_row_widget.setVisible(False)
             self._hist_page = 0
             self._load_and_render_history_list()
         else:
+            self._pinned_btn.setChecked(False)
             self._input_row_widget.setVisible(True)
-            # Return to current session view
             if self._current_entry:
                 self._render_session(self._current_entry)
             else:
                 self._show_screenshot_preview()
             self._status.setText("Type your question and press Enter.")
 
+    def _on_pinned_toggled(self, checked: bool) -> None:
+        self._hist_pinned_only = checked
+        if checked:
+            self._hist_detail_session = None
+            self._show_history = True
+            self._hist_btn.setChecked(False)  # deactivate history btn visually
+            self._input_row_widget.setVisible(False)
+            self._hist_page = 0
+            self._load_and_render_history_list()
+        else:
+            # Switch back to full history
+            self._hist_btn.setChecked(True)
+
     # History list (paginated disk read)
 
+    @pyqtSlot()
     def _load_and_render_history_list(self) -> None:
-        entries, total_pages = load_history_page(self._hist_page)
+        entries, total_pages = load_history_page(self._hist_page, pinned_only=self._hist_pinned_only)
         self._hist_total_pages = total_pages
         self._render_history_list(entries)
 
@@ -737,15 +765,27 @@ class OverlayWindow(QWidget):
         current_sid = self._current_entry.get("id") if self._current_entry else None
 
         for e in entries:
-            sid      = e.get("id", "")
-            q_esc    = _html_mod.escape((e.get("first_q") or "")[:80])
+            sid       = e.get("id", "")
+            q_esc     = _html_mod.escape((e.get("first_q") or "")[:80])
             if len(e.get("first_q", "")) > 80:
                 q_esc += "…"
-            n        = e.get("pairs_count", 0)
-            label    = f"{n} question{'s' if n != 1 else ''}"
-            is_cur   = sid == current_sid
-            border   = "rgba(99,102,241,0.55)" if is_cur else "rgba(99,102,241,0.2)"
-            cur_tag  = "<span style='color:#818cf8;font-size:10px;'> ◈ current</span>" if is_cur else ""
+            n         = e.get("pairs_count", 0)
+            label     = f"{n} exchange{'s' if n != 1 else ''}"
+            is_cur    = sid == current_sid
+            is_pinned = bool(e.get("is_pinned"))
+            border    = "rgba(99,102,241,0.55)" if is_cur else (
+                        "rgba(13,148,136,0.45)" if is_pinned else "rgba(99,102,241,0.2)")
+            bg        = "rgba(13,148,136,0.07)" if is_pinned else "rgba(99,102,241,0.06)"
+            cur_tag   = "<span style='color:#818cf8;font-size:10px;'> ◈ current</span>" if is_cur else ""
+            pin_ind   = "<span style='color:#2dd4bf;font-size:10px;margin-left:4px;'>📌</span>" if is_pinned else ""
+            pin_label = "Unpin" if is_pinned else "Pin"
+            pin_link  = (
+                f"<a href='pin://{sid}' style='text-decoration:none;float:right;margin-left:6px;'"
+                f" title='{pin_label}'>"
+                f"<span style='font-size:11px;color:{'#2dd4bf' if is_pinned else 'rgba(140,140,170,0.5)'};"
+                f"padding:1px 4px;border-radius:4px;border:1px solid {'rgba(13,148,136,0.35)' if is_pinned else 'rgba(255,255,255,0.08)'};'>"
+                f"{'📌' if is_pinned else '📍'}</span></a>"
+            )
 
             # Thumbnail from disk
             md = Path(e.get("_month_dir", "")) if e.get("_month_dir") else None
@@ -771,11 +811,12 @@ class OverlayWindow(QWidget):
             self._response.append(
                 f"<a href='session://{sid}' style='text-decoration:none;'>"
                 f"<div style='padding:8px 10px;margin:3px 0;border:1px solid {border};"
-                f"border-radius:9px;background:rgba(99,102,241,0.06);'>"
+                f"border-radius:9px;background:{bg};'>"
                 f"{thumb_html}"
                 f"<div style='display:inline-block;vertical-align:middle;max-width:calc(100% - 130px);'>"
                 f"<div style='color:rgba(180,182,255,0.9);font-weight:600;font-size:12px;'>"
-                f"{ts_label}{cur_tag}</div>"
+                f"{ts_label}{cur_tag}{pin_ind}"
+                f"{pin_link}</div>"
                 f"<div style='color:rgba(210,210,235,0.75);font-size:11px;margin-top:2px;'>{q_esc}</div>"
                 f"<div style='color:rgba(140,140,170,0.65);font-size:10px;margin-top:2px;'>{label}</div>"
                 f"</div></div></a>"
@@ -905,6 +946,10 @@ class OverlayWindow(QWidget):
             else:
                 self._status.setText(f"Could not load session {sid}")
 
+        elif s.startswith("pin://"):
+            sid = s[len("pin://"):]
+            threading.Thread(target=self._toggle_pin, args=(sid,), daemon=True).start()
+
         elif s.startswith("histpage://"):
             try:
                 page = int(s[len("histpage://"):])
@@ -917,6 +962,23 @@ class OverlayWindow(QWidget):
             self._hist_detail_session = None
             self._input_row_widget.setVisible(False)
             self._load_and_render_history_list()
+
+    def _toggle_pin(self, session_id: str) -> None:
+        """Toggle pin state via the dashboard API, then refresh the history list."""
+        try:
+            import requests as _req
+            _req.post(
+                f"{DASHBOARD_URL}/api/overlay/history/{session_id}/pin",
+                timeout=5,
+            )
+        except Exception as e:
+            print(f"[Overlay] Pin toggle failed for {session_id}: {e}")
+        # Refresh the list on the Qt main thread
+        from PyQt6.QtCore import QMetaObject, Qt as _Qt
+        QMetaObject.invokeMethod(
+            self, "_load_and_render_history_list",
+            _Qt.ConnectionType.QueuedConnection,
+        )
 
     # Send / receive
 

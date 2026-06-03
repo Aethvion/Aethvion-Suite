@@ -1,4 +1,35 @@
-/* Aethvion Suite — Overlay history panel in Chat tab */
+/* Aethvion Suite — Overlay history panel in Chat tab + message color coding */
+
+/* ── Overlay-sourced message color coding ────────────────────────────────── */
+
+/* Teal left border + subtle tint for both roles */
+.message.overlay-sourced {
+    border-left: 2px solid rgba(13, 148, 136, 0.55) !important;
+    background: color-mix(in srgb, #0d9488 5%, transparent) !important;
+}
+
+/* "Overlay" source badge replacing "Chat:" */
+.msg-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.08rem 0.4rem;
+    border-radius: 999px;
+    vertical-align: middle;
+    margin-right: 0.25rem;
+}
+
+.msg-source-overlay {
+    background: rgba(13, 148, 136, 0.14);
+    border: 1px solid rgba(13, 148, 136, 0.35);
+    color: #2dd4bf;
+}
+
+.msg-source-overlay i {
+    font-size: 0.65rem;
+}
 
 /* ── Source toggle (Chat | Overlay) ──────────────────────────────────────── */
 .thread-source-toggle {

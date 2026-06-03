@@ -399,7 +399,7 @@ function renderThreadMessages() {
         }
 
         const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${msg.role}-message`;
+        messageDiv.className = `message ${msg.role}-message${msg.source === 'overlay' ? ' overlay-sourced' : ''}`;
         if (msg.taskId) {
             messageDiv.dataset.taskId = msg.taskId;
         }
@@ -576,7 +576,11 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
         }
 
         // Wrap in a div to ensure block styles work correctly after the strong tag
-        messageContent = `${modelLabel} <strong>Chat:</strong> <div style="display:inline-block; width:100%;">`;
+        const isOverlaySrc = taskData?.metadata?.source === 'overlay';
+        const sourceLabel  = isOverlaySrc
+            ? `<span class="msg-source-badge msg-source-overlay"><i class="fas fa-desktop"></i> Overlay</span>`
+            : `<strong>Chat:</strong>`;
+        messageContent = `${modelLabel} ${sourceLabel} <div style="display:inline-block; width:100%;">`;
 
         // Show a clear internet search indicator when search was actually performed
         const actionsArr = taskData?.result?.actions_taken || [];
@@ -707,12 +711,13 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
         threadMessages[threadId] = [];
     }
     threadMessages[threadId].push({
-        role: role,
-        content: content,
-        taskId: taskId,
-        taskData: taskData,
-        html: html,
-        timestamp: timestamp || new Date().toISOString()
+        role:      role,
+        content:   content,
+        taskId:    taskId,
+        taskData:  taskData,
+        html:      html,
+        timestamp: timestamp || new Date().toISOString(),
+        source:    taskData?.metadata?.source || null,
     });
 
     try {
