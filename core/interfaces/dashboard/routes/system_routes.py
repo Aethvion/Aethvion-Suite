@@ -81,12 +81,16 @@ async def _perform_telemetry_sync(app_state) -> Dict[str, Any]:
     db_size = 0
     try:
         root_dir = Path(__file__).parent.parent.parent.parent.parent
-        for path in root_dir.rglob('*'):
-            if path.is_file():
+        _SKIP = {'.venv', 'venv', 'env', '.git', '.pytest_cache', '__pycache__',
+                 'node_modules', 'dist', 'build', 'bin', 'obj'}
+        for root, dirs, files in os.walk(root_dir):
+            dirs[:] = [d for d in dirs if d not in _SKIP]
+            for fname in files:
+                fp = Path(root) / fname
                 try:
-                    size = path.stat().st_size
+                    size = fp.stat().st_size
                     project_size += size
-                    if 'chroma' in str(path) or '.db' in path.name:
+                    if 'chroma' in str(fp) or '.db' in fp.name:
                         db_size += size
                 except (PermissionError, OSError):
                     continue

@@ -77,14 +77,17 @@ class PortManager:
         lock_file = PORTS_LOCK
         import time as pytime
         
-        # Simple retry-based file locking
+        # Atomic file locking — O_CREAT|O_EXCL guarantees only one writer wins
         locked = False
-        for _ in range(50): # Try for 5 seconds
+        for _ in range(50):  # Try for 5 seconds
             try:
-                if not lock_file.exists():
-                    lock_file.write_text(str(os.getpid()))
-                    locked = True
-                    break
+                fd = os.open(str(lock_file), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                with os.fdopen(fd, 'w') as f:
+                    f.write(str(os.getpid()))
+                locked = True
+                break
+            except FileExistsError:
+                pass
             except Exception:
                 pass
             pytime.sleep(0.1)

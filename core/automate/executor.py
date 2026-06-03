@@ -64,13 +64,16 @@ class WorkflowExecutor:
                 self._fwd[src].append(tgt)
                 self._rev[tgt].append(src)
 
+        # Pre-compute topological order alongside adjacency maps (graph is static).
+        self._topo_order: list[str] | None = self._topo_sort()
+
     # Public entry point
 
     def execute(self) -> dict:
         name = self.workflow.get("name", "Workflow")
         self._info(f'Starting workflow "{name}"')
 
-        order = self._topo_sort()
+        order = self._topo_order
         if order is None:
             self._error("Cycle detected in workflow graph — cannot execute.")
             return self._build_result(fatal="Cycle detected in workflow graph.")
