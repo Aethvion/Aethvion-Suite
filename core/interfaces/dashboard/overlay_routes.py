@@ -24,6 +24,8 @@ from core.utils import get_logger, atomic_json_write, load_json
 from core.utils.paths import OVERLAY_DIR, OVERLAY_CONFIG, OVERLAY_SCRIPT
 from core.ai.call_contexts import CallSource, build_overlay_prompt, validate_call_context
 
+_HISTORY_DIR = OVERLAY_DIR / "history"
+
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/overlay", tags=["overlay"])
@@ -319,3 +321,222 @@ async def overlay_install_deps():
     except Exception as e:
         logger.error(f"overlay install-deps error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── History API ────────────────────────────────────────────────────────────────
+
+_HIST_PAGE_SIZE = 15
+
+
+def _month_dir_for(session_id: str) -> Path:
+    return _HISTORY_DIR / f"{session_id[:4]}-{session_id[4:6]}"
+
+
+def _list_all_sessions(pinned_only: bool = False) -> list[dict]:
+    """Aggregate all month index entries, newest first."""
+    entries: list[dict] = []
+    if not _HISTORY_DIR.exists():
+        return entries
+    for md in sorted(_HISTORY_DIR.iterdir(), reverse=True):
+        if not md.is_dir():
+            continue
+        ip = md / "index.json"
+        if not ip.exists():
+            continue
+        try:
+            for e in json.loads(ip.read_text("utf-8")):
+                e["_month_dir"] = str(md)
+                entries.append(e)
+        except Exception:
+            pass
+    entries.sort(key=lambda e: e.get("id", ""), reverse=True)
+    if pinned_only:
+        entries = [e for e in entries if e.get("is_pinned")]
+    return entries
+
+
+def _read_session_json(session_id: str) -> Optional[dict]:
+    sp = _month_dir_for(session_id) / "sessions" / f"{session_id}.json"
+    if not sp.exists():
+        return None
+    try:
+        return json.loads(sp.read_text("utf-8"))
+    except Exception:
+        return None
+
+
+def _write_session_json(session_id: str, data: dict) -> bool:
+    sp = _month_dir_for(session_id) / "sessions" / f"{session_id}.json"
+    if not sp.exists():
+        return False
+    try:
+        sp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        return True
+    except Exception:
+        return False
+
+
+def _update_index_entry(session_id: str, **fields) -> None:
+    """Patch specific fields on the month index entry for a session (best-effort)."""
+    ip = _month_dir_for(session_id) / "index.json"
+    if not ip.exists():
+        return
+    try:
+        index: list = json.loads(ip.read_text("utf-8"))
+        for entry in index:
+            if entry.get("id") == session_id:
+                entry.update(fields)
+                break
+        ip.write_text(json.dumps(index, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as e:
+        logger.warning(f"overlay: could not update index entry {session_id}: {e}")
+
+
+def _attach_thumb(entry: dict) -> None:
+    """Inject thumb_b64 into an index entry dict if the file exists."""
+    md_str = entry.pop("_month_dir", None)
+    sid = entry.get("id", "")
+    if md_str and sid:
+        tp = Path(md_str) / "thumbs" / f"{sid}.jpg"
+        if tp.exists():
+            try:
+                entry["thumb_b64"] = base64.b64encode(tp.read_bytes()).decode("utf-8")
+            except Exception:
+                pass
+
+
+def _create_chat_thread_from_overlay(session: dict) -> str:
+    """Seed a new ChatThread with the overlay session's Q/A pairs as completed tasks."""
+    import uuid
+    from datetime import datetime, timezone
+    from core.orchestrator.task_queue import get_task_queue_manager
+    from core.orchestrator.task_models import Task, TaskStatus
+
+    tm = get_task_queue_manager()
+    sid = session.get("id", uuid.uuid4().hex)
+    thread_id = f"overlay-{sid}"
+
+    pairs = [p for p in session.get("pairs", []) if isinstance(p, dict) and p.get("q")]
+    first_q = pairs[0]["q"] if pairs else "Overlay Session"
+    title = (first_q[:57] + "…") if len(first_q) > 60 else first_q
+
+    tm.create_thread(thread_id, title=title, mode="chat_only")
+    thread = tm.threads.get(thread_id)
+    if not thread:
+        raise RuntimeError(f"Failed to create thread {thread_id}")
+
+    now = datetime.now(timezone.utc)
+    for i, pair in enumerate(pairs):
+        task_id = f"ovl-{sid}-{i}"
+        task = Task(
+            id=task_id,
+            thread_id=thread_id,
+            prompt=pair["q"],
+            status=TaskStatus.COMPLETED,
+            created_at=now,
+            started_at=now,
+            completed_at=now,
+            result={
+                "response":      pair.get("a") or "",
+                "actions_taken": [],
+                "model_id":      "overlay",
+            },
+            metadata={
+                "source":             "overlay",
+                "overlay_session_id": sid,
+            },
+        )
+        tm.tasks[task_id] = task
+        thread.task_ids.append(task_id)
+        tm._save_task(task)
+
+    tm._save_thread(thread_id)
+    return thread_id
+
+
+# History endpoints
+
+@router.get("/history")
+async def overlay_history(page: int = 0, pinned: bool = False):
+    """
+    List overlay sessions, newest first.
+    ?pinned=true returns only pinned sessions.
+    """
+    entries = _list_all_sessions(pinned_only=pinned)
+    total   = len(entries)
+    total_pages = max(1, (total + _HIST_PAGE_SIZE - 1) // _HIST_PAGE_SIZE)
+    page    = max(0, min(page, total_pages - 1))
+    page_entries = entries[page * _HIST_PAGE_SIZE : (page + 1) * _HIST_PAGE_SIZE]
+    for e in page_entries:
+        _attach_thumb(e)
+    return {
+        "sessions":    page_entries,
+        "page":        page,
+        "total_pages": total_pages,
+        "total":       total,
+    }
+
+
+@router.get("/history/{session_id}")
+async def overlay_get_session(session_id: str):
+    """Return a single overlay session with full Q/A pairs and thumbnail."""
+    data = _read_session_json(session_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Session not found")
+    md = _month_dir_for(session_id)
+    tp = md / "thumbs" / f"{session_id}.jpg"
+    if tp.exists():
+        try:
+            data["thumb_b64"] = base64.b64encode(tp.read_bytes()).decode("utf-8")
+        except Exception:
+            pass
+    return data
+
+
+@router.post("/history/{session_id}/pin")
+async def overlay_pin_session(session_id: str):
+    """Toggle the pin state of an overlay session."""
+    data = _read_session_json(session_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Session not found")
+    new_state = not bool(data.get("is_pinned", False))
+    data["is_pinned"] = new_state
+    if not _write_session_json(session_id, data):
+        raise HTTPException(status_code=500, detail="Could not persist session")
+    _update_index_entry(session_id, is_pinned=new_state)
+    return {"session_id": session_id, "is_pinned": new_state}
+
+
+@router.post("/history/{session_id}/promote")
+async def overlay_promote_session(session_id: str):
+    """
+    Promote an overlay session to a proper Chat thread.
+    If already promoted, returns the existing thread ID without recreating it.
+    """
+    data = _read_session_json(session_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if data.get("promoted") and data.get("promoted_thread_id"):
+        return {
+            "session_id":      session_id,
+            "thread_id":       data["promoted_thread_id"],
+            "already_promoted": True,
+        }
+
+    try:
+        thread_id = _create_chat_thread_from_overlay(data)
+    except Exception as e:
+        logger.error(f"overlay promote error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+    data["promoted"]           = True
+    data["promoted_thread_id"] = thread_id
+    _write_session_json(session_id, data)
+    _update_index_entry(session_id, promoted=True, promoted_thread_id=thread_id)
+
+    return {
+        "session_id":       session_id,
+        "thread_id":        thread_id,
+        "already_promoted": False,
+    }

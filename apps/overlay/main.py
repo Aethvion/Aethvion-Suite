@@ -95,11 +95,14 @@ def save_session(session: dict) -> None:
     index = [e for e in index if e.get("id") != sid]
     first_q = session["pairs"][0]["q"] if session.get("pairs") else ""
     index.append({
-        "id":          sid,
-        "time":        session.get("time", ""),
-        "date":        session.get("date", ""),
-        "first_q":     first_q[:120],
-        "pairs_count": len(session.get("pairs", [])),
+        "id":                 sid,
+        "time":               session.get("time", ""),
+        "date":               session.get("date", ""),
+        "first_q":            first_q[:120],
+        "pairs_count":        len(session.get("pairs", [])),
+        "is_pinned":          bool(session.get("is_pinned", False)),
+        "promoted":           bool(session.get("promoted", False)),
+        "promoted_thread_id": session.get("promoted_thread_id"),
     })
     index.sort(key=lambda e: e["id"], reverse=True)
     index_path.write_text(json.dumps(index, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -931,11 +934,14 @@ class OverlayWindow(QWidget):
             sid = _new_session_id()
             now = datetime.now()
             self._current_entry = {
-                "id":        sid,
-                "time":      now.strftime("%H:%M"),
-                "date":      now.strftime("%Y-%m-%d"),
-                "pairs":     [],
-                "thumb_b64": self._pending_thumb,
+                "id":              sid,
+                "time":            now.strftime("%H:%M"),
+                "date":            now.strftime("%Y-%m-%d"),
+                "pairs":           [],
+                "thumb_b64":       self._pending_thumb,
+                "is_pinned":       False,
+                "promoted":        False,
+                "promoted_thread_id": None,
             }
 
         self._current_entry["pairs"].append({"q": question, "a": None})
