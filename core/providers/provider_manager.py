@@ -27,6 +27,7 @@ from .openai_provider import OpenAIProvider
 from .grok_provider import GrokProvider
 from .groq_provider import GroqProvider
 from .mistral_provider import MistralProvider
+from .deepseek_provider import DeepSeekProvider
 from .openrouter_provider import OpenRouterProvider
 from .anthropic_provider import AnthropicProvider
 from .local_provider import LocalProvider
@@ -52,6 +53,7 @@ class ProviderManager:
         'grok':        GrokProvider,
         'groq':        GroqProvider,
         'mistral':     MistralProvider,
+        'deepseek':    DeepSeekProvider,
         'openrouter':  OpenRouterProvider,
         'anthropic':   AnthropicProvider,
         'local':       LocalProvider,

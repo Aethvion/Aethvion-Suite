@@ -17,6 +17,10 @@
         "gpt-4o",
         "o3-mini"
     ],
+    "deepseek": [
+        "deepseek-chat",
+        "deepseek-reasoner"
+    ],
     "grok": [
         "grok-3-mini",
         "grok-3"

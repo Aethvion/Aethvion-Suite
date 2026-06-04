@@ -17,6 +17,7 @@ from .openai_provider import OpenAIProvider
 from .grok_provider import GrokProvider
 from .groq_provider import GroqProvider
 from .mistral_provider import MistralProvider
+from .deepseek_provider import DeepSeekProvider
 from .openrouter_provider import OpenRouterProvider
 from .provider_manager import ProviderManager, get_provider_manager
 
@@ -40,6 +41,7 @@ __all__ = [
     'GrokProvider',
     'GroqProvider',
     'MistralProvider',
+    'DeepSeekProvider',
     'OpenRouterProvider',
 
     # Manager + singleton accessor

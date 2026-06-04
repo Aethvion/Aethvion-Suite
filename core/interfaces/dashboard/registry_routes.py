@@ -310,7 +310,7 @@ async def update_registry(updates: Dict[str, Any], request: Request):
 @router.get("/available_types")
 async def get_available_types():
     """Get list of supported provider types."""
-    return ["google_ai", "openai", "anthropic", "grok", "groq", "mistral", "openrouter", "local"]
+    return ["google_ai", "openai", "anthropic", "grok", "groq", "mistral", "deepseek", "openrouter", "local"]
 
 
 @router.post("/providers")
@@ -321,7 +321,7 @@ async def add_provider(provider_data: Dict[str, Any], request: Request):
         if not provider_type:
             raise HTTPException(status_code=400, detail="Provider 'type' is required")
         
-        supported_types = ["google_ai", "openai", "anthropic", "grok", "groq", "mistral", "openrouter", "local"]
+        supported_types = ["google_ai", "openai", "anthropic", "grok", "groq", "mistral", "deepseek", "openrouter", "local"]
         if provider_type not in supported_types:
             raise HTTPException(status_code=400, detail=f"Unsupported provider type: {provider_type}")
             
@@ -376,6 +376,14 @@ async def add_provider(provider_data: Dict[str, Any], request: Request):
             "mistral": {
                 "name": "Mistral AI",
                 "api_key_env": "MISTRAL_API_KEY",
+                "active": True,
+                "chat_config": {"active": True, "priority": 1},
+                "agent_config": {"active": False, "priority": 1},
+                "models": {}
+            },
+            "deepseek": {
+                "name": "DeepSeek",
+                "api_key_env": "DEEPSEEK_API_KEY",
                 "active": True,
                 "chat_config": {"active": True, "priority": 1},
                 "agent_config": {"active": False, "priority": 1},

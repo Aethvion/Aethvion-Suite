@@ -1,0 +1,24 @@
+{
+    "deepseek": {
+        "name": "DeepSeek",
+        "api_key_env": "DEEPSEEK_API_KEY",
+        "models": [
+            {
+                "id": "deepseek-chat",
+                "name": "DeepSeek V3 Chat",
+                "input_cost": 0.14,
+                "output_cost": 0.28,
+                "capabilities": ["CHAT"],
+                "description": "DeepSeek V3 flagship chat model. Highly efficient, cheap, and fast."
+            },
+            {
+                "id": "deepseek-reasoner",
+                "name": "DeepSeek R1 Reasoner",
+                "input_cost": 0.55,
+                "output_cost": 2.19,
+                "capabilities": ["CHAT"],
+                "description": "DeepSeek R1 reasoning model (o1-like). Uses chain-of-thought for complex reasoning and coding."
+            }
+        ]
+    }
+}

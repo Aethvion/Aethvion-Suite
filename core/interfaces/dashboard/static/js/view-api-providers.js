@@ -16,6 +16,7 @@
         xai:         'fas fa-bolt',
         groq:        'fas fa-bolt',
         mistral:     'fas fa-wind',
+        deepseek:    'fas fa-microchip',
         openrouter:  'fas fa-route',
     };
 
@@ -26,6 +27,7 @@
         grok:       'xAI Grok models with real-time knowledge and strong reasoning.',
         groq:       'Lightning-fast LPU inference for Llama, Mixtral, and Gemma models.',
         mistral:    'Mistral Large, Codestral, Pixtral. High-efficiency European-hosted models.',
+        deepseek:   'DeepSeek-V3 and R1 reasoning models. Highly cost-effective intelligence with state-of-the-art capability.',
         openrouter: 'Unified gateway to 300+ models — DeepSeek, Llama, Qwen, and more.',
     };
 
@@ -37,6 +39,7 @@
         xai:        'xAI',
         groq:       'Groq',
         mistral:    'Mistral AI',
+        deepseek:   'DeepSeek',
         openrouter: 'OpenRouter',
     };
 

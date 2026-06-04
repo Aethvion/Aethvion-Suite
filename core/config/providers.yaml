@@ -50,6 +50,13 @@ providers:
     endpoint: "https://openrouter.ai/api/v1"
     timeout: 60
 
+  deepseek:
+    enabled: true
+    name: "DeepSeek"
+    api_key_env: "DEEPSEEK_API_KEY"
+    endpoint: "https://api.deepseek.com"
+    timeout: 60
+
   local:
     enabled: true
     name: "Local Models"
@@ -91,3 +98,6 @@ rate_limits:
   openrouter:
     requests_per_minute: 60
     tokens_per_minute: 200000
+  deepseek:
+    requests_per_minute: 60
+    tokens_per_minute: 100000
