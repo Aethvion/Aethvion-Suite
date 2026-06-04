@@ -1,0 +1,48 @@
+{
+  "type": "ui.button",
+  "label": "UI Button",
+  "category": "Interface",
+  "icon": "fa-circle-play",
+  "color": "#06b6d4",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "trigger",
+      "label": "Trigger"
+    }
+  ],
+  "properties": [
+    {
+      "key": "label",
+      "label": "Button Label",
+      "type": "text",
+      "default": "Run"
+    },
+    {
+      "key": "style",
+      "label": "Button Style",
+      "type": "select",
+      "options": ["primary", "secondary"],
+      "default": "primary"
+    },
+    {
+      "key": "ui_group",
+      "label": "UI Group Name",
+      "type": "text",
+      "default": "Controls"
+    },
+    {
+      "key": "ui_width",
+      "label": "UI Width (%)",
+      "type": "select",
+      "options": ["25", "33", "50", "100"],
+      "default": "100"
+    },
+    {
+      "key": "ui_order",
+      "label": "UI Order",
+      "type": "number",
+      "default": 0
+    }
+  ]
+}

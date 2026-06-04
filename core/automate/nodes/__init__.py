@@ -16,7 +16,7 @@ from typing import Callable
 
 from . import (
     actions, aethviondb, ai, data, globals as global_nodes,
-    inputs_outputs, integrations, logic, media, memory, triggers,
+    inputs_outputs, integrations, logic, media, memory, triggers, ui,
 )
 
 # Handler registry
@@ -103,6 +103,14 @@ _REGISTRY: dict[str, Callable] = {
     "output.clipboard": inputs_outputs.output_clipboard,
     "output.display":   inputs_outputs.output_display,
     "output.file":      inputs_outputs.output_file,
+
+    # UI Custom Interface
+    "ui.button":        ui.ui_button,
+    "ui.input_text":    ui.ui_input_text,
+    "ui.input_number":  ui.ui_input_number,
+    "ui.input_toggle":  ui.ui_input_toggle,
+    "ui.display_text":  ui.ui_display_text,
+    "ui.display_image": ui.ui_display_image,
 
     # AethvionDB — search
     "aethviondb.search":                    aethviondb.aethviondb_search,

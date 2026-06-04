@@ -1,0 +1,49 @@
+{
+  "type": "ui.display_image",
+  "label": "UI Display Image",
+  "category": "Interface",
+  "icon": "fa-image",
+  "color": "#06b6d4",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Image source",
+      "description": "Image URL or base64 data string to render."
+    }
+  ],
+  "outputs": [],
+  "properties": [
+    {
+      "key": "label",
+      "label": "Display Label",
+      "type": "text",
+      "default": "Output Image"
+    },
+    {
+      "key": "aspect_ratio",
+      "label": "Aspect Ratio",
+      "type": "select",
+      "options": ["auto", "16/9", "1/1"],
+      "default": "auto"
+    },
+    {
+      "key": "ui_group",
+      "label": "UI Group Name",
+      "type": "text",
+      "default": "Outputs"
+    },
+    {
+      "key": "ui_width",
+      "label": "UI Width (%)",
+      "type": "select",
+      "options": ["25", "33", "50", "100"],
+      "default": "100"
+    },
+    {
+      "key": "ui_order",
+      "label": "UI Order",
+      "type": "number",
+      "default": 0
+    }
+  ]
+}

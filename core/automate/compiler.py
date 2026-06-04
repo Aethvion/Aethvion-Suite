@@ -133,6 +133,12 @@ NODE_DEPS: dict[str, dict] = {
     "output.display":     {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "output.file":        {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "output.clipboard":   {"pip": ["pyperclip"],                   "keys": [], "aethviondb": False, "ai": False},
+    "ui.button":          {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
+    "ui.input_text":      {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
+    "ui.input_number":    {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
+    "ui.input_toggle":    {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
+    "ui.display_text":    {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
+    "ui.display_image":   {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "aethviondb.search":                   {"pip": [],  "keys": [], "aethviondb": True, "ai": False},
     "aethviondb.semantic_search":          {"pip": [],  "keys": [], "aethviondb": True, "ai": False},
     "aethviondb.snapshot_search":          {"pip": [],  "keys": [], "aethviondb": True, "ai": False},
@@ -308,7 +314,7 @@ def _analyze_workflow(workflow: dict) -> dict:
     seen_slugs: set[str] = set()
     for node in workflow.get("nodes", []):
         t = node.get("type", "")
-        if not t.startswith("trigger."):
+        if not (t.startswith("trigger.") or t == "ui.button"):
             continue
         props = node.get("properties", {})
         name = str(props.get("name", "")).strip()
@@ -545,7 +551,7 @@ def _extract_json_block(text: str) -> dict:
     public_vars_json = json.dumps(public_vars, ensure_ascii=False)
     triggers         = analysis.get("triggers", [])
     triggers_json    = json.dumps(triggers, ensure_ascii=False)
-    html_content     = _get_html_template().replace("%%NAME%%", wf_name)
+    html_content     = _get_html_template().replace("%%NAME%%", wf_name).replace("%%WORKFLOW_JSON%%", json.dumps(workflow, ensure_ascii=False))
 
     src = f'''\
 #!/usr/bin/env python3

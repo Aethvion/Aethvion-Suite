@@ -1,0 +1,53 @@
+{
+  "type": "ui.input_toggle",
+  "label": "UI Toggle Switch",
+  "category": "Interface",
+  "icon": "fa-toggle-on",
+  "color": "#06b6d4",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Enabled"
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Variable Name",
+      "type": "text",
+      "default": "toggle_input"
+    },
+    {
+      "key": "label",
+      "label": "Display Label",
+      "type": "text",
+      "default": "Toggle Option"
+    },
+    {
+      "key": "value",
+      "label": "Default Enabled",
+      "type": "toggle",
+      "default": false
+    },
+    {
+      "key": "ui_group",
+      "label": "UI Group Name",
+      "type": "text",
+      "default": "Inputs"
+    },
+    {
+      "key": "ui_width",
+      "label": "UI Width (%)",
+      "type": "select",
+      "options": ["25", "33", "50", "100"],
+      "default": "100"
+    },
+    {
+      "key": "ui_order",
+      "label": "UI Order",
+      "type": "number",
+      "default": 0
+    }
+  ]
+}

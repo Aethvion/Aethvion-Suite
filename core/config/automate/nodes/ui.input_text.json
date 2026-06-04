@@ -1,0 +1,65 @@
+{
+  "type": "ui.input_text",
+  "label": "UI Text Input",
+  "category": "Interface",
+  "icon": "fa-keyboard",
+  "color": "#06b6d4",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Text"
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Variable Name",
+      "type": "text",
+      "default": "text_input"
+    },
+    {
+      "key": "label",
+      "label": "Display Label",
+      "type": "text",
+      "default": "Text Input"
+    },
+    {
+      "key": "placeholder",
+      "label": "Placeholder",
+      "type": "text",
+      "default": "Type here..."
+    },
+    {
+      "key": "multiline",
+      "label": "Multiline Area",
+      "type": "toggle",
+      "default": false
+    },
+    {
+      "key": "value",
+      "label": "Default Value",
+      "type": "textarea",
+      "default": ""
+    },
+    {
+      "key": "ui_group",
+      "label": "UI Group Name",
+      "type": "text",
+      "default": "Inputs"
+    },
+    {
+      "key": "ui_width",
+      "label": "UI Width (%)",
+      "type": "select",
+      "options": ["25", "33", "50", "100"],
+      "default": "100"
+    },
+    {
+      "key": "ui_order",
+      "label": "UI Order",
+      "type": "number",
+      "default": 0
+    }
+  ]
+}

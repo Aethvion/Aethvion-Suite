@@ -1,0 +1,48 @@
+{
+  "type": "ui.display_text",
+  "label": "UI Display Text",
+  "category": "Interface",
+  "icon": "fa-file-lines",
+  "color": "#06b6d4",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Data",
+      "description": "Text or markdown content to display."
+    }
+  ],
+  "outputs": [],
+  "properties": [
+    {
+      "key": "label",
+      "label": "Display Label",
+      "type": "text",
+      "default": "Output Text"
+    },
+    {
+      "key": "markdown",
+      "label": "Render Markdown",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "key": "ui_group",
+      "label": "UI Group Name",
+      "type": "text",
+      "default": "Outputs"
+    },
+    {
+      "key": "ui_width",
+      "label": "UI Width (%)",
+      "type": "select",
+      "options": ["25", "33", "50", "100"],
+      "default": "100"
+    },
+    {
+      "key": "ui_order",
+      "label": "UI Order",
+      "type": "number",
+      "default": 0
+    }
+  ]
+}

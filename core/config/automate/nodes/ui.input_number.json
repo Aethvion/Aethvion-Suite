@@ -1,0 +1,71 @@
+{
+  "type": "ui.input_number",
+  "label": "UI Number Input",
+  "category": "Interface",
+  "icon": "fa-calculator",
+  "color": "#06b6d4",
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Number"
+    }
+  ],
+  "properties": [
+    {
+      "key": "name",
+      "label": "Variable Name",
+      "type": "text",
+      "default": "number_input"
+    },
+    {
+      "key": "label",
+      "label": "Display Label",
+      "type": "text",
+      "default": "Number Input"
+    },
+    {
+      "key": "value",
+      "label": "Default Value",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "key": "min",
+      "label": "Min Value (optional)",
+      "type": "number",
+      "default": ""
+    },
+    {
+      "key": "max",
+      "label": "Max Value (optional)",
+      "type": "number",
+      "default": ""
+    },
+    {
+      "key": "step",
+      "label": "Step Size",
+      "type": "number",
+      "default": 1
+    },
+    {
+      "key": "ui_group",
+      "label": "UI Group Name",
+      "type": "text",
+      "default": "Inputs"
+    },
+    {
+      "key": "ui_width",
+      "label": "UI Width (%)",
+      "type": "select",
+      "options": ["25", "33", "50", "100"],
+      "default": "100"
+    },
+    {
+      "key": "ui_order",
+      "label": "UI Order",
+      "type": "number",
+      "default": 0
+    }
+  ]
+}

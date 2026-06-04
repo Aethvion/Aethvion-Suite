@@ -151,6 +151,10 @@
             btnExport:          _$('at-btn-export'),
             // Compile modal
             btnCompile:            _$('at-btn-compile'),
+            viewGraph:          _$('at-view-graph'),
+            viewInterface:      _$('at-view-interface'),
+            interfaceWrap:      _$('at-interface-wrap'),
+            interfaceContainer: _$('at-interface-container'),
             compileOverlay:        _$('at-compile-overlay'),
             compileClose:          _$('at-compile-close'),
             compileBtn:            _$('at-compile-btn'),
@@ -1167,6 +1171,11 @@
     function _showCanvas() {
         _e.canvasEmpty.style.display    = 'none';
         _e.canvasInner.style.display    = '';
+        if (_e.interfaceWrap) _e.interfaceWrap.style.display = 'none';
+        if (_e.viewGraph) {
+            _e.viewGraph.classList.add('active');
+            _e.viewInterface.classList.remove('active');
+        }
         _e.wfLabel.textContent          = _active ? _active.name : '';
         _e.wfRenameBtn.style.display    = _active ? '' : 'none';
     }
@@ -1174,9 +1183,458 @@
     function _showEmpty() {
         _e.canvasEmpty.style.display    = '';
         _e.canvasInner.style.display    = 'none';
+        if (_e.interfaceWrap) _e.interfaceWrap.style.display = 'none';
         _e.wfLabel.textContent          = 'No workflow selected';
         _e.wfRenameBtn.style.display    = 'none';
         _showExplorer();
+    }
+
+    // Graph vs Interface view toggling
+    function _switchView(view) {
+        if (!_active) return;
+        if (view === 'graph') {
+            _e.viewGraph.classList.add('active');
+            _e.viewInterface.classList.remove('active');
+            _e.canvasInner.style.display = '';
+            _e.interfaceWrap.style.display = 'none';
+        } else if (view === 'interface') {
+            _e.viewGraph.classList.remove('active');
+            _e.viewInterface.classList.add('active');
+            _e.canvasInner.style.display = 'none';
+            _e.interfaceWrap.style.display = '';
+            _renderCustomInterface();
+        }
+    }
+
+    var _interfaceValues = {}; // local cache of text inputs, numbers, toggles, keyed by node id
+
+    function _renderCustomInterface() {
+        _e.interfaceContainer.innerHTML = '';
+        if (!_active) return;
+
+        const uiNodes = _active.nodes.filter(n => n.type.startsWith('ui.'));
+        if (uiNodes.length === 0) {
+            _e.interfaceContainer.innerHTML = `
+                <div style="grid-column: span 12; text-align: center; color: #64748b; padding: 4rem 2rem;">
+                    <i class="fas fa-desktop" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <h3>No UI Nodes designed</h3>
+                    <p style="margin-top: 0.5rem; font-size: 0.85rem;">Drag ui.* nodes (ui.button, ui.input_text, ui.display_text) onto the graph in Graph View to build a custom interface.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Group by ui_group property
+        const groups = {};
+        uiNodes.forEach(n => {
+            const props = n.properties || {};
+            const groupName = (props.ui_group || 'Dashboard').trim() || 'Dashboard';
+            if (!groups[groupName]) groups[groupName] = [];
+            groups[groupName].push(n);
+        });
+
+        const sortedGroupNames = Object.keys(groups).sort();
+        const multipleCards = sortedGroupNames.length > 1;
+
+        sortedGroupNames.forEach(groupName => {
+            const nodes = groups[groupName];
+            // Sort nodes by ui_order
+            nodes.sort((a, b) => {
+                const oA = parseFloat((a.properties || {}).ui_order) || 0;
+                const oB = parseFloat((b.properties || {}).ui_order) || 0;
+                return oA - oB;
+            });
+
+            // Create glassmorphic card
+            const card = document.createElement('div');
+            card.className = 'at-ui-card';
+            card.style.gridColumn = multipleCards ? 'span 6' : 'span 12';
+            card.style.background = 'rgba(30, 41, 59, 0.4)';
+            card.style.backdropFilter = 'blur(12px)';
+            card.style.webkitBackdropFilter = 'blur(12px)';
+            card.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+            card.style.borderRadius = '12px';
+            card.style.padding = '1.5rem';
+            card.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.3)';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.gap = '1.25rem';
+
+            // Card Header
+            const cardHdr = document.createElement('h3');
+            cardHdr.style.fontSize = '0.95rem';
+            cardHdr.style.fontWeight = '700';
+            cardHdr.style.letterSpacing = '0.04em';
+            cardHdr.style.textTransform = 'uppercase';
+            cardHdr.style.color = '#38bdf8';
+            cardHdr.style.borderBottom = '1px solid rgba(255, 255, 255, 0.06)';
+            cardHdr.style.paddingBottom = '0.5rem';
+            cardHdr.textContent = groupName;
+            card.appendChild(cardHdr);
+
+            // Row Container (flex wrap with gap)
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.flexWrap = 'wrap';
+            row.style.gap = '1rem';
+            card.appendChild(row);
+
+            nodes.forEach(n => {
+                const props = n.properties || {};
+                const widthPercent = props.ui_width || '100';
+                const elWrap = document.createElement('div');
+                elWrap.style.flex = '1 1 calc(' + widthPercent + '% - 1rem)';
+                elWrap.style.minWidth = widthPercent === '100' ? '100%' : '200px';
+                elWrap.style.display = 'flex';
+                elWrap.style.flexDirection = 'column';
+                elWrap.style.gap = '0.35rem';
+
+                const labelText = props.label || n.label || '';
+                const varName = props.name || n.id;
+
+                if (n.type === 'ui.input_text') {
+                    const label = document.createElement('label');
+                    label.style.fontSize = '0.78rem';
+                    label.style.fontWeight = '500';
+                    label.style.color = '#94a3b8';
+                    label.textContent = labelText;
+                    elWrap.appendChild(label);
+
+                    let input;
+                    const savedVal = _interfaceValues[n.id] !== undefined ? _interfaceValues[n.id] : (props.value || '');
+                    _interfaceValues[n.id] = savedVal;
+
+                    if (props.multiline) {
+                        input = document.createElement('textarea');
+                        input.rows = 4;
+                        input.style.resize = 'vertical';
+                    } else {
+                        input = document.createElement('input');
+                        input.type = 'text';
+                    }
+                    input.placeholder = props.placeholder || 'Type here...';
+                    input.value = savedVal;
+                    input.style.background = '#0f172a';
+                    input.style.border = '1px solid #334155';
+                    input.style.borderRadius = '6px';
+                    input.style.color = '#e2e8f0';
+                    input.style.padding = '0.5rem';
+                    input.style.fontSize = '0.8rem';
+                    input.style.outline = 'none';
+                    input.addEventListener('input', e => {
+                        _interfaceValues[n.id] = e.target.value;
+                    });
+                    input.addEventListener('focus', () => { input.style.borderColor = '#06b6d4'; });
+                    input.addEventListener('blur', () => { input.style.borderColor = '#334155'; });
+                    elWrap.appendChild(input);
+
+                } else if (n.type === 'ui.input_number') {
+                    const label = document.createElement('label');
+                    label.style.fontSize = '0.78rem';
+                    label.style.fontWeight = '500';
+                    label.style.color = '#94a3b8';
+                    label.textContent = labelText;
+                    elWrap.appendChild(label);
+
+                    const savedVal = _interfaceValues[n.id] !== undefined ? _interfaceValues[n.id] : (props.value ?? 0);
+                    _interfaceValues[n.id] = savedVal;
+
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.value = savedVal;
+                    if (props.min !== undefined && props.min !== '') input.min = props.min;
+                    if (props.max !== undefined && props.max !== '') input.max = props.max;
+                    if (props.step !== undefined) input.step = props.step;
+                    input.style.background = '#0f172a';
+                    input.style.border = '1px solid #334155';
+                    input.style.borderRadius = '6px';
+                    input.style.color = '#e2e8f0';
+                    input.style.padding = '0.5rem';
+                    input.style.fontSize = '0.8rem';
+                    input.style.outline = 'none';
+                    input.addEventListener('input', e => {
+                        _interfaceValues[n.id] = parseFloat(e.target.value) || 0;
+                    });
+                    input.addEventListener('focus', () => { input.style.borderColor = '#06b6d4'; });
+                    input.addEventListener('blur', () => { input.style.borderColor = '#334155'; });
+                    elWrap.appendChild(input);
+
+                } else if (n.type === 'ui.input_toggle') {
+                    const savedVal = _interfaceValues[n.id] !== undefined ? _interfaceValues[n.id] : !!props.value;
+                    _interfaceValues[n.id] = savedVal;
+
+                    const label = document.createElement('label');
+                    label.style.fontSize = '0.78rem';
+                    label.style.fontWeight = '500';
+                    label.style.color = '#94a3b8';
+                    label.style.display = 'flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '0.5rem';
+                    label.style.cursor = 'pointer';
+
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.checked = savedVal;
+                    input.style.accentColor = '#06b6d4';
+                    input.addEventListener('change', e => {
+                        _interfaceValues[n.id] = e.target.checked;
+                    });
+
+                    label.appendChild(input);
+                    const spanText = document.createElement('span');
+                    spanText.textContent = labelText;
+                    label.appendChild(spanText);
+                    elWrap.appendChild(label);
+
+                } else if (n.type === 'ui.button') {
+                    const btn = document.createElement('button');
+                    btn.dataset.nodeId = n.id;
+                    btn.style.marginTop = '0.5rem';
+                    btn.style.padding = '0.55rem 1rem';
+                    btn.style.borderRadius = '6px';
+                    btn.style.fontSize = '0.85rem';
+                    btn.style.fontWeight = '700';
+                    btn.style.cursor = 'pointer';
+                    btn.style.transition = 'all 0.15s';
+                    btn.style.display = 'flex';
+                    btn.style.alignItems = 'center';
+                    btn.style.justifyContent = 'center';
+                    btn.style.gap = '0.5rem';
+
+                    if (props.style === 'secondary') {
+                        btn.style.background = 'transparent';
+                        btn.style.border = '1px solid #475569';
+                        btn.style.color = '#e2e8f0';
+                        btn.addEventListener('mouseenter', () => { btn.style.background = 'rgba(255,255,255,0.04)'; });
+                        btn.addEventListener('mouseleave', () => { btn.style.background = 'transparent'; });
+                    } else {
+                        btn.style.background = '#06b6d4';
+                        btn.style.border = 'none';
+                        btn.style.color = '#0f172a';
+                        btn.addEventListener('mouseenter', () => { btn.style.background = '#22d3ee'; });
+                        btn.addEventListener('mouseleave', () => { btn.style.background = '#06b6d4'; });
+                    }
+
+                    btn.innerHTML = `<i class="fas fa-play" style="font-size: 0.75rem;"></i><span>${_esc(labelText)}</span>`;
+                    btn.addEventListener('click', () => {
+                        _runInterfaceWorkflow(n.id, btn);
+                    });
+                    elWrap.appendChild(btn);
+
+                } else if (n.type === 'ui.display_text') {
+                    const label = document.createElement('label');
+                    label.style.fontSize = '0.78rem';
+                    label.style.fontWeight = '500';
+                    label.style.color = '#94a3b8';
+                    label.textContent = labelText;
+                    elWrap.appendChild(label);
+
+                    const box = document.createElement('div');
+                    box.id = 'disp_' + n.id;
+                    box.style.background = '#0f172a';
+                    box.style.border = '1px solid #334155';
+                    box.style.borderRadius = '6px';
+                    box.style.padding = '0.65rem';
+                    box.style.fontSize = '0.8rem';
+                    box.style.minHeight = '60px';
+                    box.style.color = '#cbd5e1';
+                    box.style.overflowY = 'auto';
+                    box.style.whiteSpace = 'pre-wrap';
+                    box.style.wordBreak = 'break-word';
+
+                    const currentOutput = (n.output_data && n.output_data._display) || '';
+                    if (currentOutput) {
+                        box.innerHTML = props.markdown ? _renderMarkdown(currentOutput) : _esc(currentOutput);
+                    } else {
+                        box.innerHTML = '<span style="color:#475569;font-style:italic;">No output yet</span>';
+                    }
+                    elWrap.appendChild(box);
+
+                } else if (n.type === 'ui.display_image') {
+                    const label = document.createElement('label');
+                    label.style.fontSize = '0.78rem';
+                    label.style.fontWeight = '500';
+                    label.style.color = '#94a3b8';
+                    label.textContent = labelText;
+                    elWrap.appendChild(label);
+
+                    const box = document.createElement('div');
+                    box.id = 'disp_' + n.id;
+                    box.style.background = '#0f172a';
+                    box.style.border = '1px solid #334155';
+                    box.style.borderRadius = '6px';
+                    box.style.padding = '0.5rem';
+                    box.style.display = 'flex';
+                    box.style.alignItems = 'center';
+                    box.style.justifyContent = 'center';
+                    box.style.overflow = 'hidden';
+                    box.style.minHeight = '120px';
+
+                    const currentOutput = (n.output_data && n.output_data._display_image) || '';
+                    if (currentOutput) {
+                        const img = document.createElement('img');
+                        img.src = currentOutput;
+                        img.style.maxWidth = '100%';
+                        if (props.aspect_ratio === '16/9') {
+                            img.style.aspectRatio = '16/9';
+                            img.style.objectFit = 'cover';
+                        } else if (props.aspect_ratio === '1/1') {
+                            img.style.aspectRatio = '1/1';
+                            img.style.objectFit = 'cover';
+                        } else {
+                            img.style.aspectRatio = 'auto';
+                        }
+                        box.appendChild(img);
+                    } else {
+                        box.innerHTML = '<span style="color:#475569;font-style:italic;">No image loaded</span>';
+                    }
+                    elWrap.appendChild(box);
+                }
+
+                row.appendChild(elWrap);
+            });
+
+            _e.interfaceContainer.appendChild(card);
+        });
+    }
+
+    async function _runInterfaceWorkflow(buttonNodeId, btnElement) {
+        if (!_active) return;
+        btnElement.disabled = true;
+        const origHtml = btnElement.innerHTML;
+
+        btnElement.style.opacity = '0.6';
+        btnElement.innerHTML = `<i class="fas fa-spinner fa-spin" style="font-size: 0.75rem;"></i><span>Running…</span>`;
+
+        // Gather all variables (mapped by name AND node ID)
+        const vars = {};
+        _active.nodes.forEach(n => {
+            if (n.type.startsWith('ui.input_')) {
+                const val = _interfaceValues[n.id] !== undefined ? _interfaceValues[n.id] : ((n.properties || {}).value || '');
+                vars[n.id] = val;
+                if (n.properties && n.properties.name) {
+                    vars[n.properties.name] = val;
+                }
+            }
+        });
+
+        // Clear output display elements in GUI
+        _active.nodes.forEach(n => {
+            if (n.type.startsWith('ui.display_')) {
+                const box = _$('disp_' + n.id);
+                if (box) {
+                    box.innerHTML = `<div style="display:flex;align-items:center;gap:6px;color:#06b6d4;font-size:0.75rem;"><i class="fas fa-spinner fa-spin"></i> Running…</div>`;
+                }
+            }
+        });
+
+        try {
+            const r = await fetch('/api/automate/workflows/' + _active.id + '/run-stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    trigger_id: buttonNodeId,
+                    variables: vars
+                }),
+            });
+
+            if (!r.ok) throw new Error('Server error ' + r.status);
+
+            const reader = r.body.getReader();
+            const decoder = new TextDecoder();
+            let buf = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                buf += decoder.decode(value, { stream: true });
+                const lines = buf.split('\n');
+                buf = lines.pop();
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    let ev;
+                    try { ev = JSON.parse(line.slice(6)); } catch (_) { continue; }
+
+                    if (ev.type === 'node_status') {
+                        // Store output data on active node definition so it persists when returning to graph view
+                        const activeNode = _active.nodes.find(n => n.id === ev.node_id);
+                        if (activeNode) {
+                            activeNode.output_data = ev.outputs || {};
+                        }
+
+                        if (ev.status === 'done' && ev.outputs) {
+                            if (ev.outputs._display !== undefined) {
+                                const box = _$('disp_' + ev.node_id);
+                                if (box) {
+                                    const dispNode = _active.nodes.find(n => n.id === ev.node_id);
+                                    const renderMd = dispNode && (dispNode.properties || {}).markdown;
+                                    box.innerHTML = renderMd ? _renderMarkdown(ev.outputs._display) : _esc(ev.outputs._display);
+                                }
+                            }
+                            if (ev.outputs._display_image !== undefined) {
+                                const box = _$('disp_' + ev.node_id);
+                                if (box) {
+                                    const dispNode = _active.nodes.find(n => n.id === ev.node_id);
+                                    const ratio = dispNode && (dispNode.properties || {}).aspect_ratio;
+                                    box.innerHTML = '';
+                                    if (ev.outputs._display_image) {
+                                        const img = document.createElement('img');
+                                        img.src = ev.outputs._display_image;
+                                        img.style.maxWidth = '100%';
+                                        if (ratio === '16/9') {
+                                            img.style.aspectRatio = '16/9';
+                                            img.style.objectFit = 'cover';
+                                        } else if (ratio === '1/1') {
+                                            img.style.aspectRatio = '1/1';
+                                            img.style.objectFit = 'cover';
+                                        } else {
+                                            img.style.aspectRatio = 'auto';
+                                        }
+                                        box.appendChild(img);
+                                    } else {
+                                        box.innerHTML = '<span style="color:#475569;font-style:italic;">No image loaded</span>';
+                                    }
+                                }
+                            }
+                        } else if (ev.status === 'error') {
+                            const box = _$('disp_' + ev.node_id);
+                            if (box) {
+                                box.innerHTML = `<span style="color:#f87171;"><i class="fas fa-circle-exclamation"></i> Error: ${_esc(ev.error || 'Execution failed')}</span>`;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('[Automate] Custom UI run failed:', err);
+            _toast('Execution failed: ' + err.message, true);
+        } finally {
+            btnElement.disabled = false;
+            btnElement.style.opacity = '1';
+            btnElement.innerHTML = origHtml;
+            // Redraw display boxes that are still marked as "Running..." to idle empty state
+            _active.nodes.forEach(n => {
+                if (n.type.startsWith('ui.display_')) {
+                    const box = _$('disp_' + n.id);
+                    if (box && box.textContent.includes('Running…')) {
+                        if (n.type === 'ui.display_text') {
+                            box.innerHTML = '<span style="color:#475569;font-style:italic;">No output yet</span>';
+                        } else {
+                            box.innerHTML = '<span style="color:#475569;font-style:italic;">No image loaded</span>';
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    function _renderMarkdown(text) {
+        if (typeof marked !== 'undefined' && marked.parse) {
+            try { return marked.parse(text); } catch (_) {}
+        }
+        return _esc(text).replace(/\n/g, '<br>');
     }
 
     // Unified sidebar navigation
@@ -3061,6 +3519,17 @@
         _e.btnSave  .addEventListener('click', _apiSaveWorkflow);
         _e.btnDelete.addEventListener('click', _apiDeleteWorkflow);
         _e.btnRun   .addEventListener('click', _apiRunWorkflow);
+
+        if (_e.viewGraph) {
+            _e.viewGraph.addEventListener('click', function () {
+                _switchView('graph');
+            });
+        }
+        if (_e.viewInterface) {
+            _e.viewInterface.addEventListener('click', function () {
+                _switchView('interface');
+            });
+        }
 
         // Trigger selector dropdown
         if (_e.triggerDropBtn) {
