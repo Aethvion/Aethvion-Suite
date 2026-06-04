@@ -1,0 +1,60 @@
+{
+  "type": "ui.custom_html",
+  "label": "Custom HTML",
+  "category": "Interface",
+  "icon": "fa-code",
+  "color": "#06b6d4",
+  "inputs": [
+    {
+      "name": "in",
+      "label": "Data",
+      "description": "Dynamic data passed to the HTML container."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "out",
+      "label": "Data",
+      "description": "Passthrough of the dynamic input data."
+    }
+  ],
+  "properties": [
+    {
+      "key": "label",
+      "label": "Card Label",
+      "type": "text",
+      "default": "Custom Widget"
+    },
+    {
+      "key": "html",
+      "label": "Custom HTML Template",
+      "type": "textarea",
+      "default": "<div>\n  <h3>Live Value:</h3>\n  <div class=\"at-html-value\" style=\"font-size: 1.25rem; font-weight: bold; color: #22d3ee;\">Waiting...</div>\n</div>"
+    },
+    {
+      "key": "css",
+      "label": "Custom CSS styling",
+      "type": "textarea",
+      "default": ".at-html-value {\n  transition: color 0.3s ease;\n}"
+    },
+    {
+      "key": "js",
+      "label": "Custom JS interactive script",
+      "type": "textarea",
+      "default": "// Scoped variables: element, helpers\n// Listen for update events:\n// element.addEventListener('update', (e) => {\n//   console.log('Received data:', e.detail.value);\n// });"
+    },
+    {
+      "key": "ui_order",
+      "label": "UI Order",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "key": "ui_width",
+      "label": "UI Width (%)",
+      "type": "select",
+      "options": ["25", "33", "50", "100"],
+      "default": "100"
+    }
+  ]
+}

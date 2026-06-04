@@ -55,7 +55,8 @@
     let _panning     = null; // { startCX, startCY, startVX, startVY }
     let _pending     = null; // { nodeId, portName, portType:'output' }
     let _dirty       = false;
-    let _zTop        = 10;   // z-index counter for raised nodes
+    let _zTopNormal  = 50;   // z-index counter for normal raised nodes
+    let _zTopPlates  = 2;    // z-index counter for plate raised nodes
     let _placeOffset = 0;    // stagger offset for newly added nodes
     let _view        = { x: 0, y: 0, scale: 1 };
     let _sidebarPage   = 'workflows'; // 'workflows' | 'inspector' | 'results' | 'pubvars'
@@ -1224,278 +1225,479 @@
             return;
         }
 
-        // Group by ui_group property
+        // Separate plates and widget nodes
+        const plates = uiNodes.filter(n => n.type === 'ui.plate');
+        const widgets = uiNodes.filter(n => n.type !== 'ui.plate');
+
+        // Group widgets by plate_id
         const groups = {};
-        uiNodes.forEach(n => {
+        const unparented = [];
+
+        widgets.forEach(n => {
             const props = n.properties || {};
-            const groupName = (props.ui_group || 'Dashboard').trim() || 'Dashboard';
-            if (!groups[groupName]) groups[groupName] = [];
-            groups[groupName].push(n);
+            const plateId = props.plate_id;
+            if (plateId && plates.some(p => p.id === plateId)) {
+                if (!groups[plateId]) groups[plateId] = [];
+                groups[plateId].push(n);
+            } else {
+                unparented.push(n);
+            }
         });
 
-        const sortedGroupNames = Object.keys(groups).sort();
-        const multipleCards = sortedGroupNames.length > 1;
+        // Sort plates by ui_order
+        plates.sort((a, b) => {
+            const oA = parseFloat((a.properties || {}).ui_order) || 0;
+            const oB = parseFloat((b.properties || {}).ui_order) || 0;
+            return oA - oB;
+        });
 
-        sortedGroupNames.forEach(groupName => {
-            const nodes = groups[groupName];
-            // Sort nodes by ui_order
-            nodes.sort((a, b) => {
+        // Render card for each plate
+        plates.forEach(p => {
+            const props = p.properties || {};
+            const cardWidgets = groups[p.id] || [];
+
+            // Sort card widgets by ui_order
+            cardWidgets.sort((a, b) => {
                 const oA = parseFloat((a.properties || {}).ui_order) || 0;
                 const oB = parseFloat((b.properties || {}).ui_order) || 0;
                 return oA - oB;
             });
 
-            // Create glassmorphic card
-            const card = document.createElement('div');
-            card.className = 'at-ui-card';
-            card.style.gridColumn = multipleCards ? 'span 6' : 'span 12';
-            card.style.background = 'rgba(30, 41, 59, 0.4)';
-            card.style.backdropFilter = 'blur(12px)';
-            card.style.webkitBackdropFilter = 'blur(12px)';
-            card.style.border = '1px solid rgba(255, 255, 255, 0.08)';
-            card.style.borderRadius = '12px';
-            card.style.padding = '1.5rem';
-            card.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.3)';
-            card.style.display = 'flex';
-            card.style.flexDirection = 'column';
-            card.style.gap = '1.25rem';
+            // If there are no widgets in this plate, we can still render the empty card placeholder
+            _renderCardContainer(props, p.id, cardWidgets);
+        });
 
-            // Card Header
-            const cardHdr = document.createElement('h3');
-            cardHdr.style.fontSize = '0.95rem';
-            cardHdr.style.fontWeight = '700';
-            cardHdr.style.letterSpacing = '0.04em';
-            cardHdr.style.textTransform = 'uppercase';
-            cardHdr.style.color = '#38bdf8';
-            cardHdr.style.borderBottom = '1px solid rgba(255, 255, 255, 0.06)';
-            cardHdr.style.paddingBottom = '0.5rem';
-            cardHdr.textContent = groupName;
-            card.appendChild(cardHdr);
+        // Render unparented widgets in a default card
+        if (unparented.length > 0) {
+            unparented.sort((a, b) => {
+                const oA = parseFloat((a.properties || {}).ui_order) || 0;
+                const oB = parseFloat((b.properties || {}).ui_order) || 0;
+                return oA - oB;
+            });
+            _renderCardContainer({
+                label: 'General',
+                ui_width: '100',
+                background: 'Glassmorphism',
+                effect: 'Shadow',
+                border_style: 'Solid'
+            }, 'unparented', unparented);
+        }
+    }
 
-            // Row Container (flex wrap with gap)
-            const row = document.createElement('div');
-            row.style.display = 'flex';
-            row.style.flexWrap = 'wrap';
-            row.style.gap = '1rem';
-            card.appendChild(row);
+    function _renderCardContainer(props, cardId, cardWidgets) {
+        // Background style mapping
+        let bgStyle = 'rgba(30, 41, 59, 0.4)';
+        let backdrop = 'blur(12px)';
+        let borderStyle = '1px solid rgba(255, 255, 255, 0.08)';
+        let headerColor = '#38bdf8';
+        
+        const bgType = (props.background || 'Glassmorphism');
+        if (bgType === 'Dark Slate') {
+            bgStyle = 'rgba(15, 23, 42, 0.95)';
+            backdrop = 'none';
+            borderStyle = '1px solid rgba(255, 255, 255, 0.05)';
+            headerColor = '#94a3b8';
+        } else if (bgType === 'Deep Slate') {
+            bgStyle = 'rgba(30, 41, 59, 0.95)';
+            backdrop = 'none';
+            borderStyle = '1px solid rgba(255, 255, 255, 0.1)';
+            headerColor = '#38bdf8';
+        } else if (bgType === 'Deep Teal') {
+            bgStyle = 'rgba(13, 27, 30, 0.9)';
+            backdrop = 'blur(8px)';
+            borderStyle = '1px solid rgba(4, 120, 87, 0.3)';
+            headerColor = '#34d399';
+        } else if (bgType === 'Midnight Gradient') {
+            bgStyle = 'linear-gradient(135deg, rgba(15,23,42,0.9) 0%, rgba(88,28,135,0.2) 100%)';
+            backdrop = 'blur(12px)';
+            borderStyle = '1px solid rgba(168,85,247,0.2)';
+            headerColor = '#c084fc';
+        } else if (bgType === 'Neon Dusk') {
+            bgStyle = 'linear-gradient(135deg, rgba(24,24,37,0.95) 0%, rgba(225,29,72,0.15) 100%)';
+            backdrop = 'blur(12px)';
+            borderStyle = '1px solid rgba(244,63,94,0.3)';
+            headerColor = '#fb7185';
+        }
+        
+        // Border style
+        const borderType = props.border_style || 'Solid';
+        if (borderType === 'Dashed') {
+            borderStyle = borderStyle.replace('solid', 'dashed');
+        } else if (borderType === 'None') {
+            borderStyle = 'none';
+        }
+        
+        // Effects
+        let shadowStyle = '0 8px 32px rgba(0, 0, 0, 0.3)';
+        const effectType = props.effect || 'Shadow';
+        if (effectType === 'Glow') {
+            shadowStyle = '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 20px rgba(99, 102, 241, 0.15)';
+        } else if (effectType === 'None') {
+            shadowStyle = 'none';
+        }
 
-            nodes.forEach(n => {
-                const props = n.properties || {};
-                const widthPercent = props.ui_width || '100';
-                const elWrap = document.createElement('div');
-                elWrap.style.flex = '1 1 calc(' + widthPercent + '% - 1rem)';
-                elWrap.style.minWidth = widthPercent === '100' ? '100%' : '200px';
-                elWrap.style.display = 'flex';
-                elWrap.style.flexDirection = 'column';
-                elWrap.style.gap = '0.35rem';
+        // Create card
+        const card = document.createElement('div');
+        card.className = 'at-ui-card';
+        
+        const cardWidth = props.ui_width || '100';
+        if (cardWidth === '25') {
+            card.style.gridColumn = 'span 3';
+        } else if (cardWidth === '33') {
+            card.style.gridColumn = 'span 4';
+        } else if (cardWidth === '50') {
+            card.style.gridColumn = 'span 6';
+        } else {
+            card.style.gridColumn = 'span 12';
+        }
 
-                const labelText = props.label || n.label || '';
-                const varName = props.name || n.id;
+        card.style.background = bgStyle;
+        card.style.backdropFilter = backdrop;
+        card.style.webkitBackdropFilter = backdrop;
+        card.style.border = borderStyle;
+        card.style.borderRadius = '12px';
+        card.style.padding = '1.5rem';
+        card.style.boxShadow = shadowStyle;
+        card.style.display = 'flex';
+        card.style.flexDirection = 'column';
+        card.style.gap = '1.25rem';
+        
+        if (props.custom_css) {
+            const styleBlock = document.createElement('style');
+            styleBlock.textContent = props.custom_css;
+            card.appendChild(styleBlock);
+        }
 
-                if (n.type === 'ui.input_text') {
-                    const label = document.createElement('label');
-                    label.style.fontSize = '0.78rem';
-                    label.style.fontWeight = '500';
-                    label.style.color = '#94a3b8';
-                    label.textContent = labelText;
-                    elWrap.appendChild(label);
+        // Card Header
+        const cardHdr = document.createElement('h3');
+        cardHdr.style.fontSize = '0.95rem';
+        cardHdr.style.fontWeight = '700';
+        cardHdr.style.letterSpacing = '0.04em';
+        cardHdr.style.textTransform = 'uppercase';
+        cardHdr.style.color = headerColor;
+        cardHdr.style.borderBottom = '1px solid rgba(255, 255, 255, 0.06)';
+        cardHdr.style.paddingBottom = '0.5rem';
+        cardHdr.textContent = props.label || 'Dashboard Card';
+        card.appendChild(cardHdr);
 
-                    let input;
-                    const savedVal = _interfaceValues[n.id] !== undefined ? _interfaceValues[n.id] : (props.value || '');
-                    _interfaceValues[n.id] = savedVal;
+        // Row Container (flex wrap with gap)
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.flexWrap = 'wrap';
+        row.style.gap = '1rem';
+        card.appendChild(row);
 
-                    if (props.multiline) {
-                        input = document.createElement('textarea');
-                        input.rows = 4;
-                        input.style.resize = 'vertical';
-                    } else {
-                        input = document.createElement('input');
-                        input.type = 'text';
-                    }
-                    input.placeholder = props.placeholder || 'Type here...';
-                    input.value = savedVal;
-                    input.style.background = '#0f172a';
-                    input.style.border = '1px solid #334155';
-                    input.style.borderRadius = '6px';
-                    input.style.color = '#e2e8f0';
-                    input.style.padding = '0.5rem';
-                    input.style.fontSize = '0.8rem';
-                    input.style.outline = 'none';
-                    input.addEventListener('input', e => {
-                        _interfaceValues[n.id] = e.target.value;
-                    });
-                    input.addEventListener('focus', () => { input.style.borderColor = '#06b6d4'; });
-                    input.addEventListener('blur', () => { input.style.borderColor = '#334155'; });
-                    elWrap.appendChild(input);
+        if (cardWidgets.length === 0) {
+            const emptyHint = document.createElement('div');
+            emptyHint.style.fontSize = '0.78rem';
+            emptyHint.style.color = '#475569';
+            emptyHint.style.fontStyle = 'italic';
+            emptyHint.textContent = 'Drag interface nodes onto this plate to place them here.';
+            row.appendChild(emptyHint);
+        }
 
-                } else if (n.type === 'ui.input_number') {
-                    const label = document.createElement('label');
-                    label.style.fontSize = '0.78rem';
-                    label.style.fontWeight = '500';
-                    label.style.color = '#94a3b8';
-                    label.textContent = labelText;
-                    elWrap.appendChild(label);
+        cardWidgets.forEach(n => {
+            const wProps = n.properties || {};
+            const widthPercent = wProps.ui_width || '100';
+            const elWrap = document.createElement('div');
+            elWrap.style.flex = '1 1 calc(' + widthPercent + '% - 1rem)';
+            elWrap.style.minWidth = widthPercent === '100' ? '100%' : '200px';
+            elWrap.style.display = 'flex';
+            elWrap.style.flexDirection = 'column';
+            elWrap.style.gap = '0.35rem';
 
-                    const savedVal = _interfaceValues[n.id] !== undefined ? _interfaceValues[n.id] : (props.value ?? 0);
-                    _interfaceValues[n.id] = savedVal;
+            const labelText = wProps.label || n.label || '';
 
-                    const input = document.createElement('input');
-                    input.type = 'number';
-                    input.value = savedVal;
-                    if (props.min !== undefined && props.min !== '') input.min = props.min;
-                    if (props.max !== undefined && props.max !== '') input.max = props.max;
-                    if (props.step !== undefined) input.step = props.step;
-                    input.style.background = '#0f172a';
-                    input.style.border = '1px solid #334155';
-                    input.style.borderRadius = '6px';
-                    input.style.color = '#e2e8f0';
-                    input.style.padding = '0.5rem';
-                    input.style.fontSize = '0.8rem';
-                    input.style.outline = 'none';
-                    input.addEventListener('input', e => {
-                        _interfaceValues[n.id] = parseFloat(e.target.value) || 0;
-                    });
-                    input.addEventListener('focus', () => { input.style.borderColor = '#06b6d4'; });
-                    input.addEventListener('blur', () => { input.style.borderColor = '#334155'; });
-                    elWrap.appendChild(input);
+            if (n.type === 'ui.input_text') {
+                const label = document.createElement('label');
+                label.style.fontSize = '0.78rem';
+                label.style.fontWeight = '500';
+                label.style.color = '#94a3b8';
+                label.textContent = labelText;
+                elWrap.appendChild(label);
 
-                } else if (n.type === 'ui.input_toggle') {
-                    const savedVal = _interfaceValues[n.id] !== undefined ? _interfaceValues[n.id] : !!props.value;
-                    _interfaceValues[n.id] = savedVal;
+                let input;
+                const savedVal = _interfaceValues[n.id] !== undefined ? _interfaceValues[n.id] : (wProps.value || '');
+                _interfaceValues[n.id] = savedVal;
 
-                    const label = document.createElement('label');
-                    label.style.fontSize = '0.78rem';
-                    label.style.fontWeight = '500';
-                    label.style.color = '#94a3b8';
-                    label.style.display = 'flex';
-                    label.style.alignItems = 'center';
-                    label.style.gap = '0.5rem';
-                    label.style.cursor = 'pointer';
+                if (wProps.multiline) {
+                    input = document.createElement('textarea');
+                    input.rows = 4;
+                    input.style.resize = 'vertical';
+                } else {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                }
+                input.id = 'input_' + n.id;
+                input.placeholder = wProps.placeholder || 'Type here...';
+                input.value = savedVal;
+                input.style.background = '#0f172a';
+                input.style.border = '1px solid #334155';
+                input.style.borderRadius = '6px';
+                input.style.color = '#e2e8f0';
+                input.style.padding = '0.5rem';
+                input.style.fontSize = '0.8rem';
+                input.style.outline = 'none';
+                input.addEventListener('input', e => {
+                    _interfaceValues[n.id] = e.target.value;
+                });
+                input.addEventListener('focus', () => { input.style.borderColor = '#06b6d4'; });
+                input.addEventListener('blur', () => { input.style.borderColor = '#334155'; });
+                elWrap.appendChild(input);
 
-                    const input = document.createElement('input');
-                    input.type = 'checkbox';
-                    input.checked = savedVal;
-                    input.style.accentColor = '#06b6d4';
-                    input.addEventListener('change', e => {
-                        _interfaceValues[n.id] = e.target.checked;
-                    });
+            } else if (n.type === 'ui.input_number') {
+                const label = document.createElement('label');
+                label.style.fontSize = '0.78rem';
+                label.style.fontWeight = '500';
+                label.style.color = '#94a3b8';
+                label.textContent = labelText;
+                elWrap.appendChild(label);
 
-                    label.appendChild(input);
-                    const spanText = document.createElement('span');
-                    spanText.textContent = labelText;
-                    label.appendChild(spanText);
-                    elWrap.appendChild(label);
+                const savedVal = _interfaceValues[n.id] !== undefined ? _interfaceValues[n.id] : (wProps.value ?? 0);
+                _interfaceValues[n.id] = savedVal;
 
-                } else if (n.type === 'ui.button') {
-                    const btn = document.createElement('button');
-                    btn.dataset.nodeId = n.id;
-                    btn.style.marginTop = '0.5rem';
-                    btn.style.padding = '0.55rem 1rem';
-                    btn.style.borderRadius = '6px';
-                    btn.style.fontSize = '0.85rem';
-                    btn.style.fontWeight = '700';
-                    btn.style.cursor = 'pointer';
-                    btn.style.transition = 'all 0.15s';
-                    btn.style.display = 'flex';
-                    btn.style.alignItems = 'center';
-                    btn.style.justifyContent = 'center';
-                    btn.style.gap = '0.5rem';
+                const input = document.createElement('input');
+                input.id = 'input_' + n.id;
+                input.type = 'number';
+                input.value = savedVal;
+                if (wProps.min !== undefined && wProps.min !== '') input.min = wProps.min;
+                if (wProps.max !== undefined && wProps.max !== '') input.max = wProps.max;
+                if (wProps.step !== undefined) input.step = wProps.step;
+                input.style.background = '#0f172a';
+                input.style.border = '1px solid #334155';
+                input.style.borderRadius = '6px';
+                input.style.color = '#e2e8f0';
+                input.style.padding = '0.5rem';
+                input.style.fontSize = '0.8rem';
+                input.style.outline = 'none';
+                input.addEventListener('input', e => {
+                    _interfaceValues[n.id] = parseFloat(e.target.value) || 0;
+                });
+                input.addEventListener('focus', () => { input.style.borderColor = '#06b6d4'; });
+                input.addEventListener('blur', () => { input.style.borderColor = '#334155'; });
+                elWrap.appendChild(input);
 
-                    if (props.style === 'secondary') {
-                        btn.style.background = 'transparent';
-                        btn.style.border = '1px solid #475569';
-                        btn.style.color = '#e2e8f0';
-                        btn.addEventListener('mouseenter', () => { btn.style.background = 'rgba(255,255,255,0.04)'; });
-                        btn.addEventListener('mouseleave', () => { btn.style.background = 'transparent'; });
-                    } else {
-                        btn.style.background = '#06b6d4';
-                        btn.style.border = 'none';
-                        btn.style.color = '#0f172a';
-                        btn.addEventListener('mouseenter', () => { btn.style.background = '#22d3ee'; });
-                        btn.addEventListener('mouseleave', () => { btn.style.background = '#06b6d4'; });
-                    }
+            } else if (n.type === 'ui.input_toggle') {
+                const savedVal = _interfaceValues[n.id] !== undefined ? _interfaceValues[n.id] : !!wProps.value;
+                _interfaceValues[n.id] = savedVal;
 
-                    btn.innerHTML = `<i class="fas fa-play" style="font-size: 0.75rem;"></i><span>${_esc(labelText)}</span>`;
-                    btn.addEventListener('click', () => {
-                        _runInterfaceWorkflow(n.id, btn);
-                    });
-                    elWrap.appendChild(btn);
+                const label = document.createElement('label');
+                label.style.fontSize = '0.78rem';
+                label.style.fontWeight = '500';
+                label.style.color = '#94a3b8';
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '0.5rem';
+                label.style.cursor = 'pointer';
 
-                } else if (n.type === 'ui.display_text') {
-                    const label = document.createElement('label');
-                    label.style.fontSize = '0.78rem';
-                    label.style.fontWeight = '500';
-                    label.style.color = '#94a3b8';
-                    label.textContent = labelText;
-                    elWrap.appendChild(label);
+                const input = document.createElement('input');
+                input.id = 'input_' + n.id;
+                input.type = 'checkbox';
+                input.checked = savedVal;
+                input.style.accentColor = '#06b6d4';
+                input.addEventListener('change', e => {
+                    _interfaceValues[n.id] = e.target.checked;
+                });
 
-                    const box = document.createElement('div');
-                    box.id = 'disp_' + n.id;
-                    box.style.background = '#0f172a';
-                    box.style.border = '1px solid #334155';
-                    box.style.borderRadius = '6px';
-                    box.style.padding = '0.65rem';
-                    box.style.fontSize = '0.8rem';
-                    box.style.minHeight = '60px';
-                    box.style.color = '#cbd5e1';
-                    box.style.overflowY = 'auto';
-                    box.style.whiteSpace = 'pre-wrap';
-                    box.style.wordBreak = 'break-word';
+                label.appendChild(input);
+                const spanText = document.createElement('span');
+                spanText.textContent = labelText;
+                label.appendChild(spanText);
+                elWrap.appendChild(label);
 
-                    const currentOutput = (n.output_data && n.output_data._display) || '';
-                    if (currentOutput) {
-                        box.innerHTML = props.markdown ? _renderMarkdown(currentOutput) : _esc(currentOutput);
-                    } else {
-                        box.innerHTML = '<span style="color:#475569;font-style:italic;">No output yet</span>';
-                    }
-                    elWrap.appendChild(box);
+            } else if (n.type === 'ui.button') {
+                const btn = document.createElement('button');
+                btn.id = 'btn_' + n.id;
+                btn.dataset.nodeId = n.id;
+                btn.style.marginTop = '0.5rem';
+                btn.style.padding = '0.55rem 1rem';
+                btn.style.borderRadius = '6px';
+                btn.style.fontSize = '0.85rem';
+                btn.style.fontWeight = '700';
+                btn.style.cursor = 'pointer';
+                btn.style.transition = 'all 0.15s';
+                btn.style.display = 'flex';
+                btn.style.alignItems = 'center';
+                btn.style.justifyContent = 'center';
+                btn.style.gap = '0.5rem';
 
-                } else if (n.type === 'ui.display_image') {
-                    const label = document.createElement('label');
-                    label.style.fontSize = '0.78rem';
-                    label.style.fontWeight = '500';
-                    label.style.color = '#94a3b8';
-                    label.textContent = labelText;
-                    elWrap.appendChild(label);
-
-                    const box = document.createElement('div');
-                    box.id = 'disp_' + n.id;
-                    box.style.background = '#0f172a';
-                    box.style.border = '1px solid #334155';
-                    box.style.borderRadius = '6px';
-                    box.style.padding = '0.5rem';
-                    box.style.display = 'flex';
-                    box.style.alignItems = 'center';
-                    box.style.justifyContent = 'center';
-                    box.style.overflow = 'hidden';
-                    box.style.minHeight = '120px';
-
-                    const currentOutput = (n.output_data && n.output_data._display_image) || '';
-                    if (currentOutput) {
-                        const img = document.createElement('img');
-                        img.src = currentOutput;
-                        img.style.maxWidth = '100%';
-                        if (props.aspect_ratio === '16/9') {
-                            img.style.aspectRatio = '16/9';
-                            img.style.objectFit = 'cover';
-                        } else if (props.aspect_ratio === '1/1') {
-                            img.style.aspectRatio = '1/1';
-                            img.style.objectFit = 'cover';
-                        } else {
-                            img.style.aspectRatio = 'auto';
-                        }
-                        box.appendChild(img);
-                    } else {
-                        box.innerHTML = '<span style="color:#475569;font-style:italic;">No image loaded</span>';
-                    }
-                    elWrap.appendChild(box);
+                if (wProps.style === 'secondary') {
+                    btn.style.background = 'transparent';
+                    btn.style.border = '1px solid #475569';
+                    btn.style.color = '#e2e8f0';
+                    btn.addEventListener('mouseenter', () => { btn.style.background = 'rgba(255,255,255,0.04)'; });
+                    btn.addEventListener('mouseleave', () => { btn.style.background = 'transparent'; });
+                } else {
+                    btn.style.background = '#06b6d4';
+                    btn.style.border = 'none';
+                    btn.style.color = '#0f172a';
+                    btn.addEventListener('mouseenter', () => { btn.style.background = '#22d3ee'; });
+                    btn.addEventListener('mouseleave', () => { btn.style.background = '#06b6d4'; });
                 }
 
-                row.appendChild(elWrap);
-            });
+                btn.innerHTML = `<i class="fas fa-play" style="font-size: 0.75rem;"></i><span>${_esc(labelText)}</span>`;
+                btn.addEventListener('click', () => {
+                    _runInterfaceWorkflow(n.id, btn);
+                });
+                elWrap.appendChild(btn);
 
-            _e.interfaceContainer.appendChild(card);
+            } else if (n.type === 'ui.display_text') {
+                const label = document.createElement('label');
+                label.style.fontSize = '0.78rem';
+                label.style.fontWeight = '500';
+                label.style.color = '#94a3b8';
+                label.textContent = labelText;
+                elWrap.appendChild(label);
+
+                const box = document.createElement('div');
+                box.id = 'disp_' + n.id;
+                box.style.background = '#0f172a';
+                box.style.border = '1px solid #334155';
+                box.style.borderRadius = '6px';
+                box.style.padding = '0.65rem';
+                box.style.fontSize = '0.8rem';
+                box.style.minHeight = '60px';
+                box.style.color = '#cbd5e1';
+                box.style.overflowY = 'auto';
+                box.style.whiteSpace = 'pre-wrap';
+                box.style.wordBreak = 'break-word';
+
+                const currentOutput = (n.output_data && n.output_data._display) || '';
+                if (currentOutput) {
+                    box.innerHTML = wProps.markdown ? _renderMarkdown(currentOutput) : _esc(currentOutput);
+                } else {
+                    box.innerHTML = '<span style="color:#475569;font-style:italic;">No output yet</span>';
+                }
+                elWrap.appendChild(box);
+
+            } else if (n.type === 'ui.display_image') {
+                const label = document.createElement('label');
+                label.style.fontSize = '0.78rem';
+                label.style.fontWeight = '500';
+                label.style.color = '#94a3b8';
+                label.textContent = labelText;
+                elWrap.appendChild(label);
+
+                const box = document.createElement('div');
+                box.id = 'disp_' + n.id;
+                box.style.background = '#0f172a';
+                box.style.border = '1px solid #334155';
+                box.style.borderRadius = '6px';
+                box.style.padding = '0.5rem';
+                box.style.display = 'flex';
+                box.style.alignItems = 'center';
+                box.style.justifyContent = 'center';
+                box.style.overflow = 'hidden';
+                box.style.minHeight = '120px';
+
+                const currentOutput = (n.output_data && n.output_data._display_image) || '';
+                if (currentOutput) {
+                    const img = document.createElement('img');
+                    img.src = currentOutput;
+                    img.style.maxWidth = '100%';
+                    if (wProps.aspect_ratio === '16/9') {
+                        img.style.aspectRatio = '16/9';
+                        img.style.objectFit = 'cover';
+                    } else if (wProps.aspect_ratio === '1/1') {
+                        img.style.aspectRatio = '1/1';
+                        img.style.objectFit = 'cover';
+                    } else {
+                        img.style.aspectRatio = 'auto';
+                    }
+                    box.appendChild(img);
+                } else {
+                    box.innerHTML = '<span style="color:#475569;font-style:italic;">No image loaded</span>';
+                }
+                elWrap.appendChild(box);
+
+            } else if (n.type === 'ui.custom_html') {
+                const label = document.createElement('label');
+                label.style.fontSize = '0.78rem';
+                label.style.fontWeight = '500';
+                label.style.color = '#94a3b8';
+                label.textContent = labelText;
+                elWrap.appendChild(label);
+
+                const box = document.createElement('div');
+                box.id = 'disp_' + n.id;
+                box.dataset.displayNid = n.id;
+                box.style.position = 'relative';
+
+                if (wProps.css) {
+                    const styleEl = document.createElement('style');
+                    styleEl.textContent = wProps.css;
+                    box.appendChild(styleEl);
+                }
+
+                const htmlWrapper = document.createElement('div');
+                
+                const currentOutput = (n.output_data && n.output_data._display_html) || '';
+                let finalHtml = wProps.html || '';
+                htmlWrapper.innerHTML = finalHtml;
+                box.appendChild(htmlWrapper);
+
+                // Populate output tags initially if we have output data
+                if (currentOutput) {
+                    htmlWrapper.querySelectorAll('.at-html-value').forEach(el => {
+                        el.innerHTML = currentOutput;
+                    });
+                    htmlWrapper.querySelectorAll('.at-text-value').forEach(el => {
+                        el.textContent = currentOutput;
+                    });
+                }
+
+                elWrap.appendChild(box);
+
+                if (wProps.js) {
+                    try {
+                        const helpers = {
+                            getVariable: (name) => {
+                                const inputNode = _active.nodes.find(node => 
+                                    node.type.startsWith('ui.input_') && 
+                                    ((node.properties && node.properties.name === name) || node.id === name)
+                                );
+                                if (!inputNode) return undefined;
+                                return _interfaceValues[inputNode.id] !== undefined ? _interfaceValues[inputNode.id] : ((inputNode.properties || {}).value || '');
+                            },
+                            setVariable: (name, value) => {
+                                const inputNode = _active.nodes.find(node => 
+                                    node.type.startsWith('ui.input_') && 
+                                    ((node.properties && node.properties.name === name) || node.id === name)
+                                );
+                                if (!inputNode) return;
+                                _interfaceValues[inputNode.id] = value;
+                                const inputEl = _e.interfaceContainer.querySelector('#input_' + inputNode.id);
+                                if (inputEl) {
+                                    if (inputEl.type === 'checkbox') {
+                                        inputEl.checked = !!value;
+                                    } else {
+                                        inputEl.value = value;
+                                    }
+                                    inputEl.dispatchEvent(new Event('change'));
+                                }
+                            },
+                            trigger: (btnIdOrLabel) => {
+                                const btnNode = _active.nodes.find(node => 
+                                    node.type === 'ui.button' && 
+                                    (node.id === btnIdOrLabel || (node.properties && node.properties.label === btnIdOrLabel))
+                                );
+                                if (!btnNode) return;
+                                const btnEl = _e.interfaceContainer.querySelector('button[data-node-id="' + btnNode.id + '"]');
+                                _runInterfaceWorkflow(btnNode.id, btnEl || document.createElement('button'));
+                            }
+                        };
+                        const userFn = new Function('element', 'helpers', wProps.js);
+                        userFn.call(box, box, helpers);
+                    } catch (err) {
+                        console.error('Error running custom JS for node ' + n.id + ':', err);
+                    }
+                }
+            }
+
+            row.appendChild(elWrap);
         });
+
+        _e.interfaceContainer.appendChild(card);
     }
 
     async function _runInterfaceWorkflow(buttonNodeId, btnElement) {
@@ -1524,6 +1726,16 @@
                 const box = _$('disp_' + n.id);
                 if (box) {
                     box.innerHTML = `<div style="display:flex;align-items:center;gap:6px;color:#06b6d4;font-size:0.75rem;"><i class="fas fa-spinner fa-spin"></i> Running…</div>`;
+                }
+            } else if (n.type === 'ui.custom_html') {
+                const box = _$('disp_' + n.id);
+                if (box) {
+                    box.querySelectorAll('.at-html-value').forEach(el => {
+                        el.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Running…`;
+                    });
+                    box.querySelectorAll('.at-text-value').forEach(el => {
+                        el.textContent = `Running…`;
+                    });
                 }
             }
         });
@@ -1598,6 +1810,21 @@
                                     }
                                 }
                             }
+                            if (ev.outputs._display_html !== undefined) {
+                                const box = _$('disp_' + ev.node_id);
+                                if (box) {
+                                    // Update elements with class 'at-html-value'
+                                    box.querySelectorAll('.at-html-value').forEach(el => {
+                                        el.innerHTML = ev.outputs._display_html;
+                                    });
+                                    // Update elements with class 'at-text-value'
+                                    box.querySelectorAll('.at-text-value').forEach(el => {
+                                        el.textContent = ev.outputs._display_html;
+                                    });
+                                    // Dispatch custom update event
+                                    box.dispatchEvent(new CustomEvent('update', { detail: { value: ev.outputs._display_html } }));
+                                }
+                            }
                         } else if (ev.status === 'error') {
                             const box = _$('disp_' + ev.node_id);
                             if (box) {
@@ -1614,7 +1841,8 @@
             btnElement.disabled = false;
             btnElement.style.opacity = '1';
             btnElement.innerHTML = origHtml;
-            // Redraw display boxes that are still marked as "Running..." to idle empty state
+            
+            // Redraw display/html boxes that are still marked as "Running..." to idle empty state
             _active.nodes.forEach(n => {
                 if (n.type.startsWith('ui.display_')) {
                     const box = _$('disp_' + n.id);
@@ -1624,6 +1852,20 @@
                         } else {
                             box.innerHTML = '<span style="color:#475569;font-style:italic;">No image loaded</span>';
                         }
+                    }
+                } else if (n.type === 'ui.custom_html') {
+                    const box = _$('disp_' + n.id);
+                    if (box) {
+                        box.querySelectorAll('.at-html-value').forEach(el => {
+                            if (el.textContent.includes('Running…')) {
+                                el.innerHTML = '<span style="color:#475569;font-style:italic;">No output yet</span>';
+                            }
+                        });
+                        box.querySelectorAll('.at-text-value').forEach(el => {
+                            if (el.textContent.includes('Running…')) {
+                                el.textContent = 'No output yet';
+                            }
+                        });
                     }
                 }
             });
@@ -1682,7 +1924,15 @@
             if (c !== _e.svg) c.remove();
         });
         if (!_active) return;
-        _active.nodes.forEach(function (n) { _renderNode(n); });
+        
+        // Render ui.plate nodes first so they sit in the background of other nodes
+        _active.nodes.forEach(function (n) {
+            if (n.type === 'ui.plate') _renderNode(n);
+        });
+        _active.nodes.forEach(function (n) {
+            if (n.type !== 'ui.plate') _renderNode(n);
+        });
+        
         // Defer connections one frame so nodes have layout
         requestAnimationFrame(function () { _renderConns(); });
         // Refresh the trigger dropdown to match current node list
@@ -1695,10 +1945,40 @@
         const colorBg = color + '20';
 
         const el = document.createElement('div');
-        el.className    = 'at-node';
         el.dataset.nodeId = nd.id;
         el.style.left   = nd.x + 'px';
         el.style.top    = nd.y + 'px';
+
+        if (nd.type === 'ui.plate') {
+            const props = nd.properties || {};
+            const pw = parseFloat(props.plate_width) || 500;
+            const ph = parseFloat(props.plate_height) || 380;
+            el.className = 'at-node at-node-plate';
+            el.style.width = pw + 'px';
+            el.style.height = ph + 'px';
+            el.style.zIndex = '1';
+            
+            const title = _esc(props.label || 'Dashboard Card');
+            const bg = _esc(props.background || 'Glassmorphism');
+            
+            el.innerHTML = 
+                '<div class="at-node-plate-hdr">' +
+                '  <i class="fas fa-table-cells-large" style="margin-right:0.4rem;color:#6366f1;"></i>' +
+                '  <span class="at-node-plate-title">' + title + '</span>' +
+                '  <span class="at-node-plate-bg" style="font-size:0.65rem;color:#64748b;margin-left:auto;">' + bg + '</span>' +
+                '</div>' +
+                '<div class="at-node-plate-body" style="flex:1;"></div>' +
+                '<div class="at-node-plate-del-wrap" style="position:absolute;top:10px;right:10px;z-index:10;">' +
+                '  <button class="at-node-del" data-del-node="' + nd.id + '" title="Delete Plate">' +
+                '    <i class="fas fa-xmark"></i>' +
+                '  </button>' +
+                '</div>';
+            
+            _e.canvasInner.insertBefore(el, _e.svg);
+            return;
+        }
+
+        el.className    = 'at-node' + (nd.properties && nd.properties.plate_id ? ' at-node-snapped' : '');
 
         const inputsHtml = (td.inputs || []).map(function (p) {
             return (
@@ -2042,6 +2322,11 @@
 
     function _deleteNode(nodeId) {
         if (!_active) return;
+        _active.nodes.forEach(function (n) {
+            if (n.properties && n.properties.plate_id === nodeId) {
+                n.properties.plate_id = null;
+            }
+        });
         _active.nodes       = _active.nodes.filter(function (n) { return n.id !== nodeId; });
         _active.connections = _active.connections.filter(function (c) {
             return c.sourceNodeId !== nodeId && c.targetNodeId !== nodeId;
@@ -2053,6 +2338,36 @@
         _markDirty();
     }
 
+    function _raiseNodeZIndex(el, isPlate) {
+        if (isPlate) {
+            _zTopPlates++;
+            if (_zTopPlates >= 25) {
+                _zTopPlates = 2;
+                _active.nodes.forEach(function (n) {
+                    if (n.type === 'ui.plate') {
+                        const pEl = _e.canvasInner.querySelector('[data-node-id="' + n.id + '"].at-node');
+                        if (pEl) pEl.style.zIndex = 2;
+                    }
+                });
+                _zTopPlates = 3;
+            }
+            el.style.zIndex = _zTopPlates;
+        } else {
+            _zTopNormal++;
+            if (_zTopNormal >= 100) {
+                _zTopNormal = 50;
+                _active.nodes.forEach(function (n) {
+                    if (n.type !== 'ui.plate') {
+                        const nEl = _e.canvasInner.querySelector('[data-node-id="' + n.id + '"].at-node');
+                        if (nEl) nEl.style.zIndex = 50;
+                    }
+                });
+                _zTopNormal = 51;
+            }
+            el.style.zIndex = _zTopNormal;
+        }
+    }
+
     //  Selection
 
     function _selectNode(nodeId) {
@@ -2061,8 +2376,10 @@
         const el = _e.canvasInner.querySelector('[data-node-id="' + nodeId + '"].at-node');
         if (el) {
             el.classList.add('at-selected');
-            _zTop++;
-            el.style.zIndex = _zTop;
+            const nd = _active && _active.nodes.find(function (n) { return n.id === nodeId; });
+            if (nd) {
+                _raiseNodeZIndex(el, nd.type === 'ui.plate');
+            }
         }
 
         // Highlight the reachable chain when a trigger node is selected
@@ -2796,8 +3113,10 @@
                 e.stopPropagation();
                 _deselectAll(false);
                 _selNodeId = nd.id;
-                var el = _e.canvasInner.querySelector('[data-node-id="' + nd.id + '"].at-node');
-                if (el) { el.classList.add('at-selected'); _zTop++; el.style.zIndex = _zTop; }
+                if (el) {
+                    el.classList.add('at-selected');
+                    _raiseNodeZIndex(el, nd.type === 'ui.plate');
+                }
                 _openProps(nd.id);
             });
 
@@ -3747,7 +4066,7 @@
         // Node header drag
         _e.canvasInner.addEventListener('mousedown', function (e) {
             if (e.button !== 0) return;
-            const hdr = e.target.closest('.at-node-hdr');
+            const hdr = e.target.closest('.at-node-hdr') || e.target.closest('.at-node-plate-hdr');
             if (!hdr) return;
             if (e.target.closest('[data-del-node]') || e.target.closest('.at-port-row')) return;
             const nodeEl = hdr.closest('.at-node');
@@ -3761,7 +4080,19 @@
                 nodeId,
                 startCX: e.clientX, startCY: e.clientY,
                 startNX: nd.x,      startNY: nd.y,
+                children: []
             };
+            if (nd.type === 'ui.plate') {
+                _active.nodes.forEach(function (child) {
+                    if (child.properties && child.properties.plate_id === nd.id) {
+                        _dragging.children.push({
+                            nodeId: child.id,
+                            startNX: child.x,
+                            startNY: child.y
+                        });
+                    }
+                });
+            }
             _selectNode(nodeId);
         });
 
@@ -3880,6 +4211,18 @@
                     nd.y = Math.round(_dragging.startNY + dy);
                     const el = _e.canvasInner.querySelector('[data-node-id="' + _dragging.nodeId + '"].at-node');
                     if (el) { el.style.left = nd.x + 'px'; el.style.top = nd.y + 'px'; }
+                    
+                    if (_dragging.children) {
+                        _dragging.children.forEach(function (childInfo) {
+                            const childNode = _active.nodes.find(function (c) { return c.id === childInfo.nodeId; });
+                            if (childNode) {
+                                childNode.x = Math.round(childInfo.startNX + dx);
+                                childNode.y = Math.round(childInfo.startNY + dy);
+                                const childEl = _e.canvasInner.querySelector('[data-node-id="' + childNode.id + '"].at-node');
+                                if (childEl) { childEl.style.left = childNode.x + 'px'; childEl.style.top = childNode.y + 'px'; }
+                            }
+                        });
+                    }
                     _renderConns();
                 }
                 return;
@@ -3911,7 +4254,105 @@
         });
 
         document.addEventListener('mouseup', function () {
-            if (_dragging) { _markDirty(); _dragging = null; }
+            if (_dragging) {
+                const nd = _active && _active.nodes.find(function (n) { return n.id === _dragging.nodeId; });
+                if (nd) {
+                    if (nd.type === 'ui.plate') {
+                        // Snap plate to nearest 20px grid
+                        nd.x = Math.round(nd.x / 20) * 20;
+                        nd.y = Math.round(nd.y / 20) * 20;
+                        const el = _e.canvasInner.querySelector('[data-node-id="' + nd.id + '"].at-node');
+                        if (el) {
+                            el.style.left = nd.x + 'px';
+                            el.style.top = nd.y + 'px';
+                        }
+                        // Snap all children of this plate to the relative 20px grid inside the plate
+                        _active.nodes.forEach(function (child) {
+                            if (child.properties && child.properties.plate_id === nd.id) {
+                                const relX = child.x - nd.x;
+                                const relY = child.y - nd.y;
+                                const snapX = Math.round(relX / 20) * 20;
+                                const snapY = Math.round(relY / 20) * 20;
+                                const pw = parseFloat((nd.properties || {}).plate_width) || 500;
+                                const ph = parseFloat((nd.properties || {}).plate_height) || 380;
+                                const limitX = Math.max(20, Math.min(pw - 250, snapX));
+                                const limitY = Math.max(50, Math.min(ph - 100, snapY));
+                                child.x = nd.x + limitX;
+                                child.y = nd.y + limitY;
+                                const childEl = _e.canvasInner.querySelector('[data-node-id="' + child.id + '"].at-node');
+                                if (childEl) {
+                                    childEl.style.left = child.x + 'px';
+                                    childEl.style.top = child.y + 'px';
+                                }
+                            }
+                        });
+                    } else if (nd.type && nd.type.startsWith('ui.')) {
+                        let foundPlate = null;
+                        _active.nodes.forEach(function (p) {
+                            if (p.type === 'ui.plate') {
+                                const pw = parseFloat((p.properties || {}).plate_width) || 500;
+                                const ph = parseFloat((p.properties || {}).plate_height) || 380;
+                                const nodeCenterX = nd.x + 115;
+                                const nodeCenterY = nd.y + 40;
+                                if (nodeCenterX >= p.x && nodeCenterX <= p.x + pw &&
+                                    nodeCenterY >= p.y && nodeCenterY <= p.y + ph) {
+                                    foundPlate = p;
+                                }
+                            }
+                        });
+                        
+                        const el = _e.canvasInner.querySelector('[data-node-id="' + nd.id + '"].at-node');
+                        if (nd.properties) {
+                            const oldPlateId = nd.properties.plate_id;
+                            const newPlateId = foundPlate ? foundPlate.id : null;
+                            
+                            if (foundPlate) {
+                                const relX = nd.x - foundPlate.x;
+                                const relY = nd.y - foundPlate.y;
+                                const snapX = Math.round(relX / 20) * 20;
+                                const snapY = Math.round(relY / 20) * 20;
+                                const pw = parseFloat((foundPlate.properties || {}).plate_width) || 500;
+                                const ph = parseFloat((foundPlate.properties || {}).plate_height) || 380;
+                                const limitX = Math.max(20, Math.min(pw - 250, snapX));
+                                const limitY = Math.max(50, Math.min(ph - 100, snapY));
+                                nd.x = foundPlate.x + limitX;
+                                nd.y = foundPlate.y + limitY;
+                            } else {
+                                // Snap to canvas grid
+                                nd.x = Math.round(nd.x / 20) * 20;
+                                nd.y = Math.round(nd.y / 20) * 20;
+                            }
+                            
+                            if (el) {
+                                el.style.left = nd.x + 'px';
+                                el.style.top = nd.y + 'px';
+                            }
+                            
+                            if (oldPlateId !== newPlateId) {
+                                nd.properties.plate_id = newPlateId;
+                                if (newPlateId) {
+                                    el.classList.add('at-node-snapped');
+                                } else {
+                                    el.classList.remove('at-node-snapped');
+                                }
+                                _markDirty();
+                            }
+                        }
+                    } else {
+                        // Snap any other node to canvas grid
+                        nd.x = Math.round(nd.x / 20) * 20;
+                        nd.y = Math.round(nd.y / 20) * 20;
+                        const el = _e.canvasInner.querySelector('[data-node-id="' + nd.id + '"].at-node');
+                        if (el) {
+                            el.style.left = nd.x + 'px';
+                            el.style.top = nd.y + 'px';
+                        }
+                    }
+                }
+                _markDirty();
+                _dragging = null;
+                _renderConns();
+            }
             if (_panning)  { _panning = null; _e.canvas.classList.remove('at-panning'); }
         });
 

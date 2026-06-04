@@ -139,6 +139,9 @@ NODE_DEPS: dict[str, dict] = {
     "ui.input_toggle":    {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "ui.display_text":    {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
     "ui.display_image":   {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
+    "ui.plate":           {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
+    "ui.custom_html":     {"pip": [],                              "keys": [], "aethviondb": False, "ai": False},
+
     "aethviondb.search":                   {"pip": [],  "keys": [], "aethviondb": True, "ai": False},
     "aethviondb.semantic_search":          {"pip": [],  "keys": [], "aethviondb": True, "ai": False},
     "aethviondb.snapshot_search":          {"pip": [],  "keys": [], "aethviondb": True, "ai": False},

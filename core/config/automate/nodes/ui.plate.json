@@ -1,0 +1,76 @@
+{
+  "type": "ui.plate",
+  "label": "UI Plate",
+  "category": "Interface",
+  "icon": "fa-table-cells-large",
+  "color": "#6366f1",
+  "inputs": [],
+  "outputs": [],
+  "properties": [
+    {
+      "key": "label",
+      "label": "Card Title",
+      "type": "text",
+      "default": "Dashboard Card"
+    },
+    {
+      "key": "ui_width",
+      "label": "Card Width (%)",
+      "type": "select",
+      "options": ["25", "33", "50", "100"],
+      "default": "100"
+    },
+    {
+      "key": "ui_order",
+      "label": "Card Order",
+      "type": "number",
+      "default": 0
+    },
+    {
+      "key": "background",
+      "label": "Card Background Style",
+      "type": "select",
+      "options": [
+        "Glassmorphism",
+        "Dark Slate",
+        "Deep Slate",
+        "Deep Teal",
+        "Midnight Gradient",
+        "Neon Dusk"
+      ],
+      "default": "Glassmorphism"
+    },
+    {
+      "key": "effect",
+      "label": "Card Glow/Shadow Effect",
+      "type": "select",
+      "options": ["Glow", "Shadow", "None"],
+      "default": "Shadow"
+    },
+    {
+      "key": "border_style",
+      "label": "Card Border",
+      "type": "select",
+      "options": ["Solid", "Dashed", "None"],
+      "default": "Solid"
+    },
+    {
+      "key": "plate_width",
+      "label": "Plate Width (Canvas)",
+      "type": "number",
+      "default": 500
+    },
+    {
+      "key": "plate_height",
+      "label": "Plate Height (Canvas)",
+      "type": "number",
+      "default": 380
+    },
+    {
+      "key": "custom_css",
+      "label": "Custom Card CSS Styles",
+      "type": "textarea",
+      "default": ""
+    }
+  ]
+}

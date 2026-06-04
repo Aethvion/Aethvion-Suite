@@ -66,3 +66,15 @@ def ui_display_text(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
 def ui_display_image(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
     """Pass input image URL/base64 to the UI image container."""
     return {"_display_image": inputs.get("in", "")}
+
+
+def ui_plate(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    """Pure layout container node."""
+    return {}
+
+
+def ui_custom_html(node: dict, inputs: dict[str, Any], ctx) -> dict[str, Any]:
+    """Pass input data to the custom HTML card."""
+    val = inputs.get("in", "")
+    return {"out": val, "_display_html": val}
+

@@ -314,7 +314,7 @@ function initDashboard() {
   const uiNodes = (_WORKFLOW.nodes || []).filter(n => n.type.startsWith('ui.'));
   if (uiNodes.length === 0) return;
 
-  // Load marked dynamically
+  // Load marked dynamically if not already present
   if (typeof marked === 'undefined') {
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
@@ -338,231 +338,412 @@ function initDashboard() {
   container.style.gap = '1.5rem';
   paneRun.appendChild(container);
 
-  // Group nodes by group
+  // Separate plates and widget nodes
+  const plates = uiNodes.filter(n => n.type === 'ui.plate');
+  const widgets = uiNodes.filter(n => n.type !== 'ui.plate');
+
+  // Group widgets by plate_id
   const groups = {};
-  uiNodes.forEach(n => {
+  const unparented = [];
+
+  widgets.forEach(n => {
     const props = n.properties || {};
-    const groupName = (props.ui_group || 'Dashboard').trim() || 'Dashboard';
-    if (!groups[groupName]) groups[groupName] = [];
-    groups[groupName].push(n);
+    const plateId = props.plate_id;
+    if (plateId && plates.some(p => p.id === plateId)) {
+      if (!groups[plateId]) groups[plateId] = [];
+      groups[plateId].push(n);
+    } else {
+      unparented.push(n);
+    }
   });
 
-  const sortedGroupNames = Object.keys(groups).sort();
-  const multipleCards = sortedGroupNames.length > 1;
+  // Sort plates by ui_order
+  plates.sort((a, b) => {
+    const oA = parseFloat((a.properties || {}).ui_order) || 0;
+    const oB = parseFloat((b.properties || {}).ui_order) || 0;
+    return oA - oB;
+  });
 
-  sortedGroupNames.forEach(groupName => {
-    const nodes = groups[groupName];
-    nodes.sort((a, b) => {
+  // Render cards for each plate
+  plates.forEach(p => {
+    const props = p.properties || {};
+    const cardWidgets = groups[p.id] || [];
+
+    cardWidgets.sort((a, b) => {
       const oA = parseFloat((a.properties || {}).ui_order) || 0;
       const oB = parseFloat((b.properties || {}).ui_order) || 0;
       return oA - oB;
     });
 
-    const card = document.createElement('div');
-    card.style.gridColumn = multipleCards ? 'span 6' : 'span 12';
-    card.style.background = 'rgba(30, 41, 59, 0.4)';
-    card.style.backdropFilter = 'blur(12px)';
-    card.style.webkitBackdropFilter = 'blur(12px)';
-    card.style.border = '1px solid rgba(255, 255, 255, 0.08)';
-    card.style.borderRadius = '12px';
-    card.style.padding = '1.5rem';
-    card.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.3)';
-    card.style.display = 'flex';
-    card.style.flexDirection = 'column';
-    card.style.gap = '1.25rem';
+    renderCardContainer(props, p.id, cardWidgets, container);
+  });
 
-    const cardHdr = document.createElement('h3');
-    cardHdr.style.fontSize = '0.95rem';
-    cardHdr.style.fontWeight = '700';
-    cardHdr.style.letterSpacing = '0.04em';
-    cardHdr.style.textTransform = 'uppercase';
-    cardHdr.style.color = '#38bdf8';
-    cardHdr.style.borderBottom = '1px solid rgba(255, 255, 255, 0.06)';
-    cardHdr.style.paddingBottom = '0.5rem';
-    cardHdr.textContent = groupName;
-    card.appendChild(cardHdr);
+  // Render unparented widgets in a default card
+  if (unparented.length > 0) {
+    unparented.sort((a, b) => {
+      const oA = parseFloat((a.properties || {}).ui_order) || 0;
+      const oB = parseFloat((b.properties || {}).ui_order) || 0;
+      return oA - oB;
+    });
+    renderCardContainer({
+      label: 'General',
+      ui_width: '100',
+      background: 'Glassmorphism',
+      effect: 'Shadow',
+      border_style: 'Solid'
+    }, 'unparented', unparented, container);
+  }
+}
 
-    const row = document.createElement('div');
-    row.style.display = 'flex';
-    row.style.flexWrap = 'wrap';
-    row.style.gap = '1rem';
-    card.appendChild(row);
+function renderCardContainer(props, cardId, cardWidgets, mainContainer) {
+  // Background styles mapping
+  let bgStyle = 'rgba(30, 41, 59, 0.4)';
+  let backdrop = 'blur(12px)';
+  let borderStyle = '1px solid rgba(255, 255, 255, 0.08)';
+  let headerColor = '#38bdf8';
+  
+  const bgType = (props.background || 'Glassmorphism');
+  if (bgType === 'Dark Slate') {
+    bgStyle = 'rgba(15, 23, 42, 0.95)';
+    backdrop = 'none';
+    borderStyle = '1px solid rgba(255, 255, 255, 0.05)';
+    headerColor = '#94a3b8';
+  } else if (bgType === 'Deep Slate') {
+    bgStyle = 'rgba(30, 41, 59, 0.95)';
+    backdrop = 'none';
+    borderStyle = '1px solid rgba(255, 255, 255, 0.1)';
+    headerColor = '#38bdf8';
+  } else if (bgType === 'Deep Teal') {
+    bgStyle = 'rgba(13, 27, 30, 0.9)';
+    backdrop = 'blur(8px)';
+    borderStyle = '1px solid rgba(4, 120, 87, 0.3)';
+    headerColor = '#34d399';
+  } else if (bgType === 'Midnight Gradient') {
+    bgStyle = 'linear-gradient(135deg, rgba(15,23,42,0.9) 0%, rgba(88,28,135,0.2) 100%)';
+    backdrop = 'blur(12px)';
+    borderStyle = '1px solid rgba(168,85,247,0.2)';
+    headerColor = '#c084fc';
+  } else if (bgType === 'Neon Dusk') {
+    bgStyle = 'linear-gradient(135deg, rgba(24,24,37,0.95) 0%, rgba(225,29,72,0.15) 100%)';
+    backdrop = 'blur(12px)';
+    borderStyle = '1px solid rgba(244,63,94,0.3)';
+    headerColor = '#fb7185';
+  }
+  
+  // Border type
+  const borderType = props.border_style || 'Solid';
+  if (borderType === 'Dashed') {
+    borderStyle = borderStyle.replace('solid', 'dashed');
+  } else if (borderType === 'None') {
+    borderStyle = 'none';
+  }
+  
+  // Effects
+  let shadowStyle = '0 8px 32px rgba(0, 0, 0, 0.3)';
+  const effectType = props.effect || 'Shadow';
+  if (effectType === 'Glow') {
+    shadowStyle = '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 20px rgba(99, 102, 241, 0.15)';
+  } else if (effectType === 'None') {
+    shadowStyle = 'none';
+  }
 
-    nodes.forEach(n => {
-      const props = n.properties || {};
-      const widthPercent = props.ui_width || '100';
-      const elWrap = document.createElement('div');
-      elWrap.style.flex = '1 1 calc(' + widthPercent + '% - 1rem)';
-      elWrap.style.minWidth = widthPercent === '100' ? '100%' : '200px';
-      elWrap.style.display = 'flex';
-      elWrap.style.flexDirection = 'column';
-      elWrap.style.gap = '0.35rem';
+  // Create card
+  const card = document.createElement('div');
+  card.className = 'at-ui-card';
+  
+  const cardWidth = props.ui_width || '100';
+  if (cardWidth === '25') {
+    card.style.gridColumn = 'span 3';
+  } else if (cardWidth === '33') {
+    card.style.gridColumn = 'span 4';
+  } else if (cardWidth === '50') {
+    card.style.gridColumn = 'span 6';
+  } else {
+    card.style.gridColumn = 'span 12';
+  }
 
-      const labelText = props.label || n.label || '';
+  card.style.background = bgStyle;
+  card.style.backdropFilter = backdrop;
+  card.style.webkitBackdropFilter = backdrop;
+  card.style.border = borderStyle;
+  card.style.borderRadius = '12px';
+  card.style.padding = '1.5rem';
+  card.style.boxShadow = shadowStyle;
+  card.style.display = 'flex';
+  card.style.flexDirection = 'column';
+  card.style.gap = '1.25rem';
+  
+  if (props.custom_css) {
+    const styleBlock = document.createElement('style');
+    styleBlock.textContent = props.custom_css;
+    card.appendChild(styleBlock);
+  }
+
+  // Card Header
+  const cardHdr = document.createElement('h3');
+  cardHdr.style.fontSize = '0.95rem';
+  cardHdr.style.fontWeight = '700';
+  cardHdr.style.letterSpacing = '0.04em';
+  cardHdr.style.textTransform = 'uppercase';
+  cardHdr.style.color = headerColor;
+  cardHdr.style.borderBottom = '1px solid rgba(255, 255, 255, 0.06)';
+  cardHdr.style.paddingBottom = '0.5rem';
+  cardHdr.textContent = props.label || 'Dashboard Card';
+  card.appendChild(cardHdr);
+
+  const row = document.createElement('div');
+  row.style.display = 'flex';
+  row.style.flexWrap = 'wrap';
+  row.style.gap = '1rem';
+  card.appendChild(row);
+
+  cardWidgets.forEach(n => {
+    const wProps = n.properties || {};
+    const widthPercent = wProps.ui_width || '100';
+    const elWrap = document.createElement('div');
+    elWrap.style.flex = '1 1 calc(' + widthPercent + '% - 1rem)';
+    elWrap.style.minWidth = widthPercent === '100' ? '100%' : '200px';
+    elWrap.style.display = 'flex';
+    elWrap.style.flexDirection = 'column';
+    elWrap.style.gap = '0.35rem';
+
+    const labelText = wProps.label || n.label || '';
+    
+    if (n.type === 'ui.input_text') {
+      const label = document.createElement('label');
+      label.style.fontSize = '0.78rem';
+      label.style.fontWeight = '500';
+      label.style.color = '#94a3b8';
+      label.textContent = labelText;
+      elWrap.appendChild(label);
+
+      let input;
+      if (wProps.multiline) {
+        input = document.createElement('textarea');
+        input.rows = 4;
+        input.style.resize = 'vertical';
+      } else {
+        input = document.createElement('input');
+        input.type = 'text';
+      }
+      input.id = 'input_' + n.id;
+      input.placeholder = wProps.placeholder || 'Type here...';
+      input.value = wProps.value || '';
+      input.style.background = '#0f172a';
+      input.style.border = '1px solid #334155';
+      input.style.borderRadius = '6px';
+      input.style.color = '#e2e8f0';
+      input.style.padding = '0.5rem';
+      input.style.fontSize = '0.8rem';
+      input.style.outline = 'none';
+      input.dataset.uiNid = n.id;
+      if (wProps.name) input.dataset.varname = wProps.name;
+      elWrap.appendChild(input);
+
+    } else if (n.type === 'ui.input_number') {
+      const label = document.createElement('label');
+      label.style.fontSize = '0.78rem';
+      label.style.fontWeight = '500';
+      label.style.color = '#94a3b8';
+      label.textContent = labelText;
+      elWrap.appendChild(label);
+
+      const input = document.createElement('input');
+      input.id = 'input_' + n.id;
+      input.type = 'number';
+      input.value = wProps.value ?? 0;
+      if (wProps.min !== undefined && wProps.min !== '') input.min = wProps.min;
+      if (wProps.max !== undefined && wProps.max !== '') input.max = wProps.max;
+      if (wProps.step !== undefined) input.step = wProps.step;
+      input.style.background = '#0f172a';
+      input.style.border = '1px solid #334155';
+      input.style.borderRadius = '6px';
+      input.style.color = '#e2e8f0';
+      input.style.padding = '0.5rem';
+      input.style.fontSize = '0.8rem';
+      input.style.outline = 'none';
+      input.dataset.uiNid = n.id;
+      if (wProps.name) input.dataset.varname = wProps.name;
+      elWrap.appendChild(input);
+
+    } else if (n.type === 'ui.input_toggle') {
+      const label = document.createElement('label');
+      label.style.fontSize = '0.78rem';
+      label.style.fontWeight = '500';
+      label.style.color = '#94a3b8';
+      label.style.display = 'flex';
+      label.style.alignItems = 'center';
+      label.style.gap = '0.5rem';
+      label.style.cursor = 'pointer';
+
+      const input = document.createElement('input');
+      input.id = 'input_' + n.id;
+      input.type = 'checkbox';
+      input.checked = !!wProps.value;
+      input.style.accentColor = '#06b6d4';
+      input.dataset.uiNid = n.id;
+      if (wProps.name) input.dataset.varname = wProps.name;
+
+      label.appendChild(input);
+      const spanText = document.createElement('span');
+      spanText.textContent = labelText;
+      label.appendChild(spanText);
+      elWrap.appendChild(label);
+
+    } else if (n.type === 'ui.button') {
+      const trig = (_TRIGGERS || []).find(t => t.id === n.id);
+      const slug = trig ? trig.slug : '';
+
+      const btn = document.createElement('button');
+      btn.id = 'btn_' + n.id;
+      btn.style.marginTop = '0.5rem';
+      btn.style.padding = '0.55rem 1rem';
+      btn.style.borderRadius = '6px';
+      btn.style.fontSize = '0.85rem';
+      btn.style.fontWeight = '700';
+      btn.style.cursor = 'pointer';
+      btn.style.transition = 'all 0.15s';
+      btn.style.display = 'flex';
+      btn.style.alignItems = 'center';
+      btn.style.justifyContent = 'center';
+      btn.style.gap = '0.5rem';
       
-      if (n.type === 'ui.input_text') {
-        const label = document.createElement('label');
-        label.style.fontSize = '0.78rem';
-        label.style.fontWeight = '500';
-        label.style.color = '#94a3b8';
-        label.textContent = labelText;
-        elWrap.appendChild(label);
+      if (wProps.style === 'secondary') {
+        btn.style.background = 'transparent';
+        btn.style.border = '1px solid #475569';
+        btn.style.color = '#e2e8f0';
+      } else {
+        btn.style.background = '#06b6d4';
+        btn.style.border = 'none';
+        btn.style.color = '#0f172a';
+      }
+      btn.innerHTML = `<i class="fas fa-play" style="font-size: 0.75rem;"></i><span>${esc(labelText)}</span>`;
+      btn.addEventListener('click', () => {
+        runCustomTrigger(n.id, slug, btn);
+      });
+      elWrap.appendChild(btn);
 
-        let input;
-        if (props.multiline) {
-          input = document.createElement('textarea');
-          input.rows = 4;
-          input.style.resize = 'vertical';
-        } else {
-          input = document.createElement('input');
-          input.type = 'text';
-        }
-        input.placeholder = props.placeholder || 'Type here...';
-        input.value = props.value || '';
-        input.style.background = '#0f172a';
-        input.style.border = '1px solid #334155';
-        input.style.borderRadius = '6px';
-        input.style.color = '#e2e8f0';
-        input.style.padding = '0.5rem';
-        input.style.fontSize = '0.8rem';
-        input.style.outline = 'none';
-        input.dataset.uiNid = n.id;
-        if (props.name) input.dataset.varname = props.name;
-        elWrap.appendChild(input);
+    } else if (n.type === 'ui.display_text') {
+      const label = document.createElement('label');
+      label.style.fontSize = '0.78rem';
+      label.style.fontWeight = '500';
+      label.style.color = '#94a3b8';
+      label.textContent = labelText;
+      elWrap.appendChild(label);
 
-      } else if (n.type === 'ui.input_number') {
-        const label = document.createElement('label');
-        label.style.fontSize = '0.78rem';
-        label.style.fontWeight = '500';
-        label.style.color = '#94a3b8';
-        label.textContent = labelText;
-        elWrap.appendChild(label);
+      const box = document.createElement('div');
+      box.dataset.displayNid = n.id;
+      box.dataset.markdown = wProps.markdown ? 'true' : 'false';
+      box.style.background = '#0f172a';
+      box.style.border = '1px solid #334155';
+      box.style.borderRadius = '6px';
+      box.style.padding = '0.65rem';
+      box.style.fontSize = '0.8rem';
+      box.style.minHeight = '60px';
+      box.style.color = '#cbd5e1';
+      box.style.overflowY = 'auto';
+      box.style.whiteSpace = 'pre-wrap';
+      box.style.wordBreak = 'break-word';
+      box.innerHTML = '<span style="color:#475569;font-style:italic;">No output yet</span>';
+      elWrap.appendChild(box);
 
-        const input = document.createElement('input');
-        input.type = 'number';
-        input.value = props.value ?? 0;
-        if (props.min !== undefined && props.min !== '') input.min = props.min;
-        if (props.max !== undefined && props.max !== '') input.max = props.max;
-        if (props.step !== undefined) input.step = props.step;
-        input.style.background = '#0f172a';
-        input.style.border = '1px solid #334155';
-        input.style.borderRadius = '6px';
-        input.style.color = '#e2e8f0';
-        input.style.padding = '0.5rem';
-        input.style.fontSize = '0.8rem';
-        input.style.outline = 'none';
-        input.dataset.uiNid = n.id;
-        if (props.name) input.dataset.varname = props.name;
-        elWrap.appendChild(input);
+    } else if (n.type === 'ui.display_image') {
+      const label = document.createElement('label');
+      label.style.fontSize = '0.78rem';
+      label.style.fontWeight = '500';
+      label.style.color = '#94a3b8';
+      label.textContent = labelText;
+      elWrap.appendChild(label);
 
-      } else if (n.type === 'ui.input_toggle') {
-        const label = document.createElement('label');
-        label.style.fontSize = '0.78rem';
-        label.style.fontWeight = '500';
-        label.style.color = '#94a3b8';
-        label.style.display = 'flex';
-        label.style.alignItems = 'center';
-        label.style.gap = '0.5rem';
-        label.style.cursor = 'pointer';
+      const box = document.createElement('div');
+      box.dataset.displayNid = n.id;
+      box.dataset.ratio = wProps.aspect_ratio;
+      box.style.background = '#0f172a';
+      box.style.border = '1px solid #334155';
+      box.style.borderRadius = '6px';
+      box.style.padding = '0.5rem';
+      box.style.display = 'flex';
+      box.style.alignItems = 'center';
+      box.style.justifyContent = 'center';
+      box.style.overflow = 'hidden';
+      box.style.minHeight = '120px';
+      box.innerHTML = '<span style="color:#475569;font-style:italic;">No image loaded</span>';
+      elWrap.appendChild(box);
 
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.checked = !!props.value;
-        input.style.accentColor = '#06b6d4';
-        input.dataset.uiNid = n.id;
-        if (props.name) input.dataset.varname = props.name;
+    } else if (n.type === 'ui.custom_html') {
+      const label = document.createElement('label');
+      label.style.fontSize = '0.78rem';
+      label.style.fontWeight = '500';
+      label.style.color = '#94a3b8';
+      label.textContent = labelText;
+      elWrap.appendChild(label);
 
-        label.appendChild(input);
-        const spanText = document.createElement('span');
-        spanText.textContent = labelText;
-        label.appendChild(spanText);
-        elWrap.appendChild(label);
+      const box = document.createElement('div');
+      box.id = 'disp_' + n.id;
+      box.dataset.displayNid = n.id;
+      box.style.position = 'relative';
 
-      } else if (n.type === 'ui.button') {
-        const trig = (_TRIGGERS || []).find(t => t.id === n.id);
-        const slug = trig ? trig.slug : '';
-
-        const btn = document.createElement('button');
-        btn.style.marginTop = '0.5rem';
-        btn.style.padding = '0.55rem 1rem';
-        btn.style.borderRadius = '6px';
-        btn.style.fontSize = '0.85rem';
-        btn.style.fontWeight = '700';
-        btn.style.cursor = 'pointer';
-        btn.style.transition = 'all 0.15s';
-        btn.style.display = 'flex';
-        btn.style.alignItems = 'center';
-        btn.style.justifyContent = 'center';
-        btn.style.gap = '0.5rem';
-        
-        if (props.style === 'secondary') {
-          btn.style.background = 'transparent';
-          btn.style.border = '1px solid #475569';
-          btn.style.color = '#e2e8f0';
-        } else {
-          btn.style.background = '#06b6d4';
-          btn.style.border = 'none';
-          btn.style.color = '#0f172a';
-        }
-        btn.innerHTML = `<i class="fas fa-play" style="font-size: 0.75rem;"></i><span>${esc(labelText)}</span>`;
-        btn.addEventListener('click', () => {
-          runCustomTrigger(n.id, slug, btn);
-        });
-        elWrap.appendChild(btn);
-
-      } else if (n.type === 'ui.display_text') {
-        const label = document.createElement('label');
-        label.style.fontSize = '0.78rem';
-        label.style.fontWeight = '500';
-        label.style.color = '#94a3b8';
-        label.textContent = labelText;
-        elWrap.appendChild(label);
-
-        const box = document.createElement('div');
-        box.dataset.displayNid = n.id;
-        box.dataset.markdown = props.markdown ? 'true' : 'false';
-        box.style.background = '#0f172a';
-        box.style.border = '1px solid #334155';
-        box.style.borderRadius = '6px';
-        box.style.padding = '0.65rem';
-        box.style.fontSize = '0.8rem';
-        box.style.minHeight = '60px';
-        box.style.color = '#cbd5e1';
-        box.style.overflowY = 'auto';
-        box.style.whiteSpace = 'pre-wrap';
-        box.style.wordBreak = 'break-word';
-        box.innerHTML = '<span style="color:#475569;font-style:italic;">No output yet</span>';
-        elWrap.appendChild(box);
-
-      } else if (n.type === 'ui.display_image') {
-        const label = document.createElement('label');
-        label.style.fontSize = '0.78rem';
-        label.style.fontWeight = '500';
-        label.style.color = '#94a3b8';
-        label.textContent = labelText;
-        elWrap.appendChild(label);
-
-        const box = document.createElement('div');
-        box.dataset.displayNid = n.id;
-        box.dataset.ratio = props.aspect_ratio;
-        box.style.background = '#0f172a';
-        box.style.border = '1px solid #334155';
-        box.style.borderRadius = '6px';
-        box.style.padding = '0.5rem';
-        box.style.display = 'flex';
-        box.style.alignItems = 'center';
-        box.style.justifyContent = 'center';
-        box.style.overflow = 'hidden';
-        box.style.minHeight = '120px';
-        box.innerHTML = '<span style="color:#475569;font-style:italic;">No image loaded</span>';
-        elWrap.appendChild(box);
+      if (wProps.css) {
+        const styleEl = document.createElement('style');
+        styleEl.textContent = wProps.css;
+        box.appendChild(styleEl);
       }
 
-      row.appendChild(elWrap);
-    });
+      const htmlWrapper = document.createElement('div');
+      htmlWrapper.innerHTML = wProps.html || '';
+      box.appendChild(htmlWrapper);
+      elWrap.appendChild(box);
 
-    container.appendChild(card);
+      if (wProps.js) {
+        try {
+          const helpers = {
+            getVariable: (name) => {
+              const inputEl = document.getElementById('input_' + name) || document.getElementById('v_' + name);
+              if (inputEl) {
+                if (inputEl.type === 'checkbox') return inputEl.checked;
+                if (inputEl.type === 'number') return parseFloat(inputEl.value) || 0;
+                return inputEl.value;
+              }
+              const node = (_WORKFLOW.nodes || []).find(node => node.id === name || (node.properties && node.properties.name === name));
+              if (node) return (node.properties || {}).value || '';
+              return undefined;
+            },
+            setVariable: (name, value) => {
+              const inputEl = document.getElementById('input_' + name) || document.getElementById('v_' + name);
+              if (inputEl) {
+                if (inputEl.type === 'checkbox') {
+                  inputEl.checked = !!value;
+                } else {
+                  inputEl.value = value;
+                }
+                inputEl.dispatchEvent(new Event('change'));
+                inputEl.dispatchEvent(new Event('input'));
+              }
+            },
+            trigger: (btnIdOrLabel) => {
+              const btnNode = (_WORKFLOW.nodes || []).find(node => 
+                node.type === 'ui.button' && 
+                (node.id === btnIdOrLabel || (node.properties && node.properties.label === btnIdOrLabel))
+              );
+              if (!btnNode) return;
+              const btnEl = document.getElementById('btn_' + btnNode.id);
+              const trig = (_TRIGGERS || []).find(t => t.id === btnNode.id);
+              const slug = trig ? trig.slug : '';
+              runCustomTrigger(btnNode.id, slug, btnEl || document.createElement('button'));
+            }
+          };
+          const userFn = new Function('element', 'helpers', wProps.js);
+          userFn.call(box, box, helpers);
+        } catch (err) {
+          console.error('Error running custom JS for node ' + n.id + ':', err);
+        }
+      }
+    }
+
+    row.appendChild(elWrap);
   });
+
+  mainContainer.appendChild(card);
 }
 
 async function runCustomTrigger(btnNodeId, slug, btnEl) {
@@ -589,7 +770,18 @@ async function runCustomTrigger(btnNodeId, slug, btnEl) {
 
   // Clear display output boxes in UI
   document.querySelectorAll('[data-display-nid]').forEach(e=>{
-    e.innerHTML = `<div style="display:flex;align-items:center;gap:6px;color:#06b6d4;font-size:0.75rem;"><i class="fas fa-spinner fa-spin"></i> Running…</div>`;
+    const customHtmlBox = document.getElementById('disp_' + e.dataset.displayNid);
+    const hasCustomHtmlClass = customHtmlBox && (customHtmlBox.querySelector('.at-html-value') || customHtmlBox.querySelector('.at-text-value'));
+    if (hasCustomHtmlClass) {
+      customHtmlBox.querySelectorAll('.at-html-value').forEach(el => {
+        el.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Running…`;
+      });
+      customHtmlBox.querySelectorAll('.at-text-value').forEach(el => {
+        el.textContent = `Running…`;
+      });
+    } else {
+      e.innerHTML = `<div style="display:flex;align-items:center;gap:6px;color:#06b6d4;font-size:0.75rem;"><i class="fas fa-spinner fa-spin"></i> Running…</div>`;
+    }
   });
 
   const params = new URLSearchParams({
@@ -604,8 +796,23 @@ async function runCustomTrigger(btnNodeId, slug, btnEl) {
       btnEl.style.opacity = '1';
       btnEl.innerHTML = origHtml;
       document.querySelectorAll('[data-display-nid]').forEach(box=>{
-        if(box.textContent.includes('Running…')){
-          box.innerHTML = '<span style="color:#475569;font-style:italic;">No output yet</span>';
+        const customHtmlBox = document.getElementById('disp_' + box.dataset.displayNid);
+        const hasCustomHtmlClass = customHtmlBox && (customHtmlBox.querySelector('.at-html-value') || customHtmlBox.querySelector('.at-text-value'));
+        if (hasCustomHtmlClass) {
+          customHtmlBox.querySelectorAll('.at-html-value').forEach(el => {
+            if (el.textContent.includes('Running…')) {
+              el.innerHTML = '<span style="color:#475569;font-style:italic;">No output yet</span>';
+            }
+          });
+          customHtmlBox.querySelectorAll('.at-text-value').forEach(el => {
+            if (el.textContent.includes('Running…')) {
+              el.textContent = 'No output yet';
+            }
+          });
+        } else {
+          if(box.textContent.includes('Running…')){
+            box.innerHTML = '<span style="color:#475569;font-style:italic;">No output yet</span>';
+          }
         }
       });
       const dot=document.getElementById('dot');
@@ -644,6 +851,18 @@ async function runCustomTrigger(btnNodeId, slug, btnEl) {
           } else {
             box.innerHTML = '<span style="color:#475569;font-style:italic;">No image loaded</span>';
           }
+        }
+      }
+      if(d.outputs._display_html !== undefined){
+        const box = document.getElementById('disp_' + d.node_id);
+        if(box){
+          box.querySelectorAll('.at-html-value').forEach(el => {
+            el.innerHTML = d.outputs._display_html;
+          });
+          box.querySelectorAll('.at-text-value').forEach(el => {
+            el.textContent = d.outputs._display_html;
+          });
+          box.dispatchEvent(new CustomEvent('update', { detail: { value: d.outputs._display_html } }));
         }
       }
     }

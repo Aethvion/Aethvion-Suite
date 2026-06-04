@@ -111,6 +111,9 @@ _REGISTRY: dict[str, Callable] = {
     "ui.input_toggle":  ui.ui_input_toggle,
     "ui.display_text":  ui.ui_display_text,
     "ui.display_image": ui.ui_display_image,
+    "ui.plate":         ui.ui_plate,
+    "ui.custom_html":   ui.ui_custom_html,
+
 
     # AethvionDB — search
     "aethviondb.search":                    aethviondb.aethviondb_search,
