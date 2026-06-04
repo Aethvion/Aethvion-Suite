@@ -1,252 +1,154 @@
 <div class="suite-hub">
 
-    <!-- HERO -->
-    <div class="sh-hero">
-        <div class="sh-hero-content">
-            <div class="sh-hero-meta">
+    <!-- GREETING BAR -->
+    <div class="sh-greeting-bar">
+        <div class="sh-greeting-left">
+            <h1 class="sh-greeting-title" id="sh-greeting-title">Welcome back</h1>
+            <div class="sh-greeting-meta">
                 <div class="hub-server-status">
                     <span class="hub-status-dot" id="hub-servers-dot"></span>
                     <span id="hub-servers-label">checking status…</span>
                 </div>
+                <span class="sh-greeting-sep">·</span>
+                <span class="sh-greeting-date" id="sh-greeting-date"></span>
             </div>
-
-            <h1 class="sh-title">Aethvion Suite</h1>
-            <p class="sh-subtitle" id="sh-subtitle">Welcome to your advanced AI operations center. Aethvion Suite is
-                designed to orchestrate complex tasks, manage local models, and provide a unified interface for all your
-                AI needs.</p>
-
-            <div class="sh-ctas" id="sh-ctas">
-                <button class="sh-cta-primary" id="sh-cta-primary"
+        </div>
+        <div class="sh-greeting-actions">
+            <button class="sh-action-btn sh-action-btn--primary"
                     onclick="setDashboardMode('home', true, 'chat');">
-                    <i class="fas fa-rocket"></i>
-                    <span>Quick Start Chat</span>
-                    <i class="fas fa-arrow-right sh-cta-arrow"></i>
-                </button>
-                <button class="sh-cta-secondary" id="sh-cta-secondary" onclick="switchMainTab('documentation');">
-                    <i class="fas fa-book-open"></i>
-                    <span>Read Overview</span>
-                </button>
-            </div>
-        </div>
-        <div class="sh-hero-bg-accent" aria-hidden="true"></div>
-    </div>
-
-    <!-- SETUP CHECKLIST -->
-    <div class="app-suite-section">
-        <div class="sh-section-header">
-            <div class="sh-section-left">
-                <i class="fas fa-list-check sh-section-icon"></i>
-                <h3 class="sh-section-title">First-Time Setup</h3>
-            </div>
-        </div>
-
-        <div class="sh-guide-grid">
-            <div class="sh-guide-card" onclick="switchMainTab('api-providers');">
-                <div class="sh-gc-icon" style="background: rgba(255, 118, 117, 0.1); color: #ff7675;"><i
-                        class="fas fa-key"></i></div>
-                <div class="sh-gc-content">
-                    <h4>1. Configure API Providers</h4>
-                    <p>Enter your API keys for OpenAI, Anthropic, or Google. This allows the suite to use powerful
-                        cloud-based intelligence immediately.</p>
-                </div>
-                <i class="fas fa-chevron-right sh-sys-arrow"
-                    style="position: absolute; right: 1.5rem; top: 1.5rem; opacity: 0.5;"></i>
-            </div>
-            <div class="sh-guide-card" onclick="switchMainTab('local-models');">
-                <div class="sh-gc-icon" style="background: rgba(162, 155, 254, 0.1); color: #a29bfe;"><i
-                        class="fas fa-microchip"></i></div>
-                <div class="sh-gc-content">
-                    <h4>2. Initialize Local Models</h4>
-                    <p>Privacy-first? Set up local inference using GGUF or EXL2 models. Run your AI offline and keep
-                        your data entirely on your machine.</p>
-                </div>
-                <i class="fas fa-chevron-right sh-sys-arrow"
-                    style="position: absolute; right: 1.5rem; top: 1.5rem; opacity: 0.5;"></i>
-            </div>
-            <div class="sh-guide-card" onclick="switchMainTab('settings');">
-                <div class="sh-gc-icon" style="background: rgba(85, 239, 196, 0.1); color: #55efc4;"><i
-                        class="fas fa-toggle-on"></i></div>
-                <div class="sh-gc-content">
-                    <h4>3. Refine Environment</h4>
-                    <p>Customize your workspace. Adjust memory settings, interface themes, and system parameters to
-                        match your hardware's performance.</p>
-                </div>
-                <i class="fas fa-chevron-right sh-sys-arrow"
-                    style="position: absolute; right: 1.5rem; top: 1.5rem; opacity: 0.5;"></i>
-            </div>
-        </div>
-    </div>
-
-    <!-- CORE HUBS -->
-    <div class="app-suite-section">
-        <div class="sh-section-header">
-            <div class="sh-section-left">
-                <i class="fas fa-th-large sh-section-icon"></i>
-                <h3 class="sh-section-title">System Status</h3>
-            </div>
-        </div>
-
-        <div class="sh-hubs-container">
-            <!-- Hub: Communication & Research -->
-            <div class="sh-hub-group">
-                <div class="sh-hg-header">
-                    <i class="fas fa-comments"></i>
-                    <h3>Chat & Research</h3>
-                </div>
-                <div class="sh-hg-links">
-                    <div class="sh-hg-link" onclick="setDashboardMode('home', true, 'chat');">
-                        <i class="fas fa-comment-dots"></i>
-                        <span>Unified Chat</span>
-                    </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('home', true, 'researchboard');">
-                        <i class="fas fa-balance-scale"></i>
-                        <span>Research Board</span>
-                    </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('home', true, 'arena');">
-                        <i class="fas fa-shield-halved"></i>
-                        <span>Model Arena</span>
-                    </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('home', true, 'advaiconv');">
-                        <i class="fas fa-flask"></i>
-                        <span>Advanced Lab</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Hub: Creativity & Assistants -->
-            <div class="sh-hub-group">
-                <div class="sh-hg-header">
-                    <i class="fas fa-wand-magic-sparkles"></i>
-                    <h3>Creativity & Logic</h3>
-                </div>
-                <div class="sh-hg-links">
-                    <div class="sh-hg-link" onclick="setDashboardMode('home', true, 'photo');">
-                        <i class="fas fa-image"></i>
-                        <span>Photo Studio</span>
-                    </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('home', true, 'audio');">
-                        <i class="fas fa-microphone"></i>
-                        <span>Audio Studio</span>
-                    </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('home', true, 'misaka-cipher');">
-                        <i class="fas fa-sparkles"></i>
-                        <span>Companions</span>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- Hub: Mastery & Automation -->
-            <div class="sh-hub-group">
-                <div class="sh-hg-header">
-                    <i class="fas fa-gears"></i>
-                    <h3>Automation & Tasks</h3>
-                </div>
-                <div class="sh-hg-links">
-                    <div class="sh-hg-link" onclick="setDashboardMode('home', true, 'agents');">
-                        <i class="fas fa-code"></i>
-                        <span>Code</span>
-                    </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('home', true, 'agent-corp');">
-                        <i class="fas fa-building"></i>
-                        <span>Agent Corp</span>
-                    </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('home', true, 'schedule');">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span>Task Schedule</span>
-                    </div>
-                    <div class="sh-hg-link" onclick="setDashboardMode('home', true, 'memory');">
-                        <i class="fas fa-brain"></i>
-                        <span>System Memory</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Hub: System & Setup -->
-            <div class="sh-hub-group">
-                <div class="sh-hg-header">
-                    <i class="fas fa-sliders"></i>
-                    <h3>System Management</h3>
-                </div>
-                <div class="sh-hg-links">
-                    <div class="sh-hg-link" onclick="switchMainTab('settings');">
-                        <i class="fas fa-gear"></i>
-                        <span>Settings</span>
-                    </div>
-                    <div class="sh-hg-link" onclick="switchMainTab('local-models');">
-                        <i class="fas fa-microchip"></i>
-                        <span>Model Hub</span>
-                    </div>
-                    <div class="sh-hg-link" onclick="switchMainTab('files');">
-                        <i class="fas fa-folder-open"></i>
-                        <span>File Manager</span>
-                    </div>
-                    <div class="sh-hg-link" onclick="switchMainTab('status');">
-                        <i class="fas fa-traffic-light"></i>
-                        <span>System Status</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- RECENT ACTIVITY -->
-    <div class="app-suite-section">
-        <div class="sh-section-header">
-            <div class="sh-section-left">
-                <i class="fas fa-clock-rotate-left sh-section-icon"></i>
-                <h3 class="sh-section-title">Recent Activity</h3>
-            </div>
-            <button class="sh-section-action" onclick="setDashboardMode('home', true, 'chat');">
-                View All <i class="fas fa-arrow-right"></i>
+                <i class="fas fa-plus"></i>
+                <span>New Chat</span>
+            </button>
+            <button class="sh-action-btn"
+                    onclick="setDashboardMode('home', true, 'agents');">
+                <i class="fas fa-code"></i>
+                <span>New Agent</span>
             </button>
         </div>
+    </div>
 
-        <div class="sh-recent-list" id="sh-recent-list">
-            <div class="sh-overview-loading">
-                <i class="fas fa-spinner fa-spin"></i>
-                <span>Retrieving recent activity…</span>
+    <!-- MAIN 2-COLUMN AREA -->
+    <div class="sh-main-grid">
+
+        <!-- LEFT: Recent Conversations -->
+        <div class="sh-panel sh-panel--threads">
+            <div class="sh-panel-header">
+                <i class="fas fa-clock-rotate-left"></i>
+                <span>Recent Conversations</span>
+                <button class="sh-panel-link" onclick="setDashboardMode('home', true, 'chat');">
+                    View all <i class="fas fa-arrow-right"></i>
+                </button>
             </div>
+            <div class="sh-recent-list" id="sh-recent-list">
+                <div class="ae-loading" style="min-height:160px;">
+                    <i class="fas fa-circle-notch fa-spin"></i>
+                    <span>Loading conversations…</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Stats sidebar -->
+        <div class="sh-sidebar-stack">
+
+            <!-- Today at a glance -->
+            <div class="sh-panel sh-panel--stats">
+                <div class="sh-panel-header">
+                    <i class="fas fa-chart-simple"></i>
+                    <span>Today</span>
+                </div>
+                <div class="sh-stat-list">
+                    <div class="sh-stat-row">
+                        <span class="sh-stat-label"><i class="fas fa-bolt"></i> Tokens</span>
+                        <strong class="sh-stat-val" id="snap-tokens-val">0</strong>
+                    </div>
+                    <div class="sh-stat-row">
+                        <span class="sh-stat-label"><i class="fas fa-dollar-sign"></i> Cost</span>
+                        <strong class="sh-stat-val" id="snap-cost-val">$0.00</strong>
+                    </div>
+                    <div class="sh-stat-row">
+                        <span class="sh-stat-label"><i class="fas fa-server"></i> Servers</span>
+                        <strong class="sh-stat-val" id="snap-servers-val">—</strong>
+                    </div>
+                    <div class="sh-stat-row">
+                        <span class="sh-stat-label"><i class="fas fa-code-branch"></i> Build</span>
+                        <strong class="sh-stat-val" id="snap-version-val">—</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System snapshot mini -->
+            <div class="sh-panel sh-panel--modules">
+                <div class="sh-panel-header">
+                    <i class="fas fa-table-columns"></i>
+                    <span>Modules</span>
+                </div>
+                <div class="sh-stat-list">
+                    <div class="sh-stat-row">
+                        <span class="sh-stat-label"><i class="fas fa-puzzle-piece"></i> Active</span>
+                        <strong class="sh-stat-val" id="snap-tabs-val">—</strong>
+                    </div>
+                    <div class="sh-stat-row">
+                        <span class="sh-stat-label"><i class="fas fa-folder-open"></i> Data folders</span>
+                        <strong class="sh-stat-val" id="snap-folders-val">—</strong>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
-    <!-- SYSTEM SNAPSHOT -->
-    <div class="sh-snapshot-row" id="sh-snapshot-row">
-        <div class="sh-snap-card">
-            <div class="sh-snap-icon sh-snap-icon--indigo"><i class="fas fa-folder-open"></i></div>
-            <div class="sh-snap-body">
-                <div class="sh-snap-value" id="snap-folders-val">—</div>
-                <div class="sh-snap-label">Data Folders</div>
-            </div>
+    <!-- QUICK LAUNCH -->
+    <div class="sh-launch-section">
+        <div class="sh-panel-header sh-launch-header">
+            <i class="fas fa-bolt"></i>
+            <span>Quick Launch</span>
         </div>
-        <div class="sh-snap-card">
-            <div class="sh-snap-icon sh-snap-icon--emerald"><i class="fas fa-table-columns"></i></div>
-            <div class="sh-snap-body">
-                <div class="sh-snap-value" id="snap-tabs-val">—</div>
-                <div class="sh-snap-label">Active Modules</div>
-            </div>
-        </div>
-        <div class="sh-snap-card">
-            <div class="sh-snap-icon sh-snap-icon--amber"><i class="fas fa-server"></i></div>
-            <div class="sh-snap-body">
-                <div class="sh-snap-value" id="snap-servers-val">—</div>
-                <div class="sh-snap-label">Core Servers</div>
-            </div>
-        </div>
-        <div class="sh-snap-card">
-            <div class="sh-snap-icon sh-snap-icon--purple"><i class="fas fa-code-branch"></i></div>
-            <div class="sh-snap-body">
-                <div class="sh-snap-value" id="snap-version-val">—</div>
-                <div class="sh-snap-label">Build Version</div>
-            </div>
+        <div class="sh-launch-grid">
+
+            <!-- Row: Primary features -->
+            <button class="sh-tile sh-tile--chat"        onclick="setDashboardMode('home', true, 'chat');">
+                <i class="fas fa-comments"></i><span>Chat</span>
+            </button>
+            <button class="sh-tile sh-tile--agents"      onclick="setDashboardMode('home', true, 'agents');">
+                <i class="fas fa-code"></i><span>Agents</span>
+            </button>
+            <button class="sh-tile sh-tile--companions"  onclick="setDashboardMode('home', true, 'companion-creator');">
+                <i class="fas fa-users"></i><span>Companions</span>
+            </button>
+            <button class="sh-tile sh-tile--db"          onclick="setDashboardMode('home', true, 'aethviondb');">
+                <i class="fas fa-circle-nodes"></i><span>AethvionDB</span>
+            </button>
+            <button class="sh-tile sh-tile--automate"    onclick="setDashboardMode('home', true, 'automate');">
+                <i class="fas fa-bolt"></i><span>Automate</span>
+            </button>
+            <button class="sh-tile sh-tile--schedule"    onclick="switchMainTab('schedule');">
+                <i class="fas fa-calendar-alt"></i><span>Schedule</span>
+            </button>
+
+            <!-- Row: Creative & Research -->
+            <button class="sh-tile sh-tile--photo"       onclick="switchMainTab('photo');">
+                <i class="fas fa-image"></i><span>Photo</span>
+            </button>
+            <button class="sh-tile sh-tile--audio"       onclick="switchMainTab('audio');">
+                <i class="fas fa-microphone"></i><span>Audio</span>
+            </button>
+            <button class="sh-tile sh-tile--research"    onclick="switchMainTab('researchboard');">
+                <i class="fas fa-balance-scale"></i><span>Directors</span>
+            </button>
+            <button class="sh-tile sh-tile--arena"       onclick="switchMainTab('arena');">
+                <i class="fas fa-shield-halved"></i><span>Arena</span>
+            </button>
+            <button class="sh-tile sh-tile--memory"      onclick="switchMainTab('memory');">
+                <i class="fas fa-brain"></i><span>Memory</span>
+            </button>
+            <button class="sh-tile sh-tile--files"       onclick="switchMainTab('files');">
+                <i class="fas fa-folder-open"></i><span>Files</span>
+            </button>
+
         </div>
     </div>
 
-    <!-- FOOTER -->
-    <div class="hub-system-info" style="margin-top: 2.5rem; text-align: center; opacity: 0.5;">
-        <span class="sys-badge" id="suite-hero-version">—</span>
-        <span class="sys-badge status-live">Aethvion Suite</span>
-    </div>
+    <!-- Hidden legacy IDs needed by suite-home.js -->
+    <span id="suite-hero-version" style="display:none;">—</span>
 
 </div>

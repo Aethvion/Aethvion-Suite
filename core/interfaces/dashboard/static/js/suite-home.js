@@ -1,88 +1,99 @@
 /**
- * suite-home.js — Home page logic
+ * suite-home.js — Home dashboard logic
  *
- * Renders:
- *   - Hero subtitle + CTA buttons
- *   - System Snapshot stats (module count, servers, build version)
- *   - Recent Activity (last 3 chat threads)
+ * Drives:
+ *   - Greeting bar (time-based greeting + today's date)
+ *   - Today's stats (tokens, cost, servers, build)
+ *   - Recent Conversations (last 5 chat threads)
+ *   - System snapshot (active modules, data folders)
  */
 
 (function () {
     'use strict';
 
-    const DEFAULT_INFO = {
-        subtitle: 'Welcome to your advanced AI operations center. Aethvion Suite is designed to orchestrate complex tasks, manage local models, and provide a unified interface for all your AI needs.',
-        ctas: [
-            { label: 'Quick Start Chat', icon: 'fas fa-rocket',    tab: 'chat',          mode: 'home' },
-            { label: 'Read Overview',    icon: 'fas fa-book-open', tab: 'documentation', mode: null   },
-        ],
-    };
+    // ── Greeting ───────────────────────────────────────────────────────────
 
-    // ── Hero ───────────────────────────────────────────────────────────────
-
-    function updateSubtitle(text) {
-        const el = document.getElementById('sh-subtitle');
-        if (!el) return;
-        el.style.opacity = '0';
-        setTimeout(() => { el.textContent = text; el.style.opacity = '1'; }, 120);
-    }
-
-    function updateCTAs(ctas) {
-        const primary   = document.getElementById('sh-cta-primary');
-        const secondary = document.getElementById('sh-cta-secondary');
-        if (!primary || !secondary || !ctas) return;
-        const [c1, c2] = ctas;
-        if (c1) {
-            primary.innerHTML = `<i class="${c1.icon}"></i><span>${c1.label}</span><i class="fas fa-arrow-right sh-cta-arrow"></i>`;
-            primary.onclick = c1.tab
-                ? () => { if (c1.mode) window.setDashboardMode?.(c1.mode); window.switchMainTab?.(c1.tab); }
-                : null;
+    function updateGreeting() {
+        const hour = new Date().getHours();
+        const title = document.getElementById('sh-greeting-title');
+        if (title) {
+            const greeting =
+                hour < 5  ? 'Good night' :
+                hour < 12 ? 'Good morning' :
+                hour < 17 ? 'Good afternoon' :
+                            'Good evening';
+            title.textContent = greeting;
         }
-        if (c2) {
-            secondary.innerHTML = `<i class="${c2.icon}"></i><span>${c2.label}</span>`;
-            secondary.onclick = c2.tab
-                ? () => { if (c2.mode) window.setDashboardMode?.(c2.mode); window.switchMainTab?.(c2.tab); }
-                : null;
+
+        const dateEl = document.getElementById('sh-greeting-date');
+        if (dateEl) {
+            dateEl.textContent = new Date().toLocaleDateString('en-US', {
+                weekday: 'long', month: 'short', day: 'numeric', year: 'numeric',
+            });
         }
     }
 
-    // ── System Snapshot ────────────────────────────────────────────────────
+    // ── Stats ──────────────────────────────────────────────────────────────
 
-    function setSnap(id, val) {
+    function setVal(id, val) {
         const el = document.getElementById(id);
         if (el) el.textContent = val;
     }
 
     function loadStats() {
-        // Active modules — total tab count from sidebar nav
+        // Active modules from sidebar nav
         const nav = window._sidebarNav;
-        if (nav) setSnap('snap-tabs-val', String(nav.getTotalTabCount()));
+        if (nav) setVal('snap-tabs-val', String(nav.getTotalTabCount()));
 
-        // Build version — read from the version badge the server populates
+        // Build version
         const vBadge = document.getElementById('suite-hero-version');
         const vText  = vBadge?.textContent?.replace('Version ', '').trim();
-        setSnap('snap-version-val', vText && vText !== '—' ? vText : '—');
+        setVal('snap-version-val', vText && vText !== '—' ? vText : '—');
+
+        // Tokens + cost — mirror the live header counters
+        function syncUsage() {
+            const t = document.getElementById('tokens-today')?.textContent?.trim();
+            const c = document.getElementById('cost-today')?.textContent?.trim();
+            if (t) setVal('snap-tokens-val', t);
+            if (c) setVal('snap-cost-val', c);
+        }
+        syncUsage();
+        // Keep re-syncing every 5s while the panel is visible
+        const usageTick = setInterval(syncUsage, 5000);
+        // Stop when panel goes inactive (MutationObserver clears it)
+        window._suiteHomeUsageTick = usageTick;
 
         // Core servers — poll the label populated by core.js
         let tries = 0;
         const ticker = setInterval(() => {
             const label = document.getElementById('hub-servers-label')?.textContent || '';
-            const match  = label.match(/(\d+)\s*\/\s*(\d+)/);
+            const match = label.match(/(\d+)\s*\/\s*(\d+)/);
             if (match) {
-                setSnap('snap-servers-val', `${match[1]}/${match[2]}`);
+                setVal('snap-servers-val', `${match[1]}/${match[2]}`);
                 clearInterval(ticker);
             } else if (label && !label.includes('checking') && !label.includes('…')) {
-                setSnap('snap-servers-val', label.split(' ').slice(0, 2).join(' '));
+                setVal('snap-servers-val', label.split(' ').slice(0, 2).join(' '));
                 clearInterval(ticker);
             }
             if (++tries > 20) clearInterval(ticker);
         }, 200);
+
+        // Data folders — count from /api/system/status if available
+        fetch('/api/system/status')
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+                if (d?.data_folders != null) setVal('snap-folders-val', String(d.data_folders));
+                else setVal('snap-folders-val', '—');
+            })
+            .catch(() => setVal('snap-folders-val', '—'));
     }
 
-    // ── Recent Activity ────────────────────────────────────────────────────
+    // ── Recent Conversations ───────────────────────────────────────────────
 
     function esc(s) {
-        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     }
 
     function relativeTime(dateStr) {
@@ -95,10 +106,10 @@
         if (h < 24) return `${h}h ago`;
         const d = Math.floor(h / 24);
         if (d < 7)  return `${d}d ago`;
-        return new Date(dateStr).toLocaleDateString();
+        return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
 
-    async function renderRecentActivity() {
+    async function renderRecentThreads() {
         const container = document.getElementById('sh-recent-list');
         if (!container) return;
 
@@ -113,66 +124,70 @@
                     threadArr = data.threads || [];
                 }
             }
-        } catch (e) { console.error('Home: Failed to fetch recent activity', e); }
-
-        if (!threadArr.length) {
-            container.innerHTML = `
-                <div class="ae-empty" style="min-height:140px;padding:2rem;">
-                    <div class="ae-empty-icon"><i class="fas fa-clock-rotate-left"></i></div>
-                    <div class="ae-empty-title">No recent activity</div>
-                    <div class="ae-empty-desc">Start a conversation in Chat to see your activity here.</div>
-                </div>`;
-            return;
+        } catch (e) {
+            console.error('[home] Failed to fetch threads:', e);
         }
 
         const sorted = threadArr
             .filter(t => !t.id.startsWith('agents-'))
             .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
 
+        if (!sorted.length) {
+            container.innerHTML = `
+                <div class="ae-empty" style="min-height:160px;padding:2rem 1rem;">
+                    <div class="ae-empty-icon"><i class="fas fa-comments"></i></div>
+                    <div class="ae-empty-title">No conversations yet</div>
+                    <div class="ae-empty-desc">Start a chat to see your recent threads here.</div>
+                </div>`;
+            return;
+        }
+
         container.innerHTML = '';
-        sorted.slice(0, 3).forEach(t => {
-            const row     = document.createElement('div');
-            row.className = 'sh-recent-row';
-            row.title     = `Switch to ${t.title}`;
-            const preview = (t.last_message || 'No messages yet').replace(/<[^>]+>/g, '').slice(0, 70);
+        sorted.slice(0, 5).forEach(t => {
+            const row = document.createElement('button');
+            row.className = 'sh-thread-row';
+            const preview = (t.last_message || '').replace(/<[^>]+>/g, '').trim().slice(0, 90) || 'No messages yet';
+            const isPinned = t.is_pinned ? '<i class="fas fa-thumbtack sh-thread-pin" title="Pinned"></i>' : '';
             row.innerHTML = `
-                <div class="sh-rr-icon"><i class="fas fa-comment-dots"></i></div>
-                <div class="sh-rr-body">
-                    <div class="sh-rr-top">
-                        <span class="sh-rr-name">${esc(t.title)}</span>
-                        <span class="sh-rr-time">${relativeTime(t.updated_at || t.created_at)}</span>
-                    </div>
-                    <div class="sh-rr-preview">${esc(preview)}</div>
+                <div class="sh-thread-icon">
+                    <i class="fas fa-comment-dots"></i>
                 </div>
-                <i class="fas fa-chevron-right sh-rr-arrow"></i>`;
+                <div class="sh-thread-body">
+                    <div class="sh-thread-top">
+                        <span class="sh-thread-title">${esc(t.title)}${isPinned}</span>
+                        <span class="sh-thread-time">${relativeTime(t.updated_at || t.created_at)}</span>
+                    </div>
+                    <div class="sh-thread-preview">${esc(preview)}</div>
+                </div>
+                <i class="fas fa-chevron-right sh-thread-arrow"></i>`;
             row.addEventListener('click', () => {
                 window.setDashboardMode?.('home');
                 window.switchMainTab?.('chat');
-                setTimeout(() => { window.switchThread?.(t.id); }, 50);
+                setTimeout(() => window.switchThread?.(t.id), 80);
             });
             container.appendChild(row);
         });
     }
 
-    // ── Main update ────────────────────────────────────────────────────────
+    // ── Main ───────────────────────────────────────────────────────────────
 
     function update() {
-        updateSubtitle(DEFAULT_INFO.subtitle);
-        updateCTAs(DEFAULT_INFO.ctas);
+        updateGreeting();
         loadStats();
-        renderRecentActivity();
+        renderRecentThreads();
     }
 
-    // ── Public API ─────────────────────────────────────────────────────────
     window._suiteHomeUpdate = update;
 
-    // ── Watch for panel activation ─────────────────────────────────────────
+    // Watch for panel activation
     function watchPanel() {
         const panel = document.getElementById('suite-home-panel');
         if (!panel) { setTimeout(watchPanel, 300); return; }
 
         function check() {
             if (panel.classList.contains('active') && !panel.querySelector('.partial-loading')) {
+                // Clear any previous usage ticker before starting fresh
+                if (window._suiteHomeUsageTick) clearInterval(window._suiteHomeUsageTick);
                 update();
             }
         }
