@@ -748,12 +748,13 @@ pre:hover .code-copy-btn {
 
 .message.user-message {
     border: none;
-    background: linear-gradient(135deg, var(--primary), #4f46e5);
+    background: linear-gradient(135deg, #4f46e5, #3730a3);
     border-bottom-right-radius: 4px;
     margin-left: auto;
     max-width: 72%;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
-    color: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 
 .message.user-message .msg-header {
