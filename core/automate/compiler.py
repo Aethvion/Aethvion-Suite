@@ -557,7 +557,7 @@ Usage:
     -- or use start.bat / start.sh --
 """
 from __future__ import annotations
-import asyncio, csv, io, json, os, re, sys, time, uuid
+import asyncio, concurrent.futures, csv, io, json, os, re, sys, threading, time, uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -629,6 +629,13 @@ class WorkflowExecutor:
         self._log:     list[dict]     = []
         self._vars:    dict[str, Any] = dict(variables or {{}})  # pre-seed with injected values
         self._trigger_id: str | None  = trigger_id
+        self._fwd: dict[str, list[str]] = {{nid: [] for nid in self.nodes}}
+        self._rev: dict[str, list[str]] = {{nid: [] for nid in self.nodes}}
+        for c in self.connections:
+            s, t = c.get("sourceNodeId"), c.get("targetNodeId")
+            if s in self.nodes and t in self.nodes:
+                self._fwd[s].append(t)
+                self._rev[t].append(s)
 
     def execute(self) -> dict:
         name = self.workflow.get("name", "Workflow")
@@ -648,51 +655,90 @@ class WorkflowExecutor:
         if not run_order:
             self._warn("No nodes connected to a trigger.")
             return self._build_result()
-        for nid in run_order:
-            node  = self.nodes[nid]
-            label = node.get("label", nid)
+
+        completed_nodes = set()
+        completed_lock  = threading.Lock()
+        completed_cond  = threading.Condition(completed_lock)
+        running_nodes: set[str] = set()
+        pending_nodes = set(run_order)
+
+        def run_node_task(node_id: str):
+            node  = self.nodes[node_id]
+            label = node.get("label", node_id)
             ntype = node.get("type", "unknown")
-            self._status[nid] = "running"
-            self._info('\\u25b6 %s  [%s]' % (label, ntype))
             try:
-                inputs  = self._gather_inputs(nid)
+                inputs  = self._gather_inputs(node_id)
                 handler = _REGISTRY.get(ntype)
                 if handler:
                     outputs = handler(node, inputs, self)
                 else:
                     self._warn('Unknown node type: %r \\u2014 pass-through' % ntype)
                     outputs = {{"out": inputs.get("in", "")}}
-                self._outputs[nid] = outputs or {{}}
-                self._status[nid]  = "done"
-                _summary = _output_summary(self._outputs[nid])
+                
+                with completed_lock:
+                    self._outputs[node_id] = outputs or {{}}
+                    self._status[node_id]  = "done"
+                
+                _summary = _output_summary(outputs)
                 if _summary:
                     self._info('  \\u2713 %s: %s' % (label, _summary))
                 else:
                     self._info('  \\u2713 %s' % label)
             except Exception as exc:
-                self._status[nid] = "error"
-                self._errors[nid] = str(exc)
+                with completed_lock:
+                    self._status[node_id] = "error"
+                    self._errors[node_id] = str(exc)
                 self._error('  \\u2717 %s: %s' % (label, exc))
+            
+            with completed_lock:
+                running_nodes.remove(node_id)
+                completed_nodes.add(node_id)
+                completed_cond.notify_all()
+
+        max_workers = min(16, len(run_order))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            while pending_nodes or running_nodes:
+                with completed_lock:
+                    ready_nodes = []
+                    for node_id in list(pending_nodes):
+                        deps = [dep for dep in self._rev[node_id] if dep in run_order]
+                        if all(dep in completed_nodes for dep in deps):
+                            ready_nodes.append(node_id)
+                            pending_nodes.remove(node_id)
+                            running_nodes.add(node_id)
+                    
+                    for node_id in ready_nodes:
+                        node  = self.nodes[node_id]
+                        label = node.get("label", node_id)
+                        ntype = node.get("type", "unknown")
+                        self._status[node_id] = "running"
+                        self._info('\\u25b6 %s  [%s]' % (label, ntype))
+                        executor.submit(run_node_task, node_id)
+                    
+                    if not running_nodes and pending_nodes:
+                        self._error("Cycle or dependency deadlock detected during execution.")
+                        break
+                    
+                    if not ready_nodes and running_nodes:
+                        completed_cond.wait()
+
         errors = sum(1 for s in self._status.values() if s == "error")
-        self._warn('Workflow finished with %d error(s).' % errors) if errors else self._info("Workflow completed successfully.")
+        if errors:
+            self._warn('Workflow finished with %d error(s).' % errors)
+        else:
+            self._info("Workflow completed successfully.")
         return self._build_result()
 
     def _reachable_from_triggers(self) -> set[str]:
         # Three-phase algorithm: forward from active trigger, then backward from
         # that set (stopping at other triggers' territory) to pull in data suppliers.
-        fwd: dict[str, list[str]] = {{nid: [] for nid in self.nodes}}
-        rev: dict[str, list[str]] = {{nid: [] for nid in self.nodes}}
-        for c in self.connections:
-            s, t = c.get("sourceNodeId"), c.get("targetNodeId")
-            if s in self.nodes and t in self.nodes:
-                fwd[s].append(t); rev[t].append(s)
         all_triggers = [nid for nid, n in self.nodes.items()
                         if n.get("type", "").startswith("trigger.")]
         def _fwd_bfs(seeds):
             vis = set(seeds); q = list(seeds)
             while q:
                 nid = q.pop(0)
-                for nb in fwd[nid]:
+                for nb in self._fwd[nid]:
                     if nb not in vis: vis.add(nb); q.append(nb)
             return vis
         # Phase 1: forward from active seeds
@@ -711,23 +757,21 @@ class WorkflowExecutor:
         queue     = [nid for nid in forward if nid not in set(all_triggers)]
         while queue:
             nid = queue.pop(0)
-            for up in rev[nid]:
+            for up in self._rev[nid]:
                 if up not in reachable and up not in blocked:
                     reachable.add(up); queue.append(up)
         return reachable
 
     def _topo_sort(self):
         in_deg = {{nid: 0 for nid in self.nodes}}
-        adj    = {{nid: [] for nid in self.nodes}}
-        for c in self.connections:
-            s, t = c.get("sourceNodeId"), c.get("targetNodeId")
-            if s in self.nodes and t in self.nodes:
-                adj[s].append(t); in_deg[t] += 1
+        for nid in self.nodes:
+            for tgt in self._fwd[nid]:
+                in_deg[tgt] += 1
         queue = [nid for nid, d in in_deg.items() if d == 0]
         result = []
         while queue:
             nid = queue.pop(0); result.append(nid)
-            for nb in adj[nid]:
+            for nb in self._fwd[nid]:
                 in_deg[nb] -= 1
                 if in_deg[nb] == 0: queue.append(nb)
         return result if len(result) == len(self.nodes) else None

@@ -13,6 +13,8 @@ This file should not need to change when new nodes are added.
 """
 from __future__ import annotations
 
+import concurrent.futures
+import threading
 from datetime import datetime
 from typing import Any
 
@@ -109,19 +111,25 @@ class WorkflowExecutor:
             self._warn("No nodes are connected to a trigger — nothing to execute.")
             return self._build_result()
 
-        for node_id in run_order:
+        completed_nodes = set()
+        completed_lock  = threading.Lock()
+        completed_cond  = threading.Condition(completed_lock)
+        running_nodes: set[str] = set()
+        pending_nodes = set(run_order)
+
+        def run_node_task(node_id: str):
             node  = self.nodes[node_id]
             label = node.get("label", node_id)
             ntype = node.get("type", "unknown")
-            self._status[node_id] = "running"
-            self._info(f"▶ {label}  [{ntype}]")
-            self._emit({"type": "node_status", "node_id": node_id, "status": "running"})
 
             try:
                 inputs  = self._gather_inputs(node_id)
                 outputs = self._execute_node(node, inputs)
-                self._outputs[node_id] = outputs or {}
-                self._status[node_id]  = "done"
+                
+                with completed_lock:
+                    self._outputs[node_id] = outputs or {}
+                    self._status[node_id]  = "done"
+                
                 summary = _output_summary(outputs)
                 if summary:
                     self._info(f"  ✓ {label}: {summary}")
@@ -130,12 +138,50 @@ class WorkflowExecutor:
                 self._emit({"type": "node_status", "node_id": node_id,
                             "status": "done", "outputs": outputs or {}, "error": None})
             except Exception as exc:
-                self._status[node_id] = "error"
-                self._errors[node_id] = str(exc)
+                with completed_lock:
+                    self._status[node_id] = "error"
+                    self._errors[node_id] = str(exc)
                 self._error(f"  ✗ {label}: {exc}")
                 self._emit({"type": "node_status", "node_id": node_id,
                             "status": "error", "outputs": {}, "error": str(exc)})
-                # Continue — other branches may still succeed
+            
+            with completed_lock:
+                running_nodes.remove(node_id)
+                completed_nodes.add(node_id)
+                completed_cond.notify_all()
+
+        max_workers = min(16, len(run_order))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="automate-worker") as executor:
+            while pending_nodes or running_nodes:
+                with completed_lock:
+                    # Find all pending nodes whose active dependencies are completed
+                    ready_nodes = []
+                    for node_id in list(pending_nodes):
+                        deps = [dep for dep in self._rev[node_id] if dep in run_order]
+                        if all(dep in completed_nodes for dep in deps):
+                            ready_nodes.append(node_id)
+                            pending_nodes.remove(node_id)
+                            running_nodes.add(node_id)
+                    
+                    # Submit ready nodes to executor
+                    for node_id in ready_nodes:
+                        node  = self.nodes[node_id]
+                        label = node.get("label", node_id)
+                        ntype = node.get("type", "unknown")
+                        self._status[node_id] = "running"
+                        self._info(f"▶ {label}  [{ntype}]")
+                        self._emit({"type": "node_status", "node_id": node_id, "status": "running"})
+                        
+                        executor.submit(run_node_task, node_id)
+                    
+                    # Check for deadlocks (graph cycles - should not happen due to _topo_sort check)
+                    if not running_nodes and pending_nodes:
+                        self._error("Cycle or dependency deadlock detected during execution.")
+                        break
+                    
+                    # Wait for a worker thread to signal completion
+                    if not ready_nodes and running_nodes:
+                        completed_cond.wait()
 
         errors = sum(1 for s in self._status.values() if s == "error")
         if errors:
