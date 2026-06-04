@@ -18,8 +18,8 @@
         "o3-mini"
     ],
     "deepseek": [
-        "deepseek-chat",
-        "deepseek-reasoner"
+        "deepseek-v4-flash",
+        "deepseek-v4-pro"
     ],
     "grok": [
         "grok-3-mini",
