@@ -11,7 +11,7 @@ from pathlib import Path
 from core.utils import get_logger, generate_trace_id, utcnow_iso
 
 
-from core.tools.standard.file_ops import WORKSPACE_ROOT
+import re
 
 
 def _parse_dt(ts: str) -> datetime:
@@ -19,6 +19,41 @@ def _parse_dt(ts: str) -> datetime:
     if ts.endswith('Z'):
         ts = ts[:-1] + '+00:00'
     return datetime.fromisoformat(ts)
+
+
+def strip_formatting(text: str) -> str:
+    """Strips HTML tags, markdown headers/bold/italic, code blocks, and other formatting to yield plain text."""
+    if not text:
+        return ""
+    
+    # 1. Remove markdown code blocks
+    text = re.sub(r'(?s)```.*?```', '', text)
+    
+    # 2. Remove HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    
+    # 3. Remove markdown images: ![alt](url) -> empty string
+    text = re.sub(r'!\[([^\]]*)\]\([^)]+\)', '', text)
+    
+    # 3b. Remove markdown links: [text](url) -> text
+    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+    
+    # 4. Remove headers: #, ##, etc.
+    text = re.sub(r'(?m)^#{1,6}\s+', '', text)
+    
+    # 5. Remove bold/italic markers (* and _)
+    text = re.sub(r'\*{1,3}([^*]+)\*{1,3}', r'\1', text)
+    text = re.sub(r'(?<!\w)_+([^_]+)_+(?!\w)', r'\1', text)
+    
+    # 6. Remove inline backticks
+    text = text.replace('`', '')
+    
+    # 7. Normalize whitespace (replace multiple newlines/spaces with a single space)
+    text = re.sub(r'\s+', ' ', text)
+    
+    return text.strip()
+
+
 from core.utils.paths import WS_PROJECTS, HISTORY_AGENTS
 from .task_models import Task, TaskStatus, ChatThread, ChatFolder
 from core.ai.call_contexts import CallSource
@@ -710,6 +745,7 @@ class TaskQueueManager:
 
         # Save state ONLY if not incognito
         if not is_incognito:
+            self.threads[thread_id].last_message_snippet = strip_formatting(prompt)[:100]
             self._save_thread(thread_id)
             self._save_task(task)
         
@@ -878,6 +914,7 @@ class TaskQueueManager:
                                     is_deleted=data.get('is_deleted', False),
                                     is_pinned=data.get('is_pinned', False),
                                     folder_id=data.get('folder_id', None),
+                                    last_message_snippet=data.get('last_message_snippet', None),
                                 )
                                 
                                 if not thread.is_deleted:
@@ -921,6 +958,21 @@ class TaskQueueManager:
         if task.metadata.get('is_incognito'):
             return
         try:
+            # Update thread's last message snippet if thread exists
+            if task.thread_id in self.threads:
+                snippet = None
+                if task.status == TaskStatus.COMPLETED and task.result and isinstance(task.result, dict):
+                    response = task.result.get('response', '')
+                    if response:
+                        snippet = strip_formatting(response)
+                
+                if not snippet:
+                    snippet = strip_formatting(task.prompt)
+                
+                self.threads[task.thread_id].last_message_snippet = snippet[:100]
+                # Save the updated thread to disk
+                self._save_thread(task.thread_id)
+
             # Task goes into its thread's workspace/tasks/ directory
             thread_dir = self.workspaces_dir / task.thread_id
             tasks_dir = thread_dir / "tasks"

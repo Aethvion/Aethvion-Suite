@@ -144,6 +144,7 @@ class ChatThread:
     is_deleted: bool = False
     is_pinned: bool = False
     folder_id: Optional[str] = None            # Folder this thread belongs to (None = unfoldered)
+    last_message_snippet: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -159,6 +160,7 @@ class ChatThread:
             'is_deleted': self.is_deleted,
             'is_pinned': self.is_pinned,
             'folder_id': self.folder_id,
+            'last_message_snippet': self.last_message_snippet,
         }
 
 

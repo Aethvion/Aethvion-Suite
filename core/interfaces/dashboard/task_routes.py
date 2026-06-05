@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
-from core.orchestrator.task_queue import get_task_queue_manager, cancel_agent_task
+from core.orchestrator.task_queue import get_task_queue_manager, cancel_agent_task, strip_formatting
 from core.orchestrator.agent_events import get_snapshot
 from core.utils import utcnow_iso
 from core.utils.logger import get_logger
@@ -170,14 +170,37 @@ async def list_threads():
                 
                 # Get last task for preview
                 last_msg = "No messages yet"
-                if thread.task_ids:
+                snippet = getattr(thread, 'last_message_snippet', None)
+                if snippet is not None:
+                    last_msg = snippet
+                elif thread.task_ids:
                     last_task_id = thread.task_ids[-1]
                     last_task = task_manager.get_task(last_task_id)
+                    raw_msg = None
                     if last_task:
                         if last_task.result and last_task.result.get('response'):
-                            last_msg = last_task.result.get('response')
+                            raw_msg = last_task.result.get('response')
                         else:
-                            last_msg = last_task.prompt
+                            raw_msg = last_task.prompt
+                    else:
+                        # Attempt to load from disk
+                        task_file = task_manager.workspaces_dir / thread_id / "tasks" / f"{last_task_id}.json"
+                        if task_file.exists():
+                            try:
+                                with open(task_file, 'r', encoding='utf-8') as f:
+                                    data = _json.load(f)
+                                prompt = data.get('prompt', '')
+                                result = data.get('result')
+                                response = result.get('response', '') if result else ''
+                                raw_msg = response if response else prompt
+                            except Exception as fe:
+                                logger.error(f"Failed to load task file {task_file} for snippet: {fe}")
+                    
+                    if raw_msg is not None:
+                        stripped_snippet = strip_formatting(raw_msg)[:100]
+                        thread.last_message_snippet = stripped_snippet
+                        task_manager._save_thread(thread_id)
+                        last_msg = stripped_snippet
                 
                 thread_data['last_message'] = last_msg
                 threads.append(thread_data)

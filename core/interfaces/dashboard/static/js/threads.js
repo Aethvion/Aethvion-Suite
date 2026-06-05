@@ -20,6 +20,39 @@ const typingMessages = [
     "Herding digital cats"
 ];
 
+
+function stripFormatting(text) {
+    if (!text) return "";
+    
+    // 1. Remove markdown code blocks
+    let cleaned = text.replace(/```[\s\S]*?```/g, '');
+    
+    // 2. Remove HTML tags
+    cleaned = cleaned.replace(/<[^>]+>/g, '');
+    
+    // 3. Remove markdown images: ![alt](url) -> empty string
+    cleaned = cleaned.replace(/!\[([^\]]*)\]\([^)]+\)/g, '');
+    
+    // 3b. Remove markdown links: [text](url) -> text
+    cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    
+    // 4. Remove headers: #, ##, etc.
+    cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');
+    
+    // 5. Remove bold/italic markers (* and _)
+    cleaned = cleaned.replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1');
+    cleaned = cleaned.replace(/(?<!\w)_+([^_]+)_+(?!\w)/g, '$1');
+    
+    // 6. Remove inline backticks
+    cleaned = cleaned.replace(/`/g, '');
+    
+    // 7. Normalize whitespace
+    cleaned = cleaned.replace(/\s+/g, ' ');
+    
+    return cleaned.trim();
+}
+
+
 // Initialize thread management
 // Initialize thread management
 function initThreadManagement() {
@@ -923,7 +956,7 @@ function renderThreadList() {
         const previewEl = clone.querySelector('.thread-preview');
         if (previewEl) {
             const rawText = lastMsg ? lastMsg.content : (thread.last_message || 'No messages yet');
-            const previewText = rawText.replace(/<[^>]+>/g, '').slice(0, 80);
+            const previewText = stripFormatting(rawText).slice(0, 80);
             previewEl.textContent = previewText;
             previewEl.title = previewText;   // tooltip for truncated preview
         }
@@ -2247,7 +2280,7 @@ function _buildThreadItem(template, thread, folder) {
     const previewEl = clone.querySelector('.thread-preview');
     if (previewEl) {
         const rawText = lastMsg ? lastMsg.content : (thread.last_message || 'No messages yet');
-        const previewText = rawText.replace(/<[^>]+>/g, '').slice(0, 80);
+        const previewText = stripFormatting(rawText).slice(0, 80);
         previewEl.textContent = previewText;
         previewEl.title = previewText;
     }
