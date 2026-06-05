@@ -102,6 +102,15 @@ def _apply_filters(entities: list[dict], filters: dict) -> list[dict]:
             continue
         if "status" in filters and e.get("status") not in _as_list(filters["status"]):
             continue
+        kf = filters.get("kind")
+        if kf:
+            ek = e.get("kind")
+            kinds_filter = _as_list(kf)
+            if isinstance(ek, list):
+                if not any(k in ek for k in kinds_filter):
+                    continue
+            elif ek not in kinds_filter:
+                continue
         tf = filters.get("tags")
         if tf:
             etags = (e.get("sections") or {}).get("core", {}).get("tags", [])
@@ -189,6 +198,8 @@ class RelationInput(BaseModel):
 class UpsertRequest(BaseModel):
     name:       str
     type:       str = "other"
+    kind:       Optional[str] = None
+    status:     Optional[str] = None
     source:     str = "api"
     summary:    Optional[str] = None
     aliases:    Optional[list[str]] = None
@@ -265,6 +276,7 @@ async def list_entities(
     db:          str = ...,
     status:      Optional[str] = Query(None),
     entity_type: Optional[str] = Query(None, alias="type"),
+    kind:        Optional[str] = Query(None),
     limit:       int = Query(50, le=500),
     cursor:      Optional[str] = Query(None),
     sections:    Optional[str] = Query(None, description="Comma-separated section names to include"),
@@ -282,6 +294,11 @@ async def list_entities(
         entities = [e for e in entities if e.get("status") == status]
     if entity_type:
         entities = [e for e in entities if e.get("type") == entity_type]
+    if kind:
+        def _kind_match(e: dict, k: str) -> bool:
+            ek = e.get("kind")
+            return k in ek if isinstance(ek, list) else ek == k
+        entities = [e for e in entities if _kind_match(e, kind)]
 
     total  = len(entities)
     offset = decode_cursor(cursor) if cursor else 0
@@ -357,6 +374,8 @@ async def upsert_entity(
         mutations: dict = {}
         if req.type:   mutations["type"]   = req.type
         if req.source: mutations["source"] = req.source
+        if req.kind   is not None: mutations["kind"]   = req.kind
+        if req.status is not None: mutations["status"] = req.status
         if core_mut:   mutations.setdefault("sections", {})["core"] = core_mut
         if req.properties is not None:
             mutations.setdefault("sections", {})["properties"] = req.properties
@@ -384,6 +403,8 @@ async def upsert_entity(
             name=req.name,
             entity_type=req.type or "other",
             source=req.source or "api",
+            kind=req.kind,
+            status=req.status or "active",
             sections_override=sections_override,
         )
 

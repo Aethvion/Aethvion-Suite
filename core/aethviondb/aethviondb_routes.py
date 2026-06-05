@@ -82,6 +82,11 @@ def _get_validator(db: str = "default", path: Optional[str] = None):
     return Validator(_get_writer(db, path))
 
 
+def _get_kind_registry(db: str = "default", path: Optional[str] = None):
+    from .kind_registry import KindRegistry
+    return KindRegistry(_db_root(db, path))
+
+
 def _ensure_db(root: Path) -> None:
     (root / "entities").mkdir(parents=True, exist_ok=True)
     (root / "chunks").mkdir(parents=True, exist_ok=True)
@@ -129,7 +134,9 @@ class ExpandRequest(BaseModel):
 class CreateEntityRequest(BaseModel):
     name:        str
     entity_type: str = "other"
+    kind:        Optional[str] = None
     source:      str = "manual"
+    status:      str = "active"
     summary:     str = ""
     tags:        list[str] = []
     properties:  dict[str, str] = {}
@@ -481,12 +488,20 @@ async def get_stats(
 
 # Entity CRUD
 
+def _kind_matches(entity: dict, kind: str) -> bool:
+    ek = entity.get("kind")
+    if isinstance(ek, list):
+        return kind in ek
+    return ek == kind
+
+
 @router.get("/entities")
 async def list_entities(
     db:          str = Query("default"),
     path:        Optional[str] = Query(None),
     status:      Optional[str] = Query(None),
     entity_type: Optional[str] = Query(None),
+    kind:        Optional[str] = Query(None),
     limit:       int = Query(100, le=500),
     offset:      int = Query(0, ge=0),
 ):
@@ -496,6 +511,8 @@ async def list_entities(
         entities = [e for e in entities if e.get("status") == status]
     if entity_type:
         entities = [e for e in entities if e.get("type") == entity_type]
+    if kind:
+        entities = [e for e in entities if _kind_matches(e, kind)]
     return {"total": len(entities), "offset": offset, "limit": limit,
             "entities": entities[offset:offset + limit]}
 
@@ -537,16 +554,29 @@ async def create_entity(
 ):
     writer = _get_writer(db, path)
     _ensure_db(_db_root(db, path))
+
+    warnings: list[str] = []
+    if req.kind:
+        reg = _get_kind_registry(db, path)
+        _, was_new = reg.auto_register(req.kind)
+        if was_new:
+            warnings.append(f"kind {req.kind!r} was auto-registered in the Kind Registry")
+
     entity, was_created = writer.create(
         name=req.name,
         entity_type=req.entity_type,
         source=req.source,
+        kind=req.kind,
+        status=req.status,
         sections_override={
             "core":       {"summary": req.summary, "tags": req.tags},
             "properties": req.properties,
         },
     )
-    return {"entity": entity, "was_created": was_created}
+    response: dict[str, Any] = {"entity": entity, "was_created": was_created}
+    if warnings:
+        response["warnings"] = warnings
+    return response
 
 
 @router.put("/entities/{entity_id}")
@@ -610,6 +640,7 @@ async def import_entities_route(
 async def search_entities(
     q:           str = Query(""),
     entity_type: Optional[str] = Query(None),
+    kind:        Optional[str] = Query(None),
     tag:         Optional[str] = Query(None),
     limit:       int = Query(50, le=200),
     db:          str = Query("default"),
@@ -620,6 +651,8 @@ async def search_entities(
     results = []
     for e in writer.list_all():
         if entity_type and e.get("type") != entity_type:
+            continue
+        if kind and not _kind_matches(e, kind):
             continue
         if tag:
             if not any(t.lower() == tag.lower() for t in e["sections"]["core"].get("tags", [])):
@@ -634,6 +667,7 @@ async def search_entities(
             "id":              e["id"],
             "name":            e["name"],
             "type":            e.get("type"),
+            "kind":            e.get("kind"),
             "status":          e.get("status"),
             "summary":         e["sections"]["core"].get("summary", "")[:200],
             "tags":            e["sections"]["core"].get("tags", [])[:5],
@@ -2089,3 +2123,103 @@ async def list_stubs(
         "count":  total,
         "stubs":  [{"id": e["id"], "name": e["name"], "type": e.get("type")} for e in paged],
     }
+
+
+# Kind Registry
+
+class RegisterKindRequest(BaseModel):
+    description:        str = ""
+    icon:               str = ""
+    color:              str = ""
+    default_properties: dict[str, str] = {}
+    common_relations:   list[str] = []
+
+
+class UpdateKindRequest(BaseModel):
+    description:        Optional[str]            = None
+    icon:               Optional[str]            = None
+    color:              Optional[str]            = None
+    default_properties: Optional[dict[str, str]] = None
+    common_relations:   Optional[list[str]]      = None
+
+
+@router.get("/kinds")
+async def list_kinds(
+    prefix: Optional[str] = Query(None, description="Filter by kind name prefix, e.g. 'software.'"),
+    db:     str = Query("default"),
+    path:   Optional[str] = Query(None),
+):
+    reg   = _get_kind_registry(db, path)
+    kinds = reg.list_all(prefix=prefix or "")
+    return {"count": len(kinds), "kinds": kinds, "stats": reg.stats()}
+
+
+@router.post("/kinds/{kind_name:path}")
+async def register_kind(
+    kind_name: str,
+    req:       RegisterKindRequest,
+    db:        str = Query("default"),
+    path:      Optional[str] = Query(None),
+):
+    reg      = _get_kind_registry(db, path)
+    kind_def = reg.register(
+        kind_name,
+        description=req.description,
+        icon=req.icon,
+        color=req.color,
+        default_properties=req.default_properties,
+        common_relations=req.common_relations,
+    )
+    return {"kind": kind_def}
+
+
+@router.get("/kinds/{kind_name:path}")
+async def get_kind(
+    kind_name: str,
+    db:        str = Query("default"),
+    path:      Optional[str] = Query(None),
+):
+    reg      = _get_kind_registry(db, path)
+    kind_def = reg.get(kind_name)
+    if kind_def is None:
+        raise HTTPException(404, f"Kind {kind_name!r} is not registered")
+    return {"kind": kind_def}
+
+
+@router.put("/kinds/{kind_name:path}")
+async def update_kind(
+    kind_name: str,
+    req:       UpdateKindRequest,
+    db:        str = Query("default"),
+    path:      Optional[str] = Query(None),
+):
+    reg     = _get_kind_registry(db, path)
+    updates = {k: v for k, v in req.model_dump().items() if v is not None}
+    updated = reg.update(kind_name, **updates)
+    if updated is None:
+        raise HTTPException(404, f"Kind {kind_name!r} is not registered")
+    return {"kind": updated}
+
+
+@router.delete("/kinds/{kind_name:path}")
+async def delete_kind(
+    kind_name: str,
+    db:        str = Query("default"),
+    path:      Optional[str] = Query(None),
+):
+    reg  = _get_kind_registry(db, path)
+    existed = reg.delete(kind_name)
+    if not existed:
+        raise HTTPException(404, f"Kind {kind_name!r} is not registered")
+    return {"success": True, "kind_name": kind_name}
+
+
+@router.post("/kinds-init-software")
+async def init_software_kinds(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """Populate all built-in software kinds (skips already-registered ones)."""
+    reg   = _get_kind_registry(db, path)
+    added = await asyncio.to_thread(reg.init_software_kinds)
+    return {"added": added, "stats": reg.stats()}

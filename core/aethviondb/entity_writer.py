@@ -29,7 +29,7 @@ from core.utils import get_logger, atomic_json_write
 from core.utils.paths import AETHVIONDB
 
 _DEFAULT_ENTITIES_DIR = AETHVIONDB / "default" / "entities"
-from .entity_schema import make_empty, validate, _new_id, _now_iso
+from .entity_schema import make_empty, validate, _new_id, _now_iso, VALID_STATUSES
 from .name_index import NameIndex, get_index
 
 logger = get_logger(__name__)
@@ -98,6 +98,8 @@ class EntityWriter:
         source: str = "manual",
         sections_override: Optional[dict[str, Any]] = None,
         extra_aliases: Optional[list[str]] = None,
+        kind: "str | list[str] | None" = None,
+        status: str = "active",
     ) -> tuple[dict[str, Any], bool]:
         """
         Create a new entity file (or return the existing one if already indexed).
@@ -123,7 +125,8 @@ class EntityWriter:
                 "but file is missing; recreating."
             )
 
-        entity = make_empty(name, entity_type, source, entity_id)
+        resolved_status = status if status in VALID_STATUSES else "active"
+        entity = make_empty(name, entity_type, source, entity_id, kind=kind, status=resolved_status)
 
         if sections_override:
             for section_key, section_val in sections_override.items():
@@ -297,6 +300,14 @@ class EntityWriter:
 
     def search_by_type(self, entity_type: str) -> list[dict[str, Any]]:
         return [e for e in self.list_all() if e.get("type") == entity_type]
+
+    def search_by_kind(self, kind: str) -> list[dict[str, Any]]:
+        def _matches(e: dict[str, Any]) -> bool:
+            ek = e.get("kind")
+            if isinstance(ek, list):
+                return kind in ek
+            return ek == kind
+        return [e for e in self.list_all() if _matches(e)]
 
     def search_by_tag(self, tag: str) -> list[dict[str, Any]]:
         tag_lower = tag.lower()

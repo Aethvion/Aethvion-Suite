@@ -10,9 +10,10 @@ Schema
 ------
 {
   "id":      "ws_<hex>",          # Stable 16-char hex UUID prefix
-  "type":    "person|place|event|concept|organization|artifact|creature|...",
+  "type":    "person|place|module|service|...",
+  "kind":    "software.module",   # Optional fine-grained sub-type (string or list)
   "name":    "Canonical Name",    # Title-case canonical; aliases live in core.aliases
-  "status":  "active|stub|deleted",
+  "status":  "active|stub|deleted|planned|deprecated|experimental",
   "version": 1,                   # Integer, incremented on every write
   "created": "ISO-8601",
   "updated": "ISO-8601",
@@ -28,7 +29,7 @@ Schema
       { "date": "YYYY or YYYY-MM-DD", "event": "Short description", "ref_ids": ["ws_..."] }
     ],
     "relations": [
-      { "kind": "parent_of|member_of|created_by|located_in|...", "target_id": "ws_...", "note": "" }
+      { "kind": "parent_of|calls|depends_on|...", "target_id": "ws_...", "note": "" }
     ],
     "properties": {
       # Type-specific structured facts — free key/value, values are strings or simple lists
@@ -49,18 +50,41 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
-VALID_STATUSES = {"active", "stub", "deleted"}
+VALID_STATUSES = {
+    # Core lifecycle
+    "active", "stub", "deleted",
+    # Extended lifecycle (ProjectMapper / software domains)
+    "planned",       # intended but not yet implemented
+    "deprecated",    # exists but being phased out
+    "experimental",  # in development / unstable
+}
 
 VALID_TYPES = {
+    # General / worldbuilding
     "person", "place", "event", "concept", "organization",
     "artifact", "creature", "substance", "process", "phenomenon",
     "work",       # book, film, song, game …
     "species",
     "universe",   # fictional or cosmological containers
     "other",
+    # Software / project domain
+    "module",       # file, package, or logical code grouping
+    "service",      # deployable service, microservice, or external integration
+    "component",    # UI, architectural, or functional unit
+    "class",        # code class, interface, or abstract type
+    "function",     # function, method, procedure, or callable
+    "endpoint",     # API endpoint, route, or RPC method
+    "model",        # data model, schema, database table, or type definition
+    "workflow",     # process, pipeline, job, or sequence of steps
+    "config",       # configuration, environment settings, or feature flags
+    "dependency",   # external library, package, framework, or tool
+    "decision",     # architectural decision record (ADR), tech decision
+    "goal",         # roadmap item, planned feature, milestone, or objective
+    "constraint",   # technical constraint, performance requirement, limitation
 }
 
 RELATION_KINDS = {
+    # General / narrative
     "parent_of", "child_of",
     "member_of", "contains",
     "created_by", "created",
@@ -71,6 +95,23 @@ RELATION_KINDS = {
     "instance_of", "has_instance",
     "influenced_by", "influenced",
     "participated_in", "has_participant",
+    # Software / structural
+    "calls", "called_by",
+    "imports", "imported_by",
+    "depends_on", "dependency_of",
+    "implements", "implemented_by",
+    "extends", "extended_by",
+    "uses", "used_by",
+    "exposes", "exposed_by",
+    "configures", "configured_by",
+    "tests", "tested_by",
+    "documents", "documented_by",
+    "replaced_by", "replaces",
+    "deprecated_by", "deprecates",
+    "owns", "owned_by",
+    "reads_from", "read_by",
+    "writes_to", "written_by",
+    "triggers", "triggered_by",
 }
 
 
@@ -88,17 +129,19 @@ def make_empty(
     entity_type: str = "other",
     source: str = "manual",
     entity_id: str | None = None,
+    kind: "str | list[str] | None" = None,
+    status: str = "active",
 ) -> dict[str, Any]:
     """
     Return a minimal valid entity dict.
     Use EntityWriter.create() for persistent on-disk creation.
     """
     now = _now_iso()
-    return {
+    entity: dict[str, Any] = {
         "id":      entity_id or _new_id(),
         "type":    entity_type if entity_type in VALID_TYPES else "other",
         "name":    name,
-        "status":  "active",
+        "status":  status if status in VALID_STATUSES else "active",
         "version": 1,
         "created": now,
         "updated": now,
@@ -117,6 +160,9 @@ def make_empty(
             "vectors":    {},
         },
     }
+    if kind is not None:
+        entity["kind"] = kind
+    return entity
 
 
 def validate(entity: dict[str, Any]) -> list[str]:
@@ -136,6 +182,13 @@ def validate(entity: dict[str, Any]) -> list[str]:
 
     if "type" in entity and entity["type"] not in VALID_TYPES:
         errors.append(f"Unknown entity type {entity['type']!r}")
+
+    if "kind" in entity:
+        k = entity["kind"]
+        if not isinstance(k, (str, list)):
+            errors.append("'kind' must be a string or list of strings")
+        elif isinstance(k, list) and not all(isinstance(x, str) for x in k):
+            errors.append("All items in 'kind' must be strings")
 
     secs = entity.get("sections", {})
     for sec in ("core", "timeline", "relations", "properties", "stubs"):
