@@ -36,12 +36,13 @@ from core.ai.call_contexts import CallSource
 from .entity_schema import VALID_TYPES
 from .entity_writer import EntityWriter
 from .name_index import NameIndex
+from .file_manifest import FileManifest, detect_language
 
 logger = get_logger(__name__)
 
 # System prompt
 
-_SYSTEM_PROMPT = """You are a knowledge extraction engine for a structured world-simulation database.
+_SYSTEM_PROMPT = """You are a knowledge extraction engine for a structured database.
 
 Read the provided text and extract all key information into a strict JSON object.
 
@@ -49,16 +50,24 @@ RULES:
 - Output ONLY valid JSON. No markdown, no code fences, no explanation.
 - "name" is the canonical name of the primary subject of the text (required).
 - "type" must be exactly one of:
-  person, place, event, concept, organization, artifact, creature,
-  substance, process, phenomenon, work, species, universe, other
+  General: person, place, event, concept, organization, artifact, creature,
+           substance, process, phenomenon, work, species, universe, other
+  Software: module, service, component, class, function, endpoint,
+            model, workflow, config, dependency, decision, goal, constraint
 - "timeline" dates must be YYYY or YYYY-MM-DD (approximate: "~1900").
-- "stubs" lists only meaningful proper nouns (people, places, orgs, concepts)
-  that appear in the text and deserve their own entry. Not every word.
+- "stubs" lists only meaningful entities (people, places, orgs, concepts, modules,
+  services, classes) that appear in the text and deserve their own entry.
 - "relations" kinds must be one of:
-  parent_of, child_of, member_of, contains, created_by, created,
-  located_in, location_of, part_of, has_part, preceded_by, followed_by,
-  related_to, instance_of, has_instance, influenced_by, influenced,
-  participated_in, has_participant
+  General: parent_of, child_of, member_of, contains, created_by, created,
+           located_in, location_of, part_of, has_part, preceded_by, followed_by,
+           related_to, instance_of, has_instance, influenced_by, influenced,
+           participated_in, has_participant
+  Software: calls, called_by, imports, imported_by, depends_on, dependency_of,
+            implements, implemented_by, extends, extended_by, uses, used_by,
+            exposes, exposed_by, configures, configured_by, tests, tested_by,
+            documents, documented_by, replaced_by, replaces, deprecated_by,
+            deprecates, owns, owned_by, reads_from, read_by, writes_to,
+            written_by, triggers, triggered_by
 - Do not invent facts not stated in the text. Use "" or [] for unknown fields.
 
 Required output structure (no extra keys):
@@ -158,38 +167,60 @@ def _map_to_sections(
     }, stubs
 
 
+def _now_iso() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
 class ContentDistiller:
     """
-    Distills any informational text into a WorldSim entity.
+    Distills any informational text into a structured entity.
 
     The AI reads the content, identifies the primary entity, and writes
     a structured entity file. Entity name is extracted automatically.
 
     Parameters
     ----------
-    writer : EntityWriter
-    index  : NameIndex
-    model  : str  — default AI model
+    writer        : EntityWriter
+    index         : NameIndex
+    model         : str  — default AI model
+    file_manifest : FileManifest | None — when provided, provenance is recorded
+                    automatically on distillation with a source_path.
     """
 
     def __init__(
         self,
-        writer: EntityWriter,
-        index:  NameIndex,
-        model:  str = "auto",
+        writer:        EntityWriter,
+        index:         NameIndex,
+        model:         str = "auto",
+        file_manifest: Optional[FileManifest] = None,
     ) -> None:
-        self._writer = writer
-        self._index  = index
-        self._model  = model
+        self._writer        = writer
+        self._index         = index
+        self._model         = model
+        self._file_manifest = file_manifest
 
     async def distill(
         self,
-        content: str,
-        model:   Optional[str] = None,
-        source:  str = "distilled",
+        content:         str,
+        model:           Optional[str] = None,
+        source:          str = "distilled",
+        source_path:     Optional[str] = None,
+        source_hash:     Optional[str] = None,
+        source_language: Optional[str] = None,
+        source_size:     int = 0,
     ) -> dict[str, Any]:
         """
-        Distill text into a WorldSim entity.
+        Distill text into a structured entity.
+
+        Parameters
+        ----------
+        source_path     : optional path of the file this content came from.
+                          When provided, the entity's source_files section is
+                          updated and the FileManifest (if configured) is notified.
+        source_hash     : SHA-256 hash of the source file ("sha256:<hex>").
+        source_language : language slug (e.g. "python"). Auto-detected if omitted.
+        source_size     : file size in bytes, for manifest bookkeeping.
 
         Returns
         -------
@@ -200,6 +231,7 @@ class ContentDistiller:
           "stub_count":  int,
           "stubs":       list[str],
           "errors":      list[str],
+          "source_file": str | None,
         }
         """
         from core.providers import get_provider_manager
@@ -212,6 +244,7 @@ class ContentDistiller:
             "stub_count":  0,
             "stubs":       [],
             "errors":      [],
+            "source_file": source_path,
         }
 
         try:
@@ -276,8 +309,40 @@ class ContentDistiller:
         result["stub_count"]  = len(stubs)
         result["stubs"]       = stubs
 
+        # Record source provenance if a file path was provided
+        if source_path:
+            lang      = source_language or detect_language(source_path)
+            line_count = content.count("\n") + 1
+            sf_entry  = {
+                "path":       source_path,
+                "lines":      [1, line_count],
+                "language":   lang,
+                "scanned_at": _now_iso(),
+            }
+            if source_hash:
+                sf_entry["hash"] = source_hash
+            if source_size:
+                sf_entry["size"] = source_size
+            try:
+                self._writer.update(entity["id"], {"sections": {"source_files": [sf_entry]}})
+            except Exception as exc:
+                logger.warning(f"[Distiller] Could not record source provenance for {entity['id']}: {exc}")
+
+            if self._file_manifest is not None:
+                try:
+                    self._file_manifest.add_entity(
+                        path=source_path,
+                        entity_id=entity["id"],
+                        file_hash=source_hash or "",
+                        size=source_size,
+                        language=lang,
+                    )
+                except Exception as exc:
+                    logger.warning(f"[Distiller] Could not update FileManifest for {source_path}: {exc}")
+
         logger.info(
             f"[Distiller] '{entity_name}' → {entity['id']} "
             f"type={entity_type} was_created={was_created} stubs={len(stubs)}"
+            + (f" source={source_path}" if source_path else "")
         )
         return result

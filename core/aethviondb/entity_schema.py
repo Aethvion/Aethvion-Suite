@@ -153,11 +153,12 @@ def make_empty(
                 "categories": [],
                 "tags":       [],
             },
-            "timeline":   [],
-            "relations":  [],
-            "properties": {},
-            "stubs":      [],
-            "vectors":    {},
+            "timeline":     [],
+            "relations":    [],
+            "properties":   {},
+            "stubs":        [],
+            "vectors":      {},
+            "source_files": [],   # [{ path, hash, lines, language, size, scanned_at }]
         },
     }
     if kind is not None:

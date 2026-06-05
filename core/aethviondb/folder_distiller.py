@@ -23,6 +23,7 @@ context (route handler) so it is bound to the running event loop.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import os
 from datetime import datetime, timezone
@@ -70,6 +71,11 @@ def _fmt_size(b: int) -> str:
     if b < 1024 ** 2:  return f"{b / 1024:.1f} KB"
     if b < 1024 ** 3:  return f"{b / 1024 ** 2:.1f} MB"
     return f"{b / 1024 ** 3:.2f} GB"
+
+
+def _content_hash(text: str) -> str:
+    """Return a SHA-256 hash of the UTF-8 encoded text as 'sha256:<hex>'."""
+    return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 # DISTILLINFO I/O
@@ -254,15 +260,17 @@ def prepare_start_job(
 
 async def _distill_one_file(
     distiller,
-    source: str,
-    fp:     Path,
-    rel:    str,
-    index:  int,
+    source:      str,
+    fp:          Path,
+    rel:         str,
+    index:       int,
+    folder_root: Path | None = None,
 ) -> dict:
     """
     Read and distil a single file.  Always returns a result dict — never raises.
 
-    Keys: status ('ok'|'fail'|'skip'), entity_name, error, fname, rel, index.
+    Keys: status ('ok'|'fail'|'skip'), entity_id, entity_name, file_hash,
+          size, rel_path, fname, rel, index.
     """
     fname = fp.name
     try:
@@ -274,7 +282,19 @@ async def _distill_one_file(
         if len(content) > 0 and content.count("�") / len(content) > 0.15:
             return {"status": "skip", "fname": fname, "rel": rel, "index": index}
 
-        result = await distiller.distill(content=content, source=source)
+        file_hash = _content_hash(content)
+        try:
+            size = fp.stat().st_size
+        except OSError:
+            size = 0
+
+        result = await distiller.distill(
+            content=content,
+            source=source,
+            source_path=rel,
+            source_hash=file_hash,
+            source_size=size,
+        )
         if result["errors"]:
             return {
                 "status": "fail",
@@ -283,7 +303,10 @@ async def _distill_one_file(
             }
         return {
             "status":      "ok",
+            "entity_id":   result.get("entity_id"),
             "entity_name": result.get("entity_name") or fname,
+            "file_hash":   file_hash,
+            "size":        size,
             "fname":       fname, "rel": rel, "index": index,
         }
     except Exception as exc:
@@ -311,6 +334,7 @@ async def run_distill_job(
     ``concurrency`` controls how many files are distilled simultaneously.
     """
     from .distiller import ContentDistiller
+    from .file_manifest import FileManifest
 
     key = str(db_root)
 
@@ -329,7 +353,8 @@ async def run_distill_job(
     total       = len(file_list)
     concurrency = max(1, concurrency)
 
-    distiller = ContentDistiller(writer=writer, index=index, model=model)
+    file_manifest = FileManifest(db_root)
+    distiller     = ContentDistiller(writer=writer, index=index, model=model, file_manifest=file_manifest)
 
     _save_progress(db_root, info, "running", next_index, processed, failed, skipped, failed_list, log)
     logger.info(f"[FolderDistiller] Starting from index {next_index}/{total} "

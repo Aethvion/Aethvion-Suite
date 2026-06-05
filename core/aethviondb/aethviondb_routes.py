@@ -87,6 +87,11 @@ def _get_kind_registry(db: str = "default", path: Optional[str] = None):
     return KindRegistry(_db_root(db, path))
 
 
+def _get_file_manifest(db: str = "default", path: Optional[str] = None):
+    from .file_manifest import FileManifest
+    return FileManifest(_db_root(db, path))
+
+
 def _ensure_db(root: Path) -> None:
     (root / "entities").mkdir(parents=True, exist_ok=True)
     (root / "chunks").mkdir(parents=True, exist_ok=True)
@@ -120,9 +125,10 @@ def _write_db_info(root: Path, data: dict) -> None:
 # Request schemas
 
 class DistillRequest(BaseModel):
-    content: str                  # Text to extract an entity from
-    model:   Optional[str] = None
-    source:  str = "distilled"
+    content:     str              # Text to extract an entity from
+    model:       Optional[str] = None
+    source:      str = "distilled"
+    source_path: Optional[str] = None   # File path this content came from (for provenance)
 
 
 class ExpandRequest(BaseModel):
@@ -693,8 +699,14 @@ async def distill_content(
     _ensure_db(root)
     writer = _get_writer(db, path)
     index  = _get_index(db, path)
-    d      = ContentDistiller(writer=writer, index=index)
-    result = await d.distill(content=req.content, model=req.model, source=req.source)
+    fm     = _get_file_manifest(db, path) if req.source_path else None
+    d      = ContentDistiller(writer=writer, index=index, file_manifest=fm)
+    result = await d.distill(
+        content=req.content,
+        model=req.model,
+        source=req.source,
+        source_path=req.source_path,
+    )
     if result["errors"]:
         raise HTTPException(500, {"message": "Distillation errors", "errors": result["errors"]})
     return result
@@ -2223,3 +2235,60 @@ async def init_software_kinds(
     reg   = _get_kind_registry(db, path)
     added = await asyncio.to_thread(reg.init_software_kinds)
     return {"added": added, "stats": reg.stats()}
+
+
+# File Manifest
+
+@router.get("/file-manifest")
+async def list_file_manifest(
+    prefix: Optional[str] = Query(None, description="Filter entries by path prefix"),
+    db:     str = Query("default"),
+    path:   Optional[str] = Query(None),
+):
+    """List all files tracked in the manifest, with their hashes and entity mappings."""
+    fm      = _get_file_manifest(db, path)
+    entries = fm.list_all(prefix=prefix or "")
+    return {"count": len(entries), "files": entries, "stats": fm.stats()}
+
+
+@router.get("/file-manifest/stats")
+async def file_manifest_stats(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    fm = _get_file_manifest(db, path)
+    return fm.stats()
+
+
+@router.post("/file-manifest/rebuild")
+async def rebuild_file_manifest(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """Rebuild the file manifest by scanning all entity source_files sections."""
+    writer = _get_writer(db, path)
+    fm     = _get_file_manifest(db, path)
+    result = await asyncio.to_thread(fm.rebuild_from_entities, writer)
+    return result
+
+
+@router.get("/entities/{entity_id}/source-files")
+async def get_entity_source_files(
+    entity_id: str,
+    db:        str = Query("default"),
+    path:      Optional[str] = Query(None),
+):
+    """Return provenance: which files this entity was derived from."""
+    writer = _get_writer(db, path)
+    entity = writer.get(entity_id)
+    if not entity:
+        raise HTTPException(404, f"Entity '{entity_id}' not found")
+    source_files = entity.get("sections", {}).get("source_files", [])
+    fm           = _get_file_manifest(db, path)
+    manifest_entries = fm.files_for_entity(entity_id)
+    return {
+        "entity_id":       entity_id,
+        "entity_name":     entity.get("name"),
+        "source_files":    source_files,
+        "manifest_entries": manifest_entries,
+    }
