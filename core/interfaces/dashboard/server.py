@@ -67,6 +67,7 @@ def _import_remaining_routers():
         ("core.aethviondb.aethviondb_routes",           "router", "aethviondb_router"),
         ("core.aethviondb.api_v1.router",               "router", "aethviondb_v1_router"),
         ("core.automate.automate_routes",               "router", "automate_router"),
+        ("core.project_mapper.routes",                  "router", "project_mapper_router"),
     ]
 
     import importlib
