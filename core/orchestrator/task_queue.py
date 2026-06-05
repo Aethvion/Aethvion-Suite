@@ -746,6 +746,7 @@ class TaskQueueManager:
         # Save state ONLY if not incognito
         if not is_incognito:
             self.threads[thread_id].last_message_snippet = strip_formatting(prompt)[:100]
+            self.threads[thread_id].msg_count += 1
             self._save_thread(thread_id)
             self._save_task(task)
         
@@ -915,6 +916,8 @@ class TaskQueueManager:
                                     is_pinned=data.get('is_pinned', False),
                                     folder_id=data.get('folder_id', None),
                                     last_message_snippet=data.get('last_message_snippet', None),
+                                    msg_count=data.get('msg_count', 0),
+                                    last_model=data.get('last_model', None),
                                 )
                                 
                                 if not thread.is_deleted:
@@ -960,6 +963,21 @@ class TaskQueueManager:
         try:
             # Update thread's last message snippet if thread exists
             if task.thread_id in self.threads:
+                thread = self.threads[task.thread_id]
+                
+                # Compute message count and find the latest model used
+                msg_count = 0
+                last_model = None
+                for tid in thread.task_ids:
+                    t = self.tasks.get(tid)
+                    if t:
+                        msg_count += 1
+                        if t.status == TaskStatus.COMPLETED:
+                            msg_count += 1
+                        model = t.metadata.get('actual_model') or (t.result.get('model_id') if (t.result and isinstance(t.result, dict)) else None)
+                        if model:
+                            last_model = model
+                
                 snippet = None
                 if task.status == TaskStatus.COMPLETED and task.result and isinstance(task.result, dict):
                     response = task.result.get('response', '')
@@ -969,7 +987,11 @@ class TaskQueueManager:
                 if not snippet:
                     snippet = strip_formatting(task.prompt)
                 
-                self.threads[task.thread_id].last_message_snippet = snippet[:100]
+                thread.last_message_snippet = snippet[:100]
+                thread.msg_count = msg_count
+                if last_model:
+                    thread.last_model = last_model
+                
                 # Save the updated thread to disk
                 self._save_thread(task.thread_id)
 

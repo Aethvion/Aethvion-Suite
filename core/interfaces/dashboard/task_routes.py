@@ -171,36 +171,68 @@ async def list_threads():
                 # Get last task for preview
                 last_msg = "No messages yet"
                 snippet = getattr(thread, 'last_message_snippet', None)
-                if snippet is not None:
+                msg_count_val = getattr(thread, 'msg_count', 0)
+                if snippet is not None and (msg_count_val > 0 or not thread.task_ids):
                     last_msg = snippet
                 elif thread.task_ids:
-                    last_task_id = thread.task_ids[-1]
-                    last_task = task_manager.get_task(last_task_id)
+                    msg_count = 0
+                    last_model = None
                     raw_msg = None
-                    if last_task:
-                        if last_task.result and last_task.result.get('response'):
-                            raw_msg = last_task.result.get('response')
+                    
+                    for tid in thread.task_ids:
+                        task = task_manager.get_task(tid)
+                        status = 'queued'
+                        prompt = ''
+                        result = None
+                        model = None
+                        
+                        if task:
+                            status = task.status.value if hasattr(task.status, 'value') else str(task.status)
+                            prompt = task.prompt
+                            result = task.result
+                            model = task.metadata.get('actual_model') or (task.result.get('model_id') if (task.result and isinstance(task.result, dict)) else None)
                         else:
-                            raw_msg = last_task.prompt
-                    else:
-                        # Attempt to load from disk
-                        task_file = task_manager.workspaces_dir / thread_id / "tasks" / f"{last_task_id}.json"
-                        if task_file.exists():
-                            try:
-                                with open(task_file, 'r', encoding='utf-8') as f:
-                                    data = _json.load(f)
-                                prompt = data.get('prompt', '')
-                                result = data.get('result')
-                                response = result.get('response', '') if result else ''
-                                raw_msg = response if response else prompt
-                            except Exception as fe:
-                                logger.error(f"Failed to load task file {task_file} for snippet: {fe}")
+                            # Attempt to load from disk
+                            task_file = task_manager.workspaces_dir / thread_id / "tasks" / f"{tid}.json"
+                            if task_file.exists():
+                                try:
+                                    with open(task_file, 'r', encoding='utf-8') as f:
+                                        data = _json.load(f)
+                                    status = data.get('status', 'queued')
+                                    prompt = data.get('prompt', '')
+                                    result = data.get('result')
+                                    metadata = data.get('metadata', {})
+                                    model = metadata.get('actual_model') or (result.get('model_id') if (result and isinstance(result, dict)) else None)
+                                except Exception as fe:
+                                    logger.error(f"Failed to load task file {task_file} for metadata fallback: {fe}")
+                                    continue
+                            else:
+                                continue
+                        
+                        # Count message
+                        msg_count += 1
+                        if status == 'completed':
+                            msg_count += 1
+                        if model:
+                            last_model = model
+                        
+                        # Set raw_msg if this is the last task
+                        if tid == thread.task_ids[-1]:
+                            response = result.get('response', '') if (result and isinstance(result, dict)) else ''
+                            raw_msg = response if response else prompt
                     
                     if raw_msg is not None:
                         stripped_snippet = strip_formatting(raw_msg)[:100]
                         thread.last_message_snippet = stripped_snippet
+                        thread.msg_count = msg_count
+                        thread.last_model = last_model
                         task_manager._save_thread(thread_id)
                         last_msg = stripped_snippet
+                        
+                        # Update the serialized thread_data
+                        thread_data['last_message_snippet'] = stripped_snippet
+                        thread_data['msg_count'] = msg_count
+                        thread_data['last_model'] = last_model
                 
                 thread_data['last_message'] = last_msg
                 threads.append(thread_data)

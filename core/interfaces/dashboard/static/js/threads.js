@@ -216,9 +216,8 @@ async function loadThreads() {
                 threads[thread.id] = thread;
                 threadMessages[thread.id] = []; // Initialize message storage
             } else {
-                // Update existing thread data
-                threads[thread.id].mode = thread.mode;
-                threads[thread.id].is_pinned = thread.is_pinned;
+                // Update existing thread data with all metadata/caching fields
+                Object.assign(threads[thread.id], thread);
             }
         });
 
@@ -2286,7 +2285,8 @@ function _buildThreadItem(template, thread, folder) {
     }
 
     // Thread metadata row
-    const msgCount = msgs.filter(m => m.role === 'user' || m.role === 'assistant').length;
+    const inMemoryCount = msgs.filter(m => m.role === 'user' || m.role === 'assistant').length;
+    const msgCount = inMemoryCount > 0 ? inMemoryCount : (thread.msg_count || 0);
     const metaCountEl = clone.querySelector('.thread-meta-count');
     const metaTimeEl  = clone.querySelector('.thread-meta-time');
     const metaModelEl = clone.querySelector('.thread-meta-model');
@@ -2324,9 +2324,10 @@ function _buildThreadItem(template, thread, folder) {
         const lastAst = [...msgs].reverse().find(m => m.role === 'assistant' && m.taskData);
         const model = lastAst?.taskData?.metadata?.actual_model
                    || lastAst?.taskData?.result?.model_id
+                   || thread.last_model
                    || '';
         // Shorten: strip provider prefixes like "google/", "openai/"
-        const shortModel = model.split('/').pop().replace(/-\d{4,}.*$/, '');
+        const shortModel = model ? (model.split('/').pop().replace(/-\d{4,}.*$/, '')) : '';
         metaModelEl.textContent = shortModel;
         metaModelEl.title = model;
     }
