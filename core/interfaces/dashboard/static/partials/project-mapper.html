@@ -1,0 +1,399 @@
+<div id="pm-root" class="pm-root">
+
+    <!-- ── Header ───────────────────────────────────────────────── -->
+    <div class="pm-header">
+        <div class="pm-header-top">
+
+            <div class="pm-brand">
+                <div class="pm-brand-icon">
+                    <i class="fas fa-diagram-project"></i>
+                </div>
+                <span class="pm-brand-name">Project Mapper</span>
+            </div>
+
+            <nav class="pm-nav-tabs" id="pm-nav-tabs">
+                <button class="pm-nav-tab active" data-pm-tab="scan">
+                    <i class="fas fa-radar"></i> Scan
+                </button>
+                <button class="pm-nav-tab" data-pm-tab="explorer">
+                    <i class="fas fa-sitemap"></i> Explorer
+                </button>
+                <button class="pm-nav-tab" data-pm-tab="query">
+                    <i class="fas fa-magnifying-glass-chart"></i> Query
+                </button>
+            </nav>
+
+            <div class="pm-header-right">
+                <div class="pm-db-row" title="AethvionDB database name">
+                    <span class="pm-db-label">DB</span>
+                    <input id="pm-db-name" class="pm-db-input" type="text" value="default" placeholder="database">
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Quick stats bar (updated after scan) -->
+        <div class="pm-stats-bar" id="pm-stats-bar">
+            <div class="pm-stat-chip" id="pm-sc-status">
+                <i class="fas fa-circle-dot"></i>
+                <span>Status:</span>
+                <span class="pm-sc-val" id="pm-sc-status-val">idle</span>
+            </div>
+            <div class="pm-stat-chip">
+                <i class="fas fa-shapes"></i>
+                <span>Entities:</span>
+                <span class="pm-sc-val" id="pm-sc-entities">—</span>
+            </div>
+            <div class="pm-stat-chip">
+                <i class="fas fa-file-code"></i>
+                <span>Files tracked:</span>
+                <span class="pm-sc-val" id="pm-sc-files">—</span>
+            </div>
+            <div class="pm-stat-chip">
+                <i class="fas fa-clock"></i>
+                <span>Last scan:</span>
+                <span class="pm-sc-val" id="pm-sc-last">—</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SCAN PANE
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="pm-pane" id="pm-pane-scan">
+        <div class="pm-scan-layout">
+
+            <!-- Form card -->
+            <div class="pm-scan-form">
+
+                <!-- Row 1: project root + preview -->
+                <div class="pm-form-row">
+                    <div class="pm-field pm-field-grow">
+                        <label class="pm-label" for="pm-proj-root">Project Root</label>
+                        <div class="pm-input-with-btn">
+                            <input id="pm-proj-root" class="pm-input" type="text"
+                                   placeholder="/path/to/your/project">
+                            <button id="pm-preview-btn" class="pm-btn pm-btn-ghost" title="Count files by type">
+                                <i class="fas fa-eye"></i> Preview
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 2: concurrency + toggles -->
+                <div class="pm-form-row">
+                    <div class="pm-field pm-field-sm">
+                        <label class="pm-label" for="pm-concurrency">Threads</label>
+                        <select id="pm-concurrency" class="pm-select">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <div class="pm-field">
+                        <label class="pm-label">Options</label>
+                        <div class="pm-toggles-row">
+                            <label class="pm-toggle" title="Skip files whose content hash is unchanged">
+                                <input type="checkbox" id="pm-opt-incremental" checked>
+                                <span class="pm-toggle-track"></span>
+                                <span class="pm-toggle-label">Incremental</span>
+                            </label>
+                            <label class="pm-toggle" title="Run LLM enrichment on new modules (adds descriptions)">
+                                <input type="checkbox" id="pm-opt-enrich">
+                                <span class="pm-toggle-track"></span>
+                                <span class="pm-toggle-label">Enrich (LLM)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="pm-form-actions">
+                    <button id="pm-scan-btn" class="pm-btn pm-btn-primary">
+                        <i class="fas fa-play"></i> Scan Project
+                    </button>
+                    <button id="pm-delta-btn" class="pm-btn pm-btn-ghost">
+                        <i class="fas fa-code-compare"></i> Delta Preview
+                    </button>
+                    <button id="pm-cleanup-btn" class="pm-btn pm-btn-ghost" title="Retire entities for deleted files">
+                        <i class="fas fa-broom"></i> Cleanup
+                    </button>
+                    <button id="pm-cancel-btn" class="pm-btn pm-btn-danger" style="display:none">
+                        <i class="fas fa-stop"></i> Cancel
+                    </button>
+                </div>
+            </div>
+
+            <!-- Preview panel -->
+            <div id="pm-preview-panel" class="pm-section" style="display:none">
+                <div class="pm-section-title">
+                    <i class="fas fa-eye"></i> File Preview
+                    <span id="pm-preview-badge" class="pm-badge pm-badge-muted" style="margin-left:auto"></span>
+                </div>
+                <div id="pm-preview-content" class="pm-preview-content"></div>
+            </div>
+
+            <!-- Scan progress / status -->
+            <div id="pm-status-panel" class="pm-section" style="display:none">
+                <div class="pm-status-title">
+                    <i id="pm-status-icon" class="fas fa-circle-notch fa-spin"></i>
+                    <span class="pm-status-label" id="pm-status-label">Scanning…</span>
+                    <span id="pm-status-badge" class="pm-badge pm-badge-info" style="margin-left:auto">running</span>
+                </div>
+                <div class="pm-progress-wrap">
+                    <div class="pm-progress-bar">
+                        <div id="pm-progress-fill" class="pm-progress-fill" style="width:0%"></div>
+                    </div>
+                    <div class="pm-stat-row">
+                        <span class="pm-stat-item">
+                            <i class="fas fa-file-code"></i>
+                            <b id="ps-scanned">0</b> scanned
+                        </span>
+                        <span class="pm-stat-item">
+                            <i class="fas fa-forward"></i>
+                            <b id="ps-skipped">0</b> skipped
+                        </span>
+                        <span class="pm-stat-item">
+                            <i class="fas fa-plus-circle"></i>
+                            <b id="ps-created">0</b> created
+                        </span>
+                        <span class="pm-stat-item">
+                            <i class="fas fa-pen"></i>
+                            <b id="ps-updated">0</b> updated
+                        </span>
+                        <span class="pm-stat-item">
+                            <i class="fas fa-trash"></i>
+                            <b id="ps-retired">0</b> retired
+                        </span>
+                        <span class="pm-stat-item">
+                            <i class="fas fa-clock"></i>
+                            <b id="ps-elapsed">—</b>
+                        </span>
+                    </div>
+                    <div id="pm-current-file" class="pm-current-file"></div>
+                </div>
+            </div>
+
+            <!-- Delta results -->
+            <div id="pm-delta-panel" class="pm-section" style="display:none">
+                <div class="pm-section-title">
+                    <i class="fas fa-code-compare"></i> Delta Preview
+                </div>
+                <div id="pm-delta-content"></div>
+            </div>
+
+        </div><!-- /pm-scan-layout -->
+    </div><!-- /pm-pane-scan -->
+
+    <!-- ═══════════════════════════════════════════════════════════
+         EXPLORER PANE
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="pm-pane" id="pm-pane-explorer" style="display:none">
+        <div class="pm-explorer-layout">
+
+            <!-- Stats cards -->
+            <div class="pm-explorer-stats">
+                <div class="pm-stat-card">
+                    <div class="pm-stat-card-icon"><i class="fas fa-shapes"></i></div>
+                    <div class="pm-stat-card-body">
+                        <div class="pm-stat-card-value" id="pm-stat-total">—</div>
+                        <div class="pm-stat-card-name">Total entities</div>
+                    </div>
+                </div>
+                <div class="pm-stat-card">
+                    <div class="pm-stat-card-icon" style="background:rgba(45,212,191,0.12); color:var(--accent)">
+                        <i class="fas fa-puzzle-piece"></i>
+                    </div>
+                    <div class="pm-stat-card-body">
+                        <div class="pm-stat-card-value" id="pm-stat-modules">—</div>
+                        <div class="pm-stat-card-name">Modules</div>
+                    </div>
+                </div>
+                <div class="pm-stat-card">
+                    <div class="pm-stat-card-icon" style="background:rgba(245,158,11,0.12); color:#fbbf24">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <div class="pm-stat-card-body">
+                        <div class="pm-stat-card-value" id="pm-stat-classes">—</div>
+                        <div class="pm-stat-card-name">Classes</div>
+                    </div>
+                </div>
+                <div class="pm-stat-card">
+                    <div class="pm-stat-card-icon" style="background:rgba(239,68,68,0.1); color:#f87171">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <div class="pm-stat-card-body">
+                        <div class="pm-stat-card-value" id="pm-stat-functions">—</div>
+                        <div class="pm-stat-card-name">Functions</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter bar -->
+            <div class="pm-filter-bar">
+                <select id="pm-type-filter" class="pm-select">
+                    <option value="">All types</option>
+                    <option value="module">module</option>
+                    <option value="class">class</option>
+                    <option value="function">function</option>
+                    <option value="service">service</option>
+                    <option value="endpoint">endpoint</option>
+                </select>
+                <input id="pm-search-filter" class="pm-input" type="search"
+                       placeholder="Search entity names…">
+                <button id="pm-refresh-explorer" class="pm-btn pm-btn-ghost pm-btn-sm">
+                    <i class="fas fa-rotate-right"></i> Refresh
+                </button>
+            </div>
+
+            <!-- Two-pane: list + detail -->
+            <div class="pm-explorer-split">
+                <div class="pm-entity-list" id="pm-entity-list">
+                    <div class="pm-list-empty">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
+                <div class="pm-entity-detail" id="pm-entity-detail">
+                    <div class="pm-detail-placeholder">
+                        <i class="fas fa-hand-pointer"></i>
+                        <p>Select an entity to inspect</p>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /pm-explorer-layout -->
+    </div><!-- /pm-pane-explorer -->
+
+    <!-- ═══════════════════════════════════════════════════════════
+         QUERY PANE
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="pm-pane" id="pm-pane-query" style="display:none">
+        <div class="pm-query-layout">
+
+            <!-- Controls sidebar -->
+            <div class="pm-query-controls">
+
+                <div class="pm-field">
+                    <label class="pm-label" for="pm-tool-select">Tool</label>
+                    <select id="pm-tool-select" class="pm-select">
+                        <option value="impact">Impact Analysis</option>
+                        <option value="context">Context Query</option>
+                        <option value="path">Shortest Path</option>
+                        <option value="contribute">Contribute Metadata</option>
+                        <option value="stats">Project Stats</option>
+                    </select>
+                </div>
+
+                <!-- IMPACT fields -->
+                <div id="pm-qf-impact" class="pm-query-fields">
+                    <div class="pm-field">
+                        <label class="pm-label" for="pm-q-impact-name">Entity Name</label>
+                        <input class="pm-input" id="pm-q-impact-name" type="text"
+                               placeholder="e.g. AuthService">
+                    </div>
+                    <div class="pm-field pm-field-sm">
+                        <label class="pm-label" for="pm-q-impact-depth">Depth</label>
+                        <select class="pm-select" id="pm-q-impact-depth">
+                            <option value="1">1</option>
+                            <option value="2" selected>2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <p class="pm-hint">Find entities that depend on the given entity and would be affected by changes to it.</p>
+                </div>
+
+                <!-- CONTEXT fields -->
+                <div id="pm-qf-context" class="pm-query-fields" style="display:none">
+                    <div class="pm-field">
+                        <label class="pm-label" for="pm-q-context-q">Task Description</label>
+                        <input class="pm-input" id="pm-q-context-q" type="text"
+                               placeholder="e.g. implement OAuth login">
+                    </div>
+                    <div class="pm-field pm-field-sm">
+                        <label class="pm-label" for="pm-q-context-hops">Expansion Hops</label>
+                        <select class="pm-select" id="pm-q-context-hops">
+                            <option value="0">0 — exact matches only</option>
+                            <option value="1" selected>1 — direct neighbours</option>
+                            <option value="2">2 — wider context</option>
+                        </select>
+                    </div>
+                    <div class="pm-field pm-field-sm">
+                        <label class="pm-label" for="pm-q-context-detail">Detail Level</label>
+                        <select class="pm-select" id="pm-q-context-detail">
+                            <option value="high">high (architectural)</option>
+                            <option value="medium" selected>medium (default)</option>
+                            <option value="low">low (full detail)</option>
+                        </select>
+                    </div>
+                    <p class="pm-hint">Returns a focused context package for an AI agent working on a described task.</p>
+                </div>
+
+                <!-- PATH fields -->
+                <div id="pm-qf-path" class="pm-query-fields" style="display:none">
+                    <div class="pm-field">
+                        <label class="pm-label" for="pm-q-path-from">From Entity</label>
+                        <input class="pm-input" id="pm-q-path-from" type="text"
+                               placeholder="e.g. AuthService">
+                    </div>
+                    <div class="pm-field">
+                        <label class="pm-label" for="pm-q-path-to">To Entity</label>
+                        <input class="pm-input" id="pm-q-path-to" type="text"
+                               placeholder="e.g. validate_token">
+                    </div>
+                    <div class="pm-field pm-field-sm">
+                        <label class="pm-label" for="pm-q-path-hops">Max Hops</label>
+                        <select class="pm-select" id="pm-q-path-hops">
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="6" selected>6</option>
+                            <option value="8">8</option>
+                        </select>
+                    </div>
+                    <p class="pm-hint">Find the shortest connection between two entities in the knowledge graph.</p>
+                </div>
+
+                <!-- CONTRIBUTE fields -->
+                <div id="pm-qf-contribute" class="pm-query-fields" style="display:none">
+                    <div class="pm-field">
+                        <label class="pm-label" for="pm-q-contrib-name">Entity Name</label>
+                        <input class="pm-input" id="pm-q-contrib-name" type="text"
+                               placeholder="e.g. AuthService">
+                    </div>
+                    <div class="pm-field">
+                        <label class="pm-label" for="pm-q-contrib-props">Properties (JSON)</label>
+                        <textarea class="pm-textarea" id="pm-q-contrib-props" rows="3"
+                                  placeholder='{"description": "Handles OAuth flows"}'></textarea>
+                    </div>
+                    <div class="pm-field">
+                        <label class="pm-label" for="pm-q-contrib-rationale">Rationale</label>
+                        <input class="pm-input" id="pm-q-contrib-rationale" type="text"
+                               placeholder="Why this information was added">
+                    </div>
+                    <p class="pm-hint">Write agent-discovered knowledge back into the graph. Properties are merged; rationale is stored as a timeline event.</p>
+                </div>
+
+                <!-- STATS: no extra fields -->
+                <div id="pm-qf-stats" class="pm-query-fields" style="display:none">
+                    <p class="pm-hint">Returns entity counts, file manifest stats, and last scan info for the selected database.</p>
+                </div>
+
+                <button id="pm-run-query" class="pm-btn pm-btn-primary">
+                    <i class="fas fa-play"></i> Run
+                </button>
+
+            </div><!-- /pm-query-controls -->
+
+            <!-- Results pane -->
+            <div class="pm-query-results">
+                <div class="pm-section-title">
+                    <i class="fas fa-list-check"></i> Results
+                </div>
+                <pre id="pm-query-output" class="pm-query-output">Select a tool and click Run.</pre>
+            </div>
+
+        </div><!-- /pm-query-layout -->
+    </div><!-- /pm-pane-query -->
+
+</div><!-- /pm-root -->

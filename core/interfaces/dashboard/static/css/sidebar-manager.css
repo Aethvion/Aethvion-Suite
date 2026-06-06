@@ -124,8 +124,28 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.3rem 0.55rem 0.3rem 0.45rem;
+    padding: 0.32rem 0.55rem 0.32rem 0.45rem;
     margin: 0 0.3rem 0.05rem;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md, 8px);
+    cursor: pointer;
+    text-align: left;
+    width: calc(100% - 0.6rem);
+    box-sizing: border-box;
+    font-family: inherit;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.snav-cat-header:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.snav-cat-header:hover .snav-back-btn {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.15);
 }
 
 .snav-back-btn {
@@ -276,6 +296,8 @@
     margin: 0 auto 0.05rem;
     width: 38px;
     padding: 0.25rem 0;
+    border-radius: var(--radius-full, 999px);
+    border-color: transparent;
 }
 
 .sidebar-nav.collapsed .snav-cat-header-icon,

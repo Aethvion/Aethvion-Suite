@@ -43,6 +43,7 @@
         'status':            { label: 'Status',         icon: 'fas fa-traffic-light' },
         'ports':             { label: 'Ports',          icon: 'fas fa-ethernet' },
         'worldsim':          { label: 'WorldSim',       icon: 'fas fa-globe' },
+        'project-mapper':    { label: 'Project Mapper', icon: 'fas fa-diagram-project' },
     };
 
     // ── Category definitions ───────────────────────────────────────────────
@@ -87,7 +88,7 @@
             id: 'experimental',
             label: 'Experimental',
             icon: 'fas fa-flask-vial',
-            tabs: ['worldsim'],
+            tabs: ['worldsim', 'project-mapper'],
         },
     ];
 
@@ -157,13 +158,14 @@
         if (!cat) { _depth = 'root'; render(); return; }
 
         // Back + title row
-        const header = document.createElement('div');
+        const header = document.createElement('button');
         header.className = 'snav-cat-header';
+        header.title = 'Back';
         header.innerHTML =
-            `<button class="snav-back-btn" title="Back"><i class="fas fa-arrow-left"></i></button>` +
+            `<span class="snav-back-btn"><i class="fas fa-arrow-left"></i></span>` +
             `<i class="${esc(cat.icon)} snav-cat-header-icon"></i>` +
             `<span class="snav-cat-header-label">${esc(cat.label)}</span>`;
-        header.querySelector('.snav-back-btn').addEventListener('click', goBack);
+        header.addEventListener('click', goBack);
         view.appendChild(header);
 
         const sep = document.createElement('div');

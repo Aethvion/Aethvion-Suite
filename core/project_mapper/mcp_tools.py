@@ -731,6 +731,7 @@ def handle_pm_scan(args: dict[str, Any], ctx: MCPContext) -> str:
         "",
         f"Files:    {stats.get('files_scanned', 0)} scanned  "
         f"{stats.get('files_skipped_unchanged', 0)} skipped (unchanged)  "
+        f"{stats.get('files_skipped_unsupported', 0)} skipped (binary/empty)  "
         f"{stats.get('files_deleted', 0)} deleted",
         f"Entities: {stats.get('entities_created', 0)} created  "
         f"{stats.get('entities_updated', 0)} updated  "

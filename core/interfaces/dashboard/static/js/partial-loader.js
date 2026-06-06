@@ -30,6 +30,7 @@
         'aethviondb':       ['/static/js/mode-aethviondb.js'],
         'automate':         ['/static/js/mode-automate.js'],
         'worldsim':         [],
+        'project-mapper':   ['/static/js/mode-project-mapper.js'],
         'misaka-cipher':    ['/static/js/mode-misakacipher.js'],
         'axiom':            ['/static/js/mode-axiom.js'],
         'lyra':             ['/static/js/mode-lyra.js'],
