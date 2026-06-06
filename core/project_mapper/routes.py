@@ -391,6 +391,105 @@ async def query_path(req: PathRequest):
     return result
 
 
+@router.get("/delta")
+async def project_delta(
+    project_root:   str  = Query(..., description="Absolute path to the project directory"),
+    db:             str  = Query("default"),
+    path:           Optional[str] = Query(None),
+    compute_hashes: bool = Query(True,  description="Compute file hashes to detect modifications (slower)"),
+    include_lists:  bool = Query(False, description="Include full file lists in response (can be large)"),
+):
+    """
+    Compare the project directory against the FileManifest and return a
+    structured diff — no database writes.
+
+    Returns counts of new / modified / deleted / unchanged files.
+    Pass include_lists=true to get the full file paths in each bucket.
+
+    Typical use cases
+    -----------------
+    - Preview what an incremental scan will process before running it.
+    - Detect deleted files to manually trigger a cleanup.
+    - CI pipelines that need to know if a re-scan is necessary.
+    """
+    from .delta import compute_delta
+
+    file_manifest = _get_file_manifest(db, path)
+    try:
+        delta = await asyncio.to_thread(
+            compute_delta,
+            project_root,
+            file_manifest,
+            compute_hashes=compute_hashes,
+        )
+    except (FileNotFoundError, NotADirectoryError) as exc:
+        raise HTTPException(400, str(exc))
+
+    response = delta.summary()
+
+    if include_lists:
+        response["new_file_paths"]      = [f.path for f in delta.new_files]
+        response["modified_file_paths"] = [
+            {"path": f.path, "old_hash": f.old_hash[:16] + "…", "entity_ids": f.entity_ids}
+            for f in delta.modified_files
+        ]
+        response["deleted_file_paths"]  = delta.deleted_files
+
+    return response
+
+
+@router.post("/cleanup")
+async def run_cleanup(
+    project_root: str = Query(..., description="Absolute path to the project directory"),
+    db:           str = Query("default"),
+    path:         Optional[str] = Query(None),
+):
+    """
+    Retire entities whose source files have been deleted from the project.
+
+    Walks the FileManifest and checks each recorded file against the live
+    filesystem.  For every file that no longer exists:
+      - Marks its associated entities as status='deleted'.
+      - Appends a timeline event with the deletion reason.
+      - Removes the file entry from the FileManifest.
+
+    This runs automatically at the end of every incremental scan, but can also
+    be triggered manually (e.g. after manually deleting files outside a scan).
+
+    Returns a summary of how many files and entities were retired.
+    """
+    from .cleanup import run_deletion_cleanup
+
+    root          = _db_root(db, path)
+    writer        = _get_writer(db, path)
+    index         = _get_index(db, path)
+    file_manifest = _get_file_manifest(db, path)
+
+    project_path = Path(project_root)
+    if not project_path.exists():
+        raise HTTPException(400, f"Project root does not exist: {project_root}")
+
+    try:
+        result = await asyncio.to_thread(
+            run_deletion_cleanup,
+            project_path,
+            file_manifest,
+            writer,
+            index,
+        )
+    except Exception as exc:
+        raise HTTPException(500, f"Cleanup failed: {exc}")
+
+    return {
+        "project_root":       project_root,
+        "db":                 db,
+        "deleted_file_count": result.deleted_file_count,
+        "retired_count":      result.retired_count,
+        "deleted_files":      result.deleted_files,
+        "errors":             result.errors,
+    }
+
+
 @router.post("/contribute")
 async def agent_contribute(req: ContributeRequest):
     """

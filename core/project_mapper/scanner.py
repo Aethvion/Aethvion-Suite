@@ -37,6 +37,13 @@ SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({
     ".rb", ".go", ".rs", ".php", ".cs", ".swift", ".kt",
 })
 
+# Directory names excluded from all filesystem walks
+_EXCLUDED_DIRS: frozenset[str] = frozenset({
+    "__pycache__", "node_modules", ".venv", "venv",
+    ".git", "dist", "build", ".tox", ".pytest_cache",
+    ".mypy_cache", ".ruff_cache", ".eggs", ".cache",
+})
+
 # In-process task registry
 _active_scans: dict[str, asyncio.Task] = {}   # key: str(db_root)
 
@@ -127,7 +134,7 @@ def scan_folder_preview(project_root: str) -> dict[str, Any]:
     total = supported = 0
     ext_counts: dict[str, int] = {}
     for dirpath, dirs, files in os.walk(root):
-        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ("__pycache__", "node_modules", ".venv", "venv", ".git")]
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in _EXCLUDED_DIRS]
         for fn in files:
             fp   = Path(dirpath) / fn
             ext  = fp.suffix.lower()
@@ -181,7 +188,7 @@ async def run_scan(
     # --- Collect file list (skip hidden/cache dirs) ---
     file_paths: list[Path] = []
     for dirpath, dirs, files in os.walk(root):
-        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ("__pycache__", "node_modules", ".venv", "venv", ".git", "dist", "build")]
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in _EXCLUDED_DIRS]
         for fn in sorted(files):
             fp = Path(dirpath) / fn
             if fp.suffix.lower() in SUPPORTED_EXTENSIONS:
@@ -195,8 +202,11 @@ async def run_scan(
         "files_skipped_unsupported": 0,
         "entities_created":        0,
         "entities_updated":        0,
+        "entities_pruned":         0,   # symbols removed from changed files
         "relations_created":       0,
         "enriched":                0,
+        "files_deleted":           0,   # set during deletion cleanup pass
+        "entities_retired":        0,   # set during deletion cleanup pass
         "errors":                  [],
     }
 
@@ -259,6 +269,20 @@ async def run_scan(
             stats["entities_created"] += 1 + len(ingest_result.class_entity_ids) + len(ingest_result.function_entity_ids)
         else:
             stats["entities_updated"] += 1
+            # Prune symbols that were removed from this file since last scan
+            if ingest_result.module_entity_id:
+                from .cleanup import prune_removed_symbols
+                all_new_ids = (
+                    ingest_result.class_entity_ids
+                    + ingest_result.function_entity_ids
+                )
+                pruned = await asyncio.to_thread(
+                    prune_removed_symbols,
+                    ingest_result.module_entity_id,
+                    all_new_ids,
+                    writer,
+                )
+                stats["entities_pruned"] += pruned
 
         stats["relations_created"] += ingest_result.relations_created
         stats["files_scanned"]     += 1
@@ -297,6 +321,22 @@ async def run_scan(
         _active_scans.pop(key, None)
         logger.info(f"[Scanner] Scan cancelled ({stats['files_scanned']}/{total} processed)")
         return
+
+    # --- Deletion cleanup pass (incremental mode only) ---
+    # Retire entities whose source files have been removed from the project.
+    if incremental:
+        try:
+            from .cleanup import run_deletion_cleanup
+            _update_scaninfo(db_root, status="cleanup", current_file="[deletion cleanup]")
+            cleanup = await asyncio.to_thread(
+                run_deletion_cleanup, root, file_manifest, writer, index
+            )
+            stats["files_deleted"]   = cleanup.deleted_file_count
+            stats["entities_retired"] = cleanup.retired_count
+            if cleanup.errors:
+                stats["errors"].extend([{"path": "cleanup", "error": e} for e in cleanup.errors])
+        except Exception as exc:
+            logger.warning(f"[Scanner] Deletion cleanup failed (non-critical): {exc}")
 
     _write_scaninfo(db_root, {
         **_read_scaninfo(db_root),

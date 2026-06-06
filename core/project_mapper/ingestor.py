@@ -58,12 +58,13 @@ Output ONLY valid JSON — no markdown, no code fences:
 
 @dataclass
 class IngestResult:
-    module_entity_id:   Optional[str] = None
-    class_entity_ids:   list[str] = field(default_factory=list)
+    module_entity_id:    Optional[str] = None
+    class_entity_ids:    list[str] = field(default_factory=list)
     function_entity_ids: list[str] = field(default_factory=list)
-    relations_created:  int = 0
-    was_created:        bool = False     # True if module entity was new
-    errors:             list[str] = field(default_factory=list)
+    relations_created:   int = 0
+    was_created:         bool = False    # True if module entity was new
+    entities_pruned:     int = 0         # removed symbols (set by scanner, not ingestor)
+    errors:              list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
