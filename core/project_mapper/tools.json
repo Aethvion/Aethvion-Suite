@@ -1,0 +1,209 @@
+{
+  "schema_version": "2024-11-05",
+  "server": "project-mapper",
+  "description": "ProjectMapper MCP tools — code-aware knowledge graph for AI coding agents.",
+  "tools": [
+    {
+      "name": "pm_context",
+      "description": "Retrieve a focused context package relevant to a coding task. Keyword-scores all entities in the knowledge graph against the task description, seeds from the best matches (and any named anchor entities), then expands by following relations. Use this BEFORE starting any non-trivial feature or refactor so you understand the existing architecture and avoid breaking changes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural-language description of the task, e.g. 'add rate limiting to the auth endpoints'."
+          },
+          "entities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional list of entity names to anchor the search on (boosted in scoring).",
+            "default": []
+          },
+          "detail_level": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "description": "high=modules/services/decisions/goals/constraints, medium=+classes/components, low=+functions/endpoints/models (default: medium)",
+            "default": "medium"
+          },
+          "depth": {
+            "type": "integer",
+            "description": "Relation-expansion hops beyond keyword seeds (0–2). Default 1.",
+            "default": 1
+          },
+          "max_results": {
+            "type": "integer",
+            "description": "Maximum entities to include (default 30).",
+            "default": 30
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "pm_impact",
+      "description": "Find all entities that would be affected if the named entity changes. Traverses dependency-propagating relations (calls, imports, depends_on, uses, reads_from, etc.) outward from the subject. Use before refactoring or deleting a module/class to understand the blast radius.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entity": {
+            "type": "string",
+            "description": "Name or ID of the entity to analyse."
+          },
+          "depth": {
+            "type": "integer",
+            "description": "BFS depth: 1=direct dependents, 2=transitive (default), 3–4=wide radius.",
+            "default": 2
+          }
+        },
+        "required": [
+          "entity"
+        ]
+      }
+    },
+    {
+      "name": "pm_path",
+      "description": "Find the shortest connection between two entities in the knowledge graph. Traverses all relation kinds in both directions (undirected). Useful for answering 'how does the auth system connect to the payment flow?' or tracing why a change in one module might affect another.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from_entity": {
+            "type": "string",
+            "description": "Name or ID of the starting entity."
+          },
+          "to_entity": {
+            "type": "string",
+            "description": "Name or ID of the destination entity."
+          },
+          "max_hops": {
+            "type": "integer",
+            "description": "Maximum path length to search (default 6).",
+            "default": 6
+          }
+        },
+        "required": [
+          "from_entity",
+          "to_entity"
+        ]
+      }
+    },
+    {
+      "name": "pm_contribute",
+      "description": "Record agent-discovered knowledge back into the project graph. Accepts property updates, new relation declarations, and a free-text rationale that is stored as a dated timeline event. Call this after implementing a feature or making an architectural decision so future agents (and developers) can see why things are the way they are.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entity_name": {
+            "type": "string",
+            "description": "Name of the entity to update."
+          },
+          "properties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Key-value property updates to merge into the entity.",
+            "default": {}
+          },
+          "relations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "target_name": {
+                  "type": "string"
+                },
+                "note": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "target_name"
+              ]
+            },
+            "description": "New relations to add, e.g. [{kind: depends_on, target_name: RateLimiter}].",
+            "default": []
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Free-text explanation stored as a timeline event.",
+            "default": ""
+          },
+          "source": {
+            "type": "string",
+            "description": "Identifier for the calling agent (default: 'agent').",
+            "default": "agent"
+          }
+        },
+        "required": [
+          "entity_name"
+        ]
+      }
+    },
+    {
+      "name": "pm_stats",
+      "description": "Return a quick overview of the ProjectMapper database: entity counts by type, file manifest coverage, and last scan status. Use at the start of a session to understand what's already been indexed.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "pm_delta",
+      "description": "Show what has changed in the project since the last scan — new files, modified files, and deleted files — without making any database changes. Use to decide whether a re-scan is needed, or to preview what an incremental scan would process.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_root": {
+            "type": "string",
+            "description": "Absolute path to the project directory. Uses the server default if omitted."
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "pm_scan",
+      "description": "Scan a project directory and populate the knowledge graph. Phase 1 (always): static AST analysis creates module/class/function entities. Phase 2 (if enrich=true): LLM enrichment adds semantic summaries to modules. With incremental=true (default) only changed files are reprocessed. This call BLOCKS until the scan completes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_root": {
+            "type": "string",
+            "description": "Absolute path to the project directory to scan."
+          },
+          "enrich": {
+            "type": "boolean",
+            "description": "Run LLM enrichment after static analysis (default false for MCP).",
+            "default": false
+          },
+          "incremental": {
+            "type": "boolean",
+            "description": "Skip files whose hash hasn't changed (default true).",
+            "default": true
+          },
+          "concurrency": {
+            "type": "integer",
+            "description": "Parallel file processing limit (default 3).",
+            "default": 3
+          }
+        },
+        "required": [
+          "project_root"
+        ]
+      }
+    }
+  ]
+}

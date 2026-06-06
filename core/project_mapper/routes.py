@@ -490,6 +490,25 @@ async def run_cleanup(
     }
 
 
+@router.get("/mcp/tools")
+async def list_mcp_tools():
+    """
+    Return the MCP tool schemas for all ProjectMapper tools.
+
+    These are the same schemas exposed by the standalone MCP server
+    (core.project_mapper.mcp_server) and published in tools.json.
+    Useful for Cursor, Windsurf, and other HTTP-based MCP hosts.
+    """
+    from .mcp_tools import TOOL_SCHEMAS
+    return {
+        "schema_version": "2024-11-05",
+        "server":         "project-mapper",
+        "tools":          TOOL_SCHEMAS,
+        "tool_count":     len(TOOL_SCHEMAS),
+        "stdio_command":  "python -m core.project_mapper.mcp_server --db <db_name>",
+    }
+
+
 @router.post("/contribute")
 async def agent_contribute(req: ContributeRequest):
     """
