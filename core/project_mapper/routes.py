@@ -264,3 +264,164 @@ async def enrich_unenriched_modules(
             errors.append(f"{fpath}: {exc}")
 
     return {"enriched": enriched, "candidates": len(candidates), "errors": errors}
+
+
+# ---------------------------------------------------------------------------
+# Query endpoints
+# ---------------------------------------------------------------------------
+
+class ImpactRequest(BaseModel):
+    entity: str                       # entity name or ID to analyse
+    db:     str = "default"
+    path:   Optional[str] = None
+    depth:  int = 2                   # 1–4 hops
+
+
+class ContextRequest(BaseModel):
+    q:            str                                # natural language task description
+    db:           str = "default"
+    path:         Optional[str] = None
+    entities:     Optional[list[str]] = None        # explicit anchor entity names
+    depth:        int = 1                           # expansion hops (0–2)
+    detail_level: str = "medium"                    # "high" | "medium" | "low"
+    max_results:  int = 40
+
+
+class PathRequest(BaseModel):
+    from_entity: str                  # name or ID of starting entity
+    to_entity:   str                  # name or ID of destination entity
+    db:          str = "default"
+    path:        Optional[str] = None
+    max_hops:    int = 6
+
+
+class ContributeRequest(BaseModel):
+    entity_name: str                              # name of the entity to update
+    db:          str = "default"
+    path:        Optional[str] = None
+    properties:  dict[str, str] = {}              # key-value property updates
+    relations:   list[dict[str, str]] = []         # [{ kind, target_name, note }]
+    rationale:   str = ""                          # free-text explanation (stored as timeline event)
+    source:      str = "agent"                     # caller identifier
+
+
+@router.post("/query/impact")
+async def query_impact(req: ImpactRequest):
+    """
+    Find all entities that would be affected if the given entity changes.
+
+    Traverses only the relation kinds that represent real code dependencies
+    (calls, imports, depends_on, uses, etc.) — not structural relations like
+    parent_of or contains. Results are grouped by hop distance from the subject.
+
+    depth 1 = direct dependents only
+    depth 2 = dependents of dependents (default)
+    depth 3–4 = wider blast radius (can be slow on large graphs)
+    """
+    from .query import build_entity_map, impact_query
+
+    depth  = max(1, min(req.depth, 4))
+    writer = _get_writer(req.db, req.path)
+    index  = _get_index(req.db, req.path)
+
+    entity_map = await asyncio.to_thread(build_entity_map, writer)
+    result     = await asyncio.to_thread(impact_query, req.entity, entity_map, index, depth)
+
+    if result.get("not_found"):
+        raise HTTPException(404, f"Entity {req.entity!r} not found in database {req.db!r}")
+    return result
+
+
+@router.post("/query/context")
+async def query_context(req: ContextRequest):
+    """
+    Return a focused context package for an agent working on a described task.
+
+    Keyword-scores all entities against the query, seeds from the best matches
+    (and any explicitly anchored entities), then expands by following relations
+    to surface closely connected architecture.
+
+    detail_level controls which entity types are included:
+      high   — modules, services, decisions, goals, constraints
+      medium — + classes, components, workflows, configs, dependencies
+      low    — + functions, endpoints, models (full implementation detail)
+    """
+    from .query import build_entity_map, context_query
+
+    depth  = max(0, min(req.depth, 2))
+    writer = _get_writer(req.db, req.path)
+    index  = _get_index(req.db, req.path)
+
+    entity_map = await asyncio.to_thread(build_entity_map, writer)
+    result     = await asyncio.to_thread(
+        context_query,
+        req.q,
+        entity_map,
+        index,
+        req.entities,
+        8,            # max_seeds
+        depth,
+        req.detail_level,
+        req.max_results,
+    )
+    return result
+
+
+@router.post("/query/path")
+async def query_path(req: PathRequest):
+    """
+    Find the shortest path between two entities in the knowledge graph.
+
+    Traverses all relation kinds in both directions (undirected).
+    Useful for answering "how does the auth system connect to the payment flow?"
+    """
+    from .query import build_entity_map, shortest_path
+
+    writer     = _get_writer(req.db, req.path)
+    index      = _get_index(req.db, req.path)
+    entity_map = await asyncio.to_thread(build_entity_map, writer)
+    result     = await asyncio.to_thread(
+        shortest_path,
+        req.from_entity,
+        req.to_entity,
+        entity_map,
+        index,
+        max(2, min(req.max_hops, 8)),
+    )
+    return result
+
+
+@router.post("/contribute")
+async def agent_contribute(req: ContributeRequest):
+    """
+    Write agent-discovered knowledge back into the graph.
+
+    Accepts a structured contribution: property updates, new relations, and a
+    free-text rationale. The rationale is stored as a timeline event so the
+    history of why decisions were made is preserved.
+
+    Designed for AI coding agents (Claude Code, Cursor, etc.) to call after
+    implementing a feature or making an architectural decision.
+    """
+    from .query import build_entity_map, apply_contribution
+
+    writer = _get_writer(req.db, req.path)
+    index  = _get_index(req.db, req.path)
+
+    entity_map = await asyncio.to_thread(build_entity_map, writer)
+    from .query import _resolve_entity
+    entity = _resolve_entity(req.entity_name, entity_map, index)
+    if not entity:
+        raise HTTPException(404, f"Entity {req.entity_name!r} not found in database {req.db!r}")
+
+    result = await asyncio.to_thread(
+        apply_contribution,
+        entity,
+        req.properties,
+        req.relations,
+        req.rationale,
+        req.source,
+        writer,
+        index,
+    )
+    return result

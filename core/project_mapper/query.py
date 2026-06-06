@@ -1,0 +1,505 @@
+"""
+core/project_mapper/query.py
+Agent-optimized query engine for ProjectMapper.
+
+Three query primitives:
+  impact_query   — "what is affected if I change entity X?" (directed BFS)
+  context_query  — "I'm working on X, what should I know?" (keyword + expansion)
+  shortest_path  — "how does entity A connect to entity B?" (undirected BFS)
+
+All functions accept a pre-loaded entity_map for performance. Build it once per
+request with build_entity_map() and pass it to whichever queries you need.
+"""
+
+from __future__ import annotations
+
+import re
+from collections import deque
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from core.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+# Relation kinds that propagate impact TOWARD entities that depend on X.
+# If entity A has relation KIND → entity X, then changing X may affect A.
+IMPACT_INCOMING_KINDS: frozenset[str] = frozenset({
+    "calls",
+    "imports",
+    "depends_on",
+    "uses",
+    "reads_from",
+    "writes_to",
+    "triggered_by",
+    "implements",
+    "extends",
+    "configured_by",
+    "tests",
+})
+
+# Entity types shown at each detail level (from coarsest to finest)
+_DETAIL_LEVELS: dict[str, frozenset[str]] = {
+    "high":   frozenset({"module", "service", "decision", "goal", "constraint", "workflow"}),
+    "medium": frozenset({"module", "service", "class", "component", "decision",
+                         "goal", "constraint", "workflow", "config", "dependency"}),
+    "low":    frozenset({"module", "service", "class", "component", "function",
+                         "endpoint", "model", "decision", "goal", "constraint",
+                         "workflow", "config", "dependency"}),
+}
+
+# Rough token estimate per entity (name + summary + key properties)
+_TOKENS_PER_ENTITY = 80
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+def build_entity_map(writer: Any) -> dict[str, dict]:
+    """
+    Load all non-deleted entities into a dict keyed by entity_id.
+    Expensive the first time; cache at the call site if making multiple queries.
+    """
+    return {e["id"]: e for e in writer.list_all(include_deleted=False)}
+
+
+def _resolve_entity(
+    name_or_id: str,
+    entity_map: dict[str, dict],
+    index: Any,
+) -> Optional[dict]:
+    """Resolve a name or ID to an entity dict."""
+    # Try direct ID lookup first
+    if name_or_id in entity_map:
+        return entity_map[name_or_id]
+    # Try NameIndex
+    eid = index.get(name_or_id)
+    if eid and eid in entity_map:
+        return entity_map[eid]
+    return None
+
+
+def _entity_stub(entity: dict, hop: int = 0, via: str = "") -> dict:
+    """Return a compact agent-friendly representation of an entity."""
+    core = entity.get("sections", {}).get("core", {})
+    stub: dict[str, Any] = {
+        "id":      entity["id"],
+        "name":    entity.get("name", ""),
+        "type":    entity.get("type", ""),
+        "kind":    entity.get("kind"),
+        "status":  entity.get("status", "active"),
+        "summary": core.get("summary", "")[:180],
+        "tags":    core.get("tags", [])[:5],
+    }
+    props = entity.get("sections", {}).get("properties", {})
+    if props.get("file_path"):
+        stub["file_path"] = props["file_path"]
+    if props.get("architectural_pattern"):
+        stub["architectural_pattern"] = props["architectural_pattern"]
+    if hop > 0:
+        stub["hop"] = hop
+    if via:
+        stub["via"] = via
+    return stub
+
+
+# ---------------------------------------------------------------------------
+# 1. Impact Analysis
+# ---------------------------------------------------------------------------
+
+def build_reverse_impact_adj(
+    entity_map: dict[str, dict],
+) -> dict[str, list[tuple[str, str, str]]]:
+    """
+    Build a reverse adjacency map for impact traversal.
+
+    Returns  { target_id → [(source_id, source_name, relation_kind)] }
+    for all entities whose relation kind is in IMPACT_INCOMING_KINDS.
+    """
+    rev: dict[str, list[tuple[str, str, str]]] = {}
+    for eid, entity in entity_map.items():
+        ename = entity.get("name", eid)
+        for rel in entity.get("sections", {}).get("relations", []):
+            kind      = rel.get("kind", "")
+            target_id = rel.get("target_id", "")
+            if kind in IMPACT_INCOMING_KINDS and target_id:
+                rev.setdefault(target_id, []).append((eid, ename, kind))
+    return rev
+
+
+def impact_query(
+    subject:     str,          # entity name or ID
+    entity_map:  dict[str, dict],
+    index:       Any,
+    max_depth:   int = 2,
+) -> dict[str, Any]:
+    """
+    Find all entities that would be affected if *subject* changes.
+
+    Returns a dict with:
+      subject      — the resolved entity
+      affected     — list of affected entity stubs (with hop + via)
+      total        — count of affected entities
+      depth_used   — actual depth reached
+      not_found    — True if subject could not be resolved
+    """
+    subject_entity = _resolve_entity(subject, entity_map, index)
+    if subject_entity is None:
+        return {
+            "subject":   None,
+            "affected":  [],
+            "total":     0,
+            "depth_used": 0,
+            "not_found": True,
+        }
+
+    max_depth  = max(1, min(max_depth, 4))
+    rev_adj    = build_reverse_impact_adj(entity_map)
+    subject_id = subject_entity["id"]
+
+    visited: dict[str, tuple[int, str]] = {}   # entity_id → (hop, via_path)
+    queue:   deque[tuple[str, int, str]] = deque()
+    queue.append((subject_id, 0, ""))
+
+    while queue:
+        current_id, hop, via_path = queue.popleft()
+        if hop > max_depth:
+            break
+
+        for source_id, source_name, rel_kind in rev_adj.get(current_id, []):
+            if source_id == subject_id or source_id in visited:
+                continue
+            current_name = entity_map.get(current_id, {}).get("name", current_id)
+            via = f"{rel_kind} → {current_name}" if via_path else rel_kind
+            if via_path:
+                via = f"{via_path} → {rel_kind}"
+            visited[source_id] = (hop + 1, via)
+            if hop + 1 <= max_depth:
+                queue.append((source_id, hop + 1, via))
+
+    affected = []
+    for eid, (hop, via) in sorted(visited.items(), key=lambda x: x[1][0]):
+        e = entity_map.get(eid)
+        if e:
+            affected.append(_entity_stub(e, hop=hop, via=via))
+
+    return {
+        "subject":    _entity_stub(subject_entity),
+        "affected":   affected,
+        "total":      len(affected),
+        "depth_used": max_depth,
+        "not_found":  False,
+    }
+
+
+# ---------------------------------------------------------------------------
+# 2. Task-Contextual Retrieval
+# ---------------------------------------------------------------------------
+
+def _keyword_score(tokens: list[str], entity: dict) -> float:
+    """Score an entity against a list of query tokens."""
+    core    = entity.get("sections", {}).get("core", {})
+    name    = entity.get("name", "").lower()
+    summary = core.get("summary", "").lower()
+    tags    = " ".join(core.get("tags", [])).lower()
+    aliases = " ".join(core.get("aliases", [])).lower()
+    props   = " ".join(str(v) for v in entity.get("sections", {}).get("properties", {}).values()).lower()
+
+    score = 0.0
+    for tok in tokens:
+        if tok in name:
+            score += 1.0 if tok == name else 0.7
+        if tok in summary[:300]:
+            score += 0.5
+        if tok in tags:
+            score += 0.4
+        if tok in aliases:
+            score += 0.35
+        if tok in props:
+            score += 0.2
+    return round(score, 3)
+
+
+def _tokenize(text: str) -> list[str]:
+    """Lowercase, split, remove stopwords and very short tokens."""
+    _STOP = {
+        "a","an","the","i","im","is","are","was","be","been","being",
+        "in","on","at","to","for","of","and","or","but","not","with",
+        "this","that","these","those","what","how","when","where","which",
+        "my","me","we","our","if","do","did","have","has","had","it",
+        "working","adding","need","want","know","should","would","could",
+        "about","from","will","let","get","just","like","also","more",
+    }
+    tokens = re.findall(r"[a-z0-9_]{2,}", text.lower())
+    return [t for t in tokens if t not in _STOP]
+
+
+def context_query(
+    q:            str,
+    entity_map:   dict[str, dict],
+    index:        Any,
+    anchor_names: Optional[list[str]] = None,
+    max_seeds:    int = 8,
+    expansion_hops: int = 1,
+    detail_level: str = "medium",
+    max_results:  int = 40,
+) -> dict[str, Any]:
+    """
+    Return a focused context package relevant to the task described in *q*.
+
+    Steps:
+      1. Tokenize and score all entities by keyword relevance.
+      2. Optionally anchor on explicitly named entities.
+      3. Expand the seed set by following relations (breadth-first, 1-2 hops).
+      4. Filter by detail_level and categorize by entity type.
+
+    Returns a structured context dict ready for injection into an agent prompt.
+    """
+    tokens      = _tokenize(q)
+    detail_types = _DETAIL_LEVELS.get(detail_level, _DETAIL_LEVELS["medium"])
+
+    # ---- 1. Score all entities -------------------------------------------
+    scored: list[tuple[float, dict]] = []
+    for entity in entity_map.values():
+        if entity.get("status") in ("deleted",):
+            continue
+        s = _keyword_score(tokens, entity)
+        if s > 0:
+            scored.append((s, entity))
+    scored.sort(key=lambda x: -x[0])
+
+    # ---- 2. Seed set: top-N from scoring + explicitly anchored names ------
+    seed_ids: dict[str, float] = {}   # entity_id → score
+    for score, entity in scored[:max_seeds]:
+        seed_ids[entity["id"]] = score
+
+    if anchor_names:
+        for name in anchor_names:
+            e = _resolve_entity(name, entity_map, index)
+            if e and e["id"] not in seed_ids:
+                seed_ids[e["id"]] = 1.5   # bump anchored entities above keyword hits
+
+    # ---- 3. Expand seed set by following relations -----------------------
+    expanded_ids: dict[str, tuple[float, int]] = {}  # entity_id → (score, hop)
+    for sid, score in seed_ids.items():
+        expanded_ids[sid] = (score, 0)
+
+    if expansion_hops > 0:
+        for sid in list(seed_ids.keys()):
+            seed_entity = entity_map.get(sid, {})
+            for rel in seed_entity.get("sections", {}).get("relations", []):
+                tid = rel.get("target_id")
+                if tid and tid in entity_map and tid not in expanded_ids:
+                    expanded_ids[tid] = (0.1, 1)
+
+    # ---- 4. Collect, filter by detail level, categorize ------------------
+    by_type: dict[str, list[dict]] = {}
+    all_stubs: list[dict] = []
+
+    for eid, (score, hop) in sorted(expanded_ids.items(), key=lambda x: -x[1][0]):
+        entity = entity_map.get(eid)
+        if not entity:
+            continue
+        etype = entity.get("type", "other")
+        if etype not in detail_types and hop > 0:
+            continue  # don't include expanded entities outside this detail level
+        stub = _entity_stub(entity, hop=hop)
+        stub["relevance_score"] = score
+        by_type.setdefault(etype, []).append(stub)
+        all_stubs.append(stub)
+        if len(all_stubs) >= max_results:
+            break
+
+    # Sort each type bucket by score
+    for bucket in by_type.values():
+        bucket.sort(key=lambda x: -x.get("relevance_score", 0))
+
+    total = len(all_stubs)
+    return {
+        "query":          q,
+        "tokens":         tokens[:12],
+        "detail_level":   detail_level,
+        "seeds_found":    len(seed_ids),
+        "by_type":        by_type,
+        "total":          total,
+        "token_estimate": total * _TOKENS_PER_ENTITY,
+    }
+
+
+# ---------------------------------------------------------------------------
+# 3. Shortest Path
+# ---------------------------------------------------------------------------
+
+def shortest_path(
+    from_entity: str,
+    to_entity:   str,
+    entity_map:  dict[str, dict],
+    index:       Any,
+    max_hops:    int = 6,
+) -> dict[str, Any]:
+    """
+    Find the shortest undirected path between two entities in the knowledge graph.
+
+    Treats all relation kinds as undirected edges — follows both stored relations
+    (forward) and incoming relations (reverse) at each step.
+
+    Returns a dict with:
+      found   — bool
+      path    — list of {id, name, type, relation (edge label to next node)}
+      length  — hop count
+    """
+    from_e = _resolve_entity(from_entity, entity_map, index)
+    to_e   = _resolve_entity(to_entity,   entity_map, index)
+
+    if not from_e:
+        return {"found": False, "error": f"Entity not found: {from_entity!r}"}
+    if not to_e:
+        return {"found": False, "error": f"Entity not found: {to_entity!r}"}
+
+    from_id = from_e["id"]
+    to_id   = to_e["id"]
+
+    if from_id == to_id:
+        return {"found": True, "path": [_entity_stub(from_e)], "length": 0}
+
+    # Build forward adjacency: {entity_id → [(neighbor_id, relation_kind)]}
+    fwd: dict[str, list[tuple[str, str]]] = {}
+    rev: dict[str, list[tuple[str, str]]] = {}
+    for eid, entity in entity_map.items():
+        for rel in entity.get("sections", {}).get("relations", []):
+            tid  = rel.get("target_id", "")
+            kind = rel.get("kind", "related_to")
+            if tid and tid in entity_map:
+                fwd.setdefault(eid, []).append((tid, kind))
+                rev.setdefault(tid, []).append((eid, kind))
+
+    # BFS with path tracking
+    # Each queue entry: (current_id, path_so_far)
+    # path_so_far = list of (entity_id, edge_label_to_next)
+    visited:  set[str] = {from_id}
+    queue: deque[tuple[str, list[tuple[str, str]]]] = deque()
+    queue.append((from_id, []))
+
+    while queue:
+        current_id, path_so_far = queue.popleft()
+        if len(path_so_far) >= max_hops:
+            continue
+
+        neighbors = (fwd.get(current_id, []) + rev.get(current_id, []))
+        for neighbor_id, rel_kind in neighbors:
+            if neighbor_id in visited:
+                continue
+            visited.add(neighbor_id)
+            new_path = path_so_far + [(neighbor_id, rel_kind)]
+            if neighbor_id == to_id:
+                # Reconstruct full path
+                path_entities: list[dict] = []
+                prev_id = from_id
+                for step_id, edge_label in new_path:
+                    prev_e = entity_map.get(prev_id, {})
+                    node = _entity_stub(entity_map.get(prev_id, {}))
+                    node["relation"] = edge_label
+                    path_entities.append(node)
+                    prev_id = step_id
+                # Append the destination
+                path_entities.append(_entity_stub(to_e))
+                return {
+                    "found":  True,
+                    "path":   path_entities,
+                    "length": len(new_path),
+                }
+            queue.append((neighbor_id, new_path))
+
+    return {
+        "found":  False,
+        "path":   [],
+        "length": 0,
+        "error":  f"No path found between {from_entity!r} and {to_entity!r} within {max_hops} hops",
+    }
+
+
+# ---------------------------------------------------------------------------
+# 4. Agent Contribution — helper (write-back)
+# ---------------------------------------------------------------------------
+
+def apply_contribution(
+    entity:      dict,
+    properties:  dict[str, str],
+    relations:   list[dict],          # [{ kind, target_name, note }]
+    rationale:   str,
+    source:      str,
+    writer:      Any,
+    index:       Any,
+) -> dict[str, Any]:
+    """
+    Apply a structured agent contribution to an existing entity.
+
+    - Merges new property key-values.
+    - Adds new relations (resolves target_name → ID, creating stubs if needed).
+    - Appends a timeline event with the rationale.
+
+    Returns a summary of what changed.
+    """
+    entity_id  = entity["id"]
+    mutations:  dict[str, Any] = {}
+    added_rels: list[str] = []
+    now_iso    = datetime.now(timezone.utc).isoformat(timespec="seconds")[:10]
+
+    # Properties
+    if properties:
+        mutations.setdefault("sections", {})["properties"] = properties
+
+    # Relations
+    if relations:
+        existing_rels = entity.get("sections", {}).get("relations", [])
+        existing_pairs = {(r["kind"], r["target_id"]) for r in existing_rels}
+        new_rels: list[dict] = []
+        for rel_spec in relations:
+            kind        = rel_spec.get("kind", "related_to")
+            target_name = rel_spec.get("target_name", "")
+            note        = rel_spec.get("note", "")
+            if not target_name:
+                continue
+            target_id = index.get(target_name)
+            if not target_id:
+                # Create stub for unknown target
+                stub, _ = writer.create(
+                    name=target_name, entity_type="other",
+                    source="stub", status="stub",
+                )
+                target_id = stub["id"]
+            if (kind, target_id) not in existing_pairs:
+                entry: dict[str, Any] = {"kind": kind, "target_id": target_id}
+                if note:
+                    entry["note"] = note
+                new_rels.append(entry)
+                added_rels.append(f"{kind} → {target_name}")
+        if new_rels:
+            mutations.setdefault("sections", {})["relations"] = new_rels
+
+    # Rationale → timeline event
+    if rationale:
+        timeline_event = {
+            "date":  now_iso,
+            "event": f"[{source}] {rationale[:300]}",
+        }
+        mutations.setdefault("sections", {})["timeline"] = [timeline_event]
+
+    changes_made = bool(mutations)
+    if changes_made:
+        writer.update(entity_id, mutations)
+
+    return {
+        "entity_id":      entity_id,
+        "entity_name":    entity.get("name"),
+        "properties_set": list(properties.keys()),
+        "relations_added": added_rels,
+        "rationale_stored": bool(rationale),
+        "changes_made":   changes_made,
+    }
