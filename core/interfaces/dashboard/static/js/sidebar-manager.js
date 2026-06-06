@@ -216,6 +216,27 @@
     function activateTab(tabId) {
         _activeTab = tabId;
         if (typeof switchMainTab === 'function') switchMainTab(tabId);
+
+        if (_searching) {
+            _searching = false;
+            const input = document.getElementById('sidebar-search-input');
+            if (input) {
+                input.value = '';
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            const cat = catForTab(tabId);
+            if (cat) {
+                _depth = 'category';
+                _activeCat = cat.id;
+            } else {
+                _depth = 'root';
+                _activeCat = null;
+            }
+            saveState();
+            render();
+            return;
+        }
+
         // Update active class on visible tab buttons (core.js also does this globally)
         document.querySelectorAll('#sidebar-tab-list .main-tab[data-maintab]').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.maintab === tabId);
