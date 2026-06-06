@@ -19,7 +19,24 @@
     let _elapsedTimer  = null;
     let _searchDebounce = null;
 
-    function dbName()    { return ($('pm-db-name').value.trim() || 'default'); }
+    /** Read current DB name from whichever pm-db-sync input is visible/first. */
+    function dbName() {
+        const inputs = document.querySelectorAll('.pm-db-sync');
+        for (const inp of inputs) {
+            const v = inp.value.trim();
+            if (v) return v;
+        }
+        return 'default';
+    }
+
+    /** Keep all pm-db-sync inputs in sync when any one changes. */
+    function syncDbInputs(changedInput) {
+        const val = changedInput.value;
+        document.querySelectorAll('.pm-db-sync').forEach(inp => {
+            if (inp !== changedInput) inp.value = val;
+        });
+    }
+
     function projRoot()  { return $('pm-proj-root').value.trim(); }
 
     // ── Utility ───────────────────────────────────────────────────────────────
@@ -655,8 +672,11 @@
         $('pm-tool-select').addEventListener('change', onToolChange);
         $('pm-run-query')  .addEventListener('click', runQuery);
 
-        // DB name change → refresh stats bar
-        $('pm-db-name').addEventListener('change', refreshStatsBar);
+        // Keep all DB inputs in sync; refresh stats bar on change
+        document.querySelectorAll('.pm-db-sync').forEach(inp => {
+            inp.addEventListener('input', () => { syncDbInputs(inp); });
+            inp.addEventListener('change', () => { syncDbInputs(inp); refreshStatsBar(); });
+        });
 
         // Load initial stats bar
         refreshStatsBar();

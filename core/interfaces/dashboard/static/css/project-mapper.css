@@ -244,11 +244,15 @@
 .pm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .pm-btn-primary {
-    background: var(--primary);
+    /* Use a fixed indigo so white text is always readable regardless of active theme */
+    background: #4f46e5;
     color: #fff;
-    border-color: var(--primary);
+    border-color: #4f46e5;
 }
-.pm-btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+.pm-btn-primary:hover:not(:disabled) {
+    background: #4338ca;
+    border-color: #4338ca;
+}
 
 .pm-btn-ghost {
     background: transparent;
@@ -947,6 +951,96 @@
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Help / explanation texts ────────────────────────────────── */
+
+.pm-help-text {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+    margin-top: 5px;
+}
+
+/* ── DB field sizing in scan form ────────────────────────────── */
+
+.pm-field-db {
+    width: 180px;
+    flex-shrink: 0;
+}
+
+/* ── Options row (threads + toggles side by side) ────────────── */
+
+.pm-form-row-options { align-items: flex-start; }
+
+.pm-toggle-with-hint {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* ── Actions + descriptions block ────────────────────────────── */
+
+.pm-form-actions-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 4px;
+}
+
+.pm-action-descs {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pm-action-desc {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+}
+
+.pm-action-desc b {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+/* ── Mini DB selector in explorer filter bar ─────────────────── */
+
+.pm-db-mini {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0 10px;
+    height: 34px;
+    flex-shrink: 0;
+}
+
+.pm-db-mini-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    user-select: none;
+}
+
+.pm-db-mini-input {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    width: 90px;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    font-size: 12px;
+    color: var(--text-primary);
+}
+
+.pm-db-mini-input:focus {
+    outline: none;
+    border: none !important;
+}
 
 /* ── Scrollbar ────────────────────────────────────────────────── */
 

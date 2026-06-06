@@ -23,13 +23,6 @@
                 </button>
             </nav>
 
-            <div class="pm-header-right">
-                <div class="pm-db-row" title="AethvionDB database name">
-                    <span class="pm-db-label">DB</span>
-                    <input id="pm-db-name" class="pm-db-input" type="text" value="default" placeholder="database">
-                </div>
-            </div>
-
         </div>
 
         <!-- Quick stats bar (updated after scan) -->
@@ -66,22 +59,31 @@
             <!-- Form card -->
             <div class="pm-scan-form">
 
-                <!-- Row 1: project root + preview -->
+                <!-- Row 1: database name + project root -->
                 <div class="pm-form-row">
+                    <div class="pm-field pm-field-db">
+                        <label class="pm-label" for="pm-db-name">Database</label>
+                        <input id="pm-db-name" class="pm-input pm-db-sync" type="text"
+                               value="default" placeholder="database name"
+                               autocomplete="off" spellcheck="false">
+                        <p class="pm-help-text">Name of the AethvionDB database to read and write entities to.</p>
+                    </div>
                     <div class="pm-field pm-field-grow">
                         <label class="pm-label" for="pm-proj-root">Project Root</label>
                         <div class="pm-input-with-btn">
                             <input id="pm-proj-root" class="pm-input" type="text"
-                                   placeholder="/path/to/your/project">
-                            <button id="pm-preview-btn" class="pm-btn pm-btn-ghost" title="Count files by type">
+                                   placeholder="/absolute/path/to/your/project"
+                                   autocomplete="off" spellcheck="false">
+                            <button id="pm-preview-btn" class="pm-btn pm-btn-ghost">
                                 <i class="fas fa-eye"></i> Preview
                             </button>
                         </div>
+                        <p class="pm-help-text">Preview counts files by extension without touching the database — useful before a first scan.</p>
                     </div>
                 </div>
 
-                <!-- Row 2: concurrency + toggles -->
-                <div class="pm-form-row">
+                <!-- Row 2: threads + toggles -->
+                <div class="pm-form-row pm-form-row-options">
                     <div class="pm-field pm-field-sm">
                         <label class="pm-label" for="pm-concurrency">Threads</label>
                         <select id="pm-concurrency" class="pm-select">
@@ -90,38 +92,51 @@
                             <option value="3" selected>3</option>
                             <option value="4">4</option>
                         </select>
+                        <p class="pm-help-text">Files processed in parallel. Higher is faster on multi-core machines; lower uses less memory.</p>
                     </div>
                     <div class="pm-field">
-                        <label class="pm-label">Options</label>
+                        <label class="pm-label">Scan Options</label>
                         <div class="pm-toggles-row">
-                            <label class="pm-toggle" title="Skip files whose content hash is unchanged">
-                                <input type="checkbox" id="pm-opt-incremental" checked>
-                                <span class="pm-toggle-track"></span>
-                                <span class="pm-toggle-label">Incremental</span>
-                            </label>
-                            <label class="pm-toggle" title="Run LLM enrichment on new modules (adds descriptions)">
-                                <input type="checkbox" id="pm-opt-enrich">
-                                <span class="pm-toggle-track"></span>
-                                <span class="pm-toggle-label">Enrich (LLM)</span>
-                            </label>
+                            <div class="pm-toggle-with-hint">
+                                <label class="pm-toggle">
+                                    <input type="checkbox" id="pm-opt-incremental" checked>
+                                    <span class="pm-toggle-track"></span>
+                                    <span class="pm-toggle-label">Incremental</span>
+                                </label>
+                                <p class="pm-help-text">Skip files whose content hasn't changed since the last scan. Dramatically speeds up re-scans of large projects.</p>
+                            </div>
+                            <div class="pm-toggle-with-hint">
+                                <label class="pm-toggle">
+                                    <input type="checkbox" id="pm-opt-enrich">
+                                    <span class="pm-toggle-track"></span>
+                                    <span class="pm-toggle-label">Enrich (LLM)</span>
+                                </label>
+                                <p class="pm-help-text">Use an AI model to write a natural-language description for each module. Produces richer, more searchable context but takes longer.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Actions -->
-                <div class="pm-form-actions">
-                    <button id="pm-scan-btn" class="pm-btn pm-btn-primary">
-                        <i class="fas fa-play"></i> Scan Project
-                    </button>
-                    <button id="pm-delta-btn" class="pm-btn pm-btn-ghost">
-                        <i class="fas fa-code-compare"></i> Delta Preview
-                    </button>
-                    <button id="pm-cleanup-btn" class="pm-btn pm-btn-ghost" title="Retire entities for deleted files">
-                        <i class="fas fa-broom"></i> Cleanup
-                    </button>
-                    <button id="pm-cancel-btn" class="pm-btn pm-btn-danger" style="display:none">
-                        <i class="fas fa-stop"></i> Cancel
-                    </button>
+                <div class="pm-form-actions-wrap">
+                    <div class="pm-form-actions">
+                        <button id="pm-scan-btn" class="pm-btn pm-btn-primary">
+                            <i class="fas fa-play"></i> Scan Project
+                        </button>
+                        <button id="pm-delta-btn" class="pm-btn pm-btn-ghost">
+                            <i class="fas fa-code-compare"></i> Delta Preview
+                        </button>
+                        <button id="pm-cleanup-btn" class="pm-btn pm-btn-ghost">
+                            <i class="fas fa-broom"></i> Cleanup
+                        </button>
+                        <button id="pm-cancel-btn" class="pm-btn pm-btn-danger" style="display:none">
+                            <i class="fas fa-stop"></i> Cancel
+                        </button>
+                    </div>
+                    <div class="pm-action-descs">
+                        <span class="pm-action-desc"><b>Delta Preview</b> — compares the project directory against the stored index and shows what has changed (new / modified / deleted files) without writing anything to the database.</span>
+                        <span class="pm-action-desc"><b>Cleanup</b> — soft-deletes entities whose source files have been removed from disk since the last scan.</span>
+                    </div>
                 </div>
             </div>
 
@@ -232,6 +247,12 @@
 
             <!-- Filter bar -->
             <div class="pm-filter-bar">
+                <div class="pm-db-mini">
+                    <span class="pm-db-mini-label">DB</span>
+                    <input class="pm-input pm-db-sync pm-db-mini-input" type="text"
+                           value="default" placeholder="database" autocomplete="off" spellcheck="false"
+                           title="AethvionDB database to browse">
+                </div>
                 <select id="pm-type-filter" class="pm-select">
                     <option value="">All types</option>
                     <option value="module">module</option>
@@ -273,6 +294,13 @@
 
             <!-- Controls sidebar -->
             <div class="pm-query-controls">
+
+                <div class="pm-field">
+                    <label class="pm-label">Database</label>
+                    <input class="pm-input pm-db-sync" type="text"
+                           value="default" placeholder="database name"
+                           autocomplete="off" spellcheck="false">
+                </div>
 
                 <div class="pm-field">
                     <label class="pm-label" for="pm-tool-select">Tool</label>
