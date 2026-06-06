@@ -66,6 +66,7 @@ class ClassInfo:
     docstring:   str = ""
     line_start:  int = 0
     line_end:    int = 0
+    calls:       list[str] = field(default_factory=list)  # class/object names this class calls
 
 
 @dataclass
@@ -147,6 +148,220 @@ def _literal_repr(node: ast.expr) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Call-graph extraction helpers
+# ---------------------------------------------------------------------------
+
+# Built-in names, stdlib types, and common non-class callables to ignore when
+# extracting call-graph targets.  Keep this list broad so the ingestor doesn't
+# create stubs for obvious non-project names.
+_CALL_IGNORE: frozenset[str] = frozenset({
+    # ---- builtins --------------------------------------------------------
+    "print", "len", "range", "list", "dict", "set", "tuple", "str", "int",
+    "float", "bool", "bytes", "bytearray", "memoryview", "complex",
+    "type", "isinstance", "issubclass", "hasattr", "getattr", "setattr",
+    "delattr", "super", "object", "staticmethod", "classmethod", "property",
+    "enumerate", "zip", "map", "filter", "sorted", "reversed", "min", "max",
+    "sum", "abs", "round", "pow", "divmod", "hex", "oct", "bin", "chr", "ord",
+    "open", "next", "iter", "vars", "dir", "repr", "hash", "id", "callable",
+    "any", "all", "format", "input", "eval", "exec", "compile", "breakpoint",
+    "globals", "locals", "classmethod",
+    # ---- exceptions ------------------------------------------------------
+    "Exception", "BaseException", "NotImplementedError", "NotImplemented",
+    "ValueError", "KeyError", "TypeError", "RuntimeError", "AttributeError",
+    "OSError", "IOError", "FileNotFoundError", "PermissionError", "IsADirectoryError",
+    "StopIteration", "StopAsyncIteration", "IndexError", "NameError",
+    "AssertionError", "ImportError", "ModuleNotFoundError", "LookupError",
+    "ArithmeticError", "ZeroDivisionError", "OverflowError", "MemoryError",
+    "RecursionError", "TimeoutError", "ConnectionError", "BrokenPipeError",
+    "GeneratorExit", "SystemExit", "KeyboardInterrupt", "UnicodeError",
+    "UnicodeDecodeError", "UnicodeEncodeError", "BufferError", "EOFError",
+    "DeprecationWarning", "UserWarning", "FutureWarning", "Warning",
+    # ---- typing ----------------------------------------------------------
+    "Optional", "Dict", "List", "Set", "FrozenSet", "Tuple", "Union",
+    "Callable", "Any", "Type", "ClassVar", "Final", "Literal",
+    "TypeVar", "TypeVarTuple", "ParamSpec", "Protocol", "TypeAlias",
+    "Generator", "Iterator", "Iterable", "AsyncGenerator", "AsyncIterator",
+    "AsyncIterable", "Awaitable", "Coroutine", "Sequence", "MutableSequence",
+    "Mapping", "MutableMapping", "AbstractSet", "MutableSet",
+    "TypedDict", "NamedTuple", "overload", "cast", "dataclass",
+    "Generic", "Annotated", "get_type_hints", "get_origin", "get_args",
+    # ---- stdlib classes --------------------------------------------------
+    "Path", "PurePath", "PosixPath", "WindowsPath",
+    "datetime", "date", "time", "timedelta", "timezone",
+    "deque", "defaultdict", "OrderedDict", "Counter", "ChainMap",
+    "Thread", "Lock", "RLock", "Event", "Condition", "Semaphore",
+    "Queue", "PriorityQueue", "LifoQueue",
+    "Enum", "IntEnum", "StrEnum", "Flag", "IntFlag", "auto",
+    "ABC", "ABCMeta", "abstractmethod",
+    "StringIO", "BytesIO", "TextIOWrapper",
+    "re", "Pattern", "Match",
+    # ---- common third-party base classes / decorators --------------------
+    "BaseModel", "BaseSettings", "Field", "validator", "root_validator",
+    "model_validator", "field_validator", "ConfigDict",
+    "dataclasses",
+    # ---- FastAPI / Starlette / HTTP --------------------------------------
+    "FastAPI", "APIRouter", "Request", "Response", "JSONResponse",
+    "HTMLResponse", "StreamingResponse", "FileResponse", "RedirectResponse",
+    "HTTPException", "WebSocket", "BackgroundTasks", "Depends",
+    "Body", "Query", "Path", "Header", "Cookie", "Form", "File", "UploadFile",
+    "status",
+    # ---- asyncio ---------------------------------------------------------
+    "asyncio", "Task", "Future", "Event", "gather", "sleep", "create_task",
+    "get_event_loop", "run", "wait", "wait_for", "shield", "timeout",
+    # ---- logging / misc --------------------------------------------------
+    "Logger", "LogRecord", "Formatter", "Handler", "StreamHandler",
+    "NullHandler", "FileHandler",
+    "UUID", "Decimal", "Fraction",
+    "json", "os", "sys", "re", "math", "random", "copy", "functools",
+})
+
+
+class _SelfAssignExtractor(ast.NodeVisitor):
+    """
+    Extract self.X = SomeClass(...) assignments from any method body.
+
+    Also handles factory-function conventions:
+      self.X = get_some_class(...)  →  attr "some_class"  →  resolve to "SomeClass"
+      self.X = create_some_class()  →  similar
+    """
+
+    _FACTORY_PREFIXES = ("get_", "create_", "build_", "make_", "load_", "init_", "setup_")
+
+    def __init__(self) -> None:
+        self.attr_to_class: dict[str, str] = {}   # attr_name → ClassName
+
+    @staticmethod
+    def _to_class_name(name: str) -> str:
+        """'provider_manager' → 'ProviderManager'"""
+        return "".join(w.capitalize() for w in name.split("_"))
+
+    def _resolve_call_to_class(self, func: ast.expr) -> str:
+        """Try to derive a class name from a call expression's func node."""
+        if isinstance(func, ast.Name):
+            fname = func.id
+            if fname[0].isupper() and fname not in _CALL_IGNORE:
+                return fname   # direct class instantiation: SomeClass(...)
+            # factory function: get_something(...) → "Something"
+            for prefix in self._FACTORY_PREFIXES:
+                if fname.startswith(prefix):
+                    candidate = self._to_class_name(fname[len(prefix):])
+                    if candidate and candidate not in _CALL_IGNORE:
+                        return candidate
+        elif isinstance(func, ast.Attribute):
+            attr = func.attr
+            if attr[0].isupper() and attr not in _CALL_IGNORE:
+                return attr   # module.SomeClass(...)
+            for prefix in self._FACTORY_PREFIXES:
+                if attr.startswith(prefix):
+                    candidate = self._to_class_name(attr[len(prefix):])
+                    if candidate and candidate not in _CALL_IGNORE:
+                        return candidate
+        return ""
+
+    def visit_Assign(self, node: ast.Assign) -> None:
+        for target in node.targets:
+            if not (isinstance(target, ast.Attribute)
+                    and isinstance(target.value, ast.Name)
+                    and target.value.id == "self"):
+                continue
+            attr = target.attr
+            if isinstance(node.value, ast.Call):
+                resolved = self._resolve_call_to_class(node.value.func)
+                if resolved:
+                    self.attr_to_class[attr] = resolved
+        self.generic_visit(node)
+
+
+class _CallExtractor(ast.NodeVisitor):
+    """
+    Walk a method body and collect:
+      - instantiated: UpperCaseName(...) calls → likely class instantiations
+      - attr_calls:   self.X.method(...) → X is an attribute used as an object
+    """
+
+    def __init__(self) -> None:
+        self.instantiated: set[str] = set()
+        self.attr_calls:   set[str] = set()
+
+    def visit_Call(self, node: ast.Call) -> None:
+        func = node.func
+
+        # UpperCaseName(...) — direct class instantiation or class-level call
+        if isinstance(func, ast.Name):
+            name = func.id
+            if name[0].isupper() and name not in _CALL_IGNORE:
+                self.instantiated.add(name)
+
+        elif isinstance(func, ast.Attribute):
+            obj = func.value
+
+            # self.X.method(...) — X is an attribute that acts as an object
+            if (isinstance(obj, ast.Attribute)
+                    and isinstance(obj.value, ast.Name)
+                    and obj.value.id == "self"
+                    and not obj.attr.startswith("_")):
+                self.attr_calls.add(obj.attr)
+
+            # SomeName.method(...) where SomeName looks like a class/module
+            elif (isinstance(obj, ast.Name)
+                  and obj.id != "self"
+                  and obj.id[0].isupper()
+                  and obj.id not in _CALL_IGNORE):
+                self.instantiated.add(obj.id)
+
+        self.generic_visit(node)
+
+
+def _extract_class_calls(
+    class_node: ast.ClassDef,
+) -> list[str]:
+    """
+    Return a deduplicated list of class/object names that *class_node*
+    calls or depends on at the method level.
+
+    Strategy:
+      1. From __init__, build a mapping: self.X → ClassName (via assignment)
+      2. From all methods, extract:
+         a. Direct UpperCaseName(...) instantiations
+         b. self.X.method(...) patterns → attribute X
+      3. Resolve attr → class name where possible; keep unresolved attrs too.
+      4. Filter out names that match the class itself or common primitives.
+    """
+    # Step 1: build attr → class map from ALL methods (handles lazy init,
+    # factory functions, and patterns where attributes are set outside __init__)
+    attr_to_class: dict[str, str] = {}
+    for item in class_node.body:
+        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            extractor = _SelfAssignExtractor()
+            extractor.visit(item)
+            attr_to_class.update(extractor.attr_to_class)
+
+    # Step 2: extract all call targets from all methods
+    all_instantiated: set[str] = set()
+    all_attr_calls:   set[str] = set()
+    for item in class_node.body:
+        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            extractor = _CallExtractor()
+            extractor.visit(item)
+            all_instantiated |= extractor.instantiated
+            all_attr_calls   |= extractor.attr_calls
+
+    # Step 3: resolve attr names to class names where known
+    resolved: set[str] = set(all_instantiated)
+    for attr in all_attr_calls:
+        if attr in attr_to_class:
+            resolved.add(attr_to_class[attr])
+        else:
+            # Keep the raw attr name — ingestor may resolve it
+            resolved.add(attr)
+
+    # Step 4: filter
+    resolved.discard(class_node.name)
+    resolved -= _CALL_IGNORE
+    return sorted(resolved)
+
+
+# ---------------------------------------------------------------------------
 # Python AST visitor
 # ---------------------------------------------------------------------------
 
@@ -223,6 +438,7 @@ class _PythonVisitor(ast.NodeVisitor):
         self._class_stack.pop()
 
         end_line = getattr(node, "end_lineno", node.lineno)
+        calls    = _extract_class_calls(node)
         self.classes.append(ClassInfo(
             name=node.name,
             bases=bases,
@@ -232,6 +448,7 @@ class _PythonVisitor(ast.NodeVisitor):
             docstring=docstring[:300],
             line_start=node.lineno,
             line_end=end_line,
+            calls=calls,
         ))
 
     def _build_method(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> MethodInfo:

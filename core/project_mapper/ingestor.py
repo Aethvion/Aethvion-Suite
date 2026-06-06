@@ -231,7 +231,35 @@ class ProjectIngestor:
                     cls_id, "extends", base_entity["id"],
                 )
 
-        # ---- 6. Provenance -------------------------------------------
+        # ---- 6. Class calls relations (static call graph) -----------
+        # For each class, try to resolve its extracted callee names to known
+        # entities.  Only uppercase names (class/object names) are wired —
+        # raw attribute names that the call-extractor couldn't resolve to a
+        # class are skipped.  Uses the same stub-creation pattern as extends.
+        for cls_info, cls_id in zip(analysis.classes, result.class_entity_ids):
+            for callee_name in cls_info.calls:
+                # Only wire uppercase names (class instantiations / class-level refs)
+                if not callee_name or not callee_name[0].isupper():
+                    continue
+                # Try existing index first (entity already scanned)
+                target_id = self._index.get(callee_name)
+                if not target_id:
+                    # Create a stub so forward-references are captured even if
+                    # the target file hasn't been scanned yet.
+                    stub, _ = self._writer.create(
+                        name=callee_name,
+                        entity_type="class",
+                        source="stub",
+                        kind="software.class",
+                        status="stub",
+                    )
+                    target_id = stub["id"]
+                if target_id and target_id != cls_id:
+                    result.relations_created += self._add_relation(
+                        cls_id, "calls", target_id,
+                    )
+
+        # ---- 7. Provenance -------------------------------------------
         from datetime import datetime, timezone
         scanned_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         sf_entry = {
