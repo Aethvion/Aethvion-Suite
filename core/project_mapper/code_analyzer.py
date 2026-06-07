@@ -66,7 +66,7 @@ class ClassInfo:
     docstring:   str = ""
     line_start:  int = 0
     line_end:    int = 0
-    calls:       list[str] = field(default_factory=list)  # class/object names this class calls
+    calls:       list[tuple[str, str]] = field(default_factory=list)  # (callee_name, via_method)
 
 
 @dataclass
@@ -79,7 +79,7 @@ class FunctionInfo:
     is_async:    bool = False
     line_start:  int = 0
     line_end:    int = 0
-    calls:       list[str] = field(default_factory=list)  # class/object names this function calls
+    calls:       list[tuple[str, str]] = field(default_factory=list)  # (callee_name, via_method)
 
 
 @dataclass
@@ -350,19 +350,16 @@ class _CallExtractor(ast.NodeVisitor):
 
 def _extract_function_calls(
     fn_node: ast.FunctionDef | ast.AsyncFunctionDef,
-) -> list[str]:
+) -> list[tuple[str, str]]:
     """
-    Return a deduplicated list of class/object names that *fn_node* calls.
+    Return a deduplicated list of (callee_name, via_method) tuples for the
+    classes/objects that *fn_node* directly calls or instantiates.
 
-    Applies the same extraction logic as _extract_class_calls but for a
-    single top-level function node: direct UpperCaseName() instantiations,
-    factory-function patterns (get_X() → X), and local variable assignments
-    that resolve to a class name.
+    For a top-level function, via_method is always the function's own name.
     """
     extractor = _CallExtractor()
     extractor.visit(fn_node)
 
-    # Resolve factory-pattern names that ended up in instantiated
     resolved: set[str] = set(extractor.instantiated)
 
     # attr_calls from a top-level function are unresolvable (no self),
@@ -372,26 +369,29 @@ def _extract_function_calls(
             resolved.add(attr)
 
     resolved -= _CALL_IGNORE
-    return sorted(resolved)
+    return [(name, fn_node.name) for name in sorted(resolved)]
 
 
 def _extract_class_calls(
     class_node: ast.ClassDef,
-) -> list[str]:
+) -> list[tuple[str, str]]:
     """
-    Return a deduplicated list of class/object names that *class_node*
-    calls or depends on at the method level.
+    Return a deduplicated list of (callee_name, via_method) tuples describing
+    which classes *class_node* calls and from which of its methods.
 
     Strategy:
-      1. From __init__, build a mapping: self.X → ClassName (via assignment)
-      2. From all methods, extract:
-         a. Direct UpperCaseName(...) instantiations
-         b. self.X.method(...) patterns → attribute X
-      3. Resolve attr → class name where possible; keep unresolved attrs too.
-      4. Filter out names that match the class itself or common primitives.
+      1. From all methods, build a mapping: self.X → ClassName (via assignment)
+      2. Per method, extract:
+         a. Direct UpperCaseName() instantiations
+         b. self.X.method() patterns → attribute X
+      3. Resolve attr → class name where the mapping exists.
+      4. Filter out the class itself and common primitives.
+
+    The same callee may appear multiple times if it is called from multiple
+    methods — each occurrence gets its own (callee, method) tuple.
+    Duplicate (callee, method) pairs within the same method are de-duped.
     """
-    # Step 1: build attr → class map from ALL methods (handles lazy init,
-    # factory functions, and patterns where attributes are set outside __init__)
+    # Step 1: build attr → class map across ALL methods
     attr_to_class: dict[str, str] = {}
     for item in class_node.body:
         if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -399,29 +399,39 @@ def _extract_class_calls(
             extractor.visit(item)
             attr_to_class.update(extractor.attr_to_class)
 
-    # Step 2: extract all call targets from all methods
-    all_instantiated: set[str] = set()
-    all_attr_calls:   set[str] = set()
-    for item in class_node.body:
-        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            extractor = _CallExtractor()
-            extractor.visit(item)
-            all_instantiated |= extractor.instantiated
-            all_attr_calls   |= extractor.attr_calls
+    # Step 2 + 3: extract per-method, preserving source method name
+    result:  list[tuple[str, str]] = []
+    seen:    set[tuple[str, str]]  = set()
 
-    # Step 3: resolve attr names to class names where known
-    resolved: set[str] = set(all_instantiated)
-    for attr in all_attr_calls:
-        if attr in attr_to_class:
-            resolved.add(attr_to_class[attr])
-        else:
-            # Keep the raw attr name — ingestor may resolve it
-            resolved.add(attr)
+    for item in class_node.body:
+        if not isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        method_name = item.name
+        extractor   = _CallExtractor()
+        extractor.visit(item)
+
+        # Direct / factory instantiations
+        for callee in extractor.instantiated:
+            pair = (callee, method_name)
+            if pair not in seen:
+                seen.add(pair)
+                result.append(pair)
+
+        # Attribute-based calls → resolve via attr_to_class
+        for attr in extractor.attr_calls:
+            callee = attr_to_class.get(attr, attr)
+            pair   = (callee, method_name)
+            if pair not in seen:
+                seen.add(pair)
+                result.append(pair)
 
     # Step 4: filter
-    resolved.discard(class_node.name)
-    resolved -= _CALL_IGNORE
-    return sorted(resolved)
+    own_name = class_node.name
+    return [
+        (callee, method)
+        for callee, method in result
+        if callee != own_name and callee not in _CALL_IGNORE
+    ]
 
 
 # ---------------------------------------------------------------------------

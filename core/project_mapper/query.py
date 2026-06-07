@@ -235,7 +235,7 @@ def _keyword_score(tokens: list[str], entity: dict) -> float:
     methods    = [m.strip().lower() for m in props.get("methods", "").split(",") if m.strip()]
     base_cls   = props.get("base_classes", "").lower()
     file_parts = [p for p in re.split(r"[/._\\]", props.get("file_path", "").lower())
-                  if len(p) > 2]
+                  if len(p) >= 2]
     signature  = props.get("signature", "").lower()
 
     score = 0.0
@@ -275,7 +275,7 @@ def _keyword_score(tokens: list[str], entity: dict) -> float:
             if tok == part:
                 score += 0.3
                 break
-            if len(tok) > 3 and tok in part:
+            if len(tok) >= 2 and tok in part:
                 score += 0.15
                 break
 
@@ -284,6 +284,74 @@ def _keyword_score(tokens: list[str], entity: dict) -> float:
             score += 0.15
 
     return round(score, 3)
+
+
+# ---------------------------------------------------------------------------
+# Vocabulary synonym map
+# ---------------------------------------------------------------------------
+# Maps high-level concept words to the codebase vocabulary that represents
+# them.  When a query token matches a key, the values are appended as extra
+# scoring tokens.  This closes the gap between natural-language queries and
+# codebase-specific naming conventions.
+#
+# Rules:
+#   - Keys are single lowercase tokens (as produced by _tokenize).
+#   - Values are lists of codebase-native tokens; keep them short (1-3).
+#   - Only add synonyms with HIGH confidence — false positives are worse
+#     than missing results.
+#
+_QUERY_SYNONYMS: dict[str, list[str]] = {
+    # Security / auth
+    "authentication":  ["security", "firewall", "auth"],
+    "authorization":   ["security", "permissions", "auth"],
+    "auth":            ["security", "firewall"],
+    "login":           ["security", "auth"],
+    "permissions":     ["security", "firewall"],
+    # Logging / observability
+    "logging":         ["logger"],
+    "logs":            ["logger"],
+    "log":             ["logger"],
+    # Data persistence
+    "database":        ["db", "aethviondb", "storage"],
+    "persistence":     ["db", "storage"],
+    "storage":         ["db", "aethviondb"],
+    # Configuration
+    "configuration":   ["config", "settings"],
+    "settings":        ["config", "preferences"],
+    "preferences":     ["config", "settings"],
+    # Networking / web
+    "routing":         ["router", "routes"],
+    "routes":          ["router", "route"],
+    "endpoint":        ["router", "routes"],
+    "websocket":       ["ws"],
+    "http":            ["server", "routes", "api"],
+    # AI / models
+    "llm":             ["provider", "model"],
+    "model":           ["provider", "model"],
+    "inference":       ["provider"],
+    "generation":      ["provider", "generate"],
+    # UI
+    "interface":       ["ui", "dashboard", "routes"],
+    "frontend":        ["dashboard", "ui"],
+    "dashboard":       ["ui", "server"],
+    # CLI
+    "commandline":     ["cli"],
+    "command":         ["cli", "routes"],
+    # Companions
+    "companion":       ["companion"],
+    "persona":         ["companion", "registry"],
+    "character":       ["companion"],
+    # Task / workflow
+    "queue":           ["task", "worker"],
+    "worker":          ["task", "queue"],
+    "job":             ["task", "queue"],
+    "async":           ["worker", "task"],
+    # Providers
+    "openai":          ["provider", "openai"],
+    "anthropic":       ["provider", "anthropic"],
+    "gemini":          ["provider", "google"],
+    "grok":            ["provider", "grok"],
+}
 
 
 _TOKENIZE_STOP: frozenset[str] = frozenset({
@@ -334,7 +402,15 @@ def context_query(
 
     Returns a structured context dict ready for injection into an agent prompt.
     """
-    tokens      = _tokenize(q)
+    base_tokens = _tokenize(q)
+    # Expand tokens with codebase-vocabulary synonyms so queries like
+    # "authentication" find "security/firewall" and "logging" finds "logger".
+    extra: list[str] = []
+    for tok in base_tokens:
+        for syn in _QUERY_SYNONYMS.get(tok, []):
+            if syn not in base_tokens and syn not in extra:
+                extra.append(syn)
+    tokens       = base_tokens + extra
     detail_types = _DETAIL_LEVELS.get(detail_level, _DETAIL_LEVELS["medium"])
 
     # ---- 1. Score all entities -------------------------------------------

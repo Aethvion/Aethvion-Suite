@@ -306,7 +306,7 @@ class ProjectIngestor:
         # raw attribute names that the call-extractor couldn't resolve to a
         # class are skipped.  Uses the same stub-creation pattern as extends.
         for cls_info, cls_id in zip(analysis.classes, result.class_entity_ids):
-            for callee_name in cls_info.calls:
+            for callee_name, via_method in cls_info.calls:
                 # Only wire uppercase-first names (class names, not attr names)
                 if not callee_name or not callee_name[0].isupper():
                     continue
@@ -330,6 +330,7 @@ class ProjectIngestor:
                 if target_id and target_id != cls_id:
                     result.relations_created += self._add_relation(
                         cls_id, "calls", target_id,
+                        note=f"via {via_method}" if via_method else "",
                     )
 
         # ---- 7. Function calls relations (static call graph) --------
@@ -337,7 +338,7 @@ class ProjectIngestor:
         # have self-attribute assignments, so only direct instantiations and
         # factory-function patterns are captured.
         for fn_info, fn_id in zip(analysis.functions, result.function_entity_ids):
-            for callee_name in fn_info.calls:
+            for callee_name, via_method in fn_info.calls:
                 if not callee_name or not callee_name[0].isupper():
                     continue
                 if callee_name.isupper():
@@ -355,6 +356,7 @@ class ProjectIngestor:
                 if target_id and target_id != fn_id:
                     result.relations_created += self._add_relation(
                         fn_id, "calls", target_id,
+                        note=f"via {via_method}" if via_method else "",
                     )
 
         # ---- 8. Provenance -------------------------------------------
