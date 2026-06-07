@@ -202,42 +202,115 @@ def impact_query(
 # 2. Task-Contextual Retrieval
 # ---------------------------------------------------------------------------
 
+def _name_words(entity_name: str) -> set[str]:
+    """
+    Split a PascalCase / camelCase name into lowercase words.
+    'ProviderManager' → {'provider', 'manager'}
+    'get_provider_manager' → {'get', 'provider', 'manager'}
+    """
+    # Insert a space before each capital letter then split on non-alpha
+    spaced = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", entity_name)
+    spaced = re.sub(r"([a-z\d])([A-Z])", r"\1 \2", spaced)
+    return set(re.findall(r"[a-z0-9]{2,}", spaced.lower()))
+
+
 def _keyword_score(tokens: list[str], entity: dict) -> float:
-    """Score an entity against a list of query tokens."""
-    core    = entity.get("sections", {}).get("core", {})
+    """
+    Score an entity against query tokens using structure-aware field weighting.
+
+    Works without LLM enrichment by leveraging structural metadata:
+    method names, file-path components, base-class names, and name-word splits.
+    Enriched summaries are scored at a higher weight when present.
+    """
+    core  = entity.get("sections", {}).get("core", {})
+    props = entity.get("sections", {}).get("properties", {})
+
     name    = entity.get("name", "").lower()
     summary = core.get("summary", "").lower()
     tags    = " ".join(core.get("tags", [])).lower()
     aliases = " ".join(core.get("aliases", [])).lower()
-    props   = " ".join(str(v) for v in entity.get("sections", {}).get("properties", {}).values()).lower()
+
+    # Structural fields — always present, no enrichment required
+    nwords     = _name_words(entity.get("name", ""))
+    methods    = [m.strip().lower() for m in props.get("methods", "").split(",") if m.strip()]
+    base_cls   = props.get("base_classes", "").lower()
+    file_parts = [p for p in re.split(r"[/._\\]", props.get("file_path", "").lower())
+                  if len(p) > 2]
+    signature  = props.get("signature", "").lower()
 
     score = 0.0
     for tok in tokens:
-        if tok in name:
-            score += 1.0 if tok == name else 0.7
+        # Entity name — exact, substring, or word-split match
+        if tok == name:
+            score += 1.0
+        elif tok in name:
+            score += 0.7
+        elif tok in nwords:
+            score += 0.5   # "manager" matches "ProviderManager"
+
+        # Docstring / LLM summary (higher when enrichment exists)
         if tok in summary[:300]:
-            score += 0.5
+            score += 0.6 if len(summary) > 60 else 0.4
+
+        # Tags
         if tok in tags:
             score += 0.4
+
+        # Base class name — strong structural signal
+        if tok in base_cls:
+            score += 0.45
+
+        # Aliases
         if tok in aliases:
             score += 0.35
-        if tok in props:
-            score += 0.2
+
+        # Method names — scored individually, not as a blob
+        for method in methods:
+            if tok in method or method in tok:
+                score += 0.35
+                break
+
+        # File-path directory / module name components
+        for part in file_parts:
+            if tok == part:
+                score += 0.3
+                break
+            if len(tok) > 3 and tok in part:
+                score += 0.15
+                break
+
+        # Function signature (param/return type hints)
+        if tok in signature:
+            score += 0.15
+
     return round(score, 3)
 
 
+_TOKENIZE_STOP: frozenset[str] = frozenset({
+    "a","an","the","i","im","is","are","was","be","been","being",
+    "in","on","at","to","for","of","and","or","but","not","with",
+    "this","that","these","those","what","how","when","where","which",
+    "my","me","we","our","if","do","did","have","has","had","it",
+    "working","adding","need","want","know","should","would","could",
+    "about","from","will","let","get","just","like","also","more",
+    "use","used","uses","using","make","makes","made","take","takes",
+    "its","all","can","into","via","new","do",
+})
+
+
 def _tokenize(text: str) -> list[str]:
-    """Lowercase, split, remove stopwords and very short tokens."""
-    _STOP = {
-        "a","an","the","i","im","is","are","was","be","been","being",
-        "in","on","at","to","for","of","and","or","but","not","with",
-        "this","that","these","those","what","how","when","where","which",
-        "my","me","we","our","if","do","did","have","has","had","it",
-        "working","adding","need","want","know","should","would","could",
-        "about","from","will","let","get","just","like","also","more",
-    }
-    tokens = re.findall(r"[a-z0-9_]{2,}", text.lower())
-    return [t for t in tokens if t not in _STOP]
+    """
+    Tokenize query text for keyword scoring.
+
+    Splits on whitespace, punctuation AND camelCase/PascalCase boundaries so
+    that a query like "ProviderManager" or "provider manager" both produce
+    the same token set.
+    """
+    # Split camelCase/PascalCase before lowercasing
+    spaced = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", text)
+    spaced = re.sub(r"([a-z\d])([A-Z])", r"\1 \2", spaced)
+    tokens = re.findall(r"[a-z0-9_]{2,}", spaced.lower())
+    return [t for t in tokens if t not in _TOKENIZE_STOP]
 
 
 def context_query(
@@ -267,7 +340,8 @@ def context_query(
     # ---- 1. Score all entities -------------------------------------------
     scored: list[tuple[float, dict]] = []
     for entity in entity_map.values():
-        if entity.get("status") in ("deleted",):
+        # Skip deleted and stub entities — stubs have no meaningful data
+        if entity.get("status") in ("deleted", "stub"):
             continue
         s = _keyword_score(tokens, entity)
         if s > 0:
@@ -333,8 +407,103 @@ def context_query(
 
 
 # ---------------------------------------------------------------------------
-# 3. Shortest Path
+# 3. Shortest Path  (two-phase: semantic edges first, structural fallback)
 # ---------------------------------------------------------------------------
+
+# Edges that carry real semantic meaning — used in Phase 1 of path search.
+# These represent deliberate design-time relationships between entities.
+_SEMANTIC_EDGE_KINDS: frozenset[str] = frozenset({
+    "calls",
+    "extends",
+    "implements",
+    "uses",
+    "reads_from",
+    "writes_to",
+    "triggered_by",
+    "configured_by",
+    "tests",
+})
+
+# Edges that are structural / file-system-level — used only in Phase 2
+# when no semantic path exists.  These often create spurious shortcuts
+# through shared utilities, loggers, and common stdlib imports.
+_STRUCTURAL_EDGE_KINDS: frozenset[str] = frozenset({
+    "contains",
+    "imports",
+    "depends_on",
+    "related_to",
+})
+
+
+def _build_adjacency(
+    entity_map: dict[str, dict],
+    allowed_kinds: Optional[frozenset[str]],
+) -> tuple[dict[str, list[tuple[str, str]]], dict[str, list[tuple[str, str]]]]:
+    """
+    Build forward and reverse adjacency dicts from the entity graph.
+
+    If *allowed_kinds* is None, all relation kinds are included.
+    If it is a frozenset, only relations whose kind is in that set are included.
+    """
+    fwd: dict[str, list[tuple[str, str]]] = {}
+    rev: dict[str, list[tuple[str, str]]] = {}
+    for eid, entity in entity_map.items():
+        for rel in entity.get("sections", {}).get("relations", []):
+            tid  = rel.get("target_id", "")
+            kind = rel.get("kind", "related_to")
+            if tid and tid in entity_map:
+                if allowed_kinds is None or kind in allowed_kinds:
+                    fwd.setdefault(eid, []).append((tid, kind))
+                    rev.setdefault(tid, []).append((eid, kind))
+    return fwd, rev
+
+
+def _bfs_path(
+    from_id:    str,
+    to_id:      str,
+    to_entity:  dict,
+    entity_map: dict[str, dict],
+    fwd:        dict[str, list[tuple[str, str]]],
+    rev:        dict[str, list[tuple[str, str]]],
+    max_hops:   int,
+) -> Optional[list[dict]]:
+    """
+    BFS from *from_id* to *to_id* using the given adjacency dicts.
+    Returns the path as a list of entity stubs (with 'relation' edge labels),
+    or None if no path is found within *max_hops*.
+    """
+    visited: set[str] = {from_id}
+    queue: deque[tuple[str, list[tuple[str, str]]]] = deque()
+    queue.append((from_id, []))
+
+    while queue:
+        current_id, path_so_far = queue.popleft()
+        if len(path_so_far) >= max_hops:
+            continue
+
+        neighbors = fwd.get(current_id, []) + rev.get(current_id, [])
+        for neighbor_id, rel_kind in neighbors:
+            if neighbor_id in visited:
+                continue
+            visited.add(neighbor_id)
+            new_path = path_so_far + [(neighbor_id, rel_kind)]
+
+            if neighbor_id == to_id:
+                # Reconstruct path with entity stubs
+                path_entities: list[dict] = []
+                prev_id = from_id
+                for step_id, edge_label in new_path:
+                    node = _entity_stub(entity_map.get(prev_id, {}))
+                    node["relation"] = edge_label
+                    path_entities.append(node)
+                    prev_id = step_id
+                path_entities.append(_entity_stub(to_entity))
+                return path_entities
+
+            queue.append((neighbor_id, new_path))
+
+    return None
+
 
 def shortest_path(
     from_entity: str,
@@ -344,15 +513,23 @@ def shortest_path(
     max_hops:    int = 6,
 ) -> dict[str, Any]:
     """
-    Find the shortest undirected path between two entities in the knowledge graph.
+    Find the shortest meaningful path between two entities.
 
-    Treats all relation kinds as undirected edges — follows both stored relations
-    (forward) and incoming relations (reverse) at each step.
+    Two-phase search:
+      Phase 1 — semantic edges only (calls, extends, implements, …).
+                These represent intentional design relationships.
+                Result is marked  path_type = "semantic".
+      Phase 2 — all edges including structural ones (contains, imports, …).
+                Used as fallback when no semantic path exists within max_hops.
+                Result is marked  path_type = "structural".
 
-    Returns a dict with:
-      found   — bool
-      path    — list of {id, name, type, relation (edge label to next node)}
-      length  — hop count
+    The path_type field tells the caller how to interpret the path:
+      "semantic"   — the path reflects deliberate code dependencies.
+      "structural" — the path follows file/module structure; may pass through
+                     shared utilities and is less architecturally meaningful.
+      "none"       — no path found at all.
+
+    Returns a dict with: found, path, length, path_type.
     """
     from_e = _resolve_entity(from_entity, entity_map, index)
     to_e   = _resolve_entity(to_entity,   entity_map, index)
@@ -366,61 +543,39 @@ def shortest_path(
     to_id   = to_e["id"]
 
     if from_id == to_id:
-        return {"found": True, "path": [_entity_stub(from_e)], "length": 0}
+        return {
+            "found": True, "path": [_entity_stub(from_e)],
+            "length": 0, "path_type": "semantic",
+        }
 
-    # Build forward adjacency: {entity_id → [(neighbor_id, relation_kind)]}
-    fwd: dict[str, list[tuple[str, str]]] = {}
-    rev: dict[str, list[tuple[str, str]]] = {}
-    for eid, entity in entity_map.items():
-        for rel in entity.get("sections", {}).get("relations", []):
-            tid  = rel.get("target_id", "")
-            kind = rel.get("kind", "related_to")
-            if tid and tid in entity_map:
-                fwd.setdefault(eid, []).append((tid, kind))
-                rev.setdefault(tid, []).append((eid, kind))
+    # ---- Phase 1: semantic edges only -----------------------------------
+    fwd_sem, rev_sem = _build_adjacency(entity_map, _SEMANTIC_EDGE_KINDS)
+    path = _bfs_path(from_id, to_id, to_e, entity_map, fwd_sem, rev_sem, max_hops)
+    if path is not None:
+        return {
+            "found":     True,
+            "path":      path,
+            "length":    len(path) - 1,
+            "path_type": "semantic",
+        }
 
-    # BFS with path tracking
-    # Each queue entry: (current_id, path_so_far)
-    # path_so_far = list of (entity_id, edge_label_to_next)
-    visited:  set[str] = {from_id}
-    queue: deque[tuple[str, list[tuple[str, str]]]] = deque()
-    queue.append((from_id, []))
-
-    while queue:
-        current_id, path_so_far = queue.popleft()
-        if len(path_so_far) >= max_hops:
-            continue
-
-        neighbors = (fwd.get(current_id, []) + rev.get(current_id, []))
-        for neighbor_id, rel_kind in neighbors:
-            if neighbor_id in visited:
-                continue
-            visited.add(neighbor_id)
-            new_path = path_so_far + [(neighbor_id, rel_kind)]
-            if neighbor_id == to_id:
-                # Reconstruct full path
-                path_entities: list[dict] = []
-                prev_id = from_id
-                for step_id, edge_label in new_path:
-                    prev_e = entity_map.get(prev_id, {})
-                    node = _entity_stub(entity_map.get(prev_id, {}))
-                    node["relation"] = edge_label
-                    path_entities.append(node)
-                    prev_id = step_id
-                # Append the destination
-                path_entities.append(_entity_stub(to_e))
-                return {
-                    "found":  True,
-                    "path":   path_entities,
-                    "length": len(new_path),
-                }
-            queue.append((neighbor_id, new_path))
+    # ---- Phase 2: full graph (semantic + structural) --------------------
+    fwd_all, rev_all = _build_adjacency(entity_map, None)
+    path = _bfs_path(from_id, to_id, to_e, entity_map, fwd_all, rev_all, max_hops)
+    if path is not None:
+        return {
+            "found":     True,
+            "path":      path,
+            "length":    len(path) - 1,
+            "path_type": "structural",
+        }
 
     return {
-        "found":  False,
-        "path":   [],
-        "length": 0,
-        "error":  f"No path found between {from_entity!r} and {to_entity!r} within {max_hops} hops",
+        "found":     False,
+        "path":      [],
+        "length":    0,
+        "path_type": "none",
+        "error":     f"No path found between {from_entity!r} and {to_entity!r} within {max_hops} hops",
     }
 
 
