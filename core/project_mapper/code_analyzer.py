@@ -216,47 +216,66 @@ _CALL_IGNORE: frozenset[str] = frozenset({
 })
 
 
+# ---------------------------------------------------------------------------
+# Factory-function heuristics (shared by _SelfAssignExtractor + _CallExtractor)
+# ---------------------------------------------------------------------------
+
+_FACTORY_PREFIXES: tuple[str, ...] = (
+    "get_", "create_", "build_", "make_", "load_", "init_", "setup_",
+)
+
+
+def _factory_to_class_name(fname: str) -> str:
+    """
+    Convert a factory function name to its likely class name.
+      'get_provider_manager'  → 'ProviderManager'
+      'create_task_queue'     → 'TaskQueue'
+      'build_response'        → 'Response'
+    """
+    for prefix in _FACTORY_PREFIXES:
+        if fname.startswith(prefix):
+            remainder = fname[len(prefix):]
+            if remainder:
+                return "".join(w.capitalize() for w in remainder.split("_"))
+    return ""
+
+
+def _resolve_func_to_class(func: ast.expr) -> str:
+    """
+    Given the func node of an ast.Call, return the likely class name being
+    instantiated or obtained, or an empty string if it can't be determined.
+
+    Handles:
+      SomeClass(...)           → 'SomeClass'
+      get_provider_manager()   → 'ProviderManager'
+      module.SomeClass(...)    → 'SomeClass'
+      module.get_something()   → 'Something'
+    """
+    if isinstance(func, ast.Name):
+        name = func.id
+        if name and name[0].isupper() and name not in _CALL_IGNORE:
+            return name
+        candidate = _factory_to_class_name(name)
+        if candidate and candidate not in _CALL_IGNORE:
+            return candidate
+    elif isinstance(func, ast.Attribute):
+        attr = func.attr
+        if attr and attr[0].isupper() and attr not in _CALL_IGNORE:
+            return attr
+        candidate = _factory_to_class_name(attr)
+        if candidate and candidate not in _CALL_IGNORE:
+            return candidate
+    return ""
+
+
 class _SelfAssignExtractor(ast.NodeVisitor):
     """
-    Extract self.X = SomeClass(...) assignments from any method body.
-
-    Also handles factory-function conventions:
-      self.X = get_some_class(...)  →  attr "some_class"  →  resolve to "SomeClass"
-      self.X = create_some_class()  →  similar
+    Extract self.X = SomeClass(...) or self.X = get_something() assignments
+    from any method body, mapping the attribute name to the resolved class name.
     """
-
-    _FACTORY_PREFIXES = ("get_", "create_", "build_", "make_", "load_", "init_", "setup_")
 
     def __init__(self) -> None:
         self.attr_to_class: dict[str, str] = {}   # attr_name → ClassName
-
-    @staticmethod
-    def _to_class_name(name: str) -> str:
-        """'provider_manager' → 'ProviderManager'"""
-        return "".join(w.capitalize() for w in name.split("_"))
-
-    def _resolve_call_to_class(self, func: ast.expr) -> str:
-        """Try to derive a class name from a call expression's func node."""
-        if isinstance(func, ast.Name):
-            fname = func.id
-            if fname[0].isupper() and fname not in _CALL_IGNORE:
-                return fname   # direct class instantiation: SomeClass(...)
-            # factory function: get_something(...) → "Something"
-            for prefix in self._FACTORY_PREFIXES:
-                if fname.startswith(prefix):
-                    candidate = self._to_class_name(fname[len(prefix):])
-                    if candidate and candidate not in _CALL_IGNORE:
-                        return candidate
-        elif isinstance(func, ast.Attribute):
-            attr = func.attr
-            if attr[0].isupper() and attr not in _CALL_IGNORE:
-                return attr   # module.SomeClass(...)
-            for prefix in self._FACTORY_PREFIXES:
-                if attr.startswith(prefix):
-                    candidate = self._to_class_name(attr[len(prefix):])
-                    if candidate and candidate not in _CALL_IGNORE:
-                        return candidate
-        return ""
 
     def visit_Assign(self, node: ast.Assign) -> None:
         for target in node.targets:
@@ -266,7 +285,7 @@ class _SelfAssignExtractor(ast.NodeVisitor):
                 continue
             attr = target.attr
             if isinstance(node.value, ast.Call):
-                resolved = self._resolve_call_to_class(node.value.func)
+                resolved = _resolve_func_to_class(node.value.func)
                 if resolved:
                     self.attr_to_class[attr] = resolved
         self.generic_visit(node)
@@ -275,8 +294,9 @@ class _SelfAssignExtractor(ast.NodeVisitor):
 class _CallExtractor(ast.NodeVisitor):
     """
     Walk a method body and collect:
-      - instantiated: UpperCaseName(...) calls → likely class instantiations
-      - attr_calls:   self.X.method(...) → X is an attribute used as an object
+      - instantiated: class names obtained by direct instantiation, factory calls,
+                      or class-level attribute access
+      - attr_calls:   self.X.method(...) → X is a stored-object attribute
     """
 
     def __init__(self) -> None:
@@ -286,28 +306,43 @@ class _CallExtractor(ast.NodeVisitor):
     def visit_Call(self, node: ast.Call) -> None:
         func = node.func
 
-        # UpperCaseName(...) — direct class instantiation or class-level call
         if isinstance(func, ast.Name):
             name = func.id
-            if name[0].isupper() and name not in _CALL_IGNORE:
+            # UpperCaseName(...) — direct class instantiation
+            if name and name[0].isupper() and name not in _CALL_IGNORE:
                 self.instantiated.add(name)
+            # get_something() / create_something() anywhere in method body —
+            # the *local variable* pattern: pm = get_provider_manager()
+            # We don't need to track what variable it's assigned to; just
+            # knowing the class was obtained here is enough.
+            else:
+                candidate = _factory_to_class_name(name)
+                if candidate and candidate not in _CALL_IGNORE:
+                    self.instantiated.add(candidate)
 
         elif isinstance(func, ast.Attribute):
-            obj = func.value
+            obj  = func.value
+            attr = func.attr
 
-            # self.X.method(...) — X is an attribute that acts as an object
+            # self.X.method(...) — X is a stored object attribute
             if (isinstance(obj, ast.Attribute)
                     and isinstance(obj.value, ast.Name)
                     and obj.value.id == "self"
                     and not obj.attr.startswith("_")):
                 self.attr_calls.add(obj.attr)
 
-            # SomeName.method(...) where SomeName looks like a class/module
+            # SomeName.method(...) — SomeName looks like a class/module name
             elif (isinstance(obj, ast.Name)
                   and obj.id != "self"
-                  and obj.id[0].isupper()
+                  and obj.id and obj.id[0].isupper()
                   and obj.id not in _CALL_IGNORE):
                 self.instantiated.add(obj.id)
+
+            # module.get_something() or module.SomeClass() — attribute factory/class
+            elif isinstance(obj, ast.Name) and obj.id != "self":
+                candidate = _resolve_func_to_class(func)
+                if candidate and candidate not in _CALL_IGNORE:
+                    self.instantiated.add(candidate)
 
         self.generic_visit(node)
 

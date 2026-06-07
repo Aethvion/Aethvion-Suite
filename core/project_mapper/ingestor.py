@@ -238,8 +238,12 @@ class ProjectIngestor:
         # class are skipped.  Uses the same stub-creation pattern as extends.
         for cls_info, cls_id in zip(analysis.classes, result.class_entity_ids):
             for callee_name in cls_info.calls:
-                # Only wire uppercase names (class instantiations / class-level refs)
+                # Only wire uppercase-first names (class names, not attr names)
                 if not callee_name or not callee_name[0].isupper():
+                    continue
+                # Skip ALL_CAPS names — these are module-level constants,
+                # not classes (e.g. WORKSPACE_ROOT, PROVIDER_CLASSES)
+                if callee_name.isupper():
                     continue
                 # Try existing index first (entity already scanned)
                 target_id = self._index.get(callee_name)
