@@ -138,9 +138,18 @@ def impact_query(
     entity_map:  dict[str, dict],
     index:       Any,
     max_depth:   int = 2,
+    via_kinds:   Optional[list[str]] = None,  # restrict to these relation kinds only
 ) -> dict[str, Any]:
     """
     Find all entities that would be affected if *subject* changes.
+
+    via_kinds, when provided, restricts which incoming relation types are
+    followed during traversal.  Examples:
+      via_kinds=["extends"]           — subclasses only
+      via_kinds=["calls"]             — direct callers only
+      via_kinds=["extends","calls"]   — subclasses + callers
+
+    If omitted, all IMPACT_INCOMING_KINDS are traversed (default behaviour).
 
     Returns a dict with:
       subject      — the resolved entity
@@ -174,6 +183,8 @@ def impact_query(
 
         for source_id, source_name, rel_kind in rev_adj.get(current_id, []):
             if source_id == subject_id or source_id in visited:
+                continue
+            if via_kinds is not None and rel_kind not in via_kinds:
                 continue
             current_name = entity_map.get(current_id, {}).get("name", current_id)
             via = f"{rel_kind} → {current_name}" if via_path else rel_kind
@@ -500,6 +511,14 @@ _SEMANTIC_EDGE_KINDS: frozenset[str] = frozenset({
     "tests",
 })
 
+# Entities whose names match this pattern are skipped as BFS intermediaries
+# in shortest_path Phase 1.  They are legitimate nodes but create misleading
+# shortcuts through shared exception/error handling in dense codebases.
+_EXCEPTION_NAME_PAT: re.Pattern = re.compile(
+    r"(Error|Exception|Warning|NotFound|NotSupported|Forbidden|Denied|Invalid)$",
+    re.IGNORECASE,
+)
+
 # Edges that are structural / file-system-level — used only in Phase 2
 # when no semantic path exists.  These often create spurious shortcuts
 # through shared utilities, loggers, and common stdlib imports.
@@ -534,6 +553,83 @@ def _build_adjacency(
     return fwd, rev
 
 
+_HUB_CALLS_THRESHOLD = 20   # entities called by this many+ distinct sources
+                             # are treated as utility hubs and skipped as
+                             # BFS intermediaries.
+
+
+def _compute_skip_ids(
+    entity_map: dict[str, dict],
+    from_id:    str,
+    to_id:      str,
+) -> frozenset[str]:
+    """
+    Return entity IDs that should be skipped as BFS intermediaries.
+
+    Three categories are excluded from acting as bridge nodes in the path BFS:
+
+    1. Exception / error classes — entities whose name ends with Error,
+       Exception, Warning, NotFound, NotSupported, Forbidden, Denied, or
+       Invalid.  In large codebases these are called by many unrelated
+       components, creating spurious shortcuts (e.g. A calls ValueError,
+       B calls ValueError → BFS treats A and B as 2-hop neighbours).
+
+    2. Test-file entities — entities whose file_path lives inside a tests/
+       directory.  Test subclasses typically extend production classes and
+       call production code, creating cross-cutting shortcuts that aren't
+       meaningful architectural connections.
+
+    3. High-fanin hub nodes — entities called by _HUB_CALLS_THRESHOLD or more
+       distinct sources.  These are typically widely-used utility or config
+       classes (e.g. Django's ImproperlyConfigured, Python's logging.Logger)
+       that are called by dozens of unrelated modules, making them appear as
+       false bridges between architecturally unconnected entities.
+
+    The source and destination of the query are NEVER skipped, even if they
+    match one of the above patterns — users may legitimately search for paths
+    between two exception classes or two test helpers.
+
+    The fallback in shortest_path retries without the skip set if no path is
+    found, so a legitimate path through a hub node is never permanently lost.
+    """
+    protected = {from_id, to_id}
+    skip: set[str] = set()
+
+    # Build calls in-degree map (how many distinct entities call each target)
+    calls_in_degree: dict[str, int] = {}
+    for entity in entity_map.values():
+        for rel in entity.get("sections", {}).get("relations", []):
+            if rel.get("kind") == "calls":
+                tid = rel.get("target_id", "")
+                if tid and tid not in protected:
+                    calls_in_degree[tid] = calls_in_degree.get(tid, 0) + 1
+
+    for eid, entity in entity_map.items():
+        if eid in protected:
+            continue
+        name      = entity.get("name", "")
+        file_path = (
+            entity.get("sections", {})
+                  .get("properties", {})
+                  .get("file_path", "")
+        )
+        # 1. Exception-named classes
+        if _EXCEPTION_NAME_PAT.search(name):
+            skip.add(eid)
+        # 2. Test-file entities
+        elif file_path and (
+            "tests/" in file_path
+            or "/test_" in file_path
+            or file_path.startswith("test_")
+        ):
+            skip.add(eid)
+        # 3. High-fanin utility hubs
+        elif calls_in_degree.get(eid, 0) >= _HUB_CALLS_THRESHOLD:
+            skip.add(eid)
+
+    return frozenset(skip)
+
+
 def _bfs_path(
     from_id:    str,
     to_id:      str,
@@ -542,6 +638,7 @@ def _bfs_path(
     fwd:        dict[str, list[tuple[str, str]]],
     rev:        dict[str, list[tuple[str, str]]],
     max_hops:   int,
+    skip_ids:   frozenset[str] = frozenset(),
 ) -> Optional[list[dict]]:
     """
     BFS from *from_id* to *to_id* using the given adjacency dicts.
@@ -560,6 +657,10 @@ def _bfs_path(
         neighbors = fwd.get(current_id, []) + rev.get(current_id, [])
         for neighbor_id, rel_kind in neighbors:
             if neighbor_id in visited:
+                continue
+            # Skip hub intermediaries (exception classes, test entities) —
+            # but never skip the destination itself.
+            if neighbor_id != to_id and neighbor_id in skip_ids:
                 continue
             visited.add(neighbor_id)
             new_path = path_so_far + [(neighbor_id, rel_kind)]
@@ -624,9 +725,22 @@ def shortest_path(
             "length": 0, "path_type": "semantic",
         }
 
+    # Pre-compute skip set: exception-named classes + test-file entities.
+    # These are skipped as intermediaries in Phase 1 to avoid spurious
+    # shortcuts (e.g. A calls ValueError ← B calls ValueError → path A→B).
+    # If no path is found with the skip set we retry without it, so no
+    # legitimate path through an exception class is permanently lost.
+    skip_ids = _compute_skip_ids(entity_map, from_id, to_id)
+
     # ---- Phase 1: semantic edges only -----------------------------------
     fwd_sem, rev_sem = _build_adjacency(entity_map, _SEMANTIC_EDGE_KINDS)
-    path = _bfs_path(from_id, to_id, to_e, entity_map, fwd_sem, rev_sem, max_hops)
+    path = _bfs_path(from_id, to_id, to_e, entity_map, fwd_sem, rev_sem,
+                     max_hops, skip_ids)
+    if path is None and skip_ids:
+        # Retry without the skip set — some architectures legitimately route
+        # through error classes (strategy pattern on validation exceptions, …)
+        path = _bfs_path(from_id, to_id, to_e, entity_map, fwd_sem, rev_sem,
+                         max_hops)
     if path is not None:
         return {
             "found":     True,
@@ -637,7 +751,11 @@ def shortest_path(
 
     # ---- Phase 2: full graph (semantic + structural) --------------------
     fwd_all, rev_all = _build_adjacency(entity_map, None)
-    path = _bfs_path(from_id, to_id, to_e, entity_map, fwd_all, rev_all, max_hops)
+    path = _bfs_path(from_id, to_id, to_e, entity_map, fwd_all, rev_all,
+                     max_hops, skip_ids)
+    if path is None and skip_ids:
+        path = _bfs_path(from_id, to_id, to_e, entity_map, fwd_all, rev_all,
+                         max_hops)
     if path is not None:
         return {
             "found":     True,
