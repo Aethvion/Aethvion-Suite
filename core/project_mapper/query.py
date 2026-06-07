@@ -85,7 +85,13 @@ def _resolve_entity(
     return None
 
 
-def _entity_stub(entity: dict, hop: int = 0, via: str = "", slim: bool = False) -> dict:
+def _entity_stub(
+    entity:      dict,
+    hop:         int  = 0,
+    via:         str  = "",
+    slim:        bool = False,
+    max_summary: int  = 180,
+) -> dict:
     """
     Return an agent-friendly representation of an entity.
 
@@ -96,6 +102,11 @@ def _entity_stub(entity: dict, hop: int = 0, via: str = "", slim: bool = False) 
                            Use when you only need a file list — e.g. "which
                            files are affected by this change?" — and don't need
                            summaries or metadata.
+    max_summary          — maximum characters of the summary field to include
+                           (default 180, full).  Pass 0 to strip the summary
+                           entirely.  Ignored when slim=True (slim has no
+                           summary).  Used by impact_query for hop-aware
+                           trimming: hop=1 gets full summaries, hop>1 gets 0.
     """
     props = entity.get("sections", {}).get("properties", {})
 
@@ -109,16 +120,18 @@ def _entity_stub(entity: dict, hop: int = 0, via: str = "", slim: bool = False) 
             stub["via"] = via
         return stub
 
-    core = entity.get("sections", {}).get("core", {})
+    core    = entity.get("sections", {}).get("core", {})
+    summary = core.get("summary", "")
     stub = {
-        "id":      entity["id"],
-        "name":    entity.get("name", ""),
-        "type":    entity.get("type", ""),
-        "kind":    entity.get("kind"),
-        "status":  entity.get("status", "active"),
-        "summary": core.get("summary", "")[:180],
-        "tags":    core.get("tags", [])[:5],
+        "id":     entity["id"],
+        "name":   entity.get("name", ""),
+        "type":   entity.get("type", ""),
+        "kind":   entity.get("kind"),
+        "status": entity.get("status", "active"),
+        "tags":   core.get("tags", [])[:5],
     }
+    if max_summary > 0 and summary:
+        stub["summary"] = summary[:max_summary]
     if props.get("file_path"):
         stub["file_path"] = props["file_path"]
     if props.get("architectural_pattern"):
@@ -178,6 +191,7 @@ def impact_query(
     via_kinds:     Optional[list[str]] = None,  # restrict to these relation kinds only
     exclude_tests: bool = True,                  # filter out test-file entities from results
     slim:          bool = False,                 # return name+file_path only (no metadata)
+    summary_depth: int = 1,                      # include summaries only for hop <= this value
 ) -> dict[str, Any]:
     """
     Find all entities that would be affected if *subject* changes.
@@ -197,6 +211,12 @@ def impact_query(
     slim=True returns only name + file_path (+ hop/via) per affected entity,
     cutting per-entity token cost from ~90 to ~16.  Use for file-list queries
     ("which files are affected?") when full metadata is not needed.
+
+    summary_depth controls how far out summaries are included (ignored when
+    slim=True).  Default is 1: hop=1 entities get full summaries, hop=2+
+    entities have their summary stripped (saves tokens on wide blast-radius
+    queries where transitive dependents only need name + file_path anyway).
+    Set to 0 to strip all summaries, or to a higher value to keep them deeper.
 
     Returns a dict with:
       subject      — the resolved entity (always full, regardless of slim)
@@ -247,7 +267,8 @@ def impact_query(
         if e:
             if exclude_tests and _is_test_entity(e):
                 continue
-            affected.append(_entity_stub(e, hop=hop, via=via, slim=slim))
+            ms = 180 if hop <= summary_depth else 0
+            affected.append(_entity_stub(e, hop=hop, via=via, slim=slim, max_summary=ms))
 
     return {
         "subject":    _entity_stub(subject_entity),   # subject always full

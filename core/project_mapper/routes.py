@@ -281,10 +281,14 @@ class ImpactRequest(BaseModel):
     #   via_kinds=["calls"]          → direct callers only
     #   via_kinds=["extends","calls"]→ subclasses + callers
     # Omit for full impact (all IMPACT_INCOMING_KINDS).
-    exclude_tests: bool = True                 # filter test-file entities from results
+    exclude_tests:  bool = True                # filter test-file entities from results
     # Set to False to include test subclasses / test helpers in the impact list.
-    slim:          bool = False                # return name+file_path only (~16 tok/entity)
+    slim:           bool = False               # return name+file_path only (~16 tok/entity)
     # Set to True when you only need a file list, not full metadata/summaries.
+    summary_depth:  int  = 1                   # include summaries only for hop <= this value
+    # Default=1: hop=1 entities get full summaries, hop=2+ entities are stripped.
+    # Set to 0 to strip all summaries, or higher to keep summaries further out.
+    # Ignored when slim=True.
 
 
 class ContextRequest(BaseModel):
@@ -339,7 +343,7 @@ async def query_impact(req: ImpactRequest):
     entity_map = await asyncio.to_thread(build_entity_map, writer)
     result     = await asyncio.to_thread(
         impact_query, req.entity, entity_map, index, depth,
-        req.via_kinds, req.exclude_tests, req.slim,
+        req.via_kinds, req.exclude_tests, req.slim, req.summary_depth,
     )
 
     if result.get("not_found"):
