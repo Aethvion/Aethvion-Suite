@@ -96,6 +96,57 @@ def _module_path_from_file(rel_path: str) -> str:
     return rel_path.replace("\\", "/").removesuffix(".py").replace("/", ".")
 
 
+def _import_to_file_candidates(
+    module: str,
+    level: int,
+    current_file: str,
+) -> list[str]:
+    """
+    Return candidate file-path strings for an import statement.
+
+    Given the module name and relative level, produce the ordered list of
+    file paths we should look up in the name index to find the real entity.
+
+    Examples
+    --------
+    Absolute  : module="core.companions.engine.history", level=0
+                → ["core/companions/engine/history.py",
+                   "core/companions/engine/history/__init__.py"]
+
+    Relative  : module="engine", level=1, current="core/companions/companion_engine.py"
+                → ["core/companions/engine.py",
+                   "core/companions/engine/__init__.py"]
+
+    Relative  : module="", level=1, current="core/companions/companion_engine.py"
+                → ["core/companions/__init__.py"]
+    """
+    candidates: list[str] = []
+
+    if level == 0:
+        # Absolute import
+        if not module:
+            return candidates
+        base = module.replace(".", "/")
+        candidates.append(base + ".py")
+        candidates.append(base + "/__init__.py")
+    else:
+        # Relative import — resolve against the current file's directory tree
+        parts = current_file.replace("\\", "/").split("/")
+        # Go up (level) directories from the file's own directory
+        pkg_parts = parts[:-level]          # e.g. level=1 → drop the filename
+        if module:
+            sub = module.replace(".", "/")
+            base = "/".join(pkg_parts + [sub])
+            candidates.append(base + ".py")
+            candidates.append(base + "/__init__.py")
+        else:
+            # "from . import X" — the module name is empty; point at the package
+            base = "/".join(pkg_parts)
+            candidates.append(base + "/__init__.py")
+
+    return candidates
+
+
 def _extract_json(raw: str) -> dict[str, Any]:
     clean = re.sub(r"```(?:json)?", "", raw).strip().rstrip("`").strip()
     start = clean.find("{")
@@ -187,18 +238,36 @@ class ProjectIngestor:
         external_imports = [i for i in analysis.imports if not _is_internal_import(i, top_pkgs)]
 
         for imp in internal_imports:
-            target_name = imp.module or ("." * imp.level)
-            if target_name and target_name != ".":
-                target_entity, _ = self._writer.create(
-                    name=target_name,
-                    entity_type="module",
-                    source="stub",
-                    kind="software.module",
-                    status="stub",
-                )
+            # Try to resolve the import to an already-scanned file entity
+            # before falling back to a dotted-name stub.
+            target_id: Optional[str] = None
+            for candidate in _import_to_file_candidates(
+                imp.module, imp.level, analysis.path
+            ):
+                target_id = self._index.get(candidate)
+                if target_id:
+                    break
+
+            if target_id:
+                # Wire directly to the real module entity — no stub needed
                 result.relations_created += self._add_relation(
-                    module_entity["id"], "imports", target_entity["id"],
+                    module_entity["id"], "imports", target_id,
                 )
+            else:
+                # Target not scanned yet — create a stub for the stub resolver
+                # to re-wire at end-of-scan.
+                target_name = imp.module or ("." * imp.level)
+                if target_name and target_name != ".":
+                    target_entity, _ = self._writer.create(
+                        name=target_name,
+                        entity_type="module",
+                        source="stub",
+                        kind="software.module",
+                        status="stub",
+                    )
+                    result.relations_created += self._add_relation(
+                        module_entity["id"], "imports", target_entity["id"],
+                    )
 
         for imp in external_imports:
             if not imp.module:
