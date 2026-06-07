@@ -109,6 +109,22 @@ def _entity_stub(entity: dict, hop: int = 0, via: str = "") -> dict:
     return stub
 
 
+def _is_test_entity(entity: dict) -> bool:
+    """Return True if the entity lives in a test file or test directory."""
+    file_path = (
+        entity.get("sections", {})
+              .get("properties", {})
+              .get("file_path", "")
+    )
+    if not file_path:
+        return False
+    return (
+        "tests/" in file_path
+        or "/test_" in file_path
+        or file_path.startswith("test_")
+    )
+
+
 # ---------------------------------------------------------------------------
 # 1. Impact Analysis
 # ---------------------------------------------------------------------------
@@ -134,11 +150,12 @@ def build_reverse_impact_adj(
 
 
 def impact_query(
-    subject:     str,          # entity name or ID
-    entity_map:  dict[str, dict],
-    index:       Any,
-    max_depth:   int = 2,
-    via_kinds:   Optional[list[str]] = None,  # restrict to these relation kinds only
+    subject:       str,          # entity name or ID
+    entity_map:    dict[str, dict],
+    index:         Any,
+    max_depth:     int = 2,
+    via_kinds:     Optional[list[str]] = None,  # restrict to these relation kinds only
+    exclude_tests: bool = True,                  # filter out test-file entities from results
 ) -> dict[str, Any]:
     """
     Find all entities that would be affected if *subject* changes.
@@ -150,6 +167,10 @@ def impact_query(
       via_kinds=["extends","calls"]   — subclasses + callers
 
     If omitted, all IMPACT_INCOMING_KINDS are traversed (default behaviour).
+
+    exclude_tests=True (default) removes entities whose file_path lives inside
+    a tests/ directory or whose filename starts with test_.  Set to False to
+    include test classes and test helpers in the result.
 
     Returns a dict with:
       subject      — the resolved entity
@@ -198,6 +219,8 @@ def impact_query(
     for eid, (hop, via) in sorted(visited.items(), key=lambda x: x[1][0]):
         e = entity_map.get(eid)
         if e:
+            if exclude_tests and _is_test_entity(e):
+                continue
             affected.append(_entity_stub(e, hop=hop, via=via))
 
     return {
@@ -533,23 +556,29 @@ _STRUCTURAL_EDGE_KINDS: frozenset[str] = frozenset({
 def _build_adjacency(
     entity_map: dict[str, dict],
     allowed_kinds: Optional[frozenset[str]],
-) -> tuple[dict[str, list[tuple[str, str]]], dict[str, list[tuple[str, str]]]]:
+) -> tuple[dict[str, list[tuple[str, str, str]]], dict[str, list[tuple[str, str, str]]]]:
     """
     Build forward and reverse adjacency dicts from the entity graph.
+
+    Each adjacency entry is a 3-tuple: (neighbor_id, relation_kind, note).
+    The *note* field carries the optional annotation stored on the relation
+    (e.g. "via method_name" for calls edges), so path queries can surface
+    which method initiates each call hop.
 
     If *allowed_kinds* is None, all relation kinds are included.
     If it is a frozenset, only relations whose kind is in that set are included.
     """
-    fwd: dict[str, list[tuple[str, str]]] = {}
-    rev: dict[str, list[tuple[str, str]]] = {}
+    fwd: dict[str, list[tuple[str, str, str]]] = {}
+    rev: dict[str, list[tuple[str, str, str]]] = {}
     for eid, entity in entity_map.items():
         for rel in entity.get("sections", {}).get("relations", []):
             tid  = rel.get("target_id", "")
             kind = rel.get("kind", "related_to")
+            note = rel.get("note", "")
             if tid and tid in entity_map:
                 if allowed_kinds is None or kind in allowed_kinds:
-                    fwd.setdefault(eid, []).append((tid, kind))
-                    rev.setdefault(tid, []).append((eid, kind))
+                    fwd.setdefault(eid, []).append((tid, kind, note))
+                    rev.setdefault(tid, []).append((eid, kind, note))
     return fwd, rev
 
 
@@ -635,18 +664,24 @@ def _bfs_path(
     to_id:      str,
     to_entity:  dict,
     entity_map: dict[str, dict],
-    fwd:        dict[str, list[tuple[str, str]]],
-    rev:        dict[str, list[tuple[str, str]]],
+    fwd:        dict[str, list[tuple[str, str, str]]],
+    rev:        dict[str, list[tuple[str, str, str]]],
     max_hops:   int,
     skip_ids:   frozenset[str] = frozenset(),
 ) -> Optional[list[dict]]:
     """
     BFS from *from_id* to *to_id* using the given adjacency dicts.
-    Returns the path as a list of entity stubs (with 'relation' edge labels),
-    or None if no path is found within *max_hops*.
+    Returns the path as a list of entity stubs (with 'relation' edge labels
+    and optional 'note' annotations), or None if no path is found within
+    *max_hops*.
+
+    Each path node carries:
+      relation — the relation kind that leads to the NEXT node
+      note     — optional annotation on that edge (e.g. "via method_name")
+    The final node (destination) has no relation/note fields.
     """
     visited: set[str] = {from_id}
-    queue: deque[tuple[str, list[tuple[str, str]]]] = deque()
+    queue: deque[tuple[str, list[tuple[str, str, str]]]] = deque()
     queue.append((from_id, []))
 
     while queue:
@@ -655,7 +690,7 @@ def _bfs_path(
             continue
 
         neighbors = fwd.get(current_id, []) + rev.get(current_id, [])
-        for neighbor_id, rel_kind in neighbors:
+        for neighbor_id, rel_kind, edge_note in neighbors:
             if neighbor_id in visited:
                 continue
             # Skip hub intermediaries (exception classes, test entities) —
@@ -663,15 +698,17 @@ def _bfs_path(
             if neighbor_id != to_id and neighbor_id in skip_ids:
                 continue
             visited.add(neighbor_id)
-            new_path = path_so_far + [(neighbor_id, rel_kind)]
+            new_path = path_so_far + [(neighbor_id, rel_kind, edge_note)]
 
             if neighbor_id == to_id:
                 # Reconstruct path with entity stubs
                 path_entities: list[dict] = []
                 prev_id = from_id
-                for step_id, edge_label in new_path:
+                for step_id, edge_label, note in new_path:
                     node = _entity_stub(entity_map.get(prev_id, {}))
                     node["relation"] = edge_label
+                    if note:
+                        node["note"] = note
                     path_entities.append(node)
                     prev_id = step_id
                 path_entities.append(_entity_stub(to_entity))

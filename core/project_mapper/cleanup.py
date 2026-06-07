@@ -389,6 +389,22 @@ def resolve_stubs(
                 if target and target.get("status") == "active":
                     real_id = indexed_id
 
+        # Strategy 2b: dotted-name last-segment lookup.
+        # Handles the common pattern where a base class is referenced with its
+        # module prefix (e.g. "class Foo(models.Model):" stores the base as
+        # "models.Model", but the real entity is indexed under "Model").
+        # Only applied to names with exactly one dot whose last segment starts
+        # with an uppercase letter (UpperCamelCase class name), to avoid false
+        # matches on deeply-nested module paths like "xml.etree.ElementTree".
+        if real_id is None and stub_name.count(".") == 1:
+            last_seg = stub_name.rsplit(".", 1)[-1]
+            if last_seg and last_seg[0].isupper():
+                indexed_id = index.get(last_seg)
+                if indexed_id and indexed_id != stub_id:
+                    target = writer.get(indexed_id)
+                    if target and target.get("status") == "active":
+                        real_id = indexed_id
+
         if real_id:
             to_resolve[stub_id] = real_id
 

@@ -271,16 +271,18 @@ async def enrich_unenriched_modules(
 # ---------------------------------------------------------------------------
 
 class ImpactRequest(BaseModel):
-    entity:    str                         # entity name or ID to analyse
-    db:        str = "default"
-    path:      Optional[str] = None
-    depth:     int = 2                     # 1–4 hops
-    via_kinds: Optional[list[str]] = None  # restrict to these relation kinds
+    entity:        str                         # entity name or ID to analyse
+    db:            str = "default"
+    path:          Optional[str] = None
+    depth:         int = 2                     # 1–4 hops
+    via_kinds:     Optional[list[str]] = None  # restrict to these relation kinds
     # Examples:
     #   via_kinds=["extends"]        → subclasses only
     #   via_kinds=["calls"]          → direct callers only
     #   via_kinds=["extends","calls"]→ subclasses + callers
     # Omit for full impact (all IMPACT_INCOMING_KINDS).
+    exclude_tests: bool = True                 # filter test-file entities from results
+    # Set to False to include test subclasses / test helpers in the impact list.
 
 
 class ContextRequest(BaseModel):
@@ -332,7 +334,7 @@ async def query_impact(req: ImpactRequest):
 
     entity_map = await asyncio.to_thread(build_entity_map, writer)
     result     = await asyncio.to_thread(
-        impact_query, req.entity, entity_map, index, depth, req.via_kinds
+        impact_query, req.entity, entity_map, index, depth, req.via_kinds, req.exclude_tests
     )
 
     if result.get("not_found"):
