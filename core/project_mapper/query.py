@@ -85,10 +85,32 @@ def _resolve_entity(
     return None
 
 
-def _entity_stub(entity: dict, hop: int = 0, via: str = "") -> dict:
-    """Return a compact agent-friendly representation of an entity."""
+def _entity_stub(entity: dict, hop: int = 0, via: str = "", slim: bool = False) -> dict:
+    """
+    Return an agent-friendly representation of an entity.
+
+    slim=False (default) — full stub: id, name, type, kind, status, summary,
+                           tags, file_path, architectural_pattern, hop, via.
+    slim=True            — minimal stub: name, file_path only (+ hop/via when
+                           present).  ~16 tokens per entity vs ~90 for full.
+                           Use when you only need a file list — e.g. "which
+                           files are affected by this change?" — and don't need
+                           summaries or metadata.
+    """
+    props = entity.get("sections", {}).get("properties", {})
+
+    if slim:
+        stub: dict[str, Any] = {"name": entity.get("name", "")}
+        if props.get("file_path"):
+            stub["file_path"] = props["file_path"]
+        if hop > 0:
+            stub["hop"] = hop
+        if via:
+            stub["via"] = via
+        return stub
+
     core = entity.get("sections", {}).get("core", {})
-    stub: dict[str, Any] = {
+    stub = {
         "id":      entity["id"],
         "name":    entity.get("name", ""),
         "type":    entity.get("type", ""),
@@ -97,7 +119,6 @@ def _entity_stub(entity: dict, hop: int = 0, via: str = "") -> dict:
         "summary": core.get("summary", "")[:180],
         "tags":    core.get("tags", [])[:5],
     }
-    props = entity.get("sections", {}).get("properties", {})
     if props.get("file_path"):
         stub["file_path"] = props["file_path"]
     if props.get("architectural_pattern"):
@@ -156,6 +177,7 @@ def impact_query(
     max_depth:     int = 2,
     via_kinds:     Optional[list[str]] = None,  # restrict to these relation kinds only
     exclude_tests: bool = True,                  # filter out test-file entities from results
+    slim:          bool = False,                 # return name+file_path only (no metadata)
 ) -> dict[str, Any]:
     """
     Find all entities that would be affected if *subject* changes.
@@ -172,8 +194,12 @@ def impact_query(
     a tests/ directory or whose filename starts with test_.  Set to False to
     include test classes and test helpers in the result.
 
+    slim=True returns only name + file_path (+ hop/via) per affected entity,
+    cutting per-entity token cost from ~90 to ~16.  Use for file-list queries
+    ("which files are affected?") when full metadata is not needed.
+
     Returns a dict with:
-      subject      — the resolved entity
+      subject      — the resolved entity (always full, regardless of slim)
       affected     — list of affected entity stubs (with hop + via)
       total        — count of affected entities
       depth_used   — actual depth reached
@@ -221,10 +247,10 @@ def impact_query(
         if e:
             if exclude_tests and _is_test_entity(e):
                 continue
-            affected.append(_entity_stub(e, hop=hop, via=via))
+            affected.append(_entity_stub(e, hop=hop, via=via, slim=slim))
 
     return {
-        "subject":    _entity_stub(subject_entity),
+        "subject":    _entity_stub(subject_entity),   # subject always full
         "affected":   affected,
         "total":      len(affected),
         "depth_used": max_depth,
@@ -424,9 +450,13 @@ def context_query(
     expansion_hops: int = 1,
     detail_level: str = "medium",
     max_results:  int = 40,
+    slim:         bool = False,
 ) -> dict[str, Any]:
     """
     Return a focused context package relevant to the task described in *q*.
+
+    slim=True returns only name + file_path per entity — useful when building
+    a file-read list before diving into implementation detail.
 
     Steps:
       1. Tokenize and score all entities by keyword relevance.
@@ -493,8 +523,9 @@ def context_query(
         etype = entity.get("type", "other")
         if etype not in detail_types and hop > 0:
             continue  # don't include expanded entities outside this detail level
-        stub = _entity_stub(entity, hop=hop)
-        stub["relevance_score"] = score
+        stub = _entity_stub(entity, hop=hop, slim=slim)
+        if not slim:
+            stub["relevance_score"] = score
         by_type.setdefault(etype, []).append(stub)
         all_stubs.append(stub)
         if len(all_stubs) >= max_results:
@@ -668,6 +699,7 @@ def _bfs_path(
     rev:        dict[str, list[tuple[str, str, str]]],
     max_hops:   int,
     skip_ids:   frozenset[str] = frozenset(),
+    slim:       bool = False,
 ) -> Optional[list[dict]]:
     """
     BFS from *from_id* to *to_id* using the given adjacency dicts.
@@ -705,13 +737,13 @@ def _bfs_path(
                 path_entities: list[dict] = []
                 prev_id = from_id
                 for step_id, edge_label, note in new_path:
-                    node = _entity_stub(entity_map.get(prev_id, {}))
+                    node = _entity_stub(entity_map.get(prev_id, {}), slim=slim)
                     node["relation"] = edge_label
                     if note:
                         node["note"] = note
                     path_entities.append(node)
                     prev_id = step_id
-                path_entities.append(_entity_stub(to_entity))
+                path_entities.append(_entity_stub(to_entity, slim=slim))
                 return path_entities
 
             queue.append((neighbor_id, new_path))
@@ -725,6 +757,7 @@ def shortest_path(
     entity_map:  dict[str, dict],
     index:       Any,
     max_hops:    int = 6,
+    slim:        bool = False,
 ) -> dict[str, Any]:
     """
     Find the shortest meaningful path between two entities.
@@ -758,7 +791,7 @@ def shortest_path(
 
     if from_id == to_id:
         return {
-            "found": True, "path": [_entity_stub(from_e)],
+            "found": True, "path": [_entity_stub(from_e, slim=slim)],
             "length": 0, "path_type": "semantic",
         }
 
@@ -772,12 +805,12 @@ def shortest_path(
     # ---- Phase 1: semantic edges only -----------------------------------
     fwd_sem, rev_sem = _build_adjacency(entity_map, _SEMANTIC_EDGE_KINDS)
     path = _bfs_path(from_id, to_id, to_e, entity_map, fwd_sem, rev_sem,
-                     max_hops, skip_ids)
+                     max_hops, skip_ids, slim=slim)
     if path is None and skip_ids:
         # Retry without the skip set — some architectures legitimately route
         # through error classes (strategy pattern on validation exceptions, …)
         path = _bfs_path(from_id, to_id, to_e, entity_map, fwd_sem, rev_sem,
-                         max_hops)
+                         max_hops, slim=slim)
     if path is not None:
         return {
             "found":     True,
@@ -789,10 +822,10 @@ def shortest_path(
     # ---- Phase 2: full graph (semantic + structural) --------------------
     fwd_all, rev_all = _build_adjacency(entity_map, None)
     path = _bfs_path(from_id, to_id, to_e, entity_map, fwd_all, rev_all,
-                     max_hops, skip_ids)
+                     max_hops, skip_ids, slim=slim)
     if path is None and skip_ids:
         path = _bfs_path(from_id, to_id, to_e, entity_map, fwd_all, rev_all,
-                         max_hops)
+                         max_hops, slim=slim)
     if path is not None:
         return {
             "found":     True,

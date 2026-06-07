@@ -283,6 +283,8 @@ class ImpactRequest(BaseModel):
     # Omit for full impact (all IMPACT_INCOMING_KINDS).
     exclude_tests: bool = True                 # filter test-file entities from results
     # Set to False to include test subclasses / test helpers in the impact list.
+    slim:          bool = False                # return name+file_path only (~16 tok/entity)
+    # Set to True when you only need a file list, not full metadata/summaries.
 
 
 class ContextRequest(BaseModel):
@@ -293,6 +295,7 @@ class ContextRequest(BaseModel):
     depth:        int = 1                           # expansion hops (0–2)
     detail_level: str = "medium"                    # "high" | "medium" | "low"
     max_results:  int = 40
+    slim:         bool = False                       # return name+file_path only (~16 tok/entity)
 
 
 class PathRequest(BaseModel):
@@ -301,6 +304,7 @@ class PathRequest(BaseModel):
     db:          str = "default"
     path:        Optional[str] = None
     max_hops:    int = 6
+    slim:        bool = False          # return name+file_path only per path node
 
 
 class ContributeRequest(BaseModel):
@@ -334,7 +338,8 @@ async def query_impact(req: ImpactRequest):
 
     entity_map = await asyncio.to_thread(build_entity_map, writer)
     result     = await asyncio.to_thread(
-        impact_query, req.entity, entity_map, index, depth, req.via_kinds, req.exclude_tests
+        impact_query, req.entity, entity_map, index, depth,
+        req.via_kinds, req.exclude_tests, req.slim,
     )
 
     if result.get("not_found"):
@@ -373,6 +378,7 @@ async def query_context(req: ContextRequest):
         depth,
         req.detail_level,
         req.max_results,
+        req.slim,
     )
     return result
 
@@ -397,6 +403,7 @@ async def query_path(req: PathRequest):
         entity_map,
         index,
         max(2, min(req.max_hops, 8)),
+        req.slim,
     )
     return result
 
