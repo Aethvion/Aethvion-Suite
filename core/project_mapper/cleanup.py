@@ -309,3 +309,144 @@ def run_deletion_cleanup(
         logger.debug("[Cleanup] Deletion cleanup: no missing files")
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# 5. Stub resolution pass
+# ---------------------------------------------------------------------------
+
+@dataclass
+class StubResolveResult:
+    stubs_checked:  int = 0
+    stubs_resolved: int = 0
+    relations_rewired: int = 0
+    errors: list[str] = field(default_factory=list)
+
+
+def resolve_stubs(
+    writer: "EntityWriter",
+    index:  "NameIndex",
+) -> StubResolveResult:
+    """
+    Post-scan pass: find stub entities whose name can now be matched to a
+    real active entity and re-wire all incoming relations to point at the
+    real entity.  Marks resolved stubs as "retired" afterward.
+
+    Two resolution strategies are tried in order:
+
+    1. **Dotted-path → file-path conversion** (for module stubs created by
+       the import ingestor):
+       ``core.companions.engine.history``  →  ``core/companions/engine/history.py``
+       This covers the common case where an import stub was created before
+       the target file was scanned.
+
+    2. **Name index lookup** (for class/function stubs):
+       If an active entity now exists in the name index under the stub's
+       name, re-wire to it.  This covers forward-reference stubs whose
+       target class was scanned in a later file.
+
+    External-package stubs (``openai``, ``abc``, ``typing``, …) that cannot
+    be resolved by either strategy are left unchanged — they correctly
+    represent external dependencies.
+    """
+    result = StubResolveResult()
+
+    # Build a fast lookup: active entity name → id
+    # Also load all entities into memory for relation scanning.
+    all_entities: list[dict[str, Any]] = writer.list_all(include_deleted=False)
+    active_by_name: dict[str, str] = {
+        e["name"]: e["id"]
+        for e in all_entities
+        if e.get("status") == "active"
+    }
+
+    stubs = [e for e in all_entities if e.get("status") == "stub"]
+    result.stubs_checked = len(stubs)
+
+    if not stubs:
+        logger.debug("[StubResolver] No stubs to resolve")
+        return result
+
+    # --- Build stub_id → real_id resolution map ---
+    to_resolve: dict[str, str] = {}  # stub_id → real_id
+
+    for stub in stubs:
+        stub_id   = stub["id"]
+        stub_name = stub["name"]
+        real_id:  str | None = None
+
+        # Strategy 1: dotted module path → file path
+        if "." in stub_name and "/" not in stub_name:
+            candidate_fp = stub_name.replace(".", "/") + ".py"
+            real_id = active_by_name.get(candidate_fp)
+
+        # Strategy 2: name index lookup (catches late-scanned forward refs)
+        if real_id is None:
+            indexed_id = index.get(stub_name)
+            if indexed_id and indexed_id != stub_id:
+                # Confirm the indexed entity is active, not another stub
+                target = writer.get(indexed_id)
+                if target and target.get("status") == "active":
+                    real_id = indexed_id
+
+        if real_id:
+            to_resolve[stub_id] = real_id
+
+    if not to_resolve:
+        logger.debug(f"[StubResolver] {len(stubs)} stubs checked, none resolvable")
+        return result
+
+    # --- Re-wire incoming relations across all entities ---
+    for entity in all_entities:
+        eid  = entity["id"]
+        rels = entity.get("sections", {}).get("relations", [])
+        if not rels:
+            continue
+
+        new_rels: list[dict[str, Any]] = []
+        changed = False
+        seen_pairs: set[tuple[str, str]] = set()  # (kind, target_id) dedup
+
+        # First pass: keep existing non-stub relations, building seen set
+        for rel in rels:
+            tid  = rel.get("target_id", "")
+            kind = rel.get("kind", "")
+            if tid not in to_resolve:
+                pair = (kind, tid)
+                if pair not in seen_pairs:
+                    seen_pairs.add(pair)
+                    new_rels.append(rel)
+
+        # Second pass: add re-wired relations (skip if already present)
+        for rel in rels:
+            tid  = rel.get("target_id", "")
+            kind = rel.get("kind", "")
+            if tid in to_resolve:
+                new_tid = to_resolve[tid]
+                pair    = (kind, new_tid)
+                if pair not in seen_pairs:
+                    seen_pairs.add(pair)
+                    new_rel = {**rel, "target_id": new_tid}
+                    new_rels.append(new_rel)
+                    result.relations_rewired += 1
+                    changed = True
+
+        if changed:
+            try:
+                writer.update(eid, {"sections": {"relations": new_rels}}, merge_sections=False)
+            except Exception as exc:
+                result.errors.append(f"re-wire {eid}: {exc}")
+
+    # --- Delete resolved stubs (they are superseded by their real entity) ---
+    for stub_id in to_resolve:
+        try:
+            writer.update(stub_id, {"status": "deleted"})
+        except Exception as exc:
+            result.errors.append(f"delete stub {stub_id}: {exc}")
+
+    result.stubs_resolved = len(to_resolve)
+    logger.info(
+        f"[StubResolver] Resolved {result.stubs_resolved}/{result.stubs_checked} stubs, "
+        f"re-wired {result.relations_rewired} relations"
+    )
+    return result

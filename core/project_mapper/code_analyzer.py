@@ -79,6 +79,7 @@ class FunctionInfo:
     is_async:    bool = False
     line_start:  int = 0
     line_end:    int = 0
+    calls:       list[str] = field(default_factory=list)  # class/object names this function calls
 
 
 @dataclass
@@ -347,6 +348,33 @@ class _CallExtractor(ast.NodeVisitor):
         self.generic_visit(node)
 
 
+def _extract_function_calls(
+    fn_node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> list[str]:
+    """
+    Return a deduplicated list of class/object names that *fn_node* calls.
+
+    Applies the same extraction logic as _extract_class_calls but for a
+    single top-level function node: direct UpperCaseName() instantiations,
+    factory-function patterns (get_X() → X), and local variable assignments
+    that resolve to a class name.
+    """
+    extractor = _CallExtractor()
+    extractor.visit(fn_node)
+
+    # Resolve factory-pattern names that ended up in instantiated
+    resolved: set[str] = set(extractor.instantiated)
+
+    # attr_calls from a top-level function are unresolvable (no self),
+    # but keep uppercase ones as potential class names
+    for attr in extractor.attr_calls:
+        if attr and attr[0].isupper() and not attr.isupper():
+            resolved.add(attr)
+
+    resolved -= _CALL_IGNORE
+    return sorted(resolved)
+
+
 def _extract_class_calls(
     class_node: ast.ClassDef,
 ) -> list[str]:
@@ -541,7 +569,8 @@ class _PythonVisitor(ast.NodeVisitor):
             dflt_node = defaults[i - pad] if i >= pad else None
             args.append(_arg_info(arg, dflt_node))
 
-        end_line = getattr(node, "end_lineno", node.lineno)
+        end_line   = getattr(node, "end_lineno", node.lineno)
+        fn_calls   = _extract_function_calls(node)
         self.functions.append(FunctionInfo(
             name=node.name,
             args=args,
@@ -551,6 +580,7 @@ class _PythonVisitor(ast.NodeVisitor):
             is_async=is_async,
             line_start=node.lineno,
             line_end=end_line,
+            calls=fn_calls,
         ))
 
     # ------------------------------------------------------------------

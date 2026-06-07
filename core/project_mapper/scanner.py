@@ -340,6 +340,22 @@ async def run_scan(
         except Exception as exc:
             logger.warning(f"[Scanner] Deletion cleanup failed (non-critical): {exc}")
 
+    # --- Stub resolution pass (always, every full scan) ---
+    # Re-wire relations from stubs to real entities where the target was
+    # scanned in a later file.  Safe to run after every scan.
+    try:
+        from .cleanup import resolve_stubs
+        _update_scaninfo(db_root, status="cleanup", current_file="[stub resolution]")
+        stub_result = await asyncio.to_thread(resolve_stubs, writer, index)
+        if stub_result.stubs_resolved:
+            stats["stubs_resolved"]   = stub_result.stubs_resolved
+            stats["relations_rewired"] = stub_result.relations_rewired
+        if stub_result.errors:
+            stats["errors"].extend([{"path": "stub_resolve", "error": e}
+                                     for e in stub_result.errors])
+    except Exception as exc:
+        logger.warning(f"[Scanner] Stub resolution failed (non-critical): {exc}")
+
     _write_scaninfo(db_root, {
         **_read_scaninfo(db_root),
         "status":       "completed",

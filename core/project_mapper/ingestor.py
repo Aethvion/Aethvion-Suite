@@ -263,7 +263,32 @@ class ProjectIngestor:
                         cls_id, "calls", target_id,
                     )
 
-        # ---- 7. Provenance -------------------------------------------
+        # ---- 7. Function calls relations (static call graph) --------
+        # Mirror of step 6 but for top-level functions.  Functions cannot
+        # have self-attribute assignments, so only direct instantiations and
+        # factory-function patterns are captured.
+        for fn_info, fn_id in zip(analysis.functions, result.function_entity_ids):
+            for callee_name in fn_info.calls:
+                if not callee_name or not callee_name[0].isupper():
+                    continue
+                if callee_name.isupper():
+                    continue
+                target_id = self._index.get(callee_name)
+                if not target_id:
+                    stub, _ = self._writer.create(
+                        name=callee_name,
+                        entity_type="class",
+                        source="stub",
+                        kind="software.class",
+                        status="stub",
+                    )
+                    target_id = stub["id"]
+                if target_id and target_id != fn_id:
+                    result.relations_created += self._add_relation(
+                        fn_id, "calls", target_id,
+                    )
+
+        # ---- 8. Provenance -------------------------------------------
         from datetime import datetime, timezone
         scanned_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         sf_entry = {
