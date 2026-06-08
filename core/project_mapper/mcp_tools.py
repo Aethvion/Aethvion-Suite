@@ -8,7 +8,7 @@ that agents can parse and act on.
 
 Tools
 -----
-1. pm_context    — task-contextual knowledge retrieval (highest value for agents)
+1. pm_context    — task contextual knowledge retrieval (highest value for agents)
 2. pm_impact     — blast-radius analysis for a named entity
 3. pm_path       — shortest graph path between two entities
 4. pm_contribute — write agent-discovered knowledge back into the graph

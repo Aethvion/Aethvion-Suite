@@ -280,7 +280,7 @@ def impact_query(
 
 
 # ---------------------------------------------------------------------------
-# 2. Task-Contextual Retrieval
+# 2. Task Contextual Retrieval
 # ---------------------------------------------------------------------------
 
 def _name_words(entity_name: str) -> set[str]:
