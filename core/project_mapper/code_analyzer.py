@@ -706,6 +706,9 @@ def analyze_file(path: str, content: str, language: str = "") -> CodeAnalysis:
     if language == "java":
         from .java_analyzer import analyze_java
         return analyze_java(path, content)
+    if language == "go":
+        from .go_analyzer import analyze_go
+        return analyze_go(path, content)
     # Minimal stub for unsupported file types
     return CodeAnalysis(
         path=path,
