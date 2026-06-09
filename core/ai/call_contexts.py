@@ -394,7 +394,7 @@ Available: angry, blushing, bored, crying, default, error, exhausted,
     # Load assistant tools documentation
     try:
         project_root  = Path(__file__).parent.parent.parent
-        tools_doc     = project_root / "documentation" / "ai" / "assistant-tools.md"
+        tools_doc     = project_root / "docs" / "ai" / "assistant-tools.md"
         if tools_doc.exists():
             context += f"\n\nASSISTANT TOOLS DOCUMENTATION:\n{tools_doc.read_text(encoding='utf-8')}\n"
     except Exception as e:
@@ -406,7 +406,7 @@ Available: angry, blushing, bored, crying, default, error, exhausted,
             from core.workspace.preferences_manager import get_preferences_manager
             prefs      = get_preferences_manager()
             project_root = Path(__file__).parent.parent.parent
-            doc_path   = project_root / "documentation" / "ai" / "dashboard-interface-context.md"
+            doc_path   = project_root / "docs" / "ai" / "dashboard-interface-context.md"
             if doc_path.exists():
                 doc_content = doc_path.read_text(encoding="utf-8")
                 # Identify active tab based on mode (authoritative)

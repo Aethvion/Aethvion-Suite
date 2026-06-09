@@ -9,7 +9,7 @@
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![GitHub Sponsors](https://img.shields.io/badge/Sponsor-30363D?logo=githubsponsors&logoColor=EA4AAA)](https://github.com/sponsors/Aethvion)
 
-[Documentation](https://github.com/Aethvion/Aethvion-Suite/tree/main/core/documentation) · [Getting Started](https://github.com/Aethvion/Aethvion-Suite/blob/main/core/documentation/human/getting-started.md) · [Discussions](https://github.com/Aethvion/Aethvion-Suite/discussions)
+[Documentation](https://github.com/Aethvion/Aethvion-Suite/tree/main/docs) · [Getting Started](https://github.com/Aethvion/Aethvion-Suite/blob/main/docs/human/getting-started.md) · [Discussions](https://github.com/Aethvion/Aethvion-Suite/discussions)
 
 </div>
 

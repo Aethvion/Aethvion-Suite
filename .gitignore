@@ -59,8 +59,6 @@ LocalModels/*
 .claude/*
 ai reports/*
 aireports/*
-!aireports/**/*.md
-!aireports/*.md
 
 
 # C# .exe Wrapper

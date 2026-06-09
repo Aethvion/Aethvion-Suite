@@ -118,7 +118,7 @@ misaka-cli = "core.cli:main"
 [project.urls]
 Homepage = "https://github.com/Aethvion/Aethvion-Suite"
 Repository = "https://github.com/Aethvion/Aethvion-Suite"
-Documentation = "https://github.com/Aethvion/Aethvion-Suite/tree/main/core/documentation"
+Documentation = "https://github.com/Aethvion/Aethvion-Suite/tree/main/docs"
 "Bug Tracker" = "https://github.com/Aethvion/Aethvion-Suite/issues"
 
 [tool.pytest.ini_options]

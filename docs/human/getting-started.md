@@ -405,4 +405,4 @@ python -m core.main
 
 **Next Reading:**
 - [System Overview](./readme-overview.md) - Deeper dive into architecture
-- [AI Documentation](/core/documentation/ai/) - Technical specifications for advanced users
+- [AI Documentation](/docs/ai/) - Technical specifications for advanced users

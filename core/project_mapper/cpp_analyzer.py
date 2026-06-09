@@ -21,6 +21,8 @@ Dependencies (optional — falls back to stub if not installed):
 
 from __future__ import annotations
 
+import re
+
 try:
     from tree_sitter import Language, Parser
     import tree_sitter_cpp as _tscpp
@@ -32,6 +34,39 @@ except Exception:
 from .code_analyzer import (
     ArgInfo, ClassInfo, CodeAnalysis, FunctionInfo, ImportInfo, MethodInfo,
 )
+
+# ---------------------------------------------------------------------------
+# Macro pre-processing
+# ---------------------------------------------------------------------------
+# Strip well-known attribute macros that tree-sitter-cpp cannot parse.
+# These are all annotation-only — removing them preserves code structure.
+#
+# Pattern: visibility export macros placed INSIDE declarations, e.g.
+#   class LEVELDB_EXPORT Cache {   →   class Cache {
+# This pattern appears in virtually every cross-platform C++ library
+# (leveldb, Qt, WebKit, WxWidgets, Chromium, etc.) and causes tree-sitter
+# to fail the entire class_specifier node, yielding 0 extracted entities.
+_RE_CPP_EXPORT = re.compile(r'\b[A-Z][A-Z0-9_]+_EXPORT\b')
+
+# Clang Thread-Safety Analysis (TSA) annotations, used by leveldb, Abseil,
+# Chromium, and others:
+#   int size_ GUARDED_BY(mutex_);   →   int size_;
+_RE_THREAD_ANNOT = re.compile(
+    r'\b(?:GUARDED_BY|PT_GUARDED_BY|LOCKS_EXCLUDED|LOCKS_REQUIRED|'
+    r'ACQUIRED_BEFORE|ACQUIRED_AFTER|NO_THREAD_SAFETY_ANALYSIS)'
+    r'(?:\s*\([^)]*\))?'
+)
+
+# Misc GCC/GLib per-parameter or per-function attribute macros
+_RE_CPP_ATTRS = re.compile(r'\b(?:G_GNUC_UNUSED|ATTRIBUTE_TARGET_\w+)\b')
+
+
+def _strip_macros_cpp(content: str) -> str:
+    """Remove known attribute macros before handing content to tree-sitter."""
+    content = _RE_CPP_EXPORT.sub('', content)
+    content = _RE_THREAD_ANNOT.sub('', content)
+    content = _RE_CPP_ATTRS.sub('', content)
+    return content
 
 # ---------------------------------------------------------------------------
 # helpers
@@ -328,6 +363,7 @@ def analyze_cpp(path: str, content: str) -> CodeAnalysis:
         )
 
     try:
+        content = _strip_macros_cpp(content)
         parser = Parser(_CPP_LANGUAGE)
         src = content.encode("utf-8", errors="replace")
         tree = parser.parse(src)

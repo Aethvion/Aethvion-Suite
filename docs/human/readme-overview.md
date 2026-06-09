@@ -221,6 +221,6 @@ The goal is not to replace human creativity or judgment. It's to remove the fric
 
 **Last Updated:** 2026-05-24
 
-**Need technical details?** → [AI Documentation](/core/documentation/ai/)
+**Need technical details?** → [AI Documentation](/docs/ai/)
 
 **Questions?** → Check the root [README.md](../../README.md) for community and support

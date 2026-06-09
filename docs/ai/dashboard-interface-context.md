@@ -1,5 +1,5 @@
 AETHVION SUITE - DASHBOARD INTERFACE CONTEXT
-This document describes the tabs and features of the Aethvion Suite dashboard. For information about the assistant's specific tools and capabilities, refer to [assistant-tools.md](file:///c:/Aethvion/Aethvion-Suite/core/documentation/ai/assistant-tools.md).
+This document describes the tabs and features of the Aethvion Suite dashboard. For information about the assistant's specific tools and capabilities, refer to [assistant-tools.md](file:///c:/Aethvion/Aethvion-Suite/docs/ai/assistant-tools.md).
 
 TABS (format: tab_id | display name | description)
 
@@ -71,7 +71,7 @@ api-providers | API Providers | Cloud provider configuration. Manage API keys, m
 
 logs | Logs | Live log stream panel. Real-time system log viewer with filtering. [SwitchTab: logs]
 
-documentation | Docs | In-dashboard documentation viewer. Browse the core/documentation/ files directly from within the suite. [SwitchTab: documentation]
+documentation | Docs | In-dashboard documentation viewer. Browse the docs/ files directly from within the suite. [SwitchTab: documentation]
 
 usage | Usage | API usage analytics. Token counts, costs, usage by provider, model, date range, and Local/API breakdown. [SwitchTab: usage]
 
