@@ -377,14 +377,22 @@ def _parse_interface(node, src: bytes, out: list[ClassInfo]) -> None:
             if child.type in ("type_identifier", "generic_type"):
                 bases.append(_text(child, src).split("<")[0])
 
-    body = _first(node, "object_type")
+    body = _first(node, "interface_body")
     methods: list[MethodInfo] = []
     if body:
         for child in body.children:
-            if child.type in ("method_signature", "property_signature", "call_signature"):
+            if child.type in ("method_signature", "call_signature"):
                 n = _field(child, "name") or _first(child, "property_identifier", "identifier")
                 if n:
-                    methods.append(MethodInfo(name=_text(n, src), args=[]))
+                    params_node = (_field(child, "parameters")
+                                   or _first(child, "formal_parameters"))
+                    args = _parse_params(params_node, src) if params_node else []
+                    is_async = any(c.type == "async" for c in child.children)
+                    methods.append(MethodInfo(name=_text(n, src), args=args,
+                                              is_async=is_async))
+            elif child.type == "property_signature":
+                # Interface properties (not methods) — record as class vars equivalent
+                pass
 
     out.append(ClassInfo(
         name=name,
