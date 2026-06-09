@@ -95,7 +95,7 @@ def _module_path_from_file(rel_path: str) -> str:
     """'core/auth/service.py' → 'core.auth.service'
        'src/auth/service.ts' → 'src.auth.service'"""
     p = rel_path.replace("\\", "/")
-    for ext in (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs"):
+    for ext in (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".java"):
         if p.endswith(ext):
             p = p[: -len(ext)]
             break
@@ -146,6 +146,9 @@ def _import_to_file_candidates(
             candidates.append(base + ext)
         candidates.append(base + "/index.ts")
         candidates.append(base + "/index.js")
+        # Java: dotted package path → directory/ClassName.java
+        # e.g. "com.example.service" → "com/example/service.java"
+        candidates.append(base + ".java")
     else:
         # Relative import — resolve against the current file's directory
         parts = current_file.replace("\\", "/").split("/")

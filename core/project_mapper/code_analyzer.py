@@ -703,6 +703,9 @@ def analyze_file(path: str, content: str, language: str = "") -> CodeAnalysis:
     if language in ("typescript", "javascript"):
         from .ts_analyzer import analyze_typescript
         return analyze_typescript(path, content, language)
+    if language == "java":
+        from .java_analyzer import analyze_java
+        return analyze_java(path, content)
     # Minimal stub for unsupported file types
     return CodeAnalysis(
         path=path,
