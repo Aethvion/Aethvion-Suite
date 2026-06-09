@@ -67,6 +67,7 @@ class ClassInfo:
     line_start:  int = 0
     line_end:    int = 0
     calls:       list[tuple[str, str]] = field(default_factory=list)  # (callee_name, via_method)
+    kind:        str = ""             # "interface", "abstract", "" for regular class
 
 
 @dataclass
@@ -693,14 +694,16 @@ def detect_language_for_path(path: str) -> str:
 def analyze_file(path: str, content: str, language: str = "") -> CodeAnalysis:
     """
     Route to the appropriate language analyzer.
-    Currently only Python is fully supported; all others get a minimal stub.
     Language is auto-detected from the path if not provided.
     """
     if not language:
         language = detect_language_for_path(path)
     if language == "python":
         return analyze_python(path, content)
-    # Minimal stub for non-Python files
+    if language in ("typescript", "javascript"):
+        from .ts_analyzer import analyze_typescript
+        return analyze_typescript(path, content, language)
+    # Minimal stub for unsupported file types
     return CodeAnalysis(
         path=path,
         language=language or "unknown",

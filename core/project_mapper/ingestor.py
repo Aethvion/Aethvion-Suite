@@ -92,8 +92,17 @@ def _is_internal_import(imp: ImportInfo, top_pkgs: frozenset[str]) -> bool:
 
 
 def _module_path_from_file(rel_path: str) -> str:
-    """'core/auth/service.py' → 'core.auth.service'"""
-    return rel_path.replace("\\", "/").removesuffix(".py").replace("/", ".")
+    """'core/auth/service.py' → 'core.auth.service'
+       'src/auth/service.ts' → 'src.auth.service'"""
+    p = rel_path.replace("\\", "/")
+    for ext in (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs"):
+        if p.endswith(ext):
+            p = p[: -len(ext)]
+            break
+    # Strip /index suffix (common in TS: src/auth/index.ts → src.auth)
+    if p.endswith("/index"):
+        p = p[:-6]
+    return p.replace("/", ".")
 
 
 def _import_to_file_candidates(
@@ -122,27 +131,41 @@ def _import_to_file_candidates(
     """
     candidates: list[str] = []
 
+    _TS_EXTS = (".ts", ".tsx", ".js", ".jsx", ".mjs")
+
     if level == 0:
         # Absolute import
         if not module:
             return candidates
+        # Python-style dotted path
         base = module.replace(".", "/")
         candidates.append(base + ".py")
         candidates.append(base + "/__init__.py")
+        # TypeScript/JS bare specifier (e.g. "components/Button")
+        for ext in _TS_EXTS:
+            candidates.append(base + ext)
+        candidates.append(base + "/index.ts")
+        candidates.append(base + "/index.js")
     else:
-        # Relative import — resolve against the current file's directory tree
+        # Relative import — resolve against the current file's directory
         parts = current_file.replace("\\", "/").split("/")
-        # Go up (level) directories from the file's own directory
-        pkg_parts = parts[:-level]          # e.g. level=1 → drop the filename
+        pkg_parts = parts[:-level]
         if module:
-            sub = module.replace(".", "/")
-            base = "/".join(pkg_parts + [sub])
+            # TypeScript relative: './utils' → module='./utils' (already stripped by caller)
+            # but module here is the bare name after the dots
+            sub = module.replace(".", "/").lstrip("/")
+            base = "/".join(pkg_parts + [sub]) if sub else "/".join(pkg_parts)
             candidates.append(base + ".py")
             candidates.append(base + "/__init__.py")
+            for ext in _TS_EXTS:
+                candidates.append(base + ext)
+            candidates.append(base + "/index.ts")
+            candidates.append(base + "/index.js")
         else:
-            # "from . import X" — the module name is empty; point at the package
             base = "/".join(pkg_parts)
             candidates.append(base + "/__init__.py")
+            candidates.append(base + "/index.ts")
+            candidates.append(base + "/index.js")
 
     return candidates
 
@@ -436,15 +459,19 @@ class ProjectIngestor:
         cls_info: Any,
         file_path: str,
     ) -> tuple[dict[str, Any], bool]:
+        # Use cls_info.kind ("interface", "abstract", "") to label the entity
+        cls_kind = getattr(cls_info, "kind", "") or ""
+        entity_kind = f"software.{cls_kind}" if cls_kind else "software.class"
+        tag = cls_kind if cls_kind else "class"
         entity, was_created = self._writer.create(
             name=cls_info.name,
             entity_type="class",
             source="project_mapper",
-            kind="software.class",
+            kind=entity_kind,
             sections_override={
                 "core": {
                     "summary": cls_info.docstring[:200] if cls_info.docstring else "",
-                    "tags":    ["class"],
+                    "tags":    [tag],
                 },
                 "properties": {
                     "file_path":    file_path,
