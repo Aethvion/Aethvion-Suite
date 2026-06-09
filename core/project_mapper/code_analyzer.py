@@ -709,6 +709,9 @@ def analyze_file(path: str, content: str, language: str = "") -> CodeAnalysis:
     if language == "go":
         from .go_analyzer import analyze_go
         return analyze_go(path, content)
+    if language == "csharp":
+        from .csharp_analyzer import analyze_csharp
+        return analyze_csharp(path, content)
     # Minimal stub for unsupported file types
     return CodeAnalysis(
         path=path,
