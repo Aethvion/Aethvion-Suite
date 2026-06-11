@@ -32,7 +32,7 @@ cd Aethvion-Suite
 
 ### Step 2: Automated Setup (Windows)
 
-Double-click `Start_Aethvion_Suite.bat` in the root directory.
+Double-click `Start_Aethvion.bat` in the root directory.
 
 This script will:
 - Check your Python version (3.12+ recommended)

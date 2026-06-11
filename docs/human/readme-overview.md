@@ -6,7 +6,7 @@
 
 ## The Vibe: This Is Not Just an AI App
 
-Aethvion Suite is a self-hosted AI super-app built for people who want a deeply personal, capable AI system without paying a subscription or sending their data to someone else's cloud. It runs entirely on your machine, connects to the AI providers you choose, and grows smarter the more you use it.
+Aethvion Suite is a self-hosted AI platform and R&D environment built for people who want a deeply personal, capable AI system without paying a subscription or sending their data to someone else's cloud. It runs entirely on your machine, connects to the AI providers you choose, and grows smarter the more you use it.
 
 Think of it as four things at once:
 - **A companion platform** — AI personalities that remember you, your projects, and your preferences

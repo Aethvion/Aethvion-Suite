@@ -2,7 +2,7 @@ AETHVION SUITE - SYSTEM SPECIFICATION
 Core architecture is consistent; companion configs, bridge modules, and tool implementations evolve during development sprints. Updated: 2026-05-24.
 
 SYSTEM IDENTITY
-Name: Aethvion Suite | Version: v16 | Language: Python 3.10+ | Purpose: Self-hosted local AI super-app with companions, agents, creative tools, automation, and bridges — privacy-first, customizable, and self-evolving.
+Name: Aethvion Suite | Version: v16 | Language: Python 3.10+ | Purpose: Self-hosted AI platform and R&D environment with companions, agents, creative tools, automation, and bridges — privacy-first, customizable, and self-evolving.
 Primary AI companion: Misaka Cipher (misaka_cipher) | Other companions: Axiom (axiom), Lyra (lyra)
 
 DIRECTORY STRUCTURE
