@@ -1,55 +1,26 @@
 """
-core/project_mapper/ingestor.py
+project_mapper/ingestor.py
 Translates CodeAnalysis results into AethvionDB entities.
 
-Two-phase hybrid strategy:
-  Phase 1 (static, instant, no AI):
-    - Creates or updates a module entity for the file.
-    - Creates class entities for every top-level class.
-    - Creates function entities for every top-level public function.
-    - Wires structural relations (contains, imports, depends_on, extends).
-    - Records source provenance in entity.sections.source_files + FileManifest.
-
-  Phase 2 (LLM enrichment, one AI call per module):
-    - Builds a compact structured summary from the CodeAnalysis.
-    - Calls the AI to produce: summary, tags, categories, architectural pattern.
-    - Merges the semantic result back onto the module entity.
-
-Both phases are opt-in and can be called independently.
+Static ingestion (instant, no AI):
+  - Creates or updates a module entity for the file.
+  - Creates class entities for every top-level class.
+  - Creates function entities for every top-level public function.
+  - Wires structural relations (contains, imports, depends_on, extends).
+  - Records source provenance in entity.sections.source_files + FileManifest.
 """
 
 from __future__ import annotations
 
-import asyncio
 import json
-import re
-import uuid
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
-from core.utils.logger import get_logger
-from .code_analyzer import CodeAnalysis, ImportInfo, build_compact_summary
+from .code_analyzer import CodeAnalysis, ImportInfo
 
-logger = get_logger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# LLM enrichment prompt
-# ---------------------------------------------------------------------------
-
-_ENRICH_SYSTEM = """You are a software architecture analyst.
-
-Given a structured summary of a code module, return a JSON object that captures its semantic role in the system.
-
-Output ONLY valid JSON — no markdown, no code fences:
-{
-  "summary": "2-4 sentence description of what this module does and its responsibility",
-  "tags": ["tag1", "tag2"],
-  "categories": ["Architecture Layer", "Domain"],
-  "architectural_pattern": "e.g. Service Layer, Repository, Factory, Middleware, etc. or empty string",
-  "key_concerns": ["concern1", "concern2"]
-}"""
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -72,12 +43,26 @@ class IngestResult:
 # ---------------------------------------------------------------------------
 
 def _top_level_packages(project_root: Path) -> frozenset[str]:
-    """Return the set of top-level directory names in the project root."""
+    """Return the set of names that indicate an intra-project import.
+
+    Includes top-level directory names plus subdirectory names of lib/ (Ruby
+    convention) and src/ (PHP/Java convention), since those languages resolve
+    require/use paths relative to those roots rather than the project root.
+    """
     try:
-        return frozenset(
-            d.name for d in project_root.iterdir()
-            if d.is_dir() and not d.name.startswith(".") and d.name != "__pycache__"
-        )
+        pkgs: set[str] = set()
+        for d in project_root.iterdir():
+            if d.is_dir() and not d.name.startswith(".") and d.name != "__pycache__":
+                pkgs.add(d.name)
+        # Ruby: lib/jekyll/... → "jekyll" is the importable name, not "lib"
+        # PHP/Java: src/App/... → "App" (or "app") is importable
+        for subdir in ("lib", "src"):
+            sub = project_root / subdir
+            if sub.is_dir():
+                for d in sub.iterdir():
+                    if d.is_dir() and not d.name.startswith("."):
+                        pkgs.add(d.name)
+        return frozenset(pkgs)
     except Exception:
         return frozenset()
 
@@ -88,12 +73,25 @@ def _is_internal_import(imp: ImportInfo, top_pkgs: frozenset[str]) -> bool:
         return True
     if not imp.module:
         return False
-    return imp.module.split(".")[0] in top_pkgs
+    # Dot-separated first component (Python, JS/TS, Go, PHP-normalized)
+    first = imp.module.split(".")[0]
+    if first in top_pkgs:
+        return True
+    # Case-insensitive: PHP PSR-4 namespaces are PascalCase but dirs are lowercase
+    # e.g. "App.Models.User" (from App\Models\User) → matches "app/" directory
+    if first.lower() in {p.lower() for p in top_pkgs}:
+        return True
+    # Slash-separated first component (Ruby require "jekyll/drops/drop")
+    first_slash = imp.module.split("/")[0]
+    if first_slash and first_slash != first and first_slash in top_pkgs:
+        return True
+    return False
 
 
 def _module_path_from_file(rel_path: str) -> str:
-    """'core/auth/service.py' → 'core.auth.service'
-       'src/auth/service.ts' → 'src.auth.service'"""
+    """'core/auth/service.py'  → 'core.auth.service'
+       'src/auth/service.ts'   → 'src.auth.service'
+       'com/example/Foo.java'  → 'com.example.Foo'"""
     p = rel_path.replace("\\", "/")
     for ext in (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs",
                 ".java", ".go", ".cs", ".rs", ".cpp", ".cc", ".cxx",
@@ -131,16 +129,16 @@ def _import_to_file_candidates(
     Relative  : module="", level=1, current="core/companions/companion_engine.py"
                 → ["core/companions/__init__.py"]
     """
-    candidates: list[str] = []
-
     _TS_EXTS = (".ts", ".tsx", ".js", ".jsx", ".mjs")
+
+    candidates: list[str] = []
 
     if level == 0:
         # Absolute import
         if not module:
             return candidates
-        # Python-style dotted path
         base = module.replace(".", "/")
+        # Python-style dotted path
         candidates.append(base + ".py")
         candidates.append(base + "/__init__.py")
         # TypeScript/JS bare specifier (e.g. "components/Button")
@@ -151,6 +149,19 @@ def _import_to_file_candidates(
         # Java: dotted package path → directory/ClassName.java
         # e.g. "com.example.service" → "com/example/service.java"
         candidates.append(base + ".java")
+        # Rust: module path → module.rs or module/mod.rs
+        candidates.append(base + ".rs")
+        candidates.append(base + "/mod.rs")
+        # Ruby: module path → module.rb (for absolute require paths)
+        candidates.append(base + ".rb")
+        # Also try with last component dropped (Type import: crate::module::Type → module.rs)
+        base_no_last = "/".join(base.split("/")[:-1])
+        if base_no_last:
+            candidates.append(base_no_last + ".rs")
+            candidates.append(base_no_last + "/mod.rs")
+            candidates.append("lib/" + base_no_last + ".rb")
+        # Ruby lib/ prefix convention: require "jekyll/drops/drop" → lib/jekyll/drops/drop.rb
+        candidates.append("lib/" + base + ".rb")
     else:
         # Relative import — resolve against the current file's directory
         parts = current_file.replace("\\", "/").split("/")
@@ -166,22 +177,33 @@ def _import_to_file_candidates(
                 candidates.append(base + ext)
             candidates.append(base + "/index.ts")
             candidates.append(base + "/index.js")
+            # Rust relative: use crate::module::Type (level=1 set by rust_analyzer)
+            # Try anchored from current file's dir (self::module)
+            candidates.append(base + ".rs")
+            candidates.append(base + "/mod.rs")
+            base_no_last = "/".join(base.split("/")[:-1])
+            if base_no_last:
+                candidates.append(base_no_last + ".rs")
+                candidates.append(base_no_last + "/mod.rs")
+            # Also try anchored from src/ (crate:: always refers to crate root)
+            if current_file.endswith(".rs"):
+                rust_sub = module.replace(".", "/")
+                candidates.append("src/" + rust_sub + ".rs")
+                candidates.append("src/" + rust_sub + "/mod.rs")
+                rust_no_last = "/".join(rust_sub.split("/")[:-1])
+                if rust_no_last:
+                    candidates.append("src/" + rust_no_last + ".rs")
+                    candidates.append("src/" + rust_no_last + "/mod.rs")
+            # Ruby require_relative
+            candidates.append(base + ".rb")
         else:
+            # "from . import X" — the module name is empty; point at the package
             base = "/".join(pkg_parts)
             candidates.append(base + "/__init__.py")
             candidates.append(base + "/index.ts")
             candidates.append(base + "/index.js")
 
     return candidates
-
-
-def _extract_json(raw: str) -> dict[str, Any]:
-    clean = re.sub(r"```(?:json)?", "", raw).strip().rstrip("`").strip()
-    start = clean.find("{")
-    end   = clean.rfind("}")
-    if start == -1 or end == -1:
-        raise ValueError("No JSON object in AI response")
-    return json.loads(clean[start:end + 1])
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +220,6 @@ class ProjectIngestor:
     writer       : EntityWriter for the target DB.
     index        : NameIndex for the target DB.
     file_manifest: FileManifest for provenance tracking.
-    model        : AI model to use for LLM enrichment (Phase 2).
     """
 
     def __init__(
@@ -207,16 +228,14 @@ class ProjectIngestor:
         writer:        Any,
         index:         Any,
         file_manifest: Any,
-        model:         str = "auto",
     ) -> None:
         self._db_root       = db_root
         self._writer        = writer
         self._index         = index
         self._file_manifest = file_manifest
-        self._model         = model
 
     # ------------------------------------------------------------------
-    # Phase 1 — Static ingestion
+    # Static ingestion
     # ------------------------------------------------------------------
 
     def ingest(
@@ -460,10 +479,13 @@ class ProjectIngestor:
         cls_info: Any,
         file_path: str,
     ) -> tuple[dict[str, Any], bool]:
-        # Use cls_info.kind ("interface", "abstract", "") to label the entity
-        cls_kind = getattr(cls_info, "kind", "") or ""
+        # Map cls_info.kind → entity kind and tag
+        # e.g. kind="interface" → "software.interface" / tag "interface"
+        #      kind=""          → "software.class"      / tag "class"
+        cls_kind    = getattr(cls_info, "kind", "") or ""
         entity_kind = f"software.{cls_kind}" if cls_kind else "software.class"
-        tag = cls_kind if cls_kind else "class"
+        tag         = cls_kind if cls_kind else "class"
+
         entity, was_created = self._writer.create(
             name=cls_info.name,
             entity_type="class",
@@ -549,69 +571,3 @@ class ProjectIngestor:
             logger.debug(f"[Ingestor] Could not add relation {kind}: {exc}")
             return 0
 
-    # ------------------------------------------------------------------
-    # Phase 2 — LLM enrichment
-    # ------------------------------------------------------------------
-
-    async def enrich_module(
-        self,
-        module_entity_id: str,
-        analysis:         CodeAnalysis,
-        model:            Optional[str] = None,
-    ) -> bool:
-        """
-        Send a compact module summary to the AI and merge the semantic result
-        back onto the module entity.
-
-        Returns True on success, False on failure.
-        """
-        from core.providers import get_provider_manager
-        from core.ai.call_contexts import CallSource
-
-        summary_text = build_compact_summary(analysis)
-        pm = get_provider_manager()
-        try:
-            response = await asyncio.to_thread(
-                pm.call_with_failover,
-                prompt=f"Analyze this code module summary:\n\n{summary_text}",
-                system_prompt=_ENRICH_SYSTEM,
-                model=model or self._model,
-                trace_id=uuid.uuid4().hex,
-                source=CallSource.WORLDSIM,
-            )
-            raw = response.content if hasattr(response, "content") else str(response)
-            data = _extract_json(raw)
-        except Exception as exc:
-            logger.warning(f"[Ingestor] LLM enrichment failed for {module_entity_id}: {exc}")
-            return False
-
-        mutations: dict[str, Any] = {}
-        core_update: dict[str, Any] = {}
-
-        if data.get("summary"):
-            core_update["summary"] = str(data["summary"])[:500]
-        if data.get("tags"):
-            core_update["tags"] = [str(t) for t in data["tags"][:10]]
-        if data.get("categories"):
-            core_update["categories"] = [str(c) for c in data["categories"][:5]]
-
-        prop_update: dict[str, str] = {}
-        if data.get("architectural_pattern"):
-            prop_update["architectural_pattern"] = str(data["architectural_pattern"])[:60]
-        if data.get("key_concerns"):
-            prop_update["key_concerns"] = ", ".join(str(c) for c in data["key_concerns"][:8])
-
-        if core_update:
-            mutations.setdefault("sections", {})["core"] = core_update
-        if prop_update:
-            mutations.setdefault("sections", {})["properties"] = prop_update
-
-        if mutations:
-            try:
-                self._writer.update(module_entity_id, mutations)
-                logger.debug(f"[Ingestor] Enriched module {module_entity_id}")
-                return True
-            except Exception as exc:
-                logger.warning(f"[Ingestor] Could not save enrichment for {module_entity_id}: {exc}")
-
-        return False
