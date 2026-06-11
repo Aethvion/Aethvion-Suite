@@ -954,7 +954,7 @@ def handle_pm_find(args: dict[str, Any], ctx: MCPContext) -> str:
     lines.append("")
     lines.append(
         "Use a more specific name to get the detailed view, "
-        "or pm_context for task-oriented search."
+        "or pm_context for context-based search."
     )
     return "\n".join(lines)
 
