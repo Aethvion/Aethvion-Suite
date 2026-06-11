@@ -718,6 +718,8 @@ class ProviderManager:
                     messages=messages,
                     **kwargs
                 ):
+                    if chunk.startswith("Error:") and not full_response.strip():
+                        raise Exception(chunk)
                     success = True
                     full_response += chunk
                     yield chunk
