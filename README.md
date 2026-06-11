@@ -2,7 +2,7 @@
 
 # Aethvion Suite
 
-**A self-hosted AI platform built around four core tools:**<br>
+**A self-hosted AI platform and R&D environment.**<br>
 **Chat · Code · Automate · AethvionDB**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
@@ -24,6 +24,21 @@
 Aethvion Suite is a **self-hosted AI platform** that runs on your machine. It connects to cloud AI providers — Gemini, GPT-4o, Claude, Grok — or runs entirely on local models. Your data stays where you put it.
 
 The platform is built around four tools that work together: a persistent AI chat environment, an autonomous code agent, a visual workflow builder, and a structured personal knowledge base.
+
+---
+
+## R&D Platform
+
+Aethvion Suite is the internal environment where Aethvion builds and stress-tests new AI tooling ideas. [Aethvion Project Mapper](https://github.com/Aethvion/Aethvion-ProjectMapper) — a knowledge-graph MCP server that cuts AI coding token costs by 83–92% — was built and validated inside Suite before becoming a standalone product.
+
+This means Suite ships features as they mature, not on a polish-first schedule. Experimental features land early. Things can change between versions. **That's by design** — Suite is a live R&D environment, not a stability-first release. If something breaks while we're testing something new, that's within expectations.
+
+The commercial license exists for teams who want to embed Suite's features into their own products — you get the working implementation without the AGPL-3.0 copyleft requirement, plus direct support and priority bug fixes.
+
+**What to expect as a user:**
+- Features are real and working, but may be rough at the edges
+- The codebase moves fast — breaking changes can happen between minor versions  
+- Anything that proves itself here is a candidate for becoming a standalone tool
 
 ---
 
@@ -170,8 +185,8 @@ See the full [sponsors list](https://github.com/Aethvion/.github/blob/main/SPONS
 
 ## License
 
-[AGPL-3.0](LICENSE) — free for personal and open-source use.
-A separate commercial license is available for proprietary deployments. See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).
+[AGPL-3.0](LICENSE) — free for personal, internal, and open-source use.
+A commercial license is available for proprietary embedding and enterprise deployments — this is how you embed Suite features into your own products without the AGPL-3.0 copyleft obligation. See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).
 
 ---
 
