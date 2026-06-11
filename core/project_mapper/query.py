@@ -1,5 +1,5 @@
 """
-core/project_mapper/query.py
+project_mapper/query.py
 Agent-optimized query engine for ProjectMapper.
 
 Five query primitives:
@@ -15,14 +15,13 @@ request with build_entity_map() and pass it to whichever queries you need.
 
 from __future__ import annotations
 
+import logging
 import re
 from collections import deque
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from core.utils.logger import get_logger
-
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -101,14 +100,9 @@ def _entity_stub(
                            tags, file_path, architectural_pattern, hop, via.
     slim=True            — minimal stub: name, file_path only (+ hop/via when
                            present).  ~16 tokens per entity vs ~90 for full.
-                           Use when you only need a file list — e.g. "which
-                           files are affected by this change?" — and don't need
-                           summaries or metadata.
     max_summary          — maximum characters of the summary field to include
                            (default 180, full).  Pass 0 to strip the summary
-                           entirely.  Ignored when slim=True (slim has no
-                           summary).  Used by impact_query for hop-aware
-                           trimming: hop=1 gets full summaries, hop>1 gets 0.
+                           entirely.  Ignored when slim=True.
     """
     props = entity.get("sections", {}).get("properties", {})
 
@@ -188,39 +182,30 @@ def build_reverse_impact_adj(
 
 
 def impact_query(
-    subject:       str,          # entity name or ID
+    subject:       str,
     entity_map:    dict[str, dict],
     index:         Any,
     max_depth:     int = 2,
-    via_kinds:     Optional[list[str]] = None,  # restrict to these relation kinds only
-    exclude_tests: bool = True,                  # filter out test-file entities from results
-    slim:          bool = False,                 # return name+file_path only (no metadata)
-    summary_depth: int = 1,                      # include summaries only for hop <= this value
+    via_kinds:     Optional[list[str]] = None,
+    exclude_tests: bool = True,
+    slim:          bool = False,
+    summary_depth: int = 1,
 ) -> dict[str, Any]:
     """
     Find all entities that would be affected if *subject* changes.
 
     via_kinds, when provided, restricts which incoming relation types are
-    followed during traversal.  Examples:
-      via_kinds=["extends"]           — subclasses only
-      via_kinds=["calls"]             — direct callers only
-      via_kinds=["extends","calls"]   — subclasses + callers
-
-    If omitted, all IMPACT_INCOMING_KINDS are traversed (default behaviour).
+    followed during traversal.
 
     exclude_tests=True (default) removes entities whose file_path lives inside
-    a tests/ directory or whose filename starts with test_.  Set to False to
-    include test classes and test helpers in the result.
+    a tests/ directory or whose filename starts with test_.
 
     slim=True returns only name + file_path (+ hop/via) per affected entity,
-    cutting per-entity token cost from ~90 to ~16.  Use for file-list queries
-    ("which files are affected?") when full metadata is not needed.
+    cutting per-entity token cost from ~90 to ~16.
 
     summary_depth controls how far out summaries are included (ignored when
-    slim=True).  Default is 1: hop=1 entities get full summaries, hop=2+
-    entities have their summary stripped (saves tokens on wide blast-radius
-    queries where transitive dependents only need name + file_path anyway).
-    Set to 0 to strip all summaries, or to a higher value to keep them deeper.
+    slim=True). Default is 1: hop=1 entities get full summaries, hop=2+
+    entities have their summary stripped.
 
     Returns a dict with:
       subject      — the resolved entity (always full, regardless of slim)
@@ -284,7 +269,7 @@ def impact_query(
 
 
 # ---------------------------------------------------------------------------
-# 2. Task Contextual Retrieval
+# 2. Task-Contextual Retrieval
 # ---------------------------------------------------------------------------
 
 def _name_words(entity_name: str) -> set[str]:
@@ -293,7 +278,6 @@ def _name_words(entity_name: str) -> set[str]:
     'ProviderManager' → {'provider', 'manager'}
     'get_provider_manager' → {'get', 'provider', 'manager'}
     """
-    # Insert a space before each capital letter then split on non-alpha
     spaced = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", entity_name)
     spaced = re.sub(r"([a-z\d])([A-Z])", r"\1 \2", spaced)
     return set(re.findall(r"[a-z0-9]{2,}", spaced.lower()))
@@ -302,10 +286,6 @@ def _name_words(entity_name: str) -> set[str]:
 def _keyword_score(tokens: list[str], entity: dict) -> float:
     """
     Score an entity against query tokens using structure-aware field weighting.
-
-    Works without LLM enrichment by leveraging structural metadata:
-    method names, file-path components, base-class names, and name-word splits.
-    Enriched summaries are scored at a higher weight when present.
     """
     core  = entity.get("sections", {}).get("core", {})
     props = entity.get("sections", {}).get("properties", {})
@@ -315,7 +295,6 @@ def _keyword_score(tokens: list[str], entity: dict) -> float:
     tags    = " ".join(core.get("tags", [])).lower()
     aliases = " ".join(core.get("aliases", [])).lower()
 
-    # Structural fields — always present, no enrichment required
     nwords     = _name_words(entity.get("name", ""))
     methods    = [m.strip().lower() for m in props.get("methods", "").split(",") if m.strip()]
     base_cls   = props.get("base_classes", "").lower()
@@ -325,37 +304,30 @@ def _keyword_score(tokens: list[str], entity: dict) -> float:
 
     score = 0.0
     for tok in tokens:
-        # Entity name — exact, substring, or word-split match
         if tok == name:
             score += 1.0
         elif tok in name:
             score += 0.7
         elif tok in nwords:
-            score += 0.5   # "manager" matches "ProviderManager"
+            score += 0.5
 
-        # Docstring / LLM summary (higher when enrichment exists)
         if tok in summary[:300]:
             score += 0.6 if len(summary) > 60 else 0.4
 
-        # Tags
         if tok in tags:
             score += 0.4
 
-        # Base class name — strong structural signal
         if tok in base_cls:
             score += 0.45
 
-        # Aliases
         if tok in aliases:
             score += 0.35
 
-        # Method names — scored individually, not as a blob
         for method in methods:
             if tok in method or method in tok:
                 score += 0.35
                 break
 
-        # File-path directory / module name components
         for part in file_parts:
             if tok == part:
                 score += 0.3
@@ -364,7 +336,6 @@ def _keyword_score(tokens: list[str], entity: dict) -> float:
                 score += 0.15
                 break
 
-        # Function signature (param/return type hints)
         if tok in signature:
             score += 0.15
 
@@ -374,17 +345,7 @@ def _keyword_score(tokens: list[str], entity: dict) -> float:
 # ---------------------------------------------------------------------------
 # Vocabulary synonym map
 # ---------------------------------------------------------------------------
-# Maps high-level concept words to the codebase vocabulary that represents
-# them.  When a query token matches a key, the values are appended as extra
-# scoring tokens.  This closes the gap between natural-language queries and
-# codebase-specific naming conventions.
-#
-# Rules:
-#   - Keys are single lowercase tokens (as produced by _tokenize).
-#   - Values are lists of codebase-native tokens; keep them short (1-3).
-#   - Only add synonyms with HIGH confidence — false positives are worse
-#     than missing results.
-#
+
 _QUERY_SYNONYMS: dict[str, list[str]] = {
     # Security / auth
     "authentication":  ["security", "firewall", "auth"],
@@ -422,20 +383,11 @@ _QUERY_SYNONYMS: dict[str, list[str]] = {
     # CLI
     "commandline":     ["cli"],
     "command":         ["cli", "routes"],
-    # Companions
-    "companion":       ["companion"],
-    "persona":         ["companion", "registry"],
-    "character":       ["companion"],
     # Task / workflow
     "queue":           ["task", "worker"],
     "worker":          ["task", "queue"],
     "job":             ["task", "queue"],
     "async":           ["worker", "task"],
-    # Providers
-    "openai":          ["provider", "openai"],
-    "anthropic":       ["provider", "anthropic"],
-    "gemini":          ["provider", "google"],
-    "grok":            ["provider", "grok"],
 }
 
 
@@ -443,11 +395,13 @@ _QUERY_SYNONYMS: dict[str, list[str]] = {
 # Constants for orphan / dead-code detection
 # ---------------------------------------------------------------------------
 
+# Names that are commonly entry points — not dead even if nothing calls them.
 _ORPHAN_ENTRY_NAMES: frozenset[str] = frozenset({
     "main", "run", "start", "setup", "teardown", "configure", "create_app",
     "application", "app", "wsgi", "asgi", "celery", "init_app",
 })
 
+# Files whose entities are framework entry points or test fixtures — skip them.
 _ORPHAN_SKIP_FILES: tuple[str, ...] = (
     "setup.py", "conftest.py", "wsgi.py", "asgi.py",
     "__init__.py", "__main__.py", "manage.py", "cli.py",
@@ -461,6 +415,7 @@ _ORPHAN_VENDOR_DIRS: frozenset[str] = frozenset({
     "vendor", "node_modules", "bower_components",
 })
 
+# Any __dunder__ method — used implicitly by Python, never "called" in the graph.
 _DUNDER_PAT: re.Pattern = re.compile(r"^__[a-z_]+__$")
 
 
@@ -479,12 +434,10 @@ _TOKENIZE_STOP: frozenset[str] = frozenset({
 def _tokenize(text: str) -> list[str]:
     """
     Tokenize query text for keyword scoring.
-
-    Splits on whitespace, punctuation AND camelCase/PascalCase boundaries so
-    that a query like "ProviderManager" or "provider manager" both produce
-    the same token set.
+    Splits on whitespace, punctuation AND camelCase/PascalCase boundaries.
+    Deduplicates so repeated sub-tokens (e.g. 'format' in formatParams + formatStrategyName)
+    don't double-score a single entity.
     """
-    # Split camelCase/PascalCase before lowercasing
     spaced = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", text)
     spaced = re.sub(r"([a-z\d])([A-Z])", r"\1 \2", spaced)
     seen: set[str] = set()
@@ -512,18 +465,8 @@ def context_query(
 
     slim=True returns only name + file_path per entity — useful when building
     a file-read list before diving into implementation detail.
-
-    Steps:
-      1. Tokenize and score all entities by keyword relevance.
-      2. Optionally anchor on explicitly named entities.
-      3. Expand the seed set by following relations (breadth-first, 1-2 hops).
-      4. Filter by detail_level and categorize by entity type.
-
-    Returns a structured context dict ready for injection into an agent prompt.
     """
     base_tokens = _tokenize(q)
-    # Expand tokens with codebase-vocabulary synonyms so queries like
-    # "authentication" find "security/firewall" and "logging" finds "logger".
     extra: list[str] = []
     for tok in base_tokens:
         for syn in _QUERY_SYNONYMS.get(tok, []):
@@ -535,7 +478,6 @@ def context_query(
     # ---- 1. Score all entities -------------------------------------------
     scored: list[tuple[float, dict]] = []
     for entity in entity_map.values():
-        # Skip deleted and stub entities — stubs have no meaningful data
         if entity.get("status") in ("deleted", "stub"):
             continue
         s = _keyword_score(tokens, entity)
@@ -544,7 +486,7 @@ def context_query(
     scored.sort(key=lambda x: -x[0])
 
     # ---- 2. Seed set: top-N from scoring + explicitly anchored names ------
-    seed_ids: dict[str, float] = {}   # entity_id → score
+    seed_ids: dict[str, float] = {}
     for score, entity in scored[:max_seeds]:
         seed_ids[entity["id"]] = score
 
@@ -552,10 +494,10 @@ def context_query(
         for name in anchor_names:
             e = _resolve_entity(name, entity_map, index)
             if e and e["id"] not in seed_ids:
-                seed_ids[e["id"]] = 1.5   # bump anchored entities above keyword hits
+                seed_ids[e["id"]] = 1.5
 
     # ---- 3. Expand seed set by following relations -----------------------
-    expanded_ids: dict[str, tuple[float, int]] = {}  # entity_id → (score, hop)
+    expanded_ids: dict[str, tuple[float, int]] = {}
     for sid, score in seed_ids.items():
         expanded_ids[sid] = (score, 0)
 
@@ -577,7 +519,7 @@ def context_query(
             continue
         etype = entity.get("type", "other")
         if etype not in detail_types and hop > 0:
-            continue  # don't include expanded entities outside this detail level
+            continue
         stub = _entity_stub(entity, hop=hop, slim=slim)
         if not slim:
             stub["relevance_score"] = score
@@ -586,7 +528,6 @@ def context_query(
         if len(all_stubs) >= max_results:
             break
 
-    # Sort each type bucket by score
     for bucket in by_type.values():
         bucket.sort(key=lambda x: -x.get("relevance_score", 0))
 
@@ -606,8 +547,6 @@ def context_query(
 # 3. Shortest Path  (two-phase: semantic edges first, structural fallback)
 # ---------------------------------------------------------------------------
 
-# Edges that carry real semantic meaning — used in Phase 1 of path search.
-# These represent deliberate design-time relationships between entities.
 _SEMANTIC_EDGE_KINDS: frozenset[str] = frozenset({
     "calls",
     "extends",
@@ -620,17 +559,11 @@ _SEMANTIC_EDGE_KINDS: frozenset[str] = frozenset({
     "tests",
 })
 
-# Entities whose names match this pattern are skipped as BFS intermediaries
-# in shortest_path Phase 1.  They are legitimate nodes but create misleading
-# shortcuts through shared exception/error handling in dense codebases.
 _EXCEPTION_NAME_PAT: re.Pattern = re.compile(
     r"(Error|Exception|Warning|NotFound|NotSupported|Forbidden|Denied|Invalid)$",
     re.IGNORECASE,
 )
 
-# Edges that are structural / file-system-level — used only in Phase 2
-# when no semantic path exists.  These often create spurious shortcuts
-# through shared utilities, loggers, and common stdlib imports.
 _STRUCTURAL_EDGE_KINDS: frozenset[str] = frozenset({
     "contains",
     "imports",
@@ -648,11 +581,7 @@ def _build_adjacency(
 
     Each adjacency entry is a 3-tuple: (neighbor_id, relation_kind, note).
     The *note* field carries the optional annotation stored on the relation
-    (e.g. "via method_name" for calls edges), so path queries can surface
-    which method initiates each call hop.
-
-    If *allowed_kinds* is None, all relation kinds are included.
-    If it is a frozenset, only relations whose kind is in that set are included.
+    (e.g. "via method_name" for calls edges).
     """
     fwd: dict[str, list[tuple[str, str, str]]] = {}
     rev: dict[str, list[tuple[str, str, str]]] = {}
@@ -668,9 +597,7 @@ def _build_adjacency(
     return fwd, rev
 
 
-_HUB_CALLS_THRESHOLD = 20   # entities called by this many+ distinct sources
-                             # are treated as utility hubs and skipped as
-                             # BFS intermediaries.
+_HUB_CALLS_THRESHOLD = 20
 
 
 def _compute_skip_ids(
@@ -681,36 +608,12 @@ def _compute_skip_ids(
     """
     Return entity IDs that should be skipped as BFS intermediaries.
 
-    Three categories are excluded from acting as bridge nodes in the path BFS:
-
-    1. Exception / error classes — entities whose name ends with Error,
-       Exception, Warning, NotFound, NotSupported, Forbidden, Denied, or
-       Invalid.  In large codebases these are called by many unrelated
-       components, creating spurious shortcuts (e.g. A calls ValueError,
-       B calls ValueError → BFS treats A and B as 2-hop neighbours).
-
-    2. Test-file entities — entities whose file_path lives inside a tests/
-       directory.  Test subclasses typically extend production classes and
-       call production code, creating cross-cutting shortcuts that aren't
-       meaningful architectural connections.
-
-    3. High-fanin hub nodes — entities called by _HUB_CALLS_THRESHOLD or more
-       distinct sources.  These are typically widely-used utility or config
-       classes (e.g. Django's ImproperlyConfigured, Python's logging.Logger)
-       that are called by dozens of unrelated modules, making them appear as
-       false bridges between architecturally unconnected entities.
-
-    The source and destination of the query are NEVER skipped, even if they
-    match one of the above patterns — users may legitimately search for paths
-    between two exception classes or two test helpers.
-
-    The fallback in shortest_path retries without the skip set if no path is
-    found, so a legitimate path through a hub node is never permanently lost.
+    Skips: exception-named classes, test-file entities, high-fanin hub nodes.
+    Source and destination are NEVER skipped.
     """
     protected = {from_id, to_id}
     skip: set[str] = set()
 
-    # Build calls in-degree map (how many distinct entities call each target)
     calls_in_degree: dict[str, int] = {}
     for entity in entity_map.values():
         for rel in entity.get("sections", {}).get("relations", []):
@@ -728,17 +631,14 @@ def _compute_skip_ids(
                   .get("properties", {})
                   .get("file_path", "")
         )
-        # 1. Exception-named classes
         if _EXCEPTION_NAME_PAT.search(name):
             skip.add(eid)
-        # 2. Test-file entities
         elif file_path and (
             "tests/" in file_path
             or "/test_" in file_path
             or file_path.startswith("test_")
         ):
             skip.add(eid)
-        # 3. High-fanin utility hubs
         elif calls_in_degree.get(eid, 0) >= _HUB_CALLS_THRESHOLD:
             skip.add(eid)
 
@@ -758,17 +658,11 @@ def _bfs_path(
 ) -> Optional[list[dict]]:
     """
     BFS from *from_id* to *to_id* using the given adjacency dicts.
-    Returns the path as a list of entity stubs (with 'relation' edge labels
-    and optional 'note' annotations), or None if no path is found within
-    *max_hops*.
-
-    Each path node carries:
-      relation — the relation kind that leads to the NEXT node
-      note     — optional annotation on that edge (e.g. "via method_name")
-    The final node (destination) has no relation/note fields.
+    Returns the path as a list of entity stubs, or None if no path is found.
     """
     visited: set[str] = {from_id}
-    queue: deque[tuple[str, list[tuple[str, str, str]]]] = deque()
+    # path step: (neighbor_id, rel_kind, edge_note, is_reverse)
+    queue: deque[tuple[str, list[tuple[str, str, str, bool]]]] = deque()
     queue.append((from_id, []))
 
     while queue:
@@ -776,24 +670,23 @@ def _bfs_path(
         if len(path_so_far) >= max_hops:
             continue
 
-        neighbors = fwd.get(current_id, []) + rev.get(current_id, [])
-        for neighbor_id, rel_kind, edge_note in neighbors:
+        fwd_nb = [(nid, kind, note, False) for nid, kind, note in fwd.get(current_id, [])]
+        rev_nb = [(nid, kind, note, True)  for nid, kind, note in rev.get(current_id, [])]
+        for neighbor_id, rel_kind, edge_note, is_reverse in fwd_nb + rev_nb:
             if neighbor_id in visited:
                 continue
-            # Skip hub intermediaries (exception classes, test entities) —
-            # but never skip the destination itself.
             if neighbor_id != to_id and neighbor_id in skip_ids:
                 continue
             visited.add(neighbor_id)
-            new_path = path_so_far + [(neighbor_id, rel_kind, edge_note)]
+            new_path = path_so_far + [(neighbor_id, rel_kind, edge_note, is_reverse)]
 
             if neighbor_id == to_id:
-                # Reconstruct path with entity stubs
                 path_entities: list[dict] = []
                 prev_id = from_id
-                for step_id, edge_label, note in new_path:
+                for step_id, edge_label, note, edge_rev in new_path:
                     node = _entity_stub(entity_map.get(prev_id, {}), slim=slim)
                     node["relation"] = edge_label
+                    node["relation_reverse"] = edge_rev
                     if note:
                         node["note"] = note
                     path_entities.append(node)
@@ -819,19 +712,9 @@ def shortest_path(
 
     Two-phase search:
       Phase 1 — semantic edges only (calls, extends, implements, …).
-                These represent intentional design relationships.
-                Result is marked  path_type = "semantic".
       Phase 2 — all edges including structural ones (contains, imports, …).
-                Used as fallback when no semantic path exists within max_hops.
-                Result is marked  path_type = "structural".
 
-    The path_type field tells the caller how to interpret the path:
-      "semantic"   — the path reflects deliberate code dependencies.
-      "structural" — the path follows file/module structure; may pass through
-                     shared utilities and is less architecturally meaningful.
-      "none"       — no path found at all.
-
-    Returns a dict with: found, path, length, path_type.
+    path_type field: "semantic" | "structural" | "none"
     """
     from_e = _resolve_entity(from_entity, entity_map, index)
     to_e   = _resolve_entity(to_entity,   entity_map, index)
@@ -850,11 +733,6 @@ def shortest_path(
             "length": 0, "path_type": "semantic",
         }
 
-    # Pre-compute skip set: exception-named classes + test-file entities.
-    # These are skipped as intermediaries in Phase 1 to avoid spurious
-    # shortcuts (e.g. A calls ValueError ← B calls ValueError → path A→B).
-    # If no path is found with the skip set we retry without it, so no
-    # legitimate path through an exception class is permanently lost.
     skip_ids = _compute_skip_ids(entity_map, from_id, to_id)
 
     # ---- Phase 1: semantic edges only -----------------------------------
@@ -862,8 +740,6 @@ def shortest_path(
     path = _bfs_path(from_id, to_id, to_e, entity_map, fwd_sem, rev_sem,
                      max_hops, skip_ids, slim=slim)
     if path is None and skip_ids:
-        # Retry without the skip set — some architectures legitimately route
-        # through error classes (strategy pattern on validation exceptions, …)
         path = _bfs_path(from_id, to_id, to_e, entity_map, fwd_sem, rev_sem,
                          max_hops, slim=slim)
     if path is not None:
@@ -905,7 +781,7 @@ def shortest_path(
 def apply_contribution(
     entity:      dict,
     properties:  dict[str, str],
-    relations:   list[dict],          # [{ kind, target_name, note }]
+    relations:   list[dict],
     rationale:   str,
     source:      str,
     writer:      Any,
@@ -925,11 +801,9 @@ def apply_contribution(
     added_rels: list[str] = []
     now_iso    = datetime.now(timezone.utc).isoformat(timespec="seconds")[:10]
 
-    # Properties
     if properties:
         mutations.setdefault("sections", {})["properties"] = properties
 
-    # Relations
     if relations:
         existing_rels = entity.get("sections", {}).get("relations", [])
         existing_pairs = {(r["kind"], r["target_id"]) for r in existing_rels}
@@ -942,7 +816,6 @@ def apply_contribution(
                 continue
             target_id = index.get(target_name)
             if not target_id:
-                # Create stub for unknown target
                 stub, _ = writer.create(
                     name=target_name, entity_type="other",
                     source="stub", status="stub",
@@ -957,7 +830,6 @@ def apply_contribution(
         if new_rels:
             mutations.setdefault("sections", {})["relations"] = new_rels
 
-    # Rationale → timeline event
     if rationale:
         timeline_event = {
             "date":  now_iso,
@@ -1026,7 +898,7 @@ def find_query(
             ordered.append(eid)
     ordered = ordered[:max_results]
 
-    rev_adj   = build_reverse_impact_adj(entity_map)
+    rev_adj  = build_reverse_impact_adj(entity_map)
     _OUTBOUND = frozenset({"calls", "imports", "depends_on", "uses",
                            "extends", "implements"})
 
