@@ -1,5 +1,5 @@
 """
-core/project_mapper/mcp_tools.py
+project_mapper/mcp_tools.py
 MCP tool schemas and handler functions for ProjectMapper.
 
 Each handler takes (args: dict, ctx: MCPContext) and returns a plain-text string
@@ -8,7 +8,7 @@ that agents can parse and act on.
 
 Tools
 -----
-1. pm_context    — task contextual knowledge retrieval (highest value for agents)
+1. pm_context    — task-contextual knowledge retrieval (highest value for agents)
 2. pm_impact     — blast-radius analysis for a named entity
 3. pm_path       — shortest graph path between two entities
 4. pm_contribute — write agent-discovered knowledge back into the graph
@@ -300,11 +300,12 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "name": "pm_scan",
         "description": (
-            "Scan a project directory and populate the knowledge graph. "
-            "Phase 1 (always): static AST analysis creates module/class/function entities. "
-            "Phase 2 (if enrich=true): LLM enrichment adds semantic summaries to modules. "
+            "Scan a project directory and populate the knowledge graph via static AST analysis. "
+            "Creates module/class/function entities and wires their relations. "
             "With incremental=true (default) only changed files are reprocessed. "
-            "This call BLOCKS until the scan completes."
+            "By default this call BLOCKS until the scan completes. "
+            "Pass background=true to return immediately and poll pm_stats for progress — "
+            "recommended for large projects (500+ files) over MCP to avoid timeouts."
         ),
         "inputSchema": {
             "type": "object",
@@ -313,11 +314,6 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     "type": "string",
                     "description": "Absolute path to the project directory to scan.",
                 },
-                "enrich": {
-                    "type": "boolean",
-                    "description": "Run LLM enrichment after static analysis (default false for MCP).",
-                    "default": False,
-                },
                 "incremental": {
                     "type": "boolean",
                     "description": "Skip files whose hash hasn't changed (default true).",
@@ -325,8 +321,17 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 },
                 "concurrency": {
                     "type": "integer",
-                    "description": "Parallel file processing limit (default 3).",
-                    "default": 3,
+                    "description": "Parallel file processing limit (default 4).",
+                    "default": 4,
+                },
+                "background": {
+                    "type": "boolean",
+                    "description": (
+                        "Start scan in a background thread and return immediately (default false). "
+                        "Use background=true for large projects to avoid MCP client timeouts; "
+                        "then call pm_stats to check when the scan completes."
+                    ),
+                    "default": False,
                 },
             },
             "required": ["project_root"],
@@ -778,13 +783,13 @@ def handle_pm_delta(args: dict[str, Any], ctx: MCPContext) -> str:
 
 
 def handle_pm_scan(args: dict[str, Any], ctx: MCPContext) -> str:
-    import asyncio, time
+    import asyncio, threading, time
     from .scanner import run_scan
 
     project_root = args.get("project_root") or ctx.project_root
-    enrich       = bool(args.get("enrich", False))
     incremental  = bool(args.get("incremental", True))
-    concurrency  = max(1, min(int(args.get("concurrency", 3)), 8))
+    concurrency  = max(1, min(int(args.get("concurrency", 4)), 8))
+    background   = bool(args.get("background", False))
 
     if not project_root:
         raise ValueError(
@@ -798,6 +803,40 @@ def handle_pm_scan(args: dict[str, Any], ctx: MCPContext) -> str:
         raise ValueError(f"Not a directory: {project_root}")
 
     lock = ctx.scan_lock
+
+    if background:
+        # Non-blocking: start scan in background thread, return immediately
+        def _run_bg():
+            if lock is not None:
+                lock.acquire()
+            try:
+                asyncio.run(
+                    run_scan(
+                        db_root=ctx.db_root,
+                        project_root=project_root,
+                        db_name=ctx.db_name,
+                        writer=ctx.writer,
+                        index=ctx.index,
+                        file_manifest=ctx.file_manifest,
+                        concurrency=concurrency,
+                        incremental=incremental,
+                    )
+                )
+            finally:
+                if lock is not None:
+                    lock.release()
+
+        t = threading.Thread(target=_run_bg, daemon=True)
+        t.start()
+        mode = "incremental" if incremental else "full"
+        return (
+            f"Scan started ({mode}): {project_root}\n"
+            f"Database: {ctx.db_name}\n\n"
+            "Scan is running in the background.\n"
+            "Call pm_stats to check progress — status will change from 'scanning' to 'completed'."
+        )
+
+    # Blocking mode (default)
     if lock is not None:
         lock.acquire()
     t0 = time.monotonic()
@@ -810,8 +849,6 @@ def handle_pm_scan(args: dict[str, Any], ctx: MCPContext) -> str:
                 writer=ctx.writer,
                 index=ctx.index,
                 file_manifest=ctx.file_manifest,
-                model=None,
-                enrich=enrich,
                 concurrency=concurrency,
                 incremental=incremental,
             )
@@ -841,9 +878,6 @@ def handle_pm_scan(args: dict[str, Any], ctx: MCPContext) -> str:
         f"{stats.get('entities_pruned', 0)} pruned  "
         f"{stats.get('entities_retired', 0)} retired",
     ]
-    if enrich:
-        lines.append(f"Enriched: {stats.get('enriched', 0)} modules")
-
     errs = stats.get("errors", [])
     if errs:
         lines.append(f"Errors:   {len(errs)} (first: {errs[0].get('error', '')[:80]})")
@@ -851,16 +885,12 @@ def handle_pm_scan(args: dict[str, Any], ctx: MCPContext) -> str:
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# Dispatch table
-# ---------------------------------------------------------------------------
-
 def _format_find_result(m: dict[str, Any]) -> str:
     """Format a single pm_find match as a detailed block."""
-    name       = m.get("name", "?")
-    etype      = m.get("type", "")
-    kind       = m.get("kind") or etype
-    fp         = m.get("file_path", "")
+    name      = m.get("name", "?")
+    etype     = m.get("type", "")
+    kind      = m.get("kind") or etype
+    fp        = m.get("file_path", "")
     line_start = str(m.get("line_start", ""))
     line_end   = str(m.get("line_end", ""))
 
@@ -954,7 +984,7 @@ def handle_pm_find(args: dict[str, Any], ctx: MCPContext) -> str:
     lines.append("")
     lines.append(
         "Use a more specific name to get the detailed view, "
-        "or pm_context for context-based search."
+        "or pm_context for task-oriented search."
     )
     return "\n".join(lines)
 
@@ -977,9 +1007,9 @@ def handle_pm_orphans(args: dict[str, Any], ctx: MCPContext) -> str:
         max_results=max_results,
     )
 
-    total   = result.get("total", 0)
-    skipped = result.get("skipped_count", 0)
-    orphans = result.get("orphans", [])
+    total     = result.get("total", 0)
+    skipped   = result.get("skipped_count", 0)
+    orphans   = result.get("orphans", [])
 
     if total == 0:
         return (
@@ -1021,6 +1051,10 @@ def handle_pm_orphans(args: dict[str, Any], ctx: MCPContext) -> str:
 
     return "\n".join(lines).rstrip()
 
+
+# ---------------------------------------------------------------------------
+# Dispatch table
+# ---------------------------------------------------------------------------
 
 HANDLERS = {
     "pm_context":    handle_pm_context,
