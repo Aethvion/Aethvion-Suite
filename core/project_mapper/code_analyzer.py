@@ -1,5 +1,5 @@
 """
-core/project_mapper/code_analyzer.py
+project_mapper/code_analyzer.py
 Python AST-based code structure extractor.
 
 Given a file path and its content, extracts all structurally meaningful
@@ -67,7 +67,7 @@ class ClassInfo:
     line_start:  int = 0
     line_end:    int = 0
     calls:       list[tuple[str, str]] = field(default_factory=list)  # (callee_name, via_method)
-    kind:        str = ""             # "interface", "abstract", "" for regular class
+    kind:        str = ""             # "interface", "abstract", "enum", "struct", "record", "" …
 
 
 @dataclass
@@ -348,6 +348,23 @@ class _CallExtractor(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    def visit_Name(self, node: ast.Name) -> None:
+        if node.id and node.id[0].isupper() and not node.id.isupper() and node.id not in _CALL_IGNORE:
+            self.instantiated.add(node.id)
+        self.generic_visit(node)
+
+
+_UPPERWORD_PAT = re.compile(r'\b[A-Z][a-zA-Z0-9_]*\b')
+
+def _extract_classes_from_type_annotation(annotation: str) -> set[str]:
+    if not annotation:
+        return set()
+    found = set()
+    for word in _UPPERWORD_PAT.findall(annotation):
+        if word not in _CALL_IGNORE:
+            found.add(word)
+    return found
+
 
 def _extract_function_calls(
     fn_node: ast.FunctionDef | ast.AsyncFunctionDef,
@@ -368,6 +385,17 @@ def _extract_function_calls(
     for attr in extractor.attr_calls:
         if attr and attr[0].isupper() and not attr.isupper():
             resolved.add(attr)
+
+    # Extract class names from type annotations of arguments
+    for arg in fn_node.args.args:
+        if arg.annotation:
+            ann_str = _safe_unparse(arg.annotation)
+            resolved.update(_extract_classes_from_type_annotation(ann_str))
+
+    # Extract class names from return type annotation
+    if fn_node.returns:
+        ann_str = _safe_unparse(fn_node.returns)
+        resolved.update(_extract_classes_from_type_annotation(ann_str))
 
     resolved -= _CALL_IGNORE
     return [(name, fn_node.name) for name in sorted(resolved)]
@@ -411,17 +439,28 @@ def _extract_class_calls(
         extractor   = _CallExtractor()
         extractor.visit(item)
 
-        # Direct / factory instantiations
-        for callee in extractor.instantiated:
-            pair = (callee, method_name)
-            if pair not in seen:
-                seen.add(pair)
-                result.append(pair)
+        callees = set(extractor.instantiated)
 
         # Attribute-based calls → resolve via attr_to_class
         for attr in extractor.attr_calls:
             callee = attr_to_class.get(attr, attr)
-            pair   = (callee, method_name)
+            callees.add(callee)
+
+        # Extract class names from type annotations of arguments
+        for arg in item.args.args:
+            if arg.annotation:
+                ann_str = _safe_unparse(arg.annotation)
+                callees.update(_extract_classes_from_type_annotation(ann_str))
+
+        # Extract class names from return type annotation
+        if item.returns:
+            ann_str = _safe_unparse(item.returns)
+            callees.update(_extract_classes_from_type_annotation(ann_str))
+
+        callees -= _CALL_IGNORE
+
+        for callee in sorted(callees):
+            pair = (callee, method_name)
             if pair not in seen:
                 seen.add(pair)
                 result.append(pair)
@@ -695,6 +734,7 @@ def analyze_file(path: str, content: str, language: str = "") -> CodeAnalysis:
     """
     Route to the appropriate language analyzer.
     Language is auto-detected from the path if not provided.
+    Falls back to a line-count stub for unsupported file types.
     """
     if not language:
         language = detect_language_for_path(path)

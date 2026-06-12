@@ -1,5 +1,5 @@
 """
-core/project_mapper/cleanup.py
+project_mapper/cleanup.py
 DB-mutation helpers for retiring stale entities after incremental scans.
 
 Three distinct operations
@@ -20,21 +20,21 @@ None of these functions perform filesystem writes outside of AethvionDB.
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from core.utils.logger import get_logger
 from .scanner import SUPPORTED_EXTENSIONS, _EXCLUDED_DIRS
 
 if TYPE_CHECKING:
-    from core.aethviondb.entity_writer import EntityWriter
-    from core.aethviondb.name_index import NameIndex
-    from core.aethviondb.file_manifest import FileManifest
+    from .db.entity_writer import EntityWriter
+    from .db.name_index import NameIndex
+    from .db.file_manifest import FileManifest
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def _now_iso() -> str:
@@ -132,6 +132,11 @@ def retire_file_entities(
             file_manifest.remove_entity(eid)
         except Exception as exc:
             result.errors.append(f"manifest remove {eid}: {exc}")
+
+    try:
+        file_manifest.remove_file(path)
+    except Exception as exc:
+        result.errors.append(f"manifest remove file {path}: {exc}")
 
     return result
 
@@ -285,6 +290,13 @@ def run_deletion_cleanup(
             for fn in files:
                 fp  = Path(dirpath) / fn
                 if fp.suffix.lower() in SUPPORTED_EXTENSIONS:
+                    # Mirror scanner.py's size filter so minified bundles don't show
+                    # up as perpetual "new files" after every scan
+                    try:
+                        if fp.stat().st_size > 250_000:
+                            continue
+                    except OSError:
+                        pass
                     rel = str(fp.relative_to(root)).replace("\\", "/")
                     existing_paths.add(rel)
 

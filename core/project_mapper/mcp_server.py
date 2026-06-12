@@ -1,26 +1,38 @@
 """
-core/project_mapper/mcp_server.py
+project_mapper/mcp_server.py
 Minimal MCP (Model Context Protocol) stdio server for ProjectMapper.
 
 Protocol: JSON-RPC 2.0, newline-delimited, over stdin/stdout.
-No external dependencies beyond the Aethvion Suite itself.
+No external dependencies beyond Python stdlib + fastapi/uvicorn (for the HTTP server).
 
-Usage
------
-    # from the Aethvion-Suite root:
-    python -m core.project_mapper.mcp_server --db my_project
+Recommended install
+-------------------
+    uv tool install "aethvion-project-mapper[languages]"
+    # installs pm-mcp as a global command — no Python or repo clone required
 
-    # with an explicit database path:
-    python -m core.project_mapper.mcp_server --db-path /data/aethviondb/my_project
+Usage (after uv tool install)
+------------------------------
+    pm-mcp --db workspace
 
-    # preset project root for pm_scan / pm_delta:
-    python -m core.project_mapper.mcp_server --db my_project \\
-           --project-root /path/to/my_project
+Usage (direct, for development)
+--------------------------------
+    python -m project_mapper.mcp_server --db my_project
+    python -m project_mapper.mcp_server --db-path /data/pm/my_project
+    python -m project_mapper.mcp_server --db my_project --project-root /path/to/project
+
+Watch mode (auto-scan)
+---------------------
+    # Poll every 10 s; rescan when changes detected (requires --project-root)
+    pm-mcp --db workspace --project-root /path/to/project --watch
+    pm-mcp --db workspace --project-root /path/to/project --watch --watch-interval 30
 
 Environment variable equivalents (CLI overrides env):
     PM_DB_NAME        — same as --db
     PM_DB_PATH        — same as --db-path
     PM_PROJECT_ROOT   — same as --project-root
+    PM_DATA_DIR       — root directory for all databases (default: ~/.aethvion_pm/data)
+    PM_WATCH          — "1" / "true" / "yes" to enable watch mode
+    PM_WATCH_INTERVAL — poll interval in seconds (default: 10)
 
 Claude Code config  (~/.claude/settings.json  or  .claude/settings.json)
 ------------------------------------------------------------------------
@@ -28,26 +40,19 @@ Claude Code config  (~/.claude/settings.json  or  .claude/settings.json)
       "mcpServers": {
         "project-mapper": {
           "type": "stdio",
-          "command": "python",
-          "args": [
-            "-m", "core.project_mapper.mcp_server",
-            "--db",           "my_project",
-            "--project-root", "/absolute/path/to/project"
-          ],
-          "cwd": "/absolute/path/to/Aethvion-Suite"
+          "command": "pm-mcp",
+          "args": ["--db", "workspace"]
         }
       }
     }
 
-Cursor config  (cursor://mcp or .cursor/mcp.json)
---------------------------------------------------
+Cursor config  (~/.cursor/mcp.json)
+------------------------------------
     {
       "mcpServers": {
         "project-mapper": {
-          "command": "python",
-          "args": ["-m", "core.project_mapper.mcp_server", "--db", "my_project"],
-          "cwd": "/absolute/path/to/Aethvion-Suite",
-          "env": { "PM_PROJECT_ROOT": "/absolute/path/to/project" }
+          "command": "pm-mcp",
+          "args": ["--db", "workspace"]
         }
       }
     }
@@ -75,7 +80,7 @@ INTERNAL_ERROR   = -32603
 
 PROTOCOL_VERSION = "2024-11-05"
 SERVER_NAME      = "project-mapper"
-SERVER_VERSION   = "1.5.6"
+SERVER_VERSION   = "1.5.7"
 
 
 # ---------------------------------------------------------------------------
@@ -92,19 +97,19 @@ class MCPServer:
 
     def __init__(
         self,
-        db_root:        Path,
-        db_name:        str,
-        project_root:   Optional[str] = None,
-        watch:          bool = False,
+        db_root:       Path,
+        db_name:       str,
+        project_root:  Optional[str] = None,
+        watch:         bool = False,
         watch_interval: float = 10.0,
     ) -> None:
-        self._db_root        = db_root
-        self._db_name        = db_name
-        self._project_root   = project_root
-        self._watch          = watch
+        self._db_root       = db_root
+        self._db_name       = db_name
+        self._project_root  = project_root
+        self._watch         = watch
         self._watch_interval = watch_interval
-        self._scan_lock      = threading.Lock()
-        self._ctx            = None   # built lazily on first tool call
+        self._scan_lock     = threading.Lock()
+        self._ctx           = None   # built lazily on first tool call
 
         # stdout must be unbuffered text so responses are flushed immediately
         self._out = sys.stdout
@@ -117,18 +122,18 @@ class MCPServer:
         if self._ctx is not None:
             return self._ctx
 
-        from core.aethviondb.name_index import NameIndex
-        from core.aethviondb.entity_writer import EntityWriter
-        from core.aethviondb.file_manifest import FileManifest
+        from .db.pm_store import PMEntityStore, PMNameIndex
+        from .db.file_manifest import FileManifest
+        from .db import snapshot as _snap
         from .mcp_tools import MCPContext
 
-        (self._db_root / "entities").mkdir(parents=True, exist_ok=True)
-        name_index = NameIndex(index_path=self._db_root / "name_index.json")
-        writer     = EntityWriter(
-            entities_dir=self._db_root / "entities",
-            index=name_index,
-        )
-        manifest   = FileManifest(self._db_root)
+        self._db_root.mkdir(parents=True, exist_ok=True)
+        name_index = PMNameIndex(index_path=self._db_root / "name_index.json")
+        if _snap.snapshot_path(self._db_root).exists():
+            writer = PMEntityStore.from_snapshot(self._db_root, name_index)
+        else:
+            writer = PMEntityStore(self._db_root, name_index)
+        manifest = FileManifest(self._db_root)
 
         self._ctx = MCPContext(
             db_root=self._db_root,
@@ -268,7 +273,7 @@ class MCPServer:
                 )
             else:
                 from .watcher import AutoScanner
-                ctx = self._get_ctx()
+                ctx = self._get_ctx()   # initialise eagerly so watcher shares the same objects
                 scanner = AutoScanner(
                     project_root=self._project_root,
                     db_root=self._db_root,
@@ -282,7 +287,10 @@ class MCPServer:
                 scanner.start()
                 ctx.auto_scanner = scanner
 
-        # UTF-8 stdin/stdout on Windows
+        # UTF-8 stdin/stdout/stderr on Windows
+        # stderr must also be re-wrapped: the startup log contains em-dashes and
+        # other non-ASCII characters that crash cp1252 consoles, killing the
+        # subprocess and producing a client-side EOF before any tool is called.
         if sys.platform == "win32":
             import io
             sys.stdin  = io.TextIOWrapper(
@@ -290,6 +298,9 @@ class MCPServer:
             )
             self._out = io.TextIOWrapper(
                 sys.stdout.buffer, encoding="utf-8", errors="replace"
+            )
+            sys.stderr = io.TextIOWrapper(
+                sys.stderr.buffer, encoding="utf-8", errors="replace"
             )
 
         for raw_line in sys.stdin:
@@ -331,35 +342,35 @@ def _resolve_db_root(db_name: str, db_path: Optional[str]) -> tuple[Path, str]:
 
     if db_name:
         try:
-            from core.aethviondb.db_registry import resolve_db_root
+            from .db.db_registry import resolve_db_root
             return resolve_db_root(db_name), db_name
         except Exception:
             pass
-        # Fallback: next to this file's default location
-        from core.utils.paths import AETHVIONDB
-        return AETHVIONDB / db_name, db_name
+        # Fallback: under DATA_DIR
+        from .config import DATA_DIR
+        return DATA_DIR / db_name, db_name
 
     # Nothing specified — use "default"
     try:
-        from core.aethviondb.db_registry import resolve_db_root
+        from .db.db_registry import resolve_db_root
         return resolve_db_root("default"), "default"
     except Exception:
-        from core.utils.paths import AETHVIONDB
-        return AETHVIONDB / "default", "default"
+        from .config import DATA_DIR
+        return DATA_DIR / "default", "default"
 
 
 def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(
-        prog="python -m core.project_mapper.mcp_server",
+        prog="python -m project_mapper.mcp_server",
         description="ProjectMapper MCP stdio server",
     )
     parser.add_argument(
         "--db",
         default=os.environ.get("PM_DB_NAME", ""),
         metavar="NAME",
-        help="AethvionDB database name (default: 'default')",
+        help="Database name (default: 'default')",
     )
     parser.add_argument(
         "--db-path",

@@ -1,5 +1,5 @@
 """
-core/aethviondb/file_manifest.py
+project_mapper/db/file_manifest.py
 File-to-entity reverse index for AethvionDB.
 
 Tracks which files have been scanned and which entities were derived from each.
@@ -9,7 +9,7 @@ unchanged files on subsequent scans.
 Storage: per-database sidecar  AethvionDB.FILEMANIFEST
 Format : JSON { version, files: { rel_path: FileEntry } }
 
-Thread-safe via a per-instance lock (same pattern as NameIndex / KindRegistry).
+Thread-safe via a per-instance lock (same pattern as NameIndex).
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from core.utils import get_logger
+from .utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -121,6 +121,20 @@ class FileManifest:
     # Public API
     # ------------------------------------------------------------------
 
+    def record(self, path: str, file_hash: str, entity_ids: list[str]) -> None:
+        """Record a file and its associated entity IDs in the manifest directly."""
+        lang = detect_language(path)
+        with self._lock:
+            self._data["files"][path] = {
+                "path":         path,
+                "hash":         file_hash,
+                "entity_ids":   list(entity_ids),
+                "language":     lang,
+                "size":         0,
+                "last_scanned": _now_iso(),
+            }
+            self._save()
+
     def get(self, path: str) -> Optional[dict[str, Any]]:
         """Return the manifest entry for *path*, or None if not known."""
         with self._lock:
@@ -216,6 +230,15 @@ class FileManifest:
             if modified:
                 self._save()
         return modified
+
+    def remove_file(self, path: str) -> bool:
+        """Remove a file entry from the manifest directly."""
+        with self._lock:
+            if path in self._data["files"]:
+                del self._data["files"][path]
+                self._save()
+                return True
+        return False
 
     def list_all(self, prefix: str = "") -> list[dict[str, Any]]:
         """
