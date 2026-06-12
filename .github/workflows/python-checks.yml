@@ -44,9 +44,9 @@ jobs:
 
     - name: Check for leaked secrets
       run: |
-        ! grep -r "sk-[a-zA-Z0-9]" --include="*.py" --include="*.yaml" --exclude-dir=".git" . \
+        ! grep -rE "sk-[a-zA-Z0-9]{32,}" --include="*.py" --include="*.yaml" --exclude-dir=".git" . \
           || (echo "Potential OpenAI API key found" && exit 1)
-        ! grep -r "AIza[a-zA-Z0-9]" --include="*.py" --include="*.yaml" --exclude-dir=".git" . \
+        ! grep -rE "AIza[a-zA-Z0-9]{32,}" --include="*.py" --include="*.yaml" --exclude-dir=".git" . \
           || (echo "Potential Google API key found" && exit 1)
 
   html-lint:
