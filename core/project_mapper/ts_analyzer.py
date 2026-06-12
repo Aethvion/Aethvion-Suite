@@ -1,5 +1,5 @@
 """
-core/project_mapper/ts_analyzer.py
+project_mapper/ts_analyzer.py
 TypeScript / JavaScript code structure extractor using tree-sitter.
 
 Extracts the same CodeAnalysis structure as code_analyzer.py so the
@@ -120,6 +120,7 @@ def _preceding_jsdoc(node, src: bytes) -> str:
     abstract) so that exported declarations find their JSDoc correctly.
     """
     before = src[:node.start_byte].decode("utf-8", errors="replace")
+    # Strip keyword tokens that may appear between the JSDoc and this node
     before = re.sub(r"\s*\b(export|default|async|declare|abstract)\b\s*$", "", before.rstrip(), count=3)
     before = before.rstrip()
     if not before.endswith("*/"):
@@ -127,9 +128,9 @@ def _preceding_jsdoc(node, src: bytes) -> str:
     start = before.rfind("/**")
     if start < 0:
         return ""
-    inner = before[start + 3:]
+    inner = before[start + 3:]       # skip leading /**
     if inner.endswith("*/"):
-        inner = inner[:-2]
+        inner = inner[:-2]            # strip trailing */
     lines = inner.split("\n")
     text = " ".join(l.strip().lstrip("*").strip() for l in lines if l.strip().lstrip("*").strip())
     return text[:200]
@@ -354,6 +355,14 @@ def _extract_class_calls(body, src: bytes, own_name: str) -> list[tuple[str, str
                         if pair not in seen:
                             seen.add(pair)
                             results.append(pair)
+                elif func and func.type == "member_expression":
+                    cname = _text(func, src).split(".")[0]
+                    if (cname and cname[0].isupper() and cname not in _JS_IGNORE
+                            and cname != own_name):
+                        pair = (cname, method_name)
+                        if pair not in seen:
+                            seen.add(pair)
+                            results.append(pair)
 
             _scan(child, method_name)
 
@@ -544,9 +553,15 @@ def _extract_function_calls(node, src: bytes, fn_name: str) -> list[tuple[str, s
                     seen.add(cname)
                     results.append((cname, fn_name))
         elif n.type == "call_expression":
-            func = _field(n, "function") or _first(n, "identifier")
+            func = _field(n, "function") or _first(n, "identifier", "member_expression")
             if func and func.type == "identifier":
                 cname = _text(func, src)
+                if (cname and cname[0].isupper() and cname not in _JS_IGNORE
+                        and cname not in seen):
+                    seen.add(cname)
+                    results.append((cname, fn_name))
+            elif func and func.type == "member_expression":
+                cname = _text(func, src).split(".")[0]
                 if (cname and cname[0].isupper() and cname not in _JS_IGNORE
                         and cname not in seen):
                     seen.add(cname)
