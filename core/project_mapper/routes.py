@@ -1,5 +1,5 @@
 """
-core/project_mapper/routes.py
+project_mapper/routes.py
 FastAPI routes for the ProjectMapper module.
 
 Prefix: /api/project-mapper
@@ -8,14 +8,13 @@ Prefix: /api/project-mapper
 from __future__ import annotations
 
 import asyncio
+import logging
+import re
 from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-
-from core.utils.logger import get_logger
-from core.utils.paths import AETHVIONDB
 
 from .scanner import (
     scan_folder_preview,
@@ -27,15 +26,14 @@ from .scanner import (
     _read_scaninfo,
 )
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/project-mapper", tags=["project-mapper"])
 
 
 # ---------------------------------------------------------------------------
-# Helpers  (mirrors aethviondb_routes.py patterns)
+# Helpers
 # ---------------------------------------------------------------------------
 
-import re
 _SAFE_RE = re.compile(r"^[a-zA-Z0-9_\-]{1,64}$")
 
 
@@ -44,26 +42,77 @@ def _db_root(db: str = "default", path: Optional[str] = None) -> Path:
         return Path(path)
     if not _SAFE_RE.match(db):
         raise HTTPException(400, f"Invalid database name {db!r}")
-    from core.aethviondb.db_registry import resolve_db_root
+    from .db.db_registry import resolve_db_root
     return resolve_db_root(db)
 
 
 def _get_writer(db: str = "default", path: Optional[str] = None):
-    from core.aethviondb.entity_writer import EntityWriter
-    from core.aethviondb.name_index import NameIndex
+    from .db.entity_writer import EntityWriter
+    from .db.name_index import NameIndex
     root  = _db_root(db, path)
     index = NameIndex(index_path=root / "name_index.json")
     return EntityWriter(entities_dir=root / "entities", index=index)
 
 
+def _get_pm_writer(
+    db:          str  = "default",
+    path:        Optional[str] = None,
+    incremental: bool = False,
+) -> tuple:
+    """Return (PMEntityStore, PMNameIndex) for scan operations.
+
+    PMEntityStore replaces EntityWriter during a PM scan to eliminate
+    per-entity disk I/O.  All entities live in memory; a single snapshot
+    is written at scan completion via flush().
+
+    Both objects share the same PMNameIndex instance — the scanner passes
+    index separately to ProjectIngestor and resolve_stubs, so they must
+    all refer to the same object.
+
+    For incremental scans the store is pre-populated from the existing
+    snapshot; for full scans the store starts empty.
+    """
+    from .db.pm_store import PMEntityStore, PMNameIndex
+    from .db import snapshot as _snap
+    root  = _db_root(db, path)
+    index = PMNameIndex(index_path=root / "name_index.json")
+    if incremental and _snap.snapshot_path(root).exists():
+        writer = PMEntityStore.from_snapshot(root, index)
+    else:
+        writer = PMEntityStore(root, index)
+    return writer, index
+
+
+def _get_mutation_writer(db: str = "default", path: Optional[str] = None) -> tuple:
+    """Return (writer, index) suitable for mutating entities outside a scan.
+
+    PM-store databases (AethvionDB.PMSTORE marker present) have no
+    ws_*.json entity files — EntityWriter.get()/update() would silently
+    return None / raise FileNotFoundError against them.  For those, load
+    the full snapshot into a PMEntityStore, mutate in memory, and let the
+    caller persist with writer.flush() (which rewrites the snapshot; the
+    QueryCache auto-invalidates via the snapshot mtime).
+
+    Classic databases keep using EntityWriter unchanged.
+    """
+    from .db import snapshot as _snap
+    root = _db_root(db, path)
+    if (root / _snap.PM_MARKER_FILE).exists():
+        from .db.pm_store import PMEntityStore, PMNameIndex
+        index  = PMNameIndex(index_path=root / "name_index.json")
+        writer = PMEntityStore.from_snapshot(root, index)
+        return writer, index
+    return _get_writer(db, path), _get_index(db, path)
+
+
 def _get_index(db: str = "default", path: Optional[str] = None):
-    from core.aethviondb.name_index import NameIndex
+    from .db.name_index import NameIndex
     root = _db_root(db, path)
     return NameIndex(index_path=root / "name_index.json")
 
 
 def _get_file_manifest(db: str = "default", path: Optional[str] = None):
-    from core.aethviondb.file_manifest import FileManifest
+    from .db.file_manifest import FileManifest
     return FileManifest(_db_root(db, path))
 
 
@@ -78,10 +127,8 @@ def _ensure_db(root: Path) -> None:
 
 class ScanRequest(BaseModel):
     project_root: str                    # absolute path to the project directory
-    db:           str = "default"        # target AethvionDB database name
+    db:           str = "default"        # target database name
     db_path:      Optional[str] = None   # custom db path (overrides db name)
-    model:        Optional[str] = None   # AI model for LLM enrichment
-    enrich:       bool = True            # run Phase 2 LLM enrichment
     concurrency:  int = 3                # parallel file processing
     incremental:  bool = True            # skip files with unchanged hashes
 
@@ -109,11 +156,11 @@ async def preview_project(
 async def start_project_scan(req: ScanRequest):
     """
     Start a background scan of the given project directory.
-    Ingests the project structure into the specified AethvionDB database.
+    Ingests the project structure into the specified database.
 
-    - Phase 1 (always): Static AST analysis → creates module/class/function entities.
-    - Phase 2 (if enrich=True): LLM enrichment → adds semantic summaries to modules.
-    - If incremental=True: skips files whose hash matches the last scan.
+    Static AST analysis creates module/class/function entities and wires
+    their relations.  If incremental=True, files with unchanged hashes are
+    skipped.
 
     Returns immediately. Poll /scan/status for progress.
     """
@@ -146,8 +193,9 @@ async def start_project_scan(req: ScanRequest):
             f"To start fresh, delete or rename the existing database directory first."
         )
 
-    writer        = _get_writer(req.db, req.db_path)
-    index         = _get_index(req.db, req.db_path)
+    # Use PMEntityStore for scan operations — eliminates per-entity disk I/O.
+    # Both writer and index share the same PMNameIndex instance.
+    writer, index = _get_pm_writer(req.db, req.db_path, req.incremental)
     file_manifest = _get_file_manifest(req.db, req.db_path)
 
     started = start_scan(
@@ -157,8 +205,6 @@ async def start_project_scan(req: ScanRequest):
         writer=writer,
         index=index,
         file_manifest=file_manifest,
-        model=req.model,
-        enrich=req.enrich,
         concurrency=max(1, min(req.concurrency, 8)),
         incremental=req.incremental,
     )
@@ -170,7 +216,6 @@ async def start_project_scan(req: ScanRequest):
         "status":       "started",
         "project_root": req.project_root,
         "db":           req.db,
-        "enrich":       req.enrich,
         "incremental":  req.incremental,
     }
 
@@ -231,59 +276,6 @@ async def project_mapper_stats(
     }
 
 
-@router.post("/enrich")
-async def enrich_unenriched_modules(
-    db:          str = Query("default"),
-    path:        Optional[str] = Query(None),
-    model:       Optional[str] = Query(None),
-    limit:       int = Query(20, le=100),
-):
-    """
-    Run LLM enrichment on module entities that have no summary yet.
-    Useful after a static-only scan (enrich=False) or to refresh stale entries.
-    """
-    from .ingestor import ProjectIngestor
-    from .code_analyzer import analyze_python
-
-    root          = _db_root(db, path)
-    writer        = _get_writer(db, path)
-    index         = _get_index(db, path)
-    file_manifest = _get_file_manifest(db, path)
-
-    ingestor = ProjectIngestor(
-        db_root=root, writer=writer, index=index,
-        file_manifest=file_manifest, model=model or "auto",
-    )
-
-    # Find module entities with no summary
-    candidates = [
-        e for e in writer.list_all()
-        if e.get("type") == "module"
-        and not e.get("sections", {}).get("core", {}).get("summary", "")
-    ][:limit]
-
-    enriched = 0
-    errors:  list[str] = []
-    for e in candidates:
-        source_files = e.get("sections", {}).get("source_files", [])
-        if not source_files:
-            continue
-        sf    = source_files[0]
-        fpath = sf.get("path", "")
-        if not fpath:
-            continue
-        try:
-            content = await asyncio.to_thread(Path(fpath).read_text, encoding="utf-8", errors="replace")
-            analysis = await asyncio.to_thread(analyze_python, fpath, content)
-            ok = await ingestor.enrich_module(e["id"], analysis, model)
-            if ok:
-                enriched += 1
-        except Exception as exc:
-            errors.append(f"{fpath}: {exc}")
-
-    return {"enriched": enriched, "candidates": len(candidates), "errors": errors}
-
-
 # ---------------------------------------------------------------------------
 # Query endpoints
 # ---------------------------------------------------------------------------
@@ -294,19 +286,9 @@ class ImpactRequest(BaseModel):
     path:          Optional[str] = None
     depth:         int = 2                     # 1–4 hops
     via_kinds:     Optional[list[str]] = None  # restrict to these relation kinds
-    # Examples:
-    #   via_kinds=["extends"]        → subclasses only
-    #   via_kinds=["calls"]          → direct callers only
-    #   via_kinds=["extends","calls"]→ subclasses + callers
-    # Omit for full impact (all IMPACT_INCOMING_KINDS).
     exclude_tests:  bool = True                # filter test-file entities from results
-    # Set to False to include test subclasses / test helpers in the impact list.
     slim:           bool = False               # return name+file_path only (~16 tok/entity)
-    # Set to True when you only need a file list, not full metadata/summaries.
     summary_depth:  int  = 1                   # include summaries only for hop <= this value
-    # Default=1: hop=1 entities get full summaries, hop=2+ entities are stripped.
-    # Set to 0 to strip all summaries, or higher to keep summaries further out.
-    # Ignored when slim=True.
 
 
 class ContextRequest(BaseModel):
@@ -339,6 +321,16 @@ class ContributeRequest(BaseModel):
     source:      str = "agent"                     # caller identifier
 
 
+@router.get("/query/cache")
+async def query_cache_stats(
+    db:   str = Query("default"),
+    path: Optional[str] = Query(None),
+):
+    """Return the current state of the in-memory query cache."""
+    from .query_cache import get_query_cache
+    return get_query_cache().stats()
+
+
 @router.post("/query/impact")
 async def query_impact(req: ImpactRequest):
     """
@@ -352,14 +344,14 @@ async def query_impact(req: ImpactRequest):
     depth 2 = dependents of dependents (default)
     depth 3–4 = wider blast radius (can be slow on large graphs)
     """
-    from .query import build_entity_map, impact_query
+    from .query import impact_query
+    from .query_cache import get_query_cache
 
-    depth  = max(1, min(req.depth, 4))
-    writer = _get_writer(req.db, req.path)
-    index  = _get_index(req.db, req.path)
+    depth      = max(1, min(req.depth, 4))
+    root       = _db_root(req.db, req.path)
+    entity_map, index = await get_query_cache().get(root)
 
-    entity_map = await asyncio.to_thread(build_entity_map, writer)
-    result     = await asyncio.to_thread(
+    result = await asyncio.to_thread(
         impact_query, req.entity, entity_map, index, depth,
         req.via_kinds, req.exclude_tests, req.slim, req.summary_depth,
     )
@@ -383,14 +375,14 @@ async def query_context(req: ContextRequest):
       medium — + classes, components, workflows, configs, dependencies
       low    — + functions, endpoints, models (full implementation detail)
     """
-    from .query import build_entity_map, context_query
+    from .query import context_query
+    from .query_cache import get_query_cache
 
-    depth  = max(0, min(req.depth, 2))
-    writer = _get_writer(req.db, req.path)
-    index  = _get_index(req.db, req.path)
+    depth      = max(0, min(req.depth, 2))
+    root       = _db_root(req.db, req.path)
+    entity_map, index = await get_query_cache().get(root)
 
-    entity_map = await asyncio.to_thread(build_entity_map, writer)
-    result     = await asyncio.to_thread(
+    result = await asyncio.to_thread(
         context_query,
         req.q,
         entity_map,
@@ -413,12 +405,13 @@ async def query_path(req: PathRequest):
     Traverses all relation kinds in both directions (undirected).
     Useful for answering "how does the auth system connect to the payment flow?"
     """
-    from .query import build_entity_map, shortest_path
+    from .query import shortest_path
+    from .query_cache import get_query_cache
 
-    writer     = _get_writer(req.db, req.path)
-    index      = _get_index(req.db, req.path)
-    entity_map = await asyncio.to_thread(build_entity_map, writer)
-    result     = await asyncio.to_thread(
+    root       = _db_root(req.db, req.path)
+    entity_map, index = await get_query_cache().get(root)
+
+    result = await asyncio.to_thread(
         shortest_path,
         req.from_entity,
         req.to_entity,
@@ -500,8 +493,7 @@ async def run_cleanup(
     from .cleanup import run_deletion_cleanup
 
     root          = _db_root(db, path)
-    writer        = _get_writer(db, path)
-    index         = _get_index(db, path)
+    writer, index = _get_mutation_writer(db, path)
     file_manifest = _get_file_manifest(db, path)
 
     project_path = Path(project_root)
@@ -516,6 +508,11 @@ async def run_cleanup(
             writer,
             index,
         )
+        # PM-store databases: persist retirements to the snapshot.
+        # Skip the flush when nothing changed to avoid a pointless
+        # snapshot rewrite + query-cache invalidation.
+        if result.retired_count and hasattr(writer, "flush"):
+            await asyncio.to_thread(writer.flush)
     except Exception as exc:
         raise HTTPException(500, f"Cleanup failed: {exc}")
 
@@ -535,7 +532,7 @@ async def list_mcp_tools():
     Return the MCP tool schemas for all ProjectMapper tools.
 
     These are the same schemas exposed by the standalone MCP server
-    (core.project_mapper.mcp_server) and published in tools.json.
+    (project_mapper.mcp_server) and published in tools.json.
     Useful for Cursor, Antigravity, and other HTTP-based MCP hosts.
     """
     from .mcp_tools import TOOL_SCHEMAS
@@ -544,7 +541,7 @@ async def list_mcp_tools():
         "server":         "project-mapper",
         "tools":          TOOL_SCHEMAS,
         "tool_count":     len(TOOL_SCHEMAS),
-        "stdio_command":  "python -m core.project_mapper.mcp_server --db <db_name>",
+        "stdio_command":  "pm-mcp --db <db_name>",
     }
 
 
@@ -560,13 +557,11 @@ async def agent_contribute(req: ContributeRequest):
     Designed for AI coding agents (Claude Code, Cursor, etc.) to call after
     implementing a feature or making an architectural decision.
     """
-    from .query import build_entity_map, apply_contribution
+    from .query import build_entity_map, apply_contribution, _resolve_entity
 
-    writer = _get_writer(req.db, req.path)
-    index  = _get_index(req.db, req.path)
+    writer, index = _get_mutation_writer(req.db, req.path)
 
     entity_map = await asyncio.to_thread(build_entity_map, writer)
-    from .query import _resolve_entity
     entity = _resolve_entity(req.entity_name, entity_map, index)
     if not entity:
         raise HTTPException(404, f"Entity {req.entity_name!r} not found in database {req.db!r}")
@@ -581,4 +576,9 @@ async def agent_contribute(req: ContributeRequest):
         writer,
         index,
     )
+
+    # PM-store databases: persist the in-memory mutations to the snapshot.
+    if hasattr(writer, "flush"):
+        await asyncio.to_thread(writer.flush)
+
     return result

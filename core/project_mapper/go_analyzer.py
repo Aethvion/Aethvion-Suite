@@ -1,5 +1,5 @@
 """
-core/project_mapper/go_analyzer.py
+project_mapper/go_analyzer.py
 Go code structure extractor using tree-sitter.
 
 Extracts the same CodeAnalysis structure as code_analyzer.py so the

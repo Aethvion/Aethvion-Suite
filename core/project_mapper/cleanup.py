@@ -25,7 +25,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from .scanner import SUPPORTED_EXTENSIONS, _EXCLUDED_DIRS
 
