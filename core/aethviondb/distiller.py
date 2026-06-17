@@ -32,7 +32,7 @@ import uuid
 from typing import Any, Optional
 
 from core.utils.logger import get_logger
-from core.ai.call_contexts import CallSource
+from .ai_runtime import get_llm_caller
 from .entity_schema import VALID_TYPES
 from .entity_writer import EntityWriter
 from .name_index import NameIndex
@@ -234,9 +234,6 @@ class ContentDistiller:
           "source_file": str | None,
         }
         """
-        from core.providers import get_provider_manager
-        pm = get_provider_manager()
-
         result: dict[str, Any] = {
             "entity_id":   None,
             "entity_name": None,
@@ -248,13 +245,13 @@ class ContentDistiller:
         }
 
         try:
+            caller = get_llm_caller()
             response = await asyncio.to_thread(
-                pm.call_with_failover,
+                caller,
                 prompt=_build_prompt(content),
                 system_prompt=_SYSTEM_PROMPT,
                 model=model or self._model,
                 trace_id=uuid.uuid4().hex,
-                source=CallSource.WORLDSIM,
             )
             raw = response.content if hasattr(response, "content") else str(response)
         except Exception as e:

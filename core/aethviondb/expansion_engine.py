@@ -41,7 +41,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from core.utils.logger import get_logger
-from core.ai.call_contexts import CallSource
+from .ai_runtime import get_llm_caller
 from .entity_schema import VALID_TYPES
 from .entity_writer import EntityWriter
 from .name_index import NameIndex, get_index
@@ -211,8 +211,8 @@ class ExpansionEngine:
         context    = self._gather_context(entity_id)
 
         async with self._semaphore:
-            from core.providers import get_provider_manager
-            pm = get_provider_manager()
+            from .ai_runtime import get_llm_caller
+            caller = get_llm_caller()
 
             raw = None
             for attempt in range(2):   # up to 2 attempts
@@ -220,12 +220,11 @@ class ExpansionEngine:
                 trace_id = uuid.uuid4().hex
                 try:
                     response = await asyncio.to_thread(
-                        pm.call_with_failover,
+                        caller,
                         prompt=prompt,
                         system_prompt=_EXPANSION_SYSTEM_PROMPT,
                         model=used_model,
                         trace_id=trace_id,
-                        source=CallSource.WORLDSIM,
                     )
                     raw = response.content if hasattr(response, "content") else str(response)
                 except Exception as e:
@@ -382,8 +381,8 @@ class ExpansionEngine:
         context    = self._gather_context(entity_id)
 
         async with self._semaphore:
-            from core.providers import get_provider_manager
-            pm = get_provider_manager()
+            from .ai_runtime import get_llm_caller
+            caller = get_llm_caller()
 
             raw = None
             for attempt in range(2):
@@ -391,12 +390,11 @@ class ExpansionEngine:
                 trace_id = uuid.uuid4().hex
                 try:
                     response = await asyncio.to_thread(
-                        pm.call_with_failover,
+                        caller,
                         prompt=prompt,
                         system_prompt=_EXPANSION_SYSTEM_PROMPT,
                         model=used_model,
                         trace_id=trace_id,
-                        source=CallSource.WORLDSIM,
                     )
                     raw = response.content if hasattr(response, "content") else str(response)
                 except Exception as e:
@@ -437,8 +435,8 @@ class ExpansionEngine:
         context    = [context_summary] if context_summary else []
 
         async with self._semaphore:
-            from core.providers import get_provider_manager
-            pm = get_provider_manager()
+            from .ai_runtime import get_llm_caller
+            caller = get_llm_caller()
 
             raw = None
             for attempt in range(2):
@@ -446,12 +444,11 @@ class ExpansionEngine:
                 trace_id = uuid.uuid4().hex
                 try:
                     response = await asyncio.to_thread(
-                        pm.call_with_failover,
+                        caller,
                         prompt=prompt,
                         system_prompt=_EXPANSION_SYSTEM_PROMPT,
                         model=used_model,
                         trace_id=trace_id,
-                        source=CallSource.WORLDSIM,
                     )
                     raw = response.content if hasattr(response, "content") else str(response)
                 except Exception as e:

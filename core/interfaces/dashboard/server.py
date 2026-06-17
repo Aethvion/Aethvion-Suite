@@ -152,6 +152,29 @@ async def initialize_ai_engine(app: FastAPI):
         logger.error(f"AI Engine initialization failed: {e}", exc_info=True)
         app.state.startup_status.update({"status": "Something went wrong during AI initialization.", "error": str(e)})
 
+
+def _wire_aethviondb_ai() -> None:
+    """Inject the Suite's LLM provider into AethvionDB's optional AI layer.
+
+    AethvionDB's core is provider-free; its distill/expand/deepen helpers call an
+    injected backend. Here the Suite supplies one that routes through the normal
+    provider manager. If this fails, the deterministic core still works — only
+    the AI features are unavailable.
+    """
+    try:
+        from core.aethviondb.ai_runtime import set_llm_caller
+        from core.providers import get_provider_manager
+        from core.ai.call_contexts import CallSource
+
+        def _caller(**kwargs):
+            return get_provider_manager().call_with_failover(source=CallSource.WORLDSIM, **kwargs)
+
+        set_llm_caller(_caller)
+        logger.debug("AethvionDB AI backend wired to provider manager.")
+    except Exception as exc:
+        logger.warning("Could not wire AethvionDB AI backend: %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.main_event_loop = asyncio.get_running_loop()
@@ -162,6 +185,11 @@ async def lifespan(app: FastAPI):
     ws_handler.main_loop = app.state.main_event_loop
     ws_handler.setLevel(logging.INFO)
     logging.getLogger().addHandler(ws_handler)
+
+    # Wire the Suite's LLM provider into AethvionDB's optional intelligence layer.
+    # The engine (distill/expand/deepen) depends only on this injected caller, not
+    # on core.providers — so its deterministic core stays provider-free.
+    _wire_aethviondb_ai()
 
     # Register system_router synchronously — provides /health and /startup-status
     # which the frontend and suite tester need before anything else is ready.
