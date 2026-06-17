@@ -81,6 +81,7 @@
 /* ── Nav tabs ───────────────────────────────────────────────────────────────── */
 .dt-nav-tabs {
     display: flex;
+    flex: 1;
     gap: 4px;
     padding-bottom: 1px;
 }

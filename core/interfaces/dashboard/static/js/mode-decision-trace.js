@@ -527,6 +527,41 @@
 
     // ── Init ──────────────────────────────────────────────────────────────────
     function init() {
+        // Register info content for the ExpInfo overlay
+        if (window.ExpInfo) {
+            window.ExpInfo.register('decision-trace', {
+                icon:    'fas fa-timeline',
+                name:    'DecisionTrace',
+                color:   'linear-gradient(135deg, #6366f1, #7c3aed)',
+                tagline: 'Organisational decision provenance — capture not just what was decided, but why.',
+                status:  'Experimental',
+                concepts: [
+                    {
+                        icon:  'fas fa-timeline',
+                        label: 'Decision Provenance Graph',
+                        desc:  'Decisions are typed entities linked to each other. You can traverse why things are the way they are, across months or years.',
+                    },
+                    {
+                        icon:  'fas fa-scale-balanced',
+                        label: 'Structured Reasoning Records',
+                        desc:  'Each decision captures options considered, constraints, trade-offs, and stakeholders — not just the outcome.',
+                    },
+                    {
+                        icon:  'fas fa-wand-magic-sparkles',
+                        label: 'AI-Assisted Analysis',
+                        desc:  'Ask the AI about any decision — it receives the full decision graph as structured context, not raw text.',
+                    },
+                ],
+                how: 'Decisions are stored as typed JSON entities locally. Each entry holds the context, the options that were considered, the chosen option, the constraints that existed, the trade-offs that were accepted, and the stakeholders involved. Decisions can be linked to each other to form a causal chain. The AI "Ask" feature sends the full decision plus all linked decisions as structured context — there is no retrieval guesswork, the model sees exactly what is relevant.',
+                vision: 'DecisionTrace is the personal-to-team evolution of AethvionDB. Where AethvionDB captures knowledge entities, DecisionTrace captures reasoning chains. The long-term vision is an organisation-wide decision intelligence layer: when someone asks "why is X like this?", the answer is a graph traversal — deterministic, instant, and complete — not a search through Confluence pages. If validated here, it will spin out as a standalone product targeting engineering organisations, law firms, and hospitals where the cost of lost institutional memory is highest.',
+            });
+        }
+
+        // Info button
+        $('dt-info-btn')?.addEventListener('click', () => {
+            if (window.ExpInfo) window.ExpInfo.show('decision-trace');
+        });
+
         // Tab switcher
         document.querySelectorAll('.dt-nav-tab').forEach(btn => {
             btn.addEventListener('click', () => switchTab(btn.dataset.dtTab));

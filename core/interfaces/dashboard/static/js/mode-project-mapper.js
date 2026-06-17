@@ -649,6 +649,44 @@
     // ═══════════════════════════════════════════════════════════════════════════
 
     function init() {
+        // Register info content for the ExpInfo overlay
+        if (window.ExpInfo) {
+            window.ExpInfo.register('project-mapper', {
+                icon:    'fas fa-diagram-project',
+                name:    'Project Mapper',
+                color:   'linear-gradient(135deg, #0ea5e9, #6366f1)',
+                tagline: 'A static AST knowledge graph that reduces AI token usage by 87–91% — benchmarked.',
+                status:  'Beta',
+                concepts: [
+                    {
+                        icon:  'fas fa-circle-nodes',
+                        label: 'Custom Knowledge Graph',
+                        desc:  'Instead of sending raw source files to the AI, Project Mapper builds a typed entity graph: files, classes, functions, imports — all as structured nodes with relationships.',
+                    },
+                    {
+                        icon:  'fas fa-bolt',
+                        label: '87–91% Token Reduction',
+                        desc:  'Benchmarked across multiple projects: AI agents using Project Mapper consume 87–91% fewer tokens than agents reading raw codebases. This is not a prompt trick — it is a structural change.',
+                    },
+                    {
+                        icon:  'fas fa-database',
+                        label: 'AethvionDB-Backed',
+                        desc:  'Scan results are stored as typed entities in AethvionDB. The graph persists between sessions and supports delta scans — only changed files are re-indexed.',
+                    },
+                ],
+                how: 'Project Mapper scans a codebase and extracts typed entities — files, classes, functions, imports, dependencies — into AethvionDB. When an AI agent needs to work on the codebase, it queries the graph instead of reading raw source files. The result is a precise, structured snapshot of the project that the AI can traverse without reading hundreds of files. Delta scans update only what has changed, making repeated scans fast.',
+                vision: 'Project Mapper has already proven its value and is being spun out as a standalone product (github.com/Aethvion/Aethvion-ProjectMapper). The vision is a universal code intelligence layer that any AI agent can query — not just Aethvion Suite agents. Any tool that needs to understand a codebase can use Project Mapper as its knowledge foundation, replacing fragile file-reading strategies with a structured, queryable graph.',
+            });
+        }
+
+        // Info button
+        const pmInfoBtn = document.getElementById('pm-info-btn');
+        if (pmInfoBtn) {
+            pmInfoBtn.addEventListener('click', () => {
+                if (window.ExpInfo) window.ExpInfo.show('project-mapper');
+            });
+        }
+
         // Nav tab clicks
         document.querySelectorAll('#pm-nav-tabs .pm-nav-tab').forEach(btn =>
             btn.addEventListener('click', () => switchTab(btn.dataset.pmTab)));
