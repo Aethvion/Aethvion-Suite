@@ -56,6 +56,7 @@ def _import_remaining_routers():
         ("discord_routes",                      "router",     "discord_router"),
         ("logs_routes",                         "router",     "logs_router"),
         ("documentation_routes",                "router",     "documentation_router"),
+        ("decision_trace_routes",               "router",     "decision_trace_router"),
     ]
     _CORE_ROUTES = [
         ("core.companions.companion_routes",            "router", "companion_router"),

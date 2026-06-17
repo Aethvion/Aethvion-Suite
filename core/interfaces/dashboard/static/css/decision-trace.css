@@ -1,0 +1,992 @@
+/* ──────────────────────────────────────────────────────────────────────────────
+   DecisionTrace — Organisational Decision Provenance Graph
+   Mode-specific styles. Shares the base design tokens from base.css.
+   ────────────────────────────────────────────────────────────────────────────── */
+
+/* ── Root layout ────────────────────────────────────────────────────────────── */
+.dt-root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--bg-primary, #0d0d14);
+    color: var(--text-primary, #e2e8f0);
+    font-family: 'Inter', 'Outfit', system-ui, sans-serif;
+    overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+.dt-header {
+    flex-shrink: 0;
+    padding: 20px 24px 0;
+    background: linear-gradient(180deg, rgba(99,102,241,0.08) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.dt-header-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.dt-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.dt-brand-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 0 12px rgba(99,102,241,0.4);
+    flex-shrink: 0;
+}
+
+.dt-brand-name {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    background: linear-gradient(135deg, #a5b4fc, #c4b5fd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.dt-brand-tag {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-tertiary, #6b7280);
+    padding: 2px 7px;
+    border: 1px solid rgba(99,102,241,0.25);
+    border-radius: 20px;
+    background: rgba(99,102,241,0.08);
+}
+
+.dt-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+/* ── Nav tabs ───────────────────────────────────────────────────────────────── */
+.dt-nav-tabs {
+    display: flex;
+    gap: 4px;
+    padding-bottom: 1px;
+}
+
+.dt-nav-tab {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary, #9ca3af);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.18s ease;
+    border-radius: 6px 6px 0 0;
+}
+
+.dt-nav-tab:hover {
+    color: var(--text-primary, #e2e8f0);
+    background: rgba(255,255,255,0.04);
+}
+
+.dt-nav-tab.active {
+    color: #a5b4fc;
+    border-bottom-color: #6366f1;
+    background: rgba(99,102,241,0.08);
+}
+
+/* ── Pane (tab content area) ────────────────────────────────────────────────── */
+.dt-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+.dt-pane {
+    display: none;
+    flex: 1;
+    overflow: hidden;
+}
+
+.dt-pane.active {
+    display: flex;
+}
+
+/* ── Decisions pane: three-column layout ─────────────────────────────────────── */
+.dt-decisions-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    gap: 0;
+}
+
+/* Left rail — decision list */
+.dt-list-rail {
+    width: 280px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.015);
+    overflow: hidden;
+}
+
+.dt-list-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+}
+
+.dt-list-search-bar i {
+    color: var(--text-tertiary, #6b7280);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.dt-search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary, #e2e8f0);
+    font-size: 13px;
+}
+
+.dt-search-input::placeholder {
+    color: var(--text-tertiary, #6b7280);
+}
+
+.dt-new-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #6366f1, #7c3aed);
+    border: none;
+    border-radius: 7px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    flex-shrink: 0;
+}
+
+.dt-new-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(99,102,241,0.45);
+}
+
+.dt-list-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.dt-list-scroll::-webkit-scrollbar { width: 4px; }
+.dt-list-scroll::-webkit-scrollbar-track { background: transparent; }
+.dt-list-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.dt-list-empty {
+    text-align: center;
+    padding: 40px 16px;
+    color: var(--text-tertiary, #6b7280);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.dt-list-empty i {
+    display: block;
+    font-size: 28px;
+    margin-bottom: 12px;
+    opacity: 0.4;
+}
+
+/* Decision card in list */
+.dt-decision-card {
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    margin-bottom: 4px;
+    transition: all 0.15s ease;
+}
+
+.dt-decision-card:hover {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.07);
+}
+
+.dt-decision-card.active {
+    background: rgba(99,102,241,0.12);
+    border-color: rgba(99,102,241,0.3);
+}
+
+.dt-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary, #e2e8f0);
+    margin-bottom: 4px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.dt-card-chosen {
+    font-size: 11px;
+    color: #6ee7b7;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dt-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.dt-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 20px;
+    background: rgba(99,102,241,0.15);
+    color: #a5b4fc;
+    font-weight: 500;
+}
+
+.dt-card-date {
+    font-size: 10px;
+    color: var(--text-tertiary, #6b7280);
+    margin-top: 4px;
+}
+
+/* ── Detail pane (center) ────────────────────────────────────────────────────── */
+.dt-detail-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid rgba(255,255,255,0.06);
+}
+
+.dt-detail-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 28px;
+}
+
+.dt-detail-scroll::-webkit-scrollbar { width: 5px; }
+.dt-detail-scroll::-webkit-scrollbar-track { background: transparent; }
+.dt-detail-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+.dt-detail-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-tertiary, #6b7280);
+    gap: 12px;
+    text-align: center;
+    padding: 40px;
+}
+
+.dt-detail-empty i {
+    font-size: 36px;
+    opacity: 0.3;
+}
+
+.dt-detail-empty p {
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 300px;
+}
+
+/* Detail view content */
+.dt-detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.dt-detail-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary, #e2e8f0);
+    letter-spacing: -0.3px;
+    line-height: 1.3;
+    flex: 1;
+}
+
+.dt-detail-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.dt-icon-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-secondary, #9ca3af);
+    border-radius: 7px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: all 0.15s ease;
+}
+
+.dt-icon-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: var(--text-primary, #e2e8f0);
+}
+
+.dt-icon-btn.danger:hover {
+    background: rgba(239,68,68,0.15);
+    color: #f87171;
+    border-color: rgba(239,68,68,0.3);
+}
+
+.dt-detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.dt-meta-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-secondary, #9ca3af);
+}
+
+.dt-meta-chip i { font-size: 10px; }
+
+/* Section blocks */
+.dt-section {
+    margin-bottom: 20px;
+    padding: 16px 18px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+}
+
+.dt-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-tertiary, #6b7280);
+    margin-bottom: 8px;
+}
+
+.dt-section-text {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text-secondary, #cbd5e1);
+}
+
+.dt-chosen-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6ee7b7;
+    background: rgba(110,231,183,0.1);
+    border: 1px solid rgba(110,231,183,0.2);
+    padding: 6px 12px;
+    border-radius: 8px;
+}
+
+.dt-options-list,
+.dt-constraints-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.dt-options-list li,
+.dt-constraints-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-secondary, #9ca3af);
+    padding: 5px 8px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.025);
+}
+
+.dt-options-list li i { color: #6366f1; font-size: 11px; }
+.dt-constraints-list li i { color: #f59e0b; font-size: 11px; }
+
+.dt-stakeholder-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.dt-stakeholder-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(139,92,246,0.12);
+    border: 1px solid rgba(139,92,246,0.25);
+    color: #c4b5fd;
+}
+
+/* Linked decisions */
+.dt-links-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.dt-link-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(99,102,241,0.08);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #a5b4fc;
+    transition: all 0.15s ease;
+}
+
+.dt-link-chip:hover {
+    background: rgba(99,102,241,0.15);
+    transform: translateX(2px);
+}
+
+.dt-link-chip i { font-size: 11px; opacity: 0.7; }
+
+/* ── Ask pane (right rail) ────────────────────────────────────────────────────── */
+.dt-ask-pane {
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: rgba(255,255,255,0.01);
+    overflow: hidden;
+}
+
+.dt-ask-header {
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+}
+
+.dt-ask-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary, #e2e8f0);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 4px;
+}
+
+.dt-ask-title i { color: #a78bfa; }
+
+.dt-ask-subtitle {
+    font-size: 11px;
+    color: var(--text-tertiary, #6b7280);
+    line-height: 1.5;
+}
+
+.dt-ask-output {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--text-secondary, #cbd5e1);
+}
+
+.dt-ask-output::-webkit-scrollbar { width: 4px; }
+.dt-ask-output::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.dt-ask-placeholder {
+    color: var(--text-tertiary, #6b7280);
+    font-size: 12px;
+    line-height: 1.7;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.dt-ask-placeholder i {
+    display: block;
+    font-size: 24px;
+    margin-bottom: 10px;
+    opacity: 0.3;
+}
+
+.dt-ask-input-area {
+    padding: 12px 14px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.dt-model-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dt-model-label {
+    font-size: 11px;
+    color: var(--text-tertiary, #6b7280);
+    flex-shrink: 0;
+}
+
+.dt-model-select {
+    flex: 1;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    color: var(--text-primary, #e2e8f0);
+    font-size: 12px;
+    padding: 4px 8px;
+    outline: none;
+    cursor: pointer;
+}
+
+.dt-ask-textarea {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: var(--text-primary, #e2e8f0);
+    font-size: 13px;
+    padding: 10px 12px;
+    resize: none;
+    outline: none;
+    font-family: inherit;
+    line-height: 1.5;
+    transition: border-color 0.15s ease;
+    box-sizing: border-box;
+}
+
+.dt-ask-textarea:focus {
+    border-color: rgba(99,102,241,0.5);
+    background: rgba(99,102,241,0.04);
+}
+
+.dt-ask-textarea::placeholder {
+    color: var(--text-tertiary, #6b7280);
+}
+
+.dt-ask-send-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 9px;
+    background: linear-gradient(135deg, #6366f1, #7c3aed);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.dt-ask-send-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(99,102,241,0.4);
+}
+
+.dt-ask-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Streaming cursor */
+.dt-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 14px;
+    background: #a5b4fc;
+    margin-left: 2px;
+    vertical-align: middle;
+    animation: dt-blink 0.85s step-end infinite;
+}
+
+@keyframes dt-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+}
+
+/* ── Graph pane ──────────────────────────────────────────────────────────────── */
+.dt-graph-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    overflow-y: auto;
+    gap: 24px;
+}
+
+.dt-graph-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.dt-graph-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary, #e2e8f0);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dt-graph-title i { color: #a78bfa; }
+
+.dt-graph-canvas-wrap {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 20px;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.dt-graph-nodes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    width: 100%;
+}
+
+.dt-graph-node {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px;
+    background: rgba(99,102,241,0.08);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    min-width: 160px;
+    max-width: 220px;
+}
+
+.dt-graph-node:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99,102,241,0.25);
+    border-color: rgba(99,102,241,0.45);
+}
+
+.dt-graph-node-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #a5b4fc;
+    line-height: 1.4;
+}
+
+.dt-graph-node-chosen {
+    font-size: 11px;
+    color: #6ee7b7;
+}
+
+.dt-graph-node-links {
+    font-size: 10px;
+    color: var(--text-tertiary, #6b7280);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.dt-graph-empty {
+    color: var(--text-tertiary, #6b7280);
+    font-size: 13px;
+    text-align: center;
+}
+
+/* ── New / Edit decision modal ───────────────────────────────────────────────── */
+.dt-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    animation: dt-fade-in 0.2s ease forwards;
+}
+
+@keyframes dt-fade-in {
+    to { opacity: 1; }
+}
+
+.dt-modal {
+    background: #141420;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 680px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+}
+
+.dt-modal::-webkit-scrollbar { width: 5px; }
+.dt-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+.dt-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.dt-modal-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary, #e2e8f0);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dt-modal-title i { color: #a78bfa; }
+
+.dt-modal-close {
+    width: 30px;
+    height: 30px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 7px;
+    color: var(--text-tertiary, #9ca3af);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.dt-modal-close:hover {
+    background: rgba(239,68,68,0.15);
+    color: #f87171;
+    border-color: rgba(239,68,68,0.3);
+}
+
+.dt-modal-body {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.dt-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.dt-form-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-tertiary, #6b7280);
+}
+
+.dt-form-input,
+.dt-form-textarea,
+.dt-form-tags {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: var(--text-primary, #e2e8f0);
+    font-size: 13px;
+    padding: 10px 12px;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.15s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.dt-form-input:focus,
+.dt-form-textarea:focus,
+.dt-form-tags:focus {
+    border-color: rgba(99,102,241,0.5);
+    background: rgba(99,102,241,0.04);
+}
+
+.dt-form-input::placeholder,
+.dt-form-textarea::placeholder,
+.dt-form-tags::placeholder {
+    color: var(--text-tertiary, #6b7280);
+}
+
+.dt-form-textarea { resize: vertical; min-height: 80px; }
+.dt-form-hint {
+    font-size: 11px;
+    color: var(--text-tertiary, #6b7280);
+}
+
+.dt-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.dt-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.dt-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    border: none;
+}
+
+.dt-btn-secondary {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text-secondary, #9ca3af);
+}
+
+.dt-btn-secondary:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-primary, #e2e8f0);
+}
+
+.dt-btn-primary {
+    background: linear-gradient(135deg, #6366f1, #7c3aed);
+    color: #fff;
+}
+
+.dt-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(99,102,241,0.4);
+}
+
+.dt-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* ── Utility ─────────────────────────────────────────────────────────────────── */
+.dt-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 40px;
+    color: var(--text-tertiary, #6b7280);
+    font-size: 13px;
+}
+
+.dt-loading i { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.dt-error-banner {
+    margin: 16px;
+    padding: 10px 14px;
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.25);
+    border-radius: 8px;
+    color: #fca5a5;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Stats bar */
+.dt-stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 24px;
+    background: rgba(255,255,255,0.015);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    flex-shrink: 0;
+}
+
+.dt-stat-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-tertiary, #6b7280);
+}
+
+.dt-stat-chip i { font-size: 11px; color: #6366f1; }
+.dt-stat-val { font-weight: 600; color: var(--text-secondary, #9ca3af); }

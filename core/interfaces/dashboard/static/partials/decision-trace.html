@@ -1,0 +1,228 @@
+<div id="dt-root" class="dt-root">
+
+    <!-- ── Header ─────────────────────────────────────────────────────────── -->
+    <div class="dt-header">
+        <div class="dt-header-top">
+
+            <div class="dt-brand">
+                <div class="dt-brand-icon">
+                    <i class="fas fa-timeline"></i>
+                </div>
+                <span class="dt-brand-name">DecisionTrace</span>
+                <span class="dt-brand-tag">Experimental</span>
+            </div>
+
+            <nav class="dt-nav-tabs" id="dt-nav-tabs">
+                <button class="dt-nav-tab active" data-dt-tab="decisions">
+                    <i class="fas fa-list-check"></i> Decisions
+                </button>
+                <button class="dt-nav-tab" data-dt-tab="graph">
+                    <i class="fas fa-circle-nodes"></i> Graph
+                </button>
+            </nav>
+
+        </div>
+
+        <!-- Stats bar -->
+        <div class="dt-stats-bar" id="dt-stats-bar">
+            <div class="dt-stat-chip">
+                <i class="fas fa-database"></i>
+                <span>Decisions:</span>
+                <span class="dt-stat-val" id="dt-stat-count">—</span>
+            </div>
+            <div class="dt-stat-chip">
+                <i class="fas fa-link"></i>
+                <span>Links:</span>
+                <span class="dt-stat-val" id="dt-stat-links">—</span>
+            </div>
+            <div class="dt-stat-chip">
+                <i class="fas fa-tags"></i>
+                <span>Tags:</span>
+                <span class="dt-stat-val" id="dt-stat-tags">—</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Body ───────────────────────────────────────────────────────────── -->
+    <div class="dt-body">
+
+        <!-- ═══════ DECISIONS PANE ═══════ -->
+        <div class="dt-pane active" id="dt-pane-decisions">
+            <div class="dt-decisions-layout">
+
+                <!-- Left rail — list -->
+                <div class="dt-list-rail">
+                    <div class="dt-list-search-bar">
+                        <i class="fas fa-magnifying-glass"></i>
+                        <input
+                            type="text"
+                            class="dt-search-input"
+                            id="dt-search-input"
+                            placeholder="Search decisions…"
+                            autocomplete="off"
+                        >
+                        <button class="dt-new-btn" id="dt-new-btn" title="New decision">
+                            <i class="fas fa-plus"></i> New
+                        </button>
+                    </div>
+                    <div class="dt-list-scroll" id="dt-list-scroll">
+                        <div class="dt-loading">
+                            <i class="fas fa-spinner fa-spin"></i> Loading…
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Center — decision detail -->
+                <div class="dt-detail-pane" id="dt-detail-pane">
+                    <div class="dt-detail-scroll" id="dt-detail-scroll">
+                        <div class="dt-detail-empty" id="dt-detail-empty">
+                            <i class="fas fa-timeline"></i>
+                            <p>Select a decision from the list to view its full context, or create a new one.</p>
+                        </div>
+                        <div id="dt-detail-content" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- Right rail — Ask -->
+                <div class="dt-ask-pane" id="dt-ask-pane">
+                    <div class="dt-ask-header">
+                        <div class="dt-ask-title">
+                            <i class="fas fa-wand-magic-sparkles"></i> Ask about this decision
+                        </div>
+                        <div class="dt-ask-subtitle">
+                            Ask the AI to explain, summarise, or analyse this decision using the full graph context.
+                        </div>
+                    </div>
+                    <div class="dt-ask-output" id="dt-ask-output">
+                        <div class="dt-ask-placeholder" id="dt-ask-placeholder">
+                            <i class="fas fa-comments"></i>
+                            Select a decision first, then ask a question about it.
+                        </div>
+                    </div>
+                    <div class="dt-ask-input-area">
+                        <div class="dt-model-row">
+                            <span class="dt-model-label">Model:</span>
+                            <select class="dt-model-select" id="dt-ask-model">
+                                <option value="auto">Auto</option>
+                                <option value="flash">Flash</option>
+                                <option value="pro">Pro</option>
+                            </select>
+                        </div>
+                        <textarea
+                            class="dt-ask-textarea"
+                            id="dt-ask-textarea"
+                            rows="3"
+                            placeholder="Why was this decision made? What trade-offs were accepted?…"
+                            disabled
+                        ></textarea>
+                        <button class="dt-ask-send-btn" id="dt-ask-send-btn" disabled>
+                            <i class="fas fa-paper-plane"></i> Ask
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ═══════ GRAPH PANE ═══════ -->
+        <div class="dt-pane" id="dt-pane-graph">
+            <div class="dt-graph-pane">
+                <div class="dt-graph-header">
+                    <div class="dt-graph-title">
+                        <i class="fas fa-circle-nodes"></i>
+                        Decision Graph
+                    </div>
+                    <button class="dt-btn dt-btn-secondary" id="dt-graph-refresh-btn" style="padding:7px 14px;font-size:12px;">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                </div>
+                <div class="dt-graph-canvas-wrap" id="dt-graph-canvas-wrap">
+                    <div class="dt-loading" id="dt-graph-loading">
+                        <i class="fas fa-spinner fa-spin"></i> Loading graph…
+                    </div>
+                    <div class="dt-graph-nodes" id="dt-graph-nodes" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ── New / Edit Decision Modal ────────────────────────────────────────────── -->
+<div class="dt-modal-overlay" id="dt-modal-overlay" style="display:none;">
+    <div class="dt-modal" id="dt-modal">
+        <div class="dt-modal-header">
+            <div class="dt-modal-title">
+                <i class="fas fa-timeline"></i>
+                <span id="dt-modal-title-text">New Decision</span>
+            </div>
+            <button class="dt-modal-close" id="dt-modal-close">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+        <div class="dt-modal-body">
+
+            <div class="dt-form-group">
+                <label class="dt-form-label">Title *</label>
+                <input type="text" class="dt-form-input" id="dt-form-title"
+                    placeholder="e.g. Why we chose FastAPI over Flask">
+            </div>
+
+            <div class="dt-form-group">
+                <label class="dt-form-label">Context</label>
+                <textarea class="dt-form-textarea" id="dt-form-context" rows="3"
+                    placeholder="What was the situation that required this decision?"></textarea>
+            </div>
+
+            <div class="dt-form-row">
+                <div class="dt-form-group">
+                    <label class="dt-form-label">Options Considered</label>
+                    <textarea class="dt-form-textarea" id="dt-form-options" rows="3"
+                        placeholder="One option per line"></textarea>
+                    <span class="dt-form-hint">One option per line</span>
+                </div>
+                <div class="dt-form-group">
+                    <label class="dt-form-label">Chosen Option</label>
+                    <input type="text" class="dt-form-input" id="dt-form-chosen"
+                        placeholder="The option that was selected">
+                </div>
+            </div>
+
+            <div class="dt-form-group">
+                <label class="dt-form-label">Constraints</label>
+                <textarea class="dt-form-textarea" id="dt-form-constraints" rows="2"
+                    placeholder="What was non-negotiable? One constraint per line"></textarea>
+                <span class="dt-form-hint">One constraint per line</span>
+            </div>
+
+            <div class="dt-form-group">
+                <label class="dt-form-label">Trade-offs Accepted</label>
+                <textarea class="dt-form-textarea" id="dt-form-tradeoffs" rows="2"
+                    placeholder="What was consciously sacrificed or de-prioritised?"></textarea>
+            </div>
+
+            <div class="dt-form-row">
+                <div class="dt-form-group">
+                    <label class="dt-form-label">Stakeholders</label>
+                    <input type="text" class="dt-form-input" id="dt-form-stakeholders"
+                        placeholder="Team A, Person B, …">
+                    <span class="dt-form-hint">Comma separated</span>
+                </div>
+                <div class="dt-form-group">
+                    <label class="dt-form-label">Tags</label>
+                    <input type="text" class="dt-form-input" id="dt-form-tags"
+                        placeholder="architecture, backend, …">
+                    <span class="dt-form-hint">Comma separated</span>
+                </div>
+            </div>
+
+        </div>
+        <div class="dt-modal-footer">
+            <button class="dt-btn dt-btn-secondary" id="dt-modal-cancel">Cancel</button>
+            <button class="dt-btn dt-btn-primary" id="dt-modal-save">
+                <i class="fas fa-floppy-disk"></i> Save Decision
+            </button>
+        </div>
+    </div>
+</div>

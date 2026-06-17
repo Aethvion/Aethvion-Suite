@@ -31,6 +31,7 @@
         'automate':         ['/static/js/mode-automate.js'],
         'worldsim':         [],
         'project-mapper':   ['/static/js/mode-project-mapper.js'],
+        'decision-trace':   ['/static/js/mode-decision-trace.js'],
         'misaka-cipher':    ['/static/js/mode-misakacipher.js'],
         'axiom':            ['/static/js/mode-axiom.js'],
         'lyra':             ['/static/js/mode-lyra.js'],
