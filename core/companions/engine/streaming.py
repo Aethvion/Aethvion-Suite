@@ -3,7 +3,6 @@ core/companions/engine/streaming.py
 Stream-time text utilities shared by all companions.
 """
 from __future__ import annotations
-import re
 
 
 def build_bridges_capabilities(capabilities: dict | None = None) -> str:

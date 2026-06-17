@@ -4,7 +4,7 @@ Input validation and Aethvion naming convention enforcement
 """
 
 import re
-from typing import Tuple, List, Optional
+from typing import Tuple, Optional
 import yaml
 from pathlib import Path
 

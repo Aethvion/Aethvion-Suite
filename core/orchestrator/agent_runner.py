@@ -3,25 +3,16 @@ Aethvion Suite - Agent Runner
 Multi-step ReAct-style execution loop with persistent state.
 """
 import json
-import os
-import queue
-import re
-import subprocess
-import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional, List, Dict, Any
 
 from core.utils.logger import get_logger
-from core.utils import utcnow_iso, atomic_json_write
 from core.orchestrator.cancellation import is_agent_task_cancelled
 from core.ai.call_contexts import CallSource
 from core.utils.paths import CODE_AGENT_PROMPT
 from core.orchestrator.workspace_tools import (
-    BLUEPRINT_IGNORE_DIRS, BLUEPRINT_SKIP_EXTS,
-    BLUEPRINT_MAX_FILES_PER_DIR, BLUEPRINT_MAX_DEPTH,
-    BLUEPRINT_MAX_LINES, BLUEPRINT_CACHE_SECS,
-    _bp_fmt_size, build_workspace_blueprint,
+    build_workspace_blueprint,
     generate_file_digest, search_codebase, parse_dir_entries,
 )
 from core.orchestrator.agent_state import AgentState
@@ -33,10 +24,7 @@ logger = get_logger(__name__)
 
 from core.utils.paths import CODE_AGENT_PROMPT
 from core.orchestrator.workspace_tools import (
-    BLUEPRINT_IGNORE_DIRS, BLUEPRINT_SKIP_EXTS,
-    BLUEPRINT_MAX_FILES_PER_DIR, BLUEPRINT_MAX_DEPTH,
-    BLUEPRINT_MAX_LINES, BLUEPRINT_CACHE_SECS,
-    _bp_fmt_size, build_workspace_blueprint,
+    build_workspace_blueprint,
 )
 from core.orchestrator.agent_state import AgentState
 
@@ -283,7 +271,6 @@ class AgentRunner(FileOpsMixin):
             est_out = len(full)   // 4
             self.run_input_tokens  += est_in
             self.run_output_tokens += est_out
-            run_elapsed = (datetime.utcnow() - self._start_time).total_seconds()
             total       = self.run_input_tokens + self.run_output_tokens
             self._emit({
                 "type":          "usage",

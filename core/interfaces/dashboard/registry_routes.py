@@ -6,7 +6,6 @@ API endpoints for managing the Model Registry (config/model_registry.json)
 import json
 import asyncio
 import os
-import re
 import subprocess
 from pathlib import Path
 from typing import Dict, Any
@@ -26,7 +25,6 @@ from core.utils.paths import (
     SYSTEM_SPECS
 )
 from core.providers.model_defaults import (
-    load_suggested_models, 
     get_suggested_models_not_in_registry,
     merge_model_into_registry
 )
@@ -847,7 +845,6 @@ async def install_llm_engine(request: Request):
     """pip-install the local-llm dependencies (llama-cpp-python, etc) with SSE streaming."""
     from fastapi.responses import StreamingResponse
     import sys
-    import os
 
     async def _generate():
         yield f"data: {json.dumps({'line': 'Connecting to pip manager...'})}\n\n"
@@ -1110,7 +1107,6 @@ SYSTEM_SPECS_PATH = SYSTEM_SPECS
 @router.get("/local/system-specs")
 async def get_system_specs():
     """Detect and cache system hardware specs (CPU, GPU, RAM) to data/system_specs.json."""
-    import datetime
     import platform as _platform
 
     specs: dict = {

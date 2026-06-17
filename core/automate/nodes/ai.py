@@ -8,7 +8,6 @@ which model options the UI shows. The executor routes both to ai_model().
 from __future__ import annotations
 
 import json
-import re
 import uuid
 from typing import Any
 

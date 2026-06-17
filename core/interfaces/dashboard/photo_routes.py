@@ -13,9 +13,8 @@ import base64
 import os
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.providers import get_provider_manager as _get_provider_manager

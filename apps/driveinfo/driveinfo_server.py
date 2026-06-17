@@ -24,7 +24,6 @@ from driveinfo_core import (
     start_scan,
     cancel_scan,
     list_scans,
-    load_scan,
     delete_scan,
     list_drives,
     generate_display_scan,

@@ -15,7 +15,7 @@ import shutil
 from pathlib import Path
 
 from core.utils import get_logger, utcnow_iso, atomic_json_write
-from core.utils.paths import EXPLAINED, HISTORY_AGENTS
+from core.utils.paths import EXPLAINED
 from core.memory.agent_workspace_manager import AgentWorkspaceManager
 
 logger = get_logger("web.explained_routes")

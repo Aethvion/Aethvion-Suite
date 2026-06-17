@@ -12,7 +12,6 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from core.orchestrator.task_queue import get_task_queue_manager, cancel_agent_task, strip_formatting
 from core.orchestrator.agent_events import get_snapshot
-from core.utils import utcnow_iso
 from core.utils.logger import get_logger
 
 logger = get_logger(__name__)

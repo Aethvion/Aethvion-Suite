@@ -36,15 +36,13 @@ Usage
 from __future__ import annotations
 
 import asyncio
-import json
-import re
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from core.utils.logger import get_logger
 from core.ai.call_contexts import CallSource
-from .entity_schema import VALID_TYPES, _now_iso
+from .entity_schema import VALID_TYPES
 from .entity_writer import EntityWriter
 from .name_index import NameIndex, get_index
 from .distiller import _extract_json, _map_to_sections as _map_to_entity_sections

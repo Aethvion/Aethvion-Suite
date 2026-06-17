@@ -5,9 +5,8 @@ Logic for loading, merging, and building model registry defaults.
 """
 
 import json
-import os
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 # In the final version, this should use core.utils.paths
 try:

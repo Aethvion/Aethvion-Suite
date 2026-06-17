@@ -1,8 +1,7 @@
 import os
 import sys
-import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Dict
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -120,8 +119,6 @@ async def remove_background(filename: str = Form(...)):
         # Integration with rembg
         try:
             from rembg import remove
-            from PIL import Image
-            import io
             
             with input_path.open("rb") as i:
                 input_data = i.read()

@@ -5,19 +5,15 @@ CLI interface for Advanced AI Conversations
 
 from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_header, print_menu, get_user_choice,
-    get_text_input, print_success, print_error, confirm, show_progress,
+    get_text_input, print_success, print_error, show_progress,
     pause
 )
 from core.interfaces.cli_modules.settings_module import load_settings
-from rich.panel import Panel
 from rich.table import Table
 import asyncio
-import time
 import uuid
-from datetime import datetime
 from core.utils import utcnow_iso, atomic_json_write
 import json
-from pathlib import Path
 from core.utils.paths import HISTORY_ADVANCED
 from core.ai.call_contexts import CallSource
 

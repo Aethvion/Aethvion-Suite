@@ -4,10 +4,9 @@ CLI module for viewing companion registry, memory, and history stats
 """
 
 import json
-from pathlib import Path
 from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_header, print_menu, get_user_choice,
-    print_key_value, print_warning, print_error, print_success, pause
+    print_key_value, print_warning, print_error, pause
 )
 
 def companions_module():

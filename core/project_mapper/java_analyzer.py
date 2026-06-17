@@ -23,10 +23,9 @@ Dependencies (optional — falls back to stub if not installed):
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 from .code_analyzer import (
-    ArgInfo, ClassInfo, CodeAnalysis, FunctionInfo, ImportInfo, MethodInfo,
+    ClassInfo, CodeAnalysis, FunctionInfo, ImportInfo, MethodInfo,
 )
 
 # ---------------------------------------------------------------------------

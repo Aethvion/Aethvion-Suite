@@ -8,12 +8,11 @@ import uuid
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from typing import Optional
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import httpx
 import subprocess
-import time
 import socket
 import asyncio
 from pathlib import Path
@@ -444,7 +443,6 @@ async def install_weights(model: str):
     from fastapi.responses import StreamingResponse
     import asyncio
     import json
-    import shutil
     from core.utils.paths import LOCAL_MODELS_3D
     
     wrapper_name = model.replace("-", "")

@@ -5,7 +5,7 @@ Shared logic for workspace management and path validation.
 
 import json
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 from core.utils import get_logger, atomic_json_write
 
 

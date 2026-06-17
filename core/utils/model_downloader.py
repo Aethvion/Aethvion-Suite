@@ -3,7 +3,6 @@ Aethvion Suite - Model Downloader
 Handles downloading models from Hugging Face
 """
 
-import os
 from pathlib import Path
 from typing import Optional, Callable
 from huggingface_hub import hf_hub_download

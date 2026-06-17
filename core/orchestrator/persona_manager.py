@@ -8,12 +8,11 @@ import datetime
 import re
 import asyncio
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import List, Tuple
 from core.utils import get_logger
 
 from core.bridges import bridge_manager
 from core.memory.identity_manager import IdentityManager
-from core.memory.history_manager import HistoryManager
 from core.workspace.preferences_manager import get_preferences_manager
 from core.workspace.workspace_utils import load_workspaces, validate_path, build_workspace_block
 from core.utils.paths import COMPANIONS_PERSONAS

@@ -4,8 +4,7 @@ Manages system configuration and user preferences
 """
 
 import json
-from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from core.utils import get_logger, atomic_json_write
 from core.utils.paths import SETTINGS
 

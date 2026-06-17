@@ -1,7 +1,6 @@
 import os
 import json
 import socket
-from pathlib import Path
 from core.utils.paths import PORTS_JSON, PORTS_LOCK, SYSTEM
 
 DATA_DIR = SYSTEM

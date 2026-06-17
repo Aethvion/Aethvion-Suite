@@ -7,7 +7,6 @@ import json
 import uuid
 import asyncio
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse

@@ -255,7 +255,7 @@ def run_deletion_cleanup(
     file_manifest: "FileManifest",
     writer:        "PMEntityStore",
     index:         "NameIndex",       # reserved for future use (symbol index update)
-    existing_paths: Optional[set[str]] = None,
+    existing_paths: set[str] | None = None,
 ) -> CleanupResult:
     """
     Walk the manifest and retire entities for every file that no longer exists

@@ -7,8 +7,7 @@ import json
 # heavy import moved to lazy loading
 # import networkx as nx
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Set
-from datetime import datetime
+from typing import List, Dict, Any, Optional
 
 from core.utils import get_logger, utcnow_iso, atomic_json_write
 from core.utils.paths import KNOWLEDGE_GRAPH

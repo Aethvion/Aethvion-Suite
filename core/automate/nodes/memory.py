@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from ._utils import _to_str, _now
+from ._utils import _to_str
 
 # Resolve path relative to this file: nodes/ → automate/ → core/ → project root
 _MEMORY_PATH = Path(__file__).parent.parent.parent.parent / "data" / "automate" / "memory.json"

@@ -11,13 +11,12 @@ from __future__ import annotations
 import json
 import os
 import queue
-import re
 import subprocess
 import threading
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional
 
-from core.utils import get_logger, utcnow_iso
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 

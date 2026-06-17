@@ -6,13 +6,8 @@ Interactive command-line interface for Aethvion Suite system
 import sys
 from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_banner, print_menu, get_user_choice,
-    print_success, print_error, print_warning
+    print_success, print_error
 )
-from core.interfaces.cli_modules.system_module import show_system_status
-from core.interfaces.cli_modules.aether_module import aether_core_module
-from core.interfaces.cli_modules.factory_module import factory_module
-from core.interfaces.cli_modules.memory_module import memory_module
-from core.interfaces.cli_modules.companions_module import companions_module
 
 from core.aether_core import AetherCore
 from core.factory import AgentFactory

@@ -11,7 +11,6 @@ from core.interfaces.cli_modules.utils import (
 from core.factory import AgentFactory, AgentSpec
 from core.utils.validators import ALLOWED_DOMAINS, ALLOWED_ACTIONS
 from rich.panel import Panel
-from rich.syntax import Syntax
 
 
 def factory_module(factory: AgentFactory):

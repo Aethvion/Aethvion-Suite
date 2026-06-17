@@ -8,7 +8,6 @@ import json
 import secrets
 import time
 import uuid
-from datetime import datetime
 from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException, Header, Request
@@ -16,7 +15,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from core.utils import get_logger, utcnow_iso, atomic_json_write, load_json
-from core.utils.paths import EXT_API_DIR, EXT_API_KEYS, EXT_API_CONFIG
+from core.utils.paths import EXT_API_KEYS, EXT_API_CONFIG
 from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)

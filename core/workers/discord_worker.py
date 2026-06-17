@@ -6,7 +6,6 @@ Persistent background service for real-time Discord communication.
 import asyncio
 import discord
 from discord.ext import commands
-from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 
 from core.utils import get_logger, generate_trace_id
@@ -15,7 +14,6 @@ from core.memory.social_registry import get_social_registry
 from core.security import IntelligenceFirewall, RoutingDecision
 
 from core.memory.history_manager import HistoryManager
-import mimetypes
 import os
 from core.ai.call_contexts import CallSource
 

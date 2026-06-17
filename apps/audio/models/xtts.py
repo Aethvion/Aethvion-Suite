@@ -3,7 +3,6 @@ Aethvion Suite — XTTS-v2 (Coqui TTS)
 17-language TTS with voice cloning from a 6-second clip. ~2 GB VRAM.
 Install: pip install TTS
 """
-import io
 import json
 import tempfile
 from pathlib import Path

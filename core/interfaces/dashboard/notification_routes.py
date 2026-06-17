@@ -16,7 +16,6 @@ from pydantic import BaseModel
 
 from core.utils import get_logger, utcnow_iso
 from core.utils.paths import LOGS_NOTIFICATIONS
-from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
 

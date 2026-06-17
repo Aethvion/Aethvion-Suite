@@ -4,10 +4,9 @@ Unit tests for Aether Core's routing and streaming firewall pipeline.
 """
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock, patch
 
-from core.aether_core import AetherCore, Request, Response
+from core.aether_core import AetherCore, Request
 from core.security import RoutingDecision
 
 

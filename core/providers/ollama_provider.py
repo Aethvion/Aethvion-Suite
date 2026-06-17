@@ -7,7 +7,7 @@ Ollama handles GPU offload automatically and supports 100+ GGUF models.
 import json
 from typing import Optional, Iterator, List, Dict, Any
 
-from .base_provider import BaseProvider, ProviderResponse, ProviderConfig
+from .base_provider import BaseProvider, ProviderResponse
 from core.utils.logger import get_logger
 
 logger = get_logger(__name__)

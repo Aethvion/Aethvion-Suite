@@ -5,13 +5,10 @@ Utilities for managing and initializing the model registry using the new default
 """
 
 import json
-import os
-from pathlib import Path
-from typing import Dict, Any, List
 
 from core.utils.logger import get_logger
 from core.utils.paths import MODEL_REGISTRY
-from core.providers.model_defaults import build_initial_registry, build_full_registry
+from core.providers.model_defaults import build_initial_registry
 
 logger = get_logger(__name__)
 

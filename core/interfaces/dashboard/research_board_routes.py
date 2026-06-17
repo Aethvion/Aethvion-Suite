@@ -4,12 +4,10 @@ Aethvion Suite - Research Board of Directors API
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
-from pathlib import Path
+from typing import List, Optional
 import json
 import uuid
 import asyncio
-from datetime import datetime
 
 from core.utils import get_logger, utcnow_iso
 from core.utils.paths import HISTORY_ADVANCED

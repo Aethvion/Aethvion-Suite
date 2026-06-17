@@ -11,7 +11,7 @@ import asyncio
 import logging
 import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -22,7 +22,6 @@ from .scanner import (
     start_scan,
     cancel_scan,
     is_running,
-    SCANINFO,
     _read_scaninfo,
 )
 

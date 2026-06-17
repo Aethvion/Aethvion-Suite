@@ -11,7 +11,6 @@ from pathlib import Path
 import time
 import datetime
 import threading
-import subprocess
 
 # Package health check
 # Must run before any third-party imports so missing packages can be

@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, Body, Header, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel
 
 from core.utils.logger import get_logger
@@ -492,7 +492,6 @@ async def batch_operations(
     _ensure(db)
 
     w   = _writer(db)
-    idx = _index(db)
     results: list[dict] = []
     errors:  list[dict] = []
 
@@ -1017,7 +1016,7 @@ async def generate_key_endpoint(
     t = time.perf_counter()
     root = _root(db)
     # Note: allow unauthenticated when generating the very first key
-    from .auth import has_keys, list_keys
+    from .auth import has_keys
     if has_keys(root):
         check_auth(root, authorization, x_aethviondb_key)
     from .auth import generate_key

@@ -131,9 +131,6 @@ class GenericAgent(BaseAgent):
                      response += f"\n\n**❌ ERROR:** Code execution failed."
                      response += f"\n\n--- DEBUG OUTPUT ---\n{execution_output}" # Only show output on error
             
-            # Legacy check for string match removed, logic moved to _execute_code
-            found_code = execution_output is not None
-            
             return AgentResult(
                 content=response,
                 agent_name=self.name,

@@ -22,7 +22,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import Header, HTTPException
+from fastapi import HTTPException
 from typing import Optional
 
 _KEYS_FILE = "api_keys.json"

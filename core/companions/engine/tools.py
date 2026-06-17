@@ -5,7 +5,6 @@ Shared by ALL companions; workspaces gate file permissions per companion instanc
 """
 from __future__ import annotations
 import asyncio
-import json
 import re
 from pathlib import Path
 from typing import Any, AsyncGenerator

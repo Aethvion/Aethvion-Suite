@@ -4,7 +4,7 @@ Data models for episodic memory and core insights
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from datetime import datetime
 
 

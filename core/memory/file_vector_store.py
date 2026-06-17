@@ -4,10 +4,8 @@ Manages semantic indexing and search for workspace files.
 """
 
 from pathlib import Path
-import os
 import json
 from typing import List, Dict, Any, Optional
-from datetime import datetime
 from core.utils import get_logger, utcnow_iso
 from core.utils.paths import VAULT_SEARCH
 

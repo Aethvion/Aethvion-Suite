@@ -27,7 +27,6 @@ import re as _re
 import secrets
 import sys
 import threading
-import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -797,7 +796,6 @@ class OverlayWindow(QWidget):
             cur_tag  = (" &nbsp;<span style='color:rgba(148,150,255,0.8);font-size:10px;"
                         "font-weight:600;'>◈ active</span>") if is_cur else ""
             pin_ind  = (" &nbsp;<span style='color:#2dd4bf;font-size:10px;'>📌</span>") if is_pinned else ""
-            pin_label = "Unpin" if is_pinned else "Pin"
             pin_color = "#2dd4bf" if is_pinned else "rgba(160,160,190,0.45)"
             pin_icon  = "📌" if is_pinned else "📍"
             pin_link  = (

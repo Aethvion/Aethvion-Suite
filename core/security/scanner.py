@@ -5,7 +5,7 @@ Analyzes content for restricted patterns and security threats
 
 import re
 import hashlib
-from typing import List, Tuple, Dict, Optional
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 from enum import Enum
 from core.utils.logger import get_logger

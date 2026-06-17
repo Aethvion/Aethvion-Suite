@@ -9,7 +9,6 @@ import json
 from datetime import datetime
 from typing import Any
 
-from core.providers import get_provider_manager as _get_pm  # noqa: PLC0415
 
 
 # Timestamp

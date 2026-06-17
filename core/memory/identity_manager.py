@@ -4,10 +4,9 @@ Handles persistent identity (base_info.json) and dynamic memory (memory.json).
 """
 
 import json
-import datetime
 import re
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 from core.utils import utcnow_iso
 from core.utils.paths import COMPANIONS_PERSONAS
 from core.utils import get_logger

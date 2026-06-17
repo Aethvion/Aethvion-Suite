@@ -6,7 +6,7 @@ Pre-flight scanning and routing for sensitive content
 import yaml
 from pathlib import Path
 from typing import Optional, Tuple
-from .scanner import ContentScanner, ScanResult, ScanAction
+from .scanner import ContentScanner, ScanResult
 from .router import RequestRouter, RoutingDecision
 from core.utils.logger import get_logger
 

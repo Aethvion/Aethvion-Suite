@@ -1523,7 +1523,7 @@ async def resume_folder_distill(
     """Resume a paused (or interrupted) folder distillation job."""
     from .folder_distiller import (
         _active_tasks, _pause_events,
-        read_distill_info, write_distill_info, run_distill_job,
+        read_distill_info, run_distill_job,
     )
     root = _db_root(db, path)
     key  = str(root)
@@ -1686,7 +1686,7 @@ async def get_bake_status(
     path: Optional[str] = Query(None),
 ):
     """Return the status of the currently running bake, or idle."""
-    from .baker import is_baking, current_bake_name, read_bake_meta
+    from .baker import current_bake_name, read_bake_meta
     root = _db_root(db, path)
     name = current_bake_name(root)
     if name:
@@ -1914,7 +1914,7 @@ async def run_benchmark(
     """
     import math as _math
     import time as _time
-    from .baker import list_bakes, bake_output_path
+    from .baker import list_bakes
     from .chunker import read_manifest, search_chunks
 
     results: list[dict] = []

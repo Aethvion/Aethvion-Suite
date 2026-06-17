@@ -8,7 +8,7 @@ import datetime
 import json
 import uuid
 import re
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from fastapi import HTTPException
 
 from core.companions.registry import CompanionConfig

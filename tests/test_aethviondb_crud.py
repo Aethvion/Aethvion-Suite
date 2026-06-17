@@ -6,7 +6,6 @@ Unit tests for AethvionDB entity CRUD operations:
 """
 from __future__ import annotations
 
-import pytest
 
 
 # NameIndex

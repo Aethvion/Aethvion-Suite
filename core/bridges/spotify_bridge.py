@@ -1,8 +1,5 @@
-import os
-import json
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-from pathlib import Path
 from core.utils.paths import APP_BRIDGES
 from core.utils import get_logger
 

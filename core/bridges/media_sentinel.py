@@ -1,7 +1,6 @@
 import asyncio
 import subprocess
 import json
-import re
 from core.utils import get_logger
 
 # Setup logging

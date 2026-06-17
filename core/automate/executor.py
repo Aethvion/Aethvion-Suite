@@ -120,7 +120,6 @@ class WorkflowExecutor:
         def run_node_task(node_id: str):
             node  = self.nodes[node_id]
             label = node.get("label", node_id)
-            ntype = node.get("type", "unknown")
 
             try:
                 inputs  = self._gather_inputs(node_id)

@@ -4,9 +4,8 @@ API routes for system management, telemetry, and health.
 """
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from pathlib import Path
-from datetime import datetime
 import os
 import shutil
 import subprocess
@@ -18,7 +17,7 @@ import json
 from core.utils import get_logger
 
 from core.utils import utcnow_iso, atomic_json_write
-from core.version import VERSION, get_version_parts
+from core.version import get_version_parts
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["system"])

@@ -3,16 +3,14 @@ Misaka Cipher - Memory Module
 Memory Tier query interface
 """
 
-from pathlib import Path
 from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_header, print_menu, get_user_choice,
-    get_text_input, print_table, print_key_value, pause, print_info,
+    get_text_input, print_key_value, pause, print_info,
     print_warning, confirm, print_error
 )
 from core.memory import get_episodic_memory, get_knowledge_graph
 from core.utils.paths import WS_PROJECTS, HISTORY_ADVANCED
 from rich.panel import Panel
-from rich.tree import Tree
 from rich.table import Table
 import json
 

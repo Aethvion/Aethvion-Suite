@@ -4,7 +4,7 @@ Manages user UI preferences and persistence to a local JSON file.
 """
 
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from core.utils import get_logger, load_json, atomic_json_write
 from core.utils.paths import WS_PREFERENCES, WORKSPACES
 

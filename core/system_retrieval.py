@@ -1,5 +1,4 @@
 import os
-import json
 from pathlib import Path
 from core.workspace.usage_tracker import get_usage_tracker
 

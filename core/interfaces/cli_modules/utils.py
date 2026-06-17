@@ -4,7 +4,6 @@ Shared utilities for CLI modules using rich library
 """
 
 import os
-import sys
 from typing import List, Dict, Any, Optional
 from rich.console import Console
 from rich.panel import Panel
@@ -42,7 +41,6 @@ def print_header(title: str, subtitle: Optional[str] = None):
 
 def print_banner():
     """Print the Aethvion Suite banner."""
-    from rich.align import Align
     from rich.text import Text as RichText
 
     title = RichText(justify="center")

@@ -5,7 +5,6 @@ REST API endpoints for scanning and retrieving system documentation.
 from fastapi import APIRouter, HTTPException
 from pathlib import Path
 import os
-from typing import Dict, List, Any
 
 router = APIRouter(prefix="/api/documentation", tags=["Documentation"])
 

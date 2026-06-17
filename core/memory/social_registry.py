@@ -4,7 +4,7 @@ Tracks user relationships and interactions
 """
 
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from core.utils import get_logger, utcnow_iso, load_json, atomic_json_write
 from core.utils.paths import KNOWLEDGE_SOCIAL
 

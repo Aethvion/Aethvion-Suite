@@ -12,7 +12,6 @@ def _h_ai_generate_image(node, inputs, ctx):
         api_key = os.environ.get("GOOGLE_AI_API_KEY", "")
         if not api_key: raise RuntimeError("GOOGLE_AI_API_KEY not set")
         _genai.configure(api_key=api_key)
-        from google.generativeai import types as _gtypes
         model = _genai.ImageGenerationModel(model_id)
         resp = model.generate_images(prompt=prompt, number_of_images=1, aspect_ratio=aspect_ratio)
         resp.images[0].save(path)

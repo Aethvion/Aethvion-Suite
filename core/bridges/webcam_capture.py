@@ -1,6 +1,5 @@
 import cv2
 import datetime
-from pathlib import Path
 from core.utils.logger import get_logger
 from core.utils.paths import WS_MEDIA
 

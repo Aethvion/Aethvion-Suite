@@ -10,12 +10,12 @@ import uuid
 import threading
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List
+from typing import Optional
 
 try:
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    from zoneinfo import ZoneInfo
 except ImportError:
-    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore
+    from backports.zoneinfo import ZoneInfo  # type: ignore
 
 try:
     _UTC = ZoneInfo('UTC')

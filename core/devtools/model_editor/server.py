@@ -6,9 +6,8 @@ Run with: python -m core.devtools.model_editor.server
 """
 
 import json
-import os
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
 from pathlib import Path

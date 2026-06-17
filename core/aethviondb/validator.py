@@ -638,7 +638,6 @@ class Validator:
 
         # Cross-entity duplicate detection (done once for all entities)
         dup_issues, dup_groups = _collect_duplicate_groups(entities)
-        dup_ids = {eid for g in dup_groups for eid in g["ids"]}
 
         # Orphan stub detection — stubs with no outgoing relations and not
         # referenced by any other entity (via relations or timeline ref_ids).

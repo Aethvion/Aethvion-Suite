@@ -12,7 +12,6 @@ import re
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from pydantic import BaseModel

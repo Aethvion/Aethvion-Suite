@@ -3,7 +3,6 @@ Aethvion Suite - Router
 Routes flagged requests based on firewall rules
 """
 
-from typing import Optional
 from enum import Enum
 from core.utils.logger import get_logger
 

@@ -6,11 +6,10 @@ Direct AI interaction through Aether Core
 from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_header, get_text_input,
     format_trace_id, print_success, print_error, print_key_value,
-    confirm, pause, show_progress
+    confirm, show_progress
 )
 from core.aether_core import AetherCore, Request
 from rich.panel import Panel
-from rich.markdown import Markdown
 
 
 def aether_core_module(aether: AetherCore):

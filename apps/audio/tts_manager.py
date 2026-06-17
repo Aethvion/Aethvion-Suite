@@ -4,12 +4,11 @@ Unified interface for all local audio models. Thread-safe singleton.
 """
 from __future__ import annotations
 import threading
-from pathlib import Path
 from typing import Optional, Dict, List
 
 from core.utils.logger import get_logger
 from core.utils.paths import LOCAL_MODELS_AUDIO, LOCAL_MODELS_AUDIO_VOICES
-from .models.base import LocalAudioModel, TTSResult, STTResult, VoiceInfo
+from .models.base import LocalAudioModel, TTSResult, STTResult
 from .models.registry import get_all_model_classes, get_model_class
 
 logger = get_logger(__name__)

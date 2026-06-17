@@ -21,7 +21,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from ._utils import _to_str
 
 
 # global.text

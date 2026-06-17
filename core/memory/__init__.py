@@ -20,6 +20,7 @@ __all__ = [
     # Episodic Memory
     'EpisodicMemoryStore',
     'get_episodic_memory',
+    'HistoryManager',
     
     # Knowledge Graph
     'KnowledgeGraph',

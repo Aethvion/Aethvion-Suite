@@ -4,10 +4,9 @@ Manages user-facing output files in outputfiles
 """
 
 from pathlib import Path
-from typing import List, Dict, Optional, Any
+from typing import Dict, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import shutil
 import json
 
 from core.utils import get_logger

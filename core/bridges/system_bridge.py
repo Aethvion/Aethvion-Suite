@@ -1,5 +1,4 @@
 import psutil
-import json
 from pathlib import Path
 from core.utils import get_logger
 

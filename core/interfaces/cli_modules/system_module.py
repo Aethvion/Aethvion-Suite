@@ -6,15 +6,12 @@ Displays system diagnostics and health information
 import os
 from pathlib import Path
 from core.interfaces.cli_modules.utils import (
-    console, clear_screen, print_header, print_table,
-    print_key_value, print_success, print_warning, print_error, pause
+    console, clear_screen, print_header, print_key_value, print_success, print_warning, pause
 )
 from core.aether_core import AetherCore
 from core.factory import AgentFactory
 from core.memory import get_episodic_memory, get_knowledge_graph
 from rich.panel import Panel
-from rich.columns import Columns
-from rich.text import Text
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 

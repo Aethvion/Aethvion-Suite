@@ -11,7 +11,7 @@ import time
 from .agent_spec import AgentSpec
 from .agent_result import AgentResult
 from core.aether_core import AetherCore, Request
-from core.utils import get_logger, get_trace_manager, utcnow_iso
+from core.utils import get_logger, utcnow_iso
 
 
 class BaseAgent(ABC):

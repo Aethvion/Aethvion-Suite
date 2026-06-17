@@ -845,7 +845,7 @@ def handle_pm_contribute(args: dict[str, Any], ctx: MCPContext) -> str:
 
 
 def handle_pm_stats(args: dict[str, Any], ctx: MCPContext) -> str:
-    from .scanner import scan_status, SCANINFO
+    from .scanner import scan_status
 
     scan = scan_status(ctx.db_root)
     fm   = ctx.file_manifest.stats()

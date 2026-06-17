@@ -4,7 +4,6 @@ FastAPI routes for memory management and visualization
 """
 
 from fastapi import APIRouter, HTTPException, Query
-from typing import List, Dict, Any, Optional
 from pathlib import Path
 from pydantic import BaseModel
 

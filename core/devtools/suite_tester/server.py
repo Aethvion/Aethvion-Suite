@@ -15,7 +15,6 @@ import json
 import time
 import uuid
 import socket
-import logging
 import threading
 import subprocess
 import webbrowser
@@ -56,9 +55,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
-from pydantic import BaseModel
 
 # Initialize Paths
 REPORTS_DIR = PROJECT_ROOT / "core" / "tests" / "performance" / "reports"

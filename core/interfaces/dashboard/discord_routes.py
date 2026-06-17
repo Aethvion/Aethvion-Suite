@@ -2,10 +2,9 @@
 Aethvion Suite - Discord Routes
 API endpoints for managing the Discord bot integration.
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
-import logging
+from typing import Optional
 
 from core.utils import get_logger
 from core.workspace.preferences_manager import get_preferences_manager

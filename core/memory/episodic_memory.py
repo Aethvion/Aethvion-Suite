@@ -12,7 +12,7 @@ import time
 # heavy import moved to lazy loading
 # from sentence_transformers import SentenceTransformer
 
-from .memory_spec import EpisodicMemory, generate_memory_id
+from .memory_spec import EpisodicMemory
 from core.utils import get_logger
 from core.utils.paths import VAULT_EPISODIC
 

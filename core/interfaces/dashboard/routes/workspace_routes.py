@@ -2,10 +2,10 @@
 core/interfaces/dashboard/routes/workspace_routes.py
 API routes for workspace file management and exploration.
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from typing import Optional
 from pathlib import Path
 from datetime import datetime
 import os

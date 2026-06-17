@@ -3,8 +3,6 @@ Aethvion Suite - Providers Package
 Interface to various LLM providers
 """
 
-from typing import Optional
-
 from .base_provider import (
     BaseProvider,
     ProviderResponse,

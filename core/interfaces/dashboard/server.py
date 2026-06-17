@@ -2,14 +2,10 @@
 Aethvion Suite - FastAPI Web Server (Thin Wiring)
 REST API and WebSocket server for web dashboard
 """
-import os
-import sys
 import asyncio
 import logging
-import uuid
-from typing import Dict, List, Any, Optional
+from typing import Optional
 from pathlib import Path
-from datetime import datetime
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.staticfiles import StaticFiles

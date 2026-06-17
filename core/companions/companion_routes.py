@@ -3,7 +3,7 @@ core/companions/companion_routes.py
 Unified dynamic router for all Aethvion companions.
 """
 
-from typing import List, Optional, Any
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 import shutil
