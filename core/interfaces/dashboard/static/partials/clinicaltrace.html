@@ -1,0 +1,160 @@
+<div id="ct-root" class="ct-root">
+
+    <!-- ── Header ─────────────────────────────────────────────────────────── -->
+    <div class="ct-header">
+        <div class="ct-header-top">
+
+            <div class="ct-brand">
+                <div class="ct-brand-icon" style="background: linear-gradient(135deg, #f43f5e, #be123c);">
+                    <i class="fas fa-stethoscope"></i>
+                </div>
+                <span class="ct-brand-name" style="background: linear-gradient(135deg, #fb7185, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">ClinicalTrace</span>
+                <span class="ct-brand-tag">Experimental</span>
+            </div>
+
+            <nav class="ct-nav-tabs" id="ct-nav-tabs">
+                <button class="ct-nav-tab active" data-ct-tab="artifacts">
+                    <i class="fas fa-vial"></i> Evidence List
+                </button>
+                <button class="ct-nav-tab" data-ct-tab="graph">
+                    <i class="fas fa-project-diagram"></i> Clinical Graph
+                </button>
+            </nav>
+
+            <button class="exp-info-btn" id="ct-info-btn" title="About ClinicalTrace">
+                <i class="fas fa-circle-info"></i> About
+            </button>
+
+        </div>
+
+        <!-- Stats bar -->
+        <div class="ct-stats-bar" id="ct-stats-bar">
+            <div class="ct-stat-chip">
+                <i class="fas fa-file-medical"></i>
+                <span>Entities:</span>
+                <span class="ct-stat-val" id="ct-stat-count">—</span>
+            </div>
+            <div class="ct-stat-chip">
+                <i class="fas fa-link"></i>
+                <span>Relationships:</span>
+                <span class="ct-stat-val" id="ct-stat-links">—</span>
+            </div>
+            <div class="ct-stat-chip" style="color: #ef4444;">
+                <i class="fas fa-not-equal"></i>
+                <span>Contradictions:</span>
+                <span class="ct-stat-val" id="ct-stat-risks">—</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Body ───────────────────────────────────────────────────────────── -->
+    <div class="ct-body">
+
+        <!-- ═══════ ARTIFACTS PANE ═══════ -->
+        <div class="ct-pane active" id="ct-pane-artifacts">
+            <div class="ct-artifacts-layout">
+
+                <!-- Left rail — list -->
+                <div class="ct-list-rail">
+                    <div class="ct-list-search-bar">
+                        <i class="fas fa-magnifying-glass"></i>
+                        <input
+                            type="text"
+                            class="ct-search-input"
+                            id="ct-search-input"
+                            placeholder="Search trials, interventions…"
+                            autocomplete="off"
+                        >
+                        <button class="ct-new-btn" id="ct-simulate-risk-btn" title="Show Contradictions" style="background: linear-gradient(135deg, #ef4444, #b91c1c);">
+                            <i class="fas fa-not-equal"></i> Verify
+                        </button>
+                    </div>
+                    <div class="ct-list-scroll" id="ct-list-scroll">
+                        <div class="ct-loading">
+                            <i class="fas fa-spinner fa-spin"></i> Loading…
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Center — artifact detail -->
+                <div class="ct-detail-pane" id="ct-detail-pane">
+                    <div class="ct-detail-scroll" id="ct-detail-scroll">
+                        <div class="ct-detail-empty" id="ct-detail-empty">
+                            <i class="fas fa-stethoscope"></i>
+                            <p>Select a clinical entity from the list to view its relationships and evidence.</p>
+                        </div>
+                        <div id="ct-detail-content" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- Right rail — Ask Counsel -->
+                <div class="ct-ask-pane" id="ct-ask-pane">
+                    <div class="ct-ask-header">
+                        <div class="ct-ask-title">
+                            <i class="fas fa-user-doctor"></i> Medical Analyst
+                        </div>
+                        <div class="ct-ask-subtitle">
+                            Ask about clinical evidence. The AI receives the node's explicit trials, outcomes, and contradictions.
+                        </div>
+                    </div>
+                    <div class="ct-ask-output" id="ct-ask-output">
+                        <div class="ct-ask-placeholder" id="ct-ask-placeholder">
+                            <i class="fas fa-comments"></i>
+                            Select a node first, then ask a question.
+                        </div>
+                    </div>
+                    <div class="ct-ask-input-area">
+                        <div class="ct-model-row">
+                            <span class="ct-model-label">Model:</span>
+                            <select class="ct-model-select" id="ct-ask-model">
+                                <option value="auto">Auto (Best available)</option>
+                                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                                <option value="gpt-4o">GPT-4o</option>
+                            </select>
+                        </div>
+                        <textarea
+                            class="ct-ask-textarea"
+                            id="ct-ask-textarea"
+                            rows="3"
+                            placeholder="e.g. Which population showed the highest risk of renal events?…"
+                            disabled
+                        ></textarea>
+                        <button class="ct-ask-send-btn" id="ct-ask-send-btn" disabled>
+                            <i class="fas fa-paper-plane"></i> Ask
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ═══════ GRAPH PANE ═══════ -->
+        <div class="ct-pane" id="ct-pane-graph">
+            <div class="ct-graph-pane">
+                <div class="ct-graph-header">
+                    <div class="ct-graph-title">
+                        <i class="fas fa-project-diagram"></i>
+                        Clinical Evidence Graph
+                    </div>
+                    <button class="ct-btn ct-btn-secondary" id="ct-graph-refresh" style="padding:7px 14px;font-size:12px;">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                </div>
+                <div class="ct-graph-canvas-wrap" id="ct-graph-canvas-wrap">
+                    <div class="ct-loading" id="ct-graph-loading" style="display:none;">
+                        <i class="fas fa-spinner fa-spin"></i> Loading graph…
+                    </div>
+                    <div class="ct-graph-canvas" id="ct-graph-canvas"></div>
+                    <div class="ct-graph-legend">
+                        <div class="ct-legend-item"><span class="ct-dot" style="background:#3b82f6;"></span> Trial</div>
+                        <div class="ct-legend-item"><span class="ct-dot" style="background:#8b5cf6;"></span> Intervention</div>
+                        <div class="ct-legend-item"><span class="ct-dot" style="background:#f59e0b;"></span> Population</div>
+                        <div class="ct-legend-item"><span class="ct-dot" style="background:#10b981;"></span> Outcome</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
