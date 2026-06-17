@@ -122,6 +122,39 @@ def _write_db_info(root: Path, data: dict) -> None:
         logger.warning(f"[AethvionDB] Could not write {_INFO_FILE}: {exc}")
 
 
+def _db_quick_meta(db_path: Path) -> tuple[int, int]:
+    """Return (entity_count, size_bytes) for the Databases overview from cached
+    metadata only — never opens or stat()s individual entity files.
+
+    Sources, in order of preference:
+      1. Snapshot meta (``entity_count``) — total entities incl. tombstones,
+         matching the historical glob count shown in the overview.
+      2. A single directory enumeration (count only, no per-file ``stat()``) for
+         databases that have never been loaded under the cache engine.
+    Size comes from the cached AethvionDB.INFO; it shows 0 until the database is
+    opened once (which runs /stats and populates it).
+    """
+    from . import snapshot
+
+    entity_count = 0
+    mp = snapshot.meta_path(db_path)
+    if mp.exists():
+        try:
+            entity_count = int(json.loads(mp.read_text(encoding="utf-8")).get("entity_count", 0))
+        except Exception:
+            entity_count = 0
+    else:
+        ed = db_path / "entities"
+        if ed.exists():
+            try:
+                entity_count = sum(1 for _ in ed.glob("ws_*.json"))
+            except OSError:
+                entity_count = 0
+
+    size_bytes = int(_read_db_info(db_path).get("total_size_bytes", 0) or 0)
+    return entity_count, size_bytes
+
+
 # Request schemas
 
 class DistillRequest(BaseModel):
@@ -191,57 +224,55 @@ class CreateBackupRequest(BaseModel):
 
 @router.get("/databases")
 async def list_databases():
-    """List all named databases (registry + auto-discovered)."""
+    """List all named databases (registry + auto-discovered).
+
+    A navigation/overview only — it reads cached per-database metadata
+    (snapshot meta + AethvionDB.INFO) and never opens or stat()s individual
+    entity files, so it stays near-instant regardless of database size.
+    """
     from .db_registry import register_db, list_dbs
+    from .backup import list_backups as _lb
 
-    AETHVIONDB.mkdir(parents=True, exist_ok=True)
+    def _work() -> list[dict]:
+        AETHVIONDB.mkdir(parents=True, exist_ok=True)
 
-    # Legacy migration (one-time, non-destructive)
-    # If databases lived in the old data/modes/worldsim/ root, register them
-    # with their original absolute paths so nothing is lost when the root moves.
-    from core.utils.paths import MODES
-    _legacy_root = MODES / "worldsim"
-    if _legacy_root.exists():
-        for d in _legacy_root.iterdir():
+        # Legacy migration (one-time, non-destructive): if databases lived in the
+        # old data/modes/worldsim/ root, register them with their original paths.
+        from core.utils.paths import MODES
+        _legacy_root = MODES / "worldsim"
+        if _legacy_root.exists():
+            for d in _legacy_root.iterdir():
+                if (d.is_dir()
+                        and not d.name.startswith("_")
+                        and (d / "entities").exists()):
+                    register_db(d.name, str(d), overwrite=False)
+
+        # Auto-discover databases in the new default root
+        for d in AETHVIONDB.iterdir():
             if (d.is_dir()
                     and not d.name.startswith("_")
                     and (d / "entities").exists()):
                 register_db(d.name, str(d), overwrite=False)
 
-    # Auto-discover databases in the new default root
-    for d in AETHVIONDB.iterdir():
-        if (d.is_dir()
-                and not d.name.startswith("_")
-                and (d / "entities").exists()):
-            register_db(d.name, str(d), overwrite=False)
+        # Build enriched list from registry — metadata only, no entity-file I/O.
+        dbs: list[dict] = []
+        for entry in list_dbs():
+            db_path = Path(entry["path"])
+            entity_count, size_bytes = _db_quick_meta(db_path)
+            backups     = _lb(db_path)
+            last_backup = backups[0].get("created") if backups else None
+            dbs.append({
+                **entry,
+                "entity_count": entity_count,
+                "size_bytes":   size_bytes,
+                "backup_count": len(backups),
+                "last_backup":  last_backup,
+                "last_updated": _read_db_info(db_path).get("last_updated"),
+                "path_exists":  db_path.exists(),
+            })
+        return sorted(dbs, key=lambda d: d["name"])
 
-    # Build enriched list from registry
-    from .backup import list_backups as _lb
-    dbs: list[dict] = []
-    for entry in list_dbs():
-        db_path      = Path(entry["path"])
-        entity_count = 0
-        size_bytes   = 0
-        if (db_path / "entities").exists():
-            for f in (db_path / "entities").glob("ws_*.json"):
-                entity_count += 1
-                try:   size_bytes += f.stat().st_size
-                except OSError: pass
-        backups     = _lb(db_path)
-        last_backup = backups[0].get("created") if backups else None
-        info        = _read_db_info(db_path)
-        last_updated = info.get("last_updated")
-        dbs.append({
-            **entry,
-            "entity_count": entity_count,
-            "size_bytes":   size_bytes,
-            "backup_count": len(backups),
-            "last_backup":  last_backup,
-            "last_updated": last_updated,
-            "path_exists":  db_path.exists(),
-        })
-
-    return {"databases": sorted(dbs, key=lambda d: d["name"])}
+    return {"databases": await asyncio.to_thread(_work)}
 
 
 @router.post("/databases")
