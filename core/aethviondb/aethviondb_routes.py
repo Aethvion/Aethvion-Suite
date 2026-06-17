@@ -382,6 +382,13 @@ async def restore_backup_route(name: str, backup_id: str):
     except RuntimeError as exc:
         raise HTTPException(400, str(exc))
 
+    # name_index.json was replaced on disk — force the cached NameIndex to
+    # re-read so lookups reflect the restored contents.
+    try:
+        _get_index(name).reload()
+    except Exception as exc:
+        logger.debug(f"[AethvionDB] NameIndex reload after restore failed: {exc}")
+
     return result
 
 
@@ -428,60 +435,66 @@ async def get_stats(
 ):
     writer = _get_writer(db, path)
     index  = _get_index(db, path)
-    # Exclude soft-deleted entities — they are tombstones on disk but carry no
-    # useful information and should not inflate any user-visible count.
-    all_e  = writer.list_all(include_deleted=False)
+    root   = _db_root(db, path)
 
-    by_type:   dict[str, int] = {}
-    by_status: dict[str, int] = {}
-    for e in all_e:
-        t = e.get("type", "other"); s = e.get("status", "active")
-        by_type[t]   = by_type.get(t, 0) + 1
-        by_status[s] = by_status.get(s, 0) + 1
+    # Stats touch every entity plus per-file stat() for sizes — run it off the
+    # event loop so a large database doesn't block other requests.
+    def _compute() -> dict:
+        # Exclude soft-deleted entities — they are tombstones on disk but carry
+        # no useful information and should not inflate any user-visible count.
+        all_e = writer.list_all(include_deleted=False)
 
-    # Total size of *active* entity files — reads only OS metadata, not file contents
-    total_size_bytes = 0
-    active_ids = {e["id"] for e in all_e}
-    entities_dir = _db_root(db, path) / "entities"
-    if entities_dir.exists():
-        for f in entities_dir.iterdir():
-            if f.suffix == ".json" and f.stem in active_ids:
-                try:
-                    total_size_bytes += f.stat().st_size
-                except OSError:
-                    pass
+        by_type:   dict[str, int] = {}
+        by_status: dict[str, int] = {}
+        for e in all_e:
+            t = e.get("type", "other"); s = e.get("status", "active")
+            by_type[t]   = by_type.get(t, 0) + 1
+            by_status[s] = by_status.get(s, 0) + 1
 
-    # Count incoming relations for each stub entity.
-    # An "incoming relation" is when an active entity has a relation whose
-    # target_id points to a stub.  More incoming = more likely to be important.
-    stub_ids = {e["id"] for e in all_e if e.get("status") == "stub"}
-    incoming: dict[str, int] = {sid: 0 for sid in stub_ids}
-    for e in all_e:
-        for rel in (e.get("sections") or {}).get("relations", []):
-            tid = rel.get("target_id")
-            if tid in incoming:
-                incoming[tid] += 1
+        # Total size of *active* entity files — reads only OS metadata, not contents
+        total_size_bytes = 0
+        active_ids = {e["id"] for e in all_e}
+        entities_dir = root / "entities"
+        if entities_dir.exists():
+            for f in entities_dir.iterdir():
+                if f.suffix == ".json" and f.stem in active_ids:
+                    try:
+                        total_size_bytes += f.stat().st_size
+                    except OSError:
+                        pass
 
-    stubs_by_min_relations = {
-        "1": sum(1 for c in incoming.values() if c >= 1),
-        "2": sum(1 for c in incoming.values() if c >= 2),
-        "3": sum(1 for c in incoming.values() if c >= 3),
-    }
+        # Count incoming relations for each stub entity.  An "incoming relation"
+        # is when an active entity has a relation whose target_id points to a
+        # stub.  More incoming = more likely to be important.
+        stub_ids = {e["id"] for e in all_e if e.get("status") == "stub"}
+        incoming: dict[str, int] = {sid: 0 for sid in stub_ids}
+        for e in all_e:
+            for rel in (e.get("sections") or {}).get("relations", []):
+                tid = rel.get("target_id")
+                if tid in incoming:
+                    incoming[tid] += 1
 
-    result = {
-        "db":                    db,
-        "total_entities":        len(all_e),
-        "by_status":             by_status,
-        "by_type":               by_type,
-        "index_size":            index.count(),
-        "stub_count":            by_status.get("stub", 0),
-        "total_size_bytes":      total_size_bytes,
-        "stubs_by_min_relations": stubs_by_min_relations,
-    }
+        stubs_by_min_relations = {
+            "1": sum(1 for c in incoming.values() if c >= 1),
+            "2": sum(1 for c in incoming.values() if c >= 2),
+            "3": sum(1 for c in incoming.values() if c >= 3),
+        }
+
+        return {
+            "db":                     db,
+            "total_entities":         len(all_e),
+            "by_status":              by_status,
+            "by_type":                by_type,
+            "index_size":             index.count(),
+            "stub_count":             by_status.get("stub", 0),
+            "total_size_bytes":       total_size_bytes,
+            "stubs_by_min_relations": stubs_by_min_relations,
+        }
+
+    result = await asyncio.to_thread(_compute)
 
     # Persist to AethvionDB.INFO so the UI can display stats on next page load
     # without re-scanning (especially important for large databases).
-    root = _db_root(db, path)
     existing = _read_db_info(root)
     _write_db_info(root, {
         **existing,                              # preserve name, created, etc.
@@ -511,16 +524,24 @@ async def list_entities(
     limit:       int = Query(100, le=500),
     offset:      int = Query(0, ge=0),
 ):
-    writer   = _get_writer(db, path)
-    entities = writer.list_all(include_deleted=(status == "deleted"))
-    if status and status != "all":
-        entities = [e for e in entities if e.get("status") == status]
-    if entity_type:
-        entities = [e for e in entities if e.get("type") == entity_type]
-    if kind:
-        entities = [e for e in entities if _kind_matches(e, kind)]
-    return {"total": len(entities), "offset": offset, "limit": limit,
-            "entities": entities[offset:offset + limit]}
+    writer = _get_writer(db, path)
+
+    # Run the (potentially heavy) cache load + filtering off the event loop so
+    # the UI stays responsive — a spinner instead of a frozen app on first load
+    # of a large database.  The list view only needs the lightweight projection;
+    # full entity bodies load on demand via GET /entities/{id}.
+    def _work() -> dict:
+        entities = writer.list_lite(include_deleted=(status == "deleted"))
+        if status and status != "all":
+            entities = [e for e in entities if e.get("status") == status]
+        if entity_type:
+            entities = [e for e in entities if e.get("type") == entity_type]
+        if kind:
+            entities = [e for e in entities if _kind_matches(e, kind)]
+        return {"total": len(entities), "offset": offset, "limit": limit,
+                "entities": entities[offset:offset + limit]}
+
+    return await asyncio.to_thread(_work)
 
 
 @router.get("/entities/{entity_id}")

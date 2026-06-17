@@ -67,6 +67,9 @@ class EntityWriter:
 
     def _write(self, entity: dict[str, Any]) -> None:
         atomic_json_write(self._path_for(entity["id"]), entity)
+        # Patch the in-memory cache in place and bump the generation — O(1),
+        # so a single write never triggers a full N-file snapshot rebuild.
+        _snapshot.put(self._dir.parent, entity)
 
     # Public API
 
@@ -265,6 +268,7 @@ class EntityWriter:
             logger.info(f"[EntityWriter] Soft-deleted {entity_id}")
         else:
             self._path_for(entity_id).unlink(missing_ok=True)
+            _snapshot.remove(self._dir.parent, entity_id)
             logger.info(f"[EntityWriter] Hard-deleted {entity_id}")
         return True
 
@@ -290,57 +294,47 @@ class EntityWriter:
         include_deleted: bool = False,
         use_snapshot: bool = True,
     ) -> list[dict[str, Any]]:
-        """Return entities, using the snapshot cache when available.
+        """Return full entities, served from the in-memory cache.
 
         Parameters
         ----------
         include_deleted:
             When ``False`` (default) entities with ``status="deleted"`` are
-            excluded.  The snapshot stores all statuses; filtering is applied
-            at load time so the snapshot never needs rebuilding just for this.
+            excluded.  The cache stores all statuses; filtering is applied at
+            read time.
         use_snapshot:
-            Set to ``False`` to bypass the snapshot entirely (always reads
-            from individual entity files).  The snapshot is *not* rebuilt when
-            this flag is ``False`` — use it for callers that need a guaranteed
-            live view without polluting the cache (e.g. mid-scan diagnostics).
+            Set to ``False`` to bypass the cache entirely (always reads from
+            individual entity files).  Use it for callers that need a guaranteed
+            live view without touching the cache (e.g. mid-scan diagnostics).
         """
-        db_root = self._dir.parent
-
-        if use_snapshot and _snapshot.is_fresh(db_root, self._dir):
-            all_entities = _snapshot.load(db_root)
-            if not all_entities:
-                # Snapshot present but load returned empty — fall back to raw
-                all_entities = self._raw_list_all()
-        else:
+        if not use_snapshot:
             all_entities = self._raw_list_all()
-            if use_snapshot:
-                # Snapshot was stale or missing — rebuild from the full list we
-                # just loaded so the next call is fast.
-                try:
-                    _snapshot.build(db_root, all_entities)
-                except Exception as exc:
-                    logger.debug(f"[EntityWriter] Snapshot rebuild failed: {exc}")
-
-        if not include_deleted:
+            if include_deleted:
+                return all_entities
             return [e for e in all_entities if e.get("status") != "deleted"]
-        return all_entities
+
+        return _snapshot.get_all(
+            self._dir.parent, self._dir, self._raw_list_all,
+            include_deleted=include_deleted,
+        )
+
+    def list_lite(self, include_deleted: bool = False) -> list[dict[str, Any]]:
+        """Return the lightweight list-view projection of all entities.
+
+        Each item carries only the columns the explorer renders (id, name,
+        type, kind, status, summary, tags, counts, dates) — a fraction of the
+        full payload.  Load full bodies on demand with ``get(entity_id)``.
+        """
+        return _snapshot.get_lite(
+            self._dir.parent, self._dir, self._raw_list_all,
+            include_deleted=include_deleted,
+        )
 
     def count(self, include_deleted: bool = False) -> int:
         if include_deleted:
             # Glob count only — no file I/O needed.
             return sum(1 for _ in self._dir.glob("ws_*.json"))
-        # For non-deleted count, use the snapshot if available to avoid
-        # reading every entity file.
-        db_root = self._dir.parent
-        if _snapshot.is_fresh(db_root, self._dir):
-            entities = _snapshot.load(db_root)
-            if entities:
-                return sum(1 for e in entities if e.get("status") != "deleted")
-        # Snapshot unavailable — read each file (slow but correct).
-        return sum(
-            1 for p in self._dir.glob("ws_*.json")
-            if json.loads(p.read_text(encoding="utf-8")).get("status") != "deleted"
-        )
+        return len(self.list_all(include_deleted=False))
 
     def list_stubs(self) -> list[dict[str, Any]]:
         """Return all active stub entities (status='stub')."""

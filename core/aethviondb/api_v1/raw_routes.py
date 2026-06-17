@@ -288,36 +288,44 @@ async def list_entities(
     w = _writer(db)
 
     include_deleted = (status == "deleted")
-    entities = w.list_all(include_deleted=include_deleted)
-
-    if status and status != "all":
-        entities = [e for e in entities if e.get("status") == status]
-    if entity_type:
-        entities = [e for e in entities if e.get("type") == entity_type]
-    if kind:
-        def _kind_match(e: dict, k: str) -> bool:
-            ek = e.get("kind")
-            return k in ek if isinstance(ek, list) else ek == k
-        entities = [e for e in entities if _kind_match(e, kind)]
-
-    total  = len(entities)
     offset = decode_cursor(cursor) if cursor else 0
-    page   = entities[offset : offset + limit]
+
+    # Filtering/paging touches the whole entity set — run it off the event loop
+    # so a large database doesn't block other API clients.  Reads are served
+    # from the in-memory cache, so this is fast once warm.
+    def _work() -> tuple[list[dict], int]:
+        entities = w.list_all(include_deleted=include_deleted)
+
+        if status and status != "all":
+            entities = [e for e in entities if e.get("status") == status]
+        if entity_type:
+            entities = [e for e in entities if e.get("type") == entity_type]
+        if kind:
+            def _kind_match(e: dict, k: str) -> bool:
+                ek = e.get("kind")
+                return k in ek if isinstance(ek, list) else ek == k
+            entities = [e for e in entities if _kind_match(e, kind)]
+
+        total = len(entities)
+        page  = entities[offset : offset + limit]
+
+        # Optionally project sections
+        if sections:
+            keys = {s.strip() for s in sections.split(",")}
+            def _project(e):
+                ec = dict(e)
+                ec["sections"] = {k: v for k, v in e.get("sections", {}).items() if k in keys}
+                return ec
+            page = [_project(e) for e in page]
+
+        # Always strip raw embedding float arrays from list responses.  Each
+        # embedding can be 1,536+ floats; 50 entities × multiple models = MB of
+        # useless data in a list view.  Use GET /{db}/raw/entities/{id} for vectors.
+        page = [_strip_embeddings(e) for e in page]
+        return page, total
+
+    page, total = await asyncio.to_thread(_work)
     next_c = encode_cursor(offset + limit) if (offset + limit) < total else None
-
-    # Optionally project sections
-    if sections:
-        keys = {s.strip() for s in sections.split(",")}
-        def _project(e):
-            ec = dict(e)
-            ec["sections"] = {k: v for k, v in e.get("sections", {}).items() if k in keys}
-            return ec
-        page = [_project(e) for e in page]
-
-    # Always strip raw embedding float arrays from list responses.
-    # Each embedding can be 1,536+ floats; 50 entities × multiple models = MB of
-    # useless data in a list view.  Use GET /{db}/raw/entities/{id} for full vectors.
-    page = [_strip_embeddings(e) for e in page]
 
     return envelope(
         {"entities": page, "total": total, "returned": len(page), "offset": offset},

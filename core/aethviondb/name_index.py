@@ -11,7 +11,8 @@ Format:  { "<normalized_name>": "<ws_id>", ... }
 Normalization: lowercase, strip outer whitespace, collapse internal whitespace.
 
 Thread-safety: Uses a threading.Lock around all reads and writes.
-               Not safe for multi-process scenarios (use SQLite if needed).
+               Single-process by design; multi-process coordination is handled
+               at the AethvionDB engine layer, not here.
 """
 
 from __future__ import annotations

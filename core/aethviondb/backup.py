@@ -196,6 +196,14 @@ def restore_backup(db_root: Path, backup_id: str) -> dict:
         elif dest_index.exists():
             dest_index.unlink()
 
+        # Entity files were replaced wholesale outside the normal write path —
+        # drop the in-memory + on-disk cache so the next read rebuilds.
+        try:
+            from . import snapshot as _snapshot
+            _snapshot.invalidate(db_root)
+        except Exception as exc:
+            logger.debug(f"[Backup] Cache invalidate after restore failed: {exc}")
+
         entity_count = (
             sum(1 for _ in dest_entities.glob("ws_*.json"))
             if dest_entities.exists() else 0
