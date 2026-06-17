@@ -57,6 +57,7 @@ def _import_remaining_routers():
         ("logs_routes",                         "router",     "logs_router"),
         ("documentation_routes",                "router",     "documentation_router"),
         ("decision_trace_routes",               "router",     "decision_trace_router"),
+        ("lexmap_routes",                       "router",     "lexmap_router"),
         ("project_mapper_explorer_routes",      "router",     "pm_explorer_router"),
     ]
     _CORE_ROUTES = [

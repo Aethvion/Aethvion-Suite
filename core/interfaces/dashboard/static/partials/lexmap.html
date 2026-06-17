@@ -1,0 +1,220 @@
+<div id="lm-root" class="lm-root">
+
+    <!-- ── Header ─────────────────────────────────────────────────────────── -->
+    <div class="lm-header">
+        <div class="lm-header-top">
+
+            <div class="lm-brand">
+                <div class="lm-brand-icon">
+                    <i class="fas fa-scale-balanced"></i>
+                </div>
+                <span class="lm-brand-name">LexMap</span>
+                <span class="lm-brand-tag">Experimental</span>
+            </div>
+
+            <nav class="lm-nav-tabs" id="lm-nav-tabs">
+                <button class="lm-nav-tab active" data-lm-tab="artifacts">
+                    <i class="fas fa-book-section"></i> Legal Artifacts
+                </button>
+                <button class="lm-nav-tab" data-lm-tab="graph">
+                    <i class="fas fa-circle-nodes"></i> Precedent Graph
+                </button>
+            </nav>
+
+            <button class="exp-info-btn" id="lm-info-btn" title="About LexMap">
+                <i class="fas fa-circle-info"></i> About
+            </button>
+
+        </div>
+
+        <!-- Stats bar -->
+        <div class="lm-stats-bar" id="lm-stats-bar">
+            <div class="lm-stat-chip">
+                <i class="fas fa-database"></i>
+                <span>Artifacts:</span>
+                <span class="lm-stat-val" id="lm-stat-count">—</span>
+            </div>
+            <div class="lm-stat-chip">
+                <i class="fas fa-link"></i>
+                <span>Relationships:</span>
+                <span class="lm-stat-val" id="lm-stat-links">—</span>
+            </div>
+            <div class="lm-stat-chip">
+                <i class="fas fa-globe"></i>
+                <span>Jurisdictions:</span>
+                <span class="lm-stat-val" id="lm-stat-jurisdictions">—</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Body ───────────────────────────────────────────────────────────── -->
+    <div class="lm-body">
+
+        <!-- ═══════ ARTIFACTS PANE ═══════ -->
+        <div class="lm-pane active" id="lm-pane-artifacts">
+            <div class="lm-artifacts-layout">
+
+                <!-- Left rail — list -->
+                <div class="lm-list-rail">
+                    <div class="lm-list-search-bar">
+                        <i class="fas fa-magnifying-glass"></i>
+                        <input
+                            type="text"
+                            class="lm-search-input"
+                            id="lm-search-input"
+                            placeholder="Search legal texts…"
+                            autocomplete="off"
+                        >
+                        <button class="lm-new-btn" id="lm-new-btn" title="New artifact">
+                            <i class="fas fa-plus"></i> New
+                        </button>
+                    </div>
+                    <div class="lm-list-scroll" id="lm-list-scroll">
+                        <div class="lm-loading">
+                            <i class="fas fa-spinner fa-spin"></i> Loading…
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Center — artifact detail -->
+                <div class="lm-detail-pane" id="lm-detail-pane">
+                    <div class="lm-detail-scroll" id="lm-detail-scroll">
+                        <div class="lm-detail-empty" id="lm-detail-empty">
+                            <i class="fas fa-scale-balanced"></i>
+                            <p>Select a legal artifact from the list to view its contents, or ingest a new one.</p>
+                        </div>
+                        <div id="lm-detail-content" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- Right rail — Ask Counsel -->
+                <div class="lm-ask-pane" id="lm-ask-pane">
+                    <div class="lm-ask-header">
+                        <div class="lm-ask-title">
+                            <i class="fas fa-user-tie"></i> AI Counsel
+                        </div>
+                        <div class="lm-ask-subtitle">
+                            Ask about this artifact. The AI receives this document and all linked precedents directly.
+                        </div>
+                    </div>
+                    <div class="lm-ask-output" id="lm-ask-output">
+                        <div class="lm-ask-placeholder" id="lm-ask-placeholder">
+                            <i class="fas fa-comments"></i>
+                            Select a legal artifact first, then ask a question about it.
+                        </div>
+                    </div>
+                    <div class="lm-ask-input-area">
+                        <div class="lm-model-row">
+                            <span class="lm-model-label">Model:</span>
+                            <select class="lm-model-select" id="lm-ask-model">
+                                <option value="auto">Auto (Best available)</option>
+                                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                                <option value="gpt-4o">GPT-4o</option>
+                            </select>
+                        </div>
+                        <textarea
+                            class="lm-ask-textarea"
+                            id="lm-ask-textarea"
+                            rows="3"
+                            placeholder="e.g. Does this statute apply given ruling X?…"
+                            disabled
+                        ></textarea>
+                        <button class="lm-ask-send-btn" id="lm-ask-send-btn" disabled>
+                            <i class="fas fa-paper-plane"></i> Ask
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ═══════ GRAPH PANE ═══════ -->
+        <div class="lm-pane" id="lm-pane-graph">
+            <div class="lm-graph-pane">
+                <div class="lm-graph-header">
+                    <div class="lm-graph-title">
+                        <i class="fas fa-circle-nodes"></i>
+                        Precedent Graph
+                    </div>
+                    <button class="lm-btn lm-btn-secondary" id="lm-graph-refresh" style="padding:7px 14px;font-size:12px;">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                </div>
+                <div class="lm-graph-canvas-wrap" id="lm-graph-canvas-wrap">
+                    <div class="lm-loading" id="lm-graph-loading" style="display:none;">
+                        <i class="fas fa-spinner fa-spin"></i> Loading graph…
+                    </div>
+                    <div class="lm-graph-canvas" id="lm-graph-canvas"></div>
+                    <div class="lm-graph-legend">
+                        <div class="lm-legend-item"><span class="lm-dot statute"></span> Statute</div>
+                        <div class="lm-legend-item"><span class="lm-dot case"></span> Case</div>
+                        <div class="lm-legend-item"><span class="lm-dot reg"></span> Regulation</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Modal (Create / Edit Artifact) ─────────────────────────────────── -->
+    <div class="lm-modal-overlay" id="lm-modal-overlay" style="display:none;">
+        <div class="lm-modal" id="lm-modal" role="dialog" aria-modal="true" aria-labelledby="lm-modal-title-text">
+            
+            <div class="lm-modal-header">
+                <div class="lm-modal-title">
+                    <i class="fas fa-scale-balanced"></i>
+                    <span id="lm-modal-title-text">New Legal Artifact</span>
+                </div>
+                <button class="lm-modal-close" id="lm-modal-close" aria-label="Close">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="lm-modal-body">
+                <div class="lm-form-group">
+                    <label class="lm-form-label" for="lm-form-title">Title *</label>
+                    <input type="text" class="lm-form-input" id="lm-form-title" placeholder="e.g. Smith v. Jones (2025)" required>
+                </div>
+                
+                <div class="lm-form-row">
+                    <div class="lm-form-group">
+                        <label class="lm-form-label" for="lm-form-type">Artifact Type</label>
+                        <select class="lm-form-input" id="lm-form-type">
+                            <option value="Statute">Statute</option>
+                            <option value="Case">Case</option>
+                            <option value="Regulation">Regulation</option>
+                            <option value="Contract">Contract</option>
+                        </select>
+                    </div>
+                    <div class="lm-form-group">
+                        <label class="lm-form-label" for="lm-form-jurisdiction">Jurisdiction</label>
+                        <input type="text" class="lm-form-input" id="lm-form-jurisdiction" placeholder="e.g. US Federal, UK Supreme Court">
+                    </div>
+                </div>
+
+                <div class="lm-form-group">
+                    <label class="lm-form-label" for="lm-form-tags">Tags</label>
+                    <input type="text" class="lm-form-input" id="lm-form-tags" placeholder="e.g. copyright, fair-use, digital">
+                    <span class="lm-form-hint">Comma separated</span>
+                </div>
+
+                <div class="lm-form-group">
+                    <label class="lm-form-label" for="lm-form-content">Legal Content / Summary</label>
+                    <textarea class="lm-form-textarea" id="lm-form-content" rows="6" placeholder="Extract of the statute text, case ruling, or contract clause..."></textarea>
+                    <div class="lm-form-hint">The AI will use this text + all linked texts to answer questions.</div>
+                </div>
+            </div>
+
+            <div class="lm-modal-footer">
+                <button class="lm-btn lm-btn-secondary" id="lm-modal-cancel">Cancel</button>
+                <button class="lm-btn lm-btn-primary" id="lm-modal-save">
+                    <i class="fas fa-floppy-disk"></i> Save Artifact
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+

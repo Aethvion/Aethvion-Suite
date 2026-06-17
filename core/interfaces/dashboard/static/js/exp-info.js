@@ -80,6 +80,33 @@
                         <div class="exp-info-text" id="exp-info-vision"></div>
                     </div>
 
+                    <div class="exp-info-section exp-info-pitch-section" id="exp-info-pitch-wrap" style="display:none;">
+                        <div class="exp-info-section-label" style="color: #fbbf24;">
+                            <i class="fas fa-briefcase"></i> Business Pitch & Strategy
+                        </div>
+                        
+                        <div class="exp-info-pitch-grid">
+                            <div class="exp-info-pitch-card">
+                                <div class="exp-info-pitch-card-title"><i class="fas fa-triangle-exclamation"></i> The Problem</div>
+                                <div class="exp-info-text" id="exp-info-pitch-problem"></div>
+                            </div>
+                            <div class="exp-info-pitch-card">
+                                <div class="exp-info-pitch-card-title"><i class="fas fa-lightbulb" style="color:#6ee7b7;"></i> The Solution</div>
+                                <div class="exp-info-text" id="exp-info-pitch-solution"></div>
+                            </div>
+                        </div>
+
+                        <div class="exp-info-pitch-tam" id="exp-info-pitch-tam-wrap">
+                            <div class="exp-info-pitch-card-title"><i class="fas fa-chart-pie" style="color:#a78bfa;"></i> Market Opportunity (TAM)</div>
+                            <div class="exp-info-text" id="exp-info-pitch-tam"></div>
+                        </div>
+
+                        <div class="exp-info-pitch-tactics" id="exp-info-pitch-tactics-wrap">
+                            <div class="exp-info-pitch-card-title"><i class="fas fa-chess-knight" style="color:#60a5fa;"></i> Go-to-Market Strategy</div>
+                            <ul class="exp-info-pitch-list" id="exp-info-pitch-tactics"></ul>
+                        </div>
+                    </div>
+
                 </div>
 
                 <div class="exp-info-footer">
@@ -164,6 +191,33 @@
                 conWrap.style.display = '';
             } else {
                 conWrap.style.display = 'none';
+            }
+        }
+
+        // Pitch
+        const pitchWrap     = document.getElementById('exp-info-pitch-wrap');
+        const pitchProblem  = document.getElementById('exp-info-pitch-problem');
+        const pitchSolution = document.getElementById('exp-info-pitch-solution');
+        const pitchTam      = document.getElementById('exp-info-pitch-tam');
+        const pitchTactics  = document.getElementById('exp-info-pitch-tactics');
+
+        if (pitchWrap) {
+            if (info.pitch) {
+                if (pitchProblem)  pitchProblem.textContent  = info.pitch.problem  || '';
+                if (pitchSolution) pitchSolution.textContent = info.pitch.solution || '';
+                if (pitchTam)      pitchTam.textContent      = info.pitch.tam      || '';
+                
+                if (pitchTactics) {
+                    if (info.pitch.tactics?.length) {
+                        pitchTactics.innerHTML = info.pitch.tactics.map(t => `<li><i class="fas fa-check"></i> ${_esc(t)}</li>`).join('');
+                        document.getElementById('exp-info-pitch-tactics-wrap').style.display = '';
+                    } else {
+                        document.getElementById('exp-info-pitch-tactics-wrap').style.display = 'none';
+                    }
+                }
+                pitchWrap.style.display = '';
+            } else {
+                pitchWrap.style.display = 'none';
             }
         }
 

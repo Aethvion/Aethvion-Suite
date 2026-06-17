@@ -554,6 +554,16 @@
                 ],
                 how: 'Decisions are stored as typed JSON entities locally. Each entry holds the context, the options that were considered, the chosen option, the constraints that existed, the trade-offs that were accepted, and the stakeholders involved. Decisions can be linked to each other to form a causal chain. The AI "Ask" feature sends the full decision plus all linked decisions as structured context — there is no retrieval guesswork, the model sees exactly what is relevant.',
                 vision: 'DecisionTrace is the personal-to-team evolution of AethvionDB. Where AethvionDB captures knowledge entities, DecisionTrace captures reasoning chains. The long-term vision is an organisation-wide decision intelligence layer: when someone asks "why is X like this?", the answer is a graph traversal — deterministic, instant, and complete — not a search through Confluence pages. If validated here, it will spin out as a standalone product targeting engineering organisations, law firms, and hospitals where the cost of lost institutional memory is highest.',
+                pitch: {
+                    problem: 'Organisations lose institutional memory constantly. When people leave, the "why" behind architecture or business decisions leaves with them. Reading old Jira tickets or Confluence pages provides what was done, but rarely the constraints or rejected options that drove the decision.',
+                    solution: 'DecisionTrace enforces a structured schema for recording decisions (options, constraints, trade-offs) and links them into a causal graph. AI can then query this structured graph to explain past reasoning instantly to new employees.',
+                    tam: 'Enterprise Knowledge Management & Decision Intelligence: $8.5B+ (Growing 18% YoY). Target: Engineering leadership, Product Management, Legal teams.',
+                    tactics: [
+                        'Provide Jira and GitHub integrations to capture decisions where work happens.',
+                        'Target Engineering Managers and CTOs with a focus on reducing onboarding time.',
+                        'Offer enterprise SSO and compliance-grade audit logging for regulated industries.'
+                    ]
+                }
             });
         }
 

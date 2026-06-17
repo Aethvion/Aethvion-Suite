@@ -45,6 +45,7 @@
         'worldsim':          { label: 'WorldSim',       icon: 'fas fa-globe' },
         'project-mapper':    { label: 'Project Mapper', icon: 'fas fa-diagram-project' },
         'decision-trace':    { label: 'DecisionTrace',  icon: 'fas fa-timeline' },
+        'lexmap':            { label: 'LexMap',         icon: 'fas fa-scale-balanced' },
     };
 
     // ── Category definitions ───────────────────────────────────────────────
@@ -89,7 +90,7 @@
             id: 'experimental',
             label: 'Experimental',
             icon: 'fas fa-flask-vial',
-            tabs: ['worldsim', 'project-mapper', 'decision-trace'],
+            tabs: ['worldsim', 'project-mapper', 'decision-trace', 'lexmap'],
         },
     ];
 

@@ -673,6 +673,16 @@
                 ],
                 how: 'Project Mapper scans a codebase and extracts typed entities — files, classes, functions, imports, dependencies — into AethvionDB. When an AI agent needs to work on the codebase, it queries the graph instead of reading raw source files. The result is a precise, structured snapshot of the project that the AI can traverse without reading hundreds of files. Delta scans update only what has changed, making repeated scans fast.',
                 vision: 'Project Mapper has already proven its value and is being spun out as a standalone product (github.com/Aethvion/Aethvion-ProjectMapper). The vision is a universal code intelligence layer that any AI agent can query — not just Aethvion Suite agents. Any tool that needs to understand a codebase can use Project Mapper as its knowledge foundation, replacing fragile file-reading strategies with a structured, queryable graph.',
+                pitch: {
+                    problem: 'Coding agents are constrained by context windows and token costs. Passing raw source files to an LLM every time it needs to understand a codebase is wildly inefficient, slow, and prone to hallucination when codebases exceed 100k lines.',
+                    solution: 'Project Mapper acts as a deterministic knowledge layer. Instead of reading code, the AI queries a fast, local graph. This offloads structural reasoning (imports, dependencies, inheritance) from the LLM to deterministic code, saving massive amounts of compute.',
+                    tam: 'Software Development & AI Coding Tools Market: $4.5B+ (Growing 25% YoY). Every enterprise building AI agents for code needs an efficient knowledge retrieval layer.',
+                    tactics: [
+                        'Spin out as a standalone open-source CLI tool to gain developer adoption.',
+                        'Provide a premium managed API for enterprise AI agent builders.',
+                        'Integrate as the default knowledge backend for popular AI IDE extensions.'
+                    ]
+                }
             });
         }
 
