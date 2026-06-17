@@ -1,0 +1,162 @@
+<div id="sm-root" class="sm-root">
+
+    <!-- ── Header ─────────────────────────────────────────────────────────── -->
+    <div class="sm-header">
+        <div class="sm-header-top">
+
+            <div class="sm-brand">
+                <div class="sm-brand-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+                    <i class="fas fa-network-wired"></i>
+                </div>
+                <span class="sm-brand-name" style="background: linear-gradient(135deg, #6ee7b7, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">SupplyMind</span>
+                <span class="sm-brand-tag">Experimental</span>
+            </div>
+
+            <nav class="sm-nav-tabs" id="sm-nav-tabs">
+                <button class="sm-nav-tab active" data-sm-tab="artifacts">
+                    <i class="fas fa-boxes-stacked"></i> Products & Components
+                </button>
+                <button class="sm-nav-tab" data-sm-tab="graph">
+                    <i class="fas fa-diagram-project"></i> Supply Chain Graph
+                </button>
+            </nav>
+
+            <button class="exp-info-btn" id="sm-info-btn" title="About SupplyMind">
+                <i class="fas fa-circle-info"></i> About
+            </button>
+
+        </div>
+
+        <!-- Stats bar -->
+        <div class="sm-stats-bar" id="sm-stats-bar">
+            <div class="sm-stat-chip">
+                <i class="fas fa-box"></i>
+                <span>Entities:</span>
+                <span class="sm-stat-val" id="sm-stat-count">—</span>
+            </div>
+            <div class="sm-stat-chip">
+                <i class="fas fa-link"></i>
+                <span>Dependencies:</span>
+                <span class="sm-stat-val" id="sm-stat-links">—</span>
+            </div>
+            <div class="sm-stat-chip" style="color: #ef4444;">
+                <i class="fas fa-triangle-exclamation"></i>
+                <span>Active Risks:</span>
+                <span class="sm-stat-val" id="sm-stat-risks">—</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Body ───────────────────────────────────────────────────────────── -->
+    <div class="sm-body">
+
+        <!-- ═══════ ARTIFACTS PANE ═══════ -->
+        <div class="sm-pane active" id="sm-pane-artifacts">
+            <div class="sm-artifacts-layout">
+
+                <!-- Left rail — list -->
+                <div class="sm-list-rail">
+                    <div class="sm-list-search-bar">
+                        <i class="fas fa-magnifying-glass"></i>
+                        <input
+                            type="text"
+                            class="sm-search-input"
+                            id="sm-search-input"
+                            placeholder="Search BOMs, suppliers…"
+                            autocomplete="off"
+                        >
+                        <!-- Reusing new button styling for risk simulation -->
+                        <button class="sm-new-btn" id="sm-simulate-risk-btn" title="Simulate Risk Event" style="background: linear-gradient(135deg, #ef4444, #b91c1c);">
+                            <i class="fas fa-bolt"></i> Risk
+                        </button>
+                    </div>
+                    <div class="sm-list-scroll" id="sm-list-scroll">
+                        <div class="sm-loading">
+                            <i class="fas fa-spinner fa-spin"></i> Loading…
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Center — artifact detail -->
+                <div class="sm-detail-pane" id="sm-detail-pane">
+                    <div class="sm-detail-scroll" id="sm-detail-scroll">
+                        <div class="sm-detail-empty" id="sm-detail-empty">
+                            <i class="fas fa-network-wired"></i>
+                            <p>Select a product or supplier to view its details and transitive dependencies.</p>
+                        </div>
+                        <div id="sm-detail-content" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- Right rail — Ask Counsel -->
+                <div class="sm-ask-pane" id="sm-ask-pane">
+                    <div class="sm-ask-header">
+                        <div class="sm-ask-title">
+                            <i class="fas fa-user-tie"></i> Supply Analyst
+                        </div>
+                        <div class="sm-ask-subtitle">
+                            Ask about supply chain risk. The AI receives the node's transitive upstream/downstream dependencies.
+                        </div>
+                    </div>
+                    <div class="sm-ask-output" id="sm-ask-output">
+                        <div class="sm-ask-placeholder" id="sm-ask-placeholder">
+                            <i class="fas fa-comments"></i>
+                            Select a node first, then ask a question.
+                        </div>
+                    </div>
+                    <div class="sm-ask-input-area">
+                        <div class="sm-model-row">
+                            <span class="sm-model-label">Model:</span>
+                            <select class="sm-model-select" id="sm-ask-model">
+                                <option value="auto">Auto (Best available)</option>
+                                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                                <option value="gpt-4o">GPT-4o</option>
+                            </select>
+                        </div>
+                        <textarea
+                            class="sm-ask-textarea"
+                            id="sm-ask-textarea"
+                            rows="3"
+                            placeholder="e.g. How many days until the Taiwan fab fire impacts our EV battery production?…"
+                            disabled
+                        ></textarea>
+                        <button class="sm-ask-send-btn" id="sm-ask-send-btn" disabled>
+                            <i class="fas fa-paper-plane"></i> Ask
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ═══════ GRAPH PANE ═══════ -->
+        <div class="sm-pane" id="sm-pane-graph">
+            <div class="sm-graph-pane">
+                <div class="sm-graph-header">
+                    <div class="sm-graph-title">
+                        <i class="fas fa-diagram-project"></i>
+                        Dependency Graph
+                    </div>
+                    <button class="sm-btn sm-btn-secondary" id="sm-graph-refresh" style="padding:7px 14px;font-size:12px;">
+                        <i class="fas fa-rotate-right"></i> Refresh
+                    </button>
+                </div>
+                <div class="sm-graph-canvas-wrap" id="sm-graph-canvas-wrap">
+                    <div class="sm-loading" id="sm-graph-loading" style="display:none;">
+                        <i class="fas fa-spinner fa-spin"></i> Loading graph…
+                    </div>
+                    <div class="sm-graph-canvas" id="sm-graph-canvas"></div>
+                    <div class="sm-graph-legend">
+                        <div class="sm-legend-item"><span class="sm-dot" style="background:#3b82f6;"></span> Finished Good</div>
+                        <div class="sm-legend-item"><span class="sm-dot" style="background:#8b5cf6;"></span> Component</div>
+                        <div class="sm-legend-item"><span class="sm-dot" style="background:#f59e0b;"></span> Facility</div>
+                        <div class="sm-legend-item"><span class="sm-dot" style="background:#10b981;"></span> Raw Material</div>
+                        <div class="sm-legend-item"><span class="sm-dot" style="background:#ef4444;"></span> Risk Event</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
