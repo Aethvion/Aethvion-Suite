@@ -10,6 +10,7 @@ API prefix: /api/lexmap
 """
 
 import json
+import re
 import uuid
 import asyncio
 from pathlib import Path
@@ -62,7 +63,14 @@ class AskRequest(BaseModel):
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+# IDs are server-generated uuid hex; reject anything else so a client-supplied
+# id can't escape LEXMAP_DIR via path separators or "..".
+_SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
+
+
 def _artifact_path(artifact_id: str) -> Path:
+    if not _SAFE_ID.match(artifact_id or ""):
+        raise HTTPException(status_code=400, detail="Invalid artifact id.")
     return LEXMAP_DIR / f"{artifact_id}.json"
 
 
