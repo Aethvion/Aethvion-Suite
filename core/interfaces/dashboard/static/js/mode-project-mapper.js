@@ -11,7 +11,7 @@
     // ── Shortcuts ─────────────────────────────────────────────────────────────
     const $ = id => document.getElementById(id);
     const PM  = '/api/project-mapper';
-    const ADB = '/api/aethviondb';
+    const PMX = '/api/pm-explorer';   // Suite-side read-only view over PM snapshots
 
     // ── State ─────────────────────────────────────────────────────────────────
     let _pollTimer     = null;
@@ -181,7 +181,6 @@
             project_root: root,
             db:           dbName(),
             incremental:  $('pm-opt-incremental').checked,
-            enrich:       $('pm-opt-enrich').checked,
             concurrency:  parseInt($('pm-concurrency').value, 10),
         };
 
@@ -231,7 +230,6 @@
         const LABELS = {
             running:   'Scanning…',
             cleanup:   'Cleanup…',
-            enriching: 'Enriching…',
             completed: 'Completed',
             error:     'Error',
             cancelled: 'Cancelled',
@@ -240,7 +238,6 @@
         const BADGE_CLS = {
             running:   'pm-badge-info',
             cleanup:   'pm-badge-info',
-            enriching: 'pm-badge-info',
             completed: 'pm-badge-success',
             error:     'pm-badge-error',
             cancelled: 'pm-badge-warning',
@@ -249,7 +246,7 @@
 
         const iconEl = $('pm-status-icon');
         if (iconEl) {
-            const spinning = ['running', 'cleanup', 'enriching'].includes(status);
+            const spinning = ['running', 'cleanup'].includes(status);
             iconEl.className = spinning
                 ? 'fas fa-circle-notch fa-spin'
                 : status === 'completed' ? 'fas fa-circle-check' : 'fas fa-circle';
@@ -392,7 +389,7 @@
 
     async function loadExplorerStats() {
         try {
-            const r = await fetch(`${ADB}/stats?db=${encodeURIComponent(dbName())}`);
+            const r = await fetch(`${PMX}/stats?db=${encodeURIComponent(dbName())}`);
             if (!r.ok) return;
             const s = await r.json();
             const bt = s.by_type || {};
@@ -414,7 +411,7 @@
         listEl.innerHTML = '<div class="pm-list-empty"><i class="fas fa-spinner fa-spin"></i></div>';
 
         try {
-            let url = `${ADB}/entities?db=${encodeURIComponent(db)}&limit=200&offset=0`;
+            let url = `${PMX}/entities?db=${encodeURIComponent(db)}&limit=200&offset=0`;
             if (typeVal) url += `&entity_type=${encodeURIComponent(typeVal)}`;
 
             const r   = await fetch(url);
@@ -462,7 +459,7 @@
         detail.innerHTML = '<div class="pm-detail-placeholder"><i class="fas fa-spinner fa-spin"></i></div>';
 
         try {
-            const r = await fetch(`${ADB}/entities/${encodeURIComponent(entityId)}?db=${encodeURIComponent(db)}`);
+            const r = await fetch(`${PMX}/entities/${encodeURIComponent(entityId)}?db=${encodeURIComponent(db)}`);
             const e = await r.json();
             if (!r.ok) throw new Error(e.detail || JSON.stringify(e));
 
