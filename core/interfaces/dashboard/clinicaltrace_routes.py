@@ -4,11 +4,12 @@ from typing import List, Optional, Dict, Any
 import uuid
 import time
 import asyncio
+import json
 from fastapi.responses import StreamingResponse
 
-# Assume providers is used for the "Ask" streaming
-from core.models.providers import generate_streaming_response
+from core.utils import get_logger
 
+logger = get_logger("web.clinicaltrace_routes")
 clinicaltrace_router = APIRouter(prefix="/api/dashboard/clinicaltrace", tags=["ClinicalTrace"])
 
 # ── Mock Data Storage ────────────────────────────────────────────────────────
@@ -124,9 +125,34 @@ Provide a concise, analytical response focusing on evidence quality, population 
 
     async def _stream():
         try:
-            for chunk in generate_streaming_response(prompt, model=req.model_id if req.model_id != "auto" else None):
-                yield f"data: {chunk}\n\n"
-        except Exception as e:
-            yield f"data: {{\"error\": \"{str(e)}\"}}\n\n"
+            from core.providers.provider_manager import get_provider_manager
+            from core.ai.call_contexts import CallSource
+
+            pm = get_provider_manager()
+            trace_id = f"clinicaltrace-ask-{uuid.uuid4().hex[:8]}"
+
+            def _call():
+                return pm.call_with_failover(
+                    prompt=prompt,
+                    trace_id=trace_id,
+                    temperature=0.3,
+                    model=req.model_id if req.model_id != "auto" else None,
+                    request_type="generation",
+                    source=CallSource.RESEARCH,
+                )
+
+            response = await asyncio.to_thread(_call)
+            if not response.success:
+                yield f"data: {json.dumps({'error': response.error or 'LLM call failed'})}\n\n"
+                return
+
+            text = response.content or ""
+            for i in range(0, len(text), 8):
+                yield f"data: {json.dumps({'token': text[i:i + 8]})}\n\n"
+                await asyncio.sleep(0.01)
+            yield f"data: {json.dumps({'done': True, 'model': response.model})}\n\n"
+        except Exception as exc:
+            logger.error("ClinicalTrace ask error: %s", exc, exc_info=True)
+            yield f"data: {json.dumps({'error': str(exc)})}\n\n"
 
     return StreamingResponse(_stream(), media_type="text/event-stream")
