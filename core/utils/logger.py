@@ -49,7 +49,7 @@ class AethvionLogger:
         if config_path is None:
             workspace = Path(__file__).parent.parent
             config_path = workspace / "config" / "logging.yaml"
-        
+
         # Load configuration
         if not os.path.exists(config_path):
             # Fallback to basic configuration
@@ -58,6 +58,7 @@ class AethvionLogger:
                 format='[%(asctime)s] [%(levelname)s] [Trace:%(trace_id)s] %(name)s - %(message)s'
             )
             print(f"Warning: Logging config not found at {config_path}, using basic config")
+            cls._attach_file_handler()
             cls._initialized = True
             return
         
@@ -82,9 +83,40 @@ class AethvionLogger:
         # Add filter to all handlers
         for handler in root_logger.handlers:
             handler.addFilter(trace_filter)
-        
+
+        cls._attach_file_handler(trace_filter)
         cls._initialized = True
-    
+
+    @staticmethod
+    def _attach_file_handler(trace_filter: Optional["TraceIDFilter"] = None) -> None:
+        """Attach a rotating file handler to the root logger.
+
+        Without this, logs only go to the console — which is sent to DEVNULL when
+        the suite runs under --consumer / pythonw, making every error a silent
+        failure.  This persists INFO+ (including 5xx tracebacks logged with
+        exc_info) to data/logs/app.log so they can always be inspected.
+        """
+        try:
+            from logging.handlers import RotatingFileHandler
+            root_logger = logging.getLogger()
+            # Don't attach twice across re-initialisation.
+            if any(getattr(h, "_aethvion_app_log", False) for h in root_logger.handlers):
+                return
+            LOGS_SYSTEM.mkdir(parents=True, exist_ok=True)
+            fh = RotatingFileHandler(
+                LOGS_SYSTEM / "app.log",
+                maxBytes=5_000_000, backupCount=3, encoding="utf-8",
+            )
+            fh._aethvion_app_log = True  # type: ignore[attr-defined]
+            fh.setLevel(logging.INFO)
+            fh.setFormatter(logging.Formatter(
+                '[%(asctime)s] [%(levelname)s] [Trace:%(trace_id)s] %(name)s - %(message)s'))
+            fh.addFilter(trace_filter or TraceIDFilter())
+            root_logger.addHandler(fh)
+        except Exception:
+            # Logging must never crash startup.
+            pass
+
     @classmethod
     def get_logger(cls, name: str) -> logging.Logger:
         """
