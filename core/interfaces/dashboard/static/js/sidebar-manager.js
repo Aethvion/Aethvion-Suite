@@ -46,6 +46,9 @@
         'project-mapper':    { label: 'Project Mapper', icon: 'fas fa-diagram-project' },
         'decision-trace':    { label: 'DecisionTrace',  icon: 'fas fa-timeline' },
         'lexmap':            { label: 'LexMap',         icon: 'fas fa-scale-balanced' },
+        'supplymind':        { label: 'SupplyMind',     icon: 'fas fa-network-wired' },
+        'clinicaltrace':     { label: 'ClinicalTrace',  icon: 'fas fa-stethoscope' },
+        'misaka-cipher':     { label: 'MisakaCipher',   icon: 'fas fa-shield-cat' },
     };
 
     // ── Category definitions ───────────────────────────────────────────────
@@ -90,7 +93,7 @@
             id: 'experimental',
             label: 'Experimental',
             icon: 'fas fa-flask-vial',
-            tabs: ['worldsim', 'project-mapper', 'decision-trace', 'lexmap'],
+            tabs: ['worldsim', 'project-mapper', 'decision-trace', 'lexmap', 'supplymind', 'clinicaltrace'],
         },
     ];
 

@@ -58,6 +58,8 @@ def _import_remaining_routers():
         ("documentation_routes",                "router",     "documentation_router"),
         ("decision_trace_routes",               "router",     "decision_trace_router"),
         ("lexmap_routes",                       "router",     "lexmap_router"),
+        ("supplymind_routes",                   "supplymind_router", "supplymind_router"),
+        ("clinicaltrace_routes",                "clinicaltrace_router", "clinicaltrace_router"),
         ("project_mapper_explorer_routes",      "router",     "pm_explorer_router"),
     ]
     _CORE_ROUTES = [
