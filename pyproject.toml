@@ -84,6 +84,13 @@ windows = [
     "winrt-Windows.Media.Control",
 ]
 
+# Project Mapper — consumed as the standalone package, not vendored in-tree.
+# Optional: the PM dashboard tab's backend activates only when this is installed.
+# For local development against the sibling repo:  pip install -e ../Aethvion-ProjectMapper
+project-mapper = [
+    "aethvion-project-mapper>=1.0.0",
+]
+
 # The groups below are installed manually: pip install aethvion-suite[memory]
 memory = [
     "chromadb>=0.4.0",
