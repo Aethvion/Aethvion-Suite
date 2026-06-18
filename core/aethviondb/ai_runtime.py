@@ -51,3 +51,21 @@ def get_llm_caller() -> LLMCaller:
             "core (entities, graph, search, validation) works without it."
         )
     return _llm_caller
+
+
+# ── Optional usage logger (embedding/LLM cost tracking) ─────────────────────────
+# The host may inject an object with a ``log_api_call(...)`` method to record API
+# usage. Absent one, the engine simply doesn't track usage — purely optional.
+
+_usage_logger: Optional[Any] = None
+
+
+def set_usage_logger(logger_obj: Optional[Any]) -> None:
+    """Register (or clear, with ``None``) an optional API-usage logger."""
+    global _usage_logger
+    _usage_logger = logger_obj
+
+
+def get_usage_logger() -> Optional[Any]:
+    """Return the injected usage logger, or None if the host configured none."""
+    return _usage_logger

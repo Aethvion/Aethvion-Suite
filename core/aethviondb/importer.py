@@ -30,7 +30,7 @@ from __future__ import annotations
 import json
 from typing import Any, Optional
 
-from core.utils.logger import get_logger
+from core.aethviondb._utils import get_logger
 from .entity_schema import VALID_TYPES, _new_id, _now_iso
 
 logger = get_logger(__name__)

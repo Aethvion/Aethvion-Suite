@@ -23,7 +23,7 @@ from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from core.utils.logger import get_logger
+from core.aethviondb._utils import get_logger
 
 from .auth import check_auth
 from .response import envelope, encode_cursor, decode_cursor

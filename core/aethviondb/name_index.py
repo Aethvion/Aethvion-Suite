@@ -23,8 +23,8 @@ import threading
 from pathlib import Path
 from typing import Optional
 
-from core.utils import get_logger, atomic_json_write
-from core.utils.paths import AETHVIONDB
+from core.aethviondb._utils import get_logger, atomic_json_write
+from core.aethviondb.config import AETHVIONDB
 
 logger = get_logger(__name__)
 

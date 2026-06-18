@@ -40,7 +40,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from core.utils.logger import get_logger
+from core.aethviondb._utils import get_logger
 from .ai_runtime import get_llm_caller
 from .entity_schema import VALID_TYPES
 from .entity_writer import EntityWriter

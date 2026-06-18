@@ -24,8 +24,8 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 
-from core.utils import get_logger, atomic_json_write
-from core.utils.paths import AETHVIONDB
+from core.aethviondb._utils import get_logger, atomic_json_write
+from core.aethviondb.config import AETHVIONDB
 
 _DEFAULT_ENTITIES_DIR = AETHVIONDB / "default" / "entities"
 from .entity_schema import make_empty, validate, _new_id, _now_iso, VALID_STATUSES

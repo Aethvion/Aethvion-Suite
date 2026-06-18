@@ -21,7 +21,7 @@ Persistence: AethvionDB.VECINFO (JSON sidecar in db root)
 """
 
 from __future__ import annotations
-from core.utils import get_logger
+from core.aethviondb._utils import get_logger
 
 import asyncio
 import json
@@ -393,12 +393,10 @@ async def vectorize_all(
     session_cost:   float = 0.0
     cost_per_1m     = EMBEDDING_COSTS.get(model, 0.0)
 
-    # Lazy import so the vectorizer doesn't force usage_tracker to load at module level
-    try:
-        from core.workspace.usage_tracker import get_usage_tracker as _get_tracker
-        _tracker = _get_tracker()
-    except Exception:
-        _tracker = None
+    # Optional, host-injected usage logger (e.g. for API cost tracking). None
+    # unless the host called ai_runtime.set_usage_logger(...).
+    from .ai_runtime import get_usage_logger
+    _tracker = get_usage_logger()
 
     try:
         # Preflight: verify the embedding client works before touching any entity

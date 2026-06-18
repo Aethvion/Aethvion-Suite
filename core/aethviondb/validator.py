@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
 
-from core.utils.logger import get_logger
+from core.aethviondb._utils import get_logger
 from .entity_writer import EntityWriter
 
 logger = get_logger(__name__)

@@ -14,7 +14,7 @@ URL layout once mounted:
 from __future__ import annotations
 
 from fastapi import APIRouter
-from core.utils.logger import get_logger
+from core.aethviondb._utils import get_logger
 
 from .raw_routes   import router as raw_router
 from .baked_routes import router as baked_router
@@ -34,7 +34,7 @@ router.include_router(baked_router)
 @router.get("/")
 async def api_index():
     """Return API version info and available databases."""
-    from core.utils.paths import AETHVIONDB
+    from core.aethviondb.config import AETHVIONDB
     from core.aethviondb.db_registry import list_registered
     import time
     t = time.perf_counter()

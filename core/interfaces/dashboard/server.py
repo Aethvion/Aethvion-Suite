@@ -162,7 +162,7 @@ def _wire_aethviondb_ai() -> None:
     the AI features are unavailable.
     """
     try:
-        from core.aethviondb.ai_runtime import set_llm_caller
+        from core.aethviondb.ai_runtime import set_llm_caller, set_usage_logger
         from core.providers import get_provider_manager
         from core.ai.call_contexts import CallSource
 
@@ -170,6 +170,15 @@ def _wire_aethviondb_ai() -> None:
             return get_provider_manager().call_with_failover(source=CallSource.WORLDSIM, **kwargs)
 
         set_llm_caller(_caller)
+
+        # Optional: route AethvionDB's embedding API-usage logging through the
+        # Suite's usage tracker. Self-contained engine works fine without it.
+        try:
+            from core.workspace.usage_tracker import get_usage_tracker
+            set_usage_logger(get_usage_tracker())
+        except Exception:
+            pass
+
         logger.debug("AethvionDB AI backend wired to provider manager.")
     except Exception as exc:
         logger.warning("Could not wire AethvionDB AI backend: %s", exc)

@@ -36,7 +36,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from core.utils.logger import get_logger
+from core.aethviondb._utils import get_logger
 
 if TYPE_CHECKING:
     from .entity_writer import EntityWriter

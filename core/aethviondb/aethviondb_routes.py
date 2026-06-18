@@ -25,8 +25,8 @@ from typing import Any, Optional
 from fastapi import APIRouter, Body, HTTPException, Query
 from pydantic import BaseModel
 
-from core.utils.logger import get_logger
-from core.utils.paths import AETHVIONDB
+from core.aethviondb._utils import get_logger
+from core.aethviondb.config import AETHVIONDB
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/aethviondb", tags=["aethviondb"])
@@ -238,7 +238,7 @@ async def list_databases():
 
         # Legacy migration (one-time, non-destructive): if databases lived in the
         # old data/modes/worldsim/ root, register them with their original paths.
-        from core.utils.paths import MODES
+        from core.aethviondb.config import MODES
         _legacy_root = MODES / "worldsim"
         if _legacy_root.exists():
             for d in _legacy_root.iterdir():

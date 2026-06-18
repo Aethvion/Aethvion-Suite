@@ -32,7 +32,7 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from core.utils.logger import get_logger
+from core.aethviondb._utils import get_logger
 
 logger = get_logger(__name__)
 
