@@ -85,10 +85,14 @@ windows = [
 ]
 
 # Project Mapper — consumed as the standalone package, not vendored in-tree.
-# Optional: the PM dashboard tab's backend activates only when this is installed.
+# Optional: the PM dashboard tab's backend, and the Code agent's pm_context/
+# pm_find/pm_impact/pm_orphans/pm_path actions (core/orchestrator/
+# project_mapper_tools.py), both activate only when this is installed --
+# everything degrades to search_codebase/read_file otherwise.
+# [languages] pulls in the tree-sitter parsers actually used for scanning.
 # For local development against the sibling repo:  pip install -e ../Aethvion-ProjectMapper
 project-mapper = [
-    "aethvion-project-mapper>=1.0.0",
+    "aethvion-project-mapper[languages]>=2.1.0",
 ]
 
 # The groups below are installed manually: pip install aethvion-suite[memory]

@@ -18,6 +18,7 @@ from core.orchestrator.workspace_tools import (
 from core.orchestrator.agent_state import AgentState
 from core.orchestrator.web_tools import fetch_url, search_web
 from core.orchestrator.file_ops_mixin import FileOpsMixin
+from core.orchestrator import project_mapper_tools
 
 logger = get_logger(__name__)
 
@@ -766,6 +767,88 @@ class AgentRunner(FileOpsMixin):
         return result
 
 
+    def _handle_pm_context(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        query = action.get("query", "")
+        if not query:
+            return "[pm_context] 'query' is required."
+        args = {
+            "query": query,
+            "entities": action.get("entities", []),
+            "detail_level": action.get("detail_level", "medium"),
+            "depth": action.get("depth", 1),
+            "max_results": action.get("max_results", 30),
+            "slim": action.get("slim", False),
+        }
+        result = project_mapper_tools.call_tool("pm_context", self.workspace, args)
+        self.state.log_action(iteration, "pm_context", query[:40])
+        self._emit({"type": "pm_context", "path": "workspace", "detail": f"context: {query[:40]}"})
+        return result
+
+
+    def _handle_pm_find(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        name = action.get("name", "")
+        if not name:
+            return "[pm_find] 'name' is required."
+        args = {"name": name, "max_results": action.get("max_results", 10)}
+        result = project_mapper_tools.call_tool("pm_find", self.workspace, args)
+        self.state.log_action(iteration, "pm_find", name[:40])
+        self._emit({"type": "pm_find", "path": "workspace", "detail": f"find: {name[:40]}"})
+        return result
+
+
+    def _handle_pm_impact(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        entity = action.get("entity", "")
+        if not entity:
+            return "[pm_impact] 'entity' is required."
+        args = {
+            "entity": entity,
+            "depth": action.get("depth", 2),
+            "slim": action.get("slim", False),
+        }
+        result = project_mapper_tools.call_tool("pm_impact", self.workspace, args)
+        self.state.log_action(iteration, "pm_impact", entity[:40])
+        self._emit({"type": "pm_impact", "path": "workspace", "detail": f"impact: {entity[:40]}"})
+        return result
+
+
+    def _handle_pm_orphans(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        args = {
+            "types": action.get("types", []),
+            "include_modules": action.get("include_modules", False),
+            "max_results": action.get("max_results", 100),
+        }
+        result = project_mapper_tools.call_tool("pm_orphans", self.workspace, args)
+        self.state.log_action(iteration, "pm_orphans", "scan")
+        self._emit({"type": "pm_orphans", "path": "workspace", "detail": "dead-code scan"})
+        return result
+
+
+    def _handle_pm_path(
+        self, action: Dict[str, Any], iteration: int
+    ) -> Optional[str]:
+        from_entity = action.get("from_entity", "")
+        to_entity = action.get("to_entity", "")
+        if not from_entity or not to_entity:
+            return "[pm_path] both 'from_entity' and 'to_entity' are required."
+        args = {
+            "from_entity": from_entity,
+            "to_entity": to_entity,
+            "max_hops": action.get("max_hops", 6),
+        }
+        result = project_mapper_tools.call_tool("pm_path", self.workspace, args)
+        self.state.log_action(iteration, "pm_path", f"{from_entity[:20]}->{to_entity[:20]}")
+        self._emit({"type": "pm_path", "path": "workspace", "detail": f"path: {from_entity[:20]} -> {to_entity[:20]}"})
+        return result
+
+
     def _handle_save_to_project_memory(
         self, action: Dict[str, Any], iteration: int
     ) -> Optional[str]:
@@ -848,6 +931,11 @@ class AgentRunner(FileOpsMixin):
         "fetch_url": "_handle_fetch_url",
         "get_project_blueprint": "_handle_get_project_blueprint",
         "search_codebase": "_handle_search_codebase",
+        "pm_context": "_handle_pm_context",
+        "pm_find": "_handle_pm_find",
+        "pm_impact": "_handle_pm_impact",
+        "pm_orphans": "_handle_pm_orphans",
+        "pm_path": "_handle_pm_path",
         "save_to_project_memory": "_handle_save_to_project_memory",
         "check_checklist_item": "_handle_check_checklist_item",
     }
@@ -942,6 +1030,26 @@ class AgentRunner(FileOpsMixin):
             label = f"Search: {query}" + (f" in {spath}" if spath else "")
             return {"type": t, "title": label, "query": query, "path": spath, "detail": ""}
 
+        if t == "pm_context":
+            query = action.get("query", "")
+            return {"type": t, "title": f"🗺️ Project Mapper: {query}", "query": query, "detail": ""}
+
+        if t == "pm_find":
+            name = action.get("name", "")
+            return {"type": t, "title": f"🗺️ Find: {name}", "name": name, "detail": ""}
+
+        if t == "pm_impact":
+            entity = action.get("entity", "")
+            return {"type": t, "title": f"🗺️ Impact: {entity}", "entity": entity, "detail": ""}
+
+        if t == "pm_orphans":
+            return {"type": t, "title": "🗺️ Dead-code scan", "detail": ""}
+
+        if t == "pm_path":
+            f_ent = action.get("from_entity", "")
+            t_ent = action.get("to_entity", "")
+            return {"type": t, "title": f"🗺️ Path: {f_ent} → {t_ent}", "detail": ""}
+
         return {"type": t, "title": t, "detail": str(action)}
 
     # main loop
@@ -951,6 +1059,21 @@ class AgentRunner(FileOpsMixin):
 
     def run(self) -> str:
         self._emit({"type": "start", "title": "Starting task", "detail": self.task})
+
+        # Index the workspace with Project Mapper before the agent's first turn,
+        # so pm_context/pm_find/pm_impact work immediately without the agent
+        # needing to remember to scan first. Incremental: a fresh database does
+        # a full scan once, every call after (including future runs in this
+        # workspace) only reprocesses changed files. Never blocks the task on
+        # failure -- if Project Mapper isn't installed or scanning errors, the
+        # agent simply falls back to search_codebase/read_file.
+        pm_status = project_mapper_tools.ensure_scanned(self.workspace)
+        logger.debug(f"[AgentRunner] Project Mapper: {pm_status}")
+        self._emit({
+            "type": "thinking",
+            "title": "Indexing workspace (Project Mapper)",
+            "detail": pm_status,
+        })
 
         # Resume: inject context so the agent knows it's continuing
         if self._resume and self.state.plan:
