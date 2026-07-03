@@ -50,6 +50,7 @@
         'clinicaltrace':     { label: 'ClinicalTrace',  icon: 'fas fa-stethoscope' },
         'physics-lab':       { label: 'Physics & Math', icon: 'fas fa-atom' },
         'stats-lab':         { label: 'Data & Stats',   icon: 'fas fa-chart-simple' },
+        'chembio-lab':       { label: 'Chem & Bio',     icon: 'fas fa-flask' },
         'misaka-cipher':     { label: 'MisakaCipher',   icon: 'fas fa-shield-cat' },
     };
 
@@ -95,7 +96,7 @@
             id: 'experimental',
             label: 'Experimental',
             icon: 'fas fa-flask-vial',
-            tabs: ['physics-lab', 'stats-lab', 'worldsim', 'project-mapper', 'decision-trace', 'lexmap', 'supplymind', 'clinicaltrace'],
+            tabs: ['physics-lab', 'stats-lab', 'chembio-lab', 'worldsim', 'project-mapper', 'decision-trace', 'lexmap', 'supplymind', 'clinicaltrace'],
         },
     ];
 

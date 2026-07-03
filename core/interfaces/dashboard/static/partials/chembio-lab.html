@@ -1,0 +1,150 @@
+<div id="cb-root" class="cb-root">
+
+    <!-- Header -->
+    <div class="cb-header">
+        <div class="cb-header-title">
+            <span class="cb-header-icon"><i class="fas fa-flask"></i></span>
+            <div>
+                <h2>Chemistry &amp; Biology Lab</h2>
+                <p>Real cheminformatics &amp; bioinformatics — RDKit &amp; Biopython. AI interprets the results.</p>
+            </div>
+        </div>
+        <nav class="cb-nav">
+            <button class="cb-nav-tab active" data-cb-tab="molecule"><i class="fas fa-atom"></i> Molecule</button>
+            <button class="cb-nav-tab" data-cb-tab="similarity"><i class="fas fa-code-compare"></i> Similarity</button>
+            <button class="cb-nav-tab" data-cb-tab="sequence"><i class="fas fa-dna"></i> Sequence</button>
+            <button class="cb-nav-tab" data-cb-tab="align"><i class="fas fa-align-left"></i> Alignment</button>
+        </nav>
+    </div>
+
+    <div class="cb-body">
+
+        <!-- ── MOLECULE ── -->
+        <section id="cb-pane-molecule" class="cb-pane active">
+            <div class="cb-grid">
+                <div class="cb-card">
+                    <div class="cb-card-title"><i class="fas fa-pen-nib"></i> Input</div>
+                    <label class="cb-label">SMILES</label>
+                    <input id="cb-mol-smiles" class="control-input cb-full cb-mono" spellcheck="false"
+                        value="CC(=O)Oc1ccccc1C(=O)O" placeholder="e.g. CC(=O)Oc1ccccc1C(=O)O (aspirin)">
+                    <div class="cb-preset-row">
+                        <span class="cb-muted">Try:</span>
+                        <button class="cb-preset" data-smiles="CC(=O)Oc1ccccc1C(=O)O">Aspirin</button>
+                        <button class="cb-preset" data-smiles="CN1C=NC2=C1C(=O)N(C(=O)N2C)C">Caffeine</button>
+                        <button class="cb-preset" data-smiles="CC(C)Cc1ccc(cc1)C(C)C(=O)O">Ibuprofen</button>
+                        <button class="cb-preset" data-smiles="C1=CC=C(C=C1)CC(C(=O)O)N">Phenylalanine</button>
+                    </div>
+                    <button id="cb-mol-btn" class="action-btn primary cb-run-btn"><i class="fas fa-play"></i> Analyze</button>
+                </div>
+                <div class="cb-card">
+                    <div class="cb-card-title"><i class="fas fa-vial-circle-check"></i> Properties</div>
+                    <div id="cb-mol-result" class="cb-result">
+                        <div class="cb-empty"><i class="fas fa-atom"></i><span>Enter a SMILES string and analyze.</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── SIMILARITY ── -->
+        <section id="cb-pane-similarity" class="cb-pane">
+            <div class="cb-card">
+                <div class="cb-card-title"><i class="fas fa-code-compare"></i> Morgan fingerprint similarity</div>
+                <div class="cb-row">
+                    <div class="cb-field">
+                        <label class="cb-label">Molecule A (SMILES)</label>
+                        <input id="cb-sim-a" class="control-input cb-full cb-mono" spellcheck="false" value="CC(=O)Oc1ccccc1C(=O)O">
+                    </div>
+                    <div class="cb-field">
+                        <label class="cb-label">Molecule B (SMILES)</label>
+                        <input id="cb-sim-b" class="control-input cb-full cb-mono" spellcheck="false" value="CC(=O)Oc1ccccc1C(=O)OC">
+                    </div>
+                </div>
+                <button id="cb-sim-btn" class="action-btn primary cb-run-btn"><i class="fas fa-play"></i> Compare</button>
+                <div id="cb-sim-result" class="cb-result">
+                    <div class="cb-empty"><i class="fas fa-code-compare"></i><span>Enter two molecules to compute Tanimoto similarity.</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── SEQUENCE ── -->
+        <section id="cb-pane-sequence" class="cb-pane">
+            <div class="cb-grid">
+                <div class="cb-card">
+                    <div class="cb-card-title"><i class="fas fa-dna"></i> Input</div>
+                    <div class="cb-row">
+                        <div class="cb-field">
+                            <label class="cb-label">Type</label>
+                            <select id="cb-seq-type" class="control-select cb-full">
+                                <option value="auto">Auto-detect</option>
+                                <option value="dna">DNA</option>
+                                <option value="rna">RNA</option>
+                                <option value="protein">Protein</option>
+                            </select>
+                        </div>
+                    </div>
+                    <label class="cb-label">Sequence</label>
+                    <textarea id="cb-seq-input" class="cb-textarea cb-mono" rows="4"
+                        placeholder="Paste DNA / RNA / protein — e.g. ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG">ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG</textarea>
+                    <div class="cb-preset-row">
+                        <span class="cb-muted">Try:</span>
+                        <button class="cb-preset" data-seq="ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG">DNA</button>
+                        <button class="cb-preset" data-seq="MAIVMGRWKGARTSNQ">Protein</button>
+                    </div>
+                    <button id="cb-seq-btn" class="action-btn primary cb-run-btn"><i class="fas fa-play"></i> Analyze</button>
+                </div>
+                <div class="cb-card">
+                    <div class="cb-card-title"><i class="fas fa-microscope"></i> Analysis</div>
+                    <div id="cb-seq-result" class="cb-result">
+                        <div class="cb-empty"><i class="fas fa-dna"></i><span>Paste a sequence and analyze.</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── ALIGNMENT ── -->
+        <section id="cb-pane-align" class="cb-pane">
+            <div class="cb-card">
+                <div class="cb-card-title"><i class="fas fa-align-left"></i> Pairwise alignment</div>
+                <div class="cb-row">
+                    <div class="cb-field">
+                        <label class="cb-label">Sequence A</label>
+                        <textarea id="cb-align-a" class="cb-textarea cb-mono" rows="2">ACGTACGTAAGGCTA</textarea>
+                    </div>
+                    <div class="cb-field">
+                        <label class="cb-label">Sequence B</label>
+                        <textarea id="cb-align-b" class="cb-textarea cb-mono" rows="2">ACGTTCGTAAGGGTA</textarea>
+                    </div>
+                </div>
+                <div class="cb-row">
+                    <div class="cb-field cb-field-sm">
+                        <label class="cb-label">Mode</label>
+                        <select id="cb-align-mode" class="control-select cb-full">
+                            <option value="global">Global (Needleman–Wunsch)</option>
+                            <option value="local">Local (Smith–Waterman)</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="cb-align-btn" class="action-btn primary cb-run-btn"><i class="fas fa-play"></i> Align</button>
+                <div id="cb-align-result" class="cb-result">
+                    <div class="cb-empty"><i class="fas fa-align-left"></i><span>Enter two sequences to align.</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── AI ASSIST ── -->
+        <div class="cb-ai-bar">
+            <div class="cb-ai-head">
+                <span class="cb-ai-title"><i class="fas fa-wand-magic-sparkles"></i> AI assist</span>
+                <select id="cb-ai-model" class="control-select cb-ai-model">
+                    <option value="auto">Auto model</option>
+                </select>
+            </div>
+            <div class="cb-ai-row">
+                <button id="cb-ai-interpret" class="action-btn secondary"><i class="fas fa-comment-dots"></i> Interpret last result</button>
+                <span class="cb-muted cb-ai-hint">Runs on your most recent molecule, similarity, sequence or alignment.</span>
+            </div>
+            <div id="cb-ai-output" class="cb-ai-output cb-hide"></div>
+        </div>
+
+    </div>
+</div>

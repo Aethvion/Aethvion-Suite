@@ -74,6 +74,10 @@ dependencies = [
 auto = [
     "pytesseract",
     "Pillow",
+    # Research labs (Chemistry & Biology tab). sympy/scipy/matplotlib/sklearn
+    # used by the Physics & Stats labs already arrive transitively.
+    "rdkit",
+    "biopython",
 ]
 
 # Windows-only native integrations (media session control, etc.)
@@ -113,6 +117,8 @@ dev = [
 all = [
     "pytesseract",
     "Pillow",
+    "rdkit",
+    "biopython",
     "chromadb>=0.4.0",
     "sentence-transformers>=2.2.0",
     "networkx>=3.0",
