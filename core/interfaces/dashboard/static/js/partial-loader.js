@@ -30,6 +30,7 @@
         'aethviondb':       ['/static/js/mode-aethviondb.js'],
         'automate':         ['/static/js/mode-automate.js'],
         'physics-lab':      ['/static/js/mode-physics-lab.js'],
+        'stats-lab':        ['/static/js/mode-stats-lab.js'],
         'worldsim':         [],
         'project-mapper':   ['/static/js/mode-project-mapper.js'],
         'decision-trace':   ['/static/js/mode-decision-trace.js'],

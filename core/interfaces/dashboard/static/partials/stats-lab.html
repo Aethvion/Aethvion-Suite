@@ -1,0 +1,170 @@
+<div id="sl-root" class="sl-root">
+
+    <!-- Header -->
+    <div class="sl-header">
+        <div class="sl-header-title">
+            <span class="sl-header-icon"><i class="fas fa-chart-simple"></i></span>
+            <div>
+                <h2>Data &amp; Statistics Lab</h2>
+                <p>Real statistics — scipy.stats &amp; scikit-learn. Paste data once, then describe, test, fit or explore.</p>
+            </div>
+        </div>
+        <nav class="sl-nav">
+            <button class="sl-nav-tab active" data-sl-tab="summary"><i class="fas fa-table-list"></i> Summary</button>
+            <button class="sl-nav-tab" data-sl-tab="test"><i class="fas fa-flask-vial"></i> Tests</button>
+            <button class="sl-nav-tab" data-sl-tab="regression"><i class="fas fa-chart-line"></i> Regression</button>
+            <button class="sl-nav-tab" data-sl-tab="explore"><i class="fas fa-diagram-project"></i> Explore</button>
+        </nav>
+    </div>
+
+    <div class="sl-body">
+
+        <!-- ── DATA INPUT (shared) ── -->
+        <div class="sl-card sl-data-card">
+            <div class="sl-card-title">
+                <i class="fas fa-database"></i> Data
+                <div class="sl-data-actions">
+                    <label class="sl-check"><input type="checkbox" id="sl-has-header" checked> Header row</label>
+                    <button id="sl-sample-btn" class="sl-mini-btn"><i class="fas fa-vial"></i> Load sample</button>
+                    <button id="sl-parse-btn" class="sl-mini-btn sl-mini-btn-primary"><i class="fas fa-arrow-rotate-right"></i> Parse</button>
+                </div>
+            </div>
+            <textarea id="sl-data" class="sl-textarea sl-mono" rows="5"
+                placeholder="Paste CSV or whitespace-separated columns, e.g.&#10;height,weight,group&#10;170,65,A&#10;180,80,A&#10;165,55,B"></textarea>
+            <div id="sl-columns-bar" class="sl-columns-bar"></div>
+        </div>
+
+        <!-- ── SUMMARY ── -->
+        <section id="sl-pane-summary" class="sl-pane active">
+            <div class="sl-card">
+                <div class="sl-card-title"><i class="fas fa-table-list"></i> Descriptive statistics</div>
+                <div id="sl-describe-result" class="sl-result">
+                    <div class="sl-empty"><i class="fas fa-table-list"></i><span>Parse data to see per-column statistics.</span></div>
+                </div>
+            </div>
+            <div class="sl-card">
+                <div class="sl-card-title">
+                    <i class="fas fa-chart-column"></i> Distribution
+                    <div class="sl-inline-controls">
+                        <select id="sl-hist-col" class="control-select sl-sel"></select>
+                        <button id="sl-hist-btn" class="action-btn secondary xs"><i class="fas fa-play"></i> Plot</button>
+                    </div>
+                </div>
+                <div id="sl-hist-result" class="sl-result sl-plot-result">
+                    <div class="sl-empty"><i class="fas fa-chart-column"></i><span>Pick a numeric column and plot its distribution.</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── TESTS ── -->
+        <section id="sl-pane-test" class="sl-pane">
+            <div class="sl-grid">
+                <div class="sl-card">
+                    <div class="sl-card-title"><i class="fas fa-flask-vial"></i> Hypothesis test</div>
+
+                    <label class="sl-label">Test</label>
+                    <select id="sl-test-type" class="control-select sl-full">
+                        <option value="ttest_1samp">One-sample t-test</option>
+                        <option value="ttest_ind">Two-sample t-test (Welch)</option>
+                        <option value="ttest_paired">Paired t-test</option>
+                        <option value="mannwhitney">Mann–Whitney U</option>
+                        <option value="anova">One-way ANOVA</option>
+                        <option value="pearson">Pearson correlation</option>
+                        <option value="spearman">Spearman correlation</option>
+                        <option value="chisquare">Chi-square goodness-of-fit</option>
+                        <option value="normality">Shapiro–Wilk normality</option>
+                    </select>
+
+                    <label class="sl-label" id="sl-test-cols-label">Columns</label>
+                    <div id="sl-test-cols" class="sl-col-picker"></div>
+
+                    <div class="sl-row" id="sl-popmean-wrap">
+                        <div class="sl-field">
+                            <label class="sl-label">Population mean (μ₀)</label>
+                            <input id="sl-popmean" class="control-input" type="number" value="0">
+                        </div>
+                    </div>
+
+                    <button id="sl-test-btn" class="action-btn primary sl-run-btn"><i class="fas fa-play"></i> Run test</button>
+                </div>
+                <div class="sl-card">
+                    <div class="sl-card-title"><i class="fas fa-square-poll-vertical"></i> Result</div>
+                    <div id="sl-test-result" class="sl-result">
+                        <div class="sl-empty"><i class="fas fa-flask-vial"></i><span>Choose a test and columns, then run.</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── REGRESSION ── -->
+        <section id="sl-pane-regression" class="sl-pane">
+            <div class="sl-grid">
+                <div class="sl-card">
+                    <div class="sl-card-title"><i class="fas fa-chart-line"></i> Linear regression</div>
+                    <div class="sl-row">
+                        <div class="sl-field">
+                            <label class="sl-label">X (predictor)</label>
+                            <select id="sl-reg-x" class="control-select sl-full"></select>
+                        </div>
+                        <div class="sl-field">
+                            <label class="sl-label">Y (response)</label>
+                            <select id="sl-reg-y" class="control-select sl-full"></select>
+                        </div>
+                    </div>
+                    <button id="sl-reg-btn" class="action-btn primary sl-run-btn"><i class="fas fa-play"></i> Fit</button>
+                    <div id="sl-reg-stats" class="sl-reg-stats"></div>
+                </div>
+                <div class="sl-card">
+                    <div class="sl-card-title"><i class="fas fa-chart-area"></i> Fit &amp; residuals</div>
+                    <div id="sl-reg-result" class="sl-result sl-plot-result">
+                        <div class="sl-empty"><i class="fas fa-chart-line"></i><span>Pick X and Y columns, then fit.</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── EXPLORE ── -->
+        <section id="sl-pane-explore" class="sl-pane">
+            <div class="sl-grid">
+                <div class="sl-card">
+                    <div class="sl-card-title"><i class="fas fa-diagram-project"></i> PCA &amp; clustering</div>
+                    <p class="sl-hint">Standardizes the selected numeric columns, projects to 2 principal
+                        components, and colours points by KMeans cluster.</p>
+                    <label class="sl-label">Numeric columns</label>
+                    <div id="sl-explore-cols" class="sl-col-picker"></div>
+                    <div class="sl-row">
+                        <div class="sl-field sl-field-sm">
+                            <label class="sl-label">Clusters (k)</label>
+                            <input id="sl-explore-k" class="control-input" type="number" value="3" min="2" max="8">
+                        </div>
+                    </div>
+                    <button id="sl-explore-btn" class="action-btn primary sl-run-btn"><i class="fas fa-play"></i> Run</button>
+                </div>
+                <div class="sl-card">
+                    <div class="sl-card-title"><i class="fas fa-braille"></i> Projection</div>
+                    <div id="sl-explore-result" class="sl-result sl-plot-result">
+                        <div class="sl-empty"><i class="fas fa-diagram-project"></i><span>Select columns and run.</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── AI ASSIST (shared) ── -->
+        <div class="sl-ai-bar">
+            <div class="sl-ai-head">
+                <span class="sl-ai-title"><i class="fas fa-wand-magic-sparkles"></i> AI assist</span>
+                <select id="sl-ai-model" class="control-select sl-ai-model">
+                    <option value="auto">Auto model</option>
+                </select>
+            </div>
+            <div class="sl-ai-row">
+                <input id="sl-ai-input" class="control-input sl-ai-input" spellcheck="false"
+                    placeholder="Ask which test fits your question — e.g. 'do groups A and B differ in weight?'">
+                <button id="sl-ai-recommend" class="action-btn secondary"><i class="fas fa-lightbulb"></i> Recommend test</button>
+                <button id="sl-ai-interpret" class="action-btn secondary"><i class="fas fa-comment-dots"></i> Interpret last result</button>
+            </div>
+            <div id="sl-ai-output" class="sl-ai-output sl-hide"></div>
+        </div>
+
+    </div>
+</div>

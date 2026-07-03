@@ -62,6 +62,7 @@ def _import_remaining_routers():
         ("clinicaltrace_routes",                "clinicaltrace_router", "clinicaltrace_router"),
         ("project_mapper_explorer_routes",      "router",     "pm_explorer_router"),
         ("physics_routes",                      "router",     "physics_router"),
+        ("stats_routes",                        "router",     "stats_router"),
     ]
     _CORE_ROUTES = [
         ("core.companions.companion_routes",            "router", "companion_router"),
