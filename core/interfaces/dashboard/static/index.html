@@ -260,6 +260,35 @@
             <span class="atb-brand-logo">✦</span>
             <span class="atb-brand-name">Aethvion Suite</span>
         </div>
+        <button id="sidebar-toggle" class="sidebar-toggle-btn" title="Toggle Sidebar">
+            <i class="fas fa-bars"></i>
+        </button>
+        <nav class="hdr-nav" id="hdr-nav">
+            <button class="hdr-nav-btn" data-nav="home" title="Home"
+                    onclick="ATB.switchTo('panel-home'); setDashboardMode('home', true, 'suite-home');">
+                <i class="fas fa-house"></i><span>Home</span>
+            </button>
+            <button class="hdr-nav-btn" data-nav="chat" title="Chat"
+                    onclick="ATB.switchTo('panel-home'); setDashboardMode('home', true, 'chat');">
+                <i class="fas fa-comments"></i><span>Chat</span>
+            </button>
+            <button class="hdr-nav-btn" data-nav="agents" title="Code"
+                    onclick="ATB.switchTo('panel-home'); setDashboardMode('home', true, 'agents');">
+                <i class="fas fa-code"></i><span>Code</span>
+            </button>
+            <button class="hdr-nav-btn" data-nav="companions" title="Companions"
+                    onclick="ATB.switchTo('panel-home'); setDashboardMode('home', true, 'companion-creator');">
+                <i class="fas fa-users"></i><span>Companions</span>
+            </button>
+            <button class="hdr-nav-btn" data-nav="aethviondb" title="AethvionDB"
+                    onclick="ATB.switchTo('panel-home'); setDashboardMode('home', true, 'aethviondb');">
+                <i class="fas fa-circle-nodes"></i><span>AethvionDB</span>
+            </button>
+            <button class="hdr-nav-btn" data-nav="automate" title="Automate"
+                    onclick="ATB.switchTo('panel-home'); setDashboardMode('home', true, 'automate');">
+                <i class="fas fa-bolt"></i><span>Automate</span>
+            </button>
+        </nav>
         <div class="atb-tabs" id="atb-tabs">
             <button class="atb-tab atb-tab--active" data-panel="panel-home" title="Home">
                 <span class="atb-tab-label">Home</span>
@@ -267,6 +296,21 @@
                         class="fas fa-sync-alt"></i></span>
             </button>
             <!-- App tabs are added here dynamically by app-tabs.js -->
+        </div>
+        <div class="header-right">
+            <div class="compact-status" id="compact-status" onclick="ATB.switchTo('panel-home'); setDashboardMode('home', true, 'usage');" title="View Detailed Usage">
+                <span title="Tokens Today">Tokens: <strong id="tokens-today">0</strong></span>
+                <span class="status-divider">|</span>
+                <span title="Cost Today">Cost: <strong id="cost-today">$0.00</strong></span>
+            </div>
+            <div class="status-indicator" id="home-status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text">Connecting...</span>
+            </div>
+            <button class="hdr-settings-btn" id="header-settings-btn" title="Settings"
+                    onclick="ATB.switchTo('panel-home'); switchMainTab('settings');">
+                <i class="fas fa-gear"></i>
+            </button>
         </div>
         <div class="atb-controls">
             <button class="atb-quit-btn" id="atb-quit-btn" title="Shut down Aethvion Suite">
@@ -343,58 +387,6 @@
                 <div id="splash-version" class="splash-version">__VERSION__</div>
             </div>
         </div>
-
-        <!-- Header -->
-        <header class="header">
-            <div class="header-top">
-                <div class="hdr-left">
-                    <button id="sidebar-toggle" class="sidebar-toggle-btn" title="Toggle Sidebar">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <nav class="hdr-nav" id="hdr-nav">
-                        <button class="hdr-nav-btn" data-nav="home"
-                                onclick="setDashboardMode('home', true, 'suite-home');">
-                            <i class="fas fa-house"></i><span>Home</span>
-                        </button>
-                        <button class="hdr-nav-btn" data-nav="chat"
-                                onclick="setDashboardMode('home', true, 'chat');">
-                            <i class="fas fa-comments"></i><span>Chat</span>
-                        </button>
-                        <button class="hdr-nav-btn" data-nav="agents"
-                                onclick="setDashboardMode('home', true, 'agents');">
-                            <i class="fas fa-code"></i><span>Code</span>
-                        </button>
-                        <button class="hdr-nav-btn" data-nav="companions"
-                                onclick="setDashboardMode('home', true, 'companion-creator');">
-                            <i class="fas fa-users"></i><span>Companions</span>
-                        </button>
-                        <button class="hdr-nav-btn" data-nav="aethviondb"
-                                onclick="setDashboardMode('home', true, 'aethviondb');">
-                            <i class="fas fa-circle-nodes"></i><span>AethvionDB</span>
-                        </button>
-                        <button class="hdr-nav-btn" data-nav="automate"
-                                onclick="setDashboardMode('home', true, 'automate');">
-                            <i class="fas fa-bolt"></i><span>Automate</span>
-                        </button>
-                    </nav>
-                </div>
-                <div class="header-right">
-                    <div class="compact-status" id="compact-status" onclick="setDashboardMode('home', true, 'usage');" title="View Detailed Usage">
-                        <span title="Tokens Today">Tokens: <strong id="tokens-today">0</strong></span>
-                        <span class="status-divider">|</span>
-                        <span title="Cost Today">Cost: <strong id="cost-today">$0.00</strong></span>
-                    </div>
-                    <div class="status-indicator" id="home-status-indicator">
-                        <span class="status-dot"></span>
-                        <span class="status-text">Connecting...</span>
-                    </div>
-                    <button class="hdr-settings-btn" id="header-settings-btn" title="Settings"
-                            onclick="switchMainTab('settings');">
-                        <i class="fas fa-gear"></i>
-                    </button>
-                </div>
-            </div>
-        </header>
 
         <div class="content-wrapper">
             <aside class="sidebar-nav" id="sidebar-nav">
