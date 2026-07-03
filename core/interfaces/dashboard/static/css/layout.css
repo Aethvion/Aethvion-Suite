@@ -110,9 +110,8 @@
 }
 
 .thread-item.active {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(99, 102, 241, 0.04));
-    border-color: rgba(99, 102, 241, 0.25);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 11%, transparent), color-mix(in srgb, var(--primary) 3%, transparent));
+    border-color: color-mix(in srgb, var(--primary) 24%, transparent);
 }
 
 .thread-line-1 {
@@ -183,7 +182,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: rgba(99, 102, 241, 0.7);
+    color: color-mix(in srgb, var(--primary) 65%, transparent);
     font-size: 0.66rem;
 }
 
@@ -696,7 +695,7 @@
 }
 
 .msg-action-btn:hover {
-    background: rgba(99, 102, 241, 0.12);
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
     color: var(--primary);
 }
 
@@ -712,7 +711,7 @@
     top: 7px;
     right: 7px;
     background: rgba(15, 15, 22, 0.88);
-    border: 1px solid rgba(99, 102, 241, 0.22);
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
     color: var(--text-secondary);
     border-radius: 5px;
     padding: 3px 8px;
@@ -735,9 +734,9 @@ pre:hover .code-copy-btn {
 }
 
 .code-copy-btn:hover {
-    background: rgba(99, 102, 241, 0.18);
+    background: color-mix(in srgb, var(--primary) 15%, transparent);
     color: var(--text-primary);
-    border-color: rgba(99, 102, 241, 0.4);
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
 }
 
 .code-copy-btn.code-copied {
@@ -747,14 +746,13 @@ pre:hover .code-copy-btn {
 }
 
 .message.user-message {
-    border: none;
-    background: linear-gradient(135deg, #4f46e5, #3730a3);
+    background: linear-gradient(135deg, rgba(34, 211, 238, 0.13), rgba(56, 130, 246, 0.10));
+    border: 1px solid rgba(34, 211, 238, 0.22);
     border-bottom-right-radius: 4px;
     margin-left: auto;
     max-width: 72%;
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
-    color: #fff;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 6px 18px -8px rgba(34, 211, 238, 0.25);
+    color: var(--text-primary);
 }
 
 .message.user-message .msg-header {
@@ -764,8 +762,9 @@ pre:hover .code-copy-btn {
 .message.ai-message {
     border-bottom-left-radius: 4px;
     margin-right: auto;
-    background: rgba(20, 20, 30, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: var(--surface);
+    border: var(--surface-border);
+    box-shadow: var(--highlight);
 }
 
 .message.system-message {
@@ -834,20 +833,20 @@ pre:hover .code-copy-btn {
 /* Chat input area */
 .chat-interface-wrapper {
     margin: 1rem 1.5rem 1.5rem;
-    background: rgba(24, 24, 27, 0.8);
-    border: 1px solid var(--border);
+    background: var(--surface);
+    border: var(--surface-border);
     border-radius: var(--radius-lg);
     display: flex;
     flex-direction: column;
     padding: 0.8rem;
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--highlight), 0 16px 40px -16px rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(12px);
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .chat-interface-wrapper:focus-within {
-    border-color: rgba(99, 102, 241, 0.5);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1), var(--shadow-md);
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+    box-shadow: var(--ring), 0 16px 40px -16px rgba(0, 0, 0, 0.6);
 }
 
 .chat-input {
@@ -906,8 +905,8 @@ pre:hover .code-copy-btn {
 }
 
 .send-button {
-    background: var(--primary);
-    color: white;
+    background: linear-gradient(135deg, #38e1f8, #0ea5e9);
+    color: #06222b;
     border: none;
     width: 36px;
     height: 36px;
@@ -918,13 +917,13 @@ pre:hover .code-copy-btn {
     align-items: center;
     justify-content: center;
     font-size: 1rem;
-    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 14px rgba(34, 211, 238, 0.35);
 }
 
 .send-button:hover {
-    background: var(--primary-hover);
+    background: linear-gradient(135deg, #67e8f9, #22d3ee);
     transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 6px 14px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 6px 18px rgba(34, 211, 238, 0.5);
 }
 
 .control-select {

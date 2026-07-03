@@ -327,9 +327,10 @@
 }
 
 .setting-card {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    background: var(--surface);
+    border: var(--surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--highlight);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -337,7 +338,7 @@
 }
 
 .setting-card:hover {
-    border-color: rgba(0, 217, 255, 0.3);
+    border-color: color-mix(in srgb, var(--primary) 30%, transparent);
 }
 
 .card-header {
@@ -739,8 +740,8 @@
 }
 
 .compact-provider-item.active {
-    border-color: var(--primary);
-    box-shadow: 0 0 10px rgba(0, 217, 255, 0.1);
+    border-color: color-mix(in srgb, var(--primary) 28%, transparent);
+    background: color-mix(in srgb, var(--primary) 4%, transparent);
 }
 
 .provider-info-row {
