@@ -48,6 +48,7 @@
         'lexmap':            { label: 'LexMap',         icon: 'fas fa-scale-balanced' },
         'supplymind':        { label: 'SupplyMind',     icon: 'fas fa-network-wired' },
         'clinicaltrace':     { label: 'ClinicalTrace',  icon: 'fas fa-stethoscope' },
+        'physics-lab':       { label: 'Physics & Math', icon: 'fas fa-atom' },
         'misaka-cipher':     { label: 'MisakaCipher',   icon: 'fas fa-shield-cat' },
     };
 
@@ -93,7 +94,7 @@
             id: 'experimental',
             label: 'Experimental',
             icon: 'fas fa-flask-vial',
-            tabs: ['worldsim', 'project-mapper', 'decision-trace', 'lexmap', 'supplymind', 'clinicaltrace'],
+            tabs: ['physics-lab', 'worldsim', 'project-mapper', 'decision-trace', 'lexmap', 'supplymind', 'clinicaltrace'],
         },
     ];
 

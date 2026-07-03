@@ -25,6 +25,10 @@
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <!-- Math rendering (Physics & Math Lab) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+
     <!-- 3D Viewer Infrastructure -->
     <script type="importmap">
     {
@@ -69,6 +73,7 @@
     <link rel="stylesheet" href="/static/css/lexmap.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/supplymind.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/clinicaltrace.css?v=__VNUM__">
+    <link rel="stylesheet" href="/static/css/physics-lab.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/exp-info.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/automate.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/audio-models.css?v=__VNUM__">
@@ -495,6 +500,11 @@
                     <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
                 </div>
 
+                <!-- Physics & Math Lab Tab -->
+                <div class="main-tab-panel" id="physics-lab-panel" data-partial="physics-lab">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
                 <!-- WorldSim Tab -->
                 <div class="main-tab-panel" id="worldsim-panel" data-partial="worldsim">
                     <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
@@ -660,11 +670,11 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/properties.min.js"
             defer></script>
         <!-- Partial Loader — must come first -->
-        <script src="/static/js/partial-loader.js?v=10" defer></script>
+        <script src="/static/js/partial-loader.js?v=__VNUM__" defer></script>
         <!-- Core & State Management -->
         <script src="/static/js/core.js?v=10" defer></script>
         <script src="/static/js/threads.js?v=10" defer></script>
-        <script src="/static/js/sidebar-manager.js?v=10" defer></script>
+        <script src="/static/js/sidebar-manager.js?v=__VNUM__" defer></script>
         <script src="/static/js/suite-home.js?v=10" defer></script>
 
         <!-- Global Services -->

@@ -61,6 +61,7 @@ def _import_remaining_routers():
         ("supplymind_routes",                   "supplymind_router", "supplymind_router"),
         ("clinicaltrace_routes",                "clinicaltrace_router", "clinicaltrace_router"),
         ("project_mapper_explorer_routes",      "router",     "pm_explorer_router"),
+        ("physics_routes",                      "router",     "physics_router"),
     ]
     _CORE_ROUTES = [
         ("core.companions.companion_routes",            "router", "companion_router"),

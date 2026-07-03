@@ -1,0 +1,173 @@
+<div id="pl-root" class="pl-root">
+
+    <!-- Header -->
+    <div class="pl-header">
+        <div class="pl-header-title">
+            <span class="pl-header-icon"><i class="fas fa-atom"></i></span>
+            <div>
+                <h2>Physics &amp; Math Lab</h2>
+                <p>Real symbolic &amp; numerical computing — sympy, scipy, matplotlib. AI helps set up and interpret.</p>
+            </div>
+        </div>
+        <nav class="pl-nav">
+            <button class="pl-nav-tab active" data-pl-tab="symbolic"><i class="fas fa-square-root-variable"></i> Symbolic</button>
+            <button class="pl-nav-tab" data-pl-tab="plot"><i class="fas fa-chart-line"></i> Plot</button>
+            <button class="pl-nav-tab" data-pl-tab="simulate"><i class="fas fa-wave-square"></i> Simulate</button>
+        </nav>
+    </div>
+
+    <div class="pl-body">
+
+        <!-- ─────────────── SYMBOLIC ─────────────── -->
+        <section id="pl-pane-symbolic" class="pl-pane active">
+            <div class="pl-grid">
+                <div class="pl-card pl-input-card">
+                    <div class="pl-card-title"><i class="fas fa-keyboard"></i> Input</div>
+
+                    <label class="pl-label">Expression or equation</label>
+                    <textarea id="pl-sym-expr" class="pl-textarea" rows="2"
+                        placeholder="e.g.  x^2 - 5x + 6 = 0   ·   sin(x)*x^2   ·   1/(1+x^2)"></textarea>
+
+                    <div class="pl-row">
+                        <div class="pl-field">
+                            <label class="pl-label">Operation</label>
+                            <select id="pl-sym-op" class="control-select">
+                                <option value="simplify">Simplify</option>
+                                <option value="expand">Expand</option>
+                                <option value="factor">Factor</option>
+                                <option value="solve">Solve equation</option>
+                                <option value="derivative">Differentiate</option>
+                                <option value="integral">Integrate</option>
+                                <option value="limit">Limit</option>
+                                <option value="evaluate">Evaluate (numeric)</option>
+                            </select>
+                        </div>
+                        <div class="pl-field pl-field-sm">
+                            <label class="pl-label">Variable</label>
+                            <input id="pl-sym-var" class="control-input" value="x" spellcheck="false">
+                        </div>
+                        <div class="pl-field pl-field-sm pl-hide" id="pl-sym-point-wrap">
+                            <label class="pl-label" id="pl-sym-point-label">At point</label>
+                            <input id="pl-sym-point" class="control-input" value="0" spellcheck="false">
+                        </div>
+                        <div class="pl-field pl-field-sm pl-hide" id="pl-sym-order-wrap">
+                            <label class="pl-label">Order</label>
+                            <input id="pl-sym-order" class="control-input" type="number" value="1" min="1" max="6">
+                        </div>
+                    </div>
+
+                    <button id="pl-sym-run" class="action-btn primary pl-run-btn"><i class="fas fa-play"></i> Compute</button>
+                </div>
+
+                <div class="pl-card pl-output-card">
+                    <div class="pl-card-title"><i class="fas fa-equals"></i> Result</div>
+                    <div id="pl-sym-result" class="pl-result">
+                        <div class="pl-empty"><i class="fas fa-square-root-variable"></i><span>Enter an expression and hit Compute.</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ─────────────── PLOT ─────────────── -->
+        <section id="pl-pane-plot" class="pl-pane">
+            <div class="pl-grid">
+                <div class="pl-card pl-input-card">
+                    <div class="pl-card-title"><i class="fas fa-chart-line"></i> Functions</div>
+
+                    <label class="pl-label">One expression per line</label>
+                    <textarea id="pl-plot-exprs" class="pl-textarea pl-mono" rows="4"
+                        placeholder="sin(x)&#10;cos(x)&#10;x^2 / 10"></textarea>
+
+                    <div class="pl-row">
+                        <div class="pl-field pl-field-sm">
+                            <label class="pl-label">Variable</label>
+                            <input id="pl-plot-var" class="control-input" value="x" spellcheck="false">
+                        </div>
+                        <div class="pl-field pl-field-sm">
+                            <label class="pl-label">x min</label>
+                            <input id="pl-plot-xmin" class="control-input" type="number" value="-10">
+                        </div>
+                        <div class="pl-field pl-field-sm">
+                            <label class="pl-label">x max</label>
+                            <input id="pl-plot-xmax" class="control-input" type="number" value="10">
+                        </div>
+                    </div>
+
+                    <button id="pl-plot-run" class="action-btn primary pl-run-btn"><i class="fas fa-play"></i> Plot</button>
+                </div>
+
+                <div class="pl-card pl-output-card">
+                    <div class="pl-card-title"><i class="fas fa-image"></i> Graph</div>
+                    <div id="pl-plot-result" class="pl-result pl-plot-result">
+                        <div class="pl-empty"><i class="fas fa-chart-line"></i><span>Plot appears here.</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ─────────────── SIMULATE (ODE) ─────────────── -->
+        <section id="pl-pane-simulate" class="pl-pane">
+            <div class="pl-grid">
+                <div class="pl-card pl-input-card">
+                    <div class="pl-card-title"><i class="fas fa-wave-square"></i> Dynamical system</div>
+                    <p class="pl-hint">First-order system. For each state variable give its derivative
+                        <code>dy/dt = …</code>. Higher-order? Split it (a pendulum θ″ becomes θ′=ω, ω′=…).</p>
+
+                    <div id="pl-ode-eqs" class="pl-ode-eqs"></div>
+                    <button id="pl-ode-add" class="pl-add-btn"><i class="fas fa-plus"></i> Add variable</button>
+
+                    <label class="pl-label">Parameters <span class="pl-muted">(optional, name=value per line)</span></label>
+                    <textarea id="pl-ode-params" class="pl-textarea pl-mono" rows="2" placeholder="a=1.1&#10;b=0.4"></textarea>
+
+                    <div class="pl-row">
+                        <div class="pl-field pl-field-sm">
+                            <label class="pl-label">t start</label>
+                            <input id="pl-ode-tmin" class="control-input" type="number" value="0">
+                        </div>
+                        <div class="pl-field pl-field-sm">
+                            <label class="pl-label">t end</label>
+                            <input id="pl-ode-tmax" class="control-input" type="number" value="20">
+                        </div>
+                        <label class="pl-check">
+                            <input type="checkbox" id="pl-ode-phase" checked> Phase portrait
+                        </label>
+                    </div>
+
+                    <div class="pl-preset-row">
+                        <span class="pl-muted">Presets:</span>
+                        <button class="pl-preset" data-preset="pendulum">Damped pendulum</button>
+                        <button class="pl-preset" data-preset="lotka">Predator–prey</button>
+                        <button class="pl-preset" data-preset="lorenz">Lorenz</button>
+                    </div>
+
+                    <button id="pl-ode-run" class="action-btn primary pl-run-btn"><i class="fas fa-play"></i> Simulate</button>
+                </div>
+
+                <div class="pl-card pl-output-card">
+                    <div class="pl-card-title"><i class="fas fa-chart-area"></i> Evolution</div>
+                    <div id="pl-ode-result" class="pl-result pl-plot-result">
+                        <div class="pl-empty"><i class="fas fa-wave-square"></i><span>Define a system and hit Simulate.</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ─────────────── AI ASSIST (shared) ─────────────── -->
+        <div class="pl-ai-bar">
+            <div class="pl-ai-head">
+                <span class="pl-ai-title"><i class="fas fa-wand-magic-sparkles"></i> AI assist</span>
+                <select id="pl-ai-model" class="control-select pl-ai-model">
+                    <option value="auto">Auto model</option>
+                </select>
+            </div>
+            <div class="pl-ai-row">
+                <input id="pl-ai-input" class="control-input pl-ai-input" spellcheck="false"
+                    placeholder="Describe a problem in words — e.g. 'a mass on a damped spring, k=2, damping 0.3'">
+                <button id="pl-ai-formalize" class="action-btn secondary"><i class="fas fa-arrow-right-to-bracket"></i> Formalize</button>
+                <button id="pl-ai-interpret" class="action-btn secondary"><i class="fas fa-lightbulb"></i> Interpret last result</button>
+            </div>
+            <div id="pl-ai-output" class="pl-ai-output pl-hide"></div>
+        </div>
+
+    </div>
+</div>
