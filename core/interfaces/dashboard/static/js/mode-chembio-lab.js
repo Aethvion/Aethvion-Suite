@@ -224,8 +224,41 @@
         document.querySelectorAll('.cb-preset[data-seq]').forEach(b =>
             b.addEventListener('click', () => { $('cb-seq-input').value = b.dataset.seq; runSequence(); }));
 
+        registerInfo();
         loadModels();
         runMolecule();  // show aspirin by default so the tool isn't empty
+    }
+
+    function registerInfo() {
+        if (!window.ExpInfo) return;
+        window.ExpInfo.register('chembio-lab', {
+            icon: 'fas fa-flask',
+            name: 'Chemistry & Biology Lab',
+            color: 'linear-gradient(135deg, #22d3ee, #a78bfa)',
+            tagline: 'Bench-grade cheminformatics and bioinformatics — the same engines real labs use, wrapped in an AI that explains them.',
+            status: 'Experimental',
+            concepts: [
+                { icon: 'fas fa-atom', label: 'Molecular analysis (RDKit)',
+                  desc: 'Parse any SMILES to a 2D structure and real descriptors — MW, logP, TPSA, H-bonding — plus Lipinski drug-likeness and Tanimoto similarity.' },
+                { icon: 'fas fa-dna', label: 'Sequence & alignment (Biopython)',
+                  desc: 'Auto-detect DNA/RNA/protein, transcribe and translate, compute GC content or protein pI/GRAVY, and run Needleman–Wunsch / Smith–Waterman alignment.' },
+                { icon: 'fas fa-wand-magic-sparkles', label: 'AI that reads the result',
+                  desc: 'Every property, score and alignment can be explained by the AI in context — what it implies for drug-likeness, function or homology.' },
+            ],
+            how: 'Chemistry runs on RDKit, biology on Biopython — the exact open-source toolkits used in pharma and academic labs, executing locally. The Molecule pane renders a structure and computes descriptors with a Lipinski rule-of-five check; Similarity compares two molecules by Morgan-fingerprint Tanimoto and Dice; Sequence detects the biopolymer type and reports GC content, transcription, translation, or protein physicochemistry and composition; Alignment does global or local pairwise alignment with score and % identity. The AI never fabricates chemistry or biology — it interprets values the engines produced.',
+            vision: 'Cheminformatics and bioinformatics power is normally locked behind scripting: you cannot explore a molecule or a sequence without writing RDKit or Biopython code. This tool makes those engines interactive and pairs them with an AI that explains what the results mean — bridging the gap between "I have a SMILES/sequence" and "I understand it." The long-term vision is an approachable life-sciences bench: add substructure search, reaction prediction, BLAST-style database queries and structure viewers, so students, educators and early-stage researchers get real computational biology without the coding barrier.',
+            pitch: {
+                problem: 'The gold-standard tools for chemistry and biology (RDKit, Biopython) are libraries, not products — using them means writing code. Meanwhile, LLMs will happily state a molecule\'s properties or a sequence\'s translation and get them subtly, dangerously wrong. There is no accessible, trustworthy middle.',
+                solution: 'An interactive front-end over the real scientific engines, with an AI layer that interprets rather than computes. You get authoritative RDKit/Biopython results without writing a line of code, explained in context.',
+                tam: 'Life-sciences R&D software & bioinformatics: $40B+ and growing with the AI-in-drug-discovery wave. Target: chem/bio education, biotech startups, and researchers who need quick computational answers without engineering support.',
+                tactics: [
+                    'Enter through education and self-learners, where the coding barrier is highest and stakes are low.',
+                    'Anchor trust on using the field-standard engines (RDKit/Biopython) — not a black-box model.',
+                    'Layer toward discovery workflows (substructure/BLAST search, property filtering) to reach biotech teams.',
+                ],
+            },
+        });
+        $('cb-info-btn')?.addEventListener('click', () => window.ExpInfo.show('chembio-lab'));
     }
 
     if ($('cb-root')) {

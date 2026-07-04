@@ -370,8 +370,41 @@
             if (e.key === 'Enter') { e.preventDefault(); aiFormalize(); }
         });
 
+        registerInfo();
         applyPreset('pendulum');   // sensible default so Simulate isn't empty
         loadModels();
+    }
+
+    function registerInfo() {
+        if (!window.ExpInfo) return;
+        window.ExpInfo.register('physics-lab', {
+            icon: 'fas fa-atom',
+            name: 'Physics & Math Lab',
+            color: 'linear-gradient(135deg, #22d3ee, #0ea5e9)',
+            tagline: 'A real computational workbench — the math is done by a symbolic/numeric engine, not guessed by an LLM.',
+            status: 'Experimental',
+            concepts: [
+                { icon: 'fas fa-square-root-variable', label: 'Exact symbolic algebra',
+                  desc: 'sympy solves, differentiates, integrates and simplifies expressions exactly — with LaTeX-rendered results and steps, not approximations.' },
+                { icon: 'fas fa-wave-square', label: 'Numerical simulation',
+                  desc: 'Define a dynamical system and scipy integrates it (RK45) — time evolution and phase portraits for pendulums, predator–prey, chaos.' },
+                { icon: 'fas fa-wand-magic-sparkles', label: 'AI as translator, not oracle',
+                  desc: 'The AI turns a plain-language problem into a formal setup and interprets results. It never produces the numbers — the engine does.' },
+            ],
+            how: 'Every computation runs on a deterministic engine: sympy for symbolic work, scipy.integrate for ODE systems, matplotlib for plotting — all locally, no data leaves the machine. The Symbolic pane renders results with KaTeX plus a unicode fallback; the Plot pane graphs one or more functions; the Simulate pane integrates first-order systems and draws phase portraits. The optional AI layer only formalizes a worded problem or explains a computed result, so you get an LLM\'s fluency with a solver\'s correctness.',
+            vision: 'Most "AI math" tools ask a language model to do arithmetic and hope it is right. This inverts that: the model is the interface, a genuine computer-algebra and numerical stack is the substance. The long-term vision is a local, trustworthy research bench — extend it with linear algebra, PDEs, unit-aware physics, and vector fields — where a student or researcher can go from an idea in words to a verified derivation and simulation in seconds, and never has to wonder whether the answer was hallucinated.',
+            pitch: {
+                problem: 'Researchers and students juggle three separate things: a CAS like Mathematica (expensive, closed), a numerical stack like MATLAB/Python (a coding barrier), and increasingly an LLM that is fluent but frequently wrong on actual math. Nothing combines natural-language ease with guaranteed-correct computation.',
+                solution: 'A single tool where you describe the problem in words, an LLM formalizes it, and a real symbolic + numerical engine computes the exact answer. Correctness is structural — the AI cannot fake a result because it never generates one.',
+                tam: 'Scientific & engineering software + STEM education: $12B+ combined, growing double digits as AI enters education. Target: universities, research labs, and engineering teams wanting trustworthy AI-assisted computation.',
+                tactics: [
+                    'Land in STEM education where correctness is non-negotiable and Mathematica licenses are painful.',
+                    'Position against "AI that does math" tools on a single axis: verifiable, not plausible.',
+                    'Grow capability breadth (linear algebra, PDEs, units) to move from teaching aid to research bench.',
+                ],
+            },
+        });
+        $('pl-info-btn')?.addEventListener('click', () => window.ExpInfo.show('physics-lab'));
     }
 
     if ($('pl-root')) {

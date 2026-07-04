@@ -340,10 +340,43 @@
         $('sl-ai-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); aiRecommend(); } });
 
         syncTestFields();
+        registerInfo();
         loadModels();
         // Preload the sample so the tool isn't empty on first open.
         $('sl-data').value = SAMPLE;
         parseData();
+    }
+
+    function registerInfo() {
+        if (!window.ExpInfo) return;
+        window.ExpInfo.register('stats-lab', {
+            icon: 'fas fa-chart-simple',
+            name: 'Data & Statistics Lab',
+            color: 'linear-gradient(135deg, #22d3ee, #4ade80)',
+            tagline: 'Paste your data, ask a question, get a real answer — proper tests with p-values and effect sizes, not vibes.',
+            status: 'Experimental',
+            concepts: [
+                { icon: 'fas fa-flask-vial', label: 'Rigorous hypothesis testing',
+                  desc: 't-tests, Mann–Whitney, ANOVA, correlation and chi-square via scipy.stats — each returning the statistic, exact p-value and a proper effect size.' },
+                { icon: 'fas fa-diagram-project', label: 'Regression & structure',
+                  desc: 'OLS regression with R² and residual diagnostics, plus PCA + KMeans to find structure in multi-column data — all through scikit-learn.' },
+                { icon: 'fas fa-wand-magic-sparkles', label: 'Guided, not guessed',
+                  desc: 'The AI recommends the right test for your question and interprets significance honestly. The numbers come from the engine.' },
+            ],
+            how: 'Paste CSV or whitespace-separated data once and four panes share it. Summary gives per-column descriptives plus a histogram with a normal overlay and a Shapiro–Wilk normality check. Tests runs the appropriate scipy.stats routine and reports the statistic, exact p-value, effect size (Cohen\'s d, η², r²) and a plain-language verdict. Regression fits an OLS line with R² and residual plots. Explore standardizes your columns, projects them with PCA and colours points by KMeans cluster. The AI only suggests which test fits and interprets the result — every number is computed, never generated.',
+            vision: 'Good statistics is gated by two things: knowing which test to run, and trusting the result. Novices pick the wrong test; everyone half-trusts an LLM that "did the stats." This tool removes both frictions — the AI advises on method and reads the outcome, while a real statistical engine guarantees the arithmetic. The long-term vision is a local analyst\'s bench: add mixed models, time-series, Bayesian inference and one-click assumption checks, so anyone can go from a raw table to a defensible conclusion without a stats degree or a spreadsheet full of formulas.',
+            pitch: {
+                problem: 'Data analysis is bimodal: point-and-click tools (Excel, SPSS) are shallow and easy to misuse, while real analysis (R, Python) has a coding wall. LLMs promise to bridge the gap but routinely apply the wrong test or fabricate p-values, which is worse than no answer.',
+                solution: 'A tool that pairs an AI advisor — recommends the correct test, interprets the outcome — with a genuine scipy/scikit-learn engine that computes it. You get the accessibility of "just ask" with the integrity of a real statistics package.',
+                tam: 'Analytics & statistical software: $25B+ and expanding as every discipline becomes data-driven. Target: researchers, analysts, students, and small teams without a dedicated data scientist.',
+                tactics: [
+                    'Win the "which test do I use?" moment — the single biggest blocker for non-statisticians.',
+                    'Differentiate hard on trustworthy AI: recommend + interpret, never compute.',
+                    'Expand toward defensible reporting (assumption checks, exportable methods) for academic and clinical use.',
+                ],
+            },
+        });
+        $('sl-info-btn')?.addEventListener('click', () => window.ExpInfo.show('stats-lab'));
     }
 
     if ($('sl-root')) {
