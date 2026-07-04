@@ -305,6 +305,10 @@
             <!-- App tabs are added here dynamically by app-tabs.js -->
         </div>
         <div class="header-right">
+            <button class="privacy-switch" id="privacy-switch" title="Loading privacy state…">
+                <i class="fas fa-shield-halved"></i>
+                <span class="privacy-label" id="privacy-label">Hybrid</span>
+            </button>
             <div class="compact-status" id="compact-status" onclick="ATB.switchTo('panel-home'); setDashboardMode('home', true, 'usage');" title="View Detailed Usage">
                 <span title="Tokens Today">Tokens: <strong id="tokens-today">0</strong></span>
                 <span class="status-divider">|</span>

@@ -656,6 +656,57 @@ const ATB = (() => {
         setInterval(() => {
             if (!document.hidden) _updateSuiteStatus();
         }, 5_000);
+
+        _initPrivacySwitch();
+    }
+
+    // ── Privacy switch (global local-only routing) ─────────────────────────
+    function _renderPrivacySwitch(enabled) {
+        const btn   = document.getElementById('privacy-switch');
+        const label = document.getElementById('privacy-label');
+        if (!btn) return;
+        btn.classList.toggle('on', enabled);
+        if (label) label.textContent = enabled ? 'Local Only' : 'Hybrid';
+        btn.title = enabled
+            ? 'Privacy Mode: every AI call is routed to local models only — nothing leaves this machine. Click to allow API providers again.'
+            : 'AI routing: API + local models. Click to switch to local-only (Privacy Mode).';
+    }
+
+    async function _initPrivacySwitch() {
+        const btn = document.getElementById('privacy-switch');
+        if (!btn) return;
+
+        try {
+            const res  = await fetch('/api/settings/privacy-mode');
+            const data = await res.json();
+            _renderPrivacySwitch(!!data.enabled);
+        } catch (_) {
+            _renderPrivacySwitch(false);
+        }
+
+        btn.addEventListener('click', async () => {
+            const target = !btn.classList.contains('on');
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/settings/privacy-mode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: target }),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                _renderPrivacySwitch(target);
+                if (typeof showToast === 'function') {
+                    showToast(target
+                        ? 'Privacy Mode on — all AI calls now stay on this machine.'
+                        : 'Privacy Mode off — API providers are available again.',
+                        target ? 'success' : 'info');
+                }
+            } catch (err) {
+                if (typeof showToast === 'function') showToast('Could not update Privacy Mode.', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        });
     }
 
     const exported = { init, openApp, switchTo, retryApp, refreshApp, refreshPorts, quitSystem, stopService };
