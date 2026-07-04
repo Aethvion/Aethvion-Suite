@@ -76,6 +76,15 @@ async function loadUsageDashboard(startDate = null, endDate = null) {
         _currentHourlyData     = hourly;
         _currentHistoryEntries = history.entries || [];
 
+        // Zero usage renders blank charts that look like a loading failure —
+        // show an explicit empty state instead.
+        const isEmpty = (summary.total_calls || 0) === 0;
+        _toggleEmptyState(isEmpty);
+        if (isEmpty) {
+            if (!window._usageListenersReady) { _setupListeners(); window._usageListenersReady = true; }
+            return;
+        }
+
         _updateHero(summary, prevSummary);
         _updateStatCards(summary);
         _renderInsights(summary, daily);
@@ -102,6 +111,33 @@ function _buildRangeQuery(start, end, filterQ) {
     if (start) q += `start=${encodeURIComponent(start)}`;
     if (end)   q += `${start ? '&' : ''}end=${encodeURIComponent(end)}`;
     return q + filterQ;
+}
+
+// Empty state — hides everything below the controls row when the selected
+// period has no usage, so zero data doesn't look like a failed load.
+function _toggleEmptyState(isEmpty) {
+    const dash = document.querySelector('.usage-dashboard');
+    if (!dash) return;
+
+    let empty = document.getElementById('usage-empty-state');
+    if (!empty) {
+        empty = document.createElement('div');
+        empty.id = 'usage-empty-state';
+        empty.innerHTML =
+            `<div class="ae-empty">` +
+            `<div class="ae-empty-icon"><i class="fas fa-chart-bar"></i></div>` +
+            `<div class="ae-empty-title">No usage in this period</div>` +
+            `<div class="ae-empty-desc">Calls appear here as soon as a model handles a request. ` +
+            `Try a wider date range or check the Local / API filters above.</div>` +
+            `</div>`;
+        dash.querySelector('.usage-controls-row')?.insertAdjacentElement('afterend', empty);
+    }
+
+    empty.style.display = isEmpty ? '' : 'none';
+    [...dash.children].forEach(el => {
+        if (el === empty || el.classList.contains('usage-controls-row')) return;
+        el.style.display = isEmpty ? 'none' : '';
+    });
 }
 
 // Listeners
