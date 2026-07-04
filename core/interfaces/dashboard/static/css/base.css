@@ -53,6 +53,44 @@ body.theme-ai {
     --glow-accent: 0 0 20px rgba(34, 211, 238, 0.18);
 }
 
+/* Private data profile — whole-interface fuchsia shift so the active mode is
+   unmistakable. Declared after the theme blocks so it overrides them. */
+body.profile-private,
+body.profile-private.theme-home,
+body.profile-private.theme-ai {
+    --primary: #e879f9;
+    --primary-hover: #f0abfc;
+    --accent: #22d3ee;
+    --glow: 0 0 24px rgba(232, 121, 249, 0.28);
+    --glow-accent: 0 0 20px rgba(34, 211, 238, 0.18);
+    --ring: 0 0 0 3px rgba(232, 121, 249, 0.18);
+}
+
+body.profile-private::before {
+    background:
+        radial-gradient(ellipse 60% 45% at 18% -8%, rgba(232, 121, 249, 0.09) 0%, transparent 60%),
+        radial-gradient(ellipse 55% 40% at 85% -5%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 70% 50% at 50% 110%, rgba(232, 121, 249, 0.04) 0%, transparent 55%);
+}
+
+/* primary CTAs use a fixed cyan gradient — shift them along in private mode */
+body.profile-private .action-btn.primary,
+body.profile-private .send-button,
+body.profile-private .sh-action-btn--primary,
+body.profile-private .date-preset-btn.active {
+    background: linear-gradient(135deg, #f0abfc, #d946ef);
+    color: #2e0435;
+    box-shadow: 0 4px 18px rgba(232, 121, 249, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+body.profile-private .hdr-nav-btn.active {
+    color: #2e0435;
+}
+
+body.profile-private .hdr-nav-btn.active i {
+    color: #2e0435;
+}
+
 * {
     margin: 0;
     padding: 0;

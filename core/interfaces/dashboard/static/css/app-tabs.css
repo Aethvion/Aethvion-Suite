@@ -215,6 +215,55 @@ body {
     flex-shrink: 0;
 }
 
+/* profile switch — Standard / Private data profile toggle */
+.profile-switch {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 32px;
+    padding: 0 12px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    font-weight: 600;
+    font-family: inherit;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    flex-shrink: 0;
+}
+
+.profile-switch:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: var(--text-primary);
+}
+
+.profile-switch i {
+    font-size: 0.8rem;
+    opacity: 0.75;
+    transition: all 0.18s ease;
+}
+
+.profile-switch.private {
+    background: rgba(232, 121, 249, 0.1);
+    border-color: rgba(232, 121, 249, 0.45);
+    color: #f0abfc;
+    box-shadow: 0 0 14px rgba(232, 121, 249, 0.22);
+}
+
+.profile-switch.private i {
+    opacity: 1;
+    filter: drop-shadow(0 0 6px rgba(232, 121, 249, 0.6));
+}
+
+.profile-switch.private:hover {
+    background: rgba(232, 121, 249, 0.16);
+    color: #f0abfc;
+}
+
 /* privacy switch — global API+local / local-only routing toggle */
 .privacy-switch {
     display: flex;
@@ -278,6 +327,7 @@ body {
     .compact-status { display: none; }
     .status-indicator .status-text { display: none; }
     .privacy-switch .privacy-label { display: none; }
+    .profile-switch .profile-label { display: none; }
 }
 
 @media (max-width: 1080px) {

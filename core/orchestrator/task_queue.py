@@ -596,12 +596,14 @@ class TaskQueueManager:
         """
         if thread_id in self.threads:
             return False
-            
+
+        from core.config.profiles import get_active_profile
         self.threads[thread_id] = ChatThread(
             id=thread_id,
             title=title if title else f"Thread {thread_id}",
             mode=mode,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
+            profile=get_active_profile()
         )
         self._save_thread(thread_id)
         logger.info(f"Created new thread: {thread_id} ({title})")
@@ -671,10 +673,12 @@ class TaskQueueManager:
         
         # Add to thread
         if thread_id not in self.threads:
+            from core.config.profiles import get_active_profile
             self.threads[thread_id] = ChatThread(
                 id=thread_id,
                 title=thread_title if thread_title else f"Thread {thread_id}",
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
+                profile=get_active_profile()
             )
             if is_incognito:
                  self.threads[thread_id].metadata['is_incognito'] = True
@@ -918,6 +922,7 @@ class TaskQueueManager:
                                     last_message_snippet=data.get('last_message_snippet', None),
                                     msg_count=data.get('msg_count', 0),
                                     last_model=data.get('last_model', None),
+                                    profile=data.get('profile', 'standard'),
                                 )
                                 
                                 if not thread.is_deleted:
@@ -991,7 +996,20 @@ class TaskQueueManager:
                 thread.msg_count = msg_count
                 if last_model:
                     thread.last_model = last_model
-                
+                    # Record which provider classes (local/api) have touched this
+                    # thread — the basis for private-data context guards.
+                    try:
+                        from core.providers.provider_manager import get_provider_manager
+                        from core.config.profiles import provider_class_for
+                        pm = get_provider_manager()
+                        cls = provider_class_for(pm.model_to_provider_map.get(last_model, ''))
+                        classes = set(thread.metadata.get('provider_classes', []))
+                        if cls not in classes:
+                            classes.add(cls)
+                            thread.metadata['provider_classes'] = sorted(classes)
+                    except Exception:
+                        pass
+
                 # Save the updated thread to disk
                 self._save_thread(task.thread_id)
 

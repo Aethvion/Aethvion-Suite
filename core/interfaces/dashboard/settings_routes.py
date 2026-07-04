@@ -40,6 +40,29 @@ async def update_settings(updates: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class ActiveProfileRequest(BaseModel):
+    profile: str
+
+
+@router.get("/active-profile")
+async def get_active_profile_endpoint():
+    """Return the active data profile ('standard' | 'private')."""
+    from core.config.profiles import get_active_profile
+    return {"profile": get_active_profile()}
+
+
+@router.post("/active-profile")
+async def set_active_profile_endpoint(req: ActiveProfileRequest):
+    """Switch the active data profile. New threads and memories are tagged with it."""
+    try:
+        from core.config.profiles import set_active_profile
+        applied = set_active_profile(req.profile)
+        return {"success": True, "profile": applied}
+    except Exception as e:
+        logger.error(f"Failed to set active profile: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/privacy-mode")
 async def get_privacy_mode():
     """Return current privacy mode state."""

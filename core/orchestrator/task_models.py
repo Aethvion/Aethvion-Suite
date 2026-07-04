@@ -147,6 +147,7 @@ class ChatThread:
     last_message_snippet: Optional[str] = None
     msg_count: int = 0
     last_model: Optional[str] = None
+    profile: str = "standard"                  # Data profile: 'standard' | 'private'
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -165,6 +166,7 @@ class ChatThread:
             'last_message_snippet': self.last_message_snippet,
             'msg_count': self.msg_count,
             'last_model': self.last_model,
+            'profile': self.profile,
         }
 
 

@@ -48,10 +48,12 @@ class PersistentMemory:
         return "\n".join(lines)
 
     def update_topic(self, topic: str, content: str):
-        """Update or add a topic to memory."""
+        """Update or add a topic to memory, tagged with the active data profile."""
+        from core.config.profiles import get_active_profile
         self.memory[topic] = {
             "content": content,
-            "updated_at": utcnow_iso()
+            "updated_at": utcnow_iso(),
+            "profile": get_active_profile(),
         }
         self._save()
         logger.info(f"Updated persistent memory topic: {topic}")

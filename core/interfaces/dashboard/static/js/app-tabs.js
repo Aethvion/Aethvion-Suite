@@ -658,6 +658,61 @@ const ATB = (() => {
         }, 5_000);
 
         _initPrivacySwitch();
+        _initProfileSwitch();
+    }
+
+    // ── Profile switch (Standard / Private data profile) ───────────────────
+    function _renderProfileSwitch(profile) {
+        const btn   = document.getElementById('profile-switch');
+        const icon  = document.getElementById('profile-icon');
+        const label = document.getElementById('profile-label');
+        if (!btn) return;
+        const isPrivate = profile === 'private';
+        btn.classList.toggle('private', isPrivate);
+        document.body.classList.toggle('profile-private', isPrivate);
+        if (icon)  icon.className = isPrivate ? 'fas fa-user-secret' : 'fas fa-user';
+        if (label) label.textContent = isPrivate ? 'Private' : 'Standard';
+        btn.title = isPrivate
+            ? 'Private profile: new chats and memories are tagged private, so they can be kept away from API models. Click to switch back to Standard.'
+            : 'Standard profile: new chats and memories are tagged standard. Click to switch to Private.';
+    }
+
+    async function _initProfileSwitch() {
+        const btn = document.getElementById('profile-switch');
+        if (!btn) return;
+
+        try {
+            const res  = await fetch('/api/settings/active-profile');
+            const data = await res.json();
+            _renderProfileSwitch(data.profile || 'standard');
+        } catch (_) {
+            _renderProfileSwitch('standard');
+        }
+
+        btn.addEventListener('click', async () => {
+            const target = btn.classList.contains('private') ? 'standard' : 'private';
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/settings/active-profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ profile: target }),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                _renderProfileSwitch(data.profile);
+                if (typeof showToast === 'function') {
+                    showToast(data.profile === 'private'
+                        ? 'Private profile active — new chats and memories are tagged private.'
+                        : 'Standard profile active.',
+                        data.profile === 'private' ? 'success' : 'info');
+                }
+            } catch (err) {
+                if (typeof showToast === 'function') showToast('Could not switch profile.', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        });
     }
 
     // ── Privacy switch (global local-only routing) ─────────────────────────
