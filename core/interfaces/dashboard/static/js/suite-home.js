@@ -16,6 +16,13 @@
     let _missions = [];
     const STORAGE_KEY = 'aethvion_missions_v1';
     let _activePollers = {};
+    const _listeners = [];
+
+    function notifyListeners() {
+        _listeners.forEach(fn => {
+            try { fn(_missions); } catch (err) { console.warn('[missions] listener error:', err); }
+        });
+    }
 
     // ── Greeting ───────────────────────────────────────────────────────────
 
@@ -96,6 +103,7 @@
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(_missions.slice(0, 10)));
         } catch (_) {}
+        notifyListeners();
     }
 
     // ── Omnibar Dispatch ───────────────────────────────────────────────────
@@ -235,6 +243,7 @@
             if (timerEl && mission.status === 'running') {
                 timerEl.textContent = `${elapsedSeconds}s`;
             }
+            notifyListeners();
 
             if (isFetching) return;
             isFetching = true;
@@ -265,6 +274,9 @@
                     const compMsg = `[${new Date().toLocaleTimeString()}] [Completed] Mission finished in ${duration}s.`;
                     if (!mission.logs.length || !mission.logs[mission.logs.length - 1].includes('[Completed]')) {
                         mission.logs.push(compMsg);
+                    }
+                    if (window.showToast) {
+                        window.showToast(`Mission finished: ${mission.prompt.slice(0, 32)}...`, 'success');
                     }
                     saveMissions();
                     renderMissions();
@@ -787,6 +799,31 @@
         obs.observe(panel, { attributes: true, attributeFilter: ['class'] });
         check();
     }
+
+    // ── Global Mission System & Export ─────────────────────────────────────
+    window.AethvionMissions = {
+        getAll: () => _missions,
+        getActive: () => _missions.filter(m => m.status === 'running' || m.status === 'queued'),
+        dispatch: dispatchMission,
+        cancel: cancelMission,
+        dismiss: dismissMission,
+        steer: steerMission,
+        clearCompleted: clearCompletedMissions,
+        renderMarkdown: renderMarkdown,
+        subscribe: (fn) => {
+            _listeners.push(fn);
+            try { fn(_missions); } catch (_) {}
+            return () => {
+                const idx = _listeners.indexOf(fn);
+                if (idx !== -1) _listeners.splice(idx, 1);
+            };
+        }
+    };
+
+    // Auto-resume background pollers on script load
+    loadMissions();
+    _missions.filter(m => m.status === 'running' && m.taskId).forEach(startMissionPoller);
+    notifyListeners();
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', watchPanel);

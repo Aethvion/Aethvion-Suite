@@ -388,6 +388,43 @@
 
         <!-- Clean Minimal Right Header -->
         <div class="header-right">
+            <!-- Global Dispatched Agents Status Pill & Mini-Terminal Tray -->
+            <div class="hdr-agent-tray-wrapper" id="hdr-agent-tray-wrapper">
+                <button class="hdr-agent-pill" id="hdr-agent-pill" title="Dispatched Agent Missions" aria-expanded="false">
+                    <span class="hdr-agent-dot" id="hdr-agent-dot"></span>
+                    <i class="fas fa-robot"></i>
+                    <span class="hdr-agent-text" id="hdr-agent-text">0 Agents</span>
+                </button>
+
+                <!-- Floating Slide-Down Mini-Terminal Drawer -->
+                <div class="hdr-agent-drawer" id="hdr-agent-drawer">
+                    <div class="had-header">
+                        <div class="had-title">
+                            <i class="fas fa-terminal had-title-icon"></i>
+                            <span>Dispatched Missions</span>
+                            <span class="had-badge" id="had-badge">Idle</span>
+                        </div>
+                        <div class="had-actions">
+                            <button class="had-icon-btn" id="had-expand-btn" title="View in Home Dashboard">
+                                <i class="fas fa-arrow-up-right-from-square"></i>
+                            </button>
+                            <button class="had-icon-btn" id="had-close-btn" title="Close Tray">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="had-body" id="had-body">
+                        <!-- Populated by agent-tray.js -->
+                    </div>
+                    <div class="had-footer">
+                        <input type="text" id="had-quick-input" class="had-quick-input" placeholder="Dispatch a task anywhere..." autocomplete="off">
+                        <button class="had-quick-btn" id="had-quick-send" title="Dispatch Mission">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <button class="hdr-settings-btn" title="Settings"
                     onclick="ATB.switchTo('panel-home'); switchMainTab('settings');">
                 <i class="fas fa-gear"></i>
@@ -725,7 +762,8 @@
         <script src="/static/js/core.js?v=10" defer></script>
         <script src="/static/js/threads.js?v=10" defer></script>
         <script src="/static/js/sidebar-manager.js?v=__VNUM__" defer></script>
-        <script src="/static/js/suite-home.js?v=11" defer></script>
+        <script src="/static/js/suite-home.js?v=12" defer></script>
+        <script src="/static/js/agent-tray.js?v=1" defer></script>
 
         <!-- Global Services -->
         <script src="/static/js/assistant.js?v=10" defer></script>
