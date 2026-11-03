@@ -131,44 +131,14 @@ async def browse_folder_native(initial: str = Query(default="")):
     Runs in a thread executor so the async event loop is not blocked.
     """
     def _open_dialog() -> str | None:
-        import sys
-        if sys.platform == "win32":
-            try:
-                initial_dir = initial if initial and os.path.isdir(initial) else str(Path.home())
-                ps_script = f"""
-Add-Type -AssemblyName System.Windows.Forms
-$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-$dialog.Description = 'Select Workspace Folder'
-$dialog.SelectedPath = '{initial_dir}'
-$dialog.ShowNewFolderButton = $true
-if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
-    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    Write-Output $dialog.SelectedPath
-}}
-"""
-                _NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-                res = subprocess.run(
-                    ["powershell", "-NoProfile", "-STA", "-Command", ps_script],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    timeout=45,
-                    creationflags=_NO_WINDOW
-                )
-                chosen = res.stdout.strip()
-                if chosen and os.path.isdir(chosen):
-                    return chosen
-                if res.returncode == 0 and not chosen:
-                    return None
-            except Exception as pe:
-                logger.warning(f"PowerShell folder dialog error: {pe}")
-
         try:
             import tkinter as tk
             from tkinter import filedialog
             root = tk.Tk()
             root.withdraw()
-            root.wm_attributes("-topmost", True)
+            root.attributes("-topmost", True)
+            root.lift()
+            root.focus_force()
             initial_dir = initial if initial and os.path.isdir(initial) else str(Path.home())
             folder = filedialog.askdirectory(
                 parent=root,
