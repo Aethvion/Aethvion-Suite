@@ -490,6 +490,8 @@ const ATB = (() => {
         document.getElementById('atb-apps-btn')?.classList.add('open');
     }
     function _closeMenu() {
+        document.getElementById('atb-control-menu')?.classList.remove('open');
+        document.getElementById('atb-brand-btn')?.classList.remove('open');
         document.getElementById('atb-apps-menu')?.classList.remove('open');
         document.getElementById('atb-apps-btn')?.classList.remove('open');
     }
@@ -616,6 +618,27 @@ const ATB = (() => {
     // Init
     function init() {
         ServiceMonitor.init();
+
+        // Brand / Control Menu toggle
+        const brandBtn = document.getElementById('atb-brand-btn');
+        const controlMenu = document.getElementById('atb-control-menu');
+        if (brandBtn && controlMenu) {
+            brandBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = controlMenu.classList.contains('open');
+                if (!isOpen) {
+                    _buildAppsMenu();
+                    controlMenu.classList.add('open');
+                    brandBtn.classList.add('open');
+                } else {
+                    _closeMenu();
+                }
+            });
+            controlMenu.addEventListener('click', (e) => e.stopPropagation());
+        }
+
+        // Build initial apps list
+        _buildAppsMenu();
 
         document.querySelector('[data-panel="panel-home"]')
             ?.addEventListener('click', () => switchTo(HOME_PANEL));

@@ -817,3 +817,237 @@ body {
     color: #fff;
     border-color: #ef4444;
 }
+
+/* --- Top-Left System Control Center Menu --- */
+.atb-brand-wrapper {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+}
+
+.atb-brand {
+    background: transparent;
+    border: none;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    font-family: inherit;
+    color: inherit;
+}
+
+.atb-brand:hover,
+.atb-brand.open {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.atb-brand-chevron {
+    font-size: 0.62rem;
+    color: var(--text-tertiary);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s ease;
+    margin-left: 2px;
+}
+
+.atb-brand.open .atb-brand-chevron {
+    transform: rotate(180deg);
+    color: var(--primary);
+}
+
+.atb-control-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 8px;
+    width: 330px;
+    background: linear-gradient(180deg, rgba(20, 24, 34, 0.98), rgba(13, 16, 24, 0.98));
+    backdrop-filter: blur(28px) saturate(1.4);
+    -webkit-backdrop-filter: blur(28px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 14px;
+    padding: 10px;
+    box-shadow: 0 28px 72px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    flex-direction: column;
+    gap: 8px;
+    z-index: 9999;
+    user-select: none;
+}
+
+.atb-control-menu.open {
+    display: flex;
+    animation: acmFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes acmFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.acm-card {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.acm-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.78rem;
+}
+
+.acm-toggles-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.acm-toggles-row .profile-switch,
+.acm-toggles-row .privacy-switch {
+    width: 100%;
+    justify-content: center;
+    height: 30px;
+    font-size: 0.73rem;
+}
+
+.acm-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.acm-card-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+}
+
+.acm-card-title i {
+    font-size: 0.72rem;
+    color: var(--primary);
+}
+
+.acm-services-list {
+    max-height: 140px;
+    overflow-y: auto;
+    font-size: 0.78rem;
+}
+
+.atb-control-menu .atb-services-menu {
+    position: static;
+    display: block !important;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    min-width: unset;
+}
+
+.atb-control-menu .services-menu-header {
+    display: none;
+}
+
+.atb-control-menu .atb-apps-menu {
+    position: static;
+    display: flex !important;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    min-width: unset;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.acm-card--actions {
+    background: transparent;
+    border: none;
+    padding: 2px 0 0 0;
+    gap: 4px;
+}
+
+.acm-action-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.14s ease;
+}
+
+.acm-action-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.acm-action-item i {
+    font-size: 0.8rem;
+    width: 14px;
+    text-align: center;
+}
+
+.acm-action-item--danger {
+    color: rgba(248, 113, 113, 0.85);
+}
+
+.acm-action-item--danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #f87171;
+}
+
+/* Ensure right header aligns to edge */
+#app-tab-bar .header-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 14px;
+}
+
+.hdr-settings-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.hdr-settings-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: var(--text-primary);
+}

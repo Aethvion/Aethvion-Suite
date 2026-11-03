@@ -263,15 +263,99 @@
 
     <!-- App Tab Bar -->
     <div id="app-tab-bar">
-        <div class="atb-brand" onclick="ATB.switchTo('panel-home')" title="Go Home">
-            <span class="atb-brand-logo">✦</span>
-            <span class="atb-brand-name">Aethvion Suite</span>
+        <!-- TOP-LEFT: Brand & System Control Center Trigger -->
+        <div class="atb-brand-wrapper" id="atb-brand-wrapper">
+            <button class="atb-brand" id="atb-brand-btn" title="Aethvion Control Center">
+                <span class="atb-brand-logo">✦</span>
+                <span class="atb-brand-name">Aethvion Suite</span>
+                <i class="fas fa-chevron-down atb-brand-chevron"></i>
+            </button>
+
+            <!-- Consolidated Control Center Dropdown -->
+            <div class="atb-control-menu" id="atb-control-menu">
+                <!-- System Status & Metrics -->
+                <div class="acm-card">
+                    <div class="acm-status-row">
+                        <div class="status-indicator" id="home-status-indicator">
+                            <span class="status-dot"></span>
+                            <span class="status-text">Connecting...</span>
+                        </div>
+                        <div class="compact-status" id="compact-status" onclick="ATB.switchTo('panel-home'); setDashboardMode('home', true, 'usage');" title="View Detailed Usage">
+                            <span>Tokens: <strong id="tokens-today">0</strong></span>
+                            <span class="status-divider">·</span>
+                            <span>Cost: <strong id="cost-today">$0.00</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="acm-toggles-row">
+                        <button class="profile-switch" id="profile-switch" title="Data Profile: Standard / Private">
+                            <i class="fas fa-user" id="profile-icon"></i>
+                            <span class="profile-label" id="profile-label">Standard</span>
+                        </button>
+                        <button class="privacy-switch" id="privacy-switch" title="Routing: Hybrid / Local Only">
+                            <i class="fas fa-shield-halved"></i>
+                            <span class="privacy-label" id="privacy-label">Hybrid</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Running Models / Services -->
+                <div class="acm-card">
+                    <div class="acm-card-header">
+                        <div class="acm-card-title">
+                            <i class="fas fa-microchip"></i>
+                            <span>Active Services</span>
+                        </div>
+                        <span id="active-services-count" class="services-badge">0</span>
+                    </div>
+                    <!-- Hidden button retained for JS compatibility -->
+                    <button id="atb-services-btn" style="display:none;"></button>
+                    <div class="atb-services-wrapper" id="atb-services-wrapper">
+                        <div class="atb-services-menu open" id="atb-services-menu">
+                            <div id="services-list-root">
+                                <div class="services-empty">No models running.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aethvion Apps Launcher -->
+                <div class="acm-card">
+                    <div class="acm-card-header">
+                        <div class="acm-card-title">
+                            <i class="fas fa-th-large"></i>
+                            <span>Aethvion Apps</span>
+                        </div>
+                    </div>
+                    <!-- Hidden button retained for JS compatibility -->
+                    <button id="atb-apps-btn" style="display:none;"></button>
+                    <div id="atb-apps-menu" class="atb-apps-menu open">
+                        <!-- Populated dynamically by app-tabs.js -->
+                    </div>
+                </div>
+
+                <!-- Footer System Actions -->
+                <div class="acm-card acm-card--actions">
+                    <button class="acm-action-item" id="header-settings-btn" title="Settings"
+                            onclick="ATB.switchTo('panel-home'); switchMainTab('settings');">
+                        <i class="fas fa-gear"></i>
+                        <span>Settings</span>
+                    </button>
+                    <button class="acm-action-item acm-action-item--danger" id="atb-quit-btn" title="Shut down Aethvion Suite">
+                        <i class="fas fa-power-off"></i>
+                        <span>Quit Aethvion Suite</span>
+                    </button>
+                </div>
+            </div>
         </div>
+
         <button id="sidebar-toggle" class="sidebar-toggle-btn" title="Toggle Sidebar">
             <i class="fas fa-bars"></i>
         </button>
+
+        <!-- Primary Navigation Tabs -->
         <nav class="hdr-nav" id="hdr-nav">
-            <button class="hdr-nav-btn" data-nav="home" title="Home"
+            <button class="hdr-nav-btn active" data-nav="home" data-panel="panel-home" title="Home"
                     onclick="ATB.switchTo('panel-home'); setDashboardMode('home', true, 'suite-home');">
                 <i class="fas fa-house"></i><span>Home</span>
             </button>
@@ -296,72 +380,18 @@
                 <i class="fas fa-bolt"></i><span>Automate</span>
             </button>
         </nav>
+
+        <!-- Dynamic Open App Tabs -->
         <div class="atb-tabs" id="atb-tabs">
-            <button class="atb-tab atb-tab--active" data-panel="panel-home" title="Home">
-                <span class="atb-tab-label">Home</span>
-                <span class="atb-tab-refresh" id="home-refresh" title="Refresh Dashboard"><i
-                        class="fas fa-sync-alt"></i></span>
-            </button>
-            <!-- App tabs are added here dynamically by app-tabs.js -->
+            <!-- App tabs are added dynamically by app-tabs.js when apps are launched -->
         </div>
+
+        <!-- Clean Minimal Right Header -->
         <div class="header-right">
-            <button class="profile-switch" id="profile-switch" title="Loading profile state…">
-                <i class="fas fa-user" id="profile-icon"></i>
-                <span class="profile-label" id="profile-label">Standard</span>
-            </button>
-            <button class="privacy-switch" id="privacy-switch" title="Loading privacy state…">
-                <i class="fas fa-shield-halved"></i>
-                <span class="privacy-label" id="privacy-label">Hybrid</span>
-            </button>
-            <div class="compact-status" id="compact-status" onclick="ATB.switchTo('panel-home'); setDashboardMode('home', true, 'usage');" title="View Detailed Usage">
-                <span title="Tokens Today">Tokens: <strong id="tokens-today">0</strong></span>
-                <span class="status-divider">|</span>
-                <span title="Cost Today">Cost: <strong id="cost-today">$0.00</strong></span>
-            </div>
-            <div class="status-indicator" id="home-status-indicator">
-                <span class="status-dot"></span>
-                <span class="status-text">Connecting...</span>
-            </div>
-            <button class="hdr-settings-btn" id="header-settings-btn" title="Settings"
+            <button class="hdr-settings-btn" title="Settings"
                     onclick="ATB.switchTo('panel-home'); switchMainTab('settings');">
                 <i class="fas fa-gear"></i>
             </button>
-        </div>
-        <div class="atb-controls">
-            <button class="atb-quit-btn" id="atb-quit-btn" title="Shut down Aethvion Suite">
-                <i class="fas fa-power-off"></i>
-                <span>Quit</span>
-            </button>
-
-            <!-- Dynamic Running Services Monitor -->
-            <div class="atb-services-wrapper" id="atb-services-wrapper">
-                <button class="atb-services-btn" id="atb-services-btn" title="View running AI models">
-                    <i class="fas fa-microchip"></i>
-                    <span>Running Services</span>
-                    <span id="active-services-count" class="services-badge">0</span>
-                </button>
-                <div class="atb-services-menu" id="atb-services-menu">
-                    <div class="services-menu-header">
-                        <i class="fas fa-server"></i> Active Background Models
-                    </div>
-                    <div id="services-list-root">
-                        <div class="services-empty">
-                            <center>No models running.</center>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="atb-apps-wrapper">
-                <button class="atb-apps-btn" id="atb-apps-btn" title="Open an Aethvion app">
-                    <i class="fas fa-th-large"></i>
-                    <span>Apps</span>
-                    <i class="fas fa-chevron-down atb-chevron"></i>
-                </button>
-                <div class="atb-apps-menu" id="atb-apps-menu">
-                    <!-- Populated by app-tabs.js -->
-                </div>
-            </div>
         </div>
     </div>
 
