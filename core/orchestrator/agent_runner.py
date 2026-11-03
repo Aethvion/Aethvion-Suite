@@ -3,6 +3,7 @@ Aethvion Suite - Agent Runner
 Multi-step ReAct-style execution loop with persistent state.
 """
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional, List, Dict, Any
@@ -292,9 +293,17 @@ class AgentRunner(FileOpsMixin):
     # parsing
 
     def _parse_actions(self, text: str) -> List[Dict[str, Any]]:
-        """Find every ACTION: {...} using raw_decode so nested braces are handled."""
-        actions = []
+        """Extract action dictionaries from LLM output.
+        
+        Handles:
+        1. Explicit ACTION: {...} lines
+        2. Fenced ```json blocks containing {"type": ...} or [{"type": ...}]
+        3. Standalone JSON objects/arrays with recognized action types
+        """
+        actions: List[Dict[str, Any]] = []
         decoder = json.JSONDecoder()
+
+        # Strategy 1: Explicit ACTION: lines
         search_from = 0
         while True:
             idx = text.find("ACTION:", search_from)
@@ -305,17 +314,78 @@ class AgentRunner(FileOpsMixin):
                 break
             try:
                 obj, json_end = decoder.raw_decode(text, json_start)
-                if isinstance(obj, dict):
+                if isinstance(obj, dict) and "type" in obj:
                     actions.append(obj)
-                search_from = json_end  # raw_decode returns absolute index, not relative
+                search_from = json_end
             except json.JSONDecodeError:
                 search_from = json_start + 1
+
+        if actions:
+            return actions
+
+        # Strategy 2: Code blocks (e.g. ```json ... ```)
+        code_blocks = re.findall(r"```(?:json)?\s*([\s\S]*?)```", text)
+        for block in code_blocks:
+            block = block.strip()
+            if not block:
+                continue
+            try:
+                parsed = json.loads(block)
+                if isinstance(parsed, dict) and "type" in parsed:
+                    actions.append(parsed)
+                elif isinstance(parsed, list):
+                    for item in parsed:
+                        if isinstance(item, dict) and "type" in item:
+                            actions.append(item)
+            except Exception:
+                b_pos = 0
+                while b_pos < len(block):
+                    b_start = block.find("{", b_pos)
+                    if b_start == -1:
+                        break
+                    try:
+                        obj, b_end = decoder.raw_decode(block, b_start)
+                        if isinstance(obj, dict) and "type" in obj:
+                            actions.append(obj)
+                        b_pos = b_end
+                    except json.JSONDecodeError:
+                        b_pos = b_start + 1
+
+        if actions:
+            return actions
+
+        # Strategy 3: Standalone JSON objects or arrays with valid action types
+        pos = 0
+        while pos < len(text):
+            brace_start = text.find("{", pos)
+            bracket_start = text.find("[", pos)
+            starts = [p for p in (brace_start, bracket_start) if p != -1]
+            if not starts:
+                break
+            start = min(starts)
+            try:
+                obj, end_pos = decoder.raw_decode(text, start)
+                if isinstance(obj, dict) and obj.get("type") in self._HANDLER_MAP:
+                    actions.append(obj)
+                elif isinstance(obj, list):
+                    for item in obj:
+                        if isinstance(item, dict) and item.get("type") in self._HANDLER_MAP:
+                            actions.append(item)
+                pos = end_pos
+            except json.JSONDecodeError:
+                pos = start + 1
+
         return actions
 
     def _thinking_text(self, text: str) -> str:
+        """Extract visible commentary before action calls."""
         idx = text.find("ACTION:")
-        raw = text[:idx].strip() if idx != -1 else text.strip()
-        return raw.strip()
+        if idx != -1:
+            return text[:idx].strip()
+        m = re.search(r"```(?:json)?\s*[\[\{]", text)
+        if m:
+            return text[:m.start()].strip()
+        return text.strip()
 
     # tool execution
 
