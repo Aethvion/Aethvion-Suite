@@ -43,6 +43,12 @@
                             </div>
                         </div>
                         <div class="agents-topbar-right">
+                            <!-- Changes Review Button (Pill) -->
+                            <button class="agents-changes-review-btn" id="agents-changes-review-btn" style="display:none" title="Review modified files in this run" type="button">
+                                <i class="fas fa-file-pen"></i>
+                                <span id="agents-session-changes-label">0 changes</span>
+                            </button>
+
                             <!-- Git Branch & Repository Indicator -->
                             <div class="agents-git-badge" id="agents-git-badge" style="display:none" title="Git Repository Status (Click to inspect)">
                                 <i class="fas fa-code-branch agents-git-icon"></i>
@@ -107,6 +113,55 @@
                                 <button type="button" class="agents-qs-new-btn" id="agents-qs-new-btn">
                                     <i class="fas fa-plus"></i> Add Workspace
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interactive File Change Approval / Direct Patch Review Modal -->
+                    <div id="agents-patch-review-overlay" class="agents-patch-modal-overlay" style="display:none">
+                        <div class="agents-patch-modal">
+                            <div class="agents-patch-modal-header">
+                                <div class="agents-patch-modal-left">
+                                    <i class="fas fa-code-compare agents-patch-modal-icon"></i>
+                                    <div class="agents-patch-modal-titles">
+                                        <div class="agents-patch-modal-filename" id="agents-patch-modal-filename">file.py</div>
+                                        <div class="agents-patch-modal-sub" id="agents-patch-modal-sub">Modified in this run</div>
+                                    </div>
+                                    <div class="agents-patch-modal-badges" id="agents-patch-modal-badges">
+                                        <span class="ag-diff-stat ag-diff-stat--add" id="agents-patch-badge-adds">+0</span>
+                                        <span class="ag-diff-stat ag-diff-stat--del" id="agents-patch-badge-dels">-0</span>
+                                        <span class="ag-diff-status-pill pending" id="agents-patch-status-pill">Pending Review</span>
+                                    </div>
+                                </div>
+                                <div class="agents-patch-modal-right">
+                                    <select class="agents-patch-file-select" id="agents-patch-file-select" style="display:none" title="Select file to review"></select>
+                                    <button class="agents-patch-modal-close" id="agents-patch-modal-close" title="Close (Esc)" type="button">&times;</button>
+                                </div>
+                            </div>
+                            
+                            <div class="agents-patch-modal-body">
+                                <div class="agents-patch-diff-container" id="agents-patch-diff-container">
+                                    <!-- Populated dynamically with diff content -->
+                                </div>
+                            </div>
+
+                            <div class="agents-patch-modal-footer">
+                                <div class="agents-patch-footer-left">
+                                    <button class="agents-patch-btn agents-patch-btn--edit" id="agents-patch-btn-edit" type="button" title="View & edit in Workspace Explorer">
+                                        <i class="fas fa-folder-tree"></i> View in Files
+                                    </button>
+                                    <button class="agents-patch-btn agents-patch-btn--instruct" id="agents-patch-btn-instruct" type="button" title="Instruct agent on revision for this file">
+                                        <i class="fas fa-comment-dots"></i> Request Revision
+                                    </button>
+                                </div>
+                                <div class="agents-patch-footer-right">
+                                    <button class="agents-patch-btn agents-patch-btn--revert" id="agents-patch-btn-revert" type="button" title="Restore previous file version">
+                                        <i class="fas fa-rotate-left"></i> Reject & Revert
+                                    </button>
+                                    <button class="agents-patch-btn agents-patch-btn--approve" id="agents-patch-btn-approve" type="button" title="Approve and accept this change">
+                                        <i class="fas fa-check"></i> Approve Changes
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

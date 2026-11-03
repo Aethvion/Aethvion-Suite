@@ -759,6 +759,11 @@ function _agResetDashboard() {
     if (planSection)  planSection.style.display  = 'none';
     if (planList)     planList.innerHTML          = '';
 
+    // Session changes reset
+    _agentsSessionChanges = {};
+    _agUpdateSessionChangesButton();
+    _agClosePatchReviewModal();
+
     // Modern Plan Deck reset
     const planDock = _agEl('agents-plan-dock');
     if (planDock) {
@@ -805,6 +810,10 @@ function _agInitRender(isReplay = false) {
     if (planSection) planSection.style.display = 'none';
     if (planList)    planList.innerHTML         = '';
 
+    if (!isReplay) {
+        _agentsSessionChanges = {};
+        _agUpdateSessionChangesButton();
+    }
     const planDock = _agEl('agents-plan-dock');
     if (planDock && !isReplay) {
         planDock.style.display = 'none';
@@ -1648,6 +1657,17 @@ function _agHandleWriteFile(event) {
         });
         actions.appendChild(viewBtn);
 
+        // Review & Inspect modal button
+        const reviewBtn = document.createElement('button');
+        reviewBtn.className = 'ag-diff-btn ag-diff-btn--review';
+        reviewBtn.title = 'Open Full Diff Review & Approval Modal';
+        reviewBtn.innerHTML = `<i class="fas fa-arrows-alt"></i> <span>Review</span>`;
+        reviewBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            _agOpenPatchReviewModal(path);
+        });
+        actions.appendChild(reviewBtn);
+
         // Revert button (if backup exists)
         if (event.has_backup) {
             const undoBtn = document.createElement('button');
@@ -1694,6 +1714,19 @@ function _agHandleWriteFile(event) {
         s.fileCards[path] = { card, header, body, badgeEl, diffWrap, writeCount: 1 };
         _agActLogAppend(item);
     }
+
+    // Record change in session changes tracker
+    _agRecordSessionChange(path, {
+        path,
+        filename,
+        diff,
+        adds,
+        dels,
+        isNew,
+        hasBackup: !!event.has_backup,
+        detail: event.detail,
+        card: s.fileCards[path]?.card
+    });
 
     // Real-time update for currently open file in editor
     if (_agCurrentOpenFile === path) {
@@ -3041,6 +3074,206 @@ function _agSelectWorkspaceFromQs(wsId) {
     }
 }
 
+/* --------------------------------------------------------------------------
+   Interactive File Change Approval & Patch Review Modal
+   -------------------------------------------------------------------------- */
+let _agentsSessionChanges = {};
+let _agCurrentReviewPath = null;
+
+function _agRecordSessionChange(path, data) {
+    if (!path) return;
+    _agentsSessionChanges[path] = Object.assign(_agentsSessionChanges[path] || { approved: false, reverted: false }, data);
+    _agUpdateSessionChangesButton();
+}
+
+function _agUpdateSessionChangesButton() {
+    const btn = _agEl('agents-changes-review-btn');
+    const lbl = _agEl('agents-session-changes-label');
+    if (!btn || !lbl) return;
+    const paths = Object.keys(_agentsSessionChanges);
+    if (paths.length === 0) {
+        btn.style.display = 'none';
+        return;
+    }
+    btn.style.display = 'inline-flex';
+    const pending = paths.filter(p => !_agentsSessionChanges[p].approved && !_agentsSessionChanges[p].reverted).length;
+    if (pending > 0) {
+        lbl.textContent = `${paths.length} ${paths.length === 1 ? 'file' : 'files'} changed · Review (${pending})`;
+        btn.classList.add('has-unreviewed');
+    } else {
+        lbl.textContent = `${paths.length} ${paths.length === 1 ? 'file' : 'files'} reviewed`;
+        btn.classList.remove('has-unreviewed');
+    }
+}
+
+function _agOpenPatchReviewModal(targetPath = null) {
+    const paths = Object.keys(_agentsSessionChanges);
+    if (paths.length === 0) return;
+
+    _agCurrentReviewPath = targetPath && _agentsSessionChanges[targetPath] ? targetPath : paths[0];
+    const entry = _agentsSessionChanges[_agCurrentReviewPath];
+    if (!entry) return;
+
+    // Populate file select dropdown if multiple files
+    const fileSel = _agEl('agents-patch-file-select');
+    if (fileSel) {
+        if (paths.length > 1) {
+            fileSel.style.display = 'inline-block';
+            fileSel.innerHTML = '';
+            paths.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p;
+                const status = _agentsSessionChanges[p].approved ? '✓ ' : (_agentsSessionChanges[p].reverted ? '↺ ' : '• ');
+                opt.textContent = `${status}${p}`;
+                if (p === _agCurrentReviewPath) opt.selected = true;
+                fileSel.appendChild(opt);
+            });
+        } else {
+            fileSel.style.display = 'none';
+        }
+    }
+
+    _agRenderPatchModalView(entry);
+
+    const overlay = _agEl('agents-patch-review-overlay');
+    if (overlay) overlay.style.display = 'flex';
+}
+
+function _agRenderPatchModalView(entry) {
+    if (!entry) return;
+    const filenameEl = _agEl('agents-patch-modal-filename');
+    const addsEl     = _agEl('agents-patch-badge-adds');
+    const delsEl     = _agEl('agents-patch-badge-dels');
+    const statusPill = _agEl('agents-patch-status-pill');
+    const diffBox    = _agEl('agents-patch-diff-container');
+    const revertBtn  = _agEl('agents-patch-btn-revert');
+
+    if (filenameEl) filenameEl.textContent = entry.path;
+    if (addsEl) addsEl.textContent = `+${entry.adds || 0}`;
+    if (delsEl) delsEl.textContent = `-${entry.dels || 0}`;
+
+    if (statusPill) {
+        if (entry.approved) {
+            statusPill.className = 'ag-diff-status-pill approved';
+            statusPill.innerHTML = '<i class="fas fa-check"></i> Approved';
+        } else if (entry.reverted) {
+            statusPill.className = 'ag-diff-status-pill reverted';
+            statusPill.innerHTML = '<i class="fas fa-rotate-left"></i> Reverted';
+        } else {
+            statusPill.className = 'ag-diff-status-pill pending';
+            statusPill.innerHTML = '<i class="fas fa-clock"></i> Pending Review';
+        }
+    }
+
+    if (revertBtn) {
+        revertBtn.style.display = entry.hasBackup ? 'inline-flex' : 'none';
+    }
+
+    if (diffBox) {
+        diffBox.innerHTML = '';
+        _agRenderDiffContent(diffBox, entry.diff, entry.isNew, entry.detail);
+    }
+}
+
+function _agClosePatchReviewModal() {
+    const overlay = _agEl('agents-patch-review-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+function _agApproveCurrentPatch() {
+    if (!_agCurrentReviewPath) return;
+    const entry = _agentsSessionChanges[_agCurrentReviewPath];
+    if (!entry) return;
+
+    entry.approved = true;
+    entry.reverted = false;
+    _agRenderPatchModalView(entry);
+
+    // Update in chat card if present
+    if (entry.card) {
+        entry.card.classList.add('is-approved');
+        entry.card.classList.remove('is-reverted');
+        let appBadge = entry.card.querySelector('.ag-diff-approved-badge');
+        if (!appBadge) {
+            appBadge = document.createElement('span');
+            appBadge.className = 'ag-diff-approved-badge';
+            appBadge.innerHTML = '<i class="fas fa-check"></i> Approved';
+            const stats = entry.card.querySelector('.ag-diff-stats');
+            if (stats) stats.appendChild(appBadge);
+        }
+    }
+
+    _agUpdateSessionChangesButton();
+
+    // Auto-advance to next unreviewed file if available
+    const unapproved = Object.keys(_agentsSessionChanges).find(p => !_agentsSessionChanges[p].approved && !_agentsSessionChanges[p].reverted);
+    if (unapproved) {
+        _agOpenPatchReviewModal(unapproved);
+    } else {
+        setTimeout(_agClosePatchReviewModal, 500);
+    }
+}
+
+async function _agRevertCurrentPatch() {
+    if (!_agCurrentReviewPath) return;
+    const entry = _agentsSessionChanges[_agCurrentReviewPath];
+    if (!entry) return;
+
+    const revertBtn = _agEl('agents-patch-btn-revert');
+    if (revertBtn) {
+        revertBtn.disabled = true;
+        revertBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reverting...';
+    }
+
+    await _agRestoreFile(entry.path, revertBtn || document.createElement('button'));
+
+    entry.reverted = true;
+    entry.approved = false;
+    _agRenderPatchModalView(entry);
+
+    if (revertBtn) {
+        revertBtn.disabled = false;
+        revertBtn.innerHTML = '<i class="fas fa-rotate-left"></i> Reject & Revert';
+    }
+
+    if (entry.card) {
+        entry.card.classList.add('is-reverted');
+        entry.card.classList.remove('is-approved');
+    }
+
+    _agUpdateSessionChangesButton();
+    _agLoadGitStatus();
+}
+
+function _agEditCurrentPatch() {
+    if (!_agCurrentReviewPath) return;
+    const entry = _agentsSessionChanges[_agCurrentReviewPath];
+    if (!entry) return;
+
+    _agClosePatchReviewModal();
+    const filesTabBtn = document.getElementById('agents-tab-files-btn');
+    if (filesTabBtn) {
+        filesTabBtn.click();
+        _agOpenFile(entry.path, entry.filename);
+    }
+}
+
+function _agInstructOnCurrentPatch() {
+    if (!_agCurrentReviewPath) return;
+    const entry = _agentsSessionChanges[_agCurrentReviewPath];
+    if (!entry) return;
+
+    _agClosePatchReviewModal();
+    const chatTabBtn = document.querySelector('.agents-main-tab-btn[data-tab="chat"]');
+    if (chatTabBtn) chatTabBtn.click();
+
+    const taskInput = _agEl('agents-task-input');
+    if (taskInput) {
+        taskInput.value = `Regarding ${entry.path}: `;
+        taskInput.focus();
+    }
+}
+
 function agentsInitEventHandlers() {
     // Quick-Switcher button
     const qsBtn = _agEl('agents-ws-quickswitch-btn');
@@ -3132,6 +3365,39 @@ function agentsInitEventHandlers() {
             _agCloseGitPopover();
         }
     });
+
+    // Session Changes Review button
+    const reviewChangesBtn = _agEl('agents-changes-review-btn');
+    if (reviewChangesBtn) reviewChangesBtn.addEventListener('click', () => _agOpenPatchReviewModal());
+
+    // Patch Review Modal buttons
+    const patchOverlay = _agEl('agents-patch-review-overlay');
+    if (patchOverlay) {
+        patchOverlay.addEventListener('click', (e) => {
+            if (e.target === patchOverlay) _agClosePatchReviewModal();
+        });
+    }
+    const patchCloseBtn = _agEl('agents-patch-modal-close');
+    if (patchCloseBtn) patchCloseBtn.addEventListener('click', _agClosePatchReviewModal);
+
+    const patchFileSel = _agEl('agents-patch-file-select');
+    if (patchFileSel) {
+        patchFileSel.addEventListener('change', (e) => {
+            _agOpenPatchReviewModal(e.target.value);
+        });
+    }
+
+    const patchApproveBtn = _agEl('agents-patch-btn-approve');
+    if (patchApproveBtn) patchApproveBtn.addEventListener('click', _agApproveCurrentPatch);
+
+    const patchRevertBtn = _agEl('agents-patch-btn-revert');
+    if (patchRevertBtn) patchRevertBtn.addEventListener('click', _agRevertCurrentPatch);
+
+    const patchEditBtn = _agEl('agents-patch-btn-edit');
+    if (patchEditBtn) patchEditBtn.addEventListener('click', _agEditCurrentPatch);
+
+    const patchInstructBtn = _agEl('agents-patch-btn-instruct');
+    if (patchInstructBtn) patchInstructBtn.addEventListener('click', _agInstructOnCurrentPatch);
 
     // Workspace select change
     const wsSel = _agEl('agents-workspace-select');
