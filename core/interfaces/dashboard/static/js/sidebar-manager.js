@@ -135,14 +135,6 @@
     }
 
     function buildRoot(view) {
-        // Home tab — always at the top
-        view.appendChild(makeTabBtn('suite-home'));
-
-        // Divider
-        const div = document.createElement('div');
-        div.className = 'snav-divider';
-        view.appendChild(div);
-
         // Category rows
         CATEGORIES.forEach(cat => {
             const hasActive = _activeTab && cat.tabs.includes(_activeTab);
