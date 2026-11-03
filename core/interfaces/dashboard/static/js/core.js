@@ -166,9 +166,12 @@ function initKeyboardShortcuts() {
             if (e.key === 'b' || e.key === 'B') {
                 e.preventDefault();
                 const nav = document.getElementById('sidebar-nav');
+                const btn = document.getElementById('sidebar-toggle');
                 if (nav) {
                     const isHidden = nav.classList.toggle('hidden');
+                    if (btn) btn.classList.toggle('active', !isHidden);
                     if (typeof savePreference === 'function') savePreference('sidebar_hidden', isHidden);
+                    try { localStorage.setItem('sidebar_hidden', isHidden); } catch (_) {}
                 }
                 return;
             }
@@ -487,12 +490,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 4. Restore other sidebar/UI states from preferences
         if (window.prefs && typeof window.prefs.get === 'function') {
-            const sidebarHidden = window.prefs.get('sidebar_hidden', false);
+            let sidebarHidden = false;
+            try {
+                const stored = localStorage.getItem('sidebar_hidden');
+                if (stored !== null) sidebarHidden = (stored === 'true');
+            } catch (_) {}
+            const prefHidden = window.prefs.get('sidebar_hidden', sidebarHidden);
+            if (prefHidden !== undefined) sidebarHidden = (prefHidden === true || prefHidden === 'true');
             const sidebarNav = document.getElementById('sidebar-nav');
+            const sidebarToggleBtn = document.getElementById('sidebar-toggle');
             if (sidebarNav) {
-                if (sidebarHidden === true || sidebarHidden === 'true') {
-                    sidebarNav.classList.add('hidden');
-                }
+                sidebarNav.classList.toggle('hidden', sidebarHidden);
+            }
+            if (sidebarToggleBtn) {
+                sidebarToggleBtn.classList.toggle('active', !sidebarHidden);
             }
 
             const threadsCollapsed = window.prefs.get('threads_collapsed', false);
@@ -808,11 +819,16 @@ function initializeUI() {
     const sidebarNav = document.getElementById('sidebar-nav');
 
     if (sidebarToggleBtn && sidebarNav) {
+        sidebarToggleBtn.classList.toggle('active', !sidebarNav.classList.contains('hidden'));
         sidebarToggleBtn.addEventListener('click', () => {
             const isHidden = sidebarNav.classList.toggle('hidden');
+            sidebarToggleBtn.classList.toggle('active', !isHidden);
             if (typeof savePreference === 'function') {
                 savePreference('sidebar_hidden', isHidden);
             }
+            try {
+                localStorage.setItem('sidebar_hidden', isHidden);
+            } catch (_) {}
         });
     }
 
@@ -1490,27 +1506,19 @@ async function switchMainTab(tabName, save = true) {
         }
     }
 
-    // Sidebar suppression — no sidebar on Chat, Code, AethvionDB, Companions, Automate
-    const _NO_SIDEBAR = new Set(['chat', 'agents', 'aethviondb', 'automate',
-        'companion-creator', 'misaka-cipher', 'axiom', 'lyra']);
-    const _suppress = _NO_SIDEBAR.has(actualTabName) || actualTabName.startsWith('custom-companion-');
-    const _sidebarEl     = document.getElementById('sidebar-nav');
-    const _toggleBtn     = document.getElementById('sidebar-toggle');
-    const _hideToggleBtn = document.getElementById('sidebar-hide-toggle');
-
+    // Sidebar consistency — maintain sidebar state globally across all tabs
+    const _sidebarEl = document.getElementById('sidebar-nav');
+    const _toggleBtn = document.getElementById('sidebar-toggle');
     if (_sidebarEl) {
-        if (_suppress) {
-            _sidebarEl.classList.add('sidebar-suppressed');
-        } else {
-            _sidebarEl.classList.remove('sidebar-suppressed');
+        _sidebarEl.classList.remove('sidebar-suppressed');
+    }
+    if (_toggleBtn) {
+        _toggleBtn.style.display = '';
+        if (_sidebarEl) {
+            _toggleBtn.classList.toggle('active', !_sidebarEl.classList.contains('hidden'));
         }
     }
-    if (_toggleBtn)     _toggleBtn.style.display     = _suppress ? 'none' : '';
-    if (_hideToggleBtn) _hideToggleBtn.style.display = _suppress ? 'none' : '';
-
-    // Remember the last sidebar-capable AI tab so the "AI" header button
-    // can always navigate back here (not to a sidebar-less tab like Chat).
-    if (!_suppress && actualTabName !== 'suite-home') {
+    if (actualTabName !== 'suite-home') {
         localStorage.setItem('_last_ai_hub_tab', actualTabName);
     }
 

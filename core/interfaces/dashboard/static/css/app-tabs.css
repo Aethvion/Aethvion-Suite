@@ -195,8 +195,32 @@ body {
 /* relocated dashboard controls */
 #app-tab-bar .sidebar-toggle-btn {
     align-self: center;
-    margin: 0 0.15rem 0 0.4rem;
+    margin: 0 0.25rem 0 0.35rem;
     flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+#app-tab-bar .sidebar-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+#app-tab-bar .sidebar-toggle-btn.active {
+    color: var(--primary, #00d2ff);
+    border-color: rgba(0, 210, 255, 0.3);
+    background: rgba(0, 210, 255, 0.08);
 }
 
 #app-tab-bar .hdr-nav {
