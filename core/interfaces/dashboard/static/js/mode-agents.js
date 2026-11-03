@@ -750,6 +750,22 @@ function _agResetDashboard() {
     if (actLog)       actLog.innerHTML           = '';
     if (planSection)  planSection.style.display  = 'none';
     if (planList)     planList.innerHTML          = '';
+
+    // Modern Plan Deck reset
+    const planDock = _agEl('agents-plan-dock');
+    if (planDock) {
+        planDock.style.display = 'none';
+        const dockList = _agEl('agents-plan-dock-list');
+        if (dockList) dockList.innerHTML = '';
+        const counterEl = _agEl('agents-plan-counter');
+        if (counterEl) counterEl.textContent = '0/0';
+        const barFill = _agEl('agents-plan-bar-fill');
+        if (barFill) { barFill.style.width = '0%'; barFill.classList.remove('completed'); }
+        const pctEl = _agEl('agents-plan-pct');
+        if (pctEl) pctEl.textContent = '0%';
+        const previewEl = _agEl('agents-plan-preview');
+        if (previewEl) { previewEl.textContent = 'Waiting to start...'; previewEl.classList.remove('error'); }
+    }
 }
 
 // Bootstrap a new run
@@ -780,6 +796,21 @@ function _agInitRender(isReplay = false) {
     const planList    = _agEl('agents-plan-compact-list');
     if (planSection) planSection.style.display = 'none';
     if (planList)    planList.innerHTML         = '';
+
+    const planDock = _agEl('agents-plan-dock');
+    if (planDock && !isReplay) {
+        planDock.style.display = 'none';
+        const dockList = _agEl('agents-plan-dock-list');
+        if (dockList) dockList.innerHTML = '';
+        const barFill = _agEl('agents-plan-bar-fill');
+        if (barFill) { barFill.style.width = '0%'; barFill.classList.remove('completed'); }
+        const counterEl = _agEl('agents-plan-counter');
+        if (counterEl) counterEl.textContent = '0/0';
+        const pctEl = _agEl('agents-plan-pct');
+        if (pctEl) pctEl.textContent = '0%';
+        const previewEl = _agEl('agents-plan-preview');
+        if (previewEl) { previewEl.textContent = 'Waiting to start...'; previewEl.classList.remove('error'); }
+    }
 
     // Right panel: show content area, add task separator if multiple tasks
     const rightEmpty   = _agEl('agents-dash-right-empty');
@@ -1103,7 +1134,7 @@ function _agAddThoughtCard(title, detail) {
     _agActivityLogAdd('🧠', title, '', null, detail || null);
 }
 
-function _agRenderPlanItems() {
+function _agRenderPlanItems(isError = false) {
     const s = _agentsRenderState;
     if (!s) return;
     // Right panel (hidden) — kept for compat
@@ -1124,6 +1155,99 @@ function _agRenderPlanItems() {
             planList.appendChild(row);
         });
     }
+
+    // Modern Docked Plan Progress Deck
+    const planDock   = _agEl('agents-plan-dock');
+    const dockList   = _agEl('agents-plan-dock-list');
+    const counterEl  = _agEl('agents-plan-counter');
+    const barFill    = _agEl('agents-plan-bar-fill');
+    const pctEl      = _agEl('agents-plan-pct');
+    const previewEl  = _agEl('agents-plan-preview');
+
+    if (planDock && s.planItems && s.planItems.length > 0) {
+        planDock.style.display = 'block';
+
+        const totalCount = s.planItems.length;
+        const doneCount  = s.planItems.filter(i => i.done).length;
+        const pctVal     = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+        const allDone    = (doneCount === totalCount && totalCount > 0);
+
+        if (counterEl) counterEl.textContent = `${doneCount}/${totalCount}`;
+        if (pctEl) pctEl.textContent = `${pctVal}%`;
+        if (barFill) {
+            barFill.style.width = `${pctVal}%`;
+            if (allDone) {
+                barFill.classList.add('completed');
+            } else {
+                barFill.classList.remove('completed');
+            }
+        }
+
+        // Active step is first incomplete step
+        const activeIdx = s.planItems.findIndex(i => !i.done);
+        if (previewEl) {
+            if (isError) {
+                previewEl.textContent = 'Plan interrupted by error';
+                previewEl.title = 'Plan interrupted by error';
+                previewEl.classList.add('error');
+            } else if (allDone) {
+                previewEl.textContent = 'All steps completed';
+                previewEl.title = 'All steps completed';
+                previewEl.classList.remove('error');
+            } else if (activeIdx >= 0) {
+                previewEl.textContent = `Active: ${s.planItems[activeIdx].text}`;
+                previewEl.title = `Active step ${activeIdx + 1}: ${s.planItems[activeIdx].text}`;
+                previewEl.classList.remove('error');
+            } else {
+                previewEl.textContent = 'Executing...';
+                previewEl.classList.remove('error');
+            }
+        }
+
+        if (dockList) {
+            dockList.innerHTML = '';
+            s.planItems.forEach((item, idx) => {
+                const isActive = (!item.done && idx === activeIdx);
+                const stepRow = document.createElement('div');
+                stepRow.className = 'agents-plan-step-item' +
+                    (item.done ? ' step-done' : (isActive ? ' step-active' : ' step-pending'));
+
+                let iconHtml = '<i class="far fa-circle"></i>';
+                let statusLabel = 'Pending';
+
+                if (item.done) {
+                    iconHtml = '<i class="fas fa-check"></i>';
+                    statusLabel = 'Done';
+                } else if (isActive) {
+                    if (isError) {
+                        iconHtml = '<i class="fas fa-times-circle"></i>';
+                        statusLabel = 'Error';
+                        stepRow.classList.add('step-error');
+                    } else {
+                        iconHtml = '<i class="fas fa-circle-notch fa-spin"></i>';
+                        statusLabel = 'In Progress';
+                    }
+                }
+
+                stepRow.innerHTML = `
+                    <span class="agents-plan-step-num">${idx + 1}</span>
+                    <span class="agents-plan-step-icon">${iconHtml}</span>
+                    <span class="agents-plan-step-text" title="${_htmlEscape(item.text)}">${_htmlEscape(item.text)}</span>
+                    <span class="agents-plan-step-status-tag">${statusLabel}</span>
+                `;
+                dockList.appendChild(stepRow);
+            });
+        }
+
+        const toggleHdr = _agEl('agents-plan-dock-toggle');
+        if (toggleHdr && !toggleHdr.dataset.toggleBound) {
+            toggleHdr.dataset.toggleBound = 'true';
+            toggleHdr.addEventListener('click', () => {
+                planDock.classList.toggle('is-collapsed');
+            });
+        }
+    }
+
     // Also render inline plan card in main chat
     _agRenderInlinePlan(s);
 }
@@ -2073,7 +2197,12 @@ function _agFinishRender(event, isReplay = false) {
 
     // Update activity log with final entry
     _agActivityLogAdd(isOk ? '✅' : '❌', isOk ? 'Done' : 'Error', isOk ? 'done' : 'error', event);
-    if (isOk) { s.planItems.forEach(i => { i.done = true; }); _agRenderPlanItems(); }
+    if (isOk) {
+        s.planItems.forEach(i => { i.done = true; });
+        _agRenderPlanItems(false);
+    } else {
+        _agRenderPlanItems(true);
+    }
 
     // Remove the inner typing indicator
     const ti = s.activity.querySelector('.agent-typing-indicator');

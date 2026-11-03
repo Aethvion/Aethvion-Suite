@@ -121,6 +121,30 @@
                             
                             <!-- Tab Content: Chat -->
                             <div id="agents-chat-tab-panel" class="agents-tab-content-panel active">
+                                <!-- Modern Live Execution Plan Deck -->
+                                <div id="agents-plan-dock" class="agents-plan-dock" style="display:none">
+                                    <div class="agents-plan-dock-header" id="agents-plan-dock-toggle">
+                                        <div class="agents-plan-dock-left">
+                                            <span class="agents-plan-dock-icon"><i class="fas fa-list-check"></i></span>
+                                            <span class="agents-plan-dock-title">Execution Plan</span>
+                                            <span class="agents-plan-dock-counter" id="agents-plan-counter">0/0</span>
+                                        </div>
+                                        <div class="agents-plan-dock-center">
+                                            <span class="agents-plan-dock-preview" id="agents-plan-preview" title="Current step">Waiting to start...</span>
+                                            <div class="agents-plan-bar-track">
+                                                <div class="agents-plan-bar-fill" id="agents-plan-bar-fill" style="width: 0%"></div>
+                                            </div>
+                                            <span class="agents-plan-dock-pct" id="agents-plan-pct">0%</span>
+                                        </div>
+                                        <div class="agents-plan-dock-right">
+                                            <button class="agents-plan-dock-toggle-btn" id="agents-plan-toggle-btn" title="Toggle plan checklist" type="button">
+                                                <i class="fas fa-chevron-down" id="agents-plan-toggle-icon"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="agents-plan-dock-list" id="agents-plan-dock-list"></div>
+                                </div>
+
                                 <div id="agents-messages" class="agents-messages">
                                     <div class="agents-empty-state" id="agents-empty-state">
                                         <div class="ae-empty-icon"><i class="fas fa-cog"></i></div>

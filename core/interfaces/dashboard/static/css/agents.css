@@ -4064,3 +4064,296 @@
     font-size: 0.75rem;
     color: #64748b;
 }
+
+
+/* --------------------------------------------------------------------------
+   Live Execution Plan Progress Deck
+   -------------------------------------------------------------------------- */
+.agents-plan-dock {
+    margin: 10px 14px 4px 14px;
+    background: rgba(10, 14, 23, 0.92);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), 0 0 15px rgba(56, 189, 248, 0.05);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.agents-plan-dock-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(15, 23, 42, 0.45);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+.agents-plan-dock-header:hover {
+    background: rgba(56, 189, 248, 0.06);
+}
+
+.agents-plan-dock-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.agents-plan-dock-icon {
+    color: #38bdf8;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+}
+
+.agents-plan-dock-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    letter-spacing: 0.02em;
+}
+
+.agents-plan-dock-counter {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    padding: 1px 7px;
+    border-radius: 9999px;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.agents-plan-dock-center {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.agents-plan-dock-preview {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 320px;
+    flex-shrink: 1;
+}
+
+.agents-plan-dock-preview.error {
+    color: #f87171;
+}
+
+.agents-plan-bar-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 9999px;
+    overflow: hidden;
+    min-width: 80px;
+    position: relative;
+}
+
+.agents-plan-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #38bdf8 0%, #06b6d4 100%);
+    border-radius: 9999px;
+    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+}
+
+.agents-plan-bar-fill.completed {
+    background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.agents-plan-dock-pct {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #38bdf8;
+    min-width: 34px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.agents-plan-dock-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.agents-plan-dock-toggle-btn {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    transition: color 0.15s ease;
+}
+
+.agents-plan-dock-toggle-btn:hover {
+    color: #38bdf8;
+}
+
+.agents-plan-dock-toggle-btn i {
+    transition: transform 0.2s ease;
+}
+
+.agents-plan-dock.is-collapsed #agents-plan-toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.agents-plan-dock.is-collapsed .agents-plan-dock-list {
+    display: none;
+}
+
+.agents-plan-dock-list {
+    padding: 6px 10px 10px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 220px;
+    overflow-y: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.agents-plan-step-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.agents-plan-step-item.step-done {
+    background: rgba(16, 185, 129, 0.04);
+    border-color: rgba(16, 185, 129, 0.18);
+}
+
+.agents-plan-step-item.step-done .agents-plan-step-icon {
+    color: #10b981;
+}
+
+.agents-plan-step-item.step-done .agents-plan-step-text {
+    color: #94a3b8;
+    text-decoration: line-through;
+    opacity: 0.8;
+}
+
+.agents-plan-step-item.step-done .agents-plan-step-status-tag {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.25);
+}
+
+.agents-plan-step-item.step-active {
+    background: rgba(56, 189, 248, 0.08);
+    border-color: rgba(56, 189, 248, 0.35);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.1);
+}
+
+.agents-plan-step-item.step-active .agents-plan-step-icon {
+    color: #38bdf8;
+}
+
+.agents-plan-step-item.step-active .agents-plan-step-text {
+    color: #ffffff;
+    font-weight: 500;
+}
+
+.agents-plan-step-item.step-active .agents-plan-step-status-tag {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.15);
+    border-color: rgba(56, 189, 248, 0.4);
+}
+
+.agents-plan-step-item.step-pending {
+    opacity: 0.65;
+    color: #64748b;
+}
+
+.agents-plan-step-item.step-pending .agents-plan-step-icon {
+    color: #475569;
+}
+
+.agents-plan-step-item.step-pending .agents-plan-step-text {
+    color: #94a3b8;
+}
+
+.agents-plan-step-item.step-pending .agents-plan-step-status-tag {
+    color: #64748b;
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
+.agents-plan-step-item.step-error {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.35);
+}
+
+.agents-plan-step-item.step-error .agents-plan-step-icon {
+    color: #ef4444;
+}
+
+.agents-plan-step-item.step-error .agents-plan-step-text {
+    color: #fca5a5;
+}
+
+.agents-plan-step-item.step-error .agents-plan-step-status-tag {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.agents-plan-step-num {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #475569;
+    min-width: 16px;
+    font-variant-numeric: tabular-nums;
+}
+
+.agents-plan-step-icon {
+    font-size: 0.74rem;
+    width: 14px;
+    text-align: center;
+    display: inline-flex;
+    justify-content: center;
+}
+
+.agents-plan-step-text {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.agents-plan-step-status-tag {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
