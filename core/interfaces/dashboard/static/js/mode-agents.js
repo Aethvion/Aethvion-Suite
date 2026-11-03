@@ -2427,8 +2427,11 @@ async function _agentsBrowserNavigate(path) {
 
     try {
         list.innerHTML = '<div class="agents-browser-loading">Loading…</div>';
-        const resp = await fetch(`/api/code/browse?path=${encodeURIComponent(path || '')}`);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        let resp = await fetch(`/api/code/browse?path=${encodeURIComponent(path || '')}`).catch(() => null);
+        if (!resp || !resp.ok) {
+            resp = await fetch(`/api/agents/browse?path=${encodeURIComponent(path || '')}`).catch(() => null);
+        }
+        if (!resp || !resp.ok) throw new Error(`HTTP ${resp ? resp.status : 'ERR'}`);
         const data = await resp.json();
 
         // Render breadcrumb — split path into clickable segments
@@ -2577,17 +2580,29 @@ async function _agentsNativeBrowse() {
 
     try {
         const currentPath = pathInput ? pathInput.value.trim() : '';
-        const url = '/api/code/browse/native' + (currentPath ? `?initial=${encodeURIComponent(currentPath)}` : '');
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
-
-        if (!data.cancelled && data.path) {
-            _agentsBrowserSelect(data.path, data.name || '');
+        // Try /api/code/browse/native, fallback to /api/agents/browse/native
+        let url = '/api/code/browse/native' + (currentPath ? `?initial=${encodeURIComponent(currentPath)}` : '');
+        let resp = await fetch(url).catch(() => null);
+        if (!resp || !resp.ok) {
+            url = '/api/agents/browse/native' + (currentPath ? `?initial=${encodeURIComponent(currentPath)}` : '');
+            resp = await fetch(url).catch(() => null);
         }
+
+        if (resp && resp.ok) {
+            const data = await resp.json();
+            if (!data.cancelled && data.path) {
+                _agentsBrowserSelect(data.path, data.name || '');
+                return;
+            } else if (data.cancelled) {
+                return; // User intentionally cancelled the OS picker
+            }
+        }
+
+        // Seamless fallback to the in-modal folder browser
+        await _agentsBrowserToggle();
     } catch (e) {
-        console.error('[Agents] Native browse error:', e);
-        if (typeof showToast === 'function') showToast('Could not open folder picker', 'error');
+        console.warn('[Agents] Native browse fallback to in-modal browser:', e);
+        await _agentsBrowserToggle();
     } finally {
         if (browseBtn) {
             browseBtn.disabled = false;

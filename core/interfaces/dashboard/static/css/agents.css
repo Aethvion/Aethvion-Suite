@@ -760,6 +760,46 @@
     border-top: 1px solid var(--border);
 }
 
+.agents-modal-footer button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 0.45rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+    line-height: 1.4;
+}
+
+.agents-modal-footer .btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #cbd5e1;
+}
+
+.agents-modal-footer .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
+.agents-modal-footer .btn-primary {
+    background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+}
+
+.agents-modal-footer .btn-primary:hover {
+    background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.45);
+}
+
 .agents-path-input-row {
     display: flex;
     gap: 0.4rem;
