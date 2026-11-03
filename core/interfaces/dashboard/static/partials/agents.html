@@ -39,6 +39,30 @@
                                     <button id="agents-delete-thread-btn" class="agents-icon-btn agents-icon-btn--danger" title="Delete Thread" style="display:none">
                                         <i class="fas fa-trash"></i>
                                     </button>
+                                    <!-- Replay Player trigger -->
+                                    <button id="agents-replay-trigger-btn" class="agents-icon-btn" title="Step-by-step Replay Player" style="display:none" type="button">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                    <!-- Export Dropdown -->
+                                    <div class="agents-export-dropdown-wrap" id="agents-export-wrap" style="display:none">
+                                        <button id="agents-export-btn" class="agents-icon-btn" title="Export Session (Markdown / JSON)" type="button">
+                                            <i class="fas fa-arrow-up-from-bracket"></i>
+                                        </button>
+                                        <div class="agents-export-menu" id="agents-export-menu" style="display:none">
+                                            <div class="agents-export-item" id="agents-export-md-btn">
+                                                <i class="fas fa-file-lines"></i>
+                                                <span>Export Markdown (.md)</span>
+                                            </div>
+                                            <div class="agents-export-item" id="agents-export-json-btn">
+                                                <i class="fas fa-file-code"></i>
+                                                <span>Export Raw Trace (.json)</span>
+                                            </div>
+                                            <div class="agents-export-item" id="agents-export-copy-btn">
+                                                <i class="fas fa-copy"></i>
+                                                <span>Copy Markdown to Clipboard</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -245,6 +269,41 @@
                             
                             <!-- Tab Content: Chat -->
                             <div id="agents-chat-tab-panel" class="agents-tab-content-panel active">
+                                <!-- Replay Player Control Bar -->
+                                <div id="agents-replay-bar" class="agents-replay-bar" style="display:none">
+                                    <div class="agents-replay-left">
+                                        <span class="agents-replay-tag"><i class="fas fa-film"></i> Replay Mode</span>
+                                        <span class="agents-replay-step-counter" id="agents-replay-step-counter">Step 0 / 0</span>
+                                    </div>
+                                    <div class="agents-replay-center">
+                                        <button class="agents-replay-btn" id="agents-replay-prev-btn" title="Previous Step" type="button">
+                                            <i class="fas fa-step-backward"></i>
+                                        </button>
+                                        <button class="agents-replay-btn agents-replay-btn--play" id="agents-replay-play-btn" title="Play / Pause" type="button">
+                                            <i class="fas fa-play" id="agents-replay-play-icon"></i>
+                                        </button>
+                                        <button class="agents-replay-btn" id="agents-replay-next-btn" title="Next Step" type="button">
+                                            <i class="fas fa-step-forward"></i>
+                                        </button>
+                                        <div class="agents-replay-track-wrap">
+                                            <input type="range" min="0" max="100" value="0" class="agents-replay-seeker" id="agents-replay-seeker" />
+                                        </div>
+                                        <div class="agents-replay-speed-wrap">
+                                            <select class="agents-replay-speed" id="agents-replay-speed" title="Replay Speed">
+                                                <option value="1000">1x (1s)</option>
+                                                <option value="500" selected>2x (0.5s)</option>
+                                                <option value="200">5x (0.2s)</option>
+                                                <option value="50">Fast (50ms)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="agents-replay-right">
+                                        <button class="agents-replay-close-btn" id="agents-replay-close-btn" title="Exit Replay" type="button">
+                                            <i class="fas fa-times"></i> Exit
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <!-- Modern Live Execution Plan Deck -->
                                 <div id="agents-plan-dock" class="agents-plan-dock" style="display:none">
                                     <div class="agents-plan-dock-header" id="agents-plan-dock-toggle">

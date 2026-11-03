@@ -239,6 +239,9 @@ function _agentsClearThreadSelect() {
     const delBtn = _agEl('agents-delete-thread-btn');
     if (editBtn) editBtn.style.display = 'none';
     if (delBtn) delBtn.style.display = 'none';
+    _agentsCurrentThreadMessages = [];
+    _agUpdateThreadActionButtons();
+    _agExitReplay();
 }
 
 async function _agentsOnThreadSelectChange() {
@@ -289,7 +292,9 @@ async function agentsLoadThreadMessages(workspaceId, threadId) {
             last_active: thread.last_active,
             message_count: (thread.messages || []).length,
         };
-        _agentsRenderMessages(thread.messages || []);
+        _agentsCurrentThreadMessages = thread.messages || [];
+        _agUpdateThreadActionButtons();
+        _agentsRenderMessages(_agentsCurrentThreadMessages);
     } catch (e) {
         console.error('[Agents] Failed to load thread messages:', e);
     }
@@ -3274,6 +3279,319 @@ function _agInstructOnCurrentPatch() {
     }
 }
 
+/* --------------------------------------------------------------------------
+   Session Export & Replay Player
+   -------------------------------------------------------------------------- */
+let _agentsCurrentThreadMessages = [];
+let _agReplayQueue = [];
+let _agReplayCurrentIndex = 0;
+let _agReplayTimer = null;
+let _agReplayIsActive = false;
+
+function _agUpdateThreadActionButtons() {
+    const exportWrap = _agEl('agents-export-wrap');
+    const replayBtn  = _agEl('agents-replay-trigger-btn');
+    const hasMsgs    = _agentsCurrentThreadMessages && _agentsCurrentThreadMessages.length > 0;
+    if (exportWrap) exportWrap.style.display = hasMsgs ? 'inline-block' : 'none';
+    if (replayBtn)  replayBtn.style.display  = hasMsgs ? 'inline-flex' : 'none';
+}
+
+function _agDownloadBlob(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function _agGenerateMarkdownReport() {
+    const ws     = _agentsCurrentWorkspace;
+    const thread = _agentsCurrentThread;
+    const msgs   = _agentsCurrentThreadMessages || [];
+
+    const lines = [];
+    lines.push(`# Session Trace: ${thread?.name || 'Code Session'}`);
+    lines.push('');
+    lines.push(`- **Workspace:** ${ws ? ws.name : 'Unknown'} (\`${ws ? ws.path : ''}\`)`);
+    lines.push(`- **Thread ID:** \`${thread ? thread.id : 'unknown'}\``);
+    lines.push(`- **Exported At:** ${new Date().toLocaleString()}`);
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+
+    let promptNum = 1;
+    for (const msg of msgs) {
+        if (msg.role === 'user') {
+            lines.push(`## 👤 User Prompt #${promptNum++}`);
+            lines.push('');
+            lines.push(msg.content ? msg.content.trim() : '');
+            lines.push('');
+        } else if (msg.role === 'agent_steps') {
+            lines.push(`### 🤖 Agent Execution Steps`);
+            lines.push('');
+            const events = msg.events || [];
+            let inCmd = false;
+            let cmdBuffer = '';
+            let currentCmd = '';
+
+            for (const ev of events) {
+                if (ev.type === 'start') {
+                    lines.push(`- 🚀 **Task Started**`);
+                } else if (ev.type === 'thinking') {
+                    const title = ev.title || 'Thinking';
+                    const detail = ev.detail ? `: ${ev.detail.trim()}` : '';
+                    lines.push(`- 🧠 **${title}**${detail}`);
+                } else if (ev.type === 'cmd_start') {
+                    currentCmd = ev.command || ev.title || '';
+                    cmdBuffer = '';
+                    inCmd = true;
+                } else if (ev.type === 'cmd_out') {
+                    if (inCmd) cmdBuffer += (ev.detail || '');
+                } else if (ev.type === 'cmd_end') {
+                    lines.push(`- ⚡ **Executed Command**: \`${currentCmd}\``);
+                    if (cmdBuffer.trim()) {
+                        lines.push('```bash');
+                        lines.push(cmdBuffer.trim());
+                        lines.push('```');
+                    }
+                    inCmd = false;
+                } else if (ev.type === 'tool' || ev.type === 'command') {
+                    lines.push(`- ⚡ **Tool Action**: \`${ev.title || ev.command || ''}\``);
+                    if (ev.detail) {
+                        lines.push('```bash');
+                        lines.push(ev.detail.trim());
+                        lines.push('```');
+                    }
+                } else if (ev.type === 'file' || ev.op === 'write_file' || ev.op === 'patch_file') {
+                    const path = ev.path || 'file';
+                    const isNew = ev.is_new ? ' (New File)' : '';
+                    lines.push(`- 📝 **File Modified**: \`${path}\`${isNew}`);
+                    if (ev.diff) {
+                        lines.push('```diff');
+                        lines.push(ev.diff.trim());
+                        lines.push('```');
+                    }
+                } else if (ev.type === 'usage') {
+                    lines.push(`- 📊 **Token Usage**: ${ev.input_tokens || 0} input / ${ev.output_tokens || 0} output tokens`);
+                } else if (ev.type === 'done') {
+                    lines.push(`- ✅ **Run Completed**`);
+                    if (ev.detail && ev.detail.trim()) {
+                        lines.push('');
+                        lines.push(`**Output:**`);
+                        lines.push(ev.detail.trim());
+                        lines.push('');
+                    }
+                } else if (ev.type === 'error') {
+                    lines.push(`- ❌ **Run Failed**: ${ev.title || ''} ${ev.detail || ''}`);
+                }
+            }
+            lines.push('');
+        } else if (msg.role === 'assistant') {
+            lines.push(`### 💬 Response`);
+            lines.push('');
+            lines.push(msg.content ? msg.content.trim() : '');
+            lines.push('');
+        }
+    }
+
+    return lines.join('\n');
+}
+
+function _agExportMarkdown() {
+    const md = _agGenerateMarkdownReport();
+    const name = (_agentsCurrentThread?.name || 'session').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    _agDownloadBlob(md, `${name}_trace.md`, 'text/markdown;charset=utf-8');
+    const menu = _agEl('agents-export-menu');
+    if (menu) menu.style.display = 'none';
+}
+
+function _agExportJson() {
+    const json = JSON.stringify({
+        workspace: _agentsCurrentWorkspace,
+        thread: _agentsCurrentThread,
+        exported_at: new Date().toISOString(),
+        messages: _agentsCurrentThreadMessages
+    }, null, 2);
+    const name = (_agentsCurrentThread?.name || 'session').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    _agDownloadBlob(json, `${name}_trace.json`, 'application/json;charset=utf-8');
+    const menu = _agEl('agents-export-menu');
+    if (menu) menu.style.display = 'none';
+}
+
+function _agCopyMarkdownToClipboard() {
+    const md = _agGenerateMarkdownReport();
+    navigator.clipboard.writeText(md).then(() => {
+        const copyBtn = _agEl('agents-export-copy-btn');
+        if (copyBtn) {
+            const origHtml = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i class="fas fa-check" style="color: #10b981;"></i> <span>Copied to Clipboard!</span>';
+            setTimeout(() => { copyBtn.innerHTML = origHtml; }, 2000);
+        }
+    });
+}
+
+function _agStartReplay() {
+    if (!_agentsCurrentThreadMessages || _agentsCurrentThreadMessages.length === 0) return;
+
+    // Flatten messages and events into granular replay steps
+    const queue = [];
+    for (const msg of _agentsCurrentThreadMessages) {
+        if (msg.role === 'user') {
+            queue.push({ kind: 'message', data: msg });
+        } else if (msg.role === 'agent_steps') {
+            for (const ev of (msg.events || [])) {
+                queue.push({ kind: 'step', data: ev });
+            }
+        } else if (msg.role === 'assistant') {
+            queue.push({ kind: 'message', data: msg });
+        }
+    }
+
+    if (queue.length === 0) return;
+
+    _agReplayQueue = queue;
+    _agReplayCurrentIndex = 0;
+    _agReplayIsActive = true;
+
+    // Show replay bar
+    const bar = _agEl('agents-replay-bar');
+    if (bar) bar.style.display = 'flex';
+
+    const seeker = _agEl('agents-replay-seeker');
+    if (seeker) {
+        seeker.min = '0';
+        seeker.max = String(queue.length);
+        seeker.value = '0';
+    }
+
+    const counter = _agEl('agents-replay-step-counter');
+    if (counter) counter.textContent = `Step 0 / ${queue.length}`;
+
+    // Clear messages view and start fresh
+    const container = _agEl('agents-messages');
+    if (container) {
+        container.querySelectorAll('.agents-message, .agent-run, .agent-typing-indicator').forEach(el => el.remove());
+    }
+    _agResetDashboard();
+
+    // Auto-advance first step
+    _agReplayStepForward();
+}
+
+function _agReplayStepForward() {
+    if (_agReplayCurrentIndex >= _agReplayQueue.length) {
+        _agReplayPause();
+        return;
+    }
+
+    const item = _agReplayQueue[_agReplayCurrentIndex];
+    if (item.kind === 'message') {
+        _agentsAppendMessage(item.data, true, true);
+    } else if (item.kind === 'step') {
+        renderAgentStep(item.data, true);
+    }
+
+    _agReplayCurrentIndex++;
+
+    const seeker = _agEl('agents-replay-seeker');
+    if (seeker) seeker.value = String(_agReplayCurrentIndex);
+
+    const counter = _agEl('agents-replay-step-counter');
+    if (counter) counter.textContent = `Step ${_agReplayCurrentIndex} / ${_agReplayQueue.length}`;
+
+    if (_agReplayCurrentIndex >= _agReplayQueue.length) {
+        _agReplayPause();
+    }
+}
+
+function _agReplayStepBackward() {
+    _agReplayPause();
+    const target = Math.max(0, _agReplayCurrentIndex - 1);
+    _agReplaySeekTo(target);
+}
+
+function _agReplaySeekTo(targetIndex) {
+    _agReplayPause();
+    targetIndex = Math.max(0, Math.min(targetIndex, _agReplayQueue.length));
+
+    const container = _agEl('agents-messages');
+    if (container) {
+        container.querySelectorAll('.agents-message, .agent-run, .agent-typing-indicator').forEach(el => el.remove());
+    }
+    _agResetDashboard();
+
+    for (let i = 0; i < targetIndex; i++) {
+        const item = _agReplayQueue[i];
+        if (item.kind === 'message') {
+            _agentsAppendMessage(item.data, false, true);
+        } else if (item.kind === 'step') {
+            renderAgentStep(item.data, true);
+        }
+    }
+
+    _agReplayCurrentIndex = targetIndex;
+
+    const seeker = _agEl('agents-replay-seeker');
+    if (seeker) seeker.value = String(targetIndex);
+
+    const counter = _agEl('agents-replay-step-counter');
+    if (counter) counter.textContent = `Step ${targetIndex} / ${_agReplayQueue.length}`;
+
+    if (container) container.scrollTop = container.scrollHeight;
+}
+
+function _agReplayPlayPauseToggle() {
+    if (_agReplayTimer !== null) {
+        _agReplayPause();
+    } else {
+        if (_agReplayCurrentIndex >= _agReplayQueue.length) {
+            _agReplaySeekTo(0);
+        }
+        _agReplayPlay();
+    }
+}
+
+function _agReplayPlay() {
+    _agReplayPause();
+    const playIcon = _agEl('agents-replay-play-icon');
+    if (playIcon) {
+        playIcon.className = 'fas fa-pause';
+    }
+
+    const speedSel = _agEl('agents-replay-speed');
+    const speed = speedSel ? parseInt(speedSel.value, 10) : 500;
+
+    _agReplayTimer = setInterval(() => {
+        _agReplayStepForward();
+    }, speed);
+}
+
+function _agReplayPause() {
+    if (_agReplayTimer !== null) {
+        clearInterval(_agReplayTimer);
+        _agReplayTimer = null;
+    }
+    const playIcon = _agEl('agents-replay-play-icon');
+    if (playIcon) {
+        playIcon.className = 'fas fa-play';
+    }
+}
+
+function _agExitReplay() {
+    _agReplayPause();
+    _agReplayIsActive = false;
+    const bar = _agEl('agents-replay-bar');
+    if (bar) bar.style.display = 'none';
+
+    if (_agentsCurrentThreadMessages && _agentsCurrentThreadMessages.length > 0) {
+        _agentsRenderMessages(_agentsCurrentThreadMessages);
+    }
+}
+
 function agentsInitEventHandlers() {
     // Quick-Switcher button
     const qsBtn = _agEl('agents-ws-quickswitch-btn');
@@ -3365,6 +3683,67 @@ function agentsInitEventHandlers() {
             _agCloseGitPopover();
         }
     });
+
+    // Export Dropdown Trigger
+    const exportBtn = _agEl('agents-export-btn');
+    const exportMenu = _agEl('agents-export-menu');
+    if (exportBtn && exportMenu) {
+        exportBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            exportMenu.style.display = exportMenu.style.display === 'block' ? 'none' : 'block';
+        });
+    }
+
+    const exportMdBtn = _agEl('agents-export-md-btn');
+    if (exportMdBtn) exportMdBtn.addEventListener('click', _agExportMarkdown);
+
+    const exportJsonBtn = _agEl('agents-export-json-btn');
+    if (exportJsonBtn) exportJsonBtn.addEventListener('click', _agExportJson);
+
+    const exportCopyBtn = _agEl('agents-export-copy-btn');
+    if (exportCopyBtn) exportCopyBtn.addEventListener('click', _agCopyMarkdownToClipboard);
+
+    document.addEventListener('click', (e) => {
+        const wrap = _agEl('agents-export-wrap');
+        const menu = _agEl('agents-export-menu');
+        if (menu && menu.style.display === 'block') {
+            if (!wrap || !wrap.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        }
+    });
+
+    // Replay Player Trigger
+    const replayTriggerBtn = _agEl('agents-replay-trigger-btn');
+    if (replayTriggerBtn) replayTriggerBtn.addEventListener('click', _agStartReplay);
+
+    const replayPlayBtn = _agEl('agents-replay-play-btn');
+    if (replayPlayBtn) replayPlayBtn.addEventListener('click', _agReplayPlayPauseToggle);
+
+    const replayNextBtn = _agEl('agents-replay-next-btn');
+    if (replayNextBtn) replayNextBtn.addEventListener('click', _agReplayStepForward);
+
+    const replayPrevBtn = _agEl('agents-replay-prev-btn');
+    if (replayPrevBtn) replayPrevBtn.addEventListener('click', _agReplayStepBackward);
+
+    const replayCloseBtn = _agEl('agents-replay-close-btn');
+    if (replayCloseBtn) replayCloseBtn.addEventListener('click', _agExitReplay);
+
+    const replaySeeker = _agEl('agents-replay-seeker');
+    if (replaySeeker) {
+        replaySeeker.addEventListener('input', (e) => {
+            _agReplaySeekTo(parseInt(e.target.value, 10));
+        });
+    }
+
+    const replaySpeedSel = _agEl('agents-replay-speed');
+    if (replaySpeedSel) {
+        replaySpeedSel.addEventListener('change', () => {
+            if (_agReplayTimer !== null) {
+                _agReplayPlay();
+            }
+        });
+    }
 
     // Session Changes Review button
     const reviewChangesBtn = _agEl('agents-changes-review-btn');
