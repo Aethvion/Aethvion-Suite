@@ -721,7 +721,7 @@ function initializeWebSockets() {
 
     // Agents WebSocket
     if (!agentsWs || agentsWs.readyState === WebSocket.CLOSED) {
-        agentsWs = new WebSocket(`${wsProtocol}//${wsHost}/ws/agents`);
+        agentsWs = new WebSocket(`${wsProtocol}//${wsHost}/ws/code`);
         if (typeof handleAgentsUpdate === 'function') agentsWs.onmessage = handleAgentsUpdate;
     }
 }

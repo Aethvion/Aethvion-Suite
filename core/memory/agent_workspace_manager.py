@@ -170,3 +170,7 @@ class AgentWorkspaceManager:
             return []
         messages = thread.get("messages", [])
         return messages[-limit:] if limit > 0 else messages
+
+
+# Code Workspace Manager alias
+CodeWorkspaceManager = AgentWorkspaceManager

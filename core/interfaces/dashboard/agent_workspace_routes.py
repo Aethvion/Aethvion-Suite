@@ -20,10 +20,12 @@ from core.memory.agent_workspace_manager import AgentWorkspaceManager
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/api/agents", tags=["agents"])
+# Base router collecting all code/agent workspace endpoints
+_router = APIRouter()
 
 # Singleton workspace manager — also imported by task_queue for context injection
 workspace_manager = AgentWorkspaceManager(HISTORY_AGENTS)
+CodeWorkspaceManager = AgentWorkspaceManager
 
 
 # Request models
@@ -70,7 +72,7 @@ class ChecklistItemUpdateRequest(BaseModel):
 
 # Workspace endpoints
 
-@router.get("/workspaces")
+@_router.get("/workspaces")
 async def list_workspaces():
     """List all agent workspaces."""
     try:
@@ -80,7 +82,7 @@ async def list_workspaces():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/workspaces", status_code=201)
+@_router.post("/workspaces", status_code=201)
 async def create_workspace(request: WorkspaceCreateRequest):
     """Create a new workspace."""
     try:
@@ -91,7 +93,7 @@ async def create_workspace(request: WorkspaceCreateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/workspaces/{workspace_id}")
+@_router.get("/workspaces/{workspace_id}")
 async def get_workspace(workspace_id: str):
     """Get a single workspace by ID."""
     ws = workspace_manager.get_workspace(workspace_id)
@@ -100,7 +102,7 @@ async def get_workspace(workspace_id: str):
     return ws
 
 
-@router.patch("/workspaces/{workspace_id}")
+@_router.patch("/workspaces/{workspace_id}")
 async def update_workspace(workspace_id: str, request: WorkspaceUpdateRequest):
     """Update workspace name or path."""
     ws = workspace_manager.update_workspace(workspace_id, name=request.name, path=request.path)
@@ -109,7 +111,7 @@ async def update_workspace(workspace_id: str, request: WorkspaceUpdateRequest):
     return ws
 
 
-@router.delete("/workspaces/{workspace_id}")
+@_router.delete("/workspaces/{workspace_id}")
 async def delete_workspace(workspace_id: str):
     """Delete a workspace and all its threads."""
     ok = workspace_manager.delete_workspace(workspace_id)
@@ -120,7 +122,7 @@ async def delete_workspace(workspace_id: str):
 
 # Folder browser endpoints
 
-@router.get("/browse/native")
+@_router.get("/browse/native")
 async def browse_folder_native(initial: str = Query(default="")):
     """
     Open the native OS folder-picker dialog (Windows Explorer / macOS Finder)
@@ -156,7 +158,7 @@ async def browse_folder_native(initial: str = Query(default="")):
     return {"path": None, "name": None, "cancelled": True}
 
 
-@router.get("/browse")
+@_router.get("/browse")
 async def browse_folder(path: str = Query(default="")):
     """
     Server-side folder browser. Returns subdirectories at the given path.
@@ -193,7 +195,7 @@ async def browse_folder(path: str = Query(default="")):
 
 # Thread endpoints
 
-@router.get("/workspaces/{workspace_id}/threads")
+@_router.get("/workspaces/{workspace_id}/threads")
 async def list_threads(workspace_id: str):
     """List all threads in a workspace."""
     if not workspace_manager.get_workspace(workspace_id):
@@ -201,7 +203,7 @@ async def list_threads(workspace_id: str):
     return {"threads": workspace_manager.list_threads(workspace_id)}
 
 
-@router.post("/workspaces/{workspace_id}/threads", status_code=201)
+@_router.post("/workspaces/{workspace_id}/threads", status_code=201)
 async def create_thread(workspace_id: str, request: ThreadCreateRequest):
     """Create a new thread in a workspace."""
     thread = workspace_manager.create_thread(workspace_id, name=request.name)
@@ -210,7 +212,7 @@ async def create_thread(workspace_id: str, request: ThreadCreateRequest):
     return thread
 
 
-@router.get("/workspaces/{workspace_id}/threads/{thread_id}")
+@_router.get("/workspaces/{workspace_id}/threads/{thread_id}")
 async def get_thread(workspace_id: str, thread_id: str):
     """Get a thread (including messages)."""
     thread = workspace_manager.get_thread(workspace_id, thread_id)
@@ -219,7 +221,7 @@ async def get_thread(workspace_id: str, thread_id: str):
     return thread
 
 
-@router.patch("/workspaces/{workspace_id}/threads/{thread_id}")
+@_router.patch("/workspaces/{workspace_id}/threads/{thread_id}")
 async def rename_thread(workspace_id: str, thread_id: str, request: ThreadRenameRequest):
     """Rename a thread."""
     ok = workspace_manager.rename_thread(workspace_id, thread_id, request.name)
@@ -228,7 +230,7 @@ async def rename_thread(workspace_id: str, thread_id: str, request: ThreadRename
     return {"status": "renamed", "name": request.name}
 
 
-@router.delete("/workspaces/{workspace_id}/threads/{thread_id}")
+@_router.delete("/workspaces/{workspace_id}/threads/{thread_id}")
 async def delete_thread(workspace_id: str, thread_id: str):
     """Delete a thread."""
     ok = workspace_manager.delete_thread(workspace_id, thread_id)
@@ -237,7 +239,7 @@ async def delete_thread(workspace_id: str, thread_id: str):
     return {"status": "deleted", "id": thread_id}
 
 
-@router.get("/workspaces/{workspace_id}/threads/{thread_id}/state")
+@_router.get("/workspaces/{workspace_id}/threads/{thread_id}/state")
 async def get_thread_checkpoint_state(workspace_id: str, thread_id: str):
     """Return the saved AgentState checkpoint for a thread, if one exists.
 
@@ -273,7 +275,7 @@ async def get_thread_checkpoint_state(workspace_id: str, thread_id: str):
         return {"has_state": False, "is_interrupted": False}
 
 
-@router.get("/workspaces/{workspace_id}/threads/{thread_id}/history")
+@_router.get("/workspaces/{workspace_id}/threads/{thread_id}/history")
 async def get_thread_history(workspace_id: str, thread_id: str, limit: int = 20):
     """Get message history for a thread."""
     thread = workspace_manager.get_thread(workspace_id, thread_id)
@@ -287,7 +289,7 @@ async def get_thread_history(workspace_id: str, thread_id: str, limit: int = 20)
 
 # File restore (undo)
 
-@router.post("/workspaces/{workspace_id}/restore")
+@_router.post("/workspaces/{workspace_id}/restore")
 async def restore_workspace_file(workspace_id: str, request: RestoreFileRequest):
     """Restore a file from its .aethvion_backup/ snapshot (created before every write/patch/delete)."""
     ws = workspace_manager.get_workspace(workspace_id)
@@ -315,7 +317,7 @@ async def restore_workspace_file(workspace_id: str, request: RestoreFileRequest)
 
 _AGENTS_MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
-@router.post("/upload")
+@_router.post("/upload")
 async def upload_agent_file(
     file: UploadFile = File(...),
     workspace_id: str = Query(..., description="Target workspace ID"),
@@ -380,7 +382,7 @@ class FileSaveRequest(BaseModel):
     content: str
 
 
-@router.get("/workspace/tree")
+@_router.get("/workspace/tree")
 async def get_workspace_tree(path: str):
     """
     Given an absolute path to a workspace folder, return a list of immediate 
@@ -410,7 +412,7 @@ async def get_workspace_tree(path: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/workspace/file-content")
+@_router.get("/workspace/file-content")
 async def get_workspace_file_content(path: str):
     """
     Read the text content of a file within the workspace safely.
@@ -435,7 +437,7 @@ async def get_workspace_file_content(path: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/workspace/file-save")
+@_router.post("/workspace/file-save")
 async def save_workspace_file_content(request: FileSaveRequest):
     """
     Save manual edits to a file within the workspace safely.
@@ -455,7 +457,7 @@ async def save_workspace_file_content(request: FileSaveRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/workspace/search")
+@_router.get("/workspace/search")
 async def search_workspace_content(path: str, query: str):
     """
     Search for a text query recursively in files inside the workspace path.
@@ -527,13 +529,13 @@ def _get_pm(workspace_id: str):
     return ProjectMemory(workspace_id, HISTORY_AGENTS)
 
 
-@router.get("/workspaces/{workspace_id}/memory")
+@_router.get("/workspaces/{workspace_id}/memory")
 async def list_memory(workspace_id: str):
     """List all project memory items for a workspace."""
     return {"items": _get_pm(workspace_id).load()}
 
 
-@router.post("/workspaces/{workspace_id}/memory", status_code=201)
+@_router.post("/workspaces/{workspace_id}/memory", status_code=201)
 async def add_memory_item(workspace_id: str, req: MemoryItemRequest):
     """Add a new project memory item."""
     import uuid as _uuid
@@ -550,7 +552,7 @@ async def add_memory_item(workspace_id: str, req: MemoryItemRequest):
     return item
 
 
-@router.patch("/workspaces/{workspace_id}/memory/{item_id}")
+@_router.patch("/workspaces/{workspace_id}/memory/{item_id}")
 async def update_memory_item(workspace_id: str, item_id: str, req: MemoryItemUpdateRequest):
     """Update text/title/category of a memory item."""
     updates = {k: v for k, v in req.model_dump().items() if v is not None}
@@ -560,7 +562,7 @@ async def update_memory_item(workspace_id: str, item_id: str, req: MemoryItemUpd
     return item
 
 
-@router.delete("/workspaces/{workspace_id}/memory/{item_id}", status_code=204)
+@_router.delete("/workspaces/{workspace_id}/memory/{item_id}", status_code=204)
 async def delete_memory_item(workspace_id: str, item_id: str):
     """Delete a project memory item."""
     ok = _get_pm(workspace_id).delete_item(item_id)
@@ -568,7 +570,7 @@ async def delete_memory_item(workspace_id: str, item_id: str):
         raise HTTPException(status_code=404, detail="Memory item not found")
 
 
-@router.patch("/workspaces/{workspace_id}/memory/{checklist_id}/items/{item_id}")
+@_router.patch("/workspaces/{workspace_id}/memory/{checklist_id}/items/{item_id}")
 async def update_checklist_item(
     workspace_id: str,
     checklist_id: str,
@@ -580,3 +582,16 @@ async def update_checklist_item(
     if not ok:
         raise HTTPException(status_code=404, detail="Checklist item not found")
     return {"ok": True}
+
+
+# ── Dual Route Mounting (/api/code & /api/agents) ───────────────────────────
+# Primary modern router for Code Studio
+code_router = APIRouter(prefix="/api/code", tags=["code"])
+code_router.include_router(_router)
+
+# Backward-compatible alias router for legacy callers
+agents_router = APIRouter(prefix="/api/agents", tags=["agents"])
+agents_router.include_router(_router)
+
+# Default router export for backward compatibility
+router = agents_router

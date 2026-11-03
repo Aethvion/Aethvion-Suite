@@ -42,7 +42,7 @@ function _agentsRenderMarkdown(text) {
 // Workspace list
 async function agentsLoadWorkspaces() {
     try {
-        const resp = await fetch('/api/agents/workspaces');
+        const resp = await fetch('/api/code/workspaces');
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         _agentsWorkspaces = data.workspaces || [];
@@ -159,7 +159,7 @@ async function _agentsOnWorkspaceSelectChange() {
 // Thread list
 async function agentsLoadThreads(workspaceId) {
     try {
-        const resp = await fetch(`/api/agents/workspaces/${workspaceId}/threads`);
+        const resp = await fetch(`/api/code/workspaces/${workspaceId}/threads`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         let threads = data.threads || [];
@@ -168,7 +168,7 @@ async function agentsLoadThreads(workspaceId) {
         let autoCreatedThread = null;
         if (threads.length === 0) {
             try {
-                const createResp = await fetch(`/api/agents/workspaces/${workspaceId}/threads`, {
+                const createResp = await fetch(`/api/code/workspaces/${workspaceId}/threads`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name: 'Thread 1' }),
@@ -270,7 +270,7 @@ async function _agentsOnThreadSelectChange() {
 
 async function agentsLoadThreadMessages(workspaceId, threadId) {
     try {
-        const resp = await fetch(`/api/agents/workspaces/${workspaceId}/threads/${threadId}`);
+        const resp = await fetch(`/api/code/workspaces/${workspaceId}/threads/${threadId}`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const thread = await resp.json();
         _agentsCurrentThread = {
@@ -517,7 +517,7 @@ async function agentsStopTask() {
 // Auto-rename thread after first task
 async function _agAutoRenameThread(wsId, threadId, name) {
     try {
-        const res = await fetch(`/api/agents/workspaces/${wsId}/threads/${threadId}`, {
+        const res = await fetch(`/api/code/workspaces/${wsId}/threads/${threadId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name }),
@@ -1915,7 +1915,7 @@ async function _agRestoreFile(path, btnEl) {
     btnEl.disabled = true;
     btnEl.textContent = '…';
     try {
-        const res = await fetch(`/api/agents/workspaces/${wsId}/restore`, {
+        const res = await fetch(`/api/code/workspaces/${wsId}/restore`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ path }),
@@ -2146,7 +2146,7 @@ async function _agentsBrowserNavigate(path) {
 
     try {
         list.innerHTML = '<div class="agents-browser-loading">Loading…</div>';
-        const resp = await fetch(`/api/agents/browse?path=${encodeURIComponent(path || '')}`);
+        const resp = await fetch(`/api/code/browse?path=${encodeURIComponent(path || '')}`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
 
@@ -2296,7 +2296,7 @@ async function _agentsNativeBrowse() {
 
     try {
         const currentPath = pathInput ? pathInput.value.trim() : '';
-        const url = '/api/agents/browse/native' + (currentPath ? `?initial=${encodeURIComponent(currentPath)}` : '');
+        const url = '/api/code/browse/native' + (currentPath ? `?initial=${encodeURIComponent(currentPath)}` : '');
         const resp = await fetch(url);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
@@ -2332,7 +2332,7 @@ async function agentsConfirmWorkspaceModal() {
 
     try {
         if (editMode && _agentsCurrentWorkspace) {
-            const resp = await fetch(`/api/agents/workspaces/${_agentsCurrentWorkspace.id}`, {
+            const resp = await fetch(`/api/code/workspaces/${_agentsCurrentWorkspace.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path, name: name || undefined })
@@ -2347,7 +2347,7 @@ async function agentsConfirmWorkspaceModal() {
                 await _agentsOnWorkspaceSelectChange();
             }
         } else {
-            const resp = await fetch('/api/agents/workspaces', {
+            const resp = await fetch('/api/code/workspaces', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path, name: name || undefined })
@@ -2388,7 +2388,7 @@ async function agentsDeleteWorkspace() {
 
 async function _agentsDoDeleteWorkspace() {
     try {
-        const resp = await fetch(`/api/agents/workspaces/${_agentsCurrentWorkspace.id}`, { method: 'DELETE' });
+        const resp = await fetch(`/api/code/workspaces/${_agentsCurrentWorkspace.id}`, { method: 'DELETE' });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         _agentsCurrentWorkspace = null;
         _agentsCurrentThread = null;
@@ -2403,7 +2403,7 @@ async function _agentsDoDeleteWorkspace() {
 async function agentsCreateThread() {
     if (!_agentsCurrentWorkspace) return;
     try {
-        const resp = await fetch(`/api/agents/workspaces/${_agentsCurrentWorkspace.id}/threads`, {
+        const resp = await fetch(`/api/code/workspaces/${_agentsCurrentWorkspace.id}/threads`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({})
@@ -2428,7 +2428,7 @@ async function agentsRenameThread() {
     const newName = prompt('Enter new thread name:', _agentsCurrentThread.name || '');
     if (!newName || !newName.trim()) return;
     try {
-        const resp = await fetch(`/api/agents/workspaces/${_agentsCurrentWorkspace.id}/threads/${_agentsCurrentThread.id}`, {
+        const resp = await fetch(`/api/code/workspaces/${_agentsCurrentWorkspace.id}/threads/${_agentsCurrentThread.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: newName.trim() })
@@ -2464,7 +2464,7 @@ async function agentsDeleteThread() {
 
 async function _agentsDoDeleteThread() {
     try {
-        const resp = await fetch(`/api/agents/workspaces/${_agentsCurrentWorkspace.id}/threads/${_agentsCurrentThread.id}`, {
+        const resp = await fetch(`/api/code/workspaces/${_agentsCurrentWorkspace.id}/threads/${_agentsCurrentThread.id}`, {
             method: 'DELETE'
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -2560,7 +2560,7 @@ async function _agentsHandleFileSelect(files) {
         for (const file of Array.from(files)) {
             const fd = new FormData();
             fd.append('file', file);
-            const resp = await fetch(`/api/agents/upload?workspace_id=${encodeURIComponent(wsId)}`, { method: 'POST', body: fd });
+            const resp = await fetch(`/api/code/upload?workspace_id=${encodeURIComponent(wsId)}`, { method: 'POST', body: fd });
             if (!resp.ok) {
                 const err = await resp.json().catch(() => ({}));
                 console.error('[Agents attach]', err.detail || `HTTP ${resp.status}`);
@@ -2800,7 +2800,7 @@ async function _pmLoad() {
     const ws = _agentsCurrentWorkspace;
     if (!ws) return;
     try {
-        const resp = await fetch(`/api/agents/workspaces/${ws.id}/memory`);
+        const resp = await fetch(`/api/code/workspaces/${ws.id}/memory`);
         if (!resp.ok) return;
         const { items } = await resp.json();
         _pmRender(items);
@@ -2905,7 +2905,7 @@ function _pmBuildChecklistRow(checklistId, ci) {
         const done = cb.checked;
         row.className = 'agents-pm-cl-row' + (done ? ' agents-pm-cl-row--done' : '');
         try {
-            await fetch(`/api/agents/workspaces/${_agentsCurrentWorkspace.id}/memory/${checklistId}/items/${ci.id}`, {
+            await fetch(`/api/code/workspaces/${_agentsCurrentWorkspace.id}/memory/${checklistId}/items/${ci.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ done }),
@@ -2925,7 +2925,7 @@ function _pmBuildChecklistRow(checklistId, ci) {
 async function _pmDeleteItem(itemId) {
     if (!_agentsCurrentWorkspace) return;
     try {
-        await fetch(`/api/agents/workspaces/${_agentsCurrentWorkspace.id}/memory/${itemId}`, { method: 'DELETE' });
+        await fetch(`/api/code/workspaces/${_agentsCurrentWorkspace.id}/memory/${itemId}`, { method: 'DELETE' });
         _pmLoad();
     } catch (e) { console.debug('[PM] delete failed:', e); }
 }
@@ -2962,7 +2962,7 @@ async function _pmSaveForm() {
         if (editId) {
             // Update existing
             const body = cat === 'checklist' ? { title: text } : { text, category: cat };
-            await fetch(`/api/agents/workspaces/${ws.id}/memory/${editId}`, {
+            await fetch(`/api/code/workspaces/${ws.id}/memory/${editId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
@@ -2976,7 +2976,7 @@ async function _pmSaveForm() {
             } else {
                 body.text = text;
             }
-            await fetch(`/api/agents/workspaces/${ws.id}/memory`, {
+            await fetch(`/api/code/workspaces/${ws.id}/memory`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
@@ -3012,7 +3012,7 @@ async function _agentsCheckCheckpoint(workspaceId, threadId) {
 
     if (!workspaceId || !threadId) return;
     try {
-        const resp = await fetch(`/api/agents/workspaces/${workspaceId}/threads/${threadId}/state`);
+        const resp = await fetch(`/api/code/workspaces/${workspaceId}/threads/${threadId}/state`);
         if (!resp.ok) return;
         const state = await resp.json();
         if (!state.is_interrupted) return;
@@ -3177,7 +3177,7 @@ async function _agFetchAndRenderFolder(dirPath, container) {
     }
     
     try {
-        const resp = await fetch(`/api/agents/workspace/tree?path=${encodeURIComponent(dirPath)}`);
+        const resp = await fetch(`/api/code/workspace/tree?path=${encodeURIComponent(dirPath)}`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         
@@ -3358,7 +3358,7 @@ async function _agOpenFile(filePath, filename) {
     }
     
     try {
-        const resp = await fetch(`/api/agents/workspace/file-content?path=${encodeURIComponent(filePath)}`);
+        const resp = await fetch(`/api/code/workspace/file-content?path=${encodeURIComponent(filePath)}`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         const content = data.content || '';
@@ -3490,7 +3490,7 @@ async function _agSaveCurrentFile() {
     saveBtn.disabled = true;
     
     try {
-        const resp = await fetch('/api/agents/workspace/file-save', {
+        const resp = await fetch('/api/code/workspace/file-save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3567,7 +3567,7 @@ async function _agSearchWorkspace() {
     
     try {
         const wsPath = _agentsCurrentWorkspace.path;
-        const resp = await fetch(`/api/agents/workspace/search?path=${encodeURIComponent(wsPath)}&query=${encodeURIComponent(query)}`);
+        const resp = await fetch(`/api/code/workspace/search?path=${encodeURIComponent(wsPath)}&query=${encodeURIComponent(query)}`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         

@@ -46,9 +46,10 @@ def _import_remaining_routers():
         ("corp_routes",                         "router",     "corp_router"),
         ("overlay_routes",                      "router",     "overlay_router"),
         ("schedule_routes",                     "router",     "schedule_router"),
-        ("three_d_routes",                      "router",     "threed_router"),
-        ("agent_workspace_routes",              "router",     "agent_ws_router"),
-        ("notification_routes",                 "router",     "notification_router"),
+        ("three_d_routes",                      "router",       "threed_router"),
+        ("agent_workspace_routes",              "code_router",   "code_ws_router"),
+        ("agent_workspace_routes",              "agents_router", "agent_ws_router"),
+        ("notification_routes",                 "router",       "notification_router"),
         ("explained_routes",                    "router",     "explained_router"),
         ("external_api_routes",                 "router",     "ext_api_router"),
         ("external_api_routes",                 "mgmt_router","ext_api_mgmt_router"),
@@ -375,6 +376,7 @@ async def websocket_logs(websocket: WebSocket):
     except (WebSocketDisconnect, RuntimeError): pass
     finally: manager.disconnect(websocket, "logs")
 
+@app.websocket("/ws/code")
 @app.websocket("/ws/agents")
 async def websocket_agents(websocket: WebSocket):
     await manager.connect(websocket, "agents")
