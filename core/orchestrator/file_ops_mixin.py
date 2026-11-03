@@ -175,6 +175,15 @@ class FileOpsMixin:
                     f"Security: path {path!r} resolves outside the workspace. "
                     "Use relative paths that stay within the workspace directory."
                 )
+
+            # Security: block agent tools from reading or overwriting secret files
+            blocked_names = {".env", ".env.local", ".env.production", "security.yaml"}
+            if resolved.name.lower() in blocked_names or resolved.name.lower().startswith(".env."):
+                return None, (
+                    f"Security: access to {resolved.name!r} is restricted. "
+                    "Environment secrets and configuration keys cannot be accessed by agent tools."
+                )
+
             return resolved, None
         except Exception as e:
             return None, f"Invalid path {path!r}: {e}"

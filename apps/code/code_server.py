@@ -56,8 +56,18 @@ except Exception as _e:
 app = FastAPI(title="Aethvion Code IDE", version="1.0.0")
 fastapi_utils.add_dev_cache_control(app)
 app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_credentials=True,
-    allow_methods=["*"], allow_headers=["*"],
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost",
+        "http://127.0.0.1",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "null",
+    ],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 BASE_DIR   = Path(__file__).parent
@@ -84,16 +94,25 @@ def _ensure_data_dirs():
 _ensure_data_dirs()
 
 def _is_safe_path(path: str | Path) -> bool:
-    """Check if the resolved path is within allowed boundaries."""
+    """Check if the resolved path is within allowed boundaries and not sensitive."""
     try:
         target = Path(path).resolve()
-        # Allowed roots: PROJECT_ROOT, user home directory, and dynamic last_workspace
-        allowed = [Path(PROJECT_ROOT).resolve(), Path.home().resolve()]
+
+        # Block direct access to credential and environment secret files
+        blocked_names = {".env", ".env.local", ".env.production", "security.yaml", "id_rsa", "id_ed25519"}
+        if target.name.lower() in blocked_names or target.name.lower().startswith(".env."):
+            return False
+
+        # Allowed roots: PROJECT_ROOT and explicitly opened last_workspace (do not expose entire user home)
+        allowed = [Path(PROJECT_ROOT).resolve()]
         settings = _read_settings()
         last_ws = settings.get("last_workspace")
         if last_ws:
             try:
-                allowed.append(Path(last_ws).resolve())
+                ws_path = Path(last_ws).resolve()
+                # Prevent pointing last_workspace to the filesystem root or entire user profile
+                if ws_path != Path.home().resolve() and len(ws_path.parts) > 1:
+                    allowed.append(ws_path)
             except Exception:
                 pass
         
@@ -1322,7 +1341,7 @@ def launch():
     except Exception:
         pass
 
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
 
 if __name__ == "__main__":
     launch()
