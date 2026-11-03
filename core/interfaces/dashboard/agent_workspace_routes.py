@@ -146,12 +146,14 @@ if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
     Write-Output $dialog.SelectedPath
 }}
 """
+                _NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
                 res = subprocess.run(
                     ["powershell", "-NoProfile", "-STA", "-Command", ps_script],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
-                    timeout=45
+                    timeout=45,
+                    creationflags=_NO_WINDOW
                 )
                 chosen = res.stdout.strip()
                 if chosen and os.path.isdir(chosen):
@@ -569,51 +571,42 @@ async def get_workspace_git_status(path: str = Query(default=""), workspace_id: 
             return {"is_repo": False, "error": "Invalid directory path"}
 
         loop = asyncio.get_event_loop()
+        import sys
+        _NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
         def _inspect_git(r_path: str):
             try:
-                res = subprocess.run(
-                    ["git", "rev-parse", "--is-inside-work-tree"],
-                    cwd=r_path,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    timeout=3
-                )
-                if res.returncode != 0:
-                    return {"is_repo": False}
-
-                # Current branch or detached HEAD
-                branch_res = subprocess.run(
-                    ["git", "branch", "--show-current"],
-                    cwd=r_path,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    timeout=3
-                )
-                branch = branch_res.stdout.strip()
-                if not branch:
-                    head_res = subprocess.run(
-                        ["git", "rev-parse", "--short", "HEAD"],
-                        cwd=r_path,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        text=True,
-                        timeout=3
-                    )
-                    branch = f":{head_res.stdout.strip()}" if head_res.returncode == 0 else "HEAD"
-
-                # Status porcelain
+                # Status porcelain with branch: 100% windowless, fast status & branch in 1 call
                 status_res = subprocess.run(
                     ["git", "status", "--porcelain", "-b"],
                     cwd=r_path,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
-                    timeout=3
+                    timeout=3,
+                    creationflags=_NO_WINDOW
                 )
+                if status_res.returncode != 0:
+                    return {"is_repo": False}
+
                 lines = status_res.stdout.splitlines()
+                branch_line = lines[0] if lines else ""
+
+                # Parse branch
+                branch = "HEAD"
+                if branch_line.startswith("## "):
+                    raw_b = branch_line[3:].strip()
+                    if "..." in raw_b:
+                        branch = raw_b.split("...")[0].strip()
+                    elif " (no branch)" in raw_b or "detached" in raw_b:
+                        branch = "detached"
+                    elif "Initial commit on " in raw_b:
+                        branch = raw_b.replace("Initial commit on ", "").strip()
+                    elif "No commits yet on " in raw_b:
+                        branch = raw_b.replace("No commits yet on ", "").strip()
+                    else:
+                        branch = raw_b.split(" ")[0].strip()
+
                 modified = 0
                 untracked = 0
                 staged = 0
@@ -628,14 +621,15 @@ async def get_workspace_git_status(path: str = Query(default=""), workspace_id: 
                             if y in "MD":
                                 modified += 1
 
-                # Last commit
+                # Last commit (windowless)
                 log_res = subprocess.run(
                     ["git", "log", "-1", "--format=%h|%s", "HEAD"],
                     cwd=r_path,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
-                    timeout=3
+                    timeout=3,
+                    creationflags=_NO_WINDOW
                 )
                 commit_hash, commit_msg = ("", "")
                 if log_res.returncode == 0 and "|" in log_res.stdout:
