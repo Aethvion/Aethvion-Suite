@@ -1780,9 +1780,71 @@
 }
 
 .sh-m-resp-body {
-    color: #f8fafc;
-    white-space: pre-wrap;
+    color: #f1f5f9;
+    font-size: 0.84rem;
+    line-height: 1.55;
     word-break: break-word;
+}
+
+.sh-m-resp-body p {
+    margin: 0 0 0.5rem 0;
+}
+
+.sh-m-resp-body p:last-child {
+    margin-bottom: 0;
+}
+
+.sh-m-resp-body strong,
+.sh-m-resp-body b {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.sh-m-resp-body em,
+.sh-m-resp-body i {
+    color: #e2e8f0;
+    font-style: italic;
+}
+
+.sh-m-resp-body ul,
+.sh-m-resp-body ol {
+    margin: 0.35rem 0 0.55rem 1.25rem;
+    padding: 0;
+}
+
+.sh-m-resp-body li {
+    margin-bottom: 0.25rem;
+}
+
+.sh-m-resp-body code {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.8rem;
+    color: #7dd3fc;
+}
+
+.sh-m-resp-body pre {
+    background: #06080d;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 8px 12px;
+    overflow-x: auto;
+    margin: 0.5rem 0;
+}
+
+.sh-m-resp-body pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+.sh-m-resp-body a {
+    color: #38bdf8;
+    text-decoration: underline;
+    text-underline-offset: 2px;
 }
 
 /* Steering / follow-up input bar */

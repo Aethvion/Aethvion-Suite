@@ -41,11 +41,51 @@
 
     // ── Dispatched Missions State & Persistence ────────────────────────────
 
+    function sanitizeLogs(logs) {
+        if (!Array.isArray(logs)) return [];
+        const clean = [];
+        for (let i = 0; i < logs.length; i++) {
+            const line = logs[i];
+            if (!line) continue;
+            if (clean.length > 0) {
+                const prev = clean[clean.length - 1];
+                if (line === prev) continue;
+                if (line.includes('[Completed]') && prev.includes('[Completed]')) continue;
+            }
+            clean.push(line);
+        }
+        return clean;
+    }
+
+    function renderMarkdown(text) {
+        if (!text) return '';
+        try {
+            if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
+                return marked.parse(text);
+            }
+        } catch (e) {
+            console.warn('[home] Markdown parse error:', e);
+        }
+        // Fallback simple markdown parser
+        let safe = esc(text);
+        safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        safe = safe.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>');
+        return safe.replace(/\n/g, '<br>');
+    }
+
     function loadMissions() {
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (raw) {
                 _missions = JSON.parse(raw);
+                if (Array.isArray(_missions)) {
+                    _missions.forEach(m => {
+                        m.logs = sanitizeLogs(m.logs);
+                    });
+                } else {
+                    _missions = [];
+                }
             }
         } catch (_) {
             _missions = [];
@@ -102,6 +142,18 @@
         const missionId = existingMission ? existingMission.id : ('m-' + Date.now());
         const threadId = existingMission ? existingMission.thread_id : ('dispatched-' + Date.now());
 
+        if (existingMission) {
+            if (_activePollers[existingMission.id]) {
+                clearInterval(_activePollers[existingMission.id]);
+                delete _activePollers[existingMission.id];
+            }
+            existingMission.taskId = null;
+            existingMission.ended_at = null;
+            existingMission.error = null;
+            existingMission.response = null;
+            existingMission.status = 'queued';
+        }
+
         const mission = existingMission || {
             id: missionId,
             taskId: null,
@@ -119,9 +171,9 @@
 
         if (!existingMission) {
             _missions.unshift(mission);
-            saveMissions();
-            renderMissions();
         }
+        saveMissions();
+        renderMissions();
 
         try {
             const payload = {
@@ -164,21 +216,36 @@
 
     function startMissionPoller(mission) {
         if (!mission.taskId) return;
-        if (_activePollers[mission.id]) clearInterval(_activePollers[mission.id]);
+        if (_activePollers[mission.id]) return; // Poller already active
 
-        let elapsedSeconds = 0;
+        const currentTaskId = mission.taskId;
+        let isFetching = false;
+        let elapsedSeconds = mission.started_at ? Math.max(0, Math.floor((Date.now() - mission.started_at) / 1000)) : 0;
 
         _activePollers[mission.id] = setInterval(async () => {
+            // Stop if mission was superseded or reached a terminal state
+            if (mission.taskId !== currentTaskId || mission.status === 'completed' || mission.status === 'failed' || mission.status === 'cancelled') {
+                clearInterval(_activePollers[mission.id]);
+                delete _activePollers[mission.id];
+                return;
+            }
+
             elapsedSeconds++;
             const timerEl = document.getElementById(`timer-${mission.id}`);
             if (timerEl && mission.status === 'running') {
                 timerEl.textContent = `${elapsedSeconds}s`;
             }
 
+            if (isFetching) return;
+            isFetching = true;
+
             try {
-                const res = await fetch(`/api/tasks/status/${mission.taskId}`);
+                const res = await fetch(`/api/tasks/status/${currentTaskId}`);
                 if (!res.ok) return;
                 const task = await res.json();
+
+                // If superseded while awaiting fetch, discard
+                if (mission.taskId !== currentTaskId) return;
 
                 const status = (task.status || '').toLowerCase();
 
@@ -186,13 +253,19 @@
                     clearInterval(_activePollers[mission.id]);
                     delete _activePollers[mission.id];
 
+                    if (mission.status === 'completed') return;
+
                     mission.status = 'completed';
                     mission.ended_at = Date.now();
                     const duration = ((mission.ended_at - mission.started_at) / 1000).toFixed(1);
                     
                     const result = task.result || {};
                     mission.response = result.response || 'Task completed successfully.';
-                    mission.logs.push(`[${new Date().toLocaleTimeString()}] [Completed] Mission finished in ${duration}s.`);
+                    
+                    const compMsg = `[${new Date().toLocaleTimeString()}] [Completed] Mission finished in ${duration}s.`;
+                    if (!mission.logs.length || !mission.logs[mission.logs.length - 1].includes('[Completed]')) {
+                        mission.logs.push(compMsg);
+                    }
                     saveMissions();
                     renderMissions();
 
@@ -200,16 +273,23 @@
                     clearInterval(_activePollers[mission.id]);
                     delete _activePollers[mission.id];
 
+                    if (mission.status === status) return;
+
                     mission.status = status;
                     mission.ended_at = Date.now();
                     mission.error = task.error || (status === 'cancelled' ? 'Mission cancelled by user.' : 'Execution failed.');
-                    mission.logs.push(`[${new Date().toLocaleTimeString()}] [${status.toUpperCase()}] ${mission.error}`);
+                    const errMsg = `[${new Date().toLocaleTimeString()}] [${status.toUpperCase()}] ${mission.error}`;
+                    if (!mission.logs.length || !mission.logs[mission.logs.length - 1].includes(status.toUpperCase())) {
+                        mission.logs.push(errMsg);
+                    }
                     saveMissions();
                     renderMissions();
                 }
 
             } catch (err) {
                 console.warn('[home] Error polling task:', err);
+            } finally {
+                isFetching = false;
             }
         }, 1200);
     }
@@ -262,9 +342,18 @@
         const mission = _missions.find(m => m.id === missionId);
         if (!mission) return;
 
+        if (_activePollers[mission.id]) {
+            clearInterval(_activePollers[mission.id]);
+            delete _activePollers[mission.id];
+        }
+
         mission.logs.push(`[${new Date().toLocaleTimeString()}] [User Follow-up] ${text}`);
         mission.status = 'running';
+        mission.taskId = null;
+        mission.ended_at = null;
+        mission.error = null;
         mission.response = null;
+        saveMissions();
         renderMissions();
 
         dispatchMission(text, mission);
@@ -314,7 +403,7 @@
             const responseHtml = m.response ? `
                 <div class="sh-m-response">
                     <div class="sh-m-resp-header"><i class="fas fa-robot"></i> Agent Output</div>
-                    <div class="sh-m-resp-body">${esc(m.response).replace(/\n/g, '<br>')}</div>
+                    <div class="sh-m-resp-body">${renderMarkdown(m.response)}</div>
                 </div>` : '';
 
             card.innerHTML = `
@@ -682,15 +771,20 @@
         const panel = document.getElementById('suite-home-panel');
         if (!panel) { setTimeout(watchPanel, 300); return; }
 
+        let wasActive = false;
         function check() {
-            if (panel.classList.contains('active') && !panel.querySelector('.partial-loading')) {
+            const isActive = panel.classList.contains('active') && !panel.querySelector('.partial-loading');
+            if (isActive && !wasActive) {
+                wasActive = true;
                 if (window._suiteHomeUsageTick) clearInterval(window._suiteHomeUsageTick);
                 update();
+            } else if (!isActive) {
+                wasActive = false;
             }
         }
 
         const obs = new MutationObserver(check);
-        obs.observe(panel, { attributes: true, attributeFilter: ['class'], childList: true });
+        obs.observe(panel, { attributes: true, attributeFilter: ['class'] });
         check();
     }
 
