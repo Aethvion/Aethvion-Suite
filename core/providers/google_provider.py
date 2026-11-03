@@ -72,7 +72,16 @@ class GoogleAIProvider(BaseProvider):
             # Support JSON mode if requested
             if kwargs.get('json_mode'):
                 config_params['response_mime_type'] = 'application/json'
-            
+
+            # Thinking / Reasoning Configuration (Gemini 2.5 Flash, 2.5 Pro, Gemini 3)
+            thinking_budget = kwargs.pop('thinking_budget', None)
+            if thinking_budget is not None:
+                from google.genai import types
+                config_params['thinking_config'] = types.ThinkingConfig(
+                    thinking_budget=int(thinking_budget),
+                    include_thoughts=kwargs.pop('include_thoughts', True)
+                )
+
             # Remove unsupported kwargs
             kwargs.pop('json_mode', None)
             kwargs.pop('model', None)
@@ -155,7 +164,17 @@ class GoogleAIProvider(BaseProvider):
                 'total_tokens': response.usage_metadata.total_token_count if response.usage_metadata else None
             } if hasattr(response, 'usage_metadata') and response.usage_metadata else {}
 
-            response_text = response.text if response.text else ""
+            thought_text = ""
+            response_text = ""
+            if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if getattr(part, 'thought', False):
+                        thought_text += getattr(part, 'text', '') or ''
+                    elif getattr(part, 'text', None):
+                        response_text += part.text
+
+            if not response_text and response.text:
+                response_text = response.text
 
             # safety filter or a finish_reason other than STOP.  Helps diagnose
             # "empty response" issues without breaking the call.
@@ -167,17 +186,21 @@ class GoogleAIProvider(BaseProvider):
                     f"Candidates: {len(response.candidates) if response.candidates else 0}."
                 )
 
+            metadata = {
+                'model': active_model,
+                'finish_reason': response.candidates[0].finish_reason if response.candidates else None,
+                'tool_calls': tool_calls,
+                'usage': usage_meta
+            }
+            if thought_text:
+                metadata['reasoning_content'] = thought_text
+
             return ProviderResponse(
                 content=response_text,
                 model=active_model,
                 provider="google_ai",
                 trace_id=trace_id,
-                metadata={
-                    'model': active_model,
-                    'finish_reason': response.candidates[0].finish_reason if response.candidates else None,
-                    'tool_calls': tool_calls,
-                    'usage': usage_meta
-                }
+                metadata=metadata
             )
             
         except Exception as e:
@@ -253,8 +276,16 @@ class GoogleAIProvider(BaseProvider):
                 config=types.GenerateContentConfig(**config_params)
             )
 
+            include_thinking = kwargs.pop('include_thinking', False)
             for chunk in response:
-                if chunk.text:
+                if chunk.candidates and chunk.candidates[0].content and chunk.candidates[0].content.parts:
+                    for part in chunk.candidates[0].content.parts:
+                        if getattr(part, 'thought', False):
+                            if include_thinking:
+                                yield getattr(part, 'text', '') or ''
+                        elif getattr(part, 'text', None):
+                            yield part.text
+                elif chunk.text:
                     yield chunk.text
             
             # Record success

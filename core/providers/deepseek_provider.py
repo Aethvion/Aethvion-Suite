@@ -75,16 +75,21 @@ class DeepSeekProvider(BaseProvider):
             response.raise_for_status()
             data = response.json()
             self.record_success()
+            msg = data["choices"][0]["message"]
+            metadata = {
+                "model": active_model,
+                "finish_reason": data["choices"][0].get("finish_reason"),
+                "usage": data.get("usage", {}),
+            }
+            if msg.get("reasoning_content"):
+                metadata["reasoning_content"] = msg["reasoning_content"]
+
             return ProviderResponse(
-                content=data["choices"][0]["message"]["content"],
+                content=msg.get("content") or "",
                 model=active_model,
                 provider="deepseek",
                 trace_id=trace_id,
-                metadata={
-                    "model": active_model,
-                    "finish_reason": data["choices"][0].get("finish_reason"),
-                    "usage": data.get("usage", {}),
-                },
+                metadata=metadata,
             )
         except requests.HTTPError as e:
             body = e.response.text[:500] if e.response is not None else ""
@@ -145,8 +150,11 @@ class DeepSeekProvider(BaseProvider):
                         data = line[6:]
                         if data != "[DONE]":
                             chunk = json.loads(data)
-                            if chunk["choices"][0]["delta"].get("content"):
-                                yield chunk["choices"][0]["delta"]["content"]
+                            delta = chunk["choices"][0].get("delta", {})
+                            if delta.get("reasoning_content") and kwargs.get("include_thinking", False):
+                                yield delta["reasoning_content"]
+                            if delta.get("content"):
+                                yield delta["content"]
 
             self.record_success()
         except Exception as e:

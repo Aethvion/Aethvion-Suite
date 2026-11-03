@@ -49,59 +49,88 @@ class AnthropicProvider(BaseProvider):
             kwargs.pop('model', None)
             kwargs.pop('json_mode', None)
 
-            # Build content
-            if images:
-                import base64
-                content: Any = [{"type": "text", "text": prompt}]
-                for img in images:
-                    b64_data = base64.b64encode(img['data']).decode('utf-8')
-                    mime = img.get('mime_type', 'image/jpeg')
-                    content.append({
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": mime,
-                            "data": b64_data
-                        }
-                    })
+            # Build messages
+            if messages:
+                active_messages = list(messages)
+                if prompt and (not messages or messages[-1].get('content') != prompt):
+                    active_messages.append({"role": "user", "content": prompt})
             else:
-                content = prompt
-
-            messages = [{"role": "user", "content": content}]
+                if images:
+                    import base64
+                    content: Any = [{"type": "text", "text": prompt}]
+                    for img in images:
+                        b64_data = base64.b64encode(img['data']).decode('utf-8')
+                        mime = img.get('mime_type', 'image/jpeg')
+                        content.append({
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": mime,
+                                "data": b64_data
+                            }
+                        })
+                else:
+                    content = prompt
+                active_messages = [{"role": "user", "content": content}]
 
             create_kwargs: Dict[str, Any] = {
                 "model": active_model,
-                "messages": messages,
+                "messages": active_messages,
                 "temperature": temperature,
                 "max_tokens": max_tokens or 8192,
             }
-            if system_prompt:
-                create_kwargs["system"] = system_prompt
+            if final_system_prompt:
+                create_kwargs["system"] = final_system_prompt
+
+            # Thinking / Extended Reasoning Configuration (Claude 3.7 Sonnet / hybrid models)
+            thinking_budget = kwargs.pop('thinking_budget', None)
+            thinking_param = kwargs.pop('thinking', None)
+            if thinking_param is not None:
+                create_kwargs["thinking"] = thinking_param
+                create_kwargs["temperature"] = 1.0
+            elif thinking_budget is not None and int(thinking_budget) > 0:
+                budget = max(1024, int(thinking_budget))
+                create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+                create_kwargs["temperature"] = 1.0
+                if create_kwargs.get("max_tokens", 8192) <= budget:
+                    create_kwargs["max_tokens"] = budget + 4096
+
+            # Forward remaining kwargs
+            for k, v in kwargs.items():
+                if k not in create_kwargs:
+                    create_kwargs[k] = v
 
             response = self.client.messages.create(**create_kwargs)
             self.record_success()
 
             text_content = ""
+            thinking_content = ""
             for block in response.content:
                 if hasattr(block, 'text'):
                     text_content += block.text
+                elif getattr(block, 'type', None) == 'thinking' or hasattr(block, 'thinking'):
+                    thinking_content += getattr(block, 'thinking', '')
 
             logger.info(f"[{trace_id}] Successfully generated response with Anthropic")
+
+            metadata = {
+                'model': active_model,
+                'stop_reason': response.stop_reason,
+                'usage': {
+                    'prompt_tokens': response.usage.input_tokens,
+                    'completion_tokens': response.usage.output_tokens,
+                    'total_tokens': response.usage.input_tokens + response.usage.output_tokens
+                }
+            }
+            if thinking_content:
+                metadata['reasoning_content'] = thinking_content
 
             return ProviderResponse(
                 content=text_content,
                 model=active_model,
                 provider="anthropic",
                 trace_id=trace_id,
-                metadata={
-                    'model': active_model,
-                    'stop_reason': response.stop_reason,
-                    'usage': {
-                        'prompt_tokens': response.usage.input_tokens,
-                        'completion_tokens': response.usage.output_tokens,
-                        'total_tokens': response.usage.input_tokens + response.usage.output_tokens
-                    }
-                }
+                metadata=metadata
             )
 
         except Exception as e:
@@ -134,36 +163,73 @@ class AnthropicProvider(BaseProvider):
 
             final_system_prompt = system_prompt or kwargs.pop('system_prompt', None)
 
-            # Build content — include image blocks if provided
-            if images:
-                import base64
-                content: Any = [{"type": "text", "text": prompt}]
-                for img in images:
-                    b64_data = base64.b64encode(img['data']).decode('utf-8')
-                    mime = img.get('mime_type', 'image/jpeg')
-                    content.append({
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": mime,
-                            "data": b64_data,
-                        }
-                    })
+            # Build messages
+            if messages:
+                active_messages = list(messages)
+                if prompt and (not messages or messages[-1].get('content') != prompt):
+                    active_messages.append({"role": "user", "content": prompt})
             else:
-                content = prompt
+                if images:
+                    import base64
+                    content: Any = [{"type": "text", "text": prompt}]
+                    for img in images:
+                        b64_data = base64.b64encode(img['data']).decode('utf-8')
+                        mime = img.get('mime_type', 'image/jpeg')
+                        content.append({
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": mime,
+                                "data": b64_data,
+                            }
+                        })
+                else:
+                    content = prompt
+                active_messages = [{"role": "user", "content": content}]
 
             create_kwargs: Dict[str, Any] = {
                 "model": active_model,
-                "messages": [{"role": "user", "content": content}],
+                "messages": active_messages,
                 "temperature": temperature,
                 "max_tokens": max_tokens or 8192,
             }
-            if system_prompt:
-                create_kwargs["system"] = system_prompt
+            if final_system_prompt:
+                create_kwargs["system"] = final_system_prompt
+
+            # Thinking / Extended Reasoning Configuration
+            thinking_budget = kwargs.pop('thinking_budget', None)
+            thinking_param = kwargs.pop('thinking', None)
+            include_thinking = kwargs.pop('include_thinking', False)
+
+            if thinking_param is not None:
+                create_kwargs["thinking"] = thinking_param
+                create_kwargs["temperature"] = 1.0
+            elif thinking_budget is not None and int(thinking_budget) > 0:
+                budget = max(1024, int(thinking_budget))
+                create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+                create_kwargs["temperature"] = 1.0
+                if create_kwargs.get("max_tokens", 8192) <= budget:
+                    create_kwargs["max_tokens"] = budget + 4096
+
+            # Forward remaining kwargs
+            for k, v in kwargs.items():
+                if k not in create_kwargs:
+                    create_kwargs[k] = v
 
             with self.client.messages.stream(**create_kwargs) as stream:
-                for text in stream.text_stream:
-                    yield text
+                for event in stream:
+                    event_type = getattr(event, 'type', None)
+                    if event_type == "content_block_delta":
+                        delta = getattr(event, 'delta', None)
+                        delta_type = getattr(delta, 'type', None)
+                        if delta_type == "text_delta":
+                            yield delta.text
+                        elif delta_type == "thinking_delta" and include_thinking:
+                            yield delta.thinking
+                    elif hasattr(stream, 'text_stream') and not event_type:
+                        for text in stream.text_stream:
+                            yield text
+                        break
 
             self.record_success()
             logger.info(f"[{trace_id}] Successfully streamed response with Anthropic")

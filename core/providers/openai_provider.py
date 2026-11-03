@@ -99,14 +99,29 @@ class OpenAIProvider(BaseProvider):
             kwargs.pop('model', None)
             kwargs.pop('json_mode', None)
             
+            # Support reasoning models (o1, o1-mini, o3-mini)
+            is_reasoning_model = any(active_model.startswith(p) for p in ("o1", "o3")) or "reasoning" in active_model.lower()
+            reasoning_effort = kwargs.pop('reasoning_effort', None)
+
+            create_params: Dict[str, Any] = {
+                "model": active_model,
+                "messages": messages,
+            }
+            if is_reasoning_model:
+                if reasoning_effort:
+                    create_params["reasoning_effort"] = reasoning_effort
+                if max_tokens:
+                    create_params["max_completion_tokens"] = max_tokens
+                # o-series models do not accept custom temperature
+            else:
+                create_params["temperature"] = temperature
+                if max_tokens:
+                    create_params["max_tokens"] = max_tokens
+
+            create_params.update(kwargs)
+
             # Generate response
-            response = self.client.chat.completions.create(
-                model=active_model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **kwargs
-            )
+            response = self.client.chat.completions.create(**create_params)
             
             # Record success
             self.record_success()
@@ -123,21 +138,27 @@ class OpenAIProvider(BaseProvider):
                         "arguments": tc.function.arguments
                     })
 
+            metadata = {
+                'model': active_model,
+                'finish_reason': response.choices[0].finish_reason,
+                'tool_calls': tool_calls,
+                'usage': {
+                    'prompt_tokens': response.usage.prompt_tokens if response.usage else None,
+                    'completion_tokens': response.usage.completion_tokens if response.usage else None,
+                    'total_tokens': response.usage.total_tokens if response.usage else None
+                }
+            }
+            # Capture reasoning_content from o-series or compatible providers
+            reasoning = getattr(response.choices[0].message, 'reasoning_content', None)
+            if reasoning:
+                metadata['reasoning_content'] = reasoning
+
             return ProviderResponse(
                 content=response.choices[0].message.content or "",
                 model=active_model,
                 provider="openai",
                 trace_id=trace_id,
-                metadata={
-                    'model': active_model,
-                    'finish_reason': response.choices[0].finish_reason,
-                    'tool_calls': tool_calls,
-                    'usage': {
-                        'prompt_tokens': response.usage.prompt_tokens,
-                        'completion_tokens': response.usage.completion_tokens,
-                        'total_tokens': response.usage.total_tokens
-                    }
-                }
+                metadata=metadata
             )
             
         except Exception as e:
@@ -192,18 +213,35 @@ class OpenAIProvider(BaseProvider):
             
             # Stream response
             active_model = model if model else self.config.model
-            stream = self.client.chat.completions.create(
-                model=active_model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=True,
-                **kwargs
-            )
+            is_reasoning_model = any(active_model.startswith(p) for p in ("o1", "o3")) or "reasoning" in active_model.lower()
+            reasoning_effort = kwargs.pop('reasoning_effort', None)
+            include_thinking = kwargs.pop('include_thinking', False)
+
+            stream_params: Dict[str, Any] = {
+                "model": active_model,
+                "messages": messages,
+                "stream": True,
+            }
+            if is_reasoning_model:
+                if reasoning_effort:
+                    stream_params["reasoning_effort"] = reasoning_effort
+                if max_tokens:
+                    stream_params["max_completion_tokens"] = max_tokens
+            else:
+                stream_params["temperature"] = temperature
+                if max_tokens:
+                    stream_params["max_tokens"] = max_tokens
+
+            stream_params.update(kwargs)
+            stream = self.client.chat.completions.create(**stream_params)
             
             for chunk in stream:
-                if chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
+                if chunk.choices and len(chunk.choices) > 0:
+                    delta = chunk.choices[0].delta
+                    if getattr(delta, 'reasoning_content', None) and include_thinking:
+                        yield delta.reasoning_content
+                    if getattr(delta, 'content', None):
+                        yield delta.content
             
             # Record success
             self.record_success()
