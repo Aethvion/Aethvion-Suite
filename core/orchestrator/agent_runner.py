@@ -565,13 +565,18 @@ class AgentRunner(FileOpsMixin):
                 new.splitlines(keepends=True),
                 fromfile=f"a/{path}", tofile=f"b/{path}", n=2,
             ))
-            _diff_str = "".join(_diff_lines)[:2500]
+            _diff_str = "".join(_diff_lines)[:4000]
+            adds = sum(1 for line in _diff_lines if line.startswith('+') and not line.startswith('+++'))
+            dels = sum(1 for line in _diff_lines if line.startswith('-') and not line.startswith('---'))
             self._emit({
                 "type":       "write_file",
                 "path":       path,
                 "detail":     f"patch: {len(old):,}→{len(new):,} chars",
                 "diff":       _diff_str,
+                "adds":       adds,
+                "dels":       dels,
                 "has_backup": had_backup,
+                "is_patch":   True,
             })
             # Successful patch — reset the repeat counter and clear read dedup
             self._action_repeats.pop(repeat_key, None)
@@ -1043,13 +1048,39 @@ class AgentRunner(FileOpsMixin):
             obs_content = action.get("content", "")
             return {"type": "observe", "title": "Observation", "detail": obs_content}
 
+        if t == "patch_file":
+            fp_exists = (self.workspace / path).is_file()
+            old = action.get("old", "")
+            new = action.get("new", "")
+            import difflib as _dl
+            _diff_lines = list(_dl.unified_diff(
+                old.splitlines(keepends=True),
+                new.splitlines(keepends=True),
+                fromfile=f"a/{path}", tofile=f"b/{path}", n=2,
+            ))
+            _diff_str = "".join(_diff_lines)[:4000]
+            adds = sum(1 for line in _diff_lines if line.startswith('+') and not line.startswith('+++'))
+            dels = sum(1 for line in _diff_lines if line.startswith('-') and not line.startswith('---'))
+            return {"type": "write_file", "title": f"Patching {path}", "path": path,
+                    "detail": f"patch: {len(old):,}→{len(new):,} chars",
+                    "diff": _diff_str, "adds": adds, "dels": dels,
+                    "has_backup": fp_exists, "is_patch": True}
+
         if t == "write_file":
             fp_exists = (self.workspace / path).is_file()
             preview   = content[:400] + ("\u2026" if len(content) > 400 else "")
             diff_str  = self._compute_write_diff(path, content)
+            adds, dels = 0, 0
+            if diff_str:
+                for dl in diff_str.splitlines():
+                    if dl.startswith('+') and not dl.startswith('+++'): adds += 1
+                    elif dl.startswith('-') and not dl.startswith('---'): dels += 1
+            elif not fp_exists:
+                adds = len(content.splitlines())
             return {"type": t, "title": f"Writing {path}", "path": path,
                     "detail": preview, "bytes": len(content.encode()),
-                    "diff": diff_str, "has_backup": fp_exists}
+                    "diff": diff_str, "adds": adds, "dels": dels,
+                    "has_backup": fp_exists, "is_new": not fp_exists}
 
         if t == "delete_file":
             fp_exists = (self.workspace / path).is_file()

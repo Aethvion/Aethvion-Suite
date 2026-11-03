@@ -1345,116 +1345,221 @@ function _agHandleDeleteFile(event) {
     _agActLogAppend(item);
 }
 
+function _agRenderDiffContent(container, diff, isNew, fallbackDetail) {
+    container.innerHTML = '';
+    if (!diff) {
+        if (fallbackDetail) {
+            const pre = document.createElement('pre');
+            pre.className = 'ag-diff-raw-pre';
+            pre.textContent = fallbackDetail;
+            container.appendChild(pre);
+        } else {
+            const empty = document.createElement('div');
+            empty.className = 'ag-diff-empty';
+            empty.textContent = isNew ? 'Empty file created.' : 'File saved with no line changes.';
+            container.appendChild(empty);
+        }
+        return;
+    }
+
+    const lines = diff.split('\n');
+    const table = document.createElement('div');
+    table.className = 'ag-diff-table';
+
+    let oldLineNum = 1;
+    let newLineNum = 1;
+
+    lines.forEach(line => {
+        if (!line && line !== '') return;
+        const row = document.createElement('div');
+        row.className = 'ag-diff-row';
+
+        let lineType = 'ctx';
+        if (line.startsWith('@@')) {
+            lineType = 'hunk';
+            const m = line.match(/@@\s*-(\d+)(?:,\d+)?\s*\+(\d+)(?:,\d+)?\s*@@/);
+            if (m) {
+                oldLineNum = parseInt(m[1], 10);
+                newLineNum = parseInt(m[2], 10);
+            }
+        } else if (line.startsWith('+') && !line.startsWith('+++')) {
+            lineType = 'add';
+        } else if (line.startsWith('-') && !line.startsWith('---')) {
+            lineType = 'del';
+        } else if (line.startsWith('---') || line.startsWith('+++')) {
+            lineType = 'header';
+        }
+
+        row.classList.add(`ag-diff-row--${lineType}`);
+
+        const gutter = document.createElement('div');
+        gutter.className = 'ag-diff-gutter';
+
+        let oldNumStr = '';
+        let newNumStr = '';
+
+        if (lineType === 'ctx') {
+            oldNumStr = String(oldLineNum++);
+            newNumStr = String(newLineNum++);
+        } else if (lineType === 'add') {
+            newNumStr = String(newLineNum++);
+        } else if (lineType === 'del') {
+            oldNumStr = String(oldLineNum++);
+        }
+
+        gutter.innerHTML = `
+            <span class="ag-diff-num ag-diff-num--old">${oldNumStr}</span>
+            <span class="ag-diff-num ag-diff-num--new">${newNumStr}</span>
+            <span class="ag-diff-sign">${lineType === 'add' ? '+' : lineType === 'del' ? '-' : ' '}</span>
+        `;
+
+        const codeSpan = document.createElement('div');
+        codeSpan.className = 'ag-diff-text';
+        codeSpan.textContent = line.length > 0 && (line[0] === '+' || line[0] === '-' || line[0] === ' ') ? line.slice(1) : line;
+
+        row.appendChild(gutter);
+        row.appendChild(codeSpan);
+        table.appendChild(row);
+    });
+
+    container.appendChild(table);
+}
+
 function _agHandleWriteFile(event) {
     const s = _agentsRenderState;
     if (!s) return;
     s.fileCount++;
     _agUpdateStats();
 
-    const path      = event.path || (event.title || '').replace(/^Writing\s+/, '').trim();
-    const filename  = path.replace(/\\/g, '/').split('/').pop() || path;
-    const detail    = event.detail || '';
-    const truncated = detail.length > 4000 ? detail.slice(0, 4000) + '\n…' : detail;
-    const sizeStr   = event.bytes ? _agFormatBytes(event.bytes) : '';
+    const path     = event.path || (event.title || '').replace(/^(Writing|Patching)\s+/, '').trim();
+    const filename = path.replace(/\\/g, '/').split('/').pop() || path;
+    const sizeStr  = event.bytes ? _agFormatBytes(event.bytes) : '';
+    const diff     = event.diff || '';
+    const isNew    = !!event.is_new;
+
+    let adds = event.adds || 0;
+    let dels = event.dels || 0;
+    if (!adds && !dels && diff) {
+        diff.split('\n').forEach(l => {
+            if (l.startsWith('+') && !l.startsWith('+++')) adds++;
+            else if (l.startsWith('-') && !l.startsWith('---')) dels++;
+        });
+    }
 
     if (s.fileCards[path]) {
         const fc = s.fileCards[path];
         fc.writeCount++;
-        if (fc.sizeEl)    fc.sizeEl.textContent    = sizeStr;
-        if (fc.contentEl && detail) fc.contentEl.textContent = truncated;
-        // Update verb to show modified count
-        const verbEl = fc.row.querySelector('.agent-act-verb');
-        if (verbEl) verbEl.textContent = `Modified ×${fc.writeCount}`;
-        fc.row.classList.add('agent-act--flash');
-        setTimeout(() => fc.row.classList.remove('agent-act--flash'), 600);
+        if (fc.badgeEl) {
+            fc.badgeEl.innerHTML = `
+                ${adds > 0 ? `<span class="ag-diff-stat ag-diff-stat--add">+${adds}</span>` : ''}
+                ${dels > 0 ? `<span class="ag-diff-stat ag-diff-stat--del">-${dels}</span>` : ''}
+                <span class="ag-diff-stat ag-diff-stat--count">×${fc.writeCount}</span>
+            `;
+        }
+        if (fc.diffWrap && diff) {
+            _agRenderDiffContent(fc.diffWrap, diff, isNew, event.detail);
+        }
+        fc.card.classList.add('agent-act--flash');
+        setTimeout(() => fc.card.classList.remove('agent-act--flash'), 600);
     } else {
-        // If a read card exists for this path, remove it — the write card absorbs it
         if (s.readCards[path]) {
             s.readCards[path].item.remove();
             delete s.readCards[path];
         }
 
-        const item    = document.createElement('div');
-        item.className = 'agent-act-item';
-        const row     = document.createElement('div');
-        row.className = 'agent-act-row agent-act--file';
+        const item = document.createElement('div');
+        item.className = 'agent-act-item ag-diff-card-item';
 
-        row.innerHTML = `<span class="agent-act-icon">📄</span><span class="agent-act-name">${_htmlEscape(filename)}</span>`;
+        const card = document.createElement('div');
+        card.className = 'ag-diff-card';
 
-        const verbEl = document.createElement('span');
-        verbEl.className = 'agent-act-verb agent-act-verb--write';
-        verbEl.textContent = 'Writing';
-        row.appendChild(verbEl);
+        // Header
+        const header = document.createElement('div');
+        header.className = 'ag-diff-header';
 
-        const pathSpan = document.createElement('span');
-        pathSpan.className = 'agent-act-path';
-        pathSpan.textContent = path;
-        row.appendChild(pathSpan);
+        const left = document.createElement('div');
+        left.className = 'ag-diff-header-left';
+        left.innerHTML = `
+            <span class="ag-diff-icon">${isNew ? '<i class="fas fa-file-circle-plus"></i>' : '<i class="far fa-file-code"></i>'}</span>
+            <span class="ag-diff-filename" title="${_htmlEscape(path)}">${_htmlEscape(filename)}</span>
+            <span class="ag-diff-path">${_htmlEscape(path)}</span>
+        `;
 
-        const sizeEl  = document.createElement('span');
-        sizeEl.className = 'agent-act-size';
-        sizeEl.textContent = sizeStr;
-        row.appendChild(sizeEl);
+        const badgeEl = document.createElement('div');
+        badgeEl.className = 'ag-diff-stats';
+        if (isNew) {
+            badgeEl.innerHTML = `<span class="ag-diff-stat ag-diff-stat--new">NEW FILE</span>${adds ? ` <span class="ag-diff-stat ag-diff-stat--add">+${adds}</span>` : ''}`;
+        } else if (adds || dels) {
+            badgeEl.innerHTML = `
+                ${adds > 0 ? `<span class="ag-diff-stat ag-diff-stat--add">+${adds}</span>` : ''}
+                ${dels > 0 ? `<span class="ag-diff-stat ag-diff-stat--del">-${dels}</span>` : ''}
+            `;
+        }
+        left.appendChild(badgeEl);
 
-        // Undo button — only if a backup exists for this file
+        // Actions toolbar on right
+        const actions = document.createElement('div');
+        actions.className = 'ag-diff-actions';
+
+        // View in Files Explorer button
+        const viewBtn = document.createElement('button');
+        viewBtn.className = 'ag-diff-btn ag-diff-btn--view';
+        viewBtn.title = 'View file in Workspace Explorer';
+        viewBtn.innerHTML = `<i class="fas fa-folder-tree"></i> <span>View</span>`;
+        viewBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const filesTabBtn = document.getElementById('agents-tab-files-btn');
+            if (filesTabBtn) {
+                filesTabBtn.click();
+                _agOpenFile(path, filename);
+            }
+        });
+        actions.appendChild(viewBtn);
+
+        // Revert button (if backup exists)
         if (event.has_backup) {
             const undoBtn = document.createElement('button');
-            undoBtn.className = 'agent-act-undo-btn';
-            undoBtn.title = 'Restore previous version';
-            undoBtn.textContent = '↩';
+            undoBtn.className = 'ag-diff-btn ag-diff-btn--undo';
+            undoBtn.title = 'Restore previous version from backup';
+            undoBtn.innerHTML = `<i class="fas fa-rotate-left"></i> <span>Revert</span>`;
             undoBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 _agRestoreFile(path, undoBtn);
             });
-            row.appendChild(undoBtn);
+            actions.appendChild(undoBtn);
         }
 
-        const chevron = document.createElement('span');
-        chevron.className = 'agent-act-chevron';
-        chevron.textContent = '▸';
-        row.appendChild(chevron);
+        // Collapse/Expand Toggle button
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'ag-diff-btn ag-diff-btn--toggle';
+        toggleBtn.title = 'Toggle Diff View';
+        toggleBtn.innerHTML = `<i class="fas fa-chevron-up"></i>`;
+        actions.appendChild(toggleBtn);
 
-        const expand = document.createElement('div');
-        expand.className = 'agent-act-expand';
-        expand.style.display = 'none';
-        if (event.result) {
-            const res = document.createElement('div');
-            res.className = 'agent-act-result';
-            res.textContent = event.result;
-            expand.appendChild(res);
-        }
-        // Inline diff view
-        if (event.diff) {
-            const diffWrap = document.createElement('div');
-            diffWrap.className = 'agent-act-diff';
-            event.diff.split('\n').forEach(line => {
-                const span = document.createElement('div');
-                span.className = 'ag-diff-line';
-                if      (line.startsWith('+') && !line.startsWith('+++')) span.classList.add('ag-diff-add');
-                else if (line.startsWith('-') && !line.startsWith('---')) span.classList.add('ag-diff-del');
-                else if (line.startsWith('@@'))                           span.classList.add('ag-diff-hunk');
-                else if (line.startsWith('---') || line.startsWith('+++')) span.classList.add('ag-diff-header');
-                span.textContent = line;
-                diffWrap.appendChild(span);
-            });
-            expand.appendChild(diffWrap);
-        } else {
-            // No diff (new file) — show raw content preview
-            const contentEl = document.createElement('pre');
-            contentEl.className = 'agent-act-content';
-            contentEl.textContent = truncated;
-            expand.appendChild(contentEl);
-        }
+        header.appendChild(left);
+        header.appendChild(actions);
 
-        item.appendChild(row);
-        item.appendChild(expand);
-        row.addEventListener('click', () => {
-            const open = expand.style.display !== 'none';
-            expand.style.display = open ? 'none' : 'block';
-            chevron.textContent = open ? '▸' : '▾';
+        // Body with unified diff table
+        const body = document.createElement('div');
+        body.className = 'ag-diff-body';
+
+        const diffWrap = document.createElement('div');
+        diffWrap.className = 'ag-diff-content';
+        _agRenderDiffContent(diffWrap, diff, isNew, event.detail);
+        body.appendChild(diffWrap);
+
+        card.appendChild(header);
+        card.appendChild(body);
+        item.appendChild(card);
+
+        // Wire click toggle
+        header.addEventListener('click', () => {
+            const isCollapsed = body.style.display === 'none';
+            body.style.display = isCollapsed ? 'block' : 'none';
+            toggleBtn.innerHTML = isCollapsed ? '<i class="fas fa-chevron-up"></i>' : '<i class="fas fa-chevron-down"></i>';
         });
 
-        s.fileCards[path] = { row, expand, sizeEl, writeCount: 1 };
+        s.fileCards[path] = { card, header, body, badgeEl, diffWrap, writeCount: 1 };
         _agActLogAppend(item);
     }
 
