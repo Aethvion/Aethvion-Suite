@@ -114,7 +114,7 @@ User Message: "{user_message}"
 
 Classify the intent into one of these categories:
 - CHAT: General conversation, creative writing (stories, poems), brainstorming, simple explanations.
-- QUERY: Information retrieval (status, list tools, search memory, "what tools do I have?")
+- QUERY: Explicit internal memory recall (e.g. "search my memories for X", "what did I tell you yesterday?")
 - ANALYZE: Data analysis requests (analyze stock, review code, generate insights)
 - CREATE: Tool creation requests (create tool, forge capability, build function)
 - EXECUTE: Direct task execution (summarize text, calculate something, perform action)
@@ -204,7 +204,7 @@ Respond ONLY with JSON in this exact format:
             intent = IntentType.CREATE
         elif any(word in message_lower for word in ['analyze', 'review', 'examine', 'study']):
             intent = IntentType.ANALYZE
-        elif any(word in message_lower for word in ['search', 'find', 'list', 'show', 'what']):
+        elif any(phrase in message_lower for phrase in ['search memory', 'find memory', 'recall', 'remember', 'do you remember']):
             intent = IntentType.QUERY
         elif any(word in message_lower for word in ['execute', 'run', 'perform', 'do']):
             intent = IntentType.EXECUTE

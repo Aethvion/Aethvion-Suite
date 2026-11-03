@@ -129,7 +129,10 @@
                 thread_id: threadId,
                 thread_title: 'Dashboard Mission: ' + prompt.slice(0, 30),
                 mode: 'auto',
-                is_incognito: true
+                is_incognito: true,
+                settings: {
+                    internet_search: true
+                }
             };
 
             const res = await fetch('/api/tasks/submit', {

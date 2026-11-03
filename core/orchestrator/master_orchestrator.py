@@ -557,6 +557,12 @@ class MasterOrchestrator:
             actions.append("query_memory")
             plan.requires_memory = True
             plan.memory_query = intent.prompt
+            # Always follow up with direct response to formulate a complete answer
+            actions.append("direct_response")
+            resp_obj = self._generate_chat_response(intent, system_prompt=system_prompt, model_id=model_id, trace_id=trace_id, images=images)
+            plan.direct_response = resp_obj.content
+            if resp_obj.metadata and 'model' in resp_obj.metadata:
+                plan.model_used = resp_obj.metadata['model']
         
         elif intent.intent_type == IntentType.CREATE:
             # CREATE intent is now handled as an agent spawn request
@@ -697,8 +703,9 @@ class MasterOrchestrator:
                 elif action == "query_memory":
                     memory_results = self.query_memory(plan.memory_query, plan.trace_id)
                     memories_queried = len(memory_results)
-                    results_text = self._format_memory_results(memory_results)
-                    response_parts.append(results_text)
+                    if memory_results:
+                        results_text = self._format_memory_results(memory_results)
+                        response_parts.append(results_text)
                     actions_taken.append("query_memory")
                     
                     if self.step_callback:
