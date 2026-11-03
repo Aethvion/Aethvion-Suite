@@ -3,6 +3,7 @@
  *
  * Drives:
  *   - Assistant Hero & Omnibar (One-click instruction dispatch)
+ *   - Live Dispatched Missions & Autonomous Agent Terminal
  *   - Proactive Life Context (Persistent memory integration)
  *   - Autonomous Schedules & Automations (Cron & Blueprint workflows)
  *   - Recent Conversations & Telemetry Deck
@@ -12,6 +13,9 @@
     'use strict';
 
     let _userName = 'Marcel';
+    let _missions = [];
+    const STORAGE_KEY = 'aethvion_missions_v1';
+    let _activePollers = {};
 
     // ── Greeting ───────────────────────────────────────────────────────────
 
@@ -35,6 +39,25 @@
         }
     }
 
+    // ── Dispatched Missions State & Persistence ────────────────────────────
+
+    function loadMissions() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                _missions = JSON.parse(raw);
+            }
+        } catch (_) {
+            _missions = [];
+        }
+    }
+
+    function saveMissions() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(_missions.slice(0, 10)));
+        } catch (_) {}
+    }
+
     // ── Omnibar Dispatch ───────────────────────────────────────────────────
 
     function setupOmnibar() {
@@ -43,47 +66,301 @@
         if (!input || input.dataset.wired) return;
         input.dataset.wired = 'true';
 
-        function dispatch() {
+        function handleDispatch() {
             const text = input.value.trim();
             if (!text) return;
             input.value = '';
 
-            // Switch to chat panel
-            if (typeof window.setDashboardMode === 'function') {
-                window.setDashboardMode('home', true, 'chat');
-            } else if (typeof window.switchMainTab === 'function') {
-                window.switchMainTab('chat');
-            }
-
-            // Populate chat input and trigger send
-            setTimeout(() => {
-                const chatInput = document.getElementById('chat-input');
-                const sendBtn = document.getElementById('send-button');
-                if (chatInput) {
-                    chatInput.value = text;
-                    chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-                    chatInput.focus();
-                    if (sendBtn) {
-                        setTimeout(() => sendBtn.click(), 50);
-                    }
-                }
-            }, 200);
+            // Dispatch as an autonomous mission on the dashboard!
+            dispatchMission(text);
         }
 
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                dispatch();
+                handleDispatch();
             }
         });
 
         if (submitBtn) {
             submitBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                dispatch();
+                handleDispatch();
             });
         }
+
+        const clearBtn = document.getElementById('sh-missions-clear-all');
+        if (clearBtn && !clearBtn.dataset.wired) {
+            clearBtn.dataset.wired = 'true';
+            clearBtn.addEventListener('click', clearCompletedMissions);
+        }
     }
+
+    // ── Mission Runner (Background Execution on Dashboard) ─────────────────
+
+    async function dispatchMission(prompt, existingMission = null) {
+        const missionId = existingMission ? existingMission.id : ('m-' + Date.now());
+        const threadId = existingMission ? existingMission.thread_id : ('dispatched-' + Date.now());
+
+        const mission = existingMission || {
+            id: missionId,
+            taskId: null,
+            thread_id: threadId,
+            prompt: prompt,
+            status: 'queued',
+            started_at: Date.now(),
+            ended_at: null,
+            logs: [
+                `[${new Date().toLocaleTimeString()}] [System] Mission initialized. Context: Project & Suite tools.`
+            ],
+            response: null,
+            error: null
+        };
+
+        if (!existingMission) {
+            _missions.unshift(mission);
+            saveMissions();
+            renderMissions();
+        }
+
+        try {
+            const payload = {
+                prompt: prompt,
+                thread_id: threadId,
+                thread_title: 'Dashboard Mission: ' + prompt.slice(0, 30),
+                mode: 'auto',
+                is_incognito: true
+            };
+
+            const res = await fetch('/api/tasks/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to submit task`);
+            const data = await res.json();
+            mission.taskId = data.task_id;
+            mission.status = 'running';
+            mission.logs.push(`[${new Date().toLocaleTimeString()}] [Agent] Task queued with ID ${data.task_id}. Execution started.`);
+            saveMissions();
+            renderMissions();
+
+            // Start live status poller
+            startMissionPoller(mission);
+
+        } catch (err) {
+            console.error('[home] Mission dispatch error:', err);
+            mission.status = 'failed';
+            mission.error = err.message || 'Dispatch failed';
+            mission.logs.push(`[${new Date().toLocaleTimeString()}] [Error] ${mission.error}`);
+            saveMissions();
+            renderMissions();
+        }
+    }
+
+    function startMissionPoller(mission) {
+        if (!mission.taskId) return;
+        if (_activePollers[mission.id]) clearInterval(_activePollers[mission.id]);
+
+        let elapsedSeconds = 0;
+
+        _activePollers[mission.id] = setInterval(async () => {
+            elapsedSeconds++;
+            const timerEl = document.getElementById(`timer-${mission.id}`);
+            if (timerEl && mission.status === 'running') {
+                timerEl.textContent = `${elapsedSeconds}s`;
+            }
+
+            try {
+                const res = await fetch(`/api/tasks/status/${mission.taskId}`);
+                if (!res.ok) return;
+                const task = await res.json();
+
+                const status = (task.status || '').toLowerCase();
+
+                if (status === 'completed') {
+                    clearInterval(_activePollers[mission.id]);
+                    delete _activePollers[mission.id];
+
+                    mission.status = 'completed';
+                    mission.ended_at = Date.now();
+                    const duration = ((mission.ended_at - mission.started_at) / 1000).toFixed(1);
+                    
+                    const result = task.result || {};
+                    mission.response = result.response || 'Task completed successfully.';
+                    mission.logs.push(`[${new Date().toLocaleTimeString()}] [Completed] Mission finished in ${duration}s.`);
+                    saveMissions();
+                    renderMissions();
+
+                } else if (status === 'failed' || status === 'error' || status === 'cancelled') {
+                    clearInterval(_activePollers[mission.id]);
+                    delete _activePollers[mission.id];
+
+                    mission.status = status;
+                    mission.ended_at = Date.now();
+                    mission.error = task.error || (status === 'cancelled' ? 'Mission cancelled by user.' : 'Execution failed.');
+                    mission.logs.push(`[${new Date().toLocaleTimeString()}] [${status.toUpperCase()}] ${mission.error}`);
+                    saveMissions();
+                    renderMissions();
+                }
+
+            } catch (err) {
+                console.warn('[home] Error polling task:', err);
+            }
+        }, 1200);
+    }
+
+    async function cancelMission(missionId) {
+        const mission = _missions.find(m => m.id === missionId);
+        if (!mission) return;
+
+        if (_activePollers[missionId]) {
+            clearInterval(_activePollers[missionId]);
+            delete _activePollers[missionId];
+        }
+
+        if (mission.taskId) {
+            try {
+                await fetch(`/api/tasks/${mission.taskId}/cancel`, { method: 'POST' });
+            } catch (_) {}
+        }
+
+        mission.status = 'cancelled';
+        mission.ended_at = Date.now();
+        mission.logs.push(`[${new Date().toLocaleTimeString()}] [System] Mission stopped by user.`);
+        saveMissions();
+        renderMissions();
+    }
+
+    function dismissMission(missionId) {
+        if (_activePollers[missionId]) {
+            clearInterval(_activePollers[missionId]);
+            delete _activePollers[missionId];
+        }
+        _missions = _missions.filter(m => m.id !== missionId);
+        saveMissions();
+        renderMissions();
+    }
+
+    function clearCompletedMissions() {
+        _missions = _missions.filter(m => m.status === 'running');
+        saveMissions();
+        renderMissions();
+    }
+
+    function steerMission(missionId) {
+        const inputEl = document.getElementById(`steer-input-${missionId}`);
+        if (!inputEl) return;
+        const text = inputEl.value.trim();
+        if (!text) return;
+        inputEl.value = '';
+
+        const mission = _missions.find(m => m.id === missionId);
+        if (!mission) return;
+
+        mission.logs.push(`[${new Date().toLocaleTimeString()}] [User Follow-up] ${text}`);
+        mission.status = 'running';
+        mission.response = null;
+        renderMissions();
+
+        dispatchMission(text, mission);
+    }
+
+    // ── Render Missions Terminal UI ────────────────────────────────────────
+
+    function renderMissions() {
+        const wrapper = document.getElementById('sh-missions-wrapper');
+        const list = document.getElementById('sh-missions-list');
+        const countBadge = document.getElementById('sh-missions-count');
+        if (!wrapper || !list) return;
+
+        if (!_missions.length) {
+            wrapper.style.display = 'none';
+            return;
+        }
+
+        wrapper.style.display = 'flex';
+        const activeCount = _missions.filter(m => m.status === 'running').length;
+        if (countBadge) countBadge.textContent = String(_missions.length);
+
+        list.innerHTML = '';
+
+        _missions.forEach(m => {
+            const card = document.createElement('div');
+            card.className = `sh-mission-card sh-mission-${m.status}`;
+            card.id = `mission-${m.id}`;
+
+            let statusBadge = '';
+            if (m.status === 'running') {
+                statusBadge = `<span class="sh-m-badge badge-running"><i class="fas fa-circle-notch fa-spin"></i> RUNNING</span>`;
+            } else if (m.status === 'completed') {
+                statusBadge = `<span class="sh-m-badge badge-done"><i class="fas fa-check"></i> COMPLETED</span>`;
+            } else if (m.status === 'cancelled') {
+                statusBadge = `<span class="sh-m-badge badge-cancelled"><i class="fas fa-ban"></i> STOPPED</span>`;
+            } else {
+                statusBadge = `<span class="sh-m-badge badge-failed"><i class="fas fa-triangle-exclamation"></i> FAILED</span>`;
+            }
+
+            const elapsed = m.ended_at
+                ? `${((m.ended_at - m.started_at) / 1000).toFixed(1)}s`
+                : `<span id="timer-${m.id}">active</span>`;
+
+            // Terminal logs
+            const logsText = m.logs.map(l => esc(l)).join('<br>');
+            const responseHtml = m.response ? `
+                <div class="sh-m-response">
+                    <div class="sh-m-resp-header"><i class="fas fa-robot"></i> Agent Output</div>
+                    <div class="sh-m-resp-body">${esc(m.response).replace(/\n/g, '<br>')}</div>
+                </div>` : '';
+
+            card.innerHTML = `
+                <div class="sh-m-header">
+                    <div class="sh-m-header-left">
+                        <i class="fas fa-terminal sh-m-icon"></i>
+                        <span class="sh-m-prompt" title="${esc(m.prompt)}">${esc(m.prompt)}</span>
+                        <span class="sh-m-timer"><i class="fas fa-stopwatch"></i> ${elapsed}</span>
+                    </div>
+                    <div class="sh-m-header-right">
+                        ${statusBadge}
+                        ${m.status === 'running' 
+                            ? `<button class="sh-m-btn sh-m-stop" title="Stop agent execution" onclick="window._cancelMission('${m.id}')"><i class="fas fa-stop"></i> Stop</button>`
+                            : `<button class="sh-m-btn sh-m-dismiss" title="Dismiss" onclick="window._dismissMission('${m.id}')"><i class="fas fa-xmark"></i></button>`
+                        }
+                    </div>
+                </div>
+                <div class="sh-m-terminal" id="term-${m.id}">
+                    <div class="sh-m-logs">${logsText}</div>
+                    ${responseHtml}
+                </div>
+                <div class="sh-m-steer">
+                    <input type="text" id="steer-input-${m.id}" class="sh-m-steer-input" 
+                           placeholder="Steer this agent or give follow-up instructions..." autocomplete="off">
+                    <button class="sh-m-steer-btn" onclick="window._steerMission('${m.id}')">
+                        <span>Send</span> <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            `;
+
+            // Wire Enter key on steer input
+            const steerInput = card.querySelector(`#steer-input-${m.id}`);
+            if (steerInput) {
+                steerInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        steerMission(m.id);
+                    }
+                });
+            }
+
+            list.appendChild(card);
+        });
+    }
+
+    // Expose control actions to window for onclick handlers
+    window._cancelMission = cancelMission;
+    window._dismissMission = dismissMission;
+    window._steerMission = steerMission;
 
     // ── Life Context & Memory Brief ────────────────────────────────────────
 
@@ -108,7 +385,6 @@
                 return;
             }
 
-            // Extract user name if stored
             for (const key of topics) {
                 const raw = typeof data[key] === 'object' ? data[key]?.content : data[key];
                 if (raw && /Name:\s*([A-Za-z]+)/i.test(raw)) {
@@ -121,16 +397,13 @@
                 }
             }
 
-            // Build rich contextual briefing cards
             let html = '<div class="sh-context-grid">';
 
-            // Filter key topics: Project, Company, Profile
             const projectTopic = topics.find(t => /company|game|project/i.test(t));
             const profileTopic = topics.find(t => /user profile/i.test(t));
             const suiteTopic = topics.find(t => /suite/i.test(t));
 
             const displayKeys = [projectTopic, profileTopic, suiteTopic].filter(Boolean);
-            // Fallback to first 2-3 topics if no exact match
             const chosen = displayKeys.length ? displayKeys : topics.slice(0, 3);
 
             chosen.forEach(k => {
@@ -140,7 +413,6 @@
                              /profile/i.test(k) ? 'fa-user' :
                              /company/i.test(k) ? 'fa-building' : 'fa-brain';
                 
-                // Truncate cleanly for dashboard display
                 const preview = content
                     .replace(/[*#_`]/g, '')
                     .replace(/\s+/g, ' ')
@@ -213,7 +485,6 @@
 
         let html = '<div class="sh-sched-items">';
 
-        // Render up to 2 active tasks
         taskList.slice(0, 2).forEach(task => {
             const isPaused = task.is_paused || false;
             const badgeClass = isPaused ? 'badge-paused' : 'badge-active';
@@ -231,7 +502,6 @@
                 </div>`;
         });
 
-        // Render up to 2 workflows
         workflowList.slice(0, 2).forEach(wf => {
             html += `
                 <div class="sh-sched-item" onclick="switchMainTab('automate')">
@@ -258,16 +528,13 @@
     }
 
     function loadStats() {
-        // Active modules from sidebar nav
         const nav = window._sidebarNav;
         if (nav) setVal('snap-tabs-val', String(nav.getTotalTabCount()));
 
-        // Build version
         const vBadge = document.getElementById('suite-hero-version');
         const vText  = vBadge?.textContent?.replace('Version ', '').trim();
         setVal('snap-version-val', vText && vText !== '—' ? vText : '2.0-secure');
 
-        // Tokens + cost — mirror the live header counters
         function syncUsage() {
             const t = document.getElementById('tokens-today')?.textContent?.trim();
             const c = document.getElementById('cost-today')?.textContent?.trim();
@@ -278,7 +545,6 @@
         const usageTick = setInterval(syncUsage, 5000);
         window._suiteHomeUsageTick = usageTick;
 
-        // Core servers
         let tries = 0;
         const ticker = setInterval(() => {
             const label = document.getElementById('hub-servers-label')?.textContent || '';
@@ -293,7 +559,6 @@
             if (++tries > 20) clearInterval(ticker);
         }, 200);
 
-        // System CPU / status
         fetch('/api/system/status')
             .then(r => r.ok ? r.json() : null)
             .then(d => {
@@ -353,7 +618,7 @@
         }
 
         const sorted = threadArr
-            .filter(t => !t.id.startsWith('agents-'))
+            .filter(t => !t.id.startsWith('agents-') && !t.id.startsWith('dispatched-'))
             .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
 
         if (!sorted.length) {
@@ -361,7 +626,7 @@
                 <div class="ae-empty" style="min-height:100px;padding:1.5rem 1rem;">
                     <div class="ae-empty-icon"><i class="fas fa-comments"></i></div>
                     <div class="ae-empty-title">No conversations yet</div>
-                    <div class="ae-empty-desc">Dispatch an instruction above to start a session.</div>
+                    <div class="ae-empty-desc">Start a chat session to see history here.</div>
                 </div>`;
             return;
         }
@@ -396,8 +661,12 @@
     // ── Main Controller ────────────────────────────────────────────────────
 
     function update() {
+        loadMissions();
         updateGreeting();
         setupOmnibar();
+        renderMissions();
+        // Resume pollers for running missions
+        _missions.filter(m => m.status === 'running' && m.taskId).forEach(startMissionPoller);
         loadStats();
         loadLifeContext();
         loadSchedulesAndWorkflows();
@@ -406,7 +675,6 @@
 
     window._suiteHomeUpdate = update;
 
-    // Watch for panel activation
     function watchPanel() {
         const panel = document.getElementById('suite-home-panel');
         if (!panel) { setTimeout(watchPanel, 300); return; }
