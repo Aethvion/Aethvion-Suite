@@ -5,6 +5,11 @@
                             <div class="agents-selector-group">
                                 <label class="agents-selector-label">Workspace</label>
                                 <div class="agents-selector-row">
+                                    <button id="agents-ws-quickswitch-btn" class="agents-ws-quickswitch-btn" title="Quick Switch Workspace (Ctrl+O)" type="button">
+                                        <i class="fas fa-layer-group agents-ws-qs-icon"></i>
+                                        <span id="agents-ws-qs-label">Switch Workspace...</span>
+                                        <kbd class="agents-ws-qs-kbd">Ctrl+O</kbd>
+                                    </button>
                                     <select id="agents-workspace-select" class="agents-select">
                                         <option value="">No workspace selected</option>
                                     </select>
@@ -38,7 +43,71 @@
                             </div>
                         </div>
                         <div class="agents-topbar-right">
+                            <!-- Git Branch & Repository Indicator -->
+                            <div class="agents-git-badge" id="agents-git-badge" style="display:none" title="Git Repository Status (Click to inspect)">
+                                <i class="fas fa-code-branch agents-git-icon"></i>
+                                <span class="agents-git-branch" id="agents-git-branch">main</span>
+                                <span class="agents-git-status-dot" id="agents-git-status-dot" title="Clean working tree"></span>
+                                <span class="agents-git-changes-tag" id="agents-git-changes-tag" style="display:none">0 uncommitted</span>
+                                <button class="agents-git-refresh-btn" id="agents-git-refresh-btn" title="Refresh Git status" type="button">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                            <!-- Git Detail Popover / Flyout -->
+                            <div class="agents-git-popover" id="agents-git-popover" style="display:none">
+                                <div class="agents-git-popover-header">
+                                    <div class="agents-git-popover-title">
+                                        <i class="fas fa-code-branch"></i>
+                                        <span id="agents-git-pop-branch">main</span>
+                                    </div>
+                                    <span class="agents-git-popover-clean-badge" id="agents-git-pop-clean">Clean</span>
+                                </div>
+                                <div class="agents-git-popover-body">
+                                    <div class="agents-git-pop-row" id="agents-git-pop-commit-row">
+                                        <span class="agents-git-pop-label">Last Commit:</span>
+                                        <span class="agents-git-pop-val" id="agents-git-pop-commit">-</span>
+                                    </div>
+                                    <div class="agents-git-pop-stats">
+                                        <div class="agents-git-stat-chip modified">
+                                            <span class="chip-num" id="agents-git-stat-mod">0</span>
+                                            <span class="chip-lbl">modified</span>
+                                        </div>
+                                        <div class="agents-git-stat-chip staged">
+                                            <span class="chip-num" id="agents-git-stat-staged">0</span>
+                                            <span class="chip-lbl">staged</span>
+                                        </div>
+                                        <div class="agents-git-stat-chip untracked">
+                                            <span class="chip-num" id="agents-git-stat-untracked">0</span>
+                                            <span class="chip-lbl">untracked</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             <span class="agents-workspace-path" id="agents-workspace-path-display"></span>
+                        </div>
+                    </div>
+
+                    <!-- Spotlight Workspace Quick-Switcher Modal (Ctrl+O) -->
+                    <div id="agents-qs-overlay" class="agents-qs-overlay" style="display:none">
+                        <div class="agents-qs-modal">
+                            <div class="agents-qs-header">
+                                <i class="fas fa-search agents-qs-icon"></i>
+                                <input type="text" id="agents-qs-input" class="agents-qs-input" placeholder="Jump to workspace... (type to filter, Esc to close)" autocomplete="off" spellcheck="false" />
+                                <kbd class="agents-qs-esc-hint">Esc</kbd>
+                            </div>
+                            <div class="agents-qs-list" id="agents-qs-list">
+                                <!-- Populated dynamically -->
+                            </div>
+                            <div class="agents-qs-footer">
+                                <div class="agents-qs-keys">
+                                    <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+                                    <span><kbd>↵</kbd> select</span>
+                                    <span><kbd>Esc</kbd> close</span>
+                                </div>
+                                <button type="button" class="agents-qs-new-btn" id="agents-qs-new-btn">
+                                    <i class="fas fa-plus"></i> Add Workspace
+                                </button>
+                            </div>
                         </div>
                     </div>
 

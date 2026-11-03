@@ -4357,3 +4357,484 @@
     text-transform: uppercase;
     letter-spacing: 0.03em;
 }
+
+
+/* --------------------------------------------------------------------------
+   Smart Workspace Quick-Switcher & Git Branch Indicator
+   -------------------------------------------------------------------------- */
+
+/* Topbar right overflow and relative positioning for popovers */
+.agents-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+    max-width: 480px;
+}
+
+.agents-workspace-path {
+    max-width: 240px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Quick-Switcher Button */
+.agents-ws-quickswitch-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.35rem 0.65rem;
+    background: #0c1017;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 6px;
+    color: #f1f5f9;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.agents-ws-quickswitch-btn:hover {
+    border-color: rgba(56, 189, 248, 0.5);
+    background: rgba(56, 189, 248, 0.08);
+}
+
+.agents-ws-qs-icon {
+    color: #38bdf8;
+    font-size: 0.75rem;
+}
+
+#agents-ws-qs-label {
+    font-weight: 500;
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.agents-ws-qs-kbd {
+    font-size: 0.6rem;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #94a3b8;
+    font-family: var(--font-mono, monospace);
+    margin-left: 2px;
+}
+
+/* Git Repository Badge */
+.agents-git-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+    font-size: 0.75rem;
+}
+
+.agents-git-badge:hover {
+    border-color: rgba(56, 189, 248, 0.45);
+    background: rgba(56, 189, 248, 0.08);
+}
+
+.agents-git-icon {
+    color: #f97316;
+    font-size: 0.78rem;
+}
+
+.agents-git-branch {
+    font-weight: 600;
+    color: #f1f5f9;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.74rem;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.agents-git-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.agents-git-status-dot.clean {
+    background: #10b981;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+
+.agents-git-status-dot.dirty {
+    background: #f59e0b;
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+
+.agents-git-changes-tag {
+    font-size: 0.65rem;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    white-space: nowrap;
+}
+
+.agents-git-refresh-btn {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 0.7rem;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s ease;
+}
+
+.agents-git-refresh-btn:hover {
+    color: #38bdf8;
+}
+
+.agents-git-refresh-btn.spinning i {
+    animation: fa-spin 0.6s linear infinite;
+}
+
+/* Git Detail Popover */
+.agents-git-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 290px;
+    background: rgba(10, 14, 23, 0.95);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px rgba(56, 189, 248, 0.08);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+    overflow: hidden;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.agents-git-popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 8px;
+}
+
+.agents-git-popover-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #f1f5f9;
+    font-family: var(--font-mono, monospace);
+}
+
+.agents-git-popover-clean-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.agents-git-popover-clean-badge.clean {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.agents-git-popover-clean-badge.dirty {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.agents-git-pop-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.72rem;
+    margin-bottom: 6px;
+}
+
+.agents-git-pop-label {
+    color: #64748b;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.agents-git-pop-val {
+    color: #94a3b8;
+    font-family: var(--font-mono, monospace);
+    word-break: break-all;
+}
+
+.agents-git-pop-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.agents-git-stat-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 4px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.agents-git-stat-chip .chip-num {
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-family: var(--font-mono, monospace);
+}
+
+.agents-git-stat-chip .chip-lbl {
+    font-size: 0.6rem;
+    color: #64748b;
+    text-transform: uppercase;
+    margin-top: 1px;
+}
+
+.agents-git-stat-chip.modified .chip-num { color: #f59e0b; }
+.agents-git-stat-chip.staged .chip-num { color: #10b981; }
+.agents-git-stat-chip.untracked .chip-num { color: #94a3b8; }
+
+/* Spotlight Workspace Quick-Switcher Modal */
+.agents-qs-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(6px);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 14vh;
+}
+
+.agents-qs-modal {
+    width: 560px;
+    max-width: 92vw;
+    background: #0c1017;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 30px rgba(56, 189, 248, 0.12);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: qs-fade-in 0.15s ease-out;
+}
+
+@keyframes qs-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.agents-qs-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(15, 23, 42, 0.5);
+}
+
+.agents-qs-icon {
+    color: #38bdf8;
+    font-size: 0.95rem;
+}
+
+.agents-qs-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #f8fafc;
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.agents-qs-esc-hint {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #64748b;
+    font-family: var(--font-mono, monospace);
+}
+
+.agents-qs-list {
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.agents-qs-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    border: 1px solid transparent;
+}
+
+.agents-qs-item:hover,
+.agents-qs-item.highlighted {
+    background: rgba(56, 189, 248, 0.08);
+    border-color: rgba(56, 189, 248, 0.25);
+}
+
+.agents-qs-item.active {
+    background: rgba(16, 185, 129, 0.06);
+}
+
+.agents-qs-item-icon {
+    color: #38bdf8;
+    font-size: 0.9rem;
+    width: 24px;
+    text-align: center;
+}
+
+.agents-qs-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.agents-qs-item-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 0.82rem;
+    color: #f1f5f9;
+}
+
+.agents-qs-active-tag {
+    font-size: 0.62rem;
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.agents-qs-item-path {
+    font-size: 0.7rem;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: var(--font-mono, monospace);
+    margin-top: 2px;
+}
+
+.agents-qs-item-action {
+    color: #475569;
+    font-size: 0.75rem;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.agents-qs-item.highlighted .agents-qs-item-action {
+    opacity: 1;
+    color: #38bdf8;
+}
+
+.agents-qs-empty {
+    padding: 28px;
+    text-align: center;
+    color: #64748b;
+    font-size: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.agents-qs-empty i {
+    font-size: 1.5rem;
+    opacity: 0.4;
+}
+
+.agents-qs-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(10, 14, 23, 0.95);
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+.agents-qs-keys {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.agents-qs-keys kbd {
+    font-size: 0.62rem;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    font-family: var(--font-mono, monospace);
+    margin: 0 1px;
+}
+
+.agents-qs-new-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+    font-size: 0.72rem;
+    padding: 3px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s ease;
+}
+
+.agents-qs-new-btn:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.08);
+}

@@ -68,6 +68,9 @@ function _agentsPopulateWorkspaceSelect() {
     if (prev && _agentsWorkspaces.find(w => w.id === prev)) {
         sel.value = prev;
     }
+    const currentWs = _agentsWorkspaces.find(w => w.id === sel.value);
+    const qsLabel = _agEl('agents-ws-qs-label');
+    if (qsLabel) qsLabel.textContent = currentWs ? currentWs.name : 'Switch Workspace...';
     _agentsOnWorkspaceSelectChange();
 }
 
@@ -83,9 +86,14 @@ async function _agentsOnWorkspaceSelectChange() {
     if (ws) localStorage.setItem('agents_workspace_id', ws.id);
     else localStorage.removeItem('agents_workspace_id');
 
-    // Update path display
+    // Update path display & Quick Switcher label
     const pathEl = _agEl('agents-workspace-path-display');
     if (pathEl) pathEl.textContent = ws ? ws.path : '';
+    const qsLabel = _agEl('agents-ws-qs-label');
+    if (qsLabel) qsLabel.textContent = ws ? ws.name : 'Switch Workspace...';
+
+    // Refresh Git repository and branch status
+    _agLoadGitStatus();
 
     const inputPath = _agEl('agents-input-path');
     const inputCtx = _agEl('agents-input-context');
@@ -2203,6 +2211,7 @@ function _agFinishRender(event, isReplay = false) {
     } else {
         _agRenderPlanItems(true);
     }
+    _agLoadGitStatus();
 
     // Remove the inner typing indicator
     const ti = s.activity.querySelector('.agent-typing-indicator');
@@ -2819,7 +2828,311 @@ async function _agentsHandleFileSelect(files) {
 }
 
 // Event wiring (called once after DOM is ready)
+/* --------------------------------------------------------------------------
+   Git Branch Indicator & Status
+   -------------------------------------------------------------------------- */
+let _agGitCurrentData = null;
+
+async function _agLoadGitStatus() {
+    const ws = _agentsCurrentWorkspace;
+    const badge = _agEl('agents-git-badge');
+    const popover = _agEl('agents-git-popover');
+    if (!ws || !ws.path) {
+        if (badge) badge.style.display = 'none';
+        if (popover) popover.style.display = 'none';
+        _agGitCurrentData = null;
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/code/workspace/git-status?path=${encodeURIComponent(ws.path)}`);
+        if (!res.ok) {
+            if (badge) badge.style.display = 'none';
+            return;
+        }
+        const data = await res.json();
+        _agGitCurrentData = data;
+
+        if (!data || !data.is_repo) {
+            if (badge) badge.style.display = 'none';
+            if (popover) popover.style.display = 'none';
+            return;
+        }
+
+        // Show badge
+        if (badge) badge.style.display = 'inline-flex';
+
+        const branchEl = _agEl('agents-git-branch');
+        if (branchEl) branchEl.textContent = data.branch || 'HEAD';
+
+        const dotEl = _agEl('agents-git-status-dot');
+        const changesTag = _agEl('agents-git-changes-tag');
+
+        const totalChanges = (data.modified || 0) + (data.staged || 0) + (data.untracked || 0);
+
+        if (dotEl) {
+            if (data.clean) {
+                dotEl.className = 'agents-git-status-dot clean';
+                dotEl.title = 'Clean working tree';
+            } else {
+                dotEl.className = 'agents-git-status-dot dirty';
+                dotEl.title = `${totalChanges} uncommitted changes`;
+            }
+        }
+
+        if (changesTag) {
+            if (data.clean || totalChanges === 0) {
+                changesTag.style.display = 'none';
+            } else {
+                changesTag.textContent = `${totalChanges} uncommitted`;
+                changesTag.style.display = 'inline-block';
+            }
+        }
+
+        // Update popover fields
+        const popBranch = _agEl('agents-git-pop-branch');
+        const popClean = _agEl('agents-git-pop-clean');
+        const popCommit = _agEl('agents-git-pop-commit');
+        const popMod = _agEl('agents-git-stat-mod');
+        const popStaged = _agEl('agents-git-stat-staged');
+        const popUntracked = _agEl('agents-git-stat-untracked');
+
+        if (popBranch) popBranch.textContent = data.branch || 'HEAD';
+        if (popClean) {
+            popClean.textContent = data.clean ? 'Clean' : 'Modified';
+            popClean.className = 'agents-git-popover-clean-badge ' + (data.clean ? 'clean' : 'dirty');
+        }
+        if (popCommit) {
+            if (data.commit_hash) {
+                popCommit.textContent = `${data.commit_hash} — ${data.commit_msg || ''}`;
+                popCommit.title = `${data.commit_hash} ${data.commit_msg || ''}`;
+            } else {
+                popCommit.textContent = 'No commits found';
+            }
+        }
+        if (popMod) popMod.textContent = String(data.modified || 0);
+        if (popStaged) popStaged.textContent = String(data.staged || 0);
+        if (popUntracked) popUntracked.textContent = String(data.untracked || 0);
+
+    } catch (e) {
+        console.warn('[Code Git] Failed to query git status:', e);
+        if (badge) badge.style.display = 'none';
+    }
+}
+
+function _agToggleGitPopover(e) {
+    if (e) e.stopPropagation();
+    const pop = _agEl('agents-git-popover');
+    if (!pop) return;
+    const isVisible = pop.style.display === 'block';
+    pop.style.display = isVisible ? 'none' : 'block';
+}
+
+function _agCloseGitPopover() {
+    const pop = _agEl('agents-git-popover');
+    if (pop) pop.style.display = 'none';
+}
+
+/* --------------------------------------------------------------------------
+   Smart Workspace Quick-Switcher (Spotlight Modal)
+   -------------------------------------------------------------------------- */
+let _agQsHighlightedIndex = 0;
+let _agQsFiltered = [];
+
+function _agOpenQuickSwitcher() {
+    const overlay = _agEl('agents-qs-overlay');
+    const input   = _agEl('agents-qs-input');
+    if (!overlay) return;
+
+    overlay.style.display = 'flex';
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+    _agRenderQuickSwitcherList('');
+}
+
+function _agCloseQuickSwitcher() {
+    const overlay = _agEl('agents-qs-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+function _agRenderQuickSwitcherList(query = '') {
+    const listEl = _agEl('agents-qs-list');
+    if (!listEl) return;
+
+    const q = (query || '').trim().toLowerCase();
+    _agQsFiltered = _agentsWorkspaces.filter(ws => {
+        if (!q) return true;
+        const name = (ws.name || '').toLowerCase();
+        const path = (ws.path || '').toLowerCase();
+        return name.includes(q) || path.includes(q);
+    });
+
+    _agQsHighlightedIndex = 0;
+    listEl.innerHTML = '';
+
+    if (_agQsFiltered.length === 0) {
+        listEl.innerHTML = `
+            <div class="agents-qs-empty">
+                <i class="fas fa-folder-open"></i>
+                <div>No matching workspaces found</div>
+            </div>`;
+        return;
+    }
+
+    _agQsFiltered.forEach((ws, idx) => {
+        const isCurrent = _agentsCurrentWorkspace && _agentsCurrentWorkspace.id === ws.id;
+        const item = document.createElement('div');
+        item.className = 'agents-qs-item' +
+            (idx === _agQsHighlightedIndex ? ' highlighted' : '') +
+            (isCurrent ? ' active' : '');
+        item.dataset.index = idx;
+
+        item.innerHTML = `
+            <div class="agents-qs-item-icon">
+                <i class="fas fa-folder"></i>
+            </div>
+            <div class="agents-qs-item-info">
+                <div class="agents-qs-item-name">
+                    <span>${_htmlEscape(ws.name || 'Unnamed')}</span>
+                    ${isCurrent ? '<span class="agents-qs-active-tag">Active</span>' : ''}
+                </div>
+                <div class="agents-qs-item-path" title="${_htmlEscape(ws.path)}">
+                    ${_htmlEscape(ws.path)}
+                </div>
+            </div>
+            <div class="agents-qs-item-action">
+                <i class="fas fa-arrow-turn-down"></i>
+            </div>
+        `;
+
+        item.addEventListener('mouseenter', () => {
+            _agSetQsHighlight(idx);
+        });
+
+        item.addEventListener('click', () => {
+            _agSelectWorkspaceFromQs(ws.id);
+        });
+
+        listEl.appendChild(item);
+    });
+}
+
+function _agSetQsHighlight(idx) {
+    _agQsHighlightedIndex = idx;
+    const items = document.querySelectorAll('.agents-qs-item');
+    items.forEach((el, i) => {
+        if (i === idx) {
+            el.classList.add('highlighted');
+            el.scrollIntoView({ block: 'nearest' });
+        } else {
+            el.classList.remove('highlighted');
+        }
+    });
+}
+
+function _agSelectWorkspaceFromQs(wsId) {
+    _agCloseQuickSwitcher();
+    const sel = _agEl('agents-workspace-select');
+    if (sel && sel.value !== wsId) {
+        sel.value = wsId;
+        _agentsOnWorkspaceSelectChange();
+    }
+}
+
 function agentsInitEventHandlers() {
+    // Quick-Switcher button
+    const qsBtn = _agEl('agents-ws-quickswitch-btn');
+    if (qsBtn) qsBtn.addEventListener('click', _agOpenQuickSwitcher);
+
+    const qsOverlay = _agEl('agents-qs-overlay');
+    if (qsOverlay) {
+        qsOverlay.addEventListener('click', (e) => {
+            if (e.target === qsOverlay) _agCloseQuickSwitcher();
+        });
+    }
+
+    const qsInput = _agEl('agents-qs-input');
+    if (qsInput) {
+        qsInput.addEventListener('input', (e) => {
+            _agRenderQuickSwitcherList(e.target.value);
+        });
+        qsInput.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (_agQsFiltered.length > 0) {
+                    _agSetQsHighlight((_agQsHighlightedIndex + 1) % _agQsFiltered.length);
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (_agQsFiltered.length > 0) {
+                    _agSetQsHighlight((_agQsHighlightedIndex - 1 + _agQsFiltered.length) % _agQsFiltered.length);
+                }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (_agQsFiltered[_agQsHighlightedIndex]) {
+                    _agSelectWorkspaceFromQs(_agQsFiltered[_agQsHighlightedIndex].id);
+                }
+            } else if (e.key === 'Escape') {
+                _agCloseQuickSwitcher();
+            }
+        });
+    }
+
+    const qsNewBtn = _agEl('agents-qs-new-btn');
+    if (qsNewBtn) {
+        qsNewBtn.addEventListener('click', () => {
+            _agCloseQuickSwitcher();
+            agentsShowAddWorkspaceModal(false);
+        });
+    }
+
+    // Git Branch Badge click & popover toggle
+    const gitBadge = _agEl('agents-git-badge');
+    if (gitBadge) {
+        gitBadge.addEventListener('click', (e) => {
+            if (e.target.closest('#agents-git-refresh-btn')) return;
+            _agToggleGitPopover(e);
+        });
+    }
+
+    const gitRefreshBtn = _agEl('agents-git-refresh-btn');
+    if (gitRefreshBtn) {
+        gitRefreshBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            gitRefreshBtn.classList.add('spinning');
+            await _agLoadGitStatus();
+            setTimeout(() => gitRefreshBtn.classList.remove('spinning'), 500);
+        });
+    }
+
+    // Close git popover on outside click
+    document.addEventListener('click', (e) => {
+        const pop = _agEl('agents-git-popover');
+        const badge = _agEl('agents-git-badge');
+        if (pop && pop.style.display === 'block') {
+            if (!pop.contains(e.target) && !badge.contains(e.target)) {
+                _agCloseGitPopover();
+            }
+        }
+    });
+
+    // Global keyboard shortcut: Ctrl+O to open workspace quick-switcher
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
+            const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+            if (activeTag !== 'textarea') {
+                e.preventDefault();
+                _agOpenQuickSwitcher();
+            }
+        }
+        if (e.key === 'Escape') {
+            _agCloseQuickSwitcher();
+            _agCloseGitPopover();
+        }
+    });
+
     // Workspace select change
     const wsSel = _agEl('agents-workspace-select');
     if (wsSel) wsSel.addEventListener('change', _agentsOnWorkspaceSelectChange);

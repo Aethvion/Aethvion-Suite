@@ -10,6 +10,7 @@ import asyncio
 import mimetypes
 import os
 import shutil
+import subprocess
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -519,6 +520,114 @@ async def search_workspace_content(path: str, query: str):
     except Exception as e:
         logger.error(f"search_workspace_content error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@_router.get("/workspace/git-status")
+async def get_workspace_git_status(path: str = Query(default=""), workspace_id: Optional[str] = Query(default=None)):
+    """
+    Get git repository status (branch, clean/dirty state, modified count, last commit)
+    for a given workspace directory.
+    """
+    try:
+        repo_path = path
+        if not repo_path and workspace_id:
+            ws = workspace_manager.get_workspace(workspace_id)
+            if ws:
+                repo_path = ws.path
+
+        if not repo_path or not os.path.isdir(repo_path):
+            return {"is_repo": False, "error": "Invalid directory path"}
+
+        loop = asyncio.get_event_loop()
+
+        def _inspect_git(r_path: str):
+            try:
+                res = subprocess.run(
+                    ["git", "rev-parse", "--is-inside-work-tree"],
+                    cwd=r_path,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=3
+                )
+                if res.returncode != 0:
+                    return {"is_repo": False}
+
+                # Current branch or detached HEAD
+                branch_res = subprocess.run(
+                    ["git", "branch", "--show-current"],
+                    cwd=r_path,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=3
+                )
+                branch = branch_res.stdout.strip()
+                if not branch:
+                    head_res = subprocess.run(
+                        ["git", "rev-parse", "--short", "HEAD"],
+                        cwd=r_path,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        timeout=3
+                    )
+                    branch = f":{head_res.stdout.strip()}" if head_res.returncode == 0 else "HEAD"
+
+                # Status porcelain
+                status_res = subprocess.run(
+                    ["git", "status", "--porcelain", "-b"],
+                    cwd=r_path,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=3
+                )
+                lines = status_res.stdout.splitlines()
+                modified = 0
+                untracked = 0
+                staged = 0
+                for l in lines[1:]:
+                    if len(l) >= 2:
+                        x, y = l[0], l[1]
+                        if x == "?" and y == "?":
+                            untracked += 1
+                        else:
+                            if x in "MADRC":
+                                staged += 1
+                            if y in "MD":
+                                modified += 1
+
+                # Last commit
+                log_res = subprocess.run(
+                    ["git", "log", "-1", "--format=%h|%s", "HEAD"],
+                    cwd=r_path,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=3
+                )
+                commit_hash, commit_msg = ("", "")
+                if log_res.returncode == 0 and "|" in log_res.stdout:
+                    commit_hash, commit_msg = log_res.stdout.strip().split("|", 1)
+
+                return {
+                    "is_repo": True,
+                    "branch": branch,
+                    "clean": (modified == 0 and staged == 0 and untracked == 0),
+                    "modified": modified,
+                    "staged": staged,
+                    "untracked": untracked,
+                    "commit_hash": commit_hash,
+                    "commit_msg": commit_msg,
+                }
+            except Exception as ex:
+                return {"is_repo": False, "error": str(ex)}
+
+        return await loop.run_in_executor(None, _inspect_git, repo_path)
+    except Exception as e:
+        logger.error(f"get_workspace_git_status error: {e}")
+        return {"is_repo": False, "error": str(e)}
 
 
 # Project Memory endpoints
