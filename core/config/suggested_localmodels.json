@@ -1,19 +1,63 @@
 [
     {
-        "id": "llama-3.2-1b-instruct",
-        "name": "Llama 3.2 1B Instruct",
-        "repo": "bartowski/Llama-3.2-1B-Instruct-GGUF",
-        "filename": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
-        "size": "0.7 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "Meta's smallest Llama 3.2 model, highly efficient for low-end hardware.",
-        "tags": [
-            "Fast",
-            "Meta",
-            "Llama 3.2"
-        ]
+        "id": "qwen2.5-coder-7b-instruct",
+        "name": "Qwen 2.5 Coder 7B Instruct",
+        "repo": "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF",
+        "filename": "qwen2.5-coder-7b-instruct-q4_k_m.gguf",
+        "size": "4.7 GB",
+        "capabilities": ["CHAT", "CODE"],
+        "description": "Alibaba's dedicated coding model. The #1 recommended local model for coding tasks, refactoring, and agent tools on 8GB+ VRAM.",
+        "tags": ["Recommended", "Coding", "Alibaba", "Qwen", "Fast"]
+    },
+    {
+        "id": "qwen2.5-coder-14b-instruct",
+        "name": "Qwen 2.5 Coder 14B Instruct",
+        "repo": "Qwen/Qwen2.5-Coder-14B-Instruct-GGUF",
+        "filename": "qwen2.5-coder-14b-instruct-q4_k_m.gguf",
+        "size": "9.0 GB",
+        "capabilities": ["CHAT", "CODE"],
+        "description": "Higher capability coding model. Near frontier-grade code comprehension and generation for systems with 12GB+ VRAM or 16GB+ RAM.",
+        "tags": ["Coding", "Alibaba", "Qwen", "Advanced"]
+    },
+    {
+        "id": "deepseek-r1-distill-qwen-14b",
+        "name": "DeepSeek R1 Distill Qwen 14B",
+        "repo": "bartowski/DeepSeek-R1-Distill-Qwen-14B-GGUF",
+        "filename": "DeepSeek-R1-Distill-Qwen-14B-Q4_K_M.gguf",
+        "size": "9.0 GB",
+        "capabilities": ["CHAT", "REASONING"],
+        "description": "DeepSeek R1 reasoning architecture distilled into Qwen 14B. Displays deep internal chain-of-thought thinking before outputting solutions.",
+        "tags": ["Reasoning", "Thinking", "DeepSeek", "Popular"]
+    },
+    {
+        "id": "deepseek-r1-distill-qwen-7b",
+        "name": "DeepSeek R1 Distill Qwen 7B",
+        "repo": "bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF",
+        "filename": "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
+        "size": "4.7 GB",
+        "capabilities": ["CHAT", "REASONING"],
+        "description": "Fast local reasoning model. Thinks step-by-step through logic, math, and code problems on 8GB VRAM or mainstream CPUs.",
+        "tags": ["Reasoning", "Thinking", "DeepSeek", "Fast"]
+    },
+    {
+        "id": "phi-4-14b-instruct",
+        "name": "Phi-4 14B Instruct",
+        "repo": "unsloth/phi-4-GGUF",
+        "filename": "phi-4-Q4_K_M.gguf",
+        "size": "9.1 GB",
+        "capabilities": ["CHAT", "REASONING"],
+        "description": "Microsoft's premier 14B model. State-of-the-art synthetic data training delivers exceptional mathematical, logical, and coding precision.",
+        "tags": ["Reasoning", "Microsoft", "Phi-4", "Advanced"]
+    },
+    {
+        "id": "phi-4-mini-instruct",
+        "name": "Phi-4 Mini Instruct (3.8B)",
+        "repo": "unsloth/Phi-4-mini-instruct-GGUF",
+        "filename": "Phi-4-mini-instruct-Q4_K_M.gguf",
+        "size": "2.4 GB",
+        "capabilities": ["CHAT"],
+        "description": "Microsoft's lightweight and efficient reasoning model. Great performance for budget hardware.",
+        "tags": ["Lightweight", "Microsoft", "Phi-4", "Fast"]
     },
     {
         "id": "llama-3.2-3b-instruct",
@@ -21,187 +65,29 @@
         "repo": "bartowski/Llama-3.2-3B-Instruct-GGUF",
         "filename": "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
         "size": "2.1 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "Meta's 3B model, offers great balance between speed and performance.",
-        "tags": [
-            "Balanced",
-            "Meta",
-            "Llama 3.2"
-        ]
+        "capabilities": ["CHAT"],
+        "description": "Meta's highly optimized 3B model. Outstanding balance between fast response times and conversational fluency.",
+        "tags": ["Fast", "Meta", "Llama 3.2", "Balanced"]
     },
     {
-        "id": "phi-4-mini-instruct",
-        "name": "Phi-4 Mini Instruct",
-        "repo": "unsloth/Phi-4-mini-instruct-GGUF",
-        "filename": "Phi-4-mini-instruct-Q4_K_M.gguf",
-        "size": "2.4 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "Microsoft's lightweight and powerful reasoning model.",
-        "tags": [
-            "Reasoning",
-            "Microsoft",
-            "Phi-4"
-        ]
+        "id": "llama-3.2-1b-instruct",
+        "name": "Llama 3.2 1B Instruct",
+        "repo": "bartowski/Llama-3.2-1B-Instruct-GGUF",
+        "filename": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
+        "size": "0.7 GB",
+        "capabilities": ["CHAT"],
+        "description": "Meta's ultra-lightweight 1B model. Extremely low memory footprint (< 1GB VRAM/RAM), perfect for edge devices and background tasks.",
+        "tags": ["Ultra-light", "Meta", "Llama 3.2"]
     },
     {
-        "id": "qwen2.5-1.5b-instruct",
-        "name": "Qwen 2.5 1.5B Instruct",
-        "repo": "Qwen/Qwen2.5-1.5B-Instruct-GGUF",
-        "filename": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
-        "size": "1.0 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "Alibaba's highly capable small model, great for general tasks.",
-        "tags": [
-            "Multilingual",
-            "Alibaba",
-            "Qwen"
-        ]
-    },
-    {
-        "id": "mistral-nemo-12b",
-        "name": "Mistral NeMo 12B Instruct",
-        "repo": "bartowski/Mistral-Nemo-Instruct-2407-GGUF",
-        "filename": "Mistral-Nemo-Instruct-2407-Q4_K_M.gguf",
-        "size": "7.5 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "A powerful 12B model from Mistral and NVIDIA, great for complex logic.",
-        "tags": [
-            "Advanced",
-            "Mistral",
-            "NVIDIA"
-        ]
-    },
-    {
-        "id": "gemma-4-e2b-it-nvfp4",
-        "name": "Gemma 4 E2B (NVIDIA NVFP4)",
-        "repo": "bartowski/gemma-4-E2B-it-GGUF",
-        "filename": "gemma-4-E2B-it-NVFP4.gguf",
-        "size": "3.5 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "NVIDIA-optimized 4-bit floating point quantization of Gemma 4 E2B. Extreme performance on RTX GPUs.",
-        "tags": [
-            "NVIDIA",
-            "NVFP4",
-            "Google",
-            "Gemma 4",
-            "RTX Optimized"
-        ]
-    },
-    {
-        "id": "gemma-4-e4b-it-nvfp4",
-        "name": "Gemma 4 E4B (NVIDIA NVFP4)",
-        "repo": "bartowski/gemma-4-E4B-it-GGUF",
-        "filename": "gemma-4-E4B-it-NVFP4.gguf",
-        "size": "5.2 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "NVIDIA's official-style 4-bit quantization for Gemma 4 E4B. Balanced for high-speed local inference.",
-        "tags": [
-            "NVIDIA",
-            "NVFP4",
-            "Google",
-            "Gemma 4",
-            "RTX Optimized"
-        ]
-    },
-    {
-        "id": "gemma-4-31b-it-nvfp4",
-        "name": "Gemma 4 31B It (NVIDIA NVFP4)",
-        "repo": "bartowski/gemma-4-31B-it-GGUF",
-        "filename": "gemma-4-31B-it-NVFP4.gguf",
-        "size": "16.5 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "The peak of Gemma 4 performance. 31B parameters in 4-bit precision, optimized for NVIDIA Blackwell and RTX AI platforms.",
-        "tags": [
-            "NVIDIA",
-            "NVFP4",
-            "Google",
-            "Gemma 4",
-            "Powerful"
-        ]
-    },
-    {
-        "id": "gemma-2-9b-it-nvfp4",
-        "name": "Gemma 2 9B It (NVIDIA NVFP4)",
-        "repo": "bartowski/gemma-2-9b-it-GGUF",
-        "filename": "gemma-2-9b-it-NVFP4.gguf",
-        "size": "5.4 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "The classic Gemma 2 9B, now with official NVIDIA NVFP4 quantization support in llama.cpp.",
-        "tags": [
-            "NVIDIA",
-            "NVFP4",
-            "Google",
-            "Gemma 2",
-            "Stable"
-        ]
-    },
-    {
-        "id": "gemma-2-27b-it-nvfp4",
-        "name": "Gemma 2 27B It (NVIDIA NVFP4)",
-        "repo": "bartowski/gemma-2-27b-it-GGUF",
-        "filename": "gemma-2-27b-it-NVFP4.gguf",
-        "size": "15.8 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "NVIDIA optimized 27B Gemma 2. Excellent quality/speed ratio on higher-end RTX cards.",
-        "tags": [
-            "NVIDIA",
-            "NVFP4",
-            "Google",
-            "Gemma 2",
-            "High VRAM"
-        ]
-    },
-    {
-        "id": "gemma-3-1b-it",
-        "name": "Gemma 3 1B Instruct",
-        "repo": "unsloth/gemma-3-1b-it-GGUF",
-        "filename": "gemma-3-1b-it-Q4_K_M.gguf",
-        "size": "0.8 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "Google's Gemma 3 1B — ultra-lightweight model for low-end hardware and edge devices. Surprisingly capable for its size.",
-        "tags": [
-            "Fast",
-            "Google",
-            "Gemma 3",
-            "Lightweight"
-        ]
-    },
-    {
-        "id": "gemma-3-4b-it",
-        "name": "Gemma 3 4B Instruct",
-        "repo": "unsloth/gemma-3-4b-it-GGUF",
-        "filename": "gemma-3-4b-it-Q4_K_M.gguf",
-        "size": "2.3 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "Google's Gemma 3 4B — strong instruction-tuned model with excellent multilingual support and long context (128K).",
-        "tags": [
-            "Balanced",
-            "Google",
-            "Gemma 3",
-            "Multilingual"
-        ]
+        "id": "mistral-small-24b-instruct",
+        "name": "Mistral Small 24B Instruct",
+        "repo": "bartowski/Mistral-Small-24B-Instruct-2501-GGUF",
+        "filename": "Mistral-Small-24B-Instruct-2501-Q4_K_M.gguf",
+        "size": "14.5 GB",
+        "capabilities": ["CHAT", "CODE"],
+        "description": "Mistral's latest 24B architecture. Exceptional multilingual support, agent tool use, and 32k context.",
+        "tags": ["Mistral", "Agentic", "Advanced"]
     },
     {
         "id": "gemma-3-12b-it",
@@ -209,168 +95,18 @@
         "repo": "unsloth/gemma-3-12b-it-GGUF",
         "filename": "gemma-3-12b-it-Q4_K_M.gguf",
         "size": "7.0 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "Google's Gemma 3 12B — highly capable mid-size model with 128K context. Excellent reasoning, coding, and multilingual performance.",
-        "tags": [
-            "Advanced",
-            "Google",
-            "Gemma 3",
-            "Multilingual"
-        ]
+        "capabilities": ["CHAT"],
+        "description": "Google's Gemma 3 12B — capable mid-size model with 128K context. Strong reasoning and multilingual performance.",
+        "tags": ["Google", "Gemma 3", "Multilingual"]
     },
     {
-        "id": "gemma-3-27b-it",
-        "name": "Gemma 3 27B Instruct",
-        "repo": "unsloth/gemma-3-27b-it-GGUF",
-        "filename": "gemma-3-27b-it-Q4_K_M.gguf",
-        "size": "16.0 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "Google's Gemma 3 27B — the most powerful Gemma model. Top-tier reasoning and instruction following. Requires 16 GB+ VRAM or high-RAM CPU.",
-        "tags": [
-            "Powerful",
-            "Google",
-            "Gemma 3",
-            "High VRAM"
-        ]
-    },
-    {
-        "id": "gemma-4-e2b-it",
-        "name": "Gemma 4 E2B Instruct",
-        "repo": "unsloth/gemma-4-E2B-it-GGUF",
-        "filename": "gemma-4-E2B-it-Q4_K_M.gguf",
-        "size": "4.0 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "Google's Gemma 4 E2B — ultra-lightweight edge model with multimodal support (text, vision, audio). Ideal for phones and low-end devices. 128K context.",
-        "tags": [
-            "Fast",
-            "Google",
-            "Gemma 4",
-            "Lightweight",
-            "Multimodal"
-        ]
-    },
-    {
-        "id": "gemma-4-e4b-it",
-        "name": "Gemma 4 E4B Instruct",
-        "repo": "unsloth/gemma-4-E4B-it-GGUF",
-        "filename": "gemma-4-E4B-it-Q4_K_M.gguf",
-        "size": "6.0 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "Google's Gemma 4 E4B — efficient on-device model with multimodal support (text, vision, audio). Great for laptops and fast local tasks. 128K context.",
-        "tags": [
-            "Balanced",
-            "Google",
-            "Gemma 4",
-            "Multimodal"
-        ]
-    },
-    {
-        "id": "gemma-4-26b-a4b-it",
-        "name": "Gemma 4 26B-A4B Instruct (MoE)",
-        "repo": "unsloth/gemma-4-26B-A4B-it-GGUF",
-        "filename": "gemma-4-26B-A4B-it-Q4_K_M.gguf",
-        "size": "17.0 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "Google's Gemma 4 26B Mixture-of-Experts — only 4B parameters active at inference for high speed with excellent quality. Text and vision support. 256K context.",
-        "tags": [
-            "Advanced",
-            "Google",
-            "Gemma 4",
-            "MoE",
-            "High VRAM"
-        ]
-    },
-    {
-        "id": "gemma-4-31b-it",
-        "name": "Gemma 4 31B Instruct",
-        "repo": "unsloth/gemma-4-31B-it-GGUF",
-        "filename": "gemma-4-31B-it-Q4_K_M.gguf",
-        "size": "19.0 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "Google's Gemma 4 31B — the most powerful Gemma 4 model. Dense architecture with top-tier reasoning and instruction following. Text and vision support. 256K context. Requires 20 GB+ VRAM or high-RAM CPU.",
-        "tags": [
-            "Powerful",
-            "Google",
-            "Gemma 4",
-            "High VRAM"
-        ]
-    },
-    {
-        "id": "deepseek-r1-distill-7b",
-        "name": "DeepSeek R1 Distill 7B",
-        "repo": "bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF",
-        "filename": "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
-        "size": "4.4 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "DeepSeek R1 reasoning distilled into 7B — delivers chain-of-thought reasoning far above its weight class. Best local reasoning model.",
-        "tags": [
-            "Reasoning",
-            "DeepSeek",
-            "Chain-of-Thought"
-        ]
-    },
-    {
-        "id": "llama-3.1-8b-instruct",
-        "name": "Llama 3.1 8B Instruct",
-        "repo": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
-        "filename": "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
-        "size": "4.6 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "Meta's Llama 3.1 8B — strong all-round model with 128K context window. Excellent for general tasks and creative writing.",
-        "tags": [
-            "Advanced",
-            "Meta",
-            "Llama 3.1",
-            "Long Context"
-        ]
-    },
-    {
-        "id": "qwen2.5-coder-7b",
-        "name": "Qwen 2.5 Coder 7B",
-        "repo": "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF",
-        "filename": "qwen2.5-coder-7b-instruct-q4_k_m.gguf",
-        "size": "4.4 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "Alibaba's dedicated coding model — state-of-the-art for code generation, debugging and explanation at the 7B scale. Pairs perfectly with the Code IDE.",
-        "tags": [
-            "Coding",
-            "Alibaba",
-            "Qwen 2.5",
-            "IDE"
-        ]
-    },
-    {
-        "id": "nemotron-3-nano-4b",
-        "name": "Nemotron 3 Nano 4B",
-        "repo": "nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF",
-        "filename": "NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf",
-        "size": "2.6 GB",
-        "capabilities": [
-            "CHAT"
-        ],
-        "description": "NVIDIA's Nemotron 3 Nano — compact Mamba-Transformer hybrid. Efficient and accurate at 4B parameters, ~18 tok/s on GPU. Best on CUDA; CPU-only may be unstable.",
-        "tags": [
-            "NVIDIA",
-            "Nemotron",
-            "Efficient"
-        ]
+        "id": "llama-3.3-70b-instruct",
+        "name": "Llama 3.3 70B Instruct",
+        "repo": "bartowski/Llama-3.3-70B-Instruct-GGUF",
+        "filename": "Llama-3.3-70B-Instruct-Q4_K_M.gguf",
+        "size": "43.0 GB",
+        "capabilities": ["CHAT", "CODE", "REASONING"],
+        "description": "Meta's full 70B flagship model. Top-tier open-source intelligence rivaling leading proprietary models. Requires 48GB+ RAM/VRAM.",
+        "tags": ["Flagship", "Meta", "Llama 3.3", "High VRAM"]
     }
 ]

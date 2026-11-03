@@ -1,28 +1,40 @@
 {
     "anthropic": [
+        "claude-3-7-sonnet-latest",
         "claude-3-5-sonnet-latest",
-        "claude-sonnet-4-20250514"
+        "claude-3-5-haiku-latest"
     ],
     "google_ai": [
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
         "gemini-3-flash-preview"
     ],
-    "groq": [
-        "llama-3.3-70b-versatile"
-    ],
-    "mistral": [
-        "mistral-large-latest"
-    ],
     "openai": [
-        "gpt-4o-mini",
         "gpt-4o",
+        "gpt-4o-mini",
         "o3-mini"
     ],
     "deepseek": [
-        "deepseek-v4-flash",
-        "deepseek-v4-pro"
+        "deepseek-chat",
+        "deepseek-reasoner"
+    ],
+    "groq": [
+        "llama-3.3-70b-versatile",
+        "deepseek-r1-distill-llama-70b",
+        "llama-3.1-8b-instant"
+    ],
+    "mistral": [
+        "mistral-large-latest",
+        "codestral-latest",
+        "mistral-small-latest"
     ],
     "grok": [
-        "grok-3-mini",
-        "grok-3"
+        "grok-3",
+        "grok-3-mini"
+    ],
+    "openrouter": [
+        "deepseek/deepseek-r1",
+        "anthropic/claude-3.7-sonnet",
+        "google/gemini-2.5-flash"
     ]
 }

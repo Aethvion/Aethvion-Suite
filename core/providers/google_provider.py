@@ -421,7 +421,7 @@ class GoogleAIProvider(BaseProvider):
     ) -> ProviderResponse:
         """Transcribe audio using Gemini's multimodal capabilities."""
         try:
-            active_model = model if model else "gemini-1.5-flash"
+            active_model = model if model else "gemini-2.5-flash"
             logger.debug(f"[{trace_id}] Transcribing with Google AI model {active_model}")
 
             # Prepare contents with audio bytes
@@ -458,7 +458,7 @@ class GoogleAIProvider(BaseProvider):
             self.record_failure()
             return ProviderResponse(
                 content="",
-                model=model or "gemini-1.5-flash",
+                model=model or "gemini-2.5-flash",
                 provider="google_ai",
                 trace_id=trace_id,
                 error=str(e)

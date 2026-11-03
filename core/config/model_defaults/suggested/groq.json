@@ -9,31 +9,31 @@
                 "input_cost": 0.59,
                 "output_cost": 0.79,
                 "capabilities": ["CHAT"],
-                "description": "Llama 3.3 70B via Groq LPU. Excellent general-purpose model at high speed."
+                "description": "Meta Llama 3.3 70B via Groq LPU. Flagship open-weights performance at blazing speeds."
+            },
+            {
+                "id": "deepseek-r1-distill-llama-70b",
+                "name": "DeepSeek R1 Distill 70B",
+                "input_cost": 0.75,
+                "output_cost": 0.99,
+                "capabilities": ["CHAT"],
+                "description": "DeepSeek R1 reasoning architecture distilled into Llama 70B, served at ultra-high LPU speeds."
+            },
+            {
+                "id": "qwen-2.5-coder-32b",
+                "name": "Qwen 2.5 Coder 32B",
+                "input_cost": 0.39,
+                "output_cost": 0.59,
+                "capabilities": ["CHAT"],
+                "description": "Alibaba's dedicated coding model served via Groq for instantaneous code generation and inspection."
             },
             {
                 "id": "llama-3.1-8b-instant",
-                "name": "Llama 3.1 8B",
+                "name": "Llama 3.1 8B Instant",
                 "input_cost": 0.05,
                 "output_cost": 0.08,
                 "capabilities": ["CHAT"],
-                "description": "Llama 3.1 8B via Groq. Ultra-fast and cheap for simple tasks."
-            },
-            {
-                "id": "llama3-70b-8192",
-                "name": "Llama 3 70B",
-                "input_cost": 0.59,
-                "output_cost": 0.79,
-                "capabilities": ["CHAT"],
-                "description": "Llama 3 70B via Groq LPU. Fast inference on large context."
-            },
-            {
-                "id": "mixtral-8x7b-32768",
-                "name": "Mixtral 8x7B",
-                "input_cost": 0.24,
-                "output_cost": 0.24,
-                "capabilities": ["CHAT"],
-                "description": "Mixtral 8x7B via Groq. MoE architecture, great code generation."
+                "description": "Ultra-fast and low-cost model for simple routine tasks, formatting, and classification."
             },
             {
                 "id": "gemma2-9b-it",
@@ -41,15 +41,7 @@
                 "input_cost": 0.2,
                 "output_cost": 0.2,
                 "capabilities": ["CHAT"],
-                "description": "Gemma 2 9B via Groq. Google's efficient open model, very fast."
-            },
-            {
-                "id": "deepseek-r1-distill-llama-70b",
-                "name": "DeepSeek R1 70B",
-                "input_cost": 0.75,
-                "output_cost": 0.99,
-                "capabilities": ["CHAT"],
-                "description": "DeepSeek R1 Distill 70B via Groq. Reasoning model at LPU speed."
+                "description": "Google's high-efficiency open model running on Groq LPUs."
             }
         ]
     }

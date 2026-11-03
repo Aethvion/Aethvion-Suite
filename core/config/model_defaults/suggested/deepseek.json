@@ -4,20 +4,20 @@
         "api_key_env": "DEEPSEEK_API_KEY",
         "models": [
             {
-                "id": "deepseek-v4-flash",
-                "name": "DeepSeek V4 Flash",
+                "id": "deepseek-chat",
+                "name": "DeepSeek V3 (Chat)",
                 "input_cost": 0.14,
                 "output_cost": 0.28,
                 "capabilities": ["CHAT"],
-                "description": "DeepSeek V4 Flash flagship model. High intelligence, fast, and extremely cost-effective. Supports both thinking and non-thinking modes."
+                "description": "DeepSeek-V3 flagship conversational and coding model. High intelligence, high speed, and extremely low cost."
             },
             {
-                "id": "deepseek-v4-pro",
-                "name": "DeepSeek V4 Pro",
-                "input_cost": 0.435,
-                "output_cost": 0.87,
+                "id": "deepseek-reasoner",
+                "name": "DeepSeek R1 (Reasoner)",
+                "input_cost": 0.55,
+                "output_cost": 2.19,
                 "capabilities": ["CHAT"],
-                "description": "DeepSeek V4 Pro premium model. Strongest reasoning, coding, and comprehension capabilities. Supports both thinking and non-thinking modes."
+                "description": "DeepSeek-R1 open-weights reasoning model. Excels at complex coding, math, and self-reflective thinking before answering."
             }
         ]
     }
