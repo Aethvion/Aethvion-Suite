@@ -86,6 +86,12 @@
     let _wfFilter             = 'all'; // 'all' | 'active' | 'draft'
     let _wfSearchQuery        = '';
 
+    // Mini-Map & Health Validator (Item 5)
+    let _minimapCollapsed     = false;
+    let _minimapDragging      = false;
+    let _minimapBounds        = null; // { minX, minY, maxX, maxY, scale, offsetX, offsetY }
+    let _lastHealthReport     = null;
+
     // Nav page metadata
     var _NAV_META = {
         workflows: { label: 'Workflows',        icon: 'fa-bolt'        },
@@ -175,6 +181,22 @@
             spotlightCats:    _$('at-spotlight-cats'),
             spotlightList:    _$('at-spotlight-list'),
             spotlightCount:   _$('at-spotlight-results-count'),
+            // Health Validator & Mini-Map (Item 5)
+            btnHealth:          _$('at-btn-health'),
+            healthText:         _$('at-health-text'),
+            healthOverlay:      _$('at-health-overlay'),
+            healthClose:        _$('at-health-close'),
+            healthScoreCard:    _$('at-health-score-card'),
+            healthScoreCircle:  _$('at-health-score-circle'),
+            healthScoreTitle:   _$('at-health-score-title'),
+            healthScoreDesc:    _$('at-health-score-desc'),
+            healthIssuesList:   _$('at-health-issues-list'),
+            healthRecheck:      _$('at-health-recheck'),
+            btnMinimap:         _$('at-btn-minimap'),
+            minimap:            _$('at-minimap'),
+            minimapCanvas:      _$('at-minimap-canvas'),
+            minimapViewport:    _$('at-minimap-viewport'),
+            minimapToggle:      _$('at-minimap-toggle'),
             toast:          _$('at-toast'),
             // Port tooltip
             portTooltip:    _$('at-port-tooltip'),
@@ -859,6 +881,16 @@
         // Auto-save before running so the backend has current node config
         if (_dirty) {
             try { await _apiSaveWorkflow(); } catch (_) {}
+        }
+
+        // Pre-flight health validation
+        const health = _validateWorkflowHealth();
+        if (health && health.criticalCount > 0) {
+            const review = confirm('Workflow Health Check found ' + health.criticalCount + ' critical error(s) in this graph.\n\nClick OK to review issues, or Cancel to execute anyway.');
+            if (review) {
+                _openHealthModal();
+                return;
+            }
         }
 
         // Determine which triggers to run:
@@ -2180,8 +2212,12 @@
             if (n.type !== 'ui.plate') _renderNode(n);
         });
         
-        // Defer connections one frame so nodes have layout
-        requestAnimationFrame(function () { _renderConns(); });
+        // Defer connections & minimap one frame so nodes have layout
+        requestAnimationFrame(function () {
+            _renderConns();
+            _renderMiniMap();
+            _validateWorkflowHealth();
+        });
         // Refresh the trigger dropdown to match current node list
         _renderTriggerDropdown();
     }
@@ -2719,6 +2755,443 @@
         } else {
             _addNode(typeStr);
         }
+    }
+
+    // =========================================================================
+    // Mini-Map Navigator (Item 5)
+    // =========================================================================
+
+    function _toggleMinimap(forceState) {
+        if (!_e.minimap) return;
+        if (typeof forceState === 'boolean') {
+            _minimapCollapsed = !forceState;
+        } else {
+            _minimapCollapsed = !_minimapCollapsed;
+        }
+        _e.minimap.classList.toggle('collapsed', _minimapCollapsed);
+        if (_e.minimapToggle) {
+            _e.minimapToggle.innerHTML = _minimapCollapsed
+                ? '<i class="fas fa-chevron-up"></i>'
+                : '<i class="fas fa-chevron-down"></i>';
+        }
+        if (!_minimapCollapsed) {
+            _renderMiniMap();
+        }
+    }
+
+    function _renderMiniMap() {
+        if (!_e.minimap || !_e.minimapCanvas || !_active || _minimapCollapsed) return;
+        const canvas = _e.minimapCanvas;
+        const ctx = canvas.getContext('2d');
+        const cWidth = canvas.width;
+        const cHeight = canvas.height;
+
+        ctx.clearRect(0, 0, cWidth, cHeight);
+
+        if (!_active.nodes || _active.nodes.length === 0) {
+            if (_e.minimapViewport) _e.minimapViewport.style.display = 'none';
+            ctx.fillStyle = '#080b11';
+            ctx.fillRect(0, 0, cWidth, cHeight);
+            return;
+        }
+
+        const canvasRect = _e.canvas.getBoundingClientRect();
+        const vLeft   = -_view.x / _view.scale;
+        const vTop    = -_view.y / _view.scale;
+        const vRight  = vLeft + canvasRect.width / _view.scale;
+        const vBottom = vTop + canvasRect.height / _view.scale;
+
+        let minX = vLeft, minY = vTop, maxX = vRight, maxY = vBottom;
+
+        _active.nodes.forEach(function (nd) {
+            const nw = (nd.type === 'ui.plate') ? (parseFloat((nd.properties || {}).plate_width) || 500) : NODE_WIDTH;
+            const nh = (nd.type === 'ui.plate') ? (parseFloat((nd.properties || {}).plate_height) || 380) : 100;
+            minX = Math.min(minX, nd.x);
+            minY = Math.min(minY, nd.y);
+            maxX = Math.max(maxX, nd.x + nw);
+            maxY = Math.max(maxY, nd.y + nh);
+        });
+
+        // Add 20% margin around world bounds
+        const padX = Math.max(160, (maxX - minX) * 0.15);
+        const padY = Math.max(120, (maxY - minY) * 0.15);
+        minX -= padX;
+        minY -= padY;
+        maxX += padX;
+        maxY += padY;
+
+        const worldW = maxX - minX;
+        const worldH = maxY - minY;
+
+        const scaleX = cWidth / worldW;
+        const scaleY = cHeight / worldH;
+        const mScale = Math.min(scaleX, scaleY);
+
+        // Center within mini-map canvas
+        const offsetX = (cWidth - worldW * mScale) / 2;
+        const offsetY = (cHeight - worldH * mScale) / 2;
+
+        _minimapBounds = {
+            minX: minX, minY: minY,
+            maxX: maxX, maxY: maxY,
+            scale: mScale,
+            offsetX: offsetX, offsetY: offsetY
+        };
+
+        // Dark background
+        ctx.fillStyle = '#080b11';
+        ctx.fillRect(0, 0, cWidth, cHeight);
+
+        // Connections on minimap
+        if (_active.connections && _active.connections.length > 0) {
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
+            _active.connections.forEach(function (conn) {
+                const srcNode = _active.nodes.find(function (n) { return n.id === conn.sourceNodeId; });
+                const tgtNode = _active.nodes.find(function (n) { return n.id === conn.targetNodeId; });
+                if (srcNode && tgtNode) {
+                    const sx = (srcNode.x + NODE_WIDTH - minX) * mScale + offsetX;
+                    const sy = (srcNode.y + 36 - minY) * mScale + offsetY;
+                    const tx = (tgtNode.x - minX) * mScale + offsetX;
+                    const ty = (tgtNode.y + 36 - minY) * mScale + offsetY;
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    ctx.lineTo(tx, ty);
+                    ctx.stroke();
+                }
+            });
+        }
+
+        // Nodes on minimap
+        _active.nodes.forEach(function (nd) {
+            const isPlate = (nd.type === 'ui.plate');
+            const nw = isPlate ? (parseFloat((nd.properties || {}).plate_width) || 500) : NODE_WIDTH;
+            const nh = isPlate ? (parseFloat((nd.properties || {}).plate_height) || 380) : 100;
+            const nx = (nd.x - minX) * mScale + offsetX;
+            const ny = (nd.y - minY) * mScale + offsetY;
+            const mw = Math.max(3, nw * mScale);
+            const mh = Math.max(3, nh * mScale);
+
+            const td = _typeDef(nd.type);
+            const color = td.color || '#38bdf8';
+
+            if (isPlate) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.lineWidth = 1;
+                ctx.fillRect(nx, ny, mw, mh);
+                ctx.strokeRect(nx, ny, mw, mh);
+            } else {
+                ctx.fillStyle = color;
+                ctx.fillRect(nx, ny, mw, mh);
+
+                if (_selNodeIds && _selNodeIds.has(nd.id)) {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(nx - 1, ny - 1, mw + 2, mh + 2);
+                }
+            }
+        });
+
+        // Viewport lens
+        if (_e.minimapViewport) {
+            const vx = (vLeft - minX) * mScale + offsetX;
+            const vy = (vTop - minY) * mScale + offsetY;
+            const vw = (vRight - vLeft) * mScale;
+            const vh = (vBottom - vTop) * mScale;
+
+            _e.minimapViewport.style.display = 'block';
+            _e.minimapViewport.style.left   = Math.round(vx) + 'px';
+            _e.minimapViewport.style.top    = Math.round(vy) + 'px';
+            _e.minimapViewport.style.width  = Math.max(10, Math.round(vw)) + 'px';
+            _e.minimapViewport.style.height = Math.max(10, Math.round(vh)) + 'px';
+        }
+    }
+
+    function _panFromMiniMap(clickX, clickY) {
+        if (!_minimapBounds || !_active) return;
+        const rect = _e.canvas.getBoundingClientRect();
+        const worldX = (clickX - _minimapBounds.offsetX) / _minimapBounds.scale + _minimapBounds.minX;
+        const worldY = (clickY - _minimapBounds.offsetY) / _minimapBounds.scale + _minimapBounds.minY;
+
+        _view.x = -(worldX * _view.scale) + rect.width / 2;
+        _view.y = -(worldY * _view.scale) + rect.height / 2;
+        _applyTransform();
+    }
+
+    // =========================================================================
+    // Workflow Health Validator (Item 5)
+    // =========================================================================
+
+    function _validateWorkflowHealth() {
+        if (!_active) {
+            if (_e.btnHealth) {
+                _e.btnHealth.disabled = true;
+                _e.btnHealth.className = 'at-health-btn healthy';
+                if (_e.healthText) _e.healthText.textContent = 'Healthy';
+            }
+            return null;
+        }
+
+        const nodes = _active.nodes || [];
+        const conns = _active.connections || [];
+        const issues = [];
+
+        const nodeMap = new Map();
+        nodes.forEach(function (n) { nodeMap.set(n.id, n); });
+
+        // 1. Broken Connections (source or target node doesn't exist)
+        conns.forEach(function (c) {
+            const hasSrc = nodeMap.has(c.sourceNodeId);
+            const hasTgt = nodeMap.has(c.targetNodeId);
+            if (!hasSrc || !hasTgt) {
+                issues.push({
+                    severity: 'critical',
+                    title: 'Broken Wire Connection',
+                    msg: 'Wire points to a non-existent node (' + (!hasSrc ? c.sourceNodeId : c.targetNodeId) + ').',
+                    nodeId: hasSrc ? c.sourceNodeId : (hasTgt ? c.targetNodeId : null)
+                });
+            }
+        });
+
+        // 2. AI Nodes Missing Model
+        nodes.forEach(function (n) {
+            if (n.type && n.type.startsWith('ai.')) {
+                const model = (n.properties || {}).model;
+                if (!model || !String(model).trim()) {
+                    issues.push({
+                        severity: 'critical',
+                        title: 'Missing AI Model',
+                        msg: 'AI node "' + (n.label || n.type) + '" has no model selected.',
+                        nodeId: n.id,
+                        propKey: 'model'
+                    });
+                }
+            }
+        });
+
+        // 3. Cyclic Data Dependencies (Deadlock detector)
+        const adj = new Map();
+        nodes.forEach(function (n) { adj.set(n.id, []); });
+        conns.forEach(function (c) {
+            if (c.targetPort !== '__trigger__' && adj.has(c.sourceNodeId) && adj.has(c.targetNodeId)) {
+                adj.get(c.sourceNodeId).push(c.targetNodeId);
+            }
+        });
+        const visited = new Set();
+        const recStack = new Set();
+        let hasCycle = false;
+        let cycleNodeId = null;
+
+        function checkCycle(nid) {
+            visited.add(nid);
+            recStack.add(nid);
+            const neighbors = adj.get(nid) || [];
+            for (let i = 0; i < neighbors.length; i++) {
+                const neighbor = neighbors[i];
+                if (!visited.has(neighbor)) {
+                    if (checkCycle(neighbor)) return true;
+                } else if (recStack.has(neighbor)) {
+                    cycleNodeId = neighbor;
+                    return true;
+                }
+            }
+            recStack.delete(nid);
+            return false;
+        }
+
+        nodes.forEach(function (n) {
+            if (!visited.has(n.id) && !hasCycle) {
+                if (checkCycle(n.id)) {
+                    hasCycle = true;
+                }
+            }
+        });
+
+        if (hasCycle) {
+            issues.push({
+                severity: 'critical',
+                title: 'Data Flow Cycle Detected',
+                msg: 'There is a circular dependency wire loop that will cause an execution deadlock.',
+                nodeId: cycleNodeId
+            });
+        }
+
+        // 4. Disconnected Triggers (Trigger with no outputs)
+        nodes.forEach(function (n) {
+            if (n.type && n.type.startsWith('trigger.')) {
+                const hasOutConn = conns.some(function (c) { return c.sourceNodeId === n.id; });
+                if (!hasOutConn) {
+                    issues.push({
+                        severity: 'warning',
+                        title: 'Unconnected Trigger',
+                        msg: 'Trigger "' + (n.label || n.type) + '" has no outgoing connections and will not execute anything.',
+                        nodeId: n.id
+                    });
+                }
+            }
+        });
+
+        // 5. Orphan Processing Nodes (excluding ui.plate and display)
+        nodes.forEach(function (n) {
+            if (n.type === 'ui.plate') return;
+            const hasIn = conns.some(function (c) { return c.targetNodeId === n.id; });
+            const hasOut = conns.some(function (c) { return c.sourceNodeId === n.id; });
+            if (!hasIn && !hasOut && !n.type.startsWith('trigger.')) {
+                issues.push({
+                    severity: 'warning',
+                    title: 'Orphan Node',
+                    msg: '"' + (n.label || n.type) + '" is completely isolated with no wires attached.',
+                    nodeId: n.id
+                });
+            }
+        });
+
+        // 6. Common configuration issues
+        nodes.forEach(function (n) {
+            const props = n.properties || {};
+            if (n.type === 'action.http') {
+                if (!props.url || !String(props.url).trim()) {
+                    issues.push({
+                        severity: 'warning',
+                        title: 'Empty HTTP URL',
+                        msg: 'HTTP Request node has no URL destination configured.',
+                        nodeId: n.id,
+                        propKey: 'url'
+                    });
+                }
+            } else if (n.type === 'action.file_write' || n.type === 'action.file_read') {
+                if (!props.path || !String(props.path).trim()) {
+                    issues.push({
+                        severity: 'warning',
+                        title: 'Empty File Path',
+                        msg: 'File operation node has no file path configured.',
+                        nodeId: n.id,
+                        propKey: 'path'
+                    });
+                }
+            }
+        });
+
+        const criticalCount = issues.filter(function (i) { return i.severity === 'critical'; }).length;
+        const warningCount  = issues.filter(function (i) { return i.severity === 'warning'; }).length;
+
+        let score = 100;
+        score -= criticalCount * 30;
+        score -= warningCount * 10;
+        score = Math.max(0, Math.min(100, score));
+
+        let overallStatus = 'healthy';
+        if (criticalCount > 0) overallStatus = 'critical';
+        else if (warningCount > 0) overallStatus = 'warning';
+
+        const report = {
+            score: score,
+            status: overallStatus,
+            criticalCount: criticalCount,
+            warningCount: warningCount,
+            issues: issues
+        };
+        _lastHealthReport = report;
+
+        if (_e.btnHealth) {
+            _e.btnHealth.disabled = false;
+            _e.btnHealth.className = 'at-health-btn ' + overallStatus;
+            if (_e.healthText) {
+                if (overallStatus === 'healthy') _e.healthText.textContent = '100% Healthy';
+                else if (overallStatus === 'critical') _e.healthText.textContent = criticalCount + ' Error' + (criticalCount > 1 ? 's' : '');
+                else _e.healthText.textContent = warningCount + ' Warning' + (warningCount > 1 ? 's' : '');
+            }
+        }
+
+        return report;
+    }
+
+    function _openHealthModal() {
+        const report = _validateWorkflowHealth();
+        if (!report || !_e.healthOverlay) return;
+
+        if (_e.healthScoreCard) {
+            _e.healthScoreCard.className = 'at-health-score-card ' + report.status;
+        }
+        if (_e.healthScoreCircle) {
+            _e.healthScoreCircle.textContent = report.score + '%';
+        }
+        if (_e.healthScoreTitle) {
+            _e.healthScoreTitle.textContent =
+                report.status === 'healthy' ? 'Ready to Execute' :
+                report.status === 'critical' ? report.criticalCount + ' Critical Error(s) Found' :
+                report.warningCount + ' Warning(s) Found';
+        }
+        if (_e.healthScoreDesc) {
+            _e.healthScoreDesc.textContent =
+                report.status === 'healthy' ? 'All graph connections, triggers, and configurations are valid.' :
+                report.status === 'critical' ? 'Fix critical errors to ensure workflow executes without failure.' :
+                'Your workflow can run, but some nodes may not produce the expected results.';
+        }
+
+        if (_e.healthIssuesList) {
+            _e.healthIssuesList.innerHTML = '';
+            if (report.issues.length === 0) {
+                _e.healthIssuesList.innerHTML =
+                    '<div style="text-align:center;padding:2.2rem 1rem;color:#64748b;font-size:0.8rem;">' +
+                        '<i class="fas fa-check-circle" style="color:#10b981;font-size:1.8rem;display:block;margin-bottom:0.5rem;"></i>' +
+                        'No issues found in this workflow!' +
+                    '</div>';
+            } else {
+                report.issues.forEach(function (issue) {
+                    const row = document.createElement('div');
+                    row.className = 'at-health-issue-item ' + issue.severity;
+                    const node = issue.nodeId && _active ? _active.nodes.find(function (n) { return n.id === issue.nodeId; }) : null;
+                    const nodeName = node ? (node.label || node.type) : 'Graph Structure';
+
+                    row.innerHTML =
+                        '<div class="at-health-issue-content">' +
+                            '<div class="at-health-issue-header">' +
+                                '<span class="at-health-issue-badge ' + issue.severity + '">' + issue.severity + '</span>' +
+                                '<span class="at-health-issue-node">' + _esc(nodeName) + '</span>' +
+                            '</div>' +
+                            '<span class="at-health-issue-msg">' + _esc(issue.msg) + '</span>' +
+                        '</div>' +
+                        (issue.nodeId ? '<div class="at-health-issue-action"><i class="fas fa-crosshairs"></i> Locate</div>' : '');
+
+                    if (issue.nodeId) {
+                        row.addEventListener('click', function () {
+                            _closeHealthModal();
+                            _locateAndFocusNode(issue.nodeId, issue.propKey);
+                        });
+                    }
+                    _e.healthIssuesList.appendChild(row);
+                });
+            }
+        }
+
+        _e.healthOverlay.style.display = 'flex';
+    }
+
+    function _closeHealthModal() {
+        if (_e.healthOverlay) _e.healthOverlay.style.display = 'none';
+    }
+
+    function _locateAndFocusNode(nodeId, propKey) {
+        if (!_active) return;
+        const target = _active.nodes.find(function (n) { return n.id === nodeId; });
+        if (!target) return;
+
+        _selectNode(nodeId, false);
+
+        const rect = _e.canvas.getBoundingClientRect();
+        _view.x = -(target.x * _view.scale) + rect.width / 2 - (NODE_WIDTH * _view.scale) / 2;
+        _view.y = -(target.y * _view.scale) + rect.height / 2 - 40;
+        _applyTransform();
+
+        const el = _e.canvasInner.querySelector('[data-node-id="' + nodeId + '"].at-node');
+        if (el) {
+            el.classList.add('at-exec-running');
+            setTimeout(function () { el.classList.remove('at-exec-running'); }, 1800);
+        }
+
+        _openProps(nodeId);
     }
 
     //  Node management
@@ -4207,6 +4680,7 @@
         _e.canvasInner.style.transform =
             'translate(' + _view.x + 'px,' + _view.y + 'px) scale(' + _view.scale + ')';
         _e.zoomLabel.textContent = Math.round(_view.scale * 100) + '%';
+        _renderMiniMap();
     }
 
     function _zoom(dir, clientX, clientY) {
@@ -4417,6 +4891,9 @@
         if (_e.btnExport)   _e.btnExport.disabled   = !has;
         if (_e.btnShare)    _e.btnShare.disabled    = !has;
         if (_e.btnCompile)  _e.btnCompile.disabled  = !has;
+        if (_e.btnHealth)   _e.btnHealth.disabled   = !has;
+        if (_e.btnMinimap)  _e.btnMinimap.disabled  = !has;
+        if (has) _validateWorkflowHealth();
         _updateUndoRedoUI();
     }
 
@@ -4877,6 +5354,55 @@
                 _closeActiveDropdown();
             }
         });
+
+        // Mini-Map Navigator (Item 5)
+        if (_e.btnMinimap) {
+            _e.btnMinimap.addEventListener('click', function () { _toggleMinimap(); });
+        }
+        if (_e.minimapToggle) {
+            _e.minimapToggle.addEventListener('click', function (e) {
+                e.stopPropagation();
+                _toggleMinimap();
+            });
+        }
+        if (_e.minimapCanvas) {
+            _e.minimapCanvas.addEventListener('click', function (e) {
+                const rect = _e.minimapCanvas.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+                _panFromMiniMap(clickX, clickY);
+            });
+        }
+        if (_e.minimapViewport) {
+            _e.minimapViewport.addEventListener('mousedown', function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                _minimapDragging = {
+                    startCX: e.clientX,
+                    startCY: e.clientY,
+                    startVX: _view.x,
+                    startVY: _view.y
+                };
+            });
+        }
+
+        // Workflow Health Validator (Item 5)
+        if (_e.btnHealth) {
+            _e.btnHealth.addEventListener('click', _openHealthModal);
+        }
+        if (_e.healthClose) {
+            _e.healthClose.addEventListener('click', _closeHealthModal);
+        }
+        if (_e.healthOverlay) {
+            _e.healthOverlay.addEventListener('click', function (e) {
+                if (e.target === _e.healthOverlay) _closeHealthModal();
+            });
+        }
+        if (_e.healthRecheck) {
+            _e.healthRecheck.addEventListener('click', function () {
+                _openHealthModal();
+            });
+        }
 
         // Sidebar Workflow search & category filters
         if (_e.wfSearchInput) {
@@ -5349,6 +5875,16 @@
 
         // Global mouse move + up
         document.addEventListener('mousemove', function (e) {
+            // Mini-map viewport drag
+            if (_minimapDragging && _minimapBounds) {
+                const dx = e.clientX - _minimapDragging.startCX;
+                const dy = e.clientY - _minimapDragging.startCY;
+                _view.x = _minimapDragging.startVX - (dx / _minimapBounds.scale) * _view.scale;
+                _view.y = _minimapDragging.startVY - (dy / _minimapBounds.scale) * _view.scale;
+                _applyTransform();
+                return;
+            }
+
             // Marquee selection
             if (_marquee) {
                 const curX = e.clientX;
@@ -5442,6 +5978,10 @@
         });
 
         document.addEventListener('mouseup', function () {
+            if (_minimapDragging) {
+                _minimapDragging = null;
+            }
+
             // Finalize marquee
             if (_marquee) {
                 if (_marquee.el) _marquee.el.remove();
@@ -5536,6 +6076,13 @@
                 return;
             }
 
+            // Mini-map toggle (M)
+            if (e.key === 'm' || e.key === 'M') {
+                e.preventDefault();
+                _toggleMinimap();
+                return;
+            }
+
             // Spotlight quick-add (Space or Tab)
             if (e.key === ' ' || e.code === 'Space' || e.key === 'Tab') {
                 if (!_e.spotlightOverlay || _e.spotlightOverlay.style.display === 'none') {
@@ -5554,6 +6101,10 @@
                 if (_selConnId) { _deleteConn(_selConnId); return; }
             }
             if (e.key === 'Escape') {
+                if (_e.healthOverlay && _e.healthOverlay.style.display !== 'none') {
+                    _closeHealthModal();
+                    return;
+                }
                 if (_e.spotlightOverlay && _e.spotlightOverlay.style.display !== 'none') {
                     _closeSpotlight();
                     return;

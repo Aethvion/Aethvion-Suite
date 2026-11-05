@@ -84,6 +84,11 @@
             <button class="at-btn at-btn-ghost" id="at-btn-compile" title="Compile workflow into standalone bundle" disabled>
                 <i class="fas fa-box-archive"></i><span>Compile</span>
             </button>
+            <div class="at-toolbar-sep"></div>
+            <button class="at-health-btn healthy" id="at-btn-health" title="Pre-flight Workflow Health Validator" disabled>
+                <i class="fas fa-shield-heart at-health-icon"></i>
+                <span class="at-health-text" id="at-health-text">Healthy</span>
+            </button>
         </div>
 
         <div class="at-toolbar-right">
@@ -95,6 +100,9 @@
                     <i class="fas fa-desktop"></i><span>Interface</span>
                 </button>
             </div>
+            <button class="at-btn at-btn-ghost at-btn-icon" id="at-btn-minimap" title="Toggle mini-map (M)">
+                <i class="fas fa-map"></i>
+            </button>
             <button class="at-btn at-btn-ghost at-btn-icon" id="at-btn-reset-view" title="Reset view (origin · 100%)">
                 <i class="fas fa-house"></i>
             </button>
@@ -295,6 +303,20 @@
                 <button class="at-btn at-btn-ghost at-btn-sm at-btn-danger" id="at-ms-delete" title="Delete Selected (Del)">
                     <i class="fas fa-trash"></i><span>Delete</span>
                 </button>
+            </div>
+
+            <!-- Canvas Mini-Map Navigator -->
+            <div class="at-minimap" id="at-minimap">
+                <div class="at-minimap-hdr">
+                    <span class="at-minimap-title"><i class="fas fa-map"></i> Navigator</span>
+                    <button class="at-minimap-toggle" id="at-minimap-toggle" title="Collapse / Expand mini-map (M)">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="at-minimap-body" id="at-minimap-body">
+                    <canvas class="at-minimap-canvas" id="at-minimap-canvas" width="180" height="110"></canvas>
+                    <div class="at-minimap-viewport" id="at-minimap-viewport"></div>
+                </div>
             </div>
 
             <!-- Pan hint -->
@@ -523,6 +545,38 @@
             <div class="at-spotlight-footer">
                 <span class="at-spotlight-hint"><kbd>↑</kbd> <kbd>↓</kbd> to navigate &nbsp;·&nbsp; <kbd>↵</kbd> to insert &nbsp;·&nbsp; <kbd>ESC</kbd> to cancel</span>
                 <span class="at-spotlight-results-count" id="at-spotlight-results-count">0 nodes</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Health Validator Popover Modal -->
+    <div class="at-health-overlay" id="at-health-overlay" style="display:none">
+        <div class="at-health-modal" id="at-health-modal">
+            <div class="at-health-hdr">
+                <div class="at-health-hdr-left">
+                    <i class="fas fa-shield-heart at-health-modal-icon"></i>
+                    <div>
+                        <div class="at-health-modal-title">Workflow Health Check</div>
+                        <div class="at-health-modal-sub" id="at-health-modal-sub">Pre-flight graph integrity scan</div>
+                    </div>
+                </div>
+                <button class="at-health-close" id="at-health-close"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="at-health-score-card" id="at-health-score-card">
+                <div class="at-health-score-circle" id="at-health-score-circle">100%</div>
+                <div class="at-health-score-info">
+                    <div class="at-health-score-title" id="at-health-score-title">Ready to Execute</div>
+                    <div class="at-health-score-desc" id="at-health-score-desc">All graph connections, triggers, and configurations are valid.</div>
+                </div>
+            </div>
+            <div class="at-health-issues-list" id="at-health-issues-list">
+                <!-- Populated dynamically -->
+            </div>
+            <div class="at-health-footer">
+                <span class="at-health-hint"><kbd>Click</kbd> an issue to center on node</span>
+                <button class="at-btn at-btn-ghost at-btn-sm" id="at-health-recheck">
+                    <i class="fas fa-rotate"></i> Re-check
+                </button>
             </div>
         </div>
     </div>

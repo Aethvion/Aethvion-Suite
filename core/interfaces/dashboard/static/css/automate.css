@@ -3076,5 +3076,419 @@
     box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3), 0 0 20px rgba(56, 189, 248, 0.35) !important;
 }
 
+/* ==========================================================================
+   Item 5: Canvas Mini-Map Navigator & Health Validator
+   ========================================================================== */
+
+/* Toolbar Health Validator Button */
+.at-health-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+    font-family: inherit;
+    background: transparent;
+}
+
+.at-health-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.at-health-btn.healthy {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #34d399;
+}
+.at-health-btn.healthy:hover:not(:disabled) {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.6);
+}
+
+.at-health-btn.warning {
+    background: rgba(245, 158, 11, 0.14);
+    border-color: rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+}
+.at-health-btn.warning:hover:not(:disabled) {
+    background: rgba(245, 158, 11, 0.22);
+    border-color: rgba(245, 158, 11, 0.6);
+}
+
+.at-health-btn.critical {
+    background: rgba(239, 68, 68, 0.16);
+    border-color: rgba(239, 68, 68, 0.45);
+    color: #f87171;
+    animation: atHealthPulse 2.5s infinite;
+}
+.at-health-btn.critical:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.7);
+}
+
+@keyframes atHealthPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
+}
+
+/* Mini-Map Widget (inside Canvas, bottom-right) */
+.at-minimap {
+    position: absolute;
+    bottom: 36px;
+    right: 18px;
+    width: 200px;
+    background: rgba(10, 13, 20, 0.88);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 14px rgba(56, 189, 248, 0.1);
+    z-index: 20;
+    overflow: hidden;
+    user-select: none;
+    transition: width 0.15s, height 0.15s, opacity 0.15s;
+}
+
+.at-minimap.collapsed {
+    width: 140px;
+}
+
+.at-minimap.collapsed .at-minimap-body {
+    display: none;
+}
+
+.at-minimap-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.at-minimap-title {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #cbd5e1;
+}
+
+.at-minimap-title i {
+    color: #38bdf8;
+    font-size: 0.7rem;
+}
+
+.at-minimap-toggle {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 0.65rem;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: all 0.12s;
+}
+
+.at-minimap-toggle:hover {
+    color: #f1f5f9;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.at-minimap-body {
+    position: relative;
+    width: 100%;
+    height: 120px;
+    cursor: crosshair;
+    overflow: hidden;
+    background: #080b11;
+}
+
+.at-minimap-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.at-minimap-viewport {
+    position: absolute;
+    border: 1.5px solid #38bdf8;
+    background: rgba(56, 189, 248, 0.14);
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.3);
+    border-radius: 3px;
+    cursor: grab;
+    pointer-events: auto;
+    transition: border-color 0.12s;
+}
+
+.at-minimap-viewport:hover {
+    border-color: #7dd3fc;
+    background: rgba(56, 189, 248, 0.22);
+}
+
+.at-minimap-viewport:active {
+    cursor: grabbing;
+}
+
+/* Health Modal Overlay */
+.at-health-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 8, 14, 0.72);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: atFadeIn 0.14s ease;
+}
+
+.at-health-modal {
+    width: 540px;
+    max-width: 92vw;
+    background: #0a0d14;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75), 0 0 24px rgba(56, 189, 248, 0.12);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+}
+
+.at-health-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1.2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.at-health-hdr-left {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.at-health-modal-icon {
+    font-size: 1.4rem;
+    color: #38bdf8;
+}
+
+.at-health-modal-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #f8fafc;
+}
+
+.at-health-modal-sub {
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+.at-health-close {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.12s;
+}
+
+.at-health-close:hover {
+    color: #f1f5f9;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* Score Card */
+.at-health-score-card {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    padding: 1rem 1.2rem;
+    margin: 1rem 1.2rem 0.5rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+}
+
+.at-health-score-circle {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 2px solid #10b981;
+    box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);
+}
+
+.at-health-score-card.warning .at-health-score-circle {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border-color: #f59e0b;
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.25);
+}
+
+.at-health-score-card.critical .at-health-score-circle {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border-color: #ef4444;
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.25);
+}
+
+.at-health-score-info {
+    flex: 1;
+}
+
+.at-health-score-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 2px;
+}
+
+.at-health-score-desc {
+    font-size: 0.74rem;
+    color: #94a3b8;
+    line-height: 1.35;
+}
+
+/* Issues list */
+.at-health-issues-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 280px;
+}
+
+.at-health-issue-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 0.85rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: all 0.12s ease;
+}
+
+.at-health-issue-item:hover {
+    background: rgba(56, 189, 248, 0.08);
+    border-color: rgba(56, 189, 248, 0.3);
+}
+
+.at-health-issue-item.critical {
+    border-left: 3px solid #ef4444;
+}
+
+.at-health-issue-item.warning {
+    border-left: 3px solid #f59e0b;
+}
+
+.at-health-issue-item.info {
+    border-left: 3px solid #38bdf8;
+}
+
+.at-health-issue-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.at-health-issue-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.at-health-issue-badge {
+    font-size: 0.6rem;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.at-health-issue-badge.critical {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+.at-health-issue-badge.warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+}
+
+.at-health-issue-badge.info {
+    background: rgba(56, 189, 248, 0.2);
+    color: #38bdf8;
+}
+
+.at-health-issue-node {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+
+.at-health-issue-msg {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    line-height: 1.3;
+}
+
+.at-health-issue-action {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    color: #38bdf8;
+    flex-shrink: 0;
+    font-weight: 500;
+}
+
+.at-health-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 1.2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.25);
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+.at-health-hint kbd {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    padding: 1px 4px;
+    font-size: 0.68rem;
+    color: #94a3b8;
+}
+
 
 
