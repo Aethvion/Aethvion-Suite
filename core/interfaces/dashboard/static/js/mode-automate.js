@@ -3298,6 +3298,10 @@
         }
     }
 
+    function _hideMultiSelectRibbon() {
+        if (_e.msRibbon) _e.msRibbon.style.display = 'none';
+    }
+
     function _renderMultiSelectInspector() {
         if (!_e.inspectorBody) return;
         if (_e.inspectorIcon) {
@@ -4803,6 +4807,7 @@
         _prePropSnapshot = null;
         if (_selNodeIds) _selNodeIds.clear();
         _updateUndoRedoUI();
+        _updateMultiSelectUI();
         _hideMultiSelectRibbon();
     }
 
