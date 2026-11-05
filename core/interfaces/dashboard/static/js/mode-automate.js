@@ -56,6 +56,7 @@
     let _suppressCanvasClick = false; // suppresses synthetic click after drag / marquee
     let _dragging    = null; // { startCX, startCY, nodes: [{ nodeId, startNX, startNY }] }
     let _panning     = null; // { startCX, startCY, startVX, startVY }
+    let _resizingPlate = null; // { plateId, handle, startCX, startCY, startPW, startPH, snapshot }
     let _pending     = null; // { nodeId, portName, portType:'output' }
     let _dirty       = false;
     let _zTopNormal  = 50;   // z-index counter for normal raised nodes
@@ -827,6 +828,10 @@
         var reachable = _computeReachableFromTrigger(triggerId);
         _e.canvasInner.querySelectorAll('.at-node').forEach(function (el) {
             var nid = el.dataset.nodeId;
+            var targetNode = _active && _active.nodes.find(function (n) { return n.id === nid; });
+            if (targetNode && targetNode.type === 'ui.plate') {
+                return; // Plate containers are visual groups and should never be dimmed
+            }
             if (reachable.has(nid)) {
                 el.classList.add('at-trigger-highlight');
             } else {
@@ -856,6 +861,10 @@
         });
         _e.canvasInner.querySelectorAll('.at-node').forEach(function (el) {
             var nid = el.dataset.nodeId;
+            var targetNode = _active && _active.nodes.find(function (n) { return n.id === nid; });
+            if (targetNode && targetNode.type === 'ui.plate') {
+                return; // Plate containers are visual groups and should never be dimmed
+            }
             if (nid === globalNodeId) {
                 el.classList.add('at-global-highlight'); // the global node itself
             } else if (connected.has(nid)) {
@@ -2256,6 +2265,11 @@
                 '  <button class="at-node-del" data-del-node="' + nd.id + '" title="Delete Plate">' +
                 '    <i class="fas fa-xmark"></i>' +
                 '  </button>' +
+                '</div>' +
+                '<div class="at-plate-resizer at-plate-resizer-e" data-resize-plate="' + nd.id + '" data-handle="e" title="Drag to resize width"></div>' +
+                '<div class="at-plate-resizer at-plate-resizer-s" data-resize-plate="' + nd.id + '" data-handle="s" title="Drag to resize height"></div>' +
+                '<div class="at-plate-resizer at-plate-resizer-se" data-resize-plate="' + nd.id + '" data-handle="se" title="Drag to resize plate">' +
+                '  <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9L9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>' +
                 '</div>';
             
             _e.canvasInner.insertBefore(el, _e.svg);
@@ -3613,6 +3627,56 @@
         _toast('Ungrouped ' + (ungroupCount + platesToRemove.size) + ' item(s)');
     }
 
+    /** Keep node plate memberships synced with physical position on the canvas. */
+    function _syncNodePlateMemberships(movedNodeIds) {
+        if (!_active || !_active.nodes || !movedNodeIds || movedNodeIds.length === 0) return;
+        const plates = _active.nodes.filter(function (n) { return n.type === 'ui.plate'; });
+
+        movedNodeIds.forEach(function (id) {
+            const nd = _active.nodes.find(function (n) { return n.id === id; });
+            if (!nd || nd.type === 'ui.plate') return;
+
+            const el = _e.canvasInner.querySelector('[data-node-id="' + nd.id + '"].at-node');
+            const nw = el ? (el.offsetWidth || NODE_WIDTH) : NODE_WIDTH;
+            const nh = el ? (el.offsetHeight || 100) : 100;
+            const cx = nd.x + nw / 2;
+            const cy = nd.y + nh / 2;
+
+            // Check current plate if assigned
+            const currentPlateId = nd.properties && nd.properties.plate_id;
+            let currentPlate = currentPlateId ? plates.find(function (p) { return p.id === currentPlateId; }) : null;
+            let stillInCurrent = false;
+
+            if (currentPlate) {
+                const pw = parseFloat((currentPlate.properties || {}).plate_width) || 500;
+                const ph = parseFloat((currentPlate.properties || {}).plate_height) || 380;
+                if (cx >= currentPlate.x && cx <= currentPlate.x + pw && cy >= currentPlate.y && cy <= currentPlate.y + ph) {
+                    stillInCurrent = true;
+                }
+            }
+
+            if (currentPlate && !stillInCurrent) {
+                // Moved outside its group! Detach from group
+                nd.properties.plate_id = null;
+                if (el) el.classList.remove('at-node-snapped');
+            }
+
+            // If not in current plate, check if it was moved into another plate
+            if (!stillInCurrent && plates.length > 0) {
+                const targetPlate = plates.find(function (p) {
+                    const pw = parseFloat((p.properties || {}).plate_width) || 500;
+                    const ph = parseFloat((p.properties || {}).plate_height) || 380;
+                    return cx >= p.x && cx <= p.x + pw && cy >= p.y && cy <= p.y + ph;
+                });
+                if (targetPlate) {
+                    if (!nd.properties) nd.properties = {};
+                    nd.properties.plate_id = targetPlate.id;
+                    if (el) el.classList.add('at-node-snapped');
+                }
+            }
+        });
+    }
+
     function _duplicateSelectedNodes() {
         if (!_active || _selNodeIds.size === 0) return;
         _recordHistory('Duplicate ' + _selNodeIds.size + ' Nodes');
@@ -4078,6 +4142,19 @@
                             if (sk) { nd.properties[sk] = ''; _markDirty(); }
                         });
                     }
+                }
+                // When plate width/height or label changes in inspector, update the plate card in real time
+                if (nd.type === 'ui.plate') {
+                    const pEl = _e.canvasInner.querySelector('[data-node-id="' + nd.id + '"].at-node');
+                    if (pEl) {
+                        if (prop.key === 'plate_width') pEl.style.width = Math.max(200, parseFloat(newVal) || 200) + 'px';
+                        if (prop.key === 'plate_height') pEl.style.height = Math.max(140, parseFloat(newVal) || 140) + 'px';
+                        if (prop.key === 'label') {
+                            const titleEl = pEl.querySelector('.at-node-plate-title');
+                            if (titleEl) titleEl.textContent = newVal || 'Dashboard Card';
+                        }
+                    }
+                    _renderMinimap();
                 }
                 // Refresh port dot colours so the blue "has value" state updates live
                 _updatePortMarkers();
@@ -5747,9 +5824,43 @@
             _cancelPending();
         });
 
-        // Node header drag
+        // Node header drag or Plate resizing
         _e.canvasInner.addEventListener('mousedown', function (e) {
             if (e.button !== 0) return;
+
+            // Plate interactive resizer handle
+            const resizer = e.target.closest('[data-resize-plate]');
+            if (resizer) {
+                e.preventDefault();
+                e.stopPropagation();
+                const plateId = resizer.dataset.resizePlate;
+                const handle  = resizer.dataset.handle;
+                const plateNd = _active && _active.nodes.find(function (n) { return n.id === plateId; });
+                if (!plateNd) return;
+                const props = plateNd.properties || {};
+                const startPW = parseFloat(props.plate_width) || 500;
+                const startPH = parseFloat(props.plate_height) || 380;
+
+                _selectNode(plateId, false);
+
+                _resizingPlate = {
+                    plateId: plateId,
+                    handle: handle,
+                    startCX: e.clientX,
+                    startCY: e.clientY,
+                    startPW: startPW,
+                    startPH: startPH,
+                    snapshot: {
+                        nodes: JSON.parse(JSON.stringify(_active.nodes || [])),
+                        connections: JSON.parse(JSON.stringify(_active.connections || [])),
+                        selNodeId: plateId,
+                        selConnId: _selConnId,
+                        description: 'Resize Plate ' + (plateNd.label || '')
+                    }
+                };
+                return;
+            }
+
             const hdr = e.target.closest('.at-node-hdr') || e.target.closest('.at-node-plate-hdr');
             if (!hdr) return;
             if (e.target.closest('[data-del-node]') || e.target.closest('.at-port-row')) return;
@@ -5938,6 +6049,44 @@
                 return;
             }
 
+            // Plate Resizing
+            if (_resizingPlate) {
+                const dx = (e.clientX - _resizingPlate.startCX) / _view.scale;
+                const dy = (e.clientY - _resizingPlate.startCY) / _view.scale;
+                const plateNd = _active && _active.nodes.find(function (n) { return n.id === _resizingPlate.plateId; });
+                if (plateNd) {
+                    if (!plateNd.properties) plateNd.properties = {};
+                    let newW = _resizingPlate.startPW;
+                    let newH = _resizingPlate.startPH;
+
+                    if (_resizingPlate.handle === 'e' || _resizingPlate.handle === 'se') {
+                        newW = Math.max(220, Math.round((_resizingPlate.startPW + dx) / 20) * 20);
+                        plateNd.properties.plate_width = newW;
+                    }
+                    if (_resizingPlate.handle === 's' || _resizingPlate.handle === 'se') {
+                        newH = Math.max(160, Math.round((_resizingPlate.startPH + dy) / 20) * 20);
+                        plateNd.properties.plate_height = newH;
+                    }
+
+                    const el = _e.canvasInner.querySelector('[data-node-id="' + plateNd.id + '"].at-node');
+                    if (el) {
+                        el.style.width  = newW + 'px';
+                        el.style.height = newH + 'px';
+                    }
+
+                    // Live sync with inspector inputs if currently inspecting this plate
+                    if (_selNodeId === plateNd.id) {
+                        const inpW = _e.inspectorBody.querySelector('[data-prop-key="plate_width"]');
+                        if (inpW && document.activeElement !== inpW) inpW.value = newW;
+                        const inpH = _e.inspectorBody.querySelector('[data-prop-key="plate_height"]');
+                        if (inpH && document.activeElement !== inpH) inpH.value = newH;
+                    }
+
+                    _renderMinimap();
+                }
+                return;
+            }
+
             // Marquee selection
             if (_marquee) {
                 const curX = e.clientX;
@@ -6043,6 +6192,37 @@
                 _minimapDragging = null;
             }
 
+            // Finalize Plate Resizing
+            if (_resizingPlate) {
+                const plateNd = _active && _active.nodes.find(function (n) { return n.id === _resizingPlate.plateId; });
+                const curW = plateNd && plateNd.properties ? parseFloat(plateNd.properties.plate_width) : _resizingPlate.startPW;
+                const curH = plateNd && plateNd.properties ? parseFloat(plateNd.properties.plate_height) : _resizingPlate.startPH;
+
+                if (curW !== _resizingPlate.startPW || curH !== _resizingPlate.startPH) {
+                    _undoStack.push(_resizingPlate.snapshot);
+                    if (_undoStack.length > MAX_HISTORY) _undoStack.shift();
+                    _redoStack = [];
+                    _updateUndoRedoUI();
+                    _markDirty();
+
+                    // Check if any child nodes are now outside the resized plate
+                    if (_active && _active.nodes && plateNd) {
+                        const childIds = [];
+                        _active.nodes.forEach(function (n) {
+                            if (n.properties && n.properties.plate_id === plateNd.id) {
+                                childIds.push(n.id);
+                            }
+                        });
+                        if (childIds.length > 0) {
+                            _syncNodePlateMemberships(childIds);
+                        }
+                    }
+                }
+                _suppressCanvasClick = true;
+                setTimeout(function () { _suppressCanvasClick = false; }, 150);
+                _resizingPlate = null;
+            }
+
             // Finalize marquee
             if (_marquee) {
                 const hadDrag = _marquee.didDrag;
@@ -6064,6 +6244,7 @@
             // Finalize multi-node drag
             if (_dragging) {
                 let anyMoved = false;
+                const movedIds = [];
                 _dragging.nodes.forEach(function (item) {
                     const nd = _active && _active.nodes.find(function (n) { return n.id === item.nodeId; });
                     if (!nd) return;
@@ -6071,6 +6252,7 @@
                     const snappedY = Math.round(nd.y / 20) * 20;
                     if (snappedX !== item.startNX || snappedY !== item.startNY) {
                         anyMoved = true;
+                        movedIds.push(nd.id);
                     }
                     nd.x = snappedX;
                     nd.y = snappedY;
@@ -6082,6 +6264,7 @@
                 });
 
                 if (anyMoved) {
+                    _syncNodePlateMemberships(movedIds);
                     _suppressCanvasClick = true;
                     setTimeout(function () { _suppressCanvasClick = false; }, 150);
                 }

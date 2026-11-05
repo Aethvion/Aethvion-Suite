@@ -2468,6 +2468,54 @@
     flex-direction: column;
     z-index: 2;
 }
+/* Prevent group plates from ever being dimmed */
+.at-node.at-node-plate.at-trigger-dimmed,
+.at-node.at-node-plate.at-global-dimmed {
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+/* Plate Interactive Resizers */
+.at-plate-resizer {
+    position: absolute;
+    z-index: 25;
+}
+.at-plate-resizer-e {
+    top: 12px;
+    right: -5px;
+    width: 10px;
+    height: calc(100% - 24px);
+    cursor: ew-resize;
+}
+.at-plate-resizer-s {
+    bottom: -5px;
+    left: 12px;
+    height: 10px;
+    width: calc(100% - 24px);
+    cursor: ns-resize;
+}
+.at-plate-resizer-se {
+    bottom: 2px;
+    right: 2px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(99, 102, 241, 0.45);
+    cursor: nwse-resize;
+    transition: color 0.15s, transform 0.15s;
+    user-select: none;
+}
+.at-plate-resizer-se:hover,
+.at-node-plate.at-selected .at-plate-resizer-se {
+    color: #818cf8;
+}
+.at-plate-resizer-e:hover,
+.at-plate-resizer-s:hover {
+    background: rgba(99, 102, 241, 0.25);
+    border-radius: 4px;
+}
 /* Snapped node styles (embedded inside plate) */
 .at-node.at-node-snapped {
     background: rgba(20, 25, 40, 0.85);
