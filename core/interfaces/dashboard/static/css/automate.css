@@ -2547,4 +2547,220 @@
     margin: 0 3px;
 }
 
+/* ==========================================================================
+   Spotlight Quick-Add Modal
+   ========================================================================== */
+
+.at-spotlight-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 8, 14, 0.72);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 14vh;
+}
+
+.at-spotlight-modal {
+    width: 600px;
+    max-width: 92vw;
+    background: #0a0d14;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75), 0 0 24px rgba(56, 189, 248, 0.16);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 72vh;
+    animation: atSpotlightPop 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes atSpotlightPop {
+    from { opacity: 0; transform: scale(0.96) translateY(-8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.at-spotlight-input-wrap {
+    display: flex;
+    align-items: center;
+    padding: 0.95rem 1.2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 0.85rem;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.at-spotlight-search-icon {
+    color: #38bdf8;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.at-spotlight-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    color: #f8fafc;
+    font-family: inherit;
+    font-weight: 500;
+}
+
+.at-spotlight-input::placeholder {
+    color: #64748b;
+    font-weight: 400;
+}
+
+.at-spotlight-badge {
+    font-size: 0.7rem;
+    color: #64748b;
+    flex-shrink: 0;
+}
+
+.at-spotlight-badge kbd {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: 0.68rem;
+    color: #94a3b8;
+}
+
+.at-spotlight-cats {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0.55rem 1.1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    overflow-x: auto;
+    background: rgba(0, 0, 0, 0.25);
+    scrollbar-width: none;
+}
+
+.at-spotlight-cats::-webkit-scrollbar {
+    display: none;
+}
+
+.at-spotlight-cat {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    white-space: nowrap;
+    font-family: inherit;
+}
+
+.at-spotlight-cat:hover {
+    color: #e2e8f0;
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.at-spotlight-cat.active {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: rgba(56, 189, 248, 0.5);
+    color: #38bdf8;
+    font-weight: 600;
+}
+
+.at-spotlight-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.6rem 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-height: 400px;
+}
+
+.at-spotlight-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+    border: 1px solid transparent;
+}
+
+.at-spotlight-item:hover, .at-spotlight-item.active {
+    background: rgba(56, 189, 248, 0.1);
+    border-color: rgba(56, 189, 248, 0.35);
+}
+
+.at-spotlight-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.at-spotlight-item-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.at-spotlight-item-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.at-spotlight-item-name {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: #f1f5f9;
+}
+
+.at-spotlight-item-cat {
+    font-size: 0.64rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.at-spotlight-item-desc {
+    font-size: 0.74rem;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.at-spotlight-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 1.1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.71rem;
+    color: #64748b;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.at-spotlight-hint kbd {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    padding: 1px 4px;
+    font-size: 0.68rem;
+    color: #94a3b8;
+}
+
 

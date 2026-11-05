@@ -74,6 +74,14 @@
     let _prePropSnapshot = null;
     const MAX_HISTORY    = 40;
 
+    // Spotlight Quick-Add State
+    let _lastMouseX           = null;
+    let _lastMouseY           = null;
+    let _spotlightActiveIndex = 0;
+    let _spotlightItems       = [];
+    let _spotlightSpawnCoords = null; // { canvasX, canvasY }
+    let _currentSpotlightCat  = 'all';
+
     // Nav page metadata
     var _NAV_META = {
         workflows: { label: 'Workflows',        icon: 'fa-bolt'        },
@@ -146,6 +154,13 @@
             msBtnDistV:      _$('at-ms-dist-v'),
             msBtnDuplicate:  _$('at-ms-duplicate'),
             msBtnDelete:     _$('at-ms-delete'),
+            // Spotlight Quick-Add
+            spotlightOverlay: _$('at-spotlight-overlay'),
+            spotlightModal:   _$('at-spotlight-modal'),
+            spotlightInput:   _$('at-spotlight-input'),
+            spotlightCats:    _$('at-spotlight-cats'),
+            spotlightList:    _$('at-spotlight-list'),
+            spotlightCount:   _$('at-spotlight-results-count'),
             toast:          _$('at-toast'),
             // Port tooltip
             portTooltip:    _$('at-port-tooltip'),
@@ -2314,19 +2329,168 @@
         }
     }
 
+    //  Spotlight Quick-Add Modal
+
+    function _openSpotlight(screenX, screenY) {
+        if (!_active) {
+            _toast('Open or create a workflow first.');
+            return;
+        }
+        if (!_e.spotlightOverlay) return;
+
+        const rect = _e.canvas.getBoundingClientRect();
+        let targetScreenX = screenX;
+        let targetScreenY = screenY;
+
+        if (targetScreenX === undefined || targetScreenY === undefined) {
+            if (_lastMouseX !== null && _lastMouseY !== null) {
+                targetScreenX = _lastMouseX;
+                targetScreenY = _lastMouseY;
+            } else {
+                targetScreenX = rect.left + rect.width / 2;
+                targetScreenY = rect.top + rect.height / 2;
+            }
+        }
+
+        const canvasX = Math.round(((targetScreenX - rect.left - _view.x) / _view.scale - NODE_WIDTH / 2) / 20) * 20;
+        const canvasY = Math.round(((targetScreenY - rect.top - _view.y) / _view.scale - 40) / 20) * 20;
+        _spotlightSpawnCoords = { canvasX, canvasY };
+
+        _e.spotlightOverlay.style.display = 'flex';
+        _currentSpotlightCat = 'all';
+        if (_e.spotlightCats) {
+            _e.spotlightCats.querySelectorAll('.at-spotlight-cat').forEach(function (c) {
+                c.classList.toggle('active', c.dataset.cat === 'all');
+            });
+        }
+        if (_e.spotlightInput) {
+            _e.spotlightInput.value = '';
+            _e.spotlightInput.focus();
+        }
+        _spotlightActiveIndex = 0;
+        _renderSpotlightList('', 'all');
+    }
+
+    function _closeSpotlight() {
+        if (!_e.spotlightOverlay) return;
+        _e.spotlightOverlay.style.display = 'none';
+        _spotlightSpawnCoords = null;
+    }
+
+    function _renderSpotlightList(query, category) {
+        if (!_e.spotlightList) return;
+        _e.spotlightList.innerHTML = '';
+        const q = (query || '').toLowerCase().trim();
+        const catFilter = category || _currentSpotlightCat || 'all';
+
+        _spotlightItems = _nodeTypes.filter(function (t) {
+            const matchesCat = (catFilter === 'all') ||
+                (t.category && t.category.toLowerCase().indexOf(catFilter.toLowerCase()) !== -1) ||
+                (t.type && t.type.toLowerCase().startsWith(catFilter.toLowerCase() + '.'));
+            if (!matchesCat) return false;
+
+            if (!q) return true;
+            const inLabel = t.label && t.label.toLowerCase().indexOf(q) !== -1;
+            const inType  = t.type && t.type.toLowerCase().indexOf(q) !== -1;
+            const inCat   = t.category && t.category.toLowerCase().indexOf(q) !== -1;
+            const inDesc  = t.description && t.description.toLowerCase().indexOf(q) !== -1;
+            return inLabel || inType || inCat || inDesc;
+        });
+
+        if (_e.spotlightCount) {
+            _e.spotlightCount.textContent = _spotlightItems.length + ' node' + (_spotlightItems.length !== 1 ? 's' : '');
+        }
+
+        if (_spotlightItems.length === 0) {
+            _e.spotlightList.innerHTML = '<div style="padding:2.2rem 1rem;text-align:center;color:#64748b;font-size:0.85rem;"><i class="fas fa-search" style="margin-bottom:0.5rem;display:block;opacity:0.4;font-size:1.6rem;"></i>No nodes matching "' + _esc(q) + '"</div>';
+            return;
+        }
+
+        if (_spotlightActiveIndex >= _spotlightItems.length) {
+            _spotlightActiveIndex = 0;
+        }
+
+        _spotlightItems.forEach(function (t, idx) {
+            const item = document.createElement('div');
+            item.className = 'at-spotlight-item' + (idx === _spotlightActiveIndex ? ' active' : '');
+            const color = t.color || '#38bdf8';
+            const icon  = t.icon  || 'fa-bolt';
+            const catName = t.category || 'General';
+
+            item.innerHTML =
+                '<div class="at-spotlight-icon" style="background:' + color + '22;color:' + color + ';">' +
+                '  <i class="fas ' + icon + '"></i>' +
+                '</div>' +
+                '<div class="at-spotlight-item-body">' +
+                '  <div class="at-spotlight-item-title-row">' +
+                '    <span class="at-spotlight-item-name">' + _esc(t.label) + '</span>' +
+                '    <span class="at-spotlight-item-cat" style="background:' + color + '18;color:' + color + ';">' + _esc(catName) + '</span>' +
+                '  </div>' +
+                '  <span class="at-spotlight-item-desc">' + _esc(t.description || t.type) + '</span>' +
+                '</div>';
+
+            item.addEventListener('mouseenter', function () {
+                _spotlightActiveIndex = idx;
+                _updateSpotlightActiveItem();
+            });
+
+            item.addEventListener('click', function () {
+                _insertFromSpotlight(t.type);
+            });
+
+            _e.spotlightList.appendChild(item);
+        });
+
+        _scrollSpotlightActiveIntoView();
+    }
+
+    function _updateSpotlightActiveItem() {
+        if (!_e.spotlightList) return;
+        const items = _e.spotlightList.querySelectorAll('.at-spotlight-item');
+        items.forEach(function (el, idx) {
+            el.classList.toggle('active', idx === _spotlightActiveIndex);
+        });
+        _scrollSpotlightActiveIntoView();
+    }
+
+    function _scrollSpotlightActiveIntoView() {
+        if (!_e.spotlightList) return;
+        const activeEl = _e.spotlightList.querySelector('.at-spotlight-item.active');
+        if (activeEl) {
+            activeEl.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function _insertFromSpotlight(typeStr) {
+        if (!typeStr) return;
+        const coords = _spotlightSpawnCoords;
+        _closeSpotlight();
+        if (coords) {
+            _addNode(typeStr, coords.canvasX, coords.canvasY);
+        } else {
+            _addNode(typeStr);
+        }
+    }
+
     //  Node management
 
-    function _addNode(typeStr) {
+    function _addNode(typeStr, customX, customY) {
         if (!_active) { _toast('Open or create a workflow first.'); return; }
         const td = _typeDef(typeStr);
         _recordHistory('Add ' + (td.label || typeStr));
 
-        // Place at centre of current viewport with slight stagger
-        const rect  = _e.canvas.getBoundingClientRect();
-        const stagger = (_placeOffset % 10) * 30;
-        const x = Math.round((rect.width  / 2 - _view.x) / _view.scale - NODE_WIDTH  / 2 + stagger);
-        const y = Math.round((rect.height / 2 - _view.y) / _view.scale - NODE_H_EST  / 2 + stagger);
-        _placeOffset++;
+        let x, y;
+        if (customX !== undefined && customY !== undefined) {
+            x = Math.round(customX / 20) * 20;
+            y = Math.round(customY / 20) * 20;
+        } else {
+            // Place at centre of current viewport with slight stagger
+            const rect  = _e.canvas.getBoundingClientRect();
+            const stagger = (_placeOffset % 10) * 30;
+            x = Math.round((rect.width  / 2 - _view.x) / _view.scale - NODE_WIDTH  / 2 + stagger);
+            y = Math.round((rect.height / 2 - _view.y) / _view.scale - NODE_H_EST  / 2 + stagger);
+            _placeOffset++;
+        }
 
         const nd = {
             id:         'n_' + Date.now() + '_' + (Math.random() * 9999 | 0),
@@ -4502,6 +4666,74 @@
             _renderPalette(this.value.trim() || null);
         });
 
+        // Spotlight Quick-Add wiring
+        if (_e.spotlightInput) {
+            _e.spotlightInput.addEventListener('input', function () {
+                _renderSpotlightList(this.value.trim());
+            });
+            _e.spotlightInput.addEventListener('keydown', function (e) {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (_spotlightItems.length > 0) {
+                        _spotlightActiveIndex = (_spotlightActiveIndex + 1) % _spotlightItems.length;
+                        _updateSpotlightActiveItem();
+                        _scrollSpotlightActiveIntoView();
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (_spotlightItems.length > 0) {
+                        _spotlightActiveIndex = (_spotlightActiveIndex - 1 + _spotlightItems.length) % _spotlightItems.length;
+                        _updateSpotlightActiveItem();
+                        _scrollSpotlightActiveIntoView();
+                    }
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (_spotlightActiveIndex >= 0 && _spotlightActiveIndex < _spotlightItems.length) {
+                        _insertFromSpotlight(_spotlightItems[_spotlightActiveIndex].type);
+                    }
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    _closeSpotlight();
+                }
+            });
+        }
+
+        if (_e.spotlightOverlay) {
+            _e.spotlightOverlay.addEventListener('mousedown', function (e) {
+                if (e.target === _e.spotlightOverlay) {
+                    _closeSpotlight();
+                }
+            });
+        }
+
+        if (_e.spotlightCats) {
+            _e.spotlightCats.addEventListener('click', function (e) {
+                const btn = e.target.closest('.at-spotlight-cat');
+                if (!btn) return;
+                _e.spotlightCats.querySelectorAll('.at-spotlight-cat').forEach(function (c) {
+                    c.classList.remove('active');
+                });
+                btn.classList.add('active');
+                _currentSpotlightCat = btn.dataset.cat || 'all';
+                _renderSpotlightList(_e.spotlightInput ? _e.spotlightInput.value.trim() : '', _currentSpotlightCat);
+            });
+        }
+
+        // Canvas mouse position tracking & double-click quick-add
+        _e.canvas.addEventListener('mousemove', function (e) {
+            _lastMouseX = e.clientX;
+            _lastMouseY = e.clientY;
+        });
+
+        _e.canvas.addEventListener('dblclick', function (e) {
+            const isBg = e.target === _e.canvas || e.target === _e.canvasInner || e.target === _e.svg;
+            if (isBg) {
+                e.preventDefault();
+                e.stopPropagation();
+                _openSpotlight(e.clientX, e.clientY);
+            }
+        });
+
         // Canvas pan (middle-mouse / Alt+left-drag) or Marquee Selection (left-drag on background)
         _e.canvas.addEventListener('mousedown', function (e) {
             if (e.button === 1 || (e.button === 0 && e.altKey)) {
@@ -4978,6 +5210,15 @@
                 return;
             }
 
+            // Spotlight quick-add (Space or Tab)
+            if (e.key === ' ' || e.code === 'Space' || e.key === 'Tab') {
+                if (!_e.spotlightOverlay || _e.spotlightOverlay.style.display === 'none') {
+                    e.preventDefault();
+                    _openSpotlight(_lastMouseX, _lastMouseY);
+                    return;
+                }
+            }
+
             // Delete
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (_selNodeIds.size > 0) {
@@ -4986,7 +5227,14 @@
                 }
                 if (_selConnId) { _deleteConn(_selConnId); return; }
             }
-            if (e.key === 'Escape') { _cancelPending(); _deselectAll(); }
+            if (e.key === 'Escape') {
+                if (_e.spotlightOverlay && _e.spotlightOverlay.style.display !== 'none') {
+                    _closeSpotlight();
+                    return;
+                }
+                _cancelPending();
+                _deselectAll();
+            }
             if (e.ctrlKey && e.key === 's') { e.preventDefault(); _apiSaveWorkflow(); }
             if (e.key === 'f' || e.key === 'F') { _fitToScreen(); }
         });
