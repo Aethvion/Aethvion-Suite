@@ -64,6 +64,14 @@
     let _lastExecData  = null;        // most recent workflow execution result
     let _selTriggerId  = null;        // null = run all triggers; string = specific trigger node id
 
+    // Undo / Redo History State
+    let _undoStack       = [];   // snapshots: [{ nodes, connections, selNodeId, selConnId, description }]
+    let _redoStack       = [];
+    let _isHistoryAction = false;
+    let _preDragSnapshot = null;
+    let _prePropSnapshot = null;
+    const MAX_HISTORY    = 40;
+
     // Nav page metadata
     var _NAV_META = {
         workflows: { label: 'Workflows',        icon: 'fa-bolt'        },
@@ -83,6 +91,8 @@
             wfRenameBtn:   _$('at-wf-rename-btn'),
             btnNew:        _$('at-btn-new'),
             btnSave:       _$('at-btn-save'),
+            btnUndo:       _$('at-btn-undo'),
+            btnRedo:       _$('at-btn-redo'),
             btnDelete:     _$('at-btn-delete'),
             btnRun:            _$('at-btn-run'),
             triggerDrop:       _$('at-trigger-drop'),
@@ -1144,6 +1154,7 @@
             return _apiGetWorkflow(id);
         }).then(function (wf) {
             _active        = wf;
+            _clearHistory();
             _dirty         = false;
             _placeOffset   = wf.nodes.length;
             _selTriggerId  = null;   // reset trigger selection for new workflow
@@ -2293,6 +2304,7 @@
     function _addNode(typeStr) {
         if (!_active) { _toast('Open or create a workflow first.'); return; }
         const td = _typeDef(typeStr);
+        _recordHistory('Add ' + (td.label || typeStr));
 
         // Place at centre of current viewport with slight stagger
         const rect  = _e.canvas.getBoundingClientRect();
@@ -2322,6 +2334,9 @@
 
     function _deleteNode(nodeId) {
         if (!_active) return;
+        const targetNode = _active.nodes.find(function (n) { return n.id === nodeId; });
+        const lbl = targetNode ? (targetNode.label || targetNode.type) : 'Node';
+        _recordHistory('Delete ' + lbl);
         _active.nodes.forEach(function (n) {
             if (n.properties && n.properties.plate_id === nodeId) {
                 n.properties.plate_id = null;
@@ -2672,6 +2687,7 @@
                 check.checked = val === true || val === 'true' || val === 1;
                 check.dataset.propKey = prop.key;
                 check.addEventListener('change', function () {
+                    _recordHistory('Toggle ' + prop.label);
                     nd.properties[prop.key] = check.checked;
                     _markDirty();
                     // Update show_result live on node
@@ -2702,6 +2718,9 @@
             } else if (prop.type === 'select') {
                 inputEl = document.createElement('select');
                 inputEl.className = 'at-prop-select';
+                inputEl.addEventListener('change', function () {
+                    _recordHistory('Change ' + prop.label);
+                });
                 (prop.options || []).forEach(function (opt) {
                     const o = document.createElement('option');
                     if (opt && typeof opt === 'object') {
@@ -2731,6 +2750,24 @@
             }
 
             inputEl.dataset.propKey = prop.key;
+            inputEl.addEventListener('focus', function () {
+                _prePropSnapshot = {
+                    nodes: JSON.parse(JSON.stringify(_active.nodes || [])),
+                    connections: JSON.parse(JSON.stringify(_active.connections || [])),
+                    selNodeId: nd.id,
+                    selConnId: _selConnId,
+                    description: 'Edit ' + (prop.label || prop.key)
+                };
+            });
+            inputEl.addEventListener('change', function () {
+                if (_prePropSnapshot && !_isHistoryAction) {
+                    _undoStack.push(_prePropSnapshot);
+                    if (_undoStack.length > MAX_HISTORY) _undoStack.shift();
+                    _redoStack = [];
+                    _updateUndoRedoUI();
+                }
+                _prePropSnapshot = null;
+            });
             inputEl.addEventListener('input', function () {
                 const newVal = prop.type === 'number'
                     ? parseFloat(inputEl.value) || 0
@@ -3158,6 +3195,24 @@
             nameInput.className = 'at-pubvar-input';
             nameInput.value = p['name'] || '';
             nameInput.placeholder = 'paramName';
+            nameInput.addEventListener('focus', function () {
+                _prePropSnapshot = {
+                    nodes: JSON.parse(JSON.stringify(_active.nodes || [])),
+                    connections: JSON.parse(JSON.stringify(_active.connections || [])),
+                    selNodeId: nd.id,
+                    selConnId: _selConnId,
+                    description: 'Edit Global Name'
+                };
+            });
+            nameInput.addEventListener('change', function () {
+                if (_prePropSnapshot && !_isHistoryAction) {
+                    _undoStack.push(_prePropSnapshot);
+                    if (_undoStack.length > MAX_HISTORY) _undoStack.shift();
+                    _redoStack = [];
+                    _updateUndoRedoUI();
+                }
+                _prePropSnapshot = null;
+            });
             nameInput.addEventListener('input', function () {
                 p['name'] = nameInput.value;
                 nd.properties['name'] = nameInput.value;
@@ -3176,6 +3231,7 @@
                 defEl.type    = 'checkbox';
                 defEl.checked = p['value'] === true || p['value'] === 'true';
                 defEl.addEventListener('change', function () {
+                    _recordHistory('Change Global Default');
                     p['value'] = defEl.checked;
                     nd.properties['value'] = defEl.checked;
                     _syncStrip();
@@ -3329,6 +3385,7 @@
         });
         if (dup) { _cancelPending(); _toast('Connection already exists.'); return; }
 
+        _recordHistory('Add Connection');
         _active.connections.push({
             id:           'c_' + Date.now(),
             sourceNodeId: _pending.nodeId,
@@ -3339,6 +3396,7 @@
         _cancelPending();
         _renderConns();
         _markDirty();
+        _updateUndoRedoUI();
     }
 
     /** Complete a trigger connection to targetNodeId (clicks on node body, not a port). */
@@ -3356,6 +3414,7 @@
         });
         if (dup) { _cancelPending(); _toast('Trigger connection already exists.'); return; }
 
+        _recordHistory('Add Trigger Connection');
         _active.connections.push({
             id:           'c_' + Date.now(),
             sourceNodeId: _pending.nodeId,
@@ -3366,6 +3425,7 @@
         _cancelPending();
         _renderConns();
         _markDirty();
+        _updateUndoRedoUI();
     }
 
     function _cancelPending() {
@@ -3383,10 +3443,12 @@
 
     function _deleteConn(connId) {
         if (!_active) return;
+        _recordHistory('Delete Connection');
         _active.connections = _active.connections.filter(function (c) { return c.id !== connId; });
         if (_selConnId === connId) _selConnId = null;
         _renderConns();
         _markDirty();
+        _updateUndoRedoUI();
     }
 
     //  Pan / Zoom
@@ -3464,12 +3526,132 @@
         if (!_active) return;
         const name = prompt('Rename workflow:', _active.name);
         if (!name || !name.trim() || name.trim() === _active.name) return;
+        _recordHistory('Rename Workflow');
         _active.name = name.trim();
         _e.wfLabel.textContent = _active.name;
         const entry = _workflows.find(function (w) { return w.id === _active.id; });
         if (entry) entry.name = _active.name;
         _renderWfList();
         _markDirty();
+    }
+
+    //  History / Undo / Redo
+
+    function _updateUndoRedoUI() {
+        const has = !!_active;
+        if (_e.btnUndo) {
+            _e.btnUndo.disabled = !has || _undoStack.length === 0;
+            const nextDesc = _undoStack.length > 0 ? _undoStack[_undoStack.length - 1].description : null;
+            _e.btnUndo.title = nextDesc ? 'Undo ' + nextDesc + ' (Ctrl+Z)' : 'Undo (Ctrl+Z)';
+        }
+        if (_e.btnRedo) {
+            _e.btnRedo.disabled = !has || _redoStack.length === 0;
+            const nextDesc = _redoStack.length > 0 ? _redoStack[_redoStack.length - 1].description : null;
+            _e.btnRedo.title = nextDesc ? 'Redo ' + nextDesc + ' (Ctrl+Y)' : 'Redo (Ctrl+Y)';
+        }
+    }
+
+    function _recordHistory(description) {
+        if (_isHistoryAction || !_active) return;
+        try {
+            const snapshot = {
+                nodes: JSON.parse(JSON.stringify(_active.nodes || [])),
+                connections: JSON.parse(JSON.stringify(_active.connections || [])),
+                selNodeId: _selNodeId,
+                selConnId: _selConnId,
+                description: description || 'Action'
+            };
+            _undoStack.push(snapshot);
+            if (_undoStack.length > MAX_HISTORY) {
+                _undoStack.shift();
+            }
+            _redoStack = [];
+            _updateUndoRedoUI();
+        } catch (err) {
+            console.warn('[Automate] Failed to record history snapshot:', err);
+        }
+    }
+
+    function _clearHistory() {
+        _undoStack = [];
+        _redoStack = [];
+        _preDragSnapshot = null;
+        _prePropSnapshot = null;
+        _updateUndoRedoUI();
+    }
+
+    function _undo() {
+        if (!_active || _undoStack.length === 0) return;
+        _isHistoryAction = true;
+        try {
+            const currentSnapshot = {
+                nodes: JSON.parse(JSON.stringify(_active.nodes || [])),
+                connections: JSON.parse(JSON.stringify(_active.connections || [])),
+                selNodeId: _selNodeId,
+                selConnId: _selConnId,
+                description: 'Current'
+            };
+            _redoStack.push(currentSnapshot);
+
+            const prev = _undoStack.pop();
+            _active.nodes = prev.nodes;
+            _active.connections = prev.connections;
+
+            _renderCanvas();
+            if (prev.selNodeId && _active.nodes.some(function (n) { return n.id === prev.selNodeId; })) {
+                _selectNode(prev.selNodeId);
+            } else if (prev.selConnId && _active.connections.some(function (c) { return c.id === prev.selConnId; })) {
+                _selectConn(prev.selConnId);
+            } else {
+                _deselectAll();
+            }
+
+            _markDirty();
+            _updatePubvarsCount();
+            _toast('Undone: ' + (prev.description || 'Action'));
+        } catch (err) {
+            console.error('[Automate] Undo failed:', err);
+        } finally {
+            _isHistoryAction = false;
+            _updateUndoRedoUI();
+        }
+    }
+
+    function _redo() {
+        if (!_active || _redoStack.length === 0) return;
+        _isHistoryAction = true;
+        try {
+            const currentSnapshot = {
+                nodes: JSON.parse(JSON.stringify(_active.nodes || [])),
+                connections: JSON.parse(JSON.stringify(_active.connections || [])),
+                selNodeId: _selNodeId,
+                selConnId: _selConnId,
+                description: 'Current'
+            };
+            _undoStack.push(currentSnapshot);
+
+            const next = _redoStack.pop();
+            _active.nodes = next.nodes;
+            _active.connections = next.connections;
+
+            _renderCanvas();
+            if (next.selNodeId && _active.nodes.some(function (n) { return n.id === next.selNodeId; })) {
+                _selectNode(next.selNodeId);
+            } else if (next.selConnId && _active.connections.some(function (c) { return c.id === next.selConnId; })) {
+                _selectConn(next.selConnId);
+            } else {
+                _deselectAll();
+            }
+
+            _markDirty();
+            _updatePubvarsCount();
+            _toast('Redone: ' + (next.description || 'Action'));
+        } catch (err) {
+            console.error('[Automate] Redo failed:', err);
+        } finally {
+            _isHistoryAction = false;
+            _updateUndoRedoUI();
+        }
     }
 
     //  Toolbar state
@@ -3483,6 +3665,7 @@
         if (_e.btnExport)   _e.btnExport.disabled   = !has;
         if (_e.btnShare)    _e.btnShare.disabled    = !has;
         if (_e.btnCompile)  _e.btnCompile.disabled  = !has;
+        _updateUndoRedoUI();
     }
 
     function _markDirty() {
@@ -3612,6 +3795,7 @@
             toggleCheck.checked = s.enabled !== false;
             (function (entry, itemEl) {
                 toggleCheck.addEventListener('change', function () {
+                    _recordHistory('Toggle Schedule');
                     entry.enabled = toggleCheck.checked;
                     itemEl.classList.toggle('at-sched-entry-off', !entry.enabled);
                     _markDirty();
@@ -3630,6 +3814,7 @@
             delBtn.innerHTML = '<i class="fas fa-xmark"></i>';
             (function (entryId, lEl) {
                 delBtn.addEventListener('click', function () {
+                    _recordHistory('Delete Schedule');
                     nd.properties['schedules'] = (nd.properties['schedules'] || []).filter(
                         function (x) { return x.id !== entryId; }
                     );
@@ -3748,6 +3933,7 @@
 
         // Wire add button
         addBtn.addEventListener('click', function () {
+            _recordHistory('Add Schedule');
             var ruleObj = SCHEDULE_RULES.find(function (r) { return r.value === ruleSelect.value; });
             if (!nd.properties['schedules']) nd.properties['schedules'] = [];
             nd.properties['schedules'].push({
@@ -3836,6 +4022,8 @@
         // Toolbar buttons
         _e.btnNew   .addEventListener('click', _newWorkflow);
         _e.btnSave  .addEventListener('click', _apiSaveWorkflow);
+        if (_e.btnUndo) _e.btnUndo.addEventListener('click', _undo);
+        if (_e.btnRedo) _e.btnRedo.addEventListener('click', _redo);
         _e.btnDelete.addEventListener('click', _apiDeleteWorkflow);
         _e.btnRun   .addEventListener('click', _apiRunWorkflow);
 
@@ -4076,6 +4264,13 @@
             if (!nd) return;
             e.preventDefault();
             e.stopPropagation();
+            _preDragSnapshot = {
+                nodes: JSON.parse(JSON.stringify(_active.nodes || [])),
+                connections: JSON.parse(JSON.stringify(_active.connections || [])),
+                selNodeId: nodeId,
+                selConnId: _selConnId,
+                description: 'Move ' + (nd.label || nd.type)
+            };
             _dragging = {
                 nodeId,
                 startCX: e.clientX, startCY: e.clientY,
@@ -4348,7 +4543,17 @@
                             el.style.top = nd.y + 'px';
                         }
                     }
+                    if (_preDragSnapshot && !_isHistoryAction) {
+                        const moved = (nd.x !== _dragging.startNX || nd.y !== _dragging.startNY);
+                        if (moved) {
+                            _undoStack.push(_preDragSnapshot);
+                            if (_undoStack.length > MAX_HISTORY) _undoStack.shift();
+                            _redoStack = [];
+                            _updateUndoRedoUI();
+                        }
+                    }
                 }
+                _preDragSnapshot = null;
                 _markDirty();
                 _dragging = null;
                 _renderConns();
@@ -4364,6 +4569,17 @@
             if (!_isAutomate()) return;
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' ||
                 e.target.tagName === 'SELECT') return;
+
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
+                e.preventDefault();
+                _undo();
+                return;
+            }
+            if ((e.ctrlKey || e.metaKey) && ((e.key === 'y' || e.key === 'Y') || (e.shiftKey && (e.key === 'z' || e.key === 'Z')))) {
+                e.preventDefault();
+                _redo();
+                return;
+            }
 
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (_selNodeId) { _deleteNode(_selNodeId); return; }

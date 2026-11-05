@@ -30,6 +30,14 @@ def _to_str(val: Any) -> str:
     return str(val)
 
 
+# Provider manager (lazy)
+
+def _get_pm():
+    """Return the global ProviderManager instance lazily."""
+    from core.providers import get_provider_manager
+    return get_provider_manager()
+
+
 # Safe expression evaluator
 
 def _safe_eval(expr: str, local_vars: dict) -> Any:
