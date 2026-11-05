@@ -2501,8 +2501,9 @@
     background: rgba(56, 189, 248, 0.12);
     box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
     border-radius: 4px;
-    pointer-events: none;
-    z-index: 100;
+    pointer-events: none !important;
+    user-select: none;
+    z-index: 9999;
 }
 
 .at-multiselect-ribbon {

@@ -52,7 +52,8 @@
     let _selNodeId   = null; // primary selected node id
     let _selNodeIds  = new Set(); // multi-selected node IDs
     let _selConnId   = null; // selected connection id
-    let _marquee     = null; // marquee drag selection: { startCX, startCY, el, isShift, initialSelection }
+    let _marquee     = null; // marquee drag selection: { startCX, startCY, el, isShift, initialSelection, nodeBounds, didDrag }
+    let _suppressCanvasClick = false; // suppresses synthetic click after drag / marquee
     let _dragging    = null; // { startCX, startCY, nodes: [{ nodeId, startNX, startNY }] }
     let _panning     = null; // { startCX, startCY, startVX, startVY }
     let _pending     = null; // { nodeId, portName, portType:'output' }
@@ -5588,6 +5589,7 @@
                 _panning = {
                     startCX: e.clientX, startCY: e.clientY,
                     startVX: _view.x,   startVY: _view.y,
+                    didPan: false
                 };
                 _e.canvas.classList.add('at-panning');
                 return;
@@ -5601,20 +5603,56 @@
                     }
                     const marqueeEl = document.createElement('div');
                     marqueeEl.className = 'at-marquee-box';
+                    marqueeEl.style.pointerEvents = 'none';
                     marqueeEl.style.left = e.clientX + 'px';
                     marqueeEl.style.top  = e.clientY + 'px';
                     marqueeEl.style.width = '0px';
                     marqueeEl.style.height = '0px';
                     document.body.appendChild(marqueeEl);
 
+                    // Pre-cache rendered node bounding boxes for exact, 60fps marquee intersection testing
+                    const nodeBounds = [];
+                    if (_active && _active.nodes) {
+                        _active.nodes.forEach(function (nd) {
+                            let nw = NODE_WIDTH;
+                            let nh = 100;
+                            if (nd.type === 'ui.plate') {
+                                nw = parseFloat((nd.properties || {}).plate_width) || 500;
+                                nh = parseFloat((nd.properties || {}).plate_height) || 380;
+                            } else {
+                                const el = _e.canvasInner.querySelector('[data-node-id="' + nd.id + '"].at-node');
+                                if (el) {
+                                    nw = el.offsetWidth || NODE_WIDTH;
+                                    nh = el.offsetHeight || 100;
+                                }
+                            }
+                            nodeBounds.push({ id: nd.id, x: nd.x, y: nd.y, w: nw, h: nh });
+                        });
+                    }
+
                     _marquee = {
                         startCX: e.clientX,
                         startCY: e.clientY,
                         el: marqueeEl,
                         isShift: e.shiftKey,
-                        initialSelection: new Set(_selNodeIds)
+                        initialSelection: new Set(_selNodeIds),
+                        nodeBounds: nodeBounds,
+                        didDrag: false
                     };
                 }
+            }
+        });
+
+        // Canvas wrapper click handler (for clicking background outside canvasInner)
+        _e.canvas.addEventListener('click', function (e) {
+            if (_suppressCanvasClick) {
+                _suppressCanvasClick = false;
+                e.stopPropagation();
+                return;
+            }
+            if (e.target === _e.canvas) {
+                _deselectAll();
+                _cancelPending();
             }
         });
 
@@ -5658,6 +5696,11 @@
 
         // Canvas-inner click delegation
         _e.canvasInner.addEventListener('click', function (e) {
+            if (_suppressCanvasClick) {
+                _suppressCanvasClick = false;
+                e.stopPropagation();
+                return;
+            }
             // Port click
             const portRow = e.target.closest('.at-port-row');
             if (portRow) {
@@ -5767,6 +5810,11 @@
 
         // SVG connection click & data flow hover tooltip
         _e.svg.addEventListener('click', function (e) {
+            if (_suppressCanvasClick) {
+                _suppressCanvasClick = false;
+                e.stopPropagation();
+                return;
+            }
             const path = e.target.closest('.at-conn');
             if (path) {
                 e.stopPropagation();
@@ -5905,9 +5953,10 @@
                 _marquee.el.style.height = height + 'px';
 
                 if (width > 4 || height > 4) {
-                    const canvasRect = _e.canvas.getBoundingClientRect();
-                    const cLeft   = (left - canvasRect.left - _view.x) / _view.scale;
-                    const cTop    = (top - canvasRect.top - _view.y) / _view.scale;
+                    _marquee.didDrag = true;
+                    const iRect = _e.canvasInner.getBoundingClientRect();
+                    const cLeft   = (left - iRect.left) / _view.scale;
+                    const cTop    = (top - iRect.top) / _view.scale;
                     const cRight  = cLeft + width / _view.scale;
                     const cBottom = cTop + height / _view.scale;
 
@@ -5917,13 +5966,19 @@
                         _selNodeIds = new Set(_marquee.initialSelection);
                     }
 
-                    if (_active && _active.nodes) {
+                    if (_marquee.nodeBounds && _marquee.nodeBounds.length > 0) {
+                        _marquee.nodeBounds.forEach(function (b) {
+                            const overlaps = !(b.x > cRight || (b.x + b.w) < cLeft || b.y > cBottom || (b.y + b.h) < cTop);
+                            if (overlaps) {
+                                _selNodeIds.add(b.id);
+                            }
+                        });
+                    } else if (_active && _active.nodes) {
                         _active.nodes.forEach(function (nd) {
                             const nw = (nd.type === 'ui.plate') ? (parseFloat((nd.properties || {}).plate_width) || 500) : NODE_WIDTH;
                             const nh = (nd.type === 'ui.plate') ? (parseFloat((nd.properties || {}).plate_height) || 380) : 100;
                             const nRight  = nd.x + nw;
                             const nBottom = nd.y + nh;
-
                             const overlaps = !(nd.x > cRight || nRight < cLeft || nd.y > cBottom || nBottom < cTop);
                             if (overlaps) {
                                 _selNodeIds.add(nd.id);
@@ -5957,6 +6012,7 @@
 
             // Pan
             if (_panning) {
+                _panning.didPan = true;
                 _view.x = _panning.startVX + (e.clientX - _panning.startCX);
                 _view.y = _panning.startVY + (e.clientY - _panning.startCY);
                 _applyTransform();
@@ -5989,8 +6045,13 @@
 
             // Finalize marquee
             if (_marquee) {
+                const hadDrag = _marquee.didDrag;
                 if (_marquee.el) _marquee.el.remove();
                 _marquee = null;
+                if (hadDrag) {
+                    _suppressCanvasClick = true;
+                    setTimeout(function () { _suppressCanvasClick = false; }, 150);
+                }
                 _selNodeId = _selNodeIds.size > 0 ? Array.from(_selNodeIds)[_selNodeIds.size - 1] : null;
                 _updateMultiSelectUI();
                 if (_selNodeIds.size > 1) {
@@ -6020,6 +6081,11 @@
                     }
                 });
 
+                if (anyMoved) {
+                    _suppressCanvasClick = true;
+                    setTimeout(function () { _suppressCanvasClick = false; }, 150);
+                }
+
                 if (anyMoved && _preDragSnapshot && !_isHistoryAction) {
                     _undoStack.push(_preDragSnapshot);
                     if (_undoStack.length > MAX_HISTORY) _undoStack.shift();
@@ -6031,7 +6097,14 @@
                 _dragging = null;
                 _renderConns();
             }
-            if (_panning)  { _panning = null; _e.canvas.classList.remove('at-panning'); }
+            if (_panning)  {
+                if (_panning.didPan) {
+                    _suppressCanvasClick = true;
+                    setTimeout(function () { _suppressCanvasClick = false; }, 150);
+                }
+                _panning = null;
+                _e.canvas.classList.remove('at-panning');
+            }
         });
 
         // Context menu suppression on canvas
