@@ -2491,3 +2491,60 @@
     cursor: grabbing;
 }
 
+/* ==========================================================================
+   Multi-Selection & Grouping UI
+   ========================================================================== */
+
+.at-marquee-box {
+    position: absolute;
+    border: 1px solid rgba(56, 189, 248, 0.85);
+    background: rgba(56, 189, 248, 0.12);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.at-multiselect-ribbon {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(10, 13, 20, 0.94);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 16px rgba(56, 189, 248, 0.2);
+    padding: 6px 12px;
+    border-radius: 10px;
+    z-index: 80;
+    animation: atFadeSlideUp 0.18s ease-out;
+}
+
+@keyframes atFadeSlideUp {
+    from { opacity: 0; transform: translate(-50%, 8px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.at-ms-count {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #38bdf8;
+    padding: 0 6px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.at-ms-sep {
+    width: 1px;
+    height: 18px;
+    background: rgba(255, 255, 255, 0.12);
+    margin: 0 3px;
+}
+
+

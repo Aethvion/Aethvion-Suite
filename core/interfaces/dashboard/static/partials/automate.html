@@ -235,6 +235,41 @@
                 <div class="at-interface-container" id="at-interface-container" style="max-width:1200px;margin:0 auto;display:grid;grid-template-columns:repeat(12, 1fr);gap:1.5rem"></div>
             </div>
 
+            <!-- Multi-Select Floating Action Ribbon -->
+            <div class="at-multiselect-ribbon" id="at-multiselect-ribbon" style="display:none">
+                <div class="at-ms-count" id="at-ms-count">
+                    <i class="fas fa-layer-group"></i>
+                    <span id="at-ms-count-text">0 selected</span>
+                </div>
+                <div class="at-ms-sep"></div>
+                <button class="at-btn at-btn-ghost at-btn-sm" id="at-ms-group" title="Group into Plate (Ctrl+G)">
+                    <i class="fas fa-table-cells-large"></i><span>Group</span>
+                </button>
+                <button class="at-btn at-btn-ghost at-btn-sm" id="at-ms-ungroup" title="Ungroup (Ctrl+Shift+G)">
+                    <i class="fas fa-object-ungroup"></i><span>Ungroup</span>
+                </button>
+                <div class="at-ms-sep"></div>
+                <button class="at-btn at-btn-ghost at-btn-sm" id="at-ms-align-left" title="Align Left">
+                    <i class="fas fa-align-left"></i>
+                </button>
+                <button class="at-btn at-btn-ghost at-btn-sm" id="at-ms-align-top" title="Align Top">
+                    <i class="fas fa-arrow-up-to-line"></i>
+                </button>
+                <button class="at-btn at-btn-ghost at-btn-sm" id="at-ms-dist-h" title="Distribute Horizontally">
+                    <i class="fas fa-arrows-left-right"></i>
+                </button>
+                <button class="at-btn at-btn-ghost at-btn-sm" id="at-ms-dist-v" title="Distribute Vertically">
+                    <i class="fas fa-arrows-up-down"></i>
+                </button>
+                <div class="at-ms-sep"></div>
+                <button class="at-btn at-btn-ghost at-btn-sm" id="at-ms-duplicate" title="Duplicate (Ctrl+D)">
+                    <i class="fas fa-copy"></i><span>Duplicate</span>
+                </button>
+                <button class="at-btn at-btn-ghost at-btn-sm at-btn-danger" id="at-ms-delete" title="Delete Selected (Del)">
+                    <i class="fas fa-trash"></i><span>Delete</span>
+                </button>
+            </div>
+
             <!-- Pan hint -->
             <div class="at-canvas-hint" id="at-canvas-hint">
                 Middle-click or <kbd>Alt</kbd>+drag to pan &nbsp;·&nbsp; Scroll to zoom

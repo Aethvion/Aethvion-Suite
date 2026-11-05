@@ -49,9 +49,11 @@
     let _modelsBySource = {};   // cache: source-url → model list
     let _workflows   = [];   // [{ id, name, node_count, updated }]
     let _active      = null; // { id, name, nodes:[], connections:[] }  — full workflow
-    let _selNodeId   = null; // selected node id
+    let _selNodeId   = null; // primary selected node id
+    let _selNodeIds  = new Set(); // multi-selected node IDs
     let _selConnId   = null; // selected connection id
-    let _dragging    = null; // { nodeId, startCX, startCY, startNX, startNY }
+    let _marquee     = null; // marquee drag selection: { startCX, startCY, el, isShift, initialSelection }
+    let _dragging    = null; // { startCX, startCY, nodes: [{ nodeId, startNX, startNY }] }
     let _panning     = null; // { startCX, startCY, startVX, startVY }
     let _pending     = null; // { nodeId, portName, portType:'output' }
     let _dirty       = false;
@@ -133,6 +135,17 @@
             inspectorBody:  _$('at-inspector-body'),
             inspectorNone:  _$('at-inspector-none'),
             inspectorClose:      _$('at-inspector-close'),
+            // Multi-selection ribbon
+            msRibbon:        _$('at-multiselect-ribbon'),
+            msCountText:     _$('at-ms-count-text'),
+            msBtnGroup:      _$('at-ms-group'),
+            msBtnUngroup:    _$('at-ms-ungroup'),
+            msBtnAlignLeft:  _$('at-ms-align-left'),
+            msBtnAlignTop:   _$('at-ms-align-top'),
+            msBtnDistH:      _$('at-ms-dist-h'),
+            msBtnDistV:      _$('at-ms-dist-v'),
+            msBtnDuplicate:  _$('at-ms-duplicate'),
+            msBtnDelete:     _$('at-ms-delete'),
             toast:          _$('at-toast'),
             // Port tooltip
             portTooltip:    _$('at-port-tooltip'),
@@ -1964,7 +1977,7 @@
             const props = nd.properties || {};
             const pw = parseFloat(props.plate_width) || 500;
             const ph = parseFloat(props.plate_height) || 380;
-            el.className = 'at-node at-node-plate';
+            el.className = 'at-node at-node-plate' + (_selNodeIds.has(nd.id) ? ' at-selected' : '');
             el.style.width = pw + 'px';
             el.style.height = ph + 'px';
             el.style.zIndex = '1';
@@ -1989,7 +2002,9 @@
             return;
         }
 
-        el.className    = 'at-node' + (nd.properties && nd.properties.plate_id ? ' at-node-snapped' : '');
+        el.className    = 'at-node' +
+            (nd.properties && nd.properties.plate_id ? ' at-node-snapped' : '') +
+            (_selNodeIds.has(nd.id) ? ' at-selected' : '');
 
         const inputsHtml = (td.inputs || []).map(function (p) {
             return (
@@ -2385,16 +2400,104 @@
 
     //  Selection
 
-    function _selectNode(nodeId) {
-        _deselectAll(false);
-        _selNodeId = nodeId;
-        const el = _e.canvasInner.querySelector('[data-node-id="' + nodeId + '"].at-node');
-        if (el) {
-            el.classList.add('at-selected');
-            const nd = _active && _active.nodes.find(function (n) { return n.id === nodeId; });
-            if (nd) {
-                _raiseNodeZIndex(el, nd.type === 'ui.plate');
+    function _updateMultiSelectUI() {
+        if (!_e.msRibbon) return;
+        if (_selNodeIds.size > 1) {
+            if (_e.msCountText) {
+                _e.msCountText.textContent = _selNodeIds.size + ' selected';
             }
+            _e.msRibbon.style.display = 'flex';
+        } else {
+            _e.msRibbon.style.display = 'none';
+        }
+    }
+
+    function _renderMultiSelectInspector() {
+        if (!_e.inspectorBody) return;
+        if (_e.inspectorIcon) {
+            _e.inspectorIcon.style.background = 'rgba(56,189,248,0.15)';
+            _e.inspectorIcon.style.color      = '#38bdf8';
+            _e.inspectorIcon.innerHTML        = '<i class="fas fa-layer-group"></i>';
+        }
+        if (_e.inspectorTitle) {
+            _e.inspectorTitle.textContent = 'Multi-Selection (' + _selNodeIds.size + ')';
+        }
+        if (_e.inspectorClose) _e.inspectorClose.style.display = '';
+
+        _e.inspectorBody.innerHTML = '';
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'padding:1rem;display:flex;flex-direction:column;gap:0.9rem;';
+
+        var info = document.createElement('div');
+        info.style.cssText = 'font-size:0.8rem;color:var(--text-muted,#94a3b8);line-height:1.4;';
+        info.textContent = _selNodeIds.size + ' nodes selected. Use the floating ribbon or shortcuts to group, align, duplicate, or delete in batch.';
+        wrap.appendChild(info);
+
+        // Group button
+        var grpBtn = document.createElement('button');
+        grpBtn.className = 'at-btn at-btn-accent';
+        grpBtn.style.cssText = 'width:100%;justify-content:center;padding:7px;font-size:0.8rem;';
+        grpBtn.innerHTML = '<i class="fas fa-table-cells-large"></i><span>Group into Plate (Ctrl+G)</span>';
+        grpBtn.addEventListener('click', _groupSelectedNodes);
+        wrap.appendChild(grpBtn);
+
+        // Duplicate button
+        var dupBtn = document.createElement('button');
+        dupBtn.className = 'at-btn at-btn-ghost';
+        dupBtn.style.cssText = 'width:100%;justify-content:center;padding:7px;font-size:0.8rem;';
+        dupBtn.innerHTML = '<i class="fas fa-copy"></i><span>Duplicate (Ctrl+D)</span>';
+        dupBtn.addEventListener('click', _duplicateSelectedNodes);
+        wrap.appendChild(dupBtn);
+
+        // Delete button
+        var delBtn = document.createElement('button');
+        delBtn.className = 'at-btn at-btn-ghost at-btn-danger';
+        delBtn.style.cssText = 'width:100%;justify-content:center;padding:7px;font-size:0.8rem;';
+        delBtn.innerHTML = '<i class="fas fa-trash"></i><span>Delete All Selected (Del)</span>';
+        delBtn.addEventListener('click', _deleteSelectedNodes);
+        wrap.appendChild(delBtn);
+
+        _e.inspectorBody.appendChild(wrap);
+        _showInspector();
+    }
+
+    function _selectNode(nodeId, isMulti) {
+        if (!isMulti) {
+            _deselectAll(false);
+            _selNodeIds.add(nodeId);
+            _selNodeId = nodeId;
+        } else {
+            if (_selNodeIds.has(nodeId)) {
+                _selNodeIds.delete(nodeId);
+                const unselectEl = _e.canvasInner.querySelector('[data-node-id="' + nodeId + '"].at-node');
+                if (unselectEl) unselectEl.classList.remove('at-selected');
+                _selNodeId = _selNodeIds.size > 0 ? Array.from(_selNodeIds)[_selNodeIds.size - 1] : null;
+                if (!_selNodeId) {
+                    _deselectAll();
+                    return;
+                }
+            } else {
+                _selNodeIds.add(nodeId);
+                _selNodeId = nodeId;
+            }
+        }
+
+        _selNodeIds.forEach(function (id) {
+            const el = _e.canvasInner.querySelector('[data-node-id="' + id + '"].at-node');
+            if (el) {
+                el.classList.add('at-selected');
+                const targetNd = _active && _active.nodes.find(function (n) { return n.id === id; });
+                if (targetNd) {
+                    _raiseNodeZIndex(el, targetNd.type === 'ui.plate');
+                }
+            }
+        });
+
+        _updateMultiSelectUI();
+
+        if (_selNodeIds.size > 1) {
+            _renderMultiSelectInspector();
+            return;
         }
 
         // Highlight the reachable chain when a trigger node is selected
@@ -2501,6 +2604,7 @@
 
     function _deselectAll(closeProps) {
         _selNodeId = null;
+        _selNodeIds.clear();
         _selConnId = null;
         _clearTriggerHighlight();
         _clearGlobalHighlight();
@@ -2508,7 +2612,240 @@
             n.classList.remove('at-selected');
         });
         _renderConns();
+        _updateMultiSelectUI();
         if (closeProps !== false) _closeProps();
+    }
+
+    //  Multi-Selection & Grouping Operations
+
+    function _selectAllNodes() {
+        if (!_active || !_active.nodes || _active.nodes.length === 0) return;
+        _selNodeIds.clear();
+        _active.nodes.forEach(function (n) {
+            _selNodeIds.add(n.id);
+            const el = _e.canvasInner.querySelector('[data-node-id="' + n.id + '"].at-node');
+            if (el) el.classList.add('at-selected');
+        });
+        _selNodeId = _active.nodes[_active.nodes.length - 1].id;
+        _updateMultiSelectUI();
+        _renderMultiSelectInspector();
+    }
+
+    function _groupSelectedNodes() {
+        if (!_active || _selNodeIds.size === 0) return;
+        const selectedNodes = _active.nodes.filter(function (n) {
+            return _selNodeIds.has(n.id) && n.type !== 'ui.plate';
+        });
+        if (selectedNodes.length === 0) {
+            _toast('Select at least one standard node to group.', true);
+            return;
+        }
+
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        selectedNodes.forEach(function (n) {
+            minX = Math.min(minX, n.x);
+            minY = Math.min(minY, n.y);
+            maxX = Math.max(maxX, n.x + NODE_WIDTH);
+            maxY = Math.max(maxY, n.y + 110);
+        });
+
+        const padLeft = 30, padTop = 60, padRight = 30, padBottom = 30;
+        const plateX = Math.round((minX - padLeft) / 20) * 20;
+        const plateY = Math.round((minY - padTop) / 20) * 20;
+        const plateW = Math.max(300, Math.round((maxX - minX + padLeft + padRight) / 20) * 20);
+        const plateH = Math.max(200, Math.round((maxY - minY + padTop + padBottom) / 20) * 20);
+
+        const plateCount = _active.nodes.filter(function (n) { return n.type === 'ui.plate'; }).length + 1;
+        const plateName = 'Group ' + plateCount;
+
+        _recordHistory('Group Nodes into Plate');
+
+        const plateId = 'n_plate_' + Date.now();
+        const plateNode = {
+            id: plateId,
+            type: 'ui.plate',
+            label: plateName,
+            x: plateX,
+            y: plateY,
+            properties: {
+                label: plateName,
+                plate_width: plateW,
+                plate_height: plateH,
+                background: 'Glassmorphism'
+            }
+        };
+
+        // Insert plate before nodes so it renders behind them
+        _active.nodes.unshift(plateNode);
+        selectedNodes.forEach(function (n) {
+            if (!n.properties) n.properties = {};
+            n.properties.plate_id = plateId;
+        });
+
+        _renderCanvas();
+        _selectNode(plateId, false);
+        _markDirty();
+        _toast('Grouped ' + selectedNodes.length + ' node(s) into plate');
+    }
+
+    function _ungroupSelected() {
+        if (!_active || _selNodeIds.size === 0) return;
+        _recordHistory('Ungroup Nodes');
+
+        let ungroupCount = 0;
+        const platesToRemove = new Set();
+
+        _selNodeIds.forEach(function (id) {
+            const nd = _active.nodes.find(function (n) { return n.id === id; });
+            if (!nd) return;
+            if (nd.type === 'ui.plate') {
+                platesToRemove.add(nd.id);
+                _active.nodes.forEach(function (child) {
+                    if (child.properties && child.properties.plate_id === nd.id) {
+                        child.properties.plate_id = null;
+                        ungroupCount++;
+                    }
+                });
+            } else if (nd.properties && nd.properties.plate_id) {
+                nd.properties.plate_id = null;
+                ungroupCount++;
+            }
+        });
+
+        if (platesToRemove.size > 0) {
+            _active.nodes = _active.nodes.filter(function (n) { return !platesToRemove.has(n.id); });
+        }
+
+        _renderCanvas();
+        _deselectAll();
+        _markDirty();
+        _toast('Ungrouped ' + (ungroupCount + platesToRemove.size) + ' item(s)');
+    }
+
+    function _duplicateSelectedNodes() {
+        if (!_active || _selNodeIds.size === 0) return;
+        _recordHistory('Duplicate ' + _selNodeIds.size + ' Nodes');
+
+        const idMap = {};
+        const newNodes = [];
+
+        _selNodeIds.forEach(function (id) {
+            const orig = _active.nodes.find(function (n) { return n.id === id; });
+            if (!orig) return;
+            const newId = 'n_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
+            idMap[orig.id] = newId;
+
+            const clone = JSON.parse(JSON.stringify(orig));
+            clone.id = newId;
+            clone.x = orig.x + 40;
+            clone.y = orig.y + 40;
+            newNodes.push(clone);
+        });
+
+        // Remap child plate_ids
+        newNodes.forEach(function (n) {
+            if (n.properties && n.properties.plate_id && idMap[n.properties.plate_id]) {
+                n.properties.plate_id = idMap[n.properties.plate_id];
+            }
+        });
+
+        // Duplicate internal connections between selected nodes
+        const newConns = [];
+        _active.connections.forEach(function (conn) {
+            if (idMap[conn.sourceNodeId] && idMap[conn.targetNodeId]) {
+                const cloneConn = JSON.parse(JSON.stringify(conn));
+                cloneConn.id = 'c_' + Date.now() + '_' + Math.floor(Math.random() * 9999);
+                cloneConn.sourceNodeId = idMap[conn.sourceNodeId];
+                cloneConn.targetNodeId = idMap[conn.targetNodeId];
+                newConns.push(cloneConn);
+            }
+        });
+
+        newNodes.forEach(function (n) { _active.nodes.push(n); });
+        newConns.forEach(function (c) { _active.connections.push(c); });
+
+        _renderCanvas();
+
+        _selNodeIds.clear();
+        newNodes.forEach(function (n) { _selNodeIds.add(n.id); });
+        _selNodeId = newNodes.length > 0 ? newNodes[newNodes.length - 1].id : null;
+        _selNodeIds.forEach(function (id) {
+            const el = _e.canvasInner.querySelector('[data-node-id="' + id + '"].at-node');
+            if (el) el.classList.add('at-selected');
+        });
+        _updateMultiSelectUI();
+        _markDirty();
+        _toast('Duplicated ' + newNodes.length + ' node(s)');
+    }
+
+    function _deleteSelectedNodes() {
+        if (!_active || _selNodeIds.size === 0) return;
+        const count = _selNodeIds.size;
+        _recordHistory('Delete ' + count + ' Nodes');
+
+        _selNodeIds.forEach(function (id) {
+            _active.nodes.forEach(function (n) {
+                if (n.properties && n.properties.plate_id === id) {
+                    n.properties.plate_id = null;
+                }
+            });
+            _active.nodes = _active.nodes.filter(function (n) { return n.id !== id; });
+            _active.connections = _active.connections.filter(function (c) {
+                return c.sourceNodeId !== id && c.targetNodeId !== id;
+            });
+            const el = _e.canvasInner.querySelector('[data-node-id="' + id + '"].at-node');
+            if (el) el.remove();
+        });
+
+        _selNodeIds.clear();
+        _selNodeId = null;
+        _closeProps();
+        _renderConns();
+        _updateMultiSelectUI();
+        _markDirty();
+        _toast('Deleted ' + count + ' node(s)');
+    }
+
+    function _alignNodes(direction) {
+        if (!_active || _selNodeIds.size < 2) return;
+        const selectedNodes = _active.nodes.filter(function (n) { return _selNodeIds.has(n.id); });
+        if (selectedNodes.length < 2) return;
+
+        if (direction === 'left') {
+            _recordHistory('Align Left');
+            const minX = Math.min.apply(null, selectedNodes.map(function (n) { return n.x; }));
+            selectedNodes.forEach(function (n) { n.x = minX; });
+        } else if (direction === 'top') {
+            _recordHistory('Align Top');
+            const minY = Math.min.apply(null, selectedNodes.map(function (n) { return n.y; }));
+            selectedNodes.forEach(function (n) { n.y = minY; });
+        } else if (direction === 'dist-h') {
+            _recordHistory('Distribute Horizontally');
+            selectedNodes.sort(function (a, b) { return a.x - b.x; });
+            const first = selectedNodes[0].x;
+            const last = selectedNodes[selectedNodes.length - 1].x;
+            const step = (last - first) / (selectedNodes.length - 1);
+            selectedNodes.forEach(function (n, idx) {
+                n.x = Math.round((first + step * idx) / 20) * 20;
+            });
+        } else if (direction === 'dist-v') {
+            _recordHistory('Distribute Vertically');
+            selectedNodes.sort(function (a, b) { return a.y - b.y; });
+            const first = selectedNodes[0].y;
+            const last = selectedNodes[selectedNodes.length - 1].y;
+            const step = (last - first) / (selectedNodes.length - 1);
+            selectedNodes.forEach(function (n, idx) {
+                n.y = Math.round((first + step * idx) / 20) * 20;
+            });
+        }
+
+        _renderCanvas();
+        _selNodeIds.forEach(function (id) {
+            const el = _e.canvasInner.querySelector('[data-node-id="' + id + '"].at-node');
+            if (el) el.classList.add('at-selected');
+        });
+        _updateMultiSelectUI();
+        _markDirty();
     }
 
     //  Properties panel
@@ -3577,7 +3914,9 @@
         _redoStack = [];
         _preDragSnapshot = null;
         _prePropSnapshot = null;
+        if (_selNodeIds) _selNodeIds.clear();
         _updateUndoRedoUI();
+        _hideMultiSelectRibbon();
     }
 
     function _undo() {
@@ -4027,6 +4366,16 @@
         _e.btnDelete.addEventListener('click', _apiDeleteWorkflow);
         _e.btnRun   .addEventListener('click', _apiRunWorkflow);
 
+        // Multi-select ribbon actions
+        if (_e.msBtnGroup) _e.msBtnGroup.addEventListener('click', _groupSelectedNodes);
+        if (_e.msBtnUngroup) _e.msBtnUngroup.addEventListener('click', _ungroupSelected);
+        if (_e.msBtnAlignLeft) _e.msBtnAlignLeft.addEventListener('click', function () { _alignNodes('left'); });
+        if (_e.msBtnAlignTop) _e.msBtnAlignTop.addEventListener('click', function () { _alignNodes('top'); });
+        if (_e.msBtnDistH) _e.msBtnDistH.addEventListener('click', function () { _alignNodes('dist-h'); });
+        if (_e.msBtnDistV) _e.msBtnDistV.addEventListener('click', function () { _alignNodes('dist-v'); });
+        if (_e.msBtnDuplicate) _e.msBtnDuplicate.addEventListener('click', _duplicateSelectedNodes);
+        if (_e.msBtnDelete) _e.msBtnDelete.addEventListener('click', _deleteSelectedNodes);
+
         if (_e.viewGraph) {
             _e.viewGraph.addEventListener('click', function () {
                 _switchView('graph');
@@ -4153,7 +4502,7 @@
             _renderPalette(this.value.trim() || null);
         });
 
-        // Canvas pan (middle-mouse / Alt+left-drag)
+        // Canvas pan (middle-mouse / Alt+left-drag) or Marquee Selection (left-drag on background)
         _e.canvas.addEventListener('mousedown', function (e) {
             if (e.button === 1 || (e.button === 0 && e.altKey)) {
                 e.preventDefault();
@@ -4162,6 +4511,31 @@
                     startVX: _view.x,   startVY: _view.y,
                 };
                 _e.canvas.classList.add('at-panning');
+                return;
+            }
+
+            if (e.button === 0 && !e.altKey && !_dragging && !_pending) {
+                const isBg = e.target === _e.canvas || e.target === _e.canvasInner || e.target === _e.svg;
+                if (isBg) {
+                    if (!e.shiftKey) {
+                        _deselectAll();
+                    }
+                    const marqueeEl = document.createElement('div');
+                    marqueeEl.className = 'at-marquee-box';
+                    marqueeEl.style.left = e.clientX + 'px';
+                    marqueeEl.style.top  = e.clientY + 'px';
+                    marqueeEl.style.width = '0px';
+                    marqueeEl.style.height = '0px';
+                    document.body.appendChild(marqueeEl);
+
+                    _marquee = {
+                        startCX: e.clientX,
+                        startCY: e.clientY,
+                        el: marqueeEl,
+                        isShift: e.shiftKey,
+                        initialSelection: new Set(_selNodeIds)
+                    };
+                }
             }
         });
 
@@ -4242,7 +4616,7 @@
                 if (_pending && _pending.isTrigger) {
                     _createTriggerConn(nodeEl.dataset.nodeId);
                 } else {
-                    _selectNode(nodeEl.dataset.nodeId);
+                    _selectNode(nodeEl.dataset.nodeId, e.shiftKey);
                 }
                 return;
             }
@@ -4264,31 +4638,52 @@
             if (!nd) return;
             e.preventDefault();
             e.stopPropagation();
+
+            if (e.shiftKey) {
+                _selectNode(nodeId, true);
+                return;
+            }
+
+            if (!_selNodeIds.has(nodeId)) {
+                _selectNode(nodeId, false);
+            }
+
             _preDragSnapshot = {
                 nodes: JSON.parse(JSON.stringify(_active.nodes || [])),
                 connections: JSON.parse(JSON.stringify(_active.connections || [])),
                 selNodeId: nodeId,
                 selConnId: _selConnId,
-                description: 'Move ' + (nd.label || nd.type)
+                description: 'Move ' + (_selNodeIds.size > 1 ? _selNodeIds.size + ' Nodes' : (nd.label || nd.type))
             };
-            _dragging = {
-                nodeId,
-                startCX: e.clientX, startCY: e.clientY,
-                startNX: nd.x,      startNY: nd.y,
-                children: []
-            };
-            if (nd.type === 'ui.plate') {
-                _active.nodes.forEach(function (child) {
-                    if (child.properties && child.properties.plate_id === nd.id) {
-                        _dragging.children.push({
-                            nodeId: child.id,
-                            startNX: child.x,
-                            startNY: child.y
+
+            const dragNodes = [];
+            _selNodeIds.forEach(function (id) {
+                const targetNode = _active.nodes.find(function (n) { return n.id === id; });
+                if (targetNode) {
+                    dragNodes.push({
+                        nodeId: targetNode.id,
+                        startNX: targetNode.x,
+                        startNY: targetNode.y
+                    });
+                    if (targetNode.type === 'ui.plate') {
+                        _active.nodes.forEach(function (child) {
+                            if (child.properties && child.properties.plate_id === targetNode.id && !_selNodeIds.has(child.id)) {
+                                dragNodes.push({
+                                    nodeId: child.id,
+                                    startNX: child.x,
+                                    startNY: child.y
+                                });
+                            }
                         });
                     }
-                });
-            }
-            _selectNode(nodeId);
+                }
+            });
+
+            _dragging = {
+                startCX: e.clientX,
+                startCY: e.clientY,
+                nodes: dragNodes
+            };
         });
 
         // SVG connection click
@@ -4396,32 +4791,71 @@
 
         // Global mouse move + up
         document.addEventListener('mousemove', function (e) {
-            // Node drag
-            if (_dragging) {
-                const dx = (e.clientX - _dragging.startCX) / _view.scale;
-                const dy = (e.clientY - _dragging.startCY) / _view.scale;
-                const nd = _active && _active.nodes.find(function (n) { return n.id === _dragging.nodeId; });
-                if (nd) {
-                    nd.x = Math.round(_dragging.startNX + dx);
-                    nd.y = Math.round(_dragging.startNY + dy);
-                    const el = _e.canvasInner.querySelector('[data-node-id="' + _dragging.nodeId + '"].at-node');
-                    if (el) { el.style.left = nd.x + 'px'; el.style.top = nd.y + 'px'; }
-                    
-                    if (_dragging.children) {
-                        _dragging.children.forEach(function (childInfo) {
-                            const childNode = _active.nodes.find(function (c) { return c.id === childInfo.nodeId; });
-                            if (childNode) {
-                                childNode.x = Math.round(childInfo.startNX + dx);
-                                childNode.y = Math.round(childInfo.startNY + dy);
-                                const childEl = _e.canvasInner.querySelector('[data-node-id="' + childNode.id + '"].at-node');
-                                if (childEl) { childEl.style.left = childNode.x + 'px'; childEl.style.top = childNode.y + 'px'; }
+            // Marquee selection
+            if (_marquee) {
+                const curX = e.clientX;
+                const curY = e.clientY;
+                const left = Math.min(_marquee.startCX, curX);
+                const top  = Math.min(_marquee.startCY, curY);
+                const width  = Math.abs(curX - _marquee.startCX);
+                const height = Math.abs(curY - _marquee.startCY);
+
+                _marquee.el.style.left   = left + 'px';
+                _marquee.el.style.top    = top + 'px';
+                _marquee.el.style.width  = width + 'px';
+                _marquee.el.style.height = height + 'px';
+
+                if (width > 4 || height > 4) {
+                    const canvasRect = _e.canvas.getBoundingClientRect();
+                    const cLeft   = (left - canvasRect.left - _view.x) / _view.scale;
+                    const cTop    = (top - canvasRect.top - _view.y) / _view.scale;
+                    const cRight  = cLeft + width / _view.scale;
+                    const cBottom = cTop + height / _view.scale;
+
+                    if (!_marquee.isShift) {
+                        _selNodeIds.clear();
+                    } else {
+                        _selNodeIds = new Set(_marquee.initialSelection);
+                    }
+
+                    if (_active && _active.nodes) {
+                        _active.nodes.forEach(function (nd) {
+                            const nw = (nd.type === 'ui.plate') ? (parseFloat((nd.properties || {}).plate_width) || 500) : NODE_WIDTH;
+                            const nh = (nd.type === 'ui.plate') ? (parseFloat((nd.properties || {}).plate_height) || 380) : 100;
+                            const nRight  = nd.x + nw;
+                            const nBottom = nd.y + nh;
+
+                            const overlaps = !(nd.x > cRight || nRight < cLeft || nd.y > cBottom || nBottom < cTop);
+                            if (overlaps) {
+                                _selNodeIds.add(nd.id);
                             }
                         });
                     }
-                    _renderConns();
+
+                    _e.canvasInner.querySelectorAll('.at-node').forEach(function (nodeEl) {
+                        nodeEl.classList.toggle('at-selected', _selNodeIds.has(nodeEl.dataset.nodeId));
+                    });
+                    _updateMultiSelectUI();
                 }
                 return;
             }
+
+            // Multi-node drag
+            if (_dragging) {
+                const dx = (e.clientX - _dragging.startCX) / _view.scale;
+                const dy = (e.clientY - _dragging.startCY) / _view.scale;
+                _dragging.nodes.forEach(function (item) {
+                    const nd = _active && _active.nodes.find(function (n) { return n.id === item.nodeId; });
+                    if (!nd) return;
+                    nd.x = Math.round(item.startNX + dx);
+                    nd.y = Math.round(item.startNY + dy);
+                    const el = _e.canvasInner.querySelector('[data-node-id="' + nd.id + '"].at-node');
+                    if (el) { el.style.left = nd.x + 'px'; el.style.top = nd.y + 'px'; }
+                });
+                _renderConns();
+                return;
+            }
+
             // Pan
             if (_panning) {
                 _view.x = _panning.startVX + (e.clientX - _panning.startCX);
@@ -4429,6 +4863,7 @@
                 _applyTransform();
                 return;
             }
+
             // Temp connection line
             if (_pending) {
                 const src = _portPos(_pending.nodeId, _pending.portName, _pending.portType);
@@ -4449,109 +4884,44 @@
         });
 
         document.addEventListener('mouseup', function () {
+            // Finalize marquee
+            if (_marquee) {
+                if (_marquee.el) _marquee.el.remove();
+                _marquee = null;
+                _selNodeId = _selNodeIds.size > 0 ? Array.from(_selNodeIds)[_selNodeIds.size - 1] : null;
+                _updateMultiSelectUI();
+                if (_selNodeIds.size > 1) {
+                    _renderMultiSelectInspector();
+                } else if (_selNodeId) {
+                    _openProps(_selNodeId);
+                }
+            }
+
+            // Finalize multi-node drag
             if (_dragging) {
-                const nd = _active && _active.nodes.find(function (n) { return n.id === _dragging.nodeId; });
-                if (nd) {
-                    if (nd.type === 'ui.plate') {
-                        // Snap plate to nearest 20px grid
-                        nd.x = Math.round(nd.x / 20) * 20;
-                        nd.y = Math.round(nd.y / 20) * 20;
-                        const el = _e.canvasInner.querySelector('[data-node-id="' + nd.id + '"].at-node');
-                        if (el) {
-                            el.style.left = nd.x + 'px';
-                            el.style.top = nd.y + 'px';
-                        }
-                        // Snap all children of this plate to the relative 20px grid inside the plate
-                        _active.nodes.forEach(function (child) {
-                            if (child.properties && child.properties.plate_id === nd.id) {
-                                const relX = child.x - nd.x;
-                                const relY = child.y - nd.y;
-                                const snapX = Math.round(relX / 20) * 20;
-                                const snapY = Math.round(relY / 20) * 20;
-                                const pw = parseFloat((nd.properties || {}).plate_width) || 500;
-                                const ph = parseFloat((nd.properties || {}).plate_height) || 380;
-                                const limitX = Math.max(20, Math.min(pw - 250, snapX));
-                                const limitY = Math.max(50, Math.min(ph - 100, snapY));
-                                child.x = nd.x + limitX;
-                                child.y = nd.y + limitY;
-                                const childEl = _e.canvasInner.querySelector('[data-node-id="' + child.id + '"].at-node');
-                                if (childEl) {
-                                    childEl.style.left = child.x + 'px';
-                                    childEl.style.top = child.y + 'px';
-                                }
-                            }
-                        });
-                    } else if (nd.type && nd.type.startsWith('ui.')) {
-                        let foundPlate = null;
-                        _active.nodes.forEach(function (p) {
-                            if (p.type === 'ui.plate') {
-                                const pw = parseFloat((p.properties || {}).plate_width) || 500;
-                                const ph = parseFloat((p.properties || {}).plate_height) || 380;
-                                const nodeCenterX = nd.x + 115;
-                                const nodeCenterY = nd.y + 40;
-                                if (nodeCenterX >= p.x && nodeCenterX <= p.x + pw &&
-                                    nodeCenterY >= p.y && nodeCenterY <= p.y + ph) {
-                                    foundPlate = p;
-                                }
-                            }
-                        });
-                        
-                        const el = _e.canvasInner.querySelector('[data-node-id="' + nd.id + '"].at-node');
-                        if (nd.properties) {
-                            const oldPlateId = nd.properties.plate_id;
-                            const newPlateId = foundPlate ? foundPlate.id : null;
-                            
-                            if (foundPlate) {
-                                const relX = nd.x - foundPlate.x;
-                                const relY = nd.y - foundPlate.y;
-                                const snapX = Math.round(relX / 20) * 20;
-                                const snapY = Math.round(relY / 20) * 20;
-                                const pw = parseFloat((foundPlate.properties || {}).plate_width) || 500;
-                                const ph = parseFloat((foundPlate.properties || {}).plate_height) || 380;
-                                const limitX = Math.max(20, Math.min(pw - 250, snapX));
-                                const limitY = Math.max(50, Math.min(ph - 100, snapY));
-                                nd.x = foundPlate.x + limitX;
-                                nd.y = foundPlate.y + limitY;
-                            } else {
-                                // Snap to canvas grid
-                                nd.x = Math.round(nd.x / 20) * 20;
-                                nd.y = Math.round(nd.y / 20) * 20;
-                            }
-                            
-                            if (el) {
-                                el.style.left = nd.x + 'px';
-                                el.style.top = nd.y + 'px';
-                            }
-                            
-                            if (oldPlateId !== newPlateId) {
-                                nd.properties.plate_id = newPlateId;
-                                if (newPlateId) {
-                                    el.classList.add('at-node-snapped');
-                                } else {
-                                    el.classList.remove('at-node-snapped');
-                                }
-                                _markDirty();
-                            }
-                        }
-                    } else {
-                        // Snap any other node to canvas grid
-                        nd.x = Math.round(nd.x / 20) * 20;
-                        nd.y = Math.round(nd.y / 20) * 20;
-                        const el = _e.canvasInner.querySelector('[data-node-id="' + nd.id + '"].at-node');
-                        if (el) {
-                            el.style.left = nd.x + 'px';
-                            el.style.top = nd.y + 'px';
-                        }
+                let anyMoved = false;
+                _dragging.nodes.forEach(function (item) {
+                    const nd = _active && _active.nodes.find(function (n) { return n.id === item.nodeId; });
+                    if (!nd) return;
+                    const snappedX = Math.round(nd.x / 20) * 20;
+                    const snappedY = Math.round(nd.y / 20) * 20;
+                    if (snappedX !== item.startNX || snappedY !== item.startNY) {
+                        anyMoved = true;
                     }
-                    if (_preDragSnapshot && !_isHistoryAction) {
-                        const moved = (nd.x !== _dragging.startNX || nd.y !== _dragging.startNY);
-                        if (moved) {
-                            _undoStack.push(_preDragSnapshot);
-                            if (_undoStack.length > MAX_HISTORY) _undoStack.shift();
-                            _redoStack = [];
-                            _updateUndoRedoUI();
-                        }
+                    nd.x = snappedX;
+                    nd.y = snappedY;
+                    const el = _e.canvasInner.querySelector('[data-node-id="' + nd.id + '"].at-node');
+                    if (el) {
+                        el.style.left = nd.x + 'px';
+                        el.style.top  = nd.y + 'px';
                     }
+                });
+
+                if (anyMoved && _preDragSnapshot && !_isHistoryAction) {
+                    _undoStack.push(_preDragSnapshot);
+                    if (_undoStack.length > MAX_HISTORY) _undoStack.shift();
+                    _redoStack = [];
+                    _updateUndoRedoUI();
                 }
                 _preDragSnapshot = null;
                 _markDirty();
@@ -4570,6 +4940,7 @@
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' ||
                 e.target.tagName === 'SELECT') return;
 
+            // Undo / Redo
             if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
                 e.preventDefault();
                 _undo();
@@ -4581,8 +4952,38 @@
                 return;
             }
 
+            // Select all
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+                e.preventDefault();
+                _selectAllNodes();
+                return;
+            }
+
+            // Group into Plate (Ctrl+G) / Ungroup (Ctrl+Shift+G)
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'g' || e.key === 'G') && !e.shiftKey) {
+                e.preventDefault();
+                _groupSelectedNodes();
+                return;
+            }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'g' || e.key === 'G') && e.shiftKey) {
+                e.preventDefault();
+                _ungroupSelected();
+                return;
+            }
+
+            // Duplicate (Ctrl+D)
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
+                e.preventDefault();
+                _duplicateSelectedNodes();
+                return;
+            }
+
+            // Delete
             if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (_selNodeId) { _deleteNode(_selNodeId); return; }
+                if (_selNodeIds.size > 0) {
+                    _deleteSelectedNodes();
+                    return;
+                }
                 if (_selConnId) { _deleteConn(_selConnId); return; }
             }
             if (e.key === 'Escape') { _cancelPending(); _deselectAll(); }
