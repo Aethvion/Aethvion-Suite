@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import threading
+import time
 from datetime import datetime
 from typing import Any
 
@@ -46,6 +47,7 @@ class WorkflowExecutor:
 
         self._outputs: dict[str, dict[str, Any]] = {}
         self._status:  dict[str, str]            = {}
+        self._durations: dict[str, float]        = {}
         self._errors:  dict[str, str]            = {}
         self._log:     list[dict]                = []
         # Pre-seed with injected variable values so data.variable nodes read them
@@ -120,29 +122,36 @@ class WorkflowExecutor:
         def run_node_task(node_id: str):
             node  = self.nodes[node_id]
             label = node.get("label", node_id)
+            t0    = time.perf_counter()
 
             try:
                 inputs  = self._gather_inputs(node_id)
                 outputs = self._execute_node(node, inputs)
+                duration_ms = round((time.perf_counter() - t0) * 1000, 1)
                 
                 with completed_lock:
-                    self._outputs[node_id] = outputs or {}
-                    self._status[node_id]  = "done"
+                    self._outputs[node_id]   = outputs or {}
+                    self._durations[node_id] = duration_ms
+                    self._status[node_id]    = "done"
                 
                 summary = _output_summary(outputs)
+                timing_str = f" ({duration_ms}ms)" if duration_ms < 1000 else f" ({duration_ms/1000:.2f}s)"
                 if summary:
-                    self._info(f"  ✓ {label}: {summary}")
+                    self._info(f"  ✓ {label}{timing_str}: {summary}")
                 else:
-                    self._info(f"  ✓ {label}")
+                    self._info(f"  ✓ {label}{timing_str}")
                 self._emit({"type": "node_status", "node_id": node_id,
-                            "status": "done", "outputs": outputs or {}, "error": None})
+                            "status": "done", "outputs": outputs or {}, "duration_ms": duration_ms, "error": None})
             except Exception as exc:
+                duration_ms = round((time.perf_counter() - t0) * 1000, 1)
                 with completed_lock:
-                    self._status[node_id] = "error"
-                    self._errors[node_id] = str(exc)
-                self._error(f"  ✗ {label}: {exc}")
+                    self._status[node_id]    = "error"
+                    self._durations[node_id] = duration_ms
+                    self._errors[node_id]    = str(exc)
+                timing_str = f" ({duration_ms}ms)" if duration_ms < 1000 else f" ({duration_ms/1000:.2f}s)"
+                self._error(f"  ✗ {label}{timing_str}: {exc}")
                 self._emit({"type": "node_status", "node_id": node_id,
-                            "status": "error", "outputs": {}, "error": str(exc)})
+                            "status": "error", "outputs": {}, "duration_ms": duration_ms, "error": str(exc)})
             
             with completed_lock:
                 running_nodes.remove(node_id)
@@ -339,12 +348,13 @@ class WorkflowExecutor:
 
     def _build_result(self, fatal: str | None = None) -> dict:
         return {
-            "ok":           not (bool(self._errors) or fatal is not None),
-            "fatal":        fatal,
-            "node_status":  self._status,
-            "node_outputs": self._outputs,
-            "node_errors":  self._errors,
-            "log":          self._log,
+            "ok":             not (bool(self._errors) or fatal is not None),
+            "fatal":          fatal,
+            "node_status":    self._status,
+            "node_durations": self._durations,
+            "node_outputs":   self._outputs,
+            "node_errors":    self._errors,
+            "log":            self._log,
         }
 
     # Event emission

@@ -82,6 +82,10 @@
     let _spotlightSpawnCoords = null; // { canvasX, canvasY }
     let _currentSpotlightCat  = 'all';
 
+    // Workflow Management & Filtering
+    let _wfFilter             = 'all'; // 'all' | 'active' | 'draft'
+    let _wfSearchQuery        = '';
+
     // Nav page metadata
     var _NAV_META = {
         workflows: { label: 'Workflows',        icon: 'fa-bolt'        },
@@ -118,6 +122,16 @@
             wfList:        _$('at-wf-list'),
             wfEmpty:       _$('at-wf-empty'),
             wfCreateFirst: _$('at-wf-create-first'),
+            // Active Workflows & Management
+            wfActivePill:         _$('at-wf-active-pill'),
+            wfActiveText:         _$('at-wf-active-text'),
+            activeWfWrap:         _$('at-active-wf-wrap'),
+            activeWfBtn:          _$('at-active-wf-btn'),
+            activeWfCount:        _$('at-active-wf-count'),
+            activeWfDropdown:     _$('at-active-wf-dropdown'),
+            activeWfDropdownList: _$('at-active-wf-dropdown-list'),
+            wfSearchInput:        _$('at-wf-search'),
+            wfFilterTabs:         _$('at-wf-filter-tabs'),
             canvas:        _$('at-canvas'),
             canvasEmpty:   _$('at-canvas-empty'),
             canvasNewBtn:  _$('at-canvas-new-btn'),
@@ -316,6 +330,7 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 name: _active.name,
+                active: !!_active.active,
                 nodes: _active.nodes,
                 connections: _active.connections,
                 viewport: { x: _view.x, y: _view.y, scale: _view.scale },
@@ -324,7 +339,65 @@
         if (!r.ok) throw new Error('save-workflow ' + r.status);
         _dirty = false;
         _updateToolbar();
+        _updateActiveWorkflowsUI();
         _toast('Workflow saved.');
+    }
+
+    async function _apiToggleActiveWorkflow(wfId) {
+        try {
+            const res = await fetch('/api/automate/workflows/' + wfId + '/toggle-active', {
+                method: 'PATCH'
+            });
+            if (!res.ok) throw new Error('Failed to toggle workflow');
+            const data = await res.json();
+            const target = _workflows.find(function (w) { return w.id === wfId; });
+            if (target) target.active = data.active;
+            if (_active && _active.id === wfId) {
+                _active.active = data.active;
+            }
+            _renderWfList();
+            _updateActiveWorkflowsUI();
+            _toast('Workflow ' + (data.active ? 'activated' : 'set to draft'));
+        } catch (err) {
+            _toast('Error toggling workflow: ' + err.message, true);
+        }
+    }
+
+    async function _apiDuplicateWorkflow(wfId) {
+        try {
+            const res = await fetch('/api/automate/workflows/' + wfId + '/duplicate', {
+                method: 'POST'
+            });
+            if (!res.ok) throw new Error('Failed to duplicate workflow');
+            const data = await res.json();
+            await _apiFetchWorkflows();
+            if (data && data.workflow && data.workflow.id) {
+                _openWorkflow(data.workflow.id);
+                _toast('Workflow duplicated: ' + data.workflow.name);
+            }
+        } catch (err) {
+            _toast('Error duplicating workflow: ' + err.message, true);
+        }
+    }
+
+    async function _apiDeleteWorkflowById(wfId, wfName) {
+        const ok = confirm('Delete "' + (wfName || 'this workflow') + '"? This cannot be undone.');
+        if (!ok) return;
+        try {
+            const r = await fetch('/api/automate/workflows/' + wfId, { method: 'DELETE' });
+            if (!r.ok) throw new Error('delete-workflow ' + r.status);
+            _workflows = _workflows.filter(function (w) { return w.id !== wfId; });
+            if (_active && _active.id === wfId) {
+                _active = null;
+                _showEmpty();
+            }
+            _renderWfList();
+            _updateToolbar();
+            _updateActiveWorkflowsUI();
+            _toast('Workflow deleted.');
+        } catch (err) {
+            _toast('Failed to delete workflow: ' + err.message, true);
+        }
     }
 
     async function _apiDeleteWorkflow() {
@@ -906,7 +979,7 @@
                     // they could be "skipped" events for sibling-chain nodes that
                     // would otherwise wipe those nodes' visual state and display output.
                     if (!allowedIds || allowedIds.has(ev.node_id)) {
-                        _setNodeExecState(ev.node_id, ev.status);
+                        _setNodeExecState(ev.node_id, ev.status, ev.duration_ms);
                     }
                 } else if (ev.type === 'log') {
                     _appendExecLogEntry(ev);
@@ -965,11 +1038,37 @@
         });
     }
 
-    function _setNodeExecState(nodeId, state) {
+    function _setNodeExecState(nodeId, state, durationMs) {
         var el = _e.canvasInner && _e.canvasInner.querySelector('[data-node-id="' + nodeId + '"].at-node');
         if (!el) return;
         el.classList.remove('at-exec-pending', 'at-exec-running', 'at-exec-done', 'at-exec-error', 'at-exec-skipped');
         el.classList.add('at-exec-' + state);
+
+        var hdr = el.querySelector('.at-node-hdr');
+        if (hdr) {
+            var oldBadge = hdr.querySelector('.at-node-exec-badge');
+            if (oldBadge) oldBadge.remove();
+
+            if (state === 'running' || state === 'done' || state === 'error' || state === 'skipped') {
+                var badge = document.createElement('span');
+                badge.className = 'at-node-exec-badge ' + state;
+                var timeStr = (durationMs !== undefined && durationMs !== null)
+                    ? (durationMs < 1000 ? Math.round(durationMs) + 'ms' : (durationMs / 1000).toFixed(2) + 's')
+                    : '';
+                if (state === 'running') {
+                    badge.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                } else if (state === 'done') {
+                    badge.textContent = timeStr ? '✓ ' + timeStr : '✓';
+                } else if (state === 'error') {
+                    badge.textContent = timeStr ? '✗ ' + timeStr : '✗';
+                } else if (state === 'skipped') {
+                    badge.textContent = '—';
+                }
+                var del = hdr.querySelector('[data-del-node]');
+                if (del) hdr.insertBefore(badge, del);
+                else hdr.appendChild(badge);
+            }
+        }
     }
 
     /**
@@ -982,38 +1081,25 @@
     function _applyExecResults(data, allowedIds) {
         _lastExecData = data; // persist for inspector Results view
 
-        var statuses = data.node_status  || {};
-        var outputs  = data.node_outputs || {};
-        var errors   = data.node_errors  || {};
+        var statuses  = data.node_status    || {};
+        var outputs   = data.node_outputs   || {};
+        var errors    = data.node_errors    || {};
+        var durations = data.node_durations || {};
 
         // Apply per-node states + outputs
         Object.keys(statuses).forEach(function (nodeId) {
             // Skip nodes that belong to sibling chains — don't disturb their state.
             if (allowedIds && !allowedIds.has(nodeId)) return;
             var status = statuses[nodeId];
-            _setNodeExecState(nodeId, status);
+            var dMs = durations[nodeId];
+            _setNodeExecState(nodeId, status, dMs);
 
             var el = _e.canvasInner && _e.canvasInner.querySelector('[data-node-id="' + nodeId + '"].at-node');
             if (!el) return;
 
-            // Remove old badge / error bar
-            var old = el.querySelector('.at-node-exec-badge');
-            if (old) old.remove();
+            // Remove old error bar
             var oldErr = el.querySelector('.at-node-error-bar');
             if (oldErr) oldErr.remove();
-
-            // Insert status badge in header
-            var hdr = el.querySelector('.at-node-hdr');
-            if (hdr) {
-                var badge = document.createElement('span');
-                badge.className = 'at-node-exec-badge ' + status;
-                badge.textContent = status === 'done' ? '✓' : status === 'skipped' ? '—' : '✗';
-                badge.title = status === 'skipped' ? 'not connected to a trigger' : status;
-                // Insert before delete button
-                var del = hdr.querySelector('[data-del-node]');
-                if (del) hdr.insertBefore(badge, del);
-                else hdr.appendChild(badge);
-            }
 
             // Show error bar
             if (status === 'error' && errors[nodeId]) {
@@ -1041,6 +1127,9 @@
                 _showDisplayOutput(nodeId, outs.image);
             }
         });
+
+        // Re-render connections so data flow pulses appear on all wires that carried data!
+        _renderConns();
 
         // Render execution log panel (log only — outputs live in inspector)
         _renderExecPanel(data);
@@ -1142,28 +1231,147 @@
             if (c !== _e.wfEmpty) c.remove();
         });
 
-        if (_workflows.length === 0) {
+        // Filter workflows by search query and category
+        const q = (_wfSearchQuery || '').toLowerCase().trim();
+        const filtered = _workflows.filter(function (wf) {
+            const matchesQuery = !q || (wf.name && wf.name.toLowerCase().includes(q));
+            const isActive = !!wf.active;
+            if (!matchesQuery) return false;
+            if (_wfFilter === 'active') return isActive;
+            if (_wfFilter === 'draft') return !isActive;
+            return true;
+        });
+
+        if (filtered.length === 0) {
             _e.wfEmpty.style.display = '';
+            var emptySpan = _e.wfEmpty.querySelector('span');
+            if (emptySpan) emptySpan.textContent = _workflows.length === 0 ? 'No workflows yet' : 'No matching workflows';
             return;
         }
         _e.wfEmpty.style.display = 'none';
 
-        _workflows.forEach(function (wf) {
+        filtered.forEach(function (wf) {
             const item = document.createElement('div');
             item.className = 'at-wf-item' + (_active && _active.id === wf.id ? ' active' : '');
             item.dataset.wfId = wf.id;
             const nodeCount = wf.node_count || 0;
             const meta = nodeCount + ' node' + (nodeCount !== 1 ? 's' : '') +
                          (wf.updated ? ' · ' + _relativeTime(wf.updated) : '');
+            const isActive = !!wf.active;
+
             item.innerHTML =
-                '<div class="at-wf-item-icon"><i class="fas fa-bolt"></i></div>' +
+                '<div class="at-wf-item-icon" style="' + (isActive ? 'color:#10b981;background:rgba(16,185,129,0.12);' : '') + '">' +
+                    '<i class="fas fa-bolt"></i>' +
+                '</div>' +
                 '<div class="at-wf-item-info">' +
-                    '<span class="at-wf-item-name">' + _esc(wf.name) + '</span>' +
+                    '<div style="display:flex;align-items:center;gap:6px;">' +
+                        '<span class="at-wf-item-name">' + _esc(wf.name) + '</span>' +
+                        '<span class="at-wf-item-status-pill ' + (isActive ? 'active' : 'draft') + '" data-toggle-active="' + wf.id + '" title="Click to toggle active">' +
+                            (isActive ? 'Active' : 'Draft') +
+                        '</span>' +
+                    '</div>' +
                     '<span class="at-wf-item-meta">' + _esc(meta) + '</span>' +
+                '</div>' +
+                '<div class="at-wf-item-actions">' +
+                    '<button class="at-wf-item-action-btn" data-run-wfid="' + wf.id + '" title="Run workflow">' +
+                        '<i class="fas fa-play"></i>' +
+                    '</button>' +
+                    '<button class="at-wf-item-action-btn" data-duplicate-wfid="' + wf.id + '" title="Duplicate workflow">' +
+                        '<i class="fas fa-copy"></i>' +
+                    '</button>' +
+                    '<button class="at-wf-item-action-btn danger" data-delete-wfid="' + wf.id + '" title="Delete workflow">' +
+                        '<i class="fas fa-trash"></i>' +
+                    '</button>' +
                 '</div>';
-            item.addEventListener('click', function () { _openWorkflow(wf.id); });
+
+            item.addEventListener('click', function (e) {
+                const toggleBtn = e.target.closest('[data-toggle-active]');
+                if (toggleBtn) {
+                    e.stopPropagation();
+                    _apiToggleActiveWorkflow(toggleBtn.dataset.toggleActive);
+                    return;
+                }
+                const runBtn = e.target.closest('[data-run-wfid]');
+                if (runBtn) {
+                    e.stopPropagation();
+                    const wfid = runBtn.dataset.runWfid;
+                    if (!_active || _active.id !== wfid) {
+                        _openWorkflow(wfid).then(function () { _apiRunWorkflow(); });
+                    } else {
+                        _apiRunWorkflow();
+                    }
+                    return;
+                }
+                const dupBtn = e.target.closest('[data-duplicate-wfid]');
+                if (dupBtn) {
+                    e.stopPropagation();
+                    _apiDuplicateWorkflow(dupBtn.dataset.duplicateWfid);
+                    return;
+                }
+                const delBtn = e.target.closest('[data-delete-wfid]');
+                if (delBtn) {
+                    e.stopPropagation();
+                    _apiDeleteWorkflowById(delBtn.dataset.deleteWfid, wf.name);
+                    return;
+                }
+                _openWorkflow(wf.id);
+            });
             list.insertBefore(item, _e.wfEmpty);
         });
+
+        _updateActiveWorkflowsUI();
+    }
+
+    function _updateActiveWorkflowsUI() {
+        const activeWorkflows = _workflows.filter(function (w) { return !!w.active; });
+        const count = activeWorkflows.length;
+
+        if (_e.activeWfCount) {
+            _e.activeWfCount.textContent = count + ' Active';
+        }
+        if (_e.activeWfWrap) {
+            _e.activeWfWrap.style.display = count > 0 ? 'block' : 'none';
+        }
+
+        if (_e.activeWfDropdownList) {
+            _e.activeWfDropdownList.innerHTML = '';
+            if (activeWorkflows.length === 0) {
+                _e.activeWfDropdownList.innerHTML = '<div style="padding:1rem;text-align:center;color:#64748b;font-size:0.75rem;">No active workflows</div>';
+            } else {
+                activeWorkflows.forEach(function (w) {
+                    const row = document.createElement('div');
+                    row.className = 'at-active-wf-dropdown-item' + (_active && _active.id === w.id ? ' current' : '');
+                    row.innerHTML =
+                        '<span style="display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+                            '<span style="width:6px;height:6px;border-radius:50%;background:#10b981;flex-shrink:0;"></span>' +
+                            _esc(w.name) +
+                        '</span>' +
+                        '<span style="font-size:0.68rem;color:#64748b;flex-shrink:0;">' + (w.node_count || 0) + ' nodes</span>';
+                    row.addEventListener('click', function () {
+                        _closeActiveDropdown();
+                        _openWorkflow(w.id);
+                    });
+                    _e.activeWfDropdownList.appendChild(row);
+                });
+            }
+        }
+
+        if (_e.wfActivePill) {
+            if (_active) {
+                _e.wfActivePill.style.display = 'inline-flex';
+                const isCurrentActive = !!_active.active;
+                _e.wfActivePill.classList.toggle('active', isCurrentActive);
+                if (_e.wfActiveText) {
+                    _e.wfActiveText.textContent = isCurrentActive ? 'Active' : 'Draft';
+                }
+            } else {
+                _e.wfActivePill.style.display = 'none';
+            }
+        }
+    }
+
+    function _closeActiveDropdown() {
+        if (_e.activeWfDropdown) _e.activeWfDropdown.style.display = 'none';
     }
 
     function _openWorkflow(id) {
@@ -2176,19 +2384,60 @@
             if (!src || !tgt) return;
 
             var isSelected = (conn.id === _selConnId);
+
+            // Check if this connection had live data flowing through it
+            var hasFlow = false;
+            var flowValue = null;
+            if (_lastExecData && _lastExecData.node_outputs) {
+                var srcOutputs = _lastExecData.node_outputs[conn.sourceNodeId];
+                if (srcOutputs) {
+                    if (isTriggerConn) {
+                        hasFlow = true;
+                    } else if (srcOutputs[conn.sourcePort] !== undefined) {
+                        hasFlow = true;
+                        flowValue = srcOutputs[conn.sourcePort];
+                    }
+                }
+            }
+
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('class',
                 'at-conn' +
                 (isTriggerConn ? ' at-conn-trigger' : '') +
                 (isGlobalConn  ? ' at-conn-global'  : '') +
+                (hasFlow       ? ' at-conn-flow'    : '') +
                 (isSelected    ? ' at-conn-selected' : ''));
             path.setAttribute('d', _bezier(src.x, src.y, tgt.x, tgt.y));
             path.dataset.connId = conn.id;
+            if (flowValue !== null && flowValue !== undefined) {
+                var valStr = typeof flowValue === 'object' ? JSON.stringify(flowValue) : String(flowValue);
+                path.dataset.flowValue = valStr;
+            }
             _e.svg.appendChild(path);
         });
 
         // Update connected-port markers
         _updatePortMarkers();
+    }
+
+    function _showWireFlowTooltip(valStr, mx, my) {
+        let pill = document.getElementById('at-wire-flow-pill');
+        if (!pill) {
+            pill = document.createElement('div');
+            pill.id = 'at-wire-flow-pill';
+            pill.className = 'at-flow-pill';
+            document.body.appendChild(pill);
+        }
+        var display = valStr.length > 55 ? valStr.slice(0, 52) + '…' : valStr;
+        pill.innerHTML = '<i class="fas fa-arrow-right"></i><span>' + _esc(display) + '</span>';
+        pill.style.display = 'flex';
+        pill.style.left = (mx + 12) + 'px';
+        pill.style.top  = (my - 28) + 'px';
+    }
+
+    function _hideWireFlowTooltip() {
+        const pill = document.getElementById('at-wire-flow-pill');
+        if (pill) pill.style.display = 'none';
     }
 
     /**
@@ -4480,8 +4729,34 @@
         // Label
         _e.ptLabel.textContent = portDef.label || portName;
 
-        // Description (optional)
-        if (portDef.description) {
+        // Description (optional) or Live Execution Data
+        var dataPreview = '';
+        if (_lastExecData && _lastExecData.node_outputs) {
+            var nodeOuts = _lastExecData.node_outputs[nodeId];
+            if (portDir === 'output' && nodeOuts && nodeOuts[portName] !== undefined) {
+                var val = nodeOuts[portName];
+                var vStr = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                if (vStr.length > 90) vStr = vStr.slice(0, 87) + '…';
+                dataPreview = 'Output: ' + vStr;
+            } else if (portDir === 'input') {
+                var feedConn = _active.connections.find(function (c) {
+                    return c.targetNodeId === nodeId && c.targetPort === portName;
+                });
+                if (feedConn && _lastExecData.node_outputs[feedConn.sourceNodeId]) {
+                    var inVal = _lastExecData.node_outputs[feedConn.sourceNodeId][feedConn.sourcePort];
+                    if (inVal !== undefined) {
+                        var inStr = typeof inVal === 'object' ? JSON.stringify(inVal) : String(inVal);
+                        if (inStr.length > 90) inStr = inStr.slice(0, 87) + '…';
+                        dataPreview = 'Input: ' + inStr;
+                    }
+                }
+            }
+        }
+
+        if (dataPreview) {
+            _e.ptDesc.textContent  = dataPreview;
+            _e.ptDesc.style.display = '';
+        } else if (portDef.description) {
             _e.ptDesc.textContent  = portDef.description;
             _e.ptDesc.style.display = '';
         } else {
@@ -4581,6 +4856,47 @@
             var r = _e.canvas.getBoundingClientRect();
             _zoom(-1, r.left + r.width / 2, r.top + r.height / 2);
         });
+
+        // Active workflows toggle & dropdown
+        if (_e.wfActivePill) {
+            _e.wfActivePill.addEventListener('click', function () {
+                if (!_active) return;
+                _apiToggleActiveWorkflow(_active.id);
+            });
+        }
+        if (_e.activeWfBtn) {
+            _e.activeWfBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (!_e.activeWfDropdown) return;
+                const isOpen = _e.activeWfDropdown.style.display !== 'none';
+                _e.activeWfDropdown.style.display = isOpen ? 'none' : 'block';
+            });
+        }
+        document.addEventListener('click', function (e) {
+            if (_e.activeWfDropdown && _e.activeWfWrap && !_e.activeWfWrap.contains(e.target)) {
+                _closeActiveDropdown();
+            }
+        });
+
+        // Sidebar Workflow search & category filters
+        if (_e.wfSearchInput) {
+            _e.wfSearchInput.addEventListener('input', function () {
+                _wfSearchQuery = this.value.trim();
+                _renderWfList();
+            });
+        }
+        if (_e.wfFilterTabs) {
+            _e.wfFilterTabs.addEventListener('click', function (e) {
+                const btn = e.target.closest('.at-wf-filter-tab');
+                if (!btn) return;
+                _e.wfFilterTabs.querySelectorAll('.at-wf-filter-tab').forEach(function (b) {
+                    b.classList.remove('active');
+                });
+                btn.classList.add('active');
+                _wfFilter = btn.dataset.filter || 'all';
+                _renderWfList();
+            });
+        }
 
         // Sidebar
         _e.sidebarAdd.addEventListener('click', _newWorkflow);
@@ -4918,7 +5234,7 @@
             };
         });
 
-        // SVG connection click
+        // SVG connection click & data flow hover tooltip
         _e.svg.addEventListener('click', function (e) {
             const path = e.target.closest('.at-conn');
             if (path) {
@@ -4926,6 +5242,16 @@
                 _selectConn(path.dataset.connId);
             }
         });
+
+        _e.svg.addEventListener('mousemove', function (e) {
+            var connPath = e.target.closest('.at-conn');
+            if (connPath && connPath.dataset.flowValue) {
+                _showWireFlowTooltip(connPath.dataset.flowValue, e.clientX, e.clientY);
+            } else {
+                _hideWireFlowTooltip();
+            }
+        });
+        _e.svg.addEventListener('mouseleave', _hideWireFlowTooltip);
 
         // Inspector close (deselect node)
         _e.inspectorClose.addEventListener('click', function () { _deselectAll(); });

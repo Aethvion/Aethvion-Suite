@@ -2763,4 +2763,318 @@
     color: #94a3b8;
 }
 
+/* ==========================================================================
+   Active Workflows & Management (Item 4)
+   ========================================================================== */
+
+/* Active toggle pill in top toolbar */
+.at-wf-active-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.14s ease;
+    color: #94a3b8;
+    margin-left: 0.4rem;
+    user-select: none;
+}
+
+.at-wf-active-pill:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #f8fafc;
+}
+
+.at-wf-active-pill.active {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: #34d399;
+}
+
+.at-wf-active-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #64748b;
+    transition: all 0.14s;
+}
+
+.at-wf-active-pill.active .at-wf-active-dot {
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+    animation: atActivePulse 2s infinite ease-in-out;
+}
+
+@keyframes atActivePulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+/* Overall Active Workflows Counter & Dropdown */
+.at-active-wf-wrap {
+    position: relative;
+    margin-left: 0.6rem;
+}
+
+.at-active-wf-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #38bdf8;
+    cursor: pointer;
+    transition: all 0.14s ease;
+}
+
+.at-active-wf-btn:hover {
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.5);
+}
+
+.at-active-wf-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #38bdf8;
+    box-shadow: 0 0 6px #38bdf8;
+}
+
+.at-active-wf-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 260px;
+    background: #0a0d14;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 10px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8), 0 0 16px rgba(56, 189, 248, 0.12);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.at-active-wf-dropdown-hdr {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.at-active-wf-dropdown-list {
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.at-active-wf-dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: #cbd5e1;
+    transition: background 0.12s;
+}
+
+.at-active-wf-dropdown-item:hover {
+    background: rgba(56, 189, 248, 0.1);
+    color: #f8fafc;
+}
+
+.at-active-wf-dropdown-item.current {
+    color: #38bdf8;
+    font-weight: 600;
+}
+
+/* Sidebar Search & Category Tabs */
+.at-wf-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    margin: 6px 8px 4px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 7px;
+}
+
+.at-wf-search-wrap:focus-within {
+    border-color: rgba(56, 189, 248, 0.4);
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.15);
+}
+
+.at-wf-search-icon {
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+.at-wf-search-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 0.76rem;
+    color: #f1f5f9;
+    flex: 1;
+    font-family: inherit;
+}
+
+.at-wf-search-input::placeholder { color: #475569; }
+
+.at-wf-filter-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 2px 8px 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.at-wf-filter-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 5px;
+    padding: 4px 0;
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.12s;
+    font-family: inherit;
+}
+
+.at-wf-filter-tab:hover { color: #cbd5e1; background: rgba(255, 255, 255, 0.04); }
+
+.at-wf-filter-tab.active {
+    background: rgba(56, 189, 248, 0.14);
+    color: #38bdf8;
+    font-weight: 600;
+}
+
+/* Sidebar Workflow Item Status & Actions */
+.at-wf-item-status-pill {
+    font-size: 0.6rem;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.at-wf-item-status-pill.active {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.at-wf-item-status-pill.draft {
+    background: rgba(100, 116, 139, 0.15);
+    color: #64748b;
+    border: 1px solid rgba(100, 116, 139, 0.25);
+}
+
+.at-wf-item-status-pill:hover {
+    filter: brightness(1.2);
+}
+
+.at-wf-item-actions {
+    display: none;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+}
+
+.at-wf-item:hover .at-wf-item-actions {
+    display: flex;
+}
+
+.at-wf-item-action-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 4px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.72rem;
+    transition: all 0.1s;
+}
+
+.at-wf-item-action-btn:hover {
+    color: #f1f5f9;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.at-wf-item-action-btn.danger:hover {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.15);
+}
+
+/* Live Data Flow — glowing animated pulse along wires carrying runtime data */
+.at-conn.at-conn-flow {
+    stroke: #38bdf8 !important;
+    stroke-width: 2.8px !important;
+    stroke-dasharray: 8 5;
+    animation: at-data-flow 0.85s linear infinite;
+    filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.65));
+}
+
+@keyframes at-data-flow {
+    to { stroke-dashoffset: -13; }
+}
+
+/* Wire floating data inspection badge */
+.at-flow-pill {
+    position: fixed;
+    background: #0a0d14;
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7), 0 0 10px rgba(56, 189, 248, 0.25);
+    border-radius: 6px;
+    padding: 4px 9px;
+    font-size: 0.72rem;
+    color: #f1f5f9;
+    pointer-events: none;
+    z-index: 1000;
+    max-width: 280px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: atPopFlow 0.12s ease;
+}
+
+@keyframes atPopFlow {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.at-flow-pill i {
+    color: #38bdf8;
+    font-size: 0.7rem;
+}
+
+/* Live execution running border pulse */
+.at-node.at-exec-running {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3), 0 0 20px rgba(56, 189, 248, 0.35) !important;
+}
+
+
 

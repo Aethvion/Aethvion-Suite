@@ -19,6 +19,24 @@
                 <button class="at-wf-rename-btn" id="at-wf-rename-btn" title="Rename workflow" style="display:none">
                     <i class="fas fa-pen"></i>
                 </button>
+                <button class="at-wf-active-pill" id="at-wf-active-pill" style="display:none" title="Toggle active status for this workflow">
+                    <span class="at-wf-active-dot"></span>
+                    <span class="at-wf-active-text" id="at-wf-active-text">Draft</span>
+                </button>
+            </div>
+            <!-- Overall Active Workflows counter & quick-switcher -->
+            <div class="at-active-wf-wrap" id="at-active-wf-wrap">
+                <button class="at-active-wf-btn" id="at-active-wf-btn" title="View active workflows">
+                    <span class="at-active-wf-dot"></span>
+                    <span class="at-active-wf-count" id="at-active-wf-count">0 Active</span>
+                    <i class="fas fa-chevron-down at-active-wf-chevron"></i>
+                </button>
+                <div class="at-active-wf-dropdown" id="at-active-wf-dropdown" style="display:none">
+                    <div class="at-active-wf-dropdown-hdr">Active Workflows</div>
+                    <div class="at-active-wf-dropdown-list" id="at-active-wf-dropdown-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -138,6 +156,15 @@
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>
+                </div>
+                <div class="at-wf-search-wrap">
+                    <i class="fas fa-search at-wf-search-icon"></i>
+                    <input type="text" class="at-wf-search-input" id="at-wf-search" placeholder="Search workflows..." spellcheck="false" autocomplete="off">
+                </div>
+                <div class="at-wf-filter-tabs" id="at-wf-filter-tabs">
+                    <button class="at-wf-filter-tab active" data-filter="all">All</button>
+                    <button class="at-wf-filter-tab" data-filter="active">Active</button>
+                    <button class="at-wf-filter-tab" data-filter="draft">Draft</button>
                 </div>
                 <div class="at-wf-list" id="at-wf-list">
                     <div class="at-wf-empty" id="at-wf-empty">

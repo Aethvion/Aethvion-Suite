@@ -61,6 +61,7 @@ class WorkflowCreate(BaseModel):
     name: str
     nodes: list[dict[str, Any]] = []
     connections: list[dict[str, Any]] = []
+    active: bool = False
 
 
 class WorkflowUpdate(BaseModel):
@@ -68,6 +69,7 @@ class WorkflowUpdate(BaseModel):
     nodes: list[dict[str, Any]] | None = None
     connections: list[dict[str, Any]] | None = None
     viewport: dict[str, Any] | None = None
+    active: bool | None = None
 
 
 class NodeTestRequest(BaseModel):
@@ -200,10 +202,32 @@ async def list_workflows():
                 "name": wf.get("name", "Unnamed"),
                 "node_count": len(wf.get("nodes", [])),
                 "updated": wf.get("updated"),
+                "active": bool(wf.get("active", False)),
             })
         except Exception:
             pass
     return {"workflows": items}
+
+
+@router.get("/workflows/active")
+async def get_active_workflows():
+    """Return all active workflows summary and total count."""
+    _ensure_dir()
+    active = []
+    for p in sorted(_DATA_DIR.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True):
+        try:
+            wf = json.loads(p.read_text(encoding="utf-8"))
+            if wf.get("active"):
+                active.append({
+                    "id": wf.get("id"),
+                    "name": wf.get("name", "Unnamed"),
+                    "node_count": len(wf.get("nodes", [])),
+                    "updated": wf.get("updated"),
+                    "active": True,
+                })
+        except Exception:
+            pass
+    return {"active_workflows": active, "count": len(active)}
 
 
 @router.post("/workflows")
@@ -217,6 +241,7 @@ async def create_workflow(body: WorkflowCreate):
         "name": body.name,
         "created": now,
         "updated": now,
+        "active": body.active,
         "nodes": body.nodes,
         "connections": body.connections,
     }
@@ -248,9 +273,34 @@ async def update_workflow(wf_id: str, body: WorkflowUpdate):
         wf["connections"] = body.connections
     if body.viewport is not None:
         wf["viewport"] = body.viewport
+    if body.active is not None:
+        wf["active"] = bool(body.active)
     wf["updated"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     atomic_json_write(p, wf)
     return {"workflow": wf}
+
+
+@router.patch("/workflows/{wf_id}/toggle-active")
+async def toggle_workflow_active(wf_id: str):
+    """Toggle the active status of a workflow."""
+    p = _wf_path(wf_id)
+    if not p.exists():
+        raise HTTPException(404, "Workflow not found")
+    wf = json.loads(p.read_text(encoding="utf-8"))
+    wf["active"] = not bool(wf.get("active", False))
+    wf["updated"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    atomic_json_write(p, wf)
+    return {"id": wf_id, "active": wf["active"], "name": wf.get("name", "Unnamed")}
+
+
+@router.post("/workflows/{wf_id}/duplicate")
+async def duplicate_workflow(wf_id: str):
+    """Duplicate an existing workflow with fresh IDs."""
+    p = _wf_path(wf_id)
+    if not p.exists():
+        raise HTTPException(404, "Workflow not found")
+    wf = json.loads(p.read_text(encoding="utf-8"))
+    return await _import_workflow_data(wf, name_suffix=" (Copy)")
 
 
 @router.delete("/workflows/{wf_id}")
