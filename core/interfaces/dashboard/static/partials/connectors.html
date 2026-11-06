@@ -1,0 +1,449 @@
+<div class="hub-container cn-page-wrap">
+    <!-- Header -->
+    <header class="hub-header">
+        <div class="hub-header-main">
+            <h1 class="hub-title"><i class="fas fa-plug-circle-bolt" style="color:var(--primary); margin-right:0.45rem;"></i>Connectors Library</h1>
+            <p class="hub-subtitle">Global bridges and integrations usable by both AI agents (via tool calls) and you (via <code>/slash_commands</code>) across Companions, Chat, and Automate.</p>
+        </div>
+        <div class="hub-stats" style="display:flex; align-items:center; gap:1.25rem;">
+            <div class="hub-stat-item">
+                <span class="hub-stat-val" id="cn-stat-active">0/0</span>
+                <span class="hub-stat-label">Enabled</span>
+            </div>
+            <div class="hub-stat-item">
+                <span class="hub-stat-val" id="cn-stat-profiles">0</span>
+                <span class="hub-stat-label">Access Profiles</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Quick Slash Command Interactive Tester Bar -->
+    <div class="cn-slash-bar">
+        <div class="cn-slash-label">
+            <i class="fas fa-terminal"></i>
+            <span>Try Slash Command</span>
+        </div>
+        <input type="text" id="cn-slash-test-input" class="lm-finput cn-slash-input"
+               value="/system"
+               placeholder="e.g. /screen_capture, /reddit LocalLLaMA, /weather Amsterdam, /media, /system">
+        <select id="cn-slash-test-profile" class="lm-filter-select" title="Test against Connector Profile"></select>
+        <button class="hub-action-btn" onclick="ConnectorsView.runSlashTest(this)">
+            <i class="fas fa-bolt"></i> Run Command
+        </button>
+    </div>
+    <div id="cn-slash-test-output" class="cn-slash-output" style="display:none;"></div>
+
+    <!-- Toolbar: Tabs + Filters on a clean horizontal row -->
+    <div class="cn-toolbar-bar">
+        <div class="am-tab-bar" style="display:flex; gap:0.35rem; flex-shrink:0;">
+            <button class="am-tab-btn active" data-cntab="connectors" onclick="ConnectorsView.switchTab('connectors', this)">
+                <i class="fas fa-cubes"></i> All Connectors
+            </button>
+            <button class="am-tab-btn" data-cntab="profiles" onclick="ConnectorsView.switchTab('profiles', this)">
+                <i class="fas fa-user-shield"></i> Connector Profiles
+            </button>
+        </div>
+
+        <div id="cn-filters-wrap" class="cn-filters-row">
+            <div class="cn-search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="cn-search-input" class="lm-finput" placeholder="Search connectors or /commands..."
+                       oninput="ConnectorsView.onFilterChange()">
+            </div>
+            <select id="cn-cat-filter" class="lm-filter-select" onchange="ConnectorsView.onFilterChange()">
+                <option value="all">Category: All</option>
+                <option value="system">System &amp; Local PC</option>
+                <option value="web">Web &amp; Knowledge</option>
+                <option value="media">Media &amp; Apps</option>
+            </select>
+            <select id="cn-privacy-filter" class="lm-filter-select" onchange="ConnectorsView.onFilterChange()">
+                <option value="all">Privacy: All</option>
+                <option value="local_sensitive">🔒 Local / Sensitive</option>
+                <option value="cloud_safe">🌐 Cloud Safe</option>
+            </select>
+            <select id="cn-state-filter" class="lm-filter-select" onchange="ConnectorsView.onFilterChange()">
+                <option value="all">State: All</option>
+                <option value="enabled">Enabled Only</option>
+                <option value="disabled">Disabled Only</option>
+            </select>
+            <button class="lm-icon-btn" onclick="ConnectorsView.refresh()" title="Refresh Connectors">
+                <i class="fas fa-rotate"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Section 1: Horizontal Connectors List -->
+    <section id="cn-section-connectors">
+        <div id="cn-connectors-grid" class="cn-list">
+            <div class="lm-store-loading"><i class="fas fa-circle-notch fa-spin"></i><span>Loading Connectors...</span></div>
+        </div>
+    </section>
+
+    <!-- Section 2: Connector Access Profiles -->
+    <section id="cn-section-profiles" style="display:none;">
+        <div class="cn-profiles-layout">
+            <!-- Left: Saved Profiles List -->
+            <div class="cn-profiles-list-col">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+                    <h3 style="margin:0; font-size:0.95rem;"><i class="fas fa-layer-group" style="color:var(--primary); margin-right:0.4rem;"></i>Saved Profiles</h3>
+                    <button class="hub-action-btn secondary" style="padding:0.35rem 0.7rem; font-size:0.76rem;" onclick="ConnectorsView.startNewProfile()">
+                        <i class="fas fa-plus"></i> New Profile
+                    </button>
+                </div>
+                <p style="font-size:0.78rem; color:var(--text-secondary); margin:0 0 0.85rem;">
+                    Assign these profiles to Companions or Chat sessions to control which connectors they are permitted to use (e.g. blocking screen capture for public cloud models).
+                </p>
+                <div id="cn-profiles-list" class="cn-profiles-cards"></div>
+            </div>
+
+            <!-- Right: Profile Editor -->
+            <div class="cn-profile-editor-col">
+                <div class="cn-editor-card">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+                        <h3 id="cn-prof-editor-title" style="margin:0; font-size:1rem;">Edit Connector Profile</h3>
+                        <span id="cn-prof-editor-badge" class="vl-badge"></span>
+                    </div>
+
+                    <input type="hidden" id="cn-prof-id">
+                    <div style="display:grid; grid-template-columns: 1fr 160px; gap:0.75rem; margin-bottom:0.75rem;">
+                        <div>
+                            <label class="lm-hf-label">Profile Name</label>
+                            <input type="text" id="cn-prof-name" class="lm-finput" placeholder="e.g. Local Private Assistant">
+                        </div>
+                        <div>
+                            <label class="lm-hf-label">Privacy Label</label>
+                            <input type="text" id="cn-prof-badge" class="lm-finput" placeholder="e.g. Local Only">
+                        </div>
+                    </div>
+                    <div style="margin-bottom:1rem;">
+                        <label class="lm-hf-label">Description</label>
+                        <input type="text" id="cn-prof-desc" class="lm-finput" placeholder="Describe when to use this profile...">
+                    </div>
+
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
+                        <label class="lm-hf-label" style="margin:0;">Permitted Connectors in this Profile</label>
+                        <div style="display:flex; gap:0.4rem;">
+                            <button class="hub-action-btn secondary" style="padding:0.2rem 0.55rem; font-size:0.7rem;" onclick="ConnectorsView.selectProfileConnectors('all')">All</button>
+                            <button class="hub-action-btn secondary" style="padding:0.2rem 0.55rem; font-size:0.7rem;" onclick="ConnectorsView.selectProfileConnectors('cloud_safe')">Cloud-Safe Only</button>
+                            <button class="hub-action-btn secondary" style="padding:0.2rem 0.55rem; font-size:0.7rem;" onclick="ConnectorsView.selectProfileConnectors('none')">None</button>
+                        </div>
+                    </div>
+
+                    <div id="cn-prof-connectors-checklist" class="cn-checklist"></div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.07);">
+                        <button id="cn-prof-delete-btn" class="hub-action-btn secondary" style="color:#f87171; border-color:rgba(248,113,113,0.3); display:none;" onclick="ConnectorsView.deleteCurrentProfile()">
+                            <i class="fas fa-trash"></i> Delete Profile
+                        </button>
+                        <button class="hub-action-btn" style="margin-left:auto;" onclick="ConnectorsView.saveCurrentProfile()">
+                            <i class="fas fa-save"></i> Save Profile
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<style>
+.cn-page-wrap {
+    padding: 1.5rem 2.25rem 2.5rem;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+.cn-slash-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.1rem;
+    margin-bottom: 0.85rem;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--hub-card-border, rgba(255,255,255,0.08));
+    border-radius: 12px;
+    flex-wrap: wrap;
+}
+.cn-slash-label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--primary);
+    white-space: nowrap;
+}
+.cn-slash-input {
+    flex: 1;
+    min-width: 240px;
+    height: 36px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.82rem;
+}
+.cn-slash-output {
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.78rem;
+    white-space: pre-wrap;
+    color: var(--text-primary);
+}
+.cn-toolbar-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0.85rem;
+    margin-bottom: 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--hub-card-border, rgba(255,255,255,0.08));
+    border-radius: 12px;
+    flex-wrap: wrap;
+}
+.cn-filters-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+.cn-search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.cn-search-box i {
+    position: absolute;
+    left: 0.7rem;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    pointer-events: none;
+}
+.cn-search-box input {
+    width: 230px;
+    height: 34px;
+    padding: 0 0.7rem 0 2rem;
+    font-size: 0.8rem;
+}
+
+/* Horizontal Connector List Rows */
+.cn-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+.cn-row-card {
+    background: var(--hub-card-bg, rgba(255,255,255,0.02));
+    border: 1px solid var(--hub-card-border, rgba(255,255,255,0.08));
+    border-radius: 12px;
+    padding: 0.9rem 1.25rem;
+    transition: border-color 0.18s, background 0.18s, opacity 0.18s;
+}
+.cn-row-card:hover {
+    border-color: rgba(99, 102, 241, 0.32);
+    background: rgba(255, 255, 255, 0.03);
+}
+.cn-row-card.disabled {
+    opacity: 0.58;
+}
+.cn-row-main {
+    display: grid;
+    grid-template-columns: minmax(260px, 1.5fr) minmax(220px, 1.1fr) minmax(300px, 1.2fr) auto;
+    align-items: center;
+    gap: 1.25rem;
+}
+@media (max-width: 1180px) {
+    .cn-row-main {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.85rem;
+    }
+}
+@media (max-width: 720px) {
+    .cn-row-main {
+        grid-template-columns: 1fr;
+    }
+}
+.cn-row-identity {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    min-width: 0;
+}
+.cn-icon-box {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+.cn-row-title-line {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.cn-row-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.cn-row-desc {
+    margin: 0.22rem 0 0;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.38;
+}
+.cn-row-commands {
+    display: flex;
+    flex-direction: column;
+    gap: 0.42rem;
+    min-width: 0;
+}
+.cn-slash-line {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.cn-slash-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    background: rgba(99, 102, 241, 0.14);
+    color: var(--primary);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.cn-slash-pill:hover {
+    background: rgba(99, 102, 241, 0.25);
+}
+.cn-cmd-pills {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+.cn-cmd-tag {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.69rem;
+    padding: 0.14rem 0.45rem;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    color: var(--text-secondary);
+}
+.cn-row-tester {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+}
+.cn-row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    flex-shrink: 0;
+}
+.cn-privacy-pill {
+    font-size: 0.67rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.cn-privacy-pill.local_sensitive {
+    background: rgba(251, 146, 60, 0.14);
+    color: #fb923c;
+}
+.cn-privacy-pill.cloud_safe {
+    background: rgba(52, 211, 153, 0.14);
+    color: #34d399;
+}
+.cn-cat-pill {
+    font-size: 0.66rem;
+    padding: 0.14rem 0.45rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+}
+.cn-row-drawer {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+.cn-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+    align-items: end;
+}
+.cn-profiles-layout {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 1.25rem;
+    align-items: start;
+}
+@media (max-width: 920px) {
+    .cn-profiles-layout { grid-template-columns: 1fr; }
+}
+.cn-profiles-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+.cn-prof-item {
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+    background: var(--hub-card-bg, rgba(255,255,255,0.02));
+    border: 1px solid var(--hub-card-border, rgba(255,255,255,0.08));
+    cursor: pointer;
+    transition: all 0.18s;
+}
+.cn-prof-item:hover, .cn-prof-item.active {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.08);
+}
+.cn-editor-card {
+    background: var(--hub-card-bg, rgba(255,255,255,0.02));
+    border: 1px solid var(--hub-card-border, rgba(255,255,255,0.08));
+    border-radius: 14px;
+    padding: 1.35rem;
+}
+.cn-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.cn-check-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.65rem 0.9rem;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    cursor: pointer;
+}
+.cn-check-row:hover {
+    border-color: rgba(99, 102, 241, 0.35);
+}
+</style>

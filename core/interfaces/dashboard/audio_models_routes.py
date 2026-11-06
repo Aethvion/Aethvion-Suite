@@ -73,6 +73,84 @@ class SetDefaultRequest(BaseModel):
     model_id: str
     voice_id: Optional[str] = None
 
+class VoicePresetRequest(BaseModel):
+    name: str
+    model_id: str = "kokoro"
+    voice_id: str = "af_heart"
+    speed: float = 1.0
+    language: str = "en"
+    gender: str = "neutral"
+    description: str = ""
+
+
+def _voice_library_path():
+    from pathlib import Path
+    p = Path(__file__).resolve().parents[3] / "data" / "audio" / "voice_library.json"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _load_voice_presets() -> list[dict]:
+    p = _voice_library_path()
+    if not p.exists():
+        default_presets = [
+            {
+                "id": "preset_lyra_warm",
+                "name": "Lyra · Warm & Expressive",
+                "model_id": "kokoro",
+                "voice_id": "af_heart",
+                "speed": 1.0,
+                "language": "en-us",
+                "gender": "female",
+                "description": "Soft, empathetic female voice ideal for creative companions."
+            },
+            {
+                "id": "preset_axiom_analytic",
+                "name": "Axiom · Analytical & Stoic",
+                "model_id": "kokoro",
+                "voice_id": "am_adam",
+                "speed": 1.02,
+                "language": "en-us",
+                "gender": "male",
+                "description": "Clear, composed male voice suited for technical analysis."
+            },
+            {
+                "id": "preset_cipher_crisp",
+                "name": "Cipher · Crisp & Energetic",
+                "model_id": "kokoro",
+                "voice_id": "af_bella",
+                "speed": 1.05,
+                "language": "en-us",
+                "gender": "female",
+                "description": "Bright, responsive voice with natural cadence."
+            },
+            {
+                "id": "preset_emma_british",
+                "name": "Emma · British Narrator",
+                "model_id": "kokoro",
+                "voice_id": "bf_emma",
+                "speed": 0.98,
+                "language": "en-gb",
+                "gender": "female",
+                "description": "Refined British English voice for storytelling and reading."
+            }
+        ]
+        try:
+            p.write_text(json.dumps({"presets": default_presets}, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+        return default_presets
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+        return data.get("presets", [])
+    except Exception:
+        return []
+
+
+def _save_voice_presets(presets: list[dict]) -> None:
+    p = _voice_library_path()
+    p.write_text(json.dumps({"presets": presets}, indent=2), encoding="utf-8")
+
 
 # Endpoints
 
@@ -172,6 +250,86 @@ async def get_voices(model_id: str):
         return {"voices": voices}
     except Exception as e:
         return {"voices": [], "error": str(e)}
+
+
+@router.get("/library")
+async def get_voice_library():
+    """Return the Global Voice Database: all TTS models, their voices, and saved presets."""
+    mgr = _mgr()
+    models_out = []
+    if mgr:
+        try:
+            statuses = await asyncio.to_thread(mgr.get_all_statuses)
+            for st in statuses:
+                caps = [c.lower() for c in st.get("capabilities", [])]
+                if "tts" not in caps and "voice_cloning" not in caps:
+                    continue
+                mid = st["id"]
+                try:
+                    vlist = await asyncio.to_thread(mgr.list_voices, mid)
+                except Exception:
+                    vlist = []
+                models_out.append({
+                    **st,
+                    "voices": vlist,
+                })
+        except Exception as e:
+            logger.warning(f"Failed to build voice library models: {e}")
+
+    # Always include Web Speech API as a built-in zero-install engine option
+    models_out.append({
+        "id": "web_speech",
+        "name": "System / Browser Web Speech",
+        "capabilities": ["tts"],
+        "vram_estimate_gb": 0.0,
+        "loaded": True,
+        "installed": True,
+        "device": "system",
+        "voices": [],  # populated dynamically by browser speechSynthesis.getVoices()
+    })
+
+    presets = _load_voice_presets()
+    return {
+        "models": models_out,
+        "presets": presets,
+    }
+
+
+@router.post("/library/presets")
+async def add_voice_preset(req: VoicePresetRequest):
+    """Add or update a named voice preset in the Global Voice Database."""
+    import re, uuid
+    if not req.name.strip():
+        raise HTTPException(400, "Preset name is required.")
+    presets = _load_voice_presets()
+    slug = re.sub(r"[^a-z0-9]+", "_", req.name.lower()).strip("_") or uuid.uuid4().hex[:8]
+    preset_id = f"preset_{slug}"
+    entry = {
+        "id": preset_id,
+        "name": req.name.strip(),
+        "model_id": req.model_id,
+        "voice_id": req.voice_id,
+        "speed": req.speed,
+        "language": req.language,
+        "gender": req.gender,
+        "description": req.description.strip(),
+    }
+    existing_idx = next((i for i, p in enumerate(presets) if p.get("id") == preset_id), None)
+    if existing_idx is not None:
+        presets[existing_idx] = entry
+    else:
+        presets.append(entry)
+    _save_voice_presets(presets)
+    return {"success": True, "preset": entry, "presets": presets}
+
+
+@router.delete("/library/presets/{preset_id}")
+async def delete_voice_preset(preset_id: str):
+    """Delete a saved voice preset from the Global Voice Database."""
+    presets = _load_voice_presets()
+    presets = [p for p in presets if p.get("id") != preset_id]
+    _save_voice_presets(presets)
+    return {"success": True, "presets": presets}
 
 
 @router.post("/voices/clone")

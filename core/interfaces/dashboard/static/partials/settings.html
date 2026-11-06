@@ -27,9 +27,6 @@
                         </button>
 
                         <div class="settings-nav-header">Connectivity</div>
-                        <button class="settings-nav-item" data-settingsubtab="modules">
-                            <i class="fas fa-cubes"></i> Bridges
-                        </button>
                         <button class="settings-nav-item" data-settingsubtab="discord">
                             <i class="fab fa-discord"></i> Discord Worker
                         </button>
@@ -102,38 +99,6 @@
                                             <input type="checkbox" id="setting-assistant-dashboard-control">
                                             <span class="slider round"></span>
                                         </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Panel: Modules -->
-                        <div class="settings-panel" id="settings-panel-modules">
-                            <div class="setting-card" id="card-modules">
-                                <div class="card-header">
-                                    <div class="header-title">
-                                        <i class="fas fa-cubes"></i>
-                                        <span>Bridge Modules</span>
-                                    </div>
-                                </div>
-                                <div class="card-content">
-                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                                        <p class="section-hint" style="margin: 0;">External integrations and bridges to other software.</p>
-                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                            <span style="font-size: 0.75rem; color: var(--text-secondary);">Companion:</span>
-                                            <select id="bridge-companion-selector" class="control-select" style="min-width: 140px; font-size: 0.8rem; padding: 2px 8px;">
-                                                <option value="misakacipher">Misaka Cipher</option>
-                                                <option value="axiom">Axiom</option>
-                                                <option value="lyra">Lyra</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div id="bridge-module-list"
-                                        style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
-                                        <!-- Dynamically populated -->
-                                        <span
-                                            style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">Loading
-                                            modules...</span>
                                     </div>
                                 </div>
                             </div>

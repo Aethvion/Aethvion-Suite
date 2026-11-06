@@ -1331,3 +1331,192 @@
     background: rgba(239, 68, 68, 0.12);
     border-color: rgba(239, 68, 68, 0.3);
 }
+
+/* Voice & Speech (Global Voice Database, Auto-Voice Toggle, Mic Dictation) */
+.cc-voice-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+    padding: 0.36rem 0.72rem;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 0.35rem;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.cc-voice-toggle-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+.cc-voice-toggle-active {
+    background: rgba(16, 185, 129, 0.14) !important;
+    color: #34d399 !important;
+    border-color: rgba(16, 185, 129, 0.38) !important;
+}
+
+.cc-chat-mic-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.cc-chat-mic-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+@keyframes ccMicPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45); }
+    50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+.cc-mic-recording {
+    background: rgba(239, 68, 68, 0.18) !important;
+    color: #f87171 !important;
+    border-color: rgba(239, 68, 68, 0.5) !important;
+    animation: ccMicPulse 1.2s infinite;
+}
+
+@keyframes ccSpeakRing {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.45), 0 0 14px rgba(99, 102, 241, 0.25); }
+    50% { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.55), 0 0 22px rgba(16, 185, 129, 0.35); }
+}
+.cc-portrait-speaking {
+    animation: ccSpeakRing 1.1s ease-in-out infinite;
+}
+.cc-msg-act-speaking {
+    color: #34d399 !important;
+    border-color: rgba(16, 185, 129, 0.45) !important;
+    background: rgba(16, 185, 129, 0.14) !important;
+}
+.cc-voice-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.85rem;
+    flex-wrap: wrap;
+}
+
+
+/* Slash Command Picker & Connector Profile UI */
+.cc-chat-bar {
+    position: relative;
+}
+.cc-chat-slash-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.88rem;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.cc-chat-slash-btn:hover,
+.cc-chat-slash-btn.active {
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+    border-color: rgba(99, 102, 241, 0.4);
+}
+.cc-slash-popover {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0.75rem;
+    right: 0.75rem;
+    max-width: 420px;
+    background: var(--bg-secondary, #111827);
+    border: 1px solid var(--border, rgba(148, 163, 184, 0.22));
+    border-radius: 12px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+    z-index: 60;
+    overflow: hidden;
+}
+.cc-slash-popover-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    background: rgba(15, 23, 42, 0.45);
+}
+.cc-slash-list {
+    max-height: 230px;
+    overflow-y: auto;
+    padding: 0.3rem;
+}
+.cc-slash-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.45rem 0.6rem;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+.cc-slash-item:hover {
+    background: rgba(99, 102, 241, 0.14);
+}
+.cc-slash-cmd {
+    font-family: monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.12);
+    padding: 0.12rem 0.42rem;
+    border-radius: 5px;
+    flex-shrink: 0;
+}
+.cc-slash-desc {
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cc-msg-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.55rem;
+}
+.cc-msg-attachment-img {
+    max-width: 280px;
+    max-height: 180px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    object-fit: cover;
+    cursor: pointer;
+}
+.cc-connector-profile-box {
+    margin-top: 0.85rem;
+    padding: 0.75rem 0.85rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: rgba(15, 23, 42, 0.35);
+}

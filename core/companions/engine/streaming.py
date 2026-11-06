@@ -3,23 +3,18 @@ core/companions/engine/streaming.py
 Stream-time text utilities shared by all companions.
 """
 from __future__ import annotations
+from typing import Optional
 
 
-def build_bridges_capabilities(capabilities: dict | None = None) -> str:
+def build_bridges_capabilities(capabilities: dict | None = None, profile_id: Optional[str] = None) -> str:
     """
-    Read the live bridge registry and return a formatted capabilities block
-    suitable for injection into a companion's system prompt.
-
-    Args:
-        capabilities: The companion's capabilities dict.  Modules whose
-                      ``capability_gate`` key names a capability that is not
-                      enabled (falsy) in this dict are excluded from the block.
-                      Pass None / omit to include all authorised modules.
-
-    Returns empty string if bridge is unavailable or has no visible modules.
+    Read the live bridge/connector registry and return a formatted capabilities block
+    suitable for injection into a companion's system prompt, filtered by global state
+    and the active Connector Profile.
     """
     if capabilities is None:
         capabilities = {}
+    eff_profile = profile_id or capabilities.get("connector_profile") or "full_local"
     try:
         from core.bridges import bridge_manager
         registry = bridge_manager.get_registry()
@@ -27,16 +22,22 @@ def build_bridges_capabilities(capabilities: dict | None = None) -> str:
         if not modules:
             return ""
         lines = [
-            'BRIDGE CAPABILITIES — use [tool:bridge module="<id>" cmd="<command>" ...] syntax:'
+            'CONNECTOR / BRIDGE CAPABILITIES — use [tool:bridge module="<id>" cmd="<command>" ...] syntax:'
         ]
         visible = False
         for mod in modules:
-            # Skip modules gated behind a capability the companion doesn't have
-            gate = mod.get("capability_gate")
-            if gate and not capabilities.get(gate):
+            mod_id = mod.get("id", "?")
+
+            # Check global enabled state + Connector Profile permission
+            allowed, _ = bridge_manager.is_module_allowed(mod_id, eff_profile)
+            if not allowed:
                 continue
 
-            mod_id = mod.get("id", "?")
+            # Skip modules gated behind a capability the companion doesn't have
+            gate = mod.get("capability_gate")
+            if gate and not capabilities.get(gate, True):
+                continue
+
             mod_name = mod.get("name", mod_id)
             requires_auth = mod.get("requires_auth", False)
             is_authorized = mod.get("is_authorized", True)

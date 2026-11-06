@@ -43,6 +43,7 @@ def _import_remaining_routers():
         ("assistant_routes",                    "router",     "assistant_router"),
         ("ollama_routes",                       "router",     "ollama_router"),
         ("audio_models_routes",                 "router",     "audio_router"),
+        ("connectors_routes",                   "router",     "connectors_router"),
         ("corp_routes",                         "router",     "corp_router"),
         ("overlay_routes",                      "router",     "overlay_router"),
         ("schedule_routes",                     "router",     "schedule_router"),

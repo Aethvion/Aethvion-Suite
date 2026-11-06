@@ -4,6 +4,7 @@ Unified, data-driven engine for all Aethvion companions.
 Handles LLM logic, tool execution, and dynamic personality evolution.
 """
 
+import asyncio
 import datetime
 import json
 import uuid
@@ -45,6 +46,7 @@ class CompanionEngine:
     async def initiate_response(config: CompanionConfig, trigger: str = "startup"):
         raw = config._raw_config
         behavior = raw.get("behavior", {})
+        capabilities = raw.get("capabilities", {})
         prompts = raw.get("prompts", {})
         memory = CompanionMemory(config.data_dir, raw.get("personality_defaults", {}))
         history = CompanionHistory(config.history_dir, config.name, 
@@ -58,7 +60,33 @@ class CompanionEngine:
             time_desc = history.time_since_last()
             instr = prompts.get("startup_instruction", "Welcome back! Check in with the user naturally.").replace("{time_desc}", time_desc)
         else:
-            instr = prompts.get("proactive_instruction", "Initiate a friendly, natural conversation with the user based on who you are and what you remember about them.")
+            instr = prompts.get("proactive_instruction", "Initiate a friendly, natural conversation with the user based on who you are, what you remember about them, or what is happening on their PC.")
+
+        # Ambient PC / Media context for proactive check-ins if permitted by connector_profile
+        ambient_context = ""
+        connector_profile = capabilities.get("connector_profile", "full_local")
+        if capabilities.get("tools_enabled", True) and trigger != "startup":
+            try:
+                from core.bridges import bridge_manager
+                ambient_parts = []
+                ok_media, _ = bridge_manager.is_module_allowed("media_sentinel", connector_profile)
+                if ok_media:
+                    media_info = await asyncio.to_thread(
+                        bridge_manager.call_module, "media_sentinel", "get_media_info", {}, connector_profile
+                    )
+                    if media_info and "No active media" not in media_info and not media_info.startswith("Bridge"):
+                        ambient_parts.append(f"Currently playing on PC: {media_info}")
+                ok_sys, _ = bridge_manager.is_module_allowed("system_link", connector_profile)
+                if ok_sys:
+                    sys_info = await asyncio.to_thread(
+                        bridge_manager.call_module, "system_link", "get_hardware_telemetry", {}, connector_profile
+                    )
+                    if sys_info and not sys_info.startswith("Bridge"):
+                        ambient_parts.append(f"System telemetry: {sys_info}")
+                if ambient_parts:
+                    ambient_context = "\n\nLive PC Context (optional — mention naturally only if relevant):\n" + "\n".join(ambient_parts)
+            except Exception:
+                pass
 
         raw_init_prompt = prompts.get("initiate_system", "").strip()
         if raw_init_prompt:
@@ -68,9 +96,9 @@ class CompanionEngine:
                     memory=json.dumps(mem_data["memory"], indent=2),
                     datetime_ctx=now.strftime("%A, %d %B %Y — %H:%M"),
                     trigger_instruction=instr
-                )
+                ) + ambient_context
             except KeyError:
-                system_prompt = raw_init_prompt + f"\n\n{instr}"
+                system_prompt = raw_init_prompt + f"\n\n{instr}" + ambient_context
         else:
             bi = mem_data.get("base_info", {})
             mem = mem_data.get("memory", {})
@@ -81,7 +109,8 @@ class CompanionEngine:
                 f"Speech style: {bi.get('speech_style', '')}\n"
                 f"What you know about the user:\n{json.dumps(mem, indent=2)}\n\n"
                 f"Current time: {now.strftime('%A, %d %B %Y — %H:%M')}\n"
-                f"Time since last message: {history.time_since_last()}\n\n"
+                f"Time since last message: {history.time_since_last()}"
+                f"{ambient_context}\n\n"
                 f"Task: {instr}\n"
                 f"Write a short, natural check-in message (1-3 sentences) in character."
             )
@@ -89,7 +118,6 @@ class CompanionEngine:
         pref_model = get_preferences_manager().get(config.id, {}).get("model")
         model = config.default_model or pref_model or "auto"
         pm = get_provider_manager()
-        import asyncio
         response = await asyncio.to_thread(
             pm.call_with_failover,
             prompt=system_prompt,
@@ -134,6 +162,7 @@ class CompanionEngine:
             raw = config._raw_config
             behavior = raw.get("behavior", {})
             capabilities = raw.get("capabilities", {})
+            connector_profile = capabilities.get("connector_profile", "full_local")
             prompts = raw.get("prompts", {})
             memory = CompanionMemory(config.data_dir, raw.get("personality_defaults", {}))
             history = CompanionHistory(config.history_dir, config.name,
@@ -141,7 +170,11 @@ class CompanionEngine:
 
             memory.initialize()
             mem_data = memory.load()
-            bridges_block = build_bridges_capabilities(capabilities) if capabilities.get("tools_enabled") else ""
+            bridges_block = (
+                build_bridges_capabilities(capabilities, profile_id=connector_profile)
+                if capabilities.get("tools_enabled", True)
+                else ""
+            )
 
             workspace_block = ""
             if capabilities.get("workspace_access"):
@@ -158,8 +191,6 @@ class CompanionEngine:
             )
 
             # Fallback system prompt for companions without one
-            # Custom companions created via the UI typically have no chat_system set.
-            # Build a sensible prompt from their stored base_info so they know who they are.
             if not system_prompt.strip():
                 bi  = mem_data.get("base_info", {})
                 mem = mem_data.get("memory", {})
@@ -174,13 +205,14 @@ class CompanionEngine:
                     parts.append(f"\n\nQuirks: {'; '.join(bi['quirks'])}")
                 if mem:
                     parts.append(f"\n\nWhat you know about the user:\n{json.dumps(mem, indent=2)}")
+                if bridges_block:
+                    parts.append(f"\n\n{bridges_block}")
+                if workspace_block:
+                    parts.append(f"\n\n{workspace_block}")
                 parts.append(f"\n\nCurrent time: {datetime.datetime.now().strftime('%A, %d %B %Y — %H:%M')}")
                 system_prompt = "".join(parts)
 
             # Expression awareness
-            # Always tell the companion what expressions it has and how to signal them.
-            # The engine strips <expression>...</expression> tags from the final content
-            # and uses them to update the portrait image shown in the UI.
             expressions = config.expressions or []
             if expressions:
                 expr_list   = ", ".join(expressions)
@@ -197,8 +229,6 @@ class CompanionEngine:
                 )
 
             # Persistent memory instructions
-            # Only appended when memory updates are enabled for this companion.
-            # Tells the LLM exactly how to persist data so update_from_xml can find it.
             if capabilities.get("memory_updates_enabled", True):
                 system_prompt += (
                     "\n\n## Persistent Memory"
@@ -225,8 +255,6 @@ class CompanionEngine:
                 )
 
             # Multi-message style
-            # Companions split responses into separate chat bubbles using <break>.
-            # This is a core personality feature — use it actively to feel natural and human.
             system_prompt += (
                 "\n\n## Multi-Message Style — USE THIS ACTIVELY"
                 "\nYou send messages like a real person texting — multiple short messages, not one big wall of text."
@@ -285,7 +313,6 @@ class CompanionEngine:
                     }) + "\n"
                     return
             elif "/" not in model and model != "auto" and not model.startswith("profile:"):
-                # Model not in registry and not an OpenRouter passthrough or profile
                 err_msg = (
                     f"Model '{model}' is not available. "
                     "It may belong to a provider with no API key configured, or the local file is missing. "
@@ -301,11 +328,38 @@ class CompanionEngine:
 
             trace_id = f"{config.id}-chat-{uuid.uuid4().hex[:8]}"
 
+            # Check for explicit user /slash_command connector triggers (e.g. /screen_capture, /reddit, /weather)
+            slash_attachments = []
+            effective_prompt = message
+            if "/" in message:
+                from core.bridges import bridge_manager
+                slash_res = await asyncio.to_thread(
+                    bridge_manager.parse_and_execute_slash_commands,
+                    message,
+                    connector_profile
+                )
+                if slash_res.get("triggered"):
+                    for sr in slash_res.get("results", []):
+                        yield json.dumps({
+                            "type": "tool_start",
+                            "tool": sr.get("module_id", "connector"),
+                            "args": {"command": sr.get("command", "")}
+                        }) + "\n"
+                    slash_attachments = slash_res.get("attachments", [])
+                    ctx_blocks = [
+                        f"[CONNECTOR RESULT — {sr['name']} ({sr['module_id']}.{sr['command']})]\n{sr['output']}"
+                        for sr in slash_res.get("results", [])
+                    ]
+                    effective_prompt = (
+                        "\n\n".join(ctx_blocks)
+                        + f"\n\nUser message: {slash_res.get('cleaned_message', message)}\n"
+                        "Use the real connector output above to answer naturally."
+                    )
+
             full_content = ""
             actual_model = model
 
             # Convert frontend chat_history to provider messages
-            # Handles both Pydantic model objects (attr access) and plain dicts (.get)
             messages = []
             for turn in chat_history:
                 r = turn.role    if hasattr(turn, "role")    else turn.get("role", "user")
@@ -314,7 +368,7 @@ class CompanionEngine:
 
             # 1. Stream primary LLM response
             for chunk in pm.call_with_failover_stream(
-                prompt=message,
+                prompt=effective_prompt,
                 system_prompt=system_prompt,
                 messages=messages,
                 trace_id=trace_id,
@@ -325,13 +379,11 @@ class CompanionEngine:
                 yield json.dumps({"type": "message", "content": chunk}) + "\n"
 
             # 2. Tool execution loop — up to 3 rounds so chained tool calls resolve
-            #    Round 0: execute tools in the first LLM response
-            #    Round 1+: LLM may still emit tools; keep going until clean or exhausted
             results_total: list[str] = []
-            intermediate_responses: list[str] = []  # cleaned first-response(s) before tool results
+            intermediate_responses: list[str] = []
             final_content  = full_content
             current_resp   = full_content
-            round_msgs     = list(messages)   # grows as rounds progress
+            round_msgs     = list(messages)
 
             def _strip_meta_tags(text: str) -> str:
                 """Strip expression/mood/break tags and tidy whitespace."""
@@ -347,7 +399,7 @@ class CompanionEngine:
                     round_results: list[str] = []
                     cleaned_resp  = current_resp
 
-                    async for tool_event in execute_tools_stream(current_resp, workspaces):
+                    async for tool_event in execute_tools_stream(current_resp, workspaces, profile_id=connector_profile):
                         if tool_event["type"] == "tool_start":
                             yield json.dumps(tool_event) + "\n"
                         elif tool_event["type"] == "final_cleaned":
@@ -355,22 +407,17 @@ class CompanionEngine:
                             round_results = tool_event["results"]
 
                     if not round_results:
-                        # No tool calls in this response — done
                         final_content = cleaned_resp
                         break
 
                     results_total.extend(round_results)
 
-                    # Save the cleaned intermediate response (e.g. "I'll check that for you!")
                     inter_clean = _strip_meta_tags(cleaned_resp)
                     if inter_clean:
                         intermediate_responses.append(inter_clean)
 
-                    # Build growing message context for next LLM call
                     if _round == 0:
-                        # First round: the original user turn comes before the assistant
-                        round_msgs.append({"role": "user",      "content": message})
-                    # else: the previous followup_prompt was already appended below
+                        round_msgs.append({"role": "user",      "content": effective_prompt})
 
                     round_msgs.append({"role": "assistant", "content": current_resp})
 
@@ -395,17 +442,15 @@ class CompanionEngine:
                         next_resp += chunk
                         yield json.dumps({"type": "message", "content": chunk}) + "\n"
 
-                    # Save the followup prompt so the next round can build on it
                     round_msgs.append({"role": "user", "content": followup_prompt})
                     current_resp = next_resp
 
                 else:
-                    # Exhausted all rounds — keep whatever the last response was
                     final_content = current_resp
 
             results = results_total
 
-            # 3. Extract Expression & Mood — prefer final response, fall back to first
+            # 3. Extract Expression & Mood
             scan_content = final_content if results_total else full_content
             expression = behavior.get("default_expression", "default")
             mood = behavior.get("default_mood", "calm")
@@ -417,17 +462,15 @@ class CompanionEngine:
                 mood = mood_match.group(1).strip().lower()
 
             # 4. Strip expression/mood content tags — but PRESERVE <break> for splitting below.
-            #    Do NOT call _strip_meta_tags here; that removes <break> before we can act on it.
             final_content = re.sub(
                 r"<(?:expression|mood)>.*?</(?:expression|mood)>", "",
                 final_content, flags=re.DOTALL | re.IGNORECASE
             ).strip()
 
-            # 4b. Split by <break> NOW, while the tags are still present, then clean each part.
+            # 4b. Split by <break>
             _break_re = re.compile(r"\s*<break\s*/?>\s*", re.IGNORECASE)
             final_parts: list[str] = []
             for raw_part in _break_re.split(final_content):
-                # Strip any stray meta tags left in this part
                 cleaned_part = re.sub(
                     r"<(?:expression|mood|break)[^>]*>.*?</(?:expression|mood|break)>|<(?:expression|mood|break)[^>]*>",
                     "", raw_part, flags=re.DOTALL | re.IGNORECASE
@@ -437,35 +480,32 @@ class CompanionEngine:
             if not final_parts:
                 final_parts = [final_content] if final_content.strip() else []
 
-            # Rebuild final_content from parts (used for memory update below)
             final_content = "\n\n".join(final_parts)
 
-            # 5. Handle Memory Updates (using memory-aware XML logic)
+            # 5. Handle Memory Updates
             mem_up = False
             if capabilities.get("memory_updates_enabled", True):
                 cleaned_mem_content = memory.update_from_xml(final_content)
                 if cleaned_mem_content != final_content:
                     final_content = cleaned_mem_content
-                    # Re-split cleaned content in case memory update changed it
                     final_parts = [p.strip() for p in final_content.split("\n\n") if p.strip()] or [final_content]
                     mem_up = True
 
             # 6. Extract peripheral attachments (screenshots etc)
-            attachments = []
+            attachments = list(slash_attachments)
             if results:
-                _, attachments = extract_peripheral_captures(results, [])
+                _, tool_attachments = extract_peripheral_captures(results, [])
+                attachments.extend(tool_attachments)
 
-            # 7. Persist to history — save EVERY companion message the user sees
+            # 7. Persist to history
             history.save_message("user", message, utcnow_iso())
-            # Intermediate tool-call responses (e.g. "I'll check that for you!")
             for inter in intermediate_responses:
                 history.save_message("assistant", inter, utcnow_iso(), model=actual_model)
-            # Final response parts (split by <break>)
             for part in final_parts:
                 history.save_message("assistant", part, utcnow_iso(),
                                      model=actual_model, attachments=attachments)
 
-            # 8. Final event — include parts list so the frontend can render each as its own bubble
+            # 8. Final event
             yield json.dumps({
                 "type": "done",
                 "content": final_parts[0] if final_parts else final_content,

@@ -1,10 +1,152 @@
 {
     "modules": [
         {
+            "id": "screen_capture",
+            "name": "Screen Capture",
+            "description": "Take a live screenshot of your monitor(s) and attach it as visual context for AI analysis.",
+            "module_path": "core.bridges.screen_capture",
+            "category": "system",
+            "privacy_tier": "local_sensitive",
+            "icon": "fas fa-desktop",
+            "slash_command": "/screen_capture",
+            "default_command": "take_screenshot",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "take_screenshot": "Capture a specific monitor (0=all merged, 1=primary, 2+=secondary) and save as PNG. Optional arg: 'monitor' (int)."
+            },
+            "settings": [
+                "default_monitor"
+            ]
+        },
+        {
+            "id": "media_sentinel",
+            "name": "Media Sentinel",
+            "description": "Read system-wide media playback (SMTC, Spotify, YouTube, Browser) using native Windows hooks.",
+            "module_path": "core.bridges.media_sentinel",
+            "category": "system",
+            "privacy_tier": "local_sensitive",
+            "icon": "fas fa-headphones",
+            "slash_command": "/media",
+            "default_command": "get_media_info",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "get_media_info": "Get what is currently playing on the system (YouTube, Spotify, etc.)"
+            },
+            "settings": []
+        },
+        {
+            "id": "system_link",
+            "name": "System Telemetry",
+            "description": "Read live PC hardware telemetry including CPU load, RAM usage, and disk space.",
+            "module_path": "core.bridges.system_bridge",
+            "category": "system",
+            "privacy_tier": "local_sensitive",
+            "icon": "fas fa-microchip",
+            "slash_command": "/system",
+            "default_command": "get_hardware_telemetry",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "get_hardware_telemetry": "Get system CPU, RAM, and Disk usage stats"
+            },
+            "settings": []
+        },
+        {
+            "id": "webcam_capture",
+            "name": "Webcam Capture",
+            "description": "Capture a frame from a connected webcam and attach it as visual context.",
+            "module_path": "core.bridges.webcam_capture",
+            "category": "system",
+            "privacy_tier": "local_sensitive",
+            "icon": "fas fa-camera",
+            "slash_command": "/webcam",
+            "default_command": "capture_image",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "capture_image": "Capture a photo from specified camera (index=0 for default)."
+            },
+            "settings": [
+                "default_camera_index"
+            ]
+        },
+        {
+            "id": "web_search",
+            "name": "Web Search",
+            "description": "Search the internet and return a summary of top results (powered by DuckDuckGo, no API key required).",
+            "module_path": "core.bridges.web_search_bridge",
+            "category": "web",
+            "privacy_tier": "cloud_safe",
+            "icon": "fas fa-globe",
+            "slash_command": "/search",
+            "default_command": "web_search",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "capability_gate": "internet_search",
+            "available_commands": {
+                "web_search": "Search the web for any query. Takes 'query' (required) and optional 'count' (default 5, max 10) arguments."
+            },
+            "settings": []
+        },
+        {
+            "id": "reddit",
+            "name": "Reddit Connector",
+            "description": "Fetch hot posts from subreddits or search discussions across Reddit without requiring an API key.",
+            "module_path": "core.bridges.reddit_bridge",
+            "category": "web",
+            "privacy_tier": "cloud_safe",
+            "icon": "fab fa-reddit-alien",
+            "slash_command": "/reddit",
+            "default_command": "get_top_posts",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "get_top_posts": "Fetch hot posts from a subreddit. Optional args: 'subreddit' (e.g. 'LocalLLaMA'), 'limit' (int).",
+                "search_reddit": "Search Reddit posts. Args: 'query' (required), optional 'subreddit'."
+            },
+            "settings": [
+                "default_subreddit"
+            ]
+        },
+        {
+            "id": "weather_link",
+            "name": "Weather Bridge",
+            "description": "Get real-time weather conditions, temperature, humidity, and wind for any location.",
+            "module_path": "core.bridges.weather_bridge",
+            "category": "web",
+            "privacy_tier": "cloud_safe",
+            "icon": "fas fa-cloud-sun",
+            "slash_command": "/weather",
+            "default_command": "get_weather",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "get_weather": "Get current weather info (takes 'location' as optional argument)"
+            },
+            "settings": [
+                "default_location"
+            ]
+        },
+        {
             "id": "spotify",
             "name": "Spotify Bridge",
-            "description": "Control playback and get track info from Spotify.",
+            "description": "Control playback and get track info from Spotify via OAuth.",
             "module_path": "core.bridges.spotify_bridge",
+            "category": "media",
+            "privacy_tier": "cloud_safe",
+            "icon": "fab fa-spotify",
+            "slash_command": "/spotify",
+            "default_command": "get_current",
+            "enabled": true,
             "requires_auth": true,
             "is_authorized": false,
             "available_commands": {
@@ -18,81 +160,6 @@
                 "client_secret",
                 "redirect_uri"
             ]
-        },
-        {
-            "id": "media_sentinel",
-            "name": "Media Sentinel",
-            "description": "Read system-wide media info (SMTC) using Windows native hooks.",
-            "module_path": "core.bridges.media_sentinel",
-            "requires_auth": false,
-            "is_authorized": true,
-            "available_commands": {
-                "get_media_info": "Get what is currently playing on the system (YouTube, Spotify, etc.)"
-            },
-            "settings": []
-        },
-        {
-            "id": "weather_link",
-            "name": "Weather Bridge",
-            "description": "Get real-time weather data for any location.",
-            "module_path": "core.bridges.weather_bridge",
-            "requires_auth": false,
-            "is_authorized": true,
-            "available_commands": {
-                "get_weather": "Get current weather info (takes 'location' as optional argument)"
-            },
-            "settings": [
-                "api_key"
-            ]
-        },
-        {
-            "id": "system_link",
-            "name": "System Bridge",
-            "description": "Read system hardware telemetry.",
-            "module_path": "core.bridges.system_bridge",
-            "requires_auth": false,
-            "is_authorized": true,
-            "available_commands": {
-                "get_hardware_telemetry": "Get system CPU, RAM, and Disk usage stats"
-            },
-            "settings": []
-        },
-        {
-            "id": "screen_capture",
-            "name": "Screen Capture",
-            "description": "Take a screenshot of the screen and save it to disk.",
-            "module_path": "core.bridges.screen_capture",
-            "requires_auth": false,
-            "is_authorized": true,
-            "available_commands": {
-                "take_screenshot": "Capture a specific monitor (0=all merged, 1=primary, 2+=secondary) and save as PNG. Optional arg: 'monitor' (int)."
-            },
-            "settings": []
-        },
-        {
-            "id": "webcam_capture",
-            "name": "Webcam Capture",
-            "description": "Captures images from a connected webcam.",
-            "module_path": "core.bridges.webcam_capture",
-            "requires_auth": false,
-            "is_authorized": true,
-            "available_commands": {
-                "capture_image": "Capture a photo from specified camera (index=0 for default)."
-            },
-            "settings": []
-        },
-        {
-            "id": "web_search",
-            "name": "Web Search",
-            "description": "Search the internet and return a summary of the top results (powered by DuckDuckGo, no API key required).",
-            "module_path": "core.bridges.web_search_bridge",
-            "requires_auth": false,
-            "is_authorized": true,
-            "capability_gate": "internet_search",
-            "available_commands": {
-                "web_search": "Search the web for any query. Takes 'query' (required) and optional 'count' (default 5, max 10) arguments."
-            },
-            "settings": []
         }
     ]
 }

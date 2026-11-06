@@ -49,11 +49,22 @@ class CapabilitiesConfig(BaseModel):
     workspace_access: bool = False
     memory_updates_enabled: bool = True
     internet_search: bool = False
+    connector_profile: str = "full_local"
+    proactive_enabled: bool = False
 
 
 class PromptsConfig(BaseModel):
     chat_system: str = ""
     initiate_system: str = ""
+
+
+class VoiceConfig(BaseModel):
+    enabled: bool = True
+    auto_speak: bool = False
+    model_id: str = "kokoro"
+    voice_id: str = "af_heart"
+    speed: float = 1.0
+    language: str = "en"
 
 
 class CompanionCreateRequest(BaseModel):
@@ -74,6 +85,7 @@ class CompanionCreateRequest(BaseModel):
     behavior: BehaviorConfig = BehaviorConfig()
     capabilities: CapabilitiesConfig = CapabilitiesConfig()
     prompts: PromptsConfig = PromptsConfig()
+    voice: VoiceConfig = VoiceConfig()
 
 
 class CompanionUpdateRequest(CompanionCreateRequest):
@@ -185,6 +197,14 @@ def _list_builtin_companions() -> list[dict]:
                 data = json.loads(override.read_text(encoding="utf-8"))
             else:
                 data = core_data
+            if "voice" not in data:
+                default_voices = {
+                    "axiom": {"enabled": True, "auto_speak": False, "model_id": "kokoro", "voice_id": "am_adam", "speed": 1.02, "language": "en"},
+                    "lyra": {"enabled": True, "auto_speak": False, "model_id": "kokoro", "voice_id": "af_heart", "speed": 1.0, "language": "en"},
+                    "misakacipher": {"enabled": True, "auto_speak": False, "model_id": "kokoro", "voice_id": "af_bella", "speed": 1.05, "language": "en"},
+                }
+                data["voice"] = default_voices.get(cid, {"enabled": True, "auto_speak": False, "model_id": "kokoro", "voice_id": "af_heart", "speed": 1.0, "language": "en"})
+            data.setdefault("capabilities", {}).setdefault("connector_profile", "full_local")
             data["_builtin"] = True
             _augment_icon_status(data, _CUSTOM_DIR / cid)
             data["last_interaction_ts"] = _get_last_ts(_CUSTOM_DIR / cid)
@@ -586,10 +606,20 @@ async def create_companion(req: CompanionCreateRequest):
             "workspace_access":       req.capabilities.workspace_access,
             "memory_updates_enabled": req.capabilities.memory_updates_enabled,
             "internet_search":        req.capabilities.internet_search,
+            "connector_profile":      req.capabilities.connector_profile,
+            "proactive_enabled":      req.capabilities.proactive_enabled,
         },
         "prompts": {
             "chat_system":    req.prompts.chat_system,
             "initiate_system": req.prompts.initiate_system,
+        },
+        "voice": {
+            "enabled":    req.voice.enabled,
+            "auto_speak": req.voice.auto_speak,
+            "model_id":   req.voice.model_id,
+            "voice_id":   req.voice.voice_id,
+            "speed":      req.voice.speed,
+            "language":   req.voice.language,
         },
         "route_prefix":  f"/api/custom/{companion_id}",
         "type":          "custom",
@@ -667,10 +697,20 @@ async def update_companion(companion_id: str, req: CompanionUpdateRequest):
             "workspace_access":       req.capabilities.workspace_access,
             "memory_updates_enabled": req.capabilities.memory_updates_enabled,
             "internet_search":        req.capabilities.internet_search,
+            "connector_profile":      req.capabilities.connector_profile,
+            "proactive_enabled":      req.capabilities.proactive_enabled,
         },
         "prompts": {
             "chat_system":    req.prompts.chat_system,
             "initiate_system": req.prompts.initiate_system,
+        },
+        "voice": {
+            "enabled":    req.voice.enabled,
+            "auto_speak": req.voice.auto_speak,
+            "model_id":   req.voice.model_id,
+            "voice_id":   req.voice.voice_id,
+            "speed":      req.voice.speed,
+            "language":   req.voice.language,
         },
         # icon_mode from the form; expression_images preserved via **existing spread above
         "icon_mode": req.icon_mode,

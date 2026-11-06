@@ -1,0 +1,364 @@
+<div class="hub-container vl-page-wrap">
+    <!-- Header -->
+    <header class="hub-header">
+        <div class="hub-header-main">
+            <h1 class="hub-title"><i class="fas fa-wave-square" style="color:var(--primary); margin-right:0.4rem;"></i>Voice Library</h1>
+            <p class="hub-subtitle">Global voice database across all local and cloud TTS engines. Preview voices, save reusable presets for Companions &amp; Chat, or clone custom voices.</p>
+        </div>
+        <div class="hub-stats" style="display:flex; align-items:center; gap:1.25rem;">
+            <div class="hub-stat-item">
+                <span class="hub-stat-val" id="vl-stat-voices">0</span>
+                <span class="hub-stat-label">Available Voices</span>
+            </div>
+            <div class="hub-stat-item">
+                <span class="hub-stat-val" id="vl-stat-presets">0</span>
+                <span class="hub-stat-label">Saved Presets</span>
+            </div>
+            <button class="hub-action-btn secondary" onclick="if(typeof switchMainTab==='function') switchMainTab('audio-models')" title="Install or load TTS/STT engines in Model Hub">
+                <i class="fas fa-microchip"></i> Audio Models
+            </button>
+        </div>
+    </header>
+
+    <!-- Live Preview Bar -->
+    <div class="vl-preview-bar">
+        <div class="vl-preview-label">
+            <i class="fas fa-headphones-simple"></i>
+            <span>Sample Text</span>
+        </div>
+        <input type="text" id="vl-sample-text" class="lm-finput vl-sample-input"
+               value="Hello! I am your AI voice from the Aethvion Voice Library."
+               placeholder="Type sample text to preview any voice...">
+        <div class="vl-speed-wrap" title="Preview playback speed">
+            <span>Speed: <strong id="vl-sample-speed-val">1.0x</strong></span>
+            <input type="range" id="vl-sample-speed" min="0.6" max="1.6" step="0.05" value="1.0"
+                   oninput="document.getElementById('vl-sample-speed-val').textContent = parseFloat(this.value).toFixed(2) + 'x'">
+        </div>
+    </div>
+
+    <!-- Toolbar: Tabs + Filters on a clean horizontal row -->
+    <div class="vl-toolbar-bar">
+        <div class="am-tab-bar" style="display:flex; gap:0.35rem; flex-shrink:0;">
+            <button class="am-tab-btn active" data-vltab="voices" onclick="VoiceLibrary.switchTab('voices', this)">
+                <i class="fas fa-volume-high"></i> All Voices
+            </button>
+            <button class="am-tab-btn" data-vltab="presets" onclick="VoiceLibrary.switchTab('presets', this)">
+                <i class="fas fa-bookmark"></i> Voice Presets
+            </button>
+            <button class="am-tab-btn" data-vltab="cloning" onclick="VoiceLibrary.switchTab('cloning', this)">
+                <i class="fas fa-wand-magic-sparkles"></i> Voice Cloning
+            </button>
+        </div>
+
+        <div id="vl-filters-wrap" class="vl-filters-row">
+            <div class="vl-search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="vl-search-input" class="lm-finput" placeholder="Search voices, IDs or languages..."
+                       oninput="VoiceLibrary.onFilterChange()">
+            </div>
+            <select id="vl-engine-filter" class="lm-filter-select" onchange="VoiceLibrary.onFilterChange()">
+                <option value="all">Engine: All</option>
+            </select>
+            <select id="vl-gender-filter" class="lm-filter-select" onchange="VoiceLibrary.onFilterChange()">
+                <option value="all">Gender: All</option>
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+                <option value="neutral">Neutral</option>
+            </select>
+            <button class="lm-icon-btn" onclick="VoiceLibrary.refresh()" title="Refresh Voice Library">
+                <i class="fas fa-rotate"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Section 1: All Voices grouped by Engine (Horizontal List Rows) -->
+    <section id="vl-section-voices">
+        <div id="vl-voices-container">
+            <div class="lm-store-loading"><i class="fas fa-circle-notch fa-spin"></i><span>Loading Voice Library...</span></div>
+        </div>
+    </section>
+
+    <!-- Section 2: Saved Voice Presets -->
+    <section id="vl-section-presets" style="display:none;">
+        <div class="vl-preset-creator-card">
+            <div class="vl-preset-creator-hd">
+                <h4><i class="fas fa-plus-circle" style="color:var(--primary);"></i> Create Global Voice Preset</h4>
+                <p>Save a model, voice, and speed combination so Companions and Chat can select it with one click.</p>
+            </div>
+            <div class="vl-preset-form-grid">
+                <div>
+                    <label class="lm-hf-label">Preset Name</label>
+                    <input type="text" id="vl-new-preset-name" class="lm-finput" placeholder="e.g. Narrator · Deep &amp; Calm">
+                </div>
+                <div>
+                    <label class="lm-hf-label">Voice Engine</label>
+                    <select id="vl-new-preset-model" class="lm-finput" onchange="VoiceLibrary.onPresetModelChange()"></select>
+                </div>
+                <div>
+                    <label class="lm-hf-label">Voice</label>
+                    <select id="vl-new-preset-voice" class="lm-finput"></select>
+                </div>
+                <div>
+                    <label class="lm-hf-label">Speed (<span id="vl-new-preset-speed-lbl">1.00x</span>)</label>
+                    <input type="range" id="vl-new-preset-speed" min="0.6" max="1.6" step="0.05" value="1.0"
+                           style="width:100%; margin-top:0.55rem;"
+                           oninput="document.getElementById('vl-new-preset-speed-lbl').textContent = parseFloat(this.value).toFixed(2) + 'x'">
+                </div>
+                <div style="grid-column: 1 / -1; display:flex; gap:0.75rem; align-items:flex-end;">
+                    <div style="flex:1;">
+                        <label class="lm-hf-label">Description (Optional)</label>
+                        <input type="text" id="vl-new-preset-desc" class="lm-finput" placeholder="Short note about tone or character...">
+                    </div>
+                    <button class="hub-action-btn secondary" onclick="VoiceLibrary.previewDraftPreset()">
+                        <i class="fas fa-volume-high"></i> Preview
+                    </button>
+                    <button class="hub-action-btn" onclick="VoiceLibrary.createPreset()">
+                        <i class="fas fa-bookmark"></i> Save Preset
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="hub-provider-hd" style="margin-top:1.5rem;">
+            <div class="hub-provider-dot" style="--brand-color: #a78bfa;"></div>
+            <h2 class="hub-provider-name">Saved Voice Presets</h2>
+        </div>
+        <div id="vl-presets-grid" class="vl-list"></div>
+    </section>
+
+    <!-- Section 3: Voice Cloning Studio -->
+    <section id="vl-section-cloning" style="display:none;">
+        <div id="vl-cloning-status-banner"></div>
+        <div class="hub-tool-panel" id="vl-clone-panel" style="margin-top:1rem;">
+            <div class="hub-tool-item">
+                <h4><i class="fas fa-wand-magic-sparkles" style="color:var(--primary);"></i> Reference Audio</h4>
+                <p>Upload a clean 6–15 second voice clip (WAV/MP3/OGG/FLAC) to clone a custom voice profile.</p>
+                <div id="vl-clone-dropzone" class="am-dropzone" style="border: 2px dashed var(--hub-card-border); border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.2s;">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: var(--primary); margin-bottom: 0.75rem;"></i>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Drop reference audio here or <span style="color:var(--primary);">click to browse</span></div>
+                    <input type="file" id="vl-clone-file" accept=".wav,.mp3,.ogg,.flac" style="display:none">
+                </div>
+                <p id="vl-clone-filename" style="font-size:0.75rem; color:var(--primary); font-family:'Fira Code', monospace; margin-top:0.5rem;"></p>
+            </div>
+
+            <div class="hub-tool-item">
+                <h4><i class="fas fa-sliders" style="color:var(--primary);"></i> Cloned Voice Details</h4>
+                <div style="display:flex; flex-direction:column; gap:0.85rem;">
+                    <div>
+                        <label class="lm-hf-label">Target Cloning Engine</label>
+                        <select id="vl-clone-model" class="lm-finput"></select>
+                    </div>
+                    <div>
+                        <label class="lm-hf-label">Voice Name</label>
+                        <input type="text" id="vl-clone-name" class="lm-finput" placeholder="e.g. Custom Studio Voice">
+                    </div>
+                    <div>
+                        <label class="lm-hf-label">Native Language</label>
+                        <select id="vl-clone-lang" class="lm-finput">
+                            <option value="en">English (EN)</option>
+                            <option value="ja">Japanese (JA)</option>
+                            <option value="zh-cn">Chinese (ZH)</option>
+                            <option value="fr">French (FR)</option>
+                            <option value="de">German (DE)</option>
+                            <option value="es">Spanish (ES)</option>
+                        </select>
+                    </div>
+                    <button class="hub-action-btn" id="vl-clone-submit-btn" onclick="VoiceLibrary.cloneVoice()" style="width:100%;">
+                        <i class="fas fa-plus-circle"></i> Clone Voice Profile
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="hub-provider-hd" style="margin-top:2rem;">
+            <div class="hub-provider-dot" style="--brand-color: #34d399;"></div>
+            <h2 class="hub-provider-name">Cloned Voices</h2>
+        </div>
+        <div id="vl-cloned-voices-grid" class="vl-list"></div>
+    </section>
+</div>
+
+<style>
+.vl-page-wrap {
+    padding: 1.5rem 2.25rem 2.5rem;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+.vl-preview-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.75rem 1.1rem;
+    margin-bottom: 0.85rem;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--hub-card-border, rgba(255,255,255,0.08));
+    border-radius: 12px;
+    flex-wrap: wrap;
+}
+.vl-preview-label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--primary);
+    white-space: nowrap;
+}
+.vl-sample-input {
+    flex: 1;
+    min-width: 240px;
+    height: 36px;
+    font-size: 0.84rem;
+}
+.vl-speed-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+.vl-speed-wrap input[type="range"] {
+    width: 90px;
+}
+.vl-toolbar-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0.85rem;
+    margin-bottom: 1.15rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--hub-card-border, rgba(255,255,255,0.08));
+    border-radius: 12px;
+    flex-wrap: wrap;
+}
+.vl-filters-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+.vl-search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.vl-search-box i {
+    position: absolute;
+    left: 0.7rem;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    pointer-events: none;
+}
+.vl-search-box input {
+    width: 230px;
+    height: 34px;
+    padding: 0 0.7rem 0 2rem;
+    font-size: 0.8rem;
+}
+
+/* Horizontal Voice List Rows */
+.vl-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.vl-row-card {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.3fr) minmax(220px, 1.2fr) auto;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 0.75rem 1.15rem;
+    background: var(--hub-card-bg, rgba(255,255,255,0.02));
+    border: 1px solid var(--hub-card-border, rgba(255,255,255,0.08));
+    border-radius: 11px;
+    transition: border-color 0.16s, background 0.16s;
+}
+.vl-row-card:hover {
+    border-color: rgba(99, 102, 241, 0.32);
+    background: rgba(255, 255, 255, 0.032);
+}
+@media (max-width: 820px) {
+    .vl-row-card {
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+    }
+}
+.vl-row-identity {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    min-width: 0;
+}
+.vl-voice-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.vl-voice-icon.female { background: rgba(244, 114, 182, 0.12); color: #f472b6; }
+.vl-voice-icon.male { background: rgba(96, 165, 250, 0.12); color: #60a5fa; }
+.vl-row-title {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.vl-row-id {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.71rem;
+    color: var(--text-tertiary);
+}
+.vl-voice-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+.vl-row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+.vl-preset-creator-card {
+    background: var(--hub-card-bg, rgba(255,255,255,0.02));
+    border: 1px solid var(--hub-card-border, rgba(255,255,255,0.08));
+    border-radius: 14px;
+    padding: 1.25rem;
+}
+.vl-preset-creator-hd h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 0.95rem;
+}
+.vl-preset-creator-hd p {
+    margin: 0 0 1rem 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+.vl-preset-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.85rem;
+}
+.vl-badge {
+    font-size: 0.69rem;
+    padding: 0.16rem 0.52rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+.vl-badge.female { background: rgba(244, 114, 182, 0.14); color: #f472b6; }
+.vl-badge.male { background: rgba(96, 165, 250, 0.14); color: #60a5fa; }
+.vl-badge.cloned { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+</style>

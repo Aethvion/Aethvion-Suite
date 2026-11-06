@@ -92,6 +92,10 @@ const CompanionCreator = (() => {
           </div>
         </div>
         <div class="cc-pane-tabs">
+          <button type="button" class="cc-voice-toggle-btn" id="cc-auto-voice-btn" title="Toggle Auto-Voice (automatically speak companion replies)">
+            <i class="fas fa-volume-xmark" id="cc-auto-voice-icon"></i>
+            <span id="cc-auto-voice-label">Auto-Voice</span>
+          </button>
           <button class="cc-ptab cc-ptab-active" id="cc-ptab-chat">
             <i class="fas fa-comment-dots"></i> Chat
           </button>
@@ -145,7 +149,20 @@ const CompanionCreator = (() => {
             </div>
           </div>
           <div class="cc-chat-bar">
-            <textarea id="cc-chat-input" class="cc-chat-input" placeholder="Message…" rows="1" autocomplete="off"></textarea>
+            <div id="cc-slash-popover" class="cc-slash-popover hidden">
+              <div class="cc-slash-popover-hdr">
+                <span><i class="fas fa-plug-circle-bolt"></i> Connectors (/slash commands)</span>
+                <button type="button" id="cc-slash-manage-link" class="cc-btn cc-btn-ghost cc-btn-sm" style="padding:0.1rem 0.45rem;font-size:0.68rem">Library &rarr;</button>
+              </div>
+              <div id="cc-slash-list" class="cc-slash-list"></div>
+            </div>
+            <button type="button" id="cc-chat-slash-btn" class="cc-chat-slash-btn" title="Insert Connector command (/screen_capture, /reddit, /weather...)">
+              <i class="fas fa-plug-circle-bolt"></i>
+            </button>
+            <textarea id="cc-chat-input" class="cc-chat-input" placeholder="Message or type / for Connectors…" rows="1" autocomplete="off"></textarea>
+            <button type="button" id="cc-chat-mic" class="cc-chat-mic-btn" title="Voice input (Speech-to-Text)">
+              <i class="fas fa-microphone"></i>
+            </button>
             <button id="cc-chat-send" class="cc-chat-send-btn" title="Send">
               <i class="fas fa-paper-plane"></i>
             </button>
@@ -235,6 +252,68 @@ const CompanionCreator = (() => {
         <!-- Advanced sections -->
         <div class="cc-sections">
 
+          <!-- Voice & Speech (Global Voice Database) -->
+          <div class="cc-adv-section" id="cc-s-voice">
+            <div class="cc-adv-toggle">
+              <span><i class="fas fa-waveform-lines"></i> Voice &amp; Speech <span class="cc-hint" style="margin-left:0.4rem">(Global Voice Database)</span></span>
+              <i class="fas fa-chevron-down cc-adv-chevron"></i>
+            </div>
+            <div class="cc-adv-body">
+              <div class="cc-form-grid" style="margin-top:0">
+                <div class="cc-field">
+                  <label>Voice Model / Engine</label>
+                  <select id="cc-voice-model" class="control-select" style="width:100%">
+                    <option value="kokoro">Kokoro TTS (Local Neural)</option>
+                    <option value="xtts">XTTS-v2 (Local Cloned Voices)</option>
+                    <option value="vibevoice_realtime">VibeVoice Realtime (Local)</option>
+                    <option value="web_speech">System / Browser Web Speech</option>
+                    <option value="preset">⭐ Global Voice Presets</option>
+                  </select>
+                </div>
+                <div class="cc-field">
+                  <label>Voice Selection</label>
+                  <select id="cc-voice-id" class="control-select" style="width:100%">
+                    <option value="af_heart">Heart (en-us · female)</option>
+                  </select>
+                </div>
+                <div class="cc-field">
+                  <label>Speech Speed&nbsp;<span class="cc-range-val" id="cc-voice-speed-val">1.00x</span></label>
+                  <input type="range" id="cc-voice-speed" min="0.5" max="1.5" step="0.05" value="1.00" class="cc-range">
+                  <span class="cc-range-hint">0.5x slower &middot; 1.0x natural &middot; 1.5x faster</span>
+                </div>
+                <div class="cc-field">
+                  <label>Auto-Speak Replies</label>
+                  <label class="cc-toggle-row" for="cc-voice-autospeak" style="margin-top:0.2rem">
+                    <div>
+                      <div class="cc-cap-label">Read messages aloud automatically</div>
+                      <div class="cc-cap-desc">Can also be toggled anytime from the Chat header</div>
+                    </div>
+                    <span class="cc-toggle-wrap">
+                      <input type="checkbox" id="cc-voice-autospeak" class="cc-toggle-input">
+                      <span class="cc-toggle-thumb"></span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+              <div class="cc-voice-actions-row">
+                <button type="button" id="cc-voice-preview-btn" class="cc-btn cc-btn-ghost cc-btn-sm">
+                  <i class="fas fa-play"></i> Preview Voice
+                </button>
+                <button type="button" id="cc-voice-save-preset-btn" class="cc-btn cc-btn-ghost cc-btn-sm" title="Save this model + voice + speed into the Global Voice Database for reuse across companions and chat">
+                  <i class="fas fa-bookmark"></i> Save to Global Voice DB
+                </button>
+                <button type="button" id="cc-open-voice-library-btn" class="cc-btn cc-btn-ghost cc-btn-sm" title="Open Library > Voice Library">
+                  <i class="fas fa-sliders"></i> Open Voice Library &rarr;
+                </button>
+              </div>
+              <div id="cc-voice-preset-form" class="cc-mem-inline-form hidden" style="margin-top:0.65rem;border-radius:8px;border:1px solid var(--border)">
+                <input type="text" id="cc-voice-preset-name" class="cc-mem-input cc-mem-input-val" placeholder="Preset name (e.g. Lyra Warm Narrator)">
+                <button type="button" id="cc-voice-preset-confirm" class="cc-btn cc-btn-primary cc-btn-sm">Save Preset</button>
+                <button type="button" id="cc-voice-preset-cancel" class="cc-btn cc-btn-ghost cc-btn-sm">Cancel</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Behavior & Mood -->
           <div class="cc-adv-section" id="cc-s-behavior">
             <div class="cc-adv-toggle">
@@ -314,6 +393,23 @@ const CompanionCreator = (() => {
                     <span class="cc-toggle-thumb"></span>
                   </span>
                 </label>
+              </div>
+              <div class="cc-connector-profile-box">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.45rem">
+                  <div>
+                    <div class="cc-cap-label"><i class="fas fa-plug-circle-bolt" style="color:var(--accent,#6366f1);margin-right:0.35rem"></i>Connector Access Profile</div>
+                    <div class="cc-cap-desc">Controls which Connectors (screen capture, Reddit, PC telemetry, weather) this companion can access</div>
+                  </div>
+                  <button type="button" id="cc-open-connectors-btn" class="cc-btn cc-btn-ghost cc-btn-sm">
+                    <i class="fas fa-layer-group"></i> Manage Profiles &rarr;
+                  </button>
+                </div>
+                <select id="cc-cap-connector-profile" class="control-select" style="width:100%">
+                  <option value="full_local">Full Local Suite — All local &amp; web connectors enabled</option>
+                  <option value="cloud_safe">Public / Cloud Safe — Blocks screen, webcam &amp; PC telemetry</option>
+                  <option value="ambient_observer">Ambient Context Only — Media, system stats &amp; weather only</option>
+                  <option value="sandboxed">Strict Sandboxed — No connectors permitted</option>
+                </select>
               </div>
             </div>
           </div>
@@ -683,13 +779,14 @@ const CompanionCreator = (() => {
 
     function _updateRangeDisplays() {
         [
-            ['cc-temperature',           'cc-temp-val'],
-            ['cc-initiate-temp',         'cc-itemp-val'],
-            ['cc-change-susceptibility', 'cc-chsus-val'],
-        ].forEach(([inputId, valId]) => {
+            ['cc-temperature',           'cc-temp-val',        ''],
+            ['cc-initiate-temp',         'cc-itemp-val',       ''],
+            ['cc-change-susceptibility', 'cc-chsus-val',       ''],
+            ['cc-voice-speed',           'cc-voice-speed-val', 'x'],
+        ].forEach(([inputId, valId, suffix]) => {
             const input = document.getElementById(inputId);
             const disp  = document.getElementById(valId);
-            if (input && disp) disp.textContent = parseFloat(input.value).toFixed(2);
+            if (input && disp) disp.textContent = parseFloat(input.value).toFixed(2) + (suffix || '');
         });
     }
 
@@ -773,6 +870,16 @@ const CompanionCreator = (() => {
             set('cc-initiate-temp',         beh.initiate_temperature  ?? 0.80);
             set('cc-change-susceptibility', beh.change_susceptibility ?? 0.70);
             set('cc-default-mood',          beh.default_mood          || 'calm');
+
+            // Voice & Speech
+            const vcfg = fillData.voice || {};
+            const vModel = vcfg.model_id || 'kokoro';
+            const vId    = vcfg.voice_id || 'af_heart';
+            set('cc-voice-model', vModel);
+            set('cc-voice-speed', vcfg.speed ?? 1.0);
+            chk('cc-voice-autospeak', vcfg.auto_speak ?? false);
+            _populateVoiceDropdown(vModel, vId);
+
             _updateRangeDisplays();
 
             // Capabilities
@@ -781,6 +888,7 @@ const CompanionCreator = (() => {
             chk('cc-cap-workspace', cap.workspace_access          ?? false);
             chk('cc-cap-memory',    cap.memory_updates_enabled    ?? true);
             chk('cc-cap-internet',  cap.internet_search           ?? false);
+            _populateConnectorProfiles(cap.connector_profile || 'full_local');
 
             // Prompts
             const prm = fillData.prompts || {};
@@ -817,9 +925,14 @@ const CompanionCreator = (() => {
             set('cc-temperature',           0.85);
             set('cc-initiate-temp',         0.80);
             set('cc-change-susceptibility', 0.70);
+            set('cc-voice-model',           'kokoro');
+            set('cc-voice-speed',           1.0);
+            chk('cc-voice-autospeak',       false);
+            _populateVoiceDropdown('kokoro', 'af_heart');
             _updateRangeDisplays();
             // Memory enabled by default for new companions
             chk('cc-cap-memory', true);
+            _populateConnectorProfiles('full_local');
             // Default expressions & moods
             set('cc-expressions', 'default\nhappy\nthinking\nfocused\nerror');
             set('cc-moods',       'calm\nhappy\nreflective\nintense');
@@ -890,10 +1003,19 @@ const CompanionCreator = (() => {
                 workspace_access:       chk('cc-cap-workspace'),
                 memory_updates_enabled: chk('cc-cap-memory'),
                 internet_search:        chk('cc-cap-internet'),
+                connector_profile:      document.getElementById('cc-cap-connector-profile')?.value || 'full_local',
             },
             prompts: {
                 chat_system:    document.getElementById('cc-prompt-chat')?.value?.trim()     || '',
                 initiate_system: document.getElementById('cc-prompt-initiate')?.value?.trim() || '',
+            },
+            voice: {
+                enabled:    true,
+                auto_speak: chk('cc-voice-autospeak'),
+                model_id:   document.getElementById('cc-voice-model')?.value || 'kokoro',
+                voice_id:   document.getElementById('cc-voice-id')?.value    || 'af_heart',
+                speed:      num('cc-voice-speed') || 1.0,
+                language:   'en',
             },
             expressions:        lines('cc-expressions'),
             moods:              lines('cc-moods'),
@@ -1453,6 +1575,7 @@ const CompanionCreator = (() => {
 
         if (moodTextEl) moodTextEl.textContent = defMood;
         if (exprTextEl) exprTextEl.textContent = defExpr;
+        _updateAutoVoiceBtnUI(!!data.voice?.auto_speak);
 
         if (data.icon_mode && exprImgs[defExpr] && data.id) {
             const exprUrl = `${API}/${data.id}/expression/${defExpr}?t=${Date.now()}`;
@@ -1465,6 +1588,319 @@ const CompanionCreator = (() => {
         if (portNameEl) portNameEl.textContent = data.name || '';
         if (portSubEl)  portSubEl.textContent  = isBuiltin ? 'Built-in Companion' : 'Custom Companion';
     }
+
+    // Global Voice Database & Speech Engine (TTS / STT)
+
+    let _voiceLibCache = null;
+    let _activeAudioEl = null;
+    let _speakingBubbleBtn = null;
+    let _recognitionInstance = null;
+    let _isRecordingMic = false;
+
+    const _DEFAULT_KOKORO_VOICES = [
+        { id: 'af_heart',    name: 'Heart',    language: 'en-us', gender: 'female' },
+        { id: 'af_bella',    name: 'Bella',    language: 'en-us', gender: 'female' },
+        { id: 'af_aoede',    name: 'Aoede',    language: 'en-us', gender: 'female' },
+        { id: 'af_kore',     name: 'Kore',     language: 'en-us', gender: 'female' },
+        { id: 'af_nicole',   name: 'Nicole',   language: 'en-us', gender: 'female' },
+        { id: 'af_nova',     name: 'Nova',     language: 'en-us', gender: 'female' },
+        { id: 'af_river',    name: 'River',    language: 'en-us', gender: 'female' },
+        { id: 'af_sarah',    name: 'Sarah',    language: 'en-us', gender: 'female' },
+        { id: 'af_sky',      name: 'Sky',      language: 'en-us', gender: 'female' },
+        { id: 'am_adam',     name: 'Adam',     language: 'en-us', gender: 'male' },
+        { id: 'am_echo',     name: 'Echo',     language: 'en-us', gender: 'male' },
+        { id: 'am_eric',     name: 'Eric',     language: 'en-us', gender: 'male' },
+        { id: 'am_fenrir',   name: 'Fenrir',   language: 'en-us', gender: 'male' },
+        { id: 'am_liam',     name: 'Liam',     language: 'en-us', gender: 'male' },
+        { id: 'am_michael',  name: 'Michael',  language: 'en-us', gender: 'male' },
+        { id: 'am_onyx',     name: 'Onyx',     language: 'en-us', gender: 'male' },
+        { id: 'bf_emma',     name: 'Emma',     language: 'en-gb', gender: 'female' },
+        { id: 'bf_isabella', name: 'Isabella', language: 'en-gb', gender: 'female' },
+        { id: 'bm_george',   name: 'George',   language: 'en-gb', gender: 'male' },
+        { id: 'bm_lewis',    name: 'Lewis',    language: 'en-gb', gender: 'male' },
+    ];
+
+    async function _loadVoiceLibrary(force = false) {
+        if (_voiceLibCache && !force) return _voiceLibCache;
+        try {
+            const res = await fetch('/api/audio/local/library');
+            if (res.ok) {
+                _voiceLibCache = await res.json();
+                return _voiceLibCache;
+            }
+        } catch {}
+        _voiceLibCache = {
+            models: [
+                { id: 'kokoro', name: 'Kokoro TTS', voices: _DEFAULT_KOKORO_VOICES },
+                { id: 'web_speech', name: 'System / Browser Web Speech', voices: [] }
+            ],
+            presets: []
+        };
+        return _voiceLibCache;
+    }
+
+    function _getBrowserSpeechVoices() {
+        if (typeof window.speechSynthesis === 'undefined') return [];
+        const list = window.speechSynthesis.getVoices() || [];
+        return list.map(v => ({
+            id: v.name,
+            name: v.name,
+            language: v.lang || 'en',
+            gender: v.default ? 'default' : 'system'
+        }));
+    }
+
+    async function _populateVoiceDropdown(modelId, selectedVoiceId = '') {
+        const voiceSel = document.getElementById('cc-voice-id');
+        if (!voiceSel) return;
+        const lib = await _loadVoiceLibrary();
+        let voices = [];
+
+        if (modelId === 'preset') {
+            voices = (lib.presets || []).map(p => ({
+                id: p.id,
+                name: `${p.name} (${p.model_id} · ${p.voice_id})`,
+                language: p.language || 'en',
+                gender: p.gender || ''
+            }));
+        } else if (modelId === 'web_speech') {
+            voices = _getBrowserSpeechVoices();
+            if (!voices.length) {
+                voices = [{ id: 'default', name: 'System Default Voice', language: 'en', gender: 'system' }];
+            }
+        } else {
+            const mod = (lib.models || []).find(m => m.id === modelId);
+            voices = (mod && mod.voices && mod.voices.length) ? mod.voices : (modelId === 'kokoro' ? _DEFAULT_KOKORO_VOICES : []);
+            if (!voices.length) {
+                voices = [{ id: 'default', name: 'Default / Cloned Voice', language: 'en', gender: 'neutral' }];
+            }
+        }
+
+        voiceSel.innerHTML = voices.map(v => {
+            const meta = [v.language, v.gender].filter(Boolean).join(' · ');
+            const label = meta ? `${v.name} (${meta})` : v.name;
+            return `<option value="${_esc(v.id)}">${_esc(label)}</option>`;
+        }).join('');
+
+        if (selectedVoiceId && voiceSel.querySelector(`option[value="${selectedVoiceId}"]`)) {
+            voiceSel.value = selectedVoiceId;
+        } else if (voices.length) {
+            voiceSel.value = voices[0].id;
+        }
+    }
+
+    function _cleanSpeechText(text) {
+        if (!text) return '';
+        return _stripToolTags(String(text))
+            .replace(/```[\s\S]*?```/g, ' Code block omitted. ')
+            .replace(/`([^`]+)`/g, '$1')
+            .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+            .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+            .replace(/[*_~#>]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function _stopSpeech() {
+        if (_activeAudioEl) {
+            try { _activeAudioEl.pause(); _activeAudioEl.currentTime = 0; } catch {}
+            _activeAudioEl = null;
+        }
+        if (typeof window.speechSynthesis !== 'undefined') {
+            try { window.speechSynthesis.cancel(); } catch {}
+        }
+        if (_speakingBubbleBtn) {
+            _speakingBubbleBtn.innerHTML = '<i class="fas fa-volume-high"></i>';
+            _speakingBubbleBtn.classList.remove('cc-msg-act-speaking');
+            _speakingBubbleBtn = null;
+        }
+        document.getElementById('cc-portrait-avatar')?.classList.remove('cc-portrait-speaking');
+        if (!_chatStreaming) _setPortraitThinking(false);
+    }
+
+    function _speakViaWebSpeech(cleanText, voiceId, speed, onDone) {
+        if (typeof window.speechSynthesis === 'undefined') {
+            if (onDone) onDone();
+            return;
+        }
+        try {
+            window.speechSynthesis.cancel();
+            const utter = new SpeechSynthesisUtterance(cleanText);
+            utter.rate = Math.max(0.5, Math.min(2.0, speed || 1.0));
+            if (voiceId && voiceId !== 'default') {
+                const voices = window.speechSynthesis.getVoices() || [];
+                const match = voices.find(v => v.name === voiceId);
+                if (match) utter.voice = match;
+            }
+            utter.onend = () => { if (onDone) onDone(); };
+            utter.onerror = () => { if (onDone) onDone(); };
+            window.speechSynthesis.speak(utter);
+        } catch {
+            if (onDone) onDone();
+        }
+    }
+
+    async function _speakText(rawText, customVoiceCfg = null, btnEl = null) {
+        if (btnEl && _speakingBubbleBtn === btnEl) {
+            // Clicking the same active speaker button stops playback
+            _stopSpeech();
+            return;
+        }
+        _stopSpeech();
+
+        const cleanText = _cleanSpeechText(rawText);
+        if (!cleanText) return;
+
+        const cfg = customVoiceCfg || _activeData?.voice || {
+            model_id: 'kokoro',
+            voice_id: 'af_heart',
+            speed: 1.0,
+            language: 'en'
+        };
+
+        let modelId  = cfg.model_id || 'kokoro';
+        let voiceId  = cfg.voice_id || 'af_heart';
+        let speed    = parseFloat(cfg.speed || 1.0);
+        let language = cfg.language || 'en';
+
+        // Resolve Global Voice Database preset if selected
+        if (modelId === 'preset') {
+            const lib = await _loadVoiceLibrary();
+            const preset = (lib.presets || []).find(p => p.id === voiceId);
+            if (preset) {
+                modelId  = preset.model_id || 'kokoro';
+                voiceId  = preset.voice_id || 'af_heart';
+                speed    = parseFloat(preset.speed || speed);
+                language = preset.language || language;
+            } else {
+                modelId = 'kokoro';
+                voiceId = 'af_heart';
+            }
+        }
+
+        if (btnEl) {
+            _speakingBubbleBtn = btnEl;
+            btnEl.innerHTML = '<i class="fas fa-stop"></i>';
+            btnEl.classList.add('cc-msg-act-speaking');
+        }
+        document.getElementById('cc-portrait-avatar')?.classList.add('cc-portrait-speaking');
+        _setPortraitThinking(true, 'Speaking…');
+
+        const finishSpeak = () => {
+            if (_speakingBubbleBtn === btnEl && btnEl) {
+                btnEl.innerHTML = '<i class="fas fa-volume-high"></i>';
+                btnEl.classList.remove('cc-msg-act-speaking');
+                _speakingBubbleBtn = null;
+            }
+            document.getElementById('cc-portrait-avatar')?.classList.remove('cc-portrait-speaking');
+            if (!_chatStreaming) _setPortraitThinking(false);
+        };
+
+        if (modelId === 'web_speech') {
+            _speakViaWebSpeech(cleanText, voiceId, speed, finishSpeak);
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/audio/local/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: cleanText,
+                    model_id: modelId,
+                    voice_id: voiceId,
+                    speed,
+                    language,
+                    device: 'cuda'
+                })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.audio) throw new Error(data.detail || 'TTS unavailable');
+            const audio = new Audio(data.audio);
+            _activeAudioEl = audio;
+            audio.onended = finishSpeak;
+            audio.onerror = () => _speakViaWebSpeech(cleanText, null, speed, finishSpeak);
+            await audio.play();
+        } catch {
+            // Instant fallback to system Web Speech if local audio model is not yet installed
+            _speakViaWebSpeech(cleanText, null, speed, finishSpeak);
+        }
+    }
+
+    function _updateAutoVoiceBtnUI(enabled) {
+        const btn   = document.getElementById('cc-auto-voice-btn');
+        const icon  = document.getElementById('cc-auto-voice-icon');
+        const label = document.getElementById('cc-auto-voice-label');
+        const chkEl = document.getElementById('cc-voice-autospeak');
+        if (chkEl) chkEl.checked = !!enabled;
+        if (!btn) return;
+        btn.classList.toggle('cc-voice-toggle-active', !!enabled);
+        if (icon)  icon.className = enabled ? 'fas fa-volume-high' : 'fas fa-volume-xmark';
+        if (label) label.textContent = enabled ? 'Voice On' : 'Auto-Voice';
+    }
+
+    function _toggleAutoVoice() {
+        if (!_activeData) return;
+        if (!_activeData.voice) {
+            _activeData.voice = { enabled: true, auto_speak: false, model_id: 'kokoro', voice_id: 'af_heart', speed: 1.0, language: 'en' };
+        }
+        _activeData.voice.auto_speak = !_activeData.voice.auto_speak;
+        _updateAutoVoiceBtnUI(_activeData.voice.auto_speak);
+        if (!_activeData.voice.auto_speak) _stopSpeech();
+        if (typeof showToast === 'function') {
+            showToast(_activeData.voice.auto_speak ? 'Auto-Voice enabled' : 'Auto-Voice muted', 'info');
+        }
+    }
+
+    function _toggleMicDictation() {
+        const micBtn = document.getElementById('cc-chat-mic');
+        const input  = document.getElementById('cc-chat-input');
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRec) {
+            if (typeof showToast === 'function') showToast('Speech recognition is not supported in this browser.', 'error');
+            return;
+        }
+
+        if (_isRecordingMic && _recognitionInstance) {
+            _recognitionInstance.stop();
+            return;
+        }
+
+        const rec = new SpeechRec();
+        rec.lang = 'en-US';
+        rec.interimResults = false;
+        rec.maxAlternatives = 1;
+        _recognitionInstance = rec;
+        _isRecordingMic = true;
+        micBtn?.classList.add('cc-mic-recording');
+
+        rec.onresult = event => {
+            const transcript = event.results?.[0]?.[0]?.transcript || '';
+            if (transcript && input) {
+                input.value = (input.value ? input.value.trim() + ' ' : '') + transcript;
+                _autoResizeInput(input);
+                input.focus();
+            }
+        };
+        rec.onerror = () => {
+            _isRecordingMic = false;
+            micBtn?.classList.remove('cc-mic-recording');
+        };
+        rec.onend = () => {
+            _isRecordingMic = false;
+            micBtn?.classList.remove('cc-mic-recording');
+        };
+        rec.start();
+    }
+
+    // Expose Global Voice API for other suite tools (Chat, Automate, Agents)
+    window.AethvionVoice = {
+        getLibrary: _loadVoiceLibrary,
+        speak: _speakText,
+        stop: _stopSpeech,
+        cleanText: _cleanSpeechText,
+    };
 
     // Chat
 
@@ -1508,10 +1944,15 @@ const CompanionCreator = (() => {
             actions = document.createElement('div');
             actions.className = 'cc-msg-actions';
             actions.innerHTML = `
+              <button type="button" class="cc-msg-act-btn cc-msg-speak-btn" title="Listen to message (TTS)"><i class="fas fa-volume-high"></i></button>
               <button type="button" class="cc-msg-act-btn cc-msg-copy-btn" title="Copy message"><i class="fas fa-copy"></i></button>
               <button type="button" class="cc-msg-act-btn cc-msg-regen-btn" title="Regenerate reply"><i class="fas fa-rotate-right"></i></button>
             `;
             bubble.appendChild(actions);
+            const speakBtn = actions.querySelector('.cc-msg-speak-btn');
+            speakBtn?.addEventListener('click', () => {
+                _speakText(bubble.dataset.rawText || '', null, speakBtn);
+            });
             actions.querySelector('.cc-msg-copy-btn')?.addEventListener('click', () => {
                 navigator.clipboard?.writeText(bubble.dataset.rawText || '');
                 if (typeof showToast === 'function') showToast('Copied to clipboard', 'info');
@@ -1745,6 +2186,21 @@ const CompanionCreator = (() => {
                         } else if (evt.type === 'done') {
                             if (evt.content)  finalText  = evt.content;
                             if (evt.parts)    finalParts = evt.parts;
+                            if (Array.isArray(evt.attachments) && evt.attachments.length && currentBubbleText) {
+                                const attWrap = document.createElement('div');
+                                attWrap.className = 'cc-msg-attachments';
+                                evt.attachments.forEach(att => {
+                                    if (att.url) {
+                                        const img = document.createElement('img');
+                                        img.src = att.url;
+                                        img.alt = att.type || 'Attachment';
+                                        img.className = 'cc-msg-attachment-img';
+                                        img.onclick = () => window.open(att.url, '_blank');
+                                        attWrap.appendChild(img);
+                                    }
+                                });
+                                currentBubble?.appendChild(attWrap);
+                            }
                             _updatePortraitMoodAndExpr(evt.mood, evt.expression);
                             if (evt.memory_updated) {
                                 const memTab = document.getElementById('cc-ptab-memory');
@@ -1790,6 +2246,11 @@ const CompanionCreator = (() => {
                 }
             }
 
+            if (_activeData?.voice?.auto_speak) {
+                const fullSpoken = parts ? parts.join(' ') : firstPart;
+                _speakText(fullSpoken);
+            }
+
         } catch (err) {
             if (currentBubbleText) { currentBubbleText.textContent = 'Failed to get a response.'; currentBubbleText.classList.add('cc-msg-error-text'); }
         } finally {
@@ -1833,6 +2294,9 @@ const CompanionCreator = (() => {
                 _appendMessage('companion', data.response);
                 _chatHistory.push({ role: 'assistant', content: data.response });
                 _updatePortraitMoodAndExpr(data.mood, data.expression);
+                if (_activeData?.voice?.auto_speak) {
+                    _speakText(data.response);
+                }
             }
         } catch (err) {
             if (typeof showToast === 'function') showToast(`Check-in failed: ${err.message}`, 'error');
@@ -2190,9 +2654,100 @@ const CompanionCreator = (() => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _sendMessage(); }
         });
         document.getElementById('cc-chat-send')?.addEventListener('click', () => _sendMessage());
+        document.getElementById('cc-chat-mic')?.addEventListener('click', _toggleMicDictation);
+        document.getElementById('cc-chat-slash-btn')?.addEventListener('click', () => _toggleSlashPopover());
+        document.getElementById('cc-slash-manage-link')?.addEventListener('click', () => {
+            document.getElementById('cc-slash-popover')?.classList.add('hidden');
+            if (typeof window.switchMainTab === 'function') window.switchMainTab('connectors');
+        });
+        document.getElementById('cc-open-voice-library-btn')?.addEventListener('click', () => {
+            if (typeof window.switchMainTab === 'function') window.switchMainTab('voice-library');
+        });
+        document.getElementById('cc-open-connectors-btn')?.addEventListener('click', () => {
+            if (typeof window.switchMainTab === 'function') window.switchMainTab('connectors');
+        });
+        document.getElementById('cc-chat-input')?.addEventListener('keyup', e => {
+            const val = e.target.value || '';
+            if (val.startsWith('/') && !val.includes(' ')) {
+                _openSlashPopover(val.trim().toLowerCase());
+            } else if (!val.startsWith('/')) {
+                document.getElementById('cc-slash-popover')?.classList.add('hidden');
+            }
+        });
+        _startProactiveHeartbeat();
+        document.getElementById('cc-auto-voice-btn')?.addEventListener('click', _toggleAutoVoice);
         document.getElementById('cc-checkin-btn')?.addEventListener('click', _triggerCheckin);
         document.getElementById('cc-export-chat-btn')?.addEventListener('click', _exportChatTranscript);
         document.getElementById('cc-clear-chat-btn')?.addEventListener('click', _clearChatHistoryOnly);
+
+        // Voice & Speech settings controls
+        document.getElementById('cc-voice-model')?.addEventListener('change', e => {
+            _populateVoiceDropdown(e.target.value);
+        });
+        document.getElementById('cc-voice-speed')?.addEventListener('input', _updateRangeDisplays);
+        document.getElementById('cc-voice-autospeak')?.addEventListener('change', e => {
+            if (_activeData) {
+                if (!_activeData.voice) _activeData.voice = {};
+                _activeData.voice.auto_speak = e.target.checked;
+            }
+            _updateAutoVoiceBtnUI(e.target.checked);
+        });
+        document.getElementById('cc-voice-preview-btn')?.addEventListener('click', () => {
+            const cName = document.getElementById('cc-name')?.value?.trim() || _activeData?.name || 'your companion';
+            const sample = `Hello! I am ${cName}. My voice is connected and ready.`;
+            const cfg = {
+                model_id: document.getElementById('cc-voice-model')?.value || 'kokoro',
+                voice_id: document.getElementById('cc-voice-id')?.value    || 'af_heart',
+                speed:    parseFloat(document.getElementById('cc-voice-speed')?.value || '1.0'),
+                language: 'en'
+            };
+            _speakText(sample, cfg);
+        });
+        document.getElementById('cc-voice-save-preset-btn')?.addEventListener('click', () => {
+            const presetForm = document.getElementById('cc-voice-preset-form');
+            const nameInput  = document.getElementById('cc-voice-preset-name');
+            if (!presetForm) return;
+            presetForm.classList.remove('hidden');
+            if (nameInput) {
+                const cName = document.getElementById('cc-name')?.value?.trim() || _activeData?.name || 'Custom';
+                nameInput.value = `${cName} Voice Preset`;
+                nameInput.focus();
+            }
+        });
+        document.getElementById('cc-voice-preset-cancel')?.addEventListener('click', () => {
+            document.getElementById('cc-voice-preset-form')?.classList.add('hidden');
+        });
+        document.getElementById('cc-voice-preset-confirm')?.addEventListener('click', async () => {
+            const nameInput = document.getElementById('cc-voice-preset-name');
+            const name = nameInput?.value?.trim();
+            if (!name) return;
+            const model_id = document.getElementById('cc-voice-model')?.value || 'kokoro';
+            const voice_id = document.getElementById('cc-voice-id')?.value    || 'af_heart';
+            const speed    = parseFloat(document.getElementById('cc-voice-speed')?.value || '1.0');
+            try {
+                const res = await fetch('/api/audio/local/library/presets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        model_id: model_id === 'preset' ? 'kokoro' : model_id,
+                        voice_id,
+                        speed,
+                        language: 'en',
+                        gender: 'neutral',
+                        description: `Saved from Companion Creator (${name})`
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+                await _loadVoiceLibrary(true);
+                document.getElementById('cc-voice-preset-form')?.classList.add('hidden');
+                if (typeof showToast === 'function') showToast(`Saved '${name}' to Global Voice Database!`, 'success');
+            } catch (err) {
+                if (typeof showToast === 'function') showToast(`Failed to save preset: ${err.message}`, 'error');
+            }
+        });
+
         document.getElementById('cc-delete-btn')?.addEventListener('click', _deleteCompanion);
         document.getElementById('cc-export-btn')?.addEventListener('click', _exportCompanion);
         document.getElementById('cc-form')?.addEventListener('submit', _saveCompanion);
@@ -2554,6 +3109,116 @@ const CompanionCreator = (() => {
             setTimeout(() => { btn.disabled = false; btn.innerHTML = orig; btn.style.cssText = ''; }, 3000);
             console.error(`[CompanionCreator] Reset failed:`, e);
         }
+    }
+
+
+    let _cachedConnectors = null;
+    let _lastInteractionTs = Date.now();
+    let _proactiveTimer = null;
+
+    async function _populateConnectorProfiles(selectedId = 'full_local') {
+        const sel = document.getElementById('cc-cap-connector-profile');
+        if (!sel) return;
+        try {
+            const res = await fetch('/api/connectors/profiles');
+            if (res.ok) {
+                const data = await res.json();
+                const profiles = data.profiles || [];
+                if (profiles.length) {
+                    sel.innerHTML = profiles.map(p =>
+                        `<option value="${_esc(p.id)}">${_esc(p.name)} — ${_esc(p.description || '')}</option>`
+                    ).join('');
+                }
+            }
+        } catch {}
+        sel.value = selectedId || 'full_local';
+        if (!sel.value) sel.value = 'full_local';
+    }
+
+    async function _loadSlashConnectors() {
+        if (_cachedConnectors) return _cachedConnectors;
+        try {
+            const res = await fetch('/api/connectors/registry');
+            if (res.ok) {
+                const data = await res.json();
+                _cachedConnectors = (data.connectors || []).filter(c => c.slash_command);
+                return _cachedConnectors;
+            }
+        } catch {}
+        return [
+            { id: 'screen_capture', name: 'Screen Capture', slash_command: '/screen_capture', description: 'Capture desktop screenshot for visual context' },
+            { id: 'reddit', name: 'Reddit Pulse', slash_command: '/reddit', description: 'Fetch top posts or search a subreddit' },
+            { id: 'weather_link', name: 'Weather Link', slash_command: '/weather', description: 'Fetch real-time weather conditions' },
+            { id: 'media_sentinel', name: 'Media Sentinel', slash_command: '/media', description: 'Detect active windows & playing media' },
+            { id: 'system_link', name: 'System Telemetry', slash_command: '/system', description: 'Check CPU, RAM & GPU usage' },
+            { id: 'web_search', name: 'Live Web Search', slash_command: '/search', description: 'Search the web for live info' }
+        ];
+    }
+
+    async function _openSlashPopover(filterPrefix = '') {
+        const pop = document.getElementById('cc-slash-popover');
+        const listEl = document.getElementById('cc-slash-list');
+        if (!pop || !listEl) return;
+        const connectors = await _loadSlashConnectors();
+        const filtered = connectors.filter(c =>
+            c.enabled !== false && (!filterPrefix || c.slash_command.toLowerCase().startsWith(filterPrefix))
+        );
+        if (!filtered.length) {
+            pop.classList.add('hidden');
+            return;
+        }
+        listEl.innerHTML = filtered.map(c => `
+          <button type="button" class="cc-slash-item" data-cmd="${_esc(c.slash_command)}">
+            <span class="cc-slash-cmd">${_esc(c.slash_command)}</span>
+            <span class="cc-slash-desc">${_esc(c.name)} — ${_esc(c.description || '')}</span>
+          </button>
+        `).join('');
+        listEl.querySelectorAll('.cc-slash-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const cmd = btn.dataset.cmd;
+                const input = document.getElementById('cc-chat-input');
+                if (input) {
+                    const rest = (input.value || '').replace(/^\/\S*\s*/, '');
+                    input.value = `${cmd} ${rest}`;
+                    input.focus();
+                    _autoResizeInput(input);
+                }
+                pop.classList.add('hidden');
+            });
+        });
+        pop.classList.remove('hidden');
+    }
+
+    function _toggleSlashPopover() {
+        const pop = document.getElementById('cc-slash-popover');
+        if (!pop) return;
+        if (!pop.classList.contains('hidden')) {
+            pop.classList.add('hidden');
+        } else {
+            _openSlashPopover('');
+        }
+    }
+
+    function _startProactiveHeartbeat() {
+        if (_proactiveTimer) clearInterval(_proactiveTimer);
+        ['keydown', 'mousedown'].forEach(evtName => {
+            document.addEventListener(evtName, () => { _lastInteractionTs = Date.now(); }, { passive: true });
+        });
+        _proactiveTimer = setInterval(() => {
+            if (!_editingId || _chatStreaming) return;
+            const enabled = document.getElementById('cc-proactive-enabled')?.checked
+                ?? _prefGet(`${_editingId}.proactive_enabled`, false);
+            if (!enabled) return;
+            const minIntervalMin = parseFloat(document.getElementById('cc-session-interval-min')?.value || _prefGet(`${_editingId}.session_interval_min`, 45)) || 45;
+            const chancePct = parseFloat(document.getElementById('cc-session-chance')?.value || _prefGet(`${_editingId}.session_chance`, 60)) || 60;
+            const idleMinutes = (Date.now() - _lastInteractionTs) / 60000;
+            if (idleMinutes >= minIntervalMin) {
+                _lastInteractionTs = Date.now();
+                if (Math.random() * 100 <= chancePct) {
+                    _triggerCheckin();
+                }
+            }
+        }, 60000);
     }
 
     return { init };

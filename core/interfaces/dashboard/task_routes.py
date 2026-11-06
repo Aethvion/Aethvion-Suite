@@ -4,7 +4,9 @@ REST API endpoints for task queue management
 """
 
 import asyncio
+import base64
 import json as _json
+from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -57,12 +59,47 @@ async def submit_task(request: TaskSubmitRequest):
     try:
         task_manager = get_task_queue_manager()
         
+        prompt_text = request.prompt
+        attached_files = list(request.attached_files or [])
+
+        # Execute global connector /slash_commands (e.g. /screen_capture, /reddit, /weather, /media, /system)
+        if "/" in prompt_text:
+            try:
+                from core.bridges import bridge_manager
+                profile_id = (request.settings or {}).get("connector_profile")
+                slash_res = await asyncio.to_thread(
+                    bridge_manager.parse_and_execute_slash_commands,
+                    prompt_text,
+                    profile_id
+                )
+                if slash_res.get("triggered"):
+                    ctx_blocks = [
+                        f"[CONNECTOR RESULT — {sr['name']} ({sr['module_id']}.{sr['command']})]\n{sr['output']}"
+                        for sr in slash_res.get("results", [])
+                    ]
+                    prompt_text = (
+                        "\n\n".join(ctx_blocks)
+                        + f"\n\nUser request: {slash_res.get('cleaned_message', prompt_text)}"
+                    )
+                    for att in slash_res.get("attachments", []):
+                        p_str = att.get("path")
+                        if p_str and Path(p_str).exists():
+                            b64_data = base64.b64encode(Path(p_str).read_bytes()).decode("ascii")
+                            attached_files.append({
+                                "filename": att.get("filename", "capture.png"),
+                                "is_image": True,
+                                "mime_type": att.get("mime_type", "image/png"),
+                                "content": f"data:{att.get('mime_type', 'image/png')};base64,{b64_data}",
+                                "path": p_str
+                            })
+            except Exception as sc_err:
+                logger.warning(f"Slash connector check failed in submit_task: {sc_err}")
+
         # Prepend text file attachment content (images are passed via the
         # images kwarg to the provider; text files are embedded in the prompt)
-        prompt_text = request.prompt
-        if request.attached_files:
+        if attached_files:
             text_parts = []
-            for file_data in request.attached_files:
+            for file_data in attached_files:
                 if not file_data.get('is_image') and file_data.get('content'):
                     name = file_data.get('filename', 'attachment')
                     text_parts.append(
@@ -76,7 +113,7 @@ async def submit_task(request: TaskSubmitRequest):
             thread_id=request.thread_id,
             thread_title=request.thread_title,
             model_id=request.model_id,
-            attached_files=request.attached_files,
+            attached_files=attached_files,
             mode=request.mode,
             settings=request.settings,
             workspace_id=request.workspace_id,

@@ -612,7 +612,8 @@ const AudioModels = (() => {
     function switchTab(tab, btn) {
         _currentTab = tab;
         ['tts','stt','voices'].forEach(t => {
-            document.getElementById(`am-section-${t}`).style.display = t === tab ? '' : 'none';
+            const sec = document.getElementById(`am-section-${t}`);
+            if (sec) sec.style.display = t === tab ? '' : 'none';
         });
         document.querySelectorAll('.am-tab-btn').forEach(b =>
             b.classList.toggle('active', b.dataset.amtab === tab)

@@ -58,7 +58,9 @@
         'audio-models':     ['/static/js/hardware-profile.js', '/static/js/view-audio-models.js'],
         'api-providers':    ['/static/js/view-api-providers.js'],
         '3d-models':        ['/static/js/hardware-profile.js', '/static/js/view-3d-models.js'],
-        '3d-gen':           ['/static/js/particle-sphere.js', '/static/js/mode-3d-gen.js']
+        '3d-gen':           ['/static/js/particle-sphere.js', '/static/js/mode-3d-gen.js'],
+        'voice-library':    ['/static/js/view-voice-library.js'],
+        'connectors':       ['/static/js/view-connectors.js']
     };
 
     /**

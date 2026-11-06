@@ -86,16 +86,8 @@ async function loadPreferences() {
         };
     }
 
-    // Bridge Companion Selector
-    const bridgeSelector = document.getElementById('bridge-companion-selector');
-    if (bridgeSelector) {
-        bridgeSelector.onchange = loadBridgeModules;
-    }
-
-    // Initialize Other Sections
     loadGlobalSettings();
     initDevMode();
-    loadBridgeModules();
 }
 
 // Reusable binding helpers

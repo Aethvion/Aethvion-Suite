@@ -37,6 +37,8 @@
         'audio-models':      { label: 'Audio & Speech', icon: 'fas fa-volume-high' },
         'api-providers':     { label: 'API Providers',  icon: 'fas fa-plug' },
         '3d-models':         { label: '3D Models',      icon: 'fas fa-cube' },
+        'voice-library':     { label: 'Voice Library',  icon: 'fas fa-wave-square' },
+        'connectors':        { label: 'Connectors',     icon: 'fas fa-plug-circle-bolt' },
         'logs':              { label: 'Logs',            icon: 'fas fa-scroll' },
         'documentation':     { label: 'Docs',           icon: 'fas fa-book-open' },
         'usage':             { label: 'Usage',          icon: 'fas fa-chart-bar' },
@@ -85,6 +87,12 @@
             label: 'Model Hub',
             icon: 'fas fa-microchip',
             tabs: ['local-models', 'image-models', 'audio-models', 'api-providers', '3d-models'],
+        },
+        {
+            id: 'library',
+            label: 'Library',
+            icon: 'fas fa-layer-group',
+            tabs: ['voice-library', 'connectors'],
         },
         {
             id: 'system',
