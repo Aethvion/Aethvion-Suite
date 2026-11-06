@@ -3,12 +3,12 @@
     <header class="hub-header">
         <div class="hub-header-main">
             <h1 class="hub-title">Image Models</h1>
-            <p class="hub-subtitle">Generate artwork, photorealistic visuals, and conceptual graphics with local Stable Diffusion & Flux or cloud image backends.</p>
+            <p class="hub-subtitle">Explore, install, and manage local diffusion checkpoints, LoRAs, and weights on your hardware.</p>
         </div>
         <div class="hub-stats">
             <div class="hub-stat-item">
                 <span class="hub-stat-val" id="im-stat-active-models">0</span>
-                <span class="hub-stat-label">Active Models</span>
+                <span class="hub-stat-label">Installed Models</span>
             </div>
             <div class="hub-stat-item">
                 <span class="hub-stat-val" id="im-stat-engine" style="font-size:0.95rem; color:#94a3b8;">
@@ -16,35 +16,28 @@
                 </span>
                 <span class="hub-stat-label">Engine Status</span>
             </div>
-            <div class="hub-stat-item">
-                <span class="hub-stat-val" id="im-stat-gallery-count">0</span>
-                <span class="hub-stat-label">Creations</span>
-            </div>
         </div>
     </header>
 
     <!-- Interactive Navigation Toolbar -->
-    <div class="hub-toolbar" style="padding: 0.4rem;">
-        <div class="im-tab-bar">
-            <button class="im-tab-btn active" data-imtab="studio" id="im-tab-studio-btn">
-                <i class="fas fa-wand-magic-sparkles"></i> Generation Studio
-            </button>
-            <button class="im-tab-btn" data-imtab="models" id="im-tab-models-btn">
-                <i class="fas fa-cubes-stacked"></i> Model Library
-            </button>
-            <button class="im-tab-btn" data-imtab="gallery" id="im-tab-gallery-btn">
-                <i class="fas fa-images"></i> Gallery & History
-            </button>
+    <div class="hub-toolbar">
+        <div class="hub-search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="image-search-input" class="hub-search-input" placeholder="Search checkpoints, LoRAs, or architectures...">
         </div>
 
-        <select id="image-compat-filter" class="lm-filter-select" title="Filter by PC Compatibility" style="margin-left:auto;">
+        <select id="image-compat-filter" class="lm-filter-select" title="Filter by PC Compatibility">
             <option value="all">Hardware: All</option>
             <option value="runnable">Runnable on this PC</option>
             <option value="gpu">Runs on GPU</option>
             <option value="cpu">CPU Fallback</option>
         </select>
 
-        <div id="image-hw-slot" style="margin-left:0.5rem;"></div>
+        <div id="image-hw-slot" style="margin-left:auto;"></div>
+
+        <button class="hub-action-btn" onclick="switchMainTab('photo')" style="background:linear-gradient(135deg, var(--primary), #0284c7); color:#000; font-weight:700; height:36px; padding:0 1rem; border-radius:8px; border:none; display:inline-flex; align-items:center; gap:0.5rem; cursor:pointer;" title="Go to Workspace > Photo">
+            <i class="fas fa-wand-magic-sparkles"></i> Open Photo Studio
+        </button>
 
         <button id="im-btn-refresh" class="lm-icon-btn" title="Refresh Models and Backends">
             <i class="fas fa-rotate"></i>
@@ -52,214 +45,34 @@
     </div>
 
     <!-- Engine Banner (Dynamic) -->
-    <div id="im-engine-banner" style="margin-bottom: 1.25rem;"></div>
+    <div id="im-engine-banner" style="margin-bottom: 1.5rem;"></div>
 
-    <!-- =========================================================================
-         SECTION 1: GENERATION STUDIO
-         ========================================================================= -->
-    <section id="im-section-studio" class="im-studio-grid">
-        <!-- Controls Column -->
-        <div class="im-studio-card">
-            <!-- Prompt Field -->
-            <div class="im-field-group">
-                <div class="im-field-header">
-                    <label class="im-field-label"><i class="fas fa-quote-left"></i> Positive Prompt</label>
-                    <button id="im-btn-random-prompt" class="im-prompt-pill" style="border:none; background:transparent; color:var(--primary); font-size:0.75rem;">
-                        <i class="fas fa-dice"></i> Random Idea
-                    </button>
+    <!-- Models Catalog Container -->
+    <div id="im-models-catalog-container">
+        <div class="lm-store-loading"><i class="fas fa-circle-notch fa-spin"></i><span>Loading image model library...</span></div>
+    </div>
+
+    <!-- Custom Checkpoints Folder Notice -->
+    <section class="hub-provider-section" style="margin-top: 2rem;">
+        <div class="hub-provider-hd">
+            <div class="hub-provider-dot" style="--brand-color: #fbbf24;"></div>
+            <h2 class="hub-provider-name">Local Checkpoints Folder</h2>
+        </div>
+        <div style="background: rgba(15, 23, 42, 0.4); border: 1px dashed var(--hub-card-border); border-radius: 16px; padding: 1.75rem; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 1.25rem;">
+                <div style="font-size: 2.5rem; color: #fbbf24; opacity: 0.85;">
+                    <i class="fas fa-folder-tree"></i>
                 </div>
-                <textarea id="im-prompt" class="im-textarea" rows="3" placeholder="A cinematic portrait of a robotic knight in a futuristic neo-tokyo garden, volumetric glowing light, ultra-detailed 8k octane render..."></textarea>
-                
-                <!-- Quick Style Tags -->
-                <div class="im-prompt-pills">
-                    <span class="im-prompt-pill" data-append=", cinematic lighting, 8k resolution, photorealistic">✨ Photoreal</span>
-                    <span class="im-prompt-pill" data-append=", anime aesthetic, studio ghibli style, vibrant colors">🎨 Anime</span>
-                    <span class="im-prompt-pill" data-append=", cyberpunk style, neon lights, rainy atmosphere">🌃 Cyberpunk</span>
-                    <span class="im-prompt-pill" data-append=", fantasy concept art, highly detailed, artstation trending">🐉 Fantasy</span>
-                    <span class="im-prompt-pill" data-append=", isometric 3d render, blender octane, miniature diorama">📦 3D Isometric</span>
+                <div>
+                    <h4 style="margin: 0 0 0.35rem 0; color: #fff; font-size: 1rem;">Manual Weights & LoRA Storage</h4>
+                    <p style="margin: 0; font-size: 0.85rem; color: var(--text-tertiary); max-width: 680px;">
+                        You can also drop any existing <code>.safetensors</code> or <code>.ckpt</code> files directly into your suite's <code>localmodels/image/</code> directory. They will be automatically detected, evaluated against your GPU, and made available in <strong>Workspace > Photo</strong>.
+                    </p>
                 </div>
             </div>
-
-            <!-- Negative Prompt Field -->
-            <div class="im-field-group">
-                <div class="im-field-header">
-                    <label class="im-field-label"><i class="fas fa-ban"></i> Negative Prompt</label>
-                    <span style="font-size:0.7rem; color:var(--text-tertiary);">What to avoid</span>
-                </div>
-                <textarea id="im-negative-prompt" class="im-textarea" rows="2" placeholder="ugly, deformed, disfigured, blurry, bad anatomy, bad hands, extra limbs, watermark, text"></textarea>
-            </div>
-
-            <!-- Model Selection -->
-            <div class="im-field-group">
-                <label class="im-field-label"><i class="fas fa-microchip"></i> Generation Model</label>
-                <select id="im-model-select" class="im-select">
-                    <optgroup label="Local Stable Diffusion / Checkpoints" id="im-optgroup-local">
-                        <option value="sd-1-5">Stable Diffusion 1.5 (Fast · 512px)</option>
-                        <option value="sdxl-base">SDXL 1.0 Base (High-Res · 1024px)</option>
-                        <option value="sdxl-lightning">SDXL Lightning (4-Step Turbo)</option>
-                        <option value="flux-schnell">Flux.1 Schnell (SOTA 4-Step Flow)</option>
-                    </optgroup>
-                    <optgroup label="Cloud Providers" id="im-optgroup-cloud">
-                        <option value="imagen-3.0-generate-002">Google AI — Imagen 3</option>
-                        <option value="dall-e-3">OpenAI — DALL-E 3</option>
-                    </optgroup>
-                </select>
-            </div>
-
-            <!-- Aspect Ratio & Resolution -->
-            <div class="im-field-group">
-                <label class="im-field-label"><i class="fas fa-vector-square"></i> Dimensions & Aspect Ratio</label>
-                <div class="im-aspect-group">
-                    <button type="button" class="im-aspect-btn active" data-size="1024x1024" data-aspect="1:1">
-                        <span class="im-aspect-icon" style="width:18px; height:18px;"></span>
-                        <span class="im-aspect-label">1:1 Square</span>
-                        <span class="im-aspect-sub">1024×1024</span>
-                    </button>
-                    <button type="button" class="im-aspect-btn" data-size="1024x576" data-aspect="16:9">
-                        <span class="im-aspect-icon" style="width:22px; height:13px;"></span>
-                        <span class="im-aspect-label">16:9 Wide</span>
-                        <span class="im-aspect-sub">1024×576</span>
-                    </button>
-                    <button type="button" class="im-aspect-btn" data-size="576x1024" data-aspect="9:16">
-                        <span class="im-aspect-icon" style="width:13px; height:22px;"></span>
-                        <span class="im-aspect-label">9:16 Story</span>
-                        <span class="im-aspect-sub">576×1024</span>
-                    </button>
-                    <button type="button" class="im-aspect-btn" data-size="512x512" data-aspect="1:1">
-                        <span class="im-aspect-icon" style="width:15px; height:15px;"></span>
-                        <span class="im-aspect-label">SD 1.5 Fast</span>
-                        <span class="im-aspect-sub">512×512</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Advanced Accordion -->
-            <details style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:0.75rem 1rem;">
-                <summary style="font-size:0.78rem; font-weight:700; color:var(--text-secondary); cursor:pointer; user-select:none;">
-                    <i class="fas fa-sliders" style="margin-right:0.4rem; color:var(--primary);"></i> Advanced Parameters (Steps, CFG, Seed)
-                </summary>
-                <div style="display:flex; flex-direction:column; gap:1rem; margin-top:0.85rem; padding-top:0.75rem; border-top:1px solid rgba(255,255,255,0.06);">
-                    <div class="im-field-group">
-                        <div class="im-field-header">
-                            <span class="im-field-label">Sampling Steps</span>
-                            <span id="im-steps-val" class="im-slider-val">25</span>
-                        </div>
-                        <div class="im-slider-row">
-                            <input type="range" id="im-steps" min="4" max="50" value="25" step="1">
-                        </div>
-                    </div>
-                    <div class="im-field-group">
-                        <div class="im-field-header">
-                            <span class="im-field-label">CFG Scale (Prompt Guidance)</span>
-                            <span id="im-cfg-val" class="im-slider-val">7.0</span>
-                        </div>
-                        <div class="im-slider-row">
-                            <input type="range" id="im-cfg" min="1.0" max="15.0" value="7.0" step="0.5">
-                        </div>
-                    </div>
-                    <div class="im-field-group">
-                        <div class="im-field-header">
-                            <span class="im-field-label">Seed</span>
-                            <button id="im-btn-random-seed" class="im-prompt-pill" style="border:none; background:transparent; color:var(--primary); font-size:0.7rem;">
-                                Randomize (-1)
-                            </button>
-                        </div>
-                        <input type="number" id="im-seed" class="im-textarea" style="padding:0.5rem;" placeholder="-1 (Random seed)" value="-1">
-                    </div>
-                </div>
-            </details>
-
-            <!-- Generate Action -->
-            <button id="im-btn-generate" class="im-btn-generate">
-                <i class="fas fa-wand-magic-sparkles"></i> Generate Image
+            <button class="im-tool-btn" onclick="if (window.showToast) window.showToast('Weights directory: localmodels/image/', 'info');" style="white-space: nowrap;">
+                <i class="fas fa-folder-open"></i> localmodels/image/
             </button>
-        </div>
-
-        <!-- Viewport Output Column -->
-        <div class="im-viewport-card">
-            <!-- Viewport Header -->
-            <div class="im-viewport-header">
-                <div style="display:flex; align-items:center; gap:0.5rem;">
-                    <i class="fas fa-eye" style="color:var(--primary);"></i>
-                    <span id="im-viewport-title" style="font-weight:700; color:#fff;">Output Viewport</span>
-                </div>
-                <div id="im-viewport-meta" style="color:var(--text-tertiary); font-family:monospace; font-size:0.72rem;">
-                    Ready
-                </div>
-            </div>
-
-            <!-- Viewport Body -->
-            <div class="im-viewport-body">
-                <!-- Generating Overlay -->
-                <div id="im-generating-overlay" class="im-generating-overlay" style="display:none;">
-                    <i class="fas fa-wand-magic-sparkles im-spin-glow"></i>
-                    <div style="text-align:center;">
-                        <h4 style="margin:0 0 0.25rem 0; color:#fff; font-size:1.1rem;">Synthesizing Artwork...</h4>
-                        <p id="im-generating-status" style="margin:0; font-size:0.8rem; color:var(--text-tertiary);">Sending request to image generation backend</p>
-                        <div id="im-generating-timer" style="margin-top:0.5rem; font-family:monospace; color:var(--primary); font-size:0.85rem; font-weight:700;">0.0s</div>
-                    </div>
-                </div>
-
-                <!-- Empty State -->
-                <div id="im-viewport-empty" class="im-viewport-placeholder">
-                    <i class="fas fa-image" style="font-size:4rem; opacity:0.15;"></i>
-                    <p style="margin:0; font-size:0.9rem;">No image generated yet.</p>
-                    <span style="font-size:0.75rem; color:var(--text-tertiary); max-width:320px;">
-                        Type a prompt on the left and click <strong>Generate Image</strong> (or press Ctrl+Enter).
-                    </span>
-                </div>
-
-                <!-- Live Rendered Image -->
-                <img id="im-viewport-img" class="im-viewport-image" style="display:none;" alt="Generated artwork" src="">
-            </div>
-
-            <!-- Viewport Actions -->
-            <div id="im-viewport-actions" class="im-viewport-actions" style="display:none;">
-                <button id="im-btn-download" class="im-tool-btn">
-                    <i class="fas fa-download"></i> Download PNG
-                </button>
-                <button id="im-btn-copy-prompt" class="im-tool-btn">
-                    <i class="fas fa-copy"></i> Copy Prompt
-                </button>
-                <button id="im-btn-open-photo" class="im-tool-btn" style="margin-left:auto; background:rgba(var(--primary-rgb, 56, 189, 248), 0.15); border-color:rgba(var(--primary-rgb, 56, 189, 248), 0.3); color:#fff;">
-                    <i class="fas fa-paintbrush"></i> Edit in Aethvion Photo
-                </button>
-            </div>
-        </div>
-    </section>
-
-    <!-- =========================================================================
-         SECTION 2: MODEL LIBRARY & CATALOG
-         ========================================================================= -->
-    <section id="im-section-models" style="display:none;">
-        <div class="hub-toolbar" style="margin-bottom: 1.5rem;">
-            <div class="hub-search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="image-search-input" class="hub-search-input" placeholder="Search checkpoints, LoRAs, or architectures...">
-            </div>
-        </div>
-
-        <div id="im-models-catalog-container">
-            <div class="lm-store-loading"><i class="fas fa-circle-notch fa-spin"></i><span>Loading model library...</span></div>
-        </div>
-    </section>
-
-    <!-- =========================================================================
-         SECTION 3: GALLERY & HISTORY
-         ========================================================================= -->
-    <section id="im-section-gallery" style="display:none;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <div>
-                <h3 style="margin:0; font-size:1.1rem; color:#fff;">Creation Gallery</h3>
-                <p style="margin:0.2rem 0 0 0; font-size:0.8rem; color:var(--text-tertiary);">Browse and manage recently generated visuals.</p>
-            </div>
-            <button id="im-btn-refresh-gallery" class="im-tool-btn">
-                <i class="fas fa-rotate"></i> Refresh Gallery
-            </button>
-        </div>
-
-        <div id="im-gallery-grid" class="im-gallery-grid">
-            <div class="lm-store-loading"><i class="fas fa-circle-notch fa-spin"></i><span>Loading gallery...</span></div>
         </div>
     </section>
 </div>

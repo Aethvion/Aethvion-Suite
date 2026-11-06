@@ -1,91 +1,244 @@
-<div class="image-studio-container">
-                    <!-- Main Viewer Area -->
-                    <div class="image-studio-viewer" id="image-viewer-container">
-                        <div class="empty-state-viewer">
-                            <i class="fas fa-image" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                            <h3>Photo Studio</h3>
-                            <p>Generate, Edit, or View Photos</p>
+<div class="ps-wrapper">
+    <!-- Top Header Bar -->
+    <header class="ps-header">
+        <div class="ps-header-left">
+            <div class="ps-header-icon">
+                <i class="fas fa-wand-magic-sparkles"></i>
+            </div>
+            <div>
+                <h2 class="ps-header-title">Photo Studio</h2>
+                <p class="ps-header-sub">Synthesize visuals, inpaint, upscale, and edit using local SD / Flux checkpoints or cloud backends.</p>
+            </div>
+        </div>
+
+        <div class="ps-header-actions">
+            <button class="im-tool-btn" onclick="switchMainTab('image-models')" title="Browse, install, and download models in Model Hub">
+                <i class="fas fa-cubes-stacked" style="color:var(--primary);"></i> Manage Models
+            </button>
+            <button class="im-tool-btn" onclick="window.open('http://localhost:8005', '_blank')" title="Launch standalone layered canvas editor">
+                <i class="fas fa-palette"></i> Canvas Editor
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Studio Layout -->
+    <div class="ps-main">
+        <!-- Left Sidebar Controls -->
+        <aside class="ps-sidebar">
+            <!-- Mode Switcher -->
+            <div class="ps-field">
+                <span class="ps-field-label">Studio Mode</span>
+                <div class="ps-mode-bar">
+                    <button type="button" class="ps-mode-btn active" data-mode="generate">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                        <span>Generate</span>
+                    </button>
+                    <button type="button" class="ps-mode-btn" data-mode="edit">
+                        <i class="fas fa-paintbrush"></i>
+                        <span>Edit / Inpaint</span>
+                    </button>
+                    <button type="button" class="ps-mode-btn" data-mode="upscale">
+                        <i class="fas fa-expand"></i>
+                        <span>Upscale</span>
+                    </button>
+                    <button type="button" class="ps-mode-btn" data-mode="expand">
+                        <i class="fas fa-arrows-maximize"></i>
+                        <span>Expand</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Reference Image Dropzone (For Edit / Upscale / Expand) -->
+            <div class="ps-field" id="ps-ref-group" style="display:none;">
+                <span class="ps-field-label">Reference Image</span>
+                <div class="ps-dropzone" id="ps-ref-dropzone">
+                    <span id="ps-ref-text" style="font-size:0.8rem; color:var(--text-secondary);">
+                        <i class="fas fa-cloud-arrow-up" style="font-size:1.5rem; margin-bottom:0.4rem; color:var(--primary); display:block;"></i>
+                        Drop image here or click to browse
+                    </span>
+                    <input type="file" id="ps-ref-input" accept="image/png, image/jpeg, image/webp" style="display:none;">
+                    <img id="ps-ref-preview" class="ps-dropzone-img" src="" style="display:none;" alt="Reference Preview">
+                    <button type="button" class="ps-dropzone-clear" id="ps-ref-clear" style="display:none;" title="Remove Reference">✕</button>
+                </div>
+            </div>
+
+            <!-- Mask Image Dropzone (For Edit / Inpaint / Expand) -->
+            <div class="ps-field" id="ps-mask-group" style="display:none;">
+                <span class="ps-field-label">Mask Image (Optional)</span>
+                <div class="ps-dropzone" id="ps-mask-dropzone">
+                    <span id="ps-mask-text" style="font-size:0.8rem; color:var(--text-secondary);">
+                        <i class="fas fa-mask" style="font-size:1.5rem; margin-bottom:0.4rem; color:#a855f7; display:block;"></i>
+                        Drop inpaint mask here
+                    </span>
+                    <input type="file" id="ps-mask-input" accept="image/png, image/jpeg, image/webp" style="display:none;">
+                    <img id="ps-mask-preview" class="ps-dropzone-img" src="" style="display:none;" alt="Mask Preview">
+                    <button type="button" class="ps-dropzone-clear" id="ps-mask-clear" style="display:none;" title="Remove Mask">✕</button>
+                </div>
+            </div>
+
+            <!-- Model Selection -->
+            <div class="ps-field">
+                <div class="ps-field-label">
+                    <span>Generation Model</span>
+                    <a href="javascript:void(0)" onclick="switchMainTab('image-models')" style="color:var(--primary); font-size:0.7rem; text-decoration:none;">+ Install More</a>
+                </div>
+                <select id="ps-model-select" class="ps-select">
+                    <!-- Populated dynamically via JS -->
+                    <option value="sd-1-5">Stable Diffusion 1.5</option>
+                    <option value="sdxl-base">SDXL 1.0 Base</option>
+                    <option value="sdxl-lightning">SDXL Lightning (4-Step)</option>
+                    <option value="flux-schnell">Flux.1 Schnell (FP8)</option>
+                    <option value="imagen-3.0-generate-002">Google AI — Imagen 3</option>
+                    <option value="dall-e-3">OpenAI — DALL-E 3</option>
+                </select>
+            </div>
+
+            <!-- Positive Prompt -->
+            <div class="ps-field">
+                <div class="ps-field-label">
+                    <span>Prompt</span>
+                    <button type="button" id="ps-btn-random-idea" class="ps-pill" style="border:none; background:transparent; color:var(--primary); padding:0;">
+                        <i class="fas fa-dice"></i> Random Idea
+                    </button>
+                </div>
+                <textarea id="ps-prompt-input" class="ps-textarea" rows="3" placeholder="A cinematic portrait of a robotic knight in a futuristic neo-tokyo garden, volumetric glowing light, ultra-detailed 8k octane render..."></textarea>
+                
+                <div class="ps-pills">
+                    <span class="ps-pill" data-append=", cinematic lighting, 8k resolution, photorealistic">✨ Photoreal</span>
+                    <span class="ps-pill" data-append=", anime aesthetic, studio ghibli style, vibrant colors">🎨 Anime</span>
+                    <span class="ps-pill" data-append=", cyberpunk style, neon lights, rainy atmosphere">🌃 Cyberpunk</span>
+                    <span class="ps-pill" data-append=", fantasy concept art, highly detailed, trending on artstation">🐉 Fantasy</span>
+                    <span class="ps-pill" data-append=", isometric 3d render, blender octane, miniature diorama">📦 3D Isometric</span>
+                </div>
+            </div>
+
+            <!-- Negative Prompt -->
+            <div class="ps-field">
+                <span class="ps-field-label">Negative Prompt</span>
+                <textarea id="ps-neg-prompt" class="ps-textarea" rows="2" placeholder="ugly, deformed, disfigured, blurry, bad anatomy, bad hands, extra limbs, watermark, text"></textarea>
+            </div>
+
+            <!-- Aspect Ratio / Dimensions -->
+            <div class="ps-field">
+                <span class="ps-field-label">Dimensions & Aspect Ratio</span>
+                <div class="ps-aspect-grid">
+                    <button type="button" class="ps-aspect-btn active" data-size="1024x1024" data-aspect="1:1">
+                        <span class="ps-aspect-icon" style="width:16px; height:16px;"></span>
+                        <span style="font-size:0.7rem; font-weight:700;">1:1</span>
+                        <span style="font-size:0.6rem; color:var(--text-tertiary);">1024×1024</span>
+                    </button>
+                    <button type="button" class="ps-aspect-btn" data-size="1024x576" data-aspect="16:9">
+                        <span class="ps-aspect-icon" style="width:20px; height:12px;"></span>
+                        <span style="font-size:0.7rem; font-weight:700;">16:9</span>
+                        <span style="font-size:0.6rem; color:var(--text-tertiary);">1024×576</span>
+                    </button>
+                    <button type="button" class="ps-aspect-btn" data-size="576x1024" data-aspect="9:16">
+                        <span class="ps-aspect-icon" style="width:12px; height:20px;"></span>
+                        <span style="font-size:0.7rem; font-weight:700;">9:16</span>
+                        <span style="font-size:0.6rem; color:var(--text-tertiary);">576×1024</span>
+                    </button>
+                    <button type="button" class="ps-aspect-btn" data-size="512x512" data-aspect="1:1">
+                        <span class="ps-aspect-icon" style="width:14px; height:14px;"></span>
+                        <span style="font-size:0.7rem; font-weight:700;">SD 1.5</span>
+                        <span style="font-size:0.6rem; color:var(--text-tertiary);">512×512</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Advanced Accordion -->
+            <details style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:0.65rem 0.85rem;">
+                <summary style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); cursor:pointer; user-select:none;">
+                    <i class="fas fa-sliders" style="margin-right:0.4rem; color:var(--primary);"></i> Advanced Parameters (Steps, CFG, Seed)
+                </summary>
+                <div style="display:flex; flex-direction:column; gap:0.85rem; margin-top:0.75rem; padding-top:0.65rem; border-top:1px solid rgba(255,255,255,0.06);">
+                    <div class="ps-field">
+                        <div class="ps-field-label">
+                            <span>Sampling Steps</span>
+                            <span id="ps-steps-val" style="color:var(--primary); font-family:monospace; font-weight:700;">25</span>
                         </div>
-                        <!-- Loading Overlay -->
-                        <div class="image-loading-overlay" id="image-loading-overlay" style="display: none;">
-                            <div class="loading-spinner"></div>
-                            <div class="loading-text">GENERATING...</div>
-                        </div>
+                        <input type="range" id="ps-steps-slider" min="4" max="50" value="25" step="1" style="accent-color:var(--primary);">
                     </div>
-
-                    <!-- Sidebar Controls -->
-                    <div class="image-studio-sidebar">
-                        <div class="sidebar-header">
-                            <h3>CONTROLS</h3>
+                    <div class="ps-field">
+                        <div class="ps-field-label">
+                            <span>CFG Scale</span>
+                            <span id="ps-cfg-val" style="color:var(--primary); font-family:monospace; font-weight:700;">7.0</span>
                         </div>
-                        <div class="sidebar-content">
-                            <!-- Mode Selection -->
-                            <div class="control-group">
-                                <label>Mode</label>
-                                <div class="mode-toggles" id="image-mode-toggles">
-                                    <label class="radio-toggle"><input type="radio" name="image_mode" value="generate"
-                                            checked> Generate</label>
-                                    <label class="radio-toggle"><input type="radio" name="image_mode" value="edit">
-                                        Edit</label>
-                                    <label class="radio-toggle"><input type="radio" name="image_mode" value="upscale">
-                                        Upscale</label>
-                                    <label class="radio-toggle"><input type="radio" name="image_mode" value="expand">
-                                        Expand</label>
-                                </div>
-                            </div>
-
-                            <!-- Reference Image Upload (Hidden by default in Generate mode) -->
-                            <div class="control-group" id="image-upload-group" style="display: none; margin-top: 1rem;">
-                                <label>Reference Image</label>
-                                <div class="image-dropzone" id="image-ref-dropzone">
-                                    <span class="dropzone-text">Click or drag image here</span>
-                                    <input type="file" id="image-ref-input" accept="image/png, image/jpeg, image/webp"
-                                        style="display:none;">
-                                    <img id="image-ref-preview" src=""
-                                        style="display:none; max-width:100%; max-height:150px; object-fit:contain; margin:0 auto; border-radius:4px;">
-                                    <button type="button" class="icon-btn xs-btn" id="image-ref-clear"
-                                        style="display:none; position:absolute; top:4px; right:4px;"
-                                        title="Remove Reference"><i class="fas fa-times"></i></button>
-                                </div>
-                            </div>
-
-                            <!-- Mask Image Upload (Hidden by default, used for Expand/Inpainting) -->
-                            <div class="control-group" id="mask-upload-group" style="display: none; margin-top: 1rem;">
-                                <label>Mask Image (Optional)</label>
-                                <div class="image-dropzone" id="mask-ref-dropzone">
-                                    <span class="dropzone-text">Click or drag mask here</span>
-                                    <input type="file" id="mask-ref-input" accept="image/png, image/jpeg, image/webp"
-                                        style="display:none;">
-                                    <img id="mask-ref-preview" src=""
-                                        style="display:none; max-width:100%; max-height:150px; object-fit:contain; margin:0 auto; border-radius:4px;">
-                                    <button type="button" class="icon-btn xs-btn" id="mask-ref-clear"
-                                        style="display:none; position:absolute; top:4px; right:4px;"
-                                        title="Remove Mask"><i class="fas fa-times"></i></button>
-                                </div>
-                            </div>
-
-                            <!-- Model Selection -->
-                            <div class="control-group" style="margin-top: 1rem;">
-                                <label>Models</label>
-                                <div class="model-checklist" id="image-model-checklist">
-                                    <!-- Populated dynamically by JS -->
-                                </div>
-                            </div>
-
-                            <!-- Dynamic Per-Model Configurations -->
-                            <div id="image-model-configs" style="margin-top: 1rem;">
-                                <!-- Populated dynamically by JS based on checked models -->
-                            </div>
-
-                            <!-- Prompt input -->
-                            <div class="control-group" style="margin-top: 1rem;">
-                                <label>Prompt</label>
-                                <textarea class="term-input" id="image-prompt-input" rows="4"
-                                    placeholder="Describe your image/edits..."></textarea>
-                            </div>
-
-                            <button class="term-btn primary" id="generate-image-btn"
-                                style="width: 100%; margin-top: 1rem;">GENERATE</button>
+                        <input type="range" id="ps-cfg-slider" min="1.0" max="15.0" value="7.0" step="0.5" style="accent-color:var(--primary);">
+                    </div>
+                    <div class="ps-field">
+                        <div class="ps-field-label">
+                            <span>Seed</span>
+                            <button type="button" id="ps-btn-random-seed" class="ps-pill" style="border:none; background:transparent; color:var(--primary); padding:0;">
+                                Random (-1)
+                            </button>
                         </div>
+                        <input type="number" id="ps-seed-input" class="ps-textarea" style="padding:0.45rem;" placeholder="-1 (Random)" value="-1">
                     </div>
                 </div>
+            </details>
+
+            <!-- Generate Action -->
+            <button type="button" class="ps-btn-generate" id="ps-generate-btn">
+                <i class="fas fa-wand-magic-sparkles"></i> Generate Image
+            </button>
+        </aside>
+
+        <!-- Right Viewport Area -->
+        <main class="ps-viewport-area">
+            <!-- Viewport Body -->
+            <div class="ps-viewport-body" id="ps-viewport-body">
+                <!-- Generating Overlay -->
+                <div id="ps-loading-overlay" class="im-generating-overlay" style="display:none;">
+                    <i class="fas fa-wand-magic-sparkles im-spin-glow"></i>
+                    <div style="text-align:center;">
+                        <h4 style="margin:0 0 0.25rem 0; color:#fff; font-size:1.15rem;">Synthesizing Visuals...</h4>
+                        <p id="ps-loading-status" style="margin:0; font-size:0.8rem; color:var(--text-tertiary);">Running inference on active backend</p>
+                        <div id="ps-loading-timer" style="margin-top:0.5rem; font-family:monospace; color:var(--primary); font-size:0.95rem; font-weight:700;">0.0s</div>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="ps-empty-state" style="text-align:center; color:var(--text-tertiary); display:flex; flex-direction:column; align-items:center; gap:0.75rem;">
+                    <i class="fas fa-image" style="font-size:4.5rem; opacity:0.12;"></i>
+                    <h3 style="margin:0; color:#fff; font-size:1.1rem;">Photo Studio Viewport</h3>
+                    <p style="margin:0; font-size:0.85rem; max-width:360px; line-height:1.4;">
+                        Select your preferred model on the left, type a prompt, and click <strong>Generate Image</strong> (or press Ctrl+Enter).
+                    </p>
+                </div>
+
+                <!-- Live Rendered Image -->
+                <img id="ps-viewport-img" class="ps-viewport-img" style="display:none;" alt="Generated artwork" src="">
+            </div>
+
+            <!-- Viewport Actions -->
+            <div id="ps-viewport-actions" class="ps-viewport-actions" style="display:none;">
+                <button type="button" class="im-tool-btn" id="ps-btn-download">
+                    <i class="fas fa-download"></i> Download PNG
+                </button>
+                <button type="button" class="im-tool-btn" id="ps-btn-copy-prompt">
+                    <i class="fas fa-copy"></i> Copy Prompt
+                </button>
+                <button type="button" class="im-tool-btn" id="ps-btn-use-ref">
+                    <i class="fas fa-arrow-turn-up"></i> Use as Reference
+                </button>
+                <button type="button" class="im-tool-btn" id="ps-btn-edit-canvas" style="margin-left:auto; background:rgba(var(--primary-rgb, 56, 189, 248), 0.15); border-color:rgba(var(--primary-rgb, 56, 189, 248), 0.35); color:#fff;">
+                    <i class="fas fa-paintbrush"></i> Edit in Canvas
+                </button>
+            </div>
+
+            <!-- Bottom Creation Strip (History) -->
+            <div class="ps-creations-strip">
+                <div class="ps-strip-header">
+                    <span><i class="fas fa-images"></i> Recent Studio Creations</span>
+                    <button type="button" id="ps-btn-refresh-strip" class="ps-pill" style="border:none; background:transparent; color:var(--primary); font-size:0.7rem; cursor:pointer;">
+                        <i class="fas fa-rotate"></i> Refresh
+                    </button>
+                </div>
+                <div class="ps-strip-row" id="ps-strip-row">
+                    <!-- Populated via JS -->
+                    <span style="font-size:0.75rem; color:var(--text-tertiary); padding: 0.5rem 0;">No creations yet.</span>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
