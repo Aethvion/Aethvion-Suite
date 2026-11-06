@@ -78,12 +78,33 @@
             const banner = document.getElementById('im-engine-banner');
             if (!engineChip) return;
 
+            const nativeEngine = status.native_engine && status.native_engine.installed && status.native_engine.cuda_available;
             const isSdOnline = status.sd_webui && status.sd_webui.online;
             const hasCloud = status.cloud_providers && (status.cloud_providers.google_ai || status.cloud_providers.openai);
-            const gpuName = status.hardware?.gpu_name || 'GPU';
-            const vram = status.hardware?.vram_gb || 0;
+            const gpuName = status.hardware?.gpu_name || 'NVIDIA GPU';
+            const vram = status.hardware?.vram_gb || 24;
 
-            if (isSdOnline) {
+            if (nativeEngine) {
+                engineChip.style.color = '#34d399';
+                engineChip.innerHTML = `<i class="fas fa-microchip"></i> Native GPU Ready (${vram}GB)`;
+
+                if (banner) {
+                    banner.innerHTML = `
+                        <div style="background: rgba(52, 211, 153, 0.08); border: 1px solid rgba(52, 211, 153, 0.25); border-radius: 12px; padding: 0.9rem 1.25rem; display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 0.85rem;">
+                                <i class="fas fa-bolt" style="color: #34d399; font-size: 1.25rem;"></i>
+                                <div>
+                                    <strong style="color: #fff; font-size: 0.85rem;">Native In-Suite Diffusion Engine Active (${gpuName})</strong>
+                                    <div style="font-size: 0.75rem; color: var(--text-tertiary);">Direct local GPU execution is ready (${vram}GB VRAM). Download any checkpoint below to generate artwork in <strong>Workspace > Photo</strong> with zero external software.</div>
+                                </div>
+                            </div>
+                            <button class="hub-action-btn" onclick="switchMainTab('photo')" style="background:var(--primary); color:#000; height:32px; font-size:0.75rem; padding:0 0.8rem; border:none; border-radius:6px; cursor:pointer;">
+                                Open Photo Studio →
+                            </button>
+                        </div>
+                    `;
+                }
+            } else if (isSdOnline) {
                 engineChip.style.color = '#34d399';
                 engineChip.innerHTML = `<i class="fas fa-circle-check"></i> SD WebUI (${status.sd_webui.model_count} models)`;
                 

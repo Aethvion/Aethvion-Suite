@@ -1,11 +1,12 @@
 """
 Aethvion Suite - Image Generation & Model Hub Routes
-Full-featured image management, local SD/Forge/ComfyUI integration,
-cloud provider generation, checkpoint downloads, and generation history.
+Full-featured image management, native local Diffusers GPU execution,
+local SD/Forge/ComfyUI integration, checkpoint downloads, and generation history.
 """
 
 import asyncio
 import base64
+import io
 import os
 import uuid
 import json
@@ -13,6 +14,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any
+from PIL import Image
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
@@ -38,13 +40,55 @@ _COMFYUI_URL  = os.environ.get("COMFYUI_URL",  "http://127.0.0.1:8188")   # Comf
 _DOWNLOAD_TASKS: Dict[str, Dict[str, Any]] = {}
 
 
+def _resolve_local_checkpoint(model_id: str) -> Optional[Path]:
+    """Find local .safetensors file matching model_id if available on disk."""
+    if not model_id:
+        return None
+
+    # 1. Direct local:filename prefix
+    if model_id.startswith("local:"):
+        fname = model_id[6:]
+        cand = LOCAL_MODELS_IMAGE / fname
+        if cand.exists():
+            return cand
+
+    # 2. Suggested model ID mapping
+    id_map = {
+        "sd-1-5": "v1-5-pruned-emaonly.safetensors",
+        "sdxl-base": "sd_xl_base_1.0.safetensors",
+        "sdxl-lightning": "sdxl_lightning_4step.safetensors",
+        "flux-schnell": "flux1-schnell-fp8.safetensors",
+        "dreamshaper-xl": "dreamshaperXL_lightning.safetensors",
+    }
+    target_fn = id_map.get(model_id)
+    if target_fn:
+        cand = LOCAL_MODELS_IMAGE / target_fn
+        if cand.exists():
+            return cand
+
+    # 3. Direct filename match
+    cand = LOCAL_MODELS_IMAGE / model_id
+    if cand.exists() and cand.is_file():
+        return cand
+    cand_safe = LOCAL_MODELS_IMAGE / f"{model_id}.safetensors"
+    if cand_safe.exists():
+        return cand_safe
+
+    # 4. Fuzzy match in local directory
+    for f in LOCAL_MODELS_IMAGE.glob("*.safetensors"):
+        clean_name = f.stem.lower().replace("-", "").replace("_", "")
+        clean_id = model_id.lower().replace("-", "").replace("_", "")
+        if clean_id in clean_name or clean_name in clean_id:
+            return f
+
+    return None
+
+
 def _is_local_sd_model(model: str) -> bool:
-    """Return True if this model ID maps to the local Stable Diffusion WebUI."""
+    """Return True if this model ID maps to an external local Stable Diffusion WebUI."""
     m = model.lower()
-    return m.startswith("sd:") or m.startswith("sdxl:") or m in {
-        "stable-diffusion", "stable-diffusion-xl", "sdxl", "sd15", "sd21",
-        "automatic1111", "sd-webui", "sd-1-5", "sdxl-base", "sdxl-lightning",
-        "flux-schnell", "dreamshaper-xl"
+    return m.startswith("sd:") or m in {
+        "stable-diffusion", "automatic1111", "sd-webui"
     }
 
 
@@ -142,6 +186,12 @@ def _record_history(entry: Dict[str, Any]):
         logger.warning(f"Failed to record image history: {e}")
 
 
+def decode_b64(b64_str: str) -> bytes:
+    if "," in b64_str:
+        b64_str = b64_str.split(",", 1)[1]
+    return base64.b64decode(b64_str)
+
+
 # Request Models
 class ImageGenerationRequest(BaseModel):
     prompt: str
@@ -153,7 +203,7 @@ class ImageGenerationRequest(BaseModel):
     aspect_ratio: Optional[str] = None
     negative_prompt: Optional[str] = None
     seed: Optional[int] = None
-    steps: Optional[int] = 20
+    steps: Optional[int] = 25
     cfg_scale: Optional[float] = 7.0
     action: str = "generate"
     input_image: Optional[str] = None
@@ -179,10 +229,17 @@ class ModelDownloadRequest(BaseModel):
 
 @router.get("/status")
 async def get_photo_status():
-    """Returns engine availability (SD WebUI, ComfyUI, CUDA GPU, Cloud providers)."""
+    """Returns engine availability: Native GPU Diffusers engine, SD WebUI, CUDA GPU, and Cloud."""
     import urllib.request
     
-    # 1. SD WebUI probe
+    # 1. Native Diffusers Engine Status
+    try:
+        from core.image.local_image_engine import local_image_engine
+        native_status = local_image_engine.get_status()
+    except Exception as e:
+        native_status = {"installed": False, "error": str(e)}
+
+    # 2. External SD WebUI probe
     sd_online = False
     sd_models_count = 0
     try:
@@ -194,7 +251,7 @@ async def get_photo_status():
     except Exception:
         sd_online = False
 
-    # 2. ComfyUI probe
+    # 3. ComfyUI probe
     comfy_online = False
     try:
         req = urllib.request.Request(f"{_COMFYUI_URL}/system_stats")
@@ -203,28 +260,20 @@ async def get_photo_status():
     except Exception:
         comfy_online = False
 
-    # 3. GPU / Hardware Specs
-    gpu_name = "NVIDIA GeForce RTX 4090"
-    vram_gb = 24.0
-    cuda_avail = True
-    specs_file = CONFIG / "system_specs.json"
-    if specs_file.exists():
-        try:
-            specs = json.loads(specs_file.read_text(encoding="utf-8"))
-            gpu_name = specs.get("gpu_name", gpu_name)
-            vram_gb = specs.get("vram_gb", vram_gb)
-            cuda_avail = specs.get("cuda_available", cuda_avail)
-        except Exception:
-            pass
+    # 4. Hardware Specs
+    gpu_name = native_status.get("gpu_name") or "NVIDIA GeForce RTX 4090"
+    vram_gb = native_status.get("vram_total_gb") or 24.0
+    cuda_avail = native_status.get("cuda_available", True)
 
-    # 4. Local files in localmodels/image
+    # 5. Local files in localmodels/image
     local_files = [f.name for f in LOCAL_MODELS_IMAGE.glob("*") if f.suffix.lower() in [".safetensors", ".ckpt", ".pt", ".bin"]]
 
-    # 5. Cloud providers
+    # 6. Cloud providers
     has_google = bool(os.environ.get("GOOGLE_AI_API_KEY") or os.environ.get("GEMINI_API_KEY"))
     has_openai = bool(os.environ.get("OPENAI_API_KEY"))
 
     return {
+        "native_engine": native_status,
         "sd_webui": {
             "online": sd_online,
             "url": _SD_WEBUI_URL,
@@ -312,10 +361,15 @@ async def get_available_models():
 
 @router.post("/generate", response_model=ImageGenerationResponse)
 async def generate_image(req: ImageGenerationRequest):
-    """Generate images using local SD WebUI or configured cloud providers."""
+    """
+    Generate images using:
+    1. Native local GPU Diffusers engine (if checkpoint is downloaded).
+    2. Local SD WebUI / Forge (if external server is running and requested).
+    3. Configured cloud providers (Google AI Imagen 3 / OpenAI DALL-E 3).
+    """
     trace_id = f"img-{uuid.uuid4().hex[:8]}"
-    logger.info(f"[{trace_id}] Image generation request: {req.model} - {req.prompt[:50]}...")
-    
+    logger.info(f"[{trace_id}] Image generation request: {req.model} - '{req.prompt[:50]}'...")
+
     try:
         width, height = 1024, 1024
         if req.size and "x" in req.size:
@@ -325,9 +379,81 @@ async def generate_image(req: ImageGenerationRequest):
             except ValueError:
                 pass
 
-        # 1. Local SD WebUI route
+        # 1. Native Local Diffusers Engine (Standalone GPU execution)
+        local_ckpt = _resolve_local_checkpoint(req.model)
+        if local_ckpt:
+            logger.info(f"[{trace_id}] Running NATIVE GPU generation via checkpoint: {local_ckpt.name}")
+            from core.image.local_image_engine import local_image_engine
+
+            input_pil = None
+            mask_pil = None
+            if req.input_image:
+                try:
+                    b = decode_b64(req.input_image)
+                    input_pil = Image.open(io.BytesIO(b)).convert("RGB")
+                except Exception as e:
+                    logger.warning(f"Failed to decode input_image: {e}")
+            if req.mask_image:
+                try:
+                    b = decode_b64(req.mask_image)
+                    mask_pil = Image.open(io.BytesIO(b)).convert("RGB")
+                except Exception as e:
+                    logger.warning(f"Failed to decode mask_image: {e}")
+
+            # Execute generation directly on the RTX 4090
+            raw_images = local_image_engine.generate(
+                checkpoint_path=local_ckpt,
+                prompt=req.prompt,
+                negative_prompt=req.negative_prompt,
+                width=width,
+                height=height,
+                steps=req.steps or 25,
+                cfg_scale=req.cfg_scale or 7.0,
+                seed=req.seed,
+                n=req.n,
+                input_image=input_pil,
+                mask_image=mask_pil,
+                action=req.action
+            )
+
+            workspace = get_workspace_manager()
+            saved_images = []
+            for idx, img_bytes in enumerate(raw_images):
+                safe_model = req.model.replace(":", "-").replace("/", "-")
+                filename = f"{safe_model}-{trace_id}-{idx}.png"
+                save_path = workspace.save_output(domain="images", filename=filename, content=img_bytes, trace_id=trace_id)
+                saved_images.append({
+                    "url": f"/api/photo/serve/{filename}",
+                    "path": str(save_path),
+                    "filename": filename
+                })
+
+                _record_history({
+                    "filename": filename,
+                    "url": f"/api/photo/serve/{filename}",
+                    "prompt": req.prompt,
+                    "negative_prompt": req.negative_prompt or "",
+                    "model": f"Native GPU: {local_ckpt.name}",
+                    "size": f"{width}x{height}",
+                    "seed": req.seed,
+                    "steps": req.steps or 25,
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "size_bytes": len(img_bytes)
+                })
+
+            return ImageGenerationResponse(
+                success=True,
+                images=saved_images,
+                metadata={
+                    "backend": "native-diffusers-gpu",
+                    "checkpoint": local_ckpt.name,
+                    "count": len(saved_images)
+                }
+            )
+
+        # 2. Local SD WebUI route (if checkpoint starts with sd: or explicit sd-webui model)
         if _is_local_sd_model(req.model):
-            logger.info(f"[{trace_id}] Attempting generation via local SD WebUI: {req.model}")
+            logger.info(f"[{trace_id}] Attempting generation via external SD WebUI: {req.model}")
             try:
                 raw_images = await _generate_via_sd_webui(
                     prompt=req.prompt,
@@ -344,7 +470,6 @@ async def generate_image(req: ImageGenerationRequest):
                 )
 
                 workspace = get_workspace_manager()
-                date_str = datetime.now().strftime("%Y-%m-%d")
                 saved_images = []
                 for idx, img_bytes in enumerate(raw_images):
                     safe_model = req.model.replace(":", "-").replace("/", "-")
@@ -376,14 +501,13 @@ async def generate_image(req: ImageGenerationRequest):
                     metadata={"model": req.model, "backend": "sd-webui", "count": len(saved_images)},
                 )
             except HTTPException as he:
-                # If SD WebUI offline, check if fallback to cloud provider is possible
                 manager = _get_provider_manager()
                 has_cloud = any(p in manager.providers for p in ["openai", "google_ai"])
                 if not has_cloud:
                     raise he
                 logger.info(f"[{trace_id}] SD WebUI unavailable, falling back to cloud provider")
 
-        # 2. Cloud Provider fallback / direct route
+        # 3. Cloud Provider fallback / direct route
         manager = _get_provider_manager()
         target_provider = None
 
@@ -400,8 +524,9 @@ async def generate_image(req: ImageGenerationRequest):
         if not target_provider:
             raise HTTPException(
                 status_code=400,
-                detail=f"No active image generator available for model '{req.model}'. "
-                       "Start AUTOMATIC1111/Forge with '--api' on port 7860, or configure Google AI / OpenAI API keys in Settings > API Providers."
+                detail=f"Model checkpoint for '{req.model}' is not downloaded yet. "
+                       f"Please open 'Model Hub > Image Models' and click 'Download Checkpoint' to run it natively on your GPU, "
+                       "or connect local AUTOMATIC1111/Forge with '--api'."
             )
 
         kwargs = {}
@@ -416,12 +541,6 @@ async def generate_image(req: ImageGenerationRequest):
 
         input_image_bytes = None
         mask_image_bytes = None
-        
-        def decode_b64(b64_str: str) -> bytes:
-            if "," in b64_str:
-                b64_str = b64_str.split(",", 1)[1]
-            return base64.b64decode(b64_str)
-
         if req.input_image:
             input_image_bytes = decode_b64(req.input_image)
         if req.mask_image:
@@ -481,8 +600,19 @@ async def generate_image(req: ImageGenerationRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"[{trace_id}] Unexpected error: {str(e)}")
+        logger.error(f"[{trace_id}] Unexpected generation error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/unload")
+async def unload_native_model():
+    """Unload active diffusion pipeline from GPU VRAM."""
+    try:
+        from core.image.local_image_engine import local_image_engine
+        local_image_engine.unload()
+        return {"success": True, "message": "Model unloaded from GPU VRAM."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to unload model: {e}")
 
 
 # Download Manager Worker
@@ -566,7 +696,6 @@ async def start_model_download(req: ModelDownloadRequest, background_tasks: Back
         url = f"https://huggingface.co/{req.hf_repo}/resolve/main/{req.hf_filename}"
 
     if not url:
-        # Check suggested list
         if SUGGESTED_IMAGE_MODELS.exists():
             try:
                 raw = json.loads(SUGGESTED_IMAGE_MODELS.read_text(encoding="utf-8"))
@@ -620,6 +749,14 @@ async def delete_local_model(filename: str):
     if not target.exists():
         raise HTTPException(status_code=404, detail=f"Model file '{filename}' not found.")
     try:
+        # Also unload from memory if active
+        try:
+            from core.image.local_image_engine import local_image_engine
+            if local_image_engine.current_model and filename in local_image_engine.current_model:
+                local_image_engine.unload()
+        except Exception:
+            pass
+
         target.unlink()
         return {"success": True, "message": f"Deleted {filename}"}
     except Exception as e:
@@ -674,7 +811,6 @@ async def delete_history_image(filename: str):
         except Exception as e:
             logger.warning(f"Failed to unlink file {path}: {e}")
 
-    # Remove from history index
     if HISTORY_INDEX_PATH.exists():
         try:
             items = json.loads(HISTORY_INDEX_PATH.read_text(encoding="utf-8"))
