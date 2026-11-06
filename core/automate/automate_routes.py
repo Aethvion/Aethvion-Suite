@@ -3,7 +3,7 @@ core/automate/automate_routes.py
 Isolated Automate module backend.
 Handles workflow CRUD, node type registry, model listing, and node test-execution.
 
-The AI execution endpoint (node/test) imports ProviderManager lazily — it uses only
+The AI execution endpoint (node/test) imports ProviderManager lazily â€” it uses only
 the call_with_failover() utility, sharing no workflow state with other modules.
 """
 from __future__ import annotations
@@ -20,6 +20,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from core.utils import atomic_json_write, load_json
+from core.utils.paths import LOCAL_MODELS_GGUF, MODEL_REGISTRY
 from core.providers import get_provider_manager as _get_pm
 
 router = APIRouter(prefix="/api/automate", tags=["automate"])
@@ -27,7 +28,7 @@ router = APIRouter(prefix="/api/automate", tags=["automate"])
 # Storage
 
 _DATA_DIR      = Path(__file__).parent.parent.parent / "data" / "automate" / "workflows"
-_REGISTRY_PATH = Path(__file__).parent.parent.parent / "data" / "config" / "model_registry.json"
+_REGISTRY_PATH = MODEL_REGISTRY
 
 
 def _ensure_dir() -> None:
@@ -38,21 +39,160 @@ def _wf_path(wf_id: str) -> Path:
     return _DATA_DIR / f"{wf_id}.json"
 
 
+def _get_installed_local_models() -> list[dict[str, Any]]:
+    """Scan local models directory and registry for installed offline models."""
+    items = []
+    seen = set()
+
+    # 1. Scan filesystem for downloaded .gguf files
+    if LOCAL_MODELS_GGUF.exists():
+        for f in sorted(LOCAL_MODELS_GGUF.glob("*.gguf")):
+            fname = f.name
+            seen.add(fname)
+            try:
+                size_mb = round(f.stat().st_size / (1024 * 1024), 1)
+            except Exception:
+                size_mb = None
+            clean_name = fname.replace(".gguf", "").replace("-", " ").replace("_", " ").title()
+            items.append({
+                "id": fname,
+                "filename": fname,
+                "label": clean_name,
+                "size_mb": size_mb,
+                "provider": "local"
+            })
+
+    # 2. Check registry for local / ollama registered models
+    reg = load_json(_REGISTRY_PATH, default={})
+    providers = reg.get("providers", {})
+    for prov_id in ("local", "ollama"):
+        p_info = providers.get(prov_id, {})
+        for m_id, m_data in p_info.get("models", {}).items():
+            if m_id and m_id not in seen:
+                seen.add(m_id)
+                clean_name = m_id.replace(".gguf", "").replace("-", " ").replace("_", " ").title()
+                items.append({
+                    "id": m_id,
+                    "filename": m_id,
+                    "label": clean_name,
+                    "size_mb": None,
+                    "provider": prov_id
+                })
+
+    return items
+
+
 # Node type registry (lazy)
-# Loaded on first request — not at import time — so startup pays no
-# cost if the user never opens the Automate page.
-_NODES_DIR         = Path(__file__).parent.parent / "config" / "automate" / "nodes"
-_node_types_cache: list[dict] | None = None
+_NODES_DIR = Path(__file__).parent.parent / "config" / "automate" / "nodes"
+_base_node_types_cache: list[dict] | None = None
 
 
 def _get_node_types() -> list[dict]:
-    global _node_types_cache
-    if _node_types_cache is None:
-        _node_types_cache = [
+    global _base_node_types_cache
+    if _base_node_types_cache is None:
+        _base_node_types_cache = [
             json.loads(p.read_text(encoding="utf-8"))
             for p in sorted(_NODES_DIR.glob("*.json"))
         ]
-    return _node_types_cache
+    
+    # Start with base nodes (shallow copies)
+    result = [dict(t) for t in _base_node_types_cache]
+
+    # Dynamically inject dedicated node cards for each installed local model
+    installed_locals = _get_installed_local_models()
+    for m in installed_locals:
+        slug = m["id"].replace(".", "_").replace("-", "_").lower()
+        size_tag = f" ({m['size_mb']} MB)" if m.get("size_mb") else ""
+        result.append({
+            "type": f"ai.local.{slug}",
+            "label": f"{m['label']}{size_tag}",
+            "category": "Installed Models",
+            "icon": "fa-microchip",
+            "color": "#10b981",
+            "inputs": [
+                {
+                    "name": "in",
+                    "label": "Input Data",
+                    "description": f"Main content passed to {m['label']}."
+                },
+                {
+                    "name": "system_prompt",
+                    "label": "System Prompt",
+                    "description": "Overrides default instructions."
+                },
+                {
+                    "name": "prompt_prefix",
+                    "label": "Prefix",
+                    "description": "Text prepended to input."
+                },
+                {
+                    "name": "prompt_suffix",
+                    "label": "Suffix",
+                    "description": "Text appended to input."
+                },
+                {
+                    "name": "temperature",
+                    "label": "Temperature",
+                    "description": "Overrides creativity at runtime (0.0 - 1.0)."
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "out",
+                    "label": "Response",
+                    "description": "AI-generated text response."
+                },
+                {
+                    "name": "error",
+                    "label": "Error",
+                    "description": "Error details if offline inference failed."
+                }
+            ],
+            "properties": [
+                {
+                    "key": "model",
+                    "label": "Model File",
+                    "type": "text",
+                    "default": m["id"],
+                    "placeholder": m["id"]
+                },
+                {
+                    "key": "system_prompt",
+                    "label": "System Prompt",
+                    "type": "textarea",
+                    "default": "You are a helpful offline assistant.",
+                    "placeholder": "System instructions..."
+                },
+                {
+                    "key": "prompt_prefix",
+                    "label": "Prompt Prefix",
+                    "type": "textarea",
+                    "default": "",
+                    "placeholder": "Text added before input..."
+                },
+                {
+                    "key": "prompt_suffix",
+                    "label": "Prompt Suffix",
+                    "type": "textarea",
+                    "default": "",
+                    "placeholder": "Text added after input..."
+                },
+                {
+                    "key": "temperature",
+                    "label": "Temperature",
+                    "type": "number",
+                    "default": 0.7
+                },
+                {
+                    "key": "show_result",
+                    "label": "Show Result on Node",
+                    "type": "toggle",
+                    "default": True
+                }
+            ]
+        })
+
+    return result
 
 
 # Pydantic models
@@ -88,31 +228,55 @@ async def get_node_types():
 @router.get("/models")
 async def get_models(provider: Optional[str] = None):
     """
-    Return configured chat-capable models from the model registry.
-    Pass ?provider=google_ai to filter to a specific provider.
+    Return configured chat-capable models from the model registry and local model directory.
+    Pass ?provider=local to filter to installed offline models (GGUF / Ollama).
+    Pass ?provider=google_ai to filter to Google AI models.
     """
-    registry = load_json(_REGISTRY_PATH, default={})
-    if not registry:
-        return {"models": []}
-
     models = []
-    for prov_id, prov_data in registry.get("providers", {}).items():
-        if not prov_data.get("active", False):
-            continue
-        if provider and prov_id != provider:
-            continue
-        prov_name = prov_data.get("name", prov_id)
-        for model_id, model_data in prov_data.get("models", {}).items():
-            caps = [c.upper() for c in model_data.get("capabilities", [])]
-            if "CHAT" not in caps:
-                continue
+    seen_ids = set()
+
+    # 1. Local / Ollama models
+    if provider in (None, "", "local", "any"):
+        installed_locals = _get_installed_local_models()
+        for lm in installed_locals:
+            seen_ids.add(lm["id"])
+            size_str = f" ({lm['size_mb']} MB)" if lm.get("size_mb") else ""
+            prov_label = "Local GGUF" if lm["provider"] == "local" else "Ollama"
             models.append({
-                "id": model_id,
-                "provider_id": prov_id,
-                "provider_name": prov_name,
-                "label": model_id if provider else f"{model_id}  ({prov_name})",
-                "description": model_data.get("description", ""),
+                "id": lm["id"],
+                "provider_id": lm["provider"],
+                "provider_name": prov_label,
+                "label": f"{lm['label']}{size_str} [{prov_label}]",
+                "description": f"Installed offline model: {lm['filename']}",
             })
+
+    # If caller only wants local models, return them immediately
+    if provider == "local":
+        return {"models": models}
+
+    # 2. Registry cloud & API models
+    registry = load_json(_REGISTRY_PATH, default={})
+    if registry:
+        for prov_id, prov_data in registry.get("providers", {}).items():
+            if not prov_data.get("active", False):
+                continue
+            if provider and prov_id != provider:
+                continue
+            prov_name = prov_data.get("name", prov_id)
+            for model_id, model_data in prov_data.get("models", {}).items():
+                if model_id in seen_ids:
+                    continue
+                caps = [c.upper() for c in model_data.get("capabilities", [])]
+                if "CHAT" not in caps:
+                    continue
+                seen_ids.add(model_id)
+                models.append({
+                    "id": model_id,
+                    "provider_id": prov_id,
+                    "provider_name": prov_name,
+                    "label": model_id if provider else f"{model_id}  ({prov_name})",
+                    "description": model_data.get("description", ""),
+                })
 
     return {"models": models}
 
@@ -314,7 +478,7 @@ async def delete_workflow(wf_id: str):
 
 
 class RunWorkflowBody(BaseModel):
-    variables:  Optional[dict] = None  # {name: value} — injected into global.* nodes at runtime
+    variables:  Optional[dict] = None  # {name: value} â€” injected into global.* nodes at runtime
     trigger_id: Optional[str]  = None  # node id of the specific trigger to run from
 
 
@@ -342,7 +506,7 @@ async def run_workflow_stream(wf_id: str, body: RunWorkflowBody = RunWorkflowBod
         {type: "node_status", node_id, status: "running"|"done"|"error"|"skipped",
          outputs?, error?}
         {type: "log", level: "info"|"warning"|"error", msg, ts}
-        {type: "done", result}   — last event; ``result`` is the full executor result dict
+        {type: "done", result}   â€” last event; ``result`` is the full executor result dict
     """
     p = _wf_path(wf_id)
     if not p.exists():
@@ -547,8 +711,8 @@ async def pick_path(
 ):
     """
     Open the native OS file or folder picker dialog and return the chosen path.
-    mode="file"   → askopenfilename (pick an existing file)
-    mode="folder" → askdirectory   (pick a directory)
+    mode="file"   â†’ askopenfilename (pick an existing file)
+    mode="folder" â†’ askdirectory   (pick a directory)
     Returns { path, cancelled }.
     """
     from concurrent.futures import ThreadPoolExecutor  # noqa: PLC0415
@@ -618,10 +782,10 @@ async def get_compile_info(wf_id: str):
     this workflow.  Used by the UI to conditionally show/hide compile options.
 
     Returns:
-        needs_api_key      — True when the workflow contains nodes that use API keys
-        has_snapshot_nodes — True when the workflow contains aethviondb.snapshot_search nodes
-        has_live_db_search — True when the workflow contains aethviondb.search nodes
-        snapshot_info      — list of {db, snap_name, size_bytes, size_display} per unique snapshot
+        needs_api_key      â€” True when the workflow contains nodes that use API keys
+        has_snapshot_nodes â€” True when the workflow contains aethviondb.snapshot_search nodes
+        has_live_db_search â€” True when the workflow contains aethviondb.search nodes
+        snapshot_info      â€” list of {db, snap_name, size_bytes, size_display} per unique snapshot
     """
     p = _wf_path(wf_id)
     if not p.exists():
@@ -674,7 +838,7 @@ async def compile_workflow(wf_id: str, body: CompileOptions):
     except ImportError as exc:
         raise HTTPException(500, f"Compiler module not available: {exc}")
 
-    # Run in a thread — pip download can be slow
+    # Run in a thread â€” pip download can be slow
     import re as _re
     from fastapi.responses import Response  # noqa: PLC0415
 

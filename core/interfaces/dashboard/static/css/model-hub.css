@@ -402,3 +402,57 @@
 }
 .gpu-slider { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); }
 .gpu-num-input { width: 60px; text-align: center; }
+
+/* Dynamic llama-cpp-python Engine Banner States */
+.lm-engine-banner {
+    border-radius: 10px;
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lm-engine-banner.engine-missing {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.05);
+}
+.lm-engine-banner.engine-missing #llm-engine-icon,
+.lm-engine-banner.engine-missing #llm-engine-title {
+    color: #ef4444;
+}
+
+.lm-engine-banner.engine-installing {
+    background: rgba(14, 165, 233, 0.09);
+    border: 1px solid rgba(14, 165, 233, 0.45);
+    box-shadow: 0 0 24px rgba(14, 165, 233, 0.12);
+}
+.lm-engine-banner.engine-installing #llm-engine-icon,
+.lm-engine-banner.engine-installing #llm-engine-title {
+    color: #38bdf8;
+}
+.lm-engine-banner.engine-installing #install-llm-engine-btn {
+    background: rgba(14, 165, 233, 0.2);
+    border-color: rgba(14, 165, 233, 0.5);
+    color: #38bdf8;
+    pointer-events: none;
+    opacity: 0.9;
+}
+
+.lm-engine-banner.engine-ready {
+    background: rgba(16, 185, 129, 0.09);
+    border: 1px solid rgba(16, 185, 129, 0.45);
+    box-shadow: 0 0 24px rgba(16, 185, 129, 0.12);
+}
+.lm-engine-banner.engine-ready #llm-engine-icon,
+.lm-engine-banner.engine-ready #llm-engine-title {
+    color: #34d399;
+}
+.lm-engine-banner.engine-ready #install-llm-engine-btn {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.5);
+    color: #34d399;
+    pointer-events: none;
+    cursor: default;
+}

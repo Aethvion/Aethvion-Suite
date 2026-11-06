@@ -45,12 +45,12 @@
     </div>
 
     <!-- Engine Status Banner -->
-    <div id="llm-engine-banner" class="hub-alert" style="display:none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; align-items: center; justify-content: space-between;">
+    <div id="llm-engine-banner" class="hub-alert lm-engine-banner engine-missing" style="display:none; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; align-items: center; justify-content: space-between; transition: all 0.3s ease;">
         <div style="display: flex; align-items: center; gap: 1rem;">
-            <i class="fas fa-triangle-exclamation" style="color: #ef4444; font-size: 1.5rem;"></i>
+            <i id="llm-engine-icon" class="fas fa-triangle-exclamation" style="font-size: 1.5rem;"></i>
             <div>
-                <h4 style="margin: 0; color: #ef4444; font-size: 1rem;">llama-cpp-python Missing</h4>
-                <p style="margin: 0.25rem 0 0; color: var(--text-secondary); font-size: 0.85rem;">The llama-cpp-python library is required to run local GGUF models. Install it now to enable offline inference.</p>
+                <h4 id="llm-engine-title" style="margin: 0; font-size: 1rem;">llama-cpp-python Missing</h4>
+                <p id="llm-engine-desc" style="margin: 0.25rem 0 0; color: var(--text-secondary); font-size: 0.85rem;">The llama-cpp-python library is required to run local GGUF models. Install it now to enable offline inference.</p>
                 <div id="llm-engine-log" style="display:none; margin-top:0.5rem; font-family:'Fira Code', monospace; font-size:0.75rem; color:var(--text-tertiary); max-height:100px; overflow-y:auto; background:rgba(0,0,0,0.2); padding:0.5rem; border-radius:4px;"></div>
             </div>
         </div>
@@ -176,7 +176,7 @@
             <p>System compatibility analysis for model performance.</p>
             
             <div id="system-specs-row" class="specs-row" style="display:flex; flex-wrap:wrap; gap:0.5rem;">
-                <span class="placeholder-text">Checking hardware specs…</span>
+                <span class="placeholder-text">Checking hardware specsâ€¦</span>
             </div>
             
             <button class="hub-action-btn secondary" style="margin-top:1rem; width:100%" onclick="LocalModels.loadSystemSpecs(true)">

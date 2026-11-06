@@ -118,7 +118,7 @@ function showConfirm(title, body, onConfirm, opts = {}) {
     const handleKey = (e) => {
         if (e.key === 'Escape') { handleCan(); return; }
         if (e.key === 'Enter') { handleOk(); return; }
-        // Focus trap — keep Tab cycling inside modal
+        // Focus trap â€” keep Tab cycling inside modal
         if (e.key === 'Tab') {
             e.preventDefault();
             if (document.activeElement === okBtn) { canBtn.focus(); }
@@ -454,7 +454,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     pollStartupStatus();
 
     initializeWebSockets();
-    // Note: refresh-memory-btn is inside the memory partial — wired in view-memory.js panelLoaded handler
+    // Note: refresh-memory-btn is inside the memory partial â€” wired in view-memory.js panelLoaded handler
 
     // Synchronization: Wait for sidebar-manager to render tabs before restoring mode/tab
     // This prevents the "reset to Chat" issue on refresh
@@ -666,6 +666,7 @@ async function pollStartupStatus() {
                                 splash.classList.add('fade-out');
                                 setTimeout(() => {
                                     splash.style.display = 'none';
+                                    window.isSystemReady = true;
                                     window.dispatchEvent(new CustomEvent('systemReady'));
                                     resolve();
                                 }, 350);
@@ -832,7 +833,7 @@ function initializeUI() {
         });
     }
 
-    // Sidebar collapsed tooltips — fixed-position div bypasses overflow clipping
+    // Sidebar collapsed tooltips â€” fixed-position div bypasses overflow clipping
     const _sidebarTip = document.createElement('div');
     _sidebarTip.id = 'sidebar-tooltip';
     document.body.appendChild(_sidebarTip);
@@ -950,7 +951,7 @@ function initializeUI() {
         pill.innerHTML = `
             ${iconOrPreview}
             <span>${file.name}</span>
-            <button class="pill-clear" title="Remove attachment">✕</button>
+            <button class="pill-clear" title="Remove attachment">âœ•</button>
         `;
 
         pill.querySelector('.pill-clear').addEventListener('click', (ev) => {
@@ -1141,7 +1142,7 @@ async function setDashboardMode(mode, save = true, _tab = null) {
     });
 
     if (_tab) {
-        // Caller supplied the target — skip sidebar-button validation entirely.
+        // Caller supplied the target â€” skip sidebar-button validation entirely.
         // switchMainTab only needs the panel element (#<tab>-panel), which always
         // exists even when the tab has no sidebar button (e.g. chat, aethviondb).
         //
@@ -1189,7 +1190,7 @@ async function setDashboardMode(mode, save = true, _tab = null) {
 
     if (!targetBtn || targetBtn.classList.contains('mode-hidden')) {
         // Sidebar-less tabs (e.g. 'chat', 'aethviondb') have panels but no sidebar
-        // button — they're still valid destinations, so skip the fallback if the
+        // button â€” they're still valid destinations, so skip the fallback if the
         // panel element exists in the DOM.
         const _panelExists = !!document.getElementById(`${targetTab}-panel`);
         if (!_panelExists) {
@@ -1201,7 +1202,7 @@ async function setDashboardMode(mode, save = true, _tab = null) {
     await switchMainTab(targetTab, false);
 }
 
-// AI Hub navigation — used by the "AI" header nav button
+// AI Hub navigation â€” used by the "AI" header nav button
 // Unlike setDashboardMode('ai') (which restores whatever tab was last saved,
 // including Chat/AethvionDB), this always lands on a sidebar-capable AI tab.
 // On refresh/restore the saved tab is respected exactly as-is; this only
@@ -1209,7 +1210,7 @@ async function setDashboardMode(mode, save = true, _tab = null) {
 function goToAIHub() {
     const _noSidebar = new Set(['chat', 'agents', 'aethviondb', 'automate',
         'companion-creator', 'misaka-cipher', 'axiom', 'lyra']);
-    // Already on a sidebar-capable AI tab — nothing to do.
+    // Already on a sidebar-capable AI tab â€” nothing to do.
     const _isOnCompanion = currentMainTab.startsWith('custom-companion-');
     if (dashboardMode === 'ai' && !_noSidebar.has(currentMainTab) && !_isOnCompanion) return;
     // Navigate to the last sidebar tab the user visited, or fall back to 'agents'.
@@ -1349,7 +1350,7 @@ function applyNavVisibility() {
 window.applyNavVisibility = applyNavVisibility;
 
 // Tab scroll-position memory
-const _tabScrollPos = {};  // tabName → scrollTop
+const _tabScrollPos = {};  // tabName â†’ scrollTop
 
 function _saveTabScroll(tabName) {
     const panel = document.getElementById(`${tabName}-panel`);
@@ -1443,13 +1444,13 @@ async function switchMainTab(tabName, save = true) {
 
                 if (isActive) {
                     tab.dataset.maintab = actualTabName;
-                    let icon = '💬';
+                    let icon = 'ðŸ’¬';
                     let label = 'Chat';
-                    if (actualTabName === 'photo') { icon = '🎨'; label = 'Photo'; }
-                    if (actualTabName === 'audio') { icon = '🎙️'; label = 'Audio'; }
-                    if (actualTabName === 'arena') { icon = '⚔️'; label = 'Arena'; }
-                    if (actualTabName === 'aiconv') { icon = '🎭'; label = 'AI Conv'; }
-                    if (actualTabName === 'advaiconv') { icon = '🧪'; label = 'Adv AI Conv'; }
+                    if (actualTabName === 'photo') { icon = 'ðŸŽ¨'; label = 'Photo'; }
+                    if (actualTabName === 'audio') { icon = 'ðŸŽ™ï¸'; label = 'Audio'; }
+                    if (actualTabName === 'arena') { icon = 'âš”ï¸'; label = 'Arena'; }
+                    if (actualTabName === 'aiconv') { icon = 'ðŸŽ­'; label = 'AI Conv'; }
+                    if (actualTabName === 'advaiconv') { icon = 'ðŸ§ª'; label = 'Adv AI Conv'; }
                     tab.innerHTML = `<span class="tab-icon">${icon}</span>${label}`;
                 }
             } else if (tab.classList.contains('split-arrow-action')) {
@@ -1491,10 +1492,10 @@ async function switchMainTab(tabName, save = true) {
     const _hdrBtns = document.querySelectorAll('#hdr-nav .hdr-nav-btn');
     if (_hdrBtns.length) {
         _hdrBtns.forEach(btn => btn.classList.remove('active'));
-        // Remap companion tabs (incl. custom-companion-*) → 'companions' nav button
+        // Remap companion tabs (incl. custom-companion-*) â†’ 'companions' nav button
         const _isCompanionTab = _COMPANION_TABS.has(actualTabName) || actualTabName.startsWith('custom-companion-');
         const _navTarget = _isCompanionTab ? 'companions' : actualTabName;
-        // Direct tab match (e.g. chat → Chat btn, aethviondb → AethvionDB btn, companions → Companions btn)
+        // Direct tab match (e.g. chat â†’ Chat btn, aethviondb â†’ AethvionDB btn, companions â†’ Companions btn)
         const _directBtn = document.querySelector(`#hdr-nav .hdr-nav-btn[data-nav="${_navTarget}"]`);
         if (_directBtn) {
             _directBtn.classList.add('active');
@@ -1506,7 +1507,7 @@ async function switchMainTab(tabName, save = true) {
         }
     }
 
-    // Sidebar consistency — maintain sidebar state globally across all tabs
+    // Sidebar consistency â€” maintain sidebar state globally across all tabs
     const _sidebarEl = document.getElementById('sidebar-nav');
     const _toggleBtn = document.getElementById('sidebar-toggle');
     if (_sidebarEl) {
@@ -1683,7 +1684,7 @@ async function runModuleService(moduleName) {
 
         const result = await response.json();
         console.log(result.message);
-        showToast(`Starting ${moduleName}…`, 'info');
+        showToast(`Starting ${moduleName}â€¦`, 'info');
 
         // Wait a bit and then check for ports
         setTimeout(() => {
@@ -1748,7 +1749,7 @@ async function updateModuleStatusBadges() {
             const dot = document.querySelector(`.entry-status-dot[data-module="${mod}"]`);
             if (dot) {
                 dot.className = `entry-status-dot ${isOnline ? 'running' : 'stopped'}`;
-                dot.title = isOnline ? `${mod} — Running` : `${mod} — Not running`;
+                dot.title = isOnline ? `${mod} â€” Running` : `${mod} â€” Not running`;
             }
         });
     } catch (e) {
@@ -1856,10 +1857,22 @@ async function loadInitialData() {
         initThreadManagement();
     }
 
-    // On first boot the backend may not be fully ready when loadThreads() runs above.
-    // Re-fetch once the system confirms it is initialized (splash dismissed → systemReady).
+    // On first boot the backend may not be fully ready when data loaders run.
+    // Re-fetch once the system confirms it is initialized (splash dismissed -> systemReady).
     window.addEventListener('systemReady', () => {
+        window.isSystemReady = true;
         if (typeof loadThreads === 'function') loadThreads();
+        if (typeof loadChatModels === 'function') loadChatModels();
+        if (typeof loadHeaderStatus === 'function') loadHeaderStatus();
+        if (typeof loadSystemStatusTab === 'function') loadSystemStatusTab();
+
+        // Refresh currently active tab so data renders completely without requiring manual F5
+        if (currentMainTab) {
+            if (tabInitializers[currentMainTab]) {
+                try { tabInitializers[currentMainTab](); } catch (e) { console.warn("[systemReady] tabInit error:", e); }
+            }
+            document.dispatchEvent(new CustomEvent('tabChanged', { detail: { tab: currentMainTab } }));
+        }
     }, { once: true });
 
     if (typeof loadSystemStatus === 'function') {
@@ -1912,12 +1925,12 @@ function generateCategorizedModelOptions(data, type = 'chat', selectedId = null)
     // 1b. Warning optgroup if no models have keys at all
     let warningHtml = '';
     if (readyModels.length === 0 && noKeyModels.length > 0) {
-        warningHtml = `<optgroup label="⚠️ No API keys configured">` +
-            `<option value="" disabled>→ Go to Settings › API Keys to add a key</option>` +
+        warningHtml = `<optgroup label="âš ï¸ No API keys configured">` +
+            `<option value="" disabled>â†’ Go to Settings â€º API Keys to add a key</option>` +
             `</optgroup>`;
     }
 
-    // 2. Group Models by Provider — only include models with keys
+    // 2. Group Models by Provider â€” only include models with keys
     const categorizedModels = {};
     for (const m of readyModels) {
         if (!categorizedModels[m.provider]) {
@@ -2036,7 +2049,7 @@ async function loadChatModels() {
                 // calling us, because the select is empty at that point.
                 const savedVal = sel.dataset.savedValue;
                 if (typeof savedVal === 'string') {
-                    // Called from loadOverlaySettings — use the stamped value
+                    // Called from loadOverlaySettings â€” use the stamped value
                     if (savedVal && sel.querySelector(`option[value="${savedVal}"]`)) {
                         sel.value = savedVal;
                     } else {
@@ -2451,7 +2464,7 @@ function initColumnResizeHandles() {
             const tabs = document.querySelectorAll('.main-tab[data-maintab]');
 
             if (!q) {
-                // Reset — restore everything
+                // Reset â€” restore everything
                 tabs.forEach(btn => btn.classList.remove('search-hidden'));
                 document.querySelectorAll('.sidebar-folder').forEach(folder => {
                     folder.classList.remove('search-hidden');

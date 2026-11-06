@@ -8,7 +8,7 @@ Each entry maps a node type string to a handler function with signature:
 To add a new node type:
   1. Add its definition to _NODE_TYPES in automate_routes.py
   2. Add the handler function to the appropriate category file in this package
-  3. Register it in _REGISTRY below — one line, alphabetically within its group
+  3. Register it in _REGISTRY below â€” one line, alphabetically within its group
 """
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ _REGISTRY: dict[str, Callable] = {
     "logic.switch":    logic.logic_switch,
     "logic.try_catch": logic.logic_try_catch,
 
-    # Global — public workflow parameters
+    # Global â€” public workflow parameters
     "global.text":      global_nodes.global_text,
     "global.number":    global_nodes.global_number,
     "global.toggle":    global_nodes.global_toggle,
@@ -84,6 +84,7 @@ _REGISTRY: dict[str, Callable] = {
     "ai.extract_data":    ai.ai_extract_data,
     "ai.generate_image":  media.ai_generate_image,
     "ai.google":          ai.ai_model,
+    "ai.local":           ai.ai_model,
     "ai.speech_to_text":  media.ai_speech_to_text,
     "ai.summarize":       ai.ai_summarize,
     "ai.text_to_speech":  media.ai_text_to_speech,
@@ -115,28 +116,28 @@ _REGISTRY: dict[str, Callable] = {
     "ui.custom_html":   ui.ui_custom_html,
 
 
-    # AethvionDB — search
+    # AethvionDB â€” search
     "aethviondb.search":                    aethviondb.aethviondb_search,
     "aethviondb.semantic_search":           aethviondb.aethviondb_semantic_search,
     "aethviondb.snapshot_search":           aethviondb.aethviondb_snapshot_search,
     "aethviondb.snapshot_semantic_search":  aethviondb.aethviondb_snapshot_semantic_search,
-    # AethvionDB — database
+    # AethvionDB â€” database
     "aethviondb.create_database":    aethviondb.aethviondb_create_database,
     "aethviondb.get_stats":          aethviondb.aethviondb_get_stats,
-    # AethvionDB — entity CRUD
+    # AethvionDB â€” entity CRUD
     "aethviondb.list_entities":      aethviondb.aethviondb_list_entities,
     "aethviondb.get_entity":         aethviondb.aethviondb_get_entity,
     "aethviondb.create_entity":      aethviondb.aethviondb_create_entity,
     "aethviondb.update_entity":      aethviondb.aethviondb_update_entity,
     "aethviondb.delete_entity":      aethviondb.aethviondb_delete_entity,
-    # AethvionDB — AI operations
+    # AethvionDB â€” AI operations
     "aethviondb.distill":            aethviondb.aethviondb_distill,
     "aethviondb.expand_entity":      aethviondb.aethviondb_expand_entity,
     "aethviondb.deepen_entity":      aethviondb.aethviondb_deepen_entity,
-    # AethvionDB — snapshots
+    # AethvionDB â€” snapshots
     "aethviondb.create_snapshot":    aethviondb.aethviondb_create_snapshot,
     "aethviondb.list_snapshots":     aethviondb.aethviondb_list_snapshots,
-    # AethvionDB — maintenance
+    # AethvionDB â€” maintenance
     "aethviondb.validate":           aethviondb.aethviondb_validate,
     "aethviondb.generate_vectors":   aethviondb.aethviondb_generate_vectors,
     "companion.ask":              integrations.companion_ask,
@@ -149,7 +150,11 @@ _REGISTRY: dict[str, Callable] = {
 
 def get_handler(node_type: str) -> Callable | None:
     """Return the handler for *node_type*, or None if unregistered."""
-    return _REGISTRY.get(node_type)
+    if node_type in _REGISTRY:
+        return _REGISTRY[node_type]
+    if node_type.startswith("ai.local"):
+        return _REGISTRY.get("ai.local", ai.ai_model)
+    return None
 
 
 def registered_types() -> list[str]:

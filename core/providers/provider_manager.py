@@ -78,7 +78,7 @@ class ProviderManager:
         
         # Load configuration
         if config_path is None:
-            # __file__ = core/providers/provider_manager.py → parent.parent.parent = project root
+            # __file__ = core/providers/provider_manager.py â†’ parent.parent.parent = project root
             project_root = Path(__file__).parent.parent.parent
             config_path = project_root / "core" / "config" / "providers.yaml"
         
@@ -179,7 +179,7 @@ class ProviderManager:
             self._load_config(config_path)
             self._initialize_providers()
 
-        # Update active provider instances — self.registry already loaded above,
+        # Update active provider instances â€” self.registry already loaded above,
         # no need to open model_registry.json again.
         for name, reg_config in self.registry.get('providers', {}).items():
             if name in self.providers:
@@ -298,7 +298,7 @@ class ProviderManager:
         model_order = []
         is_agent = request_type == "agent_call" or "agent" in request_type
 
-        # Soft context-isolation check — logs warnings, never blocks execution.
+        # Soft context-isolation check â€” logs warnings, never blocks execution.
         # Add new call modes to core/ai/call_contexts.py, not here.
         try:
             from core.ai.call_contexts import validate_call_context, CallSource
@@ -520,7 +520,7 @@ class ProviderManager:
                 return ProviderResponse(
                     content="", model="none", provider="none", trace_id=trace_id,
                     error="Privacy Mode/local only is active but no local models are configured. "
-                          "Add an Ollama or local model in Settings → Model Hub."
+                          "Add an Ollama or local model in Settings â†’ Model Hub."
                 )
             logger.info(f"[{trace_id}] Privacy mode/local only: restricted to local models {model_order}")
 
@@ -553,9 +553,13 @@ class ProviderManager:
                 target_provider_name = self.model_to_provider_map.get(model_id)
 
             if not target_provider_name:
+                # Direct local GGUF model routing
+                if model_id.endswith(".gguf") and "local" in self.providers:
+                    target_provider_name = "local"
+                    logger.info(f"[{trace_id}] Local GGUF model '{model_id}' routing via local provider")
                 # OpenRouter passthrough: any "namespace/model-name" style ID that
                 # isn't explicitly mapped to another provider routes to OpenRouter.
-                if "/" in model_id and "openrouter" in self.providers:
+                elif "/" in model_id and "openrouter" in self.providers:
                     target_provider_name = "openrouter"
                     logger.info(
                         f"[{trace_id}] Model '{model_id}' not in registry — "
@@ -625,7 +629,7 @@ class ProviderManager:
                 if last_error and _is_auth_error(last_error):
                     provider.record_auth_failure()
                     logger.warning(
-                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE — "
+                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE â€” "
                         "authentication failure (key invalid or expired)"
                     )
 
@@ -635,7 +639,7 @@ class ProviderManager:
                 if _is_auth_error(last_error):
                     provider.record_auth_failure()
                     logger.warning(
-                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE — "
+                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE â€” "
                         "authentication failure (key invalid or expired)"
                     )
         
@@ -680,7 +684,7 @@ class ProviderManager:
                     f"Original order was: {original_order}. "
                     "Add a local/ollama model in Settings to use Privacy Mode."
                 )
-                yield "Error: Privacy Mode/local only is active but no local models are configured. Add an Ollama or local model in Settings → Model Hub."
+                yield "Error: Privacy Mode/local only is active but no local models are configured. Add an Ollama or local model in Settings â†’ Model Hub."
                 return
             logger.info(f"[{trace_id}] Privacy mode/local only: restricted to local models {model_order}")
 
@@ -688,8 +692,12 @@ class ProviderManager:
         for model_id in model_order:
             target_provider_name = self.model_to_provider_map.get(model_id)
             if not target_provider_name:
+                # Direct local GGUF model routing
+                if model_id.endswith(".gguf") and "local" in self.providers:
+                    target_provider_name = "local"
+                    logger.info(f"[{trace_id}] Stream: local GGUF model '{model_id}' routing via local provider")
                 # OpenRouter passthrough for namespaced model IDs
-                if "/" in model_id and "openrouter" in self.providers:
+                elif "/" in model_id and "openrouter" in self.providers:
                     target_provider_name = "openrouter"
                     logger.info(
                         f"[{trace_id}] Stream: model '{model_id}' not in registry — "
@@ -747,7 +755,7 @@ class ProviderManager:
                 if _is_auth_error(last_error):
                     provider.record_auth_failure()
                     logger.warning(
-                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE — "
+                        f"[{trace_id}] Provider {target_provider_name} marked OFFLINE â€” "
                         "authentication failure (key invalid or expired)"
                     )
 

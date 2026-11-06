@@ -14,13 +14,13 @@ const LocalModels = {
 
     // Provider brand metadata
     _PROVIDER_BRANDS: {
-        Google:    { accent: '#4285f4', bg: 'rgba(66,133,244,0.08)',   icon: 'fab fa-google',   desc: 'Gemma series — Google\'s efficient open models for local inference' },
-        Meta:      { accent: '#0082fb', bg: 'rgba(0,130,251,0.08)',    icon: 'fas fa-infinity',  desc: 'Llama series — Meta\'s open-weight foundation models' },
-        Microsoft: { accent: '#00a4ef', bg: 'rgba(0,164,239,0.08)',    icon: 'fab fa-windows',  desc: 'Phi series — small but highly capable language models' },
-        Alibaba:   { accent: '#ff6a00', bg: 'rgba(255,106,0,0.08)',    icon: 'fas fa-cloud',    desc: 'Qwen series — multilingual models from Alibaba Cloud' },
-        DeepSeek:  { accent: '#1a56db', bg: 'rgba(26,86,219,0.08)',    icon: 'fas fa-water',    desc: 'DeepSeek — advanced reasoning and code-focused models' },
-        NVIDIA:    { accent: '#76b900', bg: 'rgba(118,185,0,0.08)',    icon: 'fas fa-bolt',     desc: 'NVIDIA — models optimised for local GPU inference' },
-        Mistral:   { accent: '#f97316', bg: 'rgba(249,115,22,0.08)',   icon: 'fas fa-wind',     desc: 'Mistral AI — efficient open models from Europe' },
+        Google:    { accent: '#4285f4', bg: 'rgba(66,133,244,0.08)',   icon: 'fab fa-google',   desc: 'Gemma series â€” Google\'s efficient open models for local inference' },
+        Meta:      { accent: '#0082fb', bg: 'rgba(0,130,251,0.08)',    icon: 'fas fa-infinity',  desc: 'Llama series â€” Meta\'s open-weight foundation models' },
+        Microsoft: { accent: '#00a4ef', bg: 'rgba(0,164,239,0.08)',    icon: 'fab fa-windows',  desc: 'Phi series â€” small but highly capable language models' },
+        Alibaba:   { accent: '#ff6a00', bg: 'rgba(255,106,0,0.08)',    icon: 'fas fa-cloud',    desc: 'Qwen series â€” multilingual models from Alibaba Cloud' },
+        DeepSeek:  { accent: '#1a56db', bg: 'rgba(26,86,219,0.08)',    icon: 'fas fa-water',    desc: 'DeepSeek â€” advanced reasoning and code-focused models' },
+        NVIDIA:    { accent: '#76b900', bg: 'rgba(118,185,0,0.08)',    icon: 'fas fa-bolt',     desc: 'NVIDIA â€” models optimised for local GPU inference' },
+        Mistral:   { accent: '#f97316', bg: 'rgba(249,115,22,0.08)',   icon: 'fas fa-wind',     desc: 'Mistral AI â€” efficient open models from Europe' },
         Other:     { accent: '#6366f1', bg: 'rgba(99,102,241,0.08)',   icon: 'fas fa-cube',     desc: 'Additional models available for local inference' },
     },
 
@@ -44,6 +44,22 @@ const LocalModels = {
         if (isAlreadyOnTab || isPanelInDom) {
             console.log("[LocalModels] UI detected, loading data...");
             this.loadAll();
+        }
+
+        // Attach lifecycle listeners once
+        if (!this._lifecycleAttached) {
+            this._lifecycleAttached = true;
+            document.addEventListener('tabChanged', (e) => {
+                if (e.detail && e.detail.tab === 'local-models') {
+                    this.loadAll();
+                }
+            });
+            window.addEventListener('systemReady', () => {
+                const onTab = typeof currentMainTab !== 'undefined' && currentMainTab === 'local-models';
+                if (onTab || document.getElementById('suggested-models-grid')) {
+                    this.loadAll();
+                }
+            });
         }
     },
 
@@ -257,7 +273,7 @@ const LocalModels = {
             
             <div class="hub-model-info">
                 <h3 style="font-family:'Fira Code', monospace; font-size:0.8rem; word-break:break-all;">${m.filename}</h3>
-                <p>${m.arch} Architecture · ${(m.size_mb/1024).toFixed(1)} GB</p>
+                <p>${m.arch} Architecture Â· ${(m.size_mb/1024).toFixed(1)} GB</p>
             </div>
 
             <div class="hub-tags">
@@ -343,6 +359,10 @@ const LocalModels = {
         });
 
         if (filtered.length === 0) {
+            if (!this._suggestions || this._suggestions.length === 0) {
+                grid.innerHTML = `<div class="lm-store-loading"><i class="fas fa-circle-notch fa-spin"></i><span>Loading models catalog...</span></div>`;
+                return;
+            }
             grid.innerHTML = `<div class="ae-empty"><div class="ae-empty-icon"><i class="fas fa-filter"></i></div><div class="ae-empty-title">No models match your search</div><div class="ae-empty-desc">Try adjusting or clearing your filter.</div></div>`;
             return;
         }
@@ -458,7 +478,7 @@ const LocalModels = {
             return;
         }
 
-        if (row) row.innerHTML = '<span class="placeholder-text"><i class="fas fa-spinner fa-spin"></i> Detecting hardware…</span>';
+        if (row) row.innerHTML = '<span class="placeholder-text"><i class="fas fa-spinner fa-spin"></i> Detecting hardwareâ€¦</span>';
 
         try {
             const res = await fetch('/api/registry/local/system-specs');
@@ -524,7 +544,7 @@ const LocalModels = {
             const badge = card.querySelector('.installed-badge');
             const deleteBtn = card.querySelector('.delete-btn');
 
-            // Skip unsupported cards — they have no install button
+            // Skip unsupported cards â€” they have no install button
             if (!installBtn) return;
 
             const installAction = installBtn.getAttribute('onclick');
@@ -553,7 +573,7 @@ const LocalModels = {
 
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting…';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Startingâ€¦';
         }
 
         // Inject (or reuse) progress panel inside the card
@@ -563,7 +583,7 @@ const LocalModels = {
             prog.className = 'model-dl-progress';
             prog.innerHTML = `
                 <div class="model-dl-row">
-                    <span class="model-dl-label">Connecting…</span>
+                    <span class="model-dl-label">Connectingâ€¦</span>
                     <span class="model-dl-pct">0%</span>
                 </div>
                 <div class="model-dl-bar-wrap">
@@ -624,7 +644,7 @@ const LocalModels = {
                     } else if (msg.pct !== undefined) {
                         if (dlBar)   dlBar.style.width    = msg.pct + '%';
                         if (dlPct)   dlPct.textContent    = msg.pct + '%';
-                        if (dlLabel) dlLabel.textContent  = 'Downloading…';
+                        if (dlLabel) dlLabel.textContent  = 'Downloadingâ€¦';
                         if (dlSize && msg.downloaded_mb)
                             dlSize.textContent = `${msg.downloaded_mb} MB / ${msg.total_mb} MB`;
                         if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${msg.pct}%`;
@@ -712,7 +732,7 @@ const LocalModels = {
 
             let html = '';
             if (gpu.cuda_available && gpu.gpu_name) {
-                html += `<span class="gpu-badge gpu-badge-ok"><i class="fas fa-check-circle"></i> ${gpu.gpu_name} · ${gpu.vram_gb} GB VRAM</span>`;
+                html += `<span class="gpu-badge gpu-badge-ok"><i class="fas fa-check-circle"></i> ${gpu.gpu_name} Â· ${gpu.vram_gb} GB VRAM</span>`;
             } else {
                 html += `<span class="gpu-badge gpu-badge-off"><i class="fas fa-microchip"></i> No CUDA GPU detected</span>`;
             }
@@ -732,11 +752,59 @@ const LocalModels = {
             // Engine Missing Banner
             const engineBanner = document.getElementById('llm-engine-banner');
             if (engineBanner) {
-                engineBanner.style.display = gpu.llama_cpp_installed ? 'none' : 'flex';
+                if (gpu.llama_cpp_installed) {
+                    engineBanner.style.display = 'none';
+                } else if (!engineBanner.classList.contains('engine-ready') && !engineBanner.classList.contains('engine-installing')) {
+                    this.setEngineBannerState('missing');
+                    engineBanner.style.display = 'flex';
+                }
             }
 
         } catch (e) {
             statusRow.innerHTML = `<span class="gpu-badge gpu-badge-off"><i class="fas fa-question-circle"></i> Status unavailable</span>`;
+        }
+    },
+
+    setEngineBannerState(state) {
+        const banner = document.getElementById('llm-engine-banner');
+        const icon   = document.getElementById('llm-engine-icon');
+        const title  = document.getElementById('llm-engine-title');
+        const desc   = document.getElementById('llm-engine-desc');
+        const btn    = document.getElementById('install-llm-engine-btn');
+        if (!banner) return;
+
+        banner.classList.remove('engine-missing', 'engine-installing', 'engine-ready');
+
+        if (state === 'installing') {
+            banner.style.display = 'flex';
+            banner.classList.add('engine-installing');
+            if (icon) icon.className = 'fas fa-spinner fa-spin';
+            if (title) title.textContent = 'Installing llama-cpp-python...';
+            if (desc) desc.textContent = 'Downloading wheels and configuring offline inference engine...';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Installing…';
+            }
+        } else if (state === 'ready') {
+            banner.style.display = 'flex';
+            banner.classList.add('engine-ready');
+            if (icon) icon.className = 'fas fa-check-circle';
+            if (title) title.textContent = 'llama-cpp-python Installed';
+            if (desc) desc.textContent = 'Offline inference engine is ready. Please restart Aethvion Suite to initialize CUDA/GPU acceleration.';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-check"></i> Installed (Restart Required)';
+            }
+        } else {
+            // missing / warning state
+            banner.classList.add('engine-missing');
+            if (icon) icon.className = 'fas fa-triangle-exclamation';
+            if (title) title.textContent = 'llama-cpp-python Missing';
+            if (desc) desc.textContent = 'The llama-cpp-python library is required to run local GGUF models. Install it now to enable offline inference.';
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-download"></i> Install llama-cpp-python';
+            }
         }
     },
 
@@ -797,11 +865,13 @@ const LocalModels = {
                         if (msg.success) {
                             if (logBar)   logBar.classList.add('am-bar-done');
                             if (logTitle) logTitle.innerHTML = '<i class="fas fa-check-circle" style="color:#34d399"></i> Installed — restart Aethvion to activate';
+                            this.setEngineBannerState('ready');
                             showNotification('CUDA llama-cpp-python installed — please restart Aethvion Suite', 'success');
                             setTimeout(() => this.loadGPUStatus(), 1000);
                         } else {
                             if (logBar)   logBar.classList.add('am-bar-fail');
                             if (logTitle) logTitle.innerHTML = '<i class="fas fa-times-circle" style="color:#f87171"></i> Install failed — see log above';
+                            this.setEngineBannerState('missing');
                             showNotification('Installation failed', 'error');
                             btn.disabled = false;
                             btn.innerHTML = '<i class="fas fa-redo"></i> Retry';
@@ -811,6 +881,7 @@ const LocalModels = {
             }
         } catch (e) {
             showNotification(`Error: ${e.message}`, 'error');
+            this.setEngineBannerState('missing');
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-bolt"></i> Install CUDA Build';
         }
@@ -821,8 +892,7 @@ const LocalModels = {
         const log = document.getElementById('llm-engine-log');
         if (!btn) return;
 
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Installing llama-cpp-python…';
+        this.setEngineBannerState('installing');
         if (log) {
             log.style.display = 'block';
             log.innerHTML = 'Starting installation of llama-cpp-python...<br>';
@@ -865,13 +935,12 @@ const LocalModels = {
                         }
                     } else if (msg.done) {
                         if (msg.success) {
+                            this.setEngineBannerState('ready');
                             showNotification('llama-cpp-python installed successfully! Please restart Aethvion Suite to apply changes.', 'success');
-                            btn.innerHTML = '<i class="fas fa-check"></i> Installed (Restart Required)';
-                            if (log) log.innerHTML += '<b>Successfully installed llama-cpp-python.</b><br>';
+                            if (log) log.innerHTML += '<b style="color:#34d399;">Successfully installed llama-cpp-python.</b><br>';
                         } else {
+                            this.setEngineBannerState('missing');
                             showNotification('llama-cpp-python installation failed. Check the logs.', 'error');
-                            btn.disabled = false;
-                            btn.innerHTML = '<i class="fas fa-download"></i> Retry Installation';
                             if (log) log.innerHTML += '<b style="color:#ef4444;">Installation failed.</b><br>';
                         }
                     }
@@ -879,8 +948,7 @@ const LocalModels = {
             }
         } catch (e) {
             showNotification('Connection error: ' + e.message, 'error');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-download"></i> Install llama-cpp-python';
+            this.setEngineBannerState('missing');
         }
     },
 
@@ -898,7 +966,7 @@ const LocalModels = {
             });
             if (r.ok) {
                 if (saveStatus) {
-                    saveStatus.textContent = '✓ Saved — takes effect on next model load';
+                    saveStatus.textContent = 'âœ“ Saved â€” takes effect on next model load';
                     setTimeout(() => { saveStatus.textContent = ''; }, 4000);
                 }
                 showNotification('GPU config saved', 'success');
@@ -934,7 +1002,7 @@ const LocalModels = {
                     <span class="gpu-badge gpu-badge-off"><i class="fas fa-circle"></i> Ollama not running</span>
                     <span class="gpu-badge-hint">
                         <a href="https://ollama.com/download" target="_blank" style="color:var(--primary)">Download Ollama</a>
-                        — install it and run <code>ollama serve</code>, then refresh.
+                        â€” install it and run <code>ollama serve</code>, then refresh.
                     </span>`;
                 if (modelsSection) modelsSection.style.display = 'none';
                 return;
@@ -1018,7 +1086,7 @@ const LocalModels = {
         return `<div class="ollama-model-card ${m.isReg ? 'ollama-registered' : ''}" id="ollama-card-${CSS.escape(m.name)}">
             <div class="ollama-model-name">
                 ${m.name}
-                <div style="font-size:0.65rem; font-weight:400; color:var(--text-tertiary); margin-top:0.1rem;">${m.arch} ${m.bsize ? `• ${m.bsize}B` : ''}</div>
+                <div style="font-size:0.65rem; font-weight:400; color:var(--text-tertiary); margin-top:0.1rem;">${m.arch} ${m.bsize ? `â€¢ ${m.bsize}B` : ''}</div>
             </div>
             <div class="ollama-model-btns">
                 <button class="action-btn ${m.isReg ? 'success' : 'primary'} sm-btn"
@@ -1124,7 +1192,7 @@ const LocalModels = {
         const model = this._suggestions.find(m => m.id === modelId);
         if (!model) { panel.innerHTML = '<div class="sug-info-content">Model not found.</div>'; return; }
 
-        panel.innerHTML = `<div class="sug-info-content sug-info-loading"><i class="fas fa-spinner fa-spin"></i> Asking AI about compatibility with your hardware…</div>`;
+        panel.innerHTML = `<div class="sug-info-content sug-info-loading"><i class="fas fa-spinner fa-spin"></i> Asking AI about compatibility with your hardwareâ€¦</div>`;
 
         try {
             const res = await fetch('/api/registry/local/model-info-query', {
@@ -1163,7 +1231,7 @@ const LocalModels = {
 
         if (progEl) progEl.style.display = '';
         if (barEl)  { barEl.style.width = '0%'; barEl.className = 'model-dl-bar'; }
-        if (labelEl) labelEl.textContent = 'Pulling…';
+        if (labelEl) labelEl.textContent = 'Pullingâ€¦';
         if (pctEl)   pctEl.textContent   = '0%';
 
         try {
@@ -1325,3 +1393,9 @@ document.addEventListener('panelLoaded', (e) => {
 
 // Export to window for inline onclick handlers
 window.LocalModels = LocalModels;
+
+// Register with Core Tab Initializer system
+if (typeof registerTabInit === 'function') {
+    registerTabInit('local-models', () => LocalModels.loadAll());
+    registerTabInit('models', () => LocalModels.loadAll());
+}

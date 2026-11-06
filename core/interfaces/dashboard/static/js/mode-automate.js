@@ -1,16 +1,16 @@
 /**
  * mode-automate.js
- * Aethvion Suite — Automate: node-editor workspace
+ * Aethvion Suite â€” Automate: node-editor workspace
  *
- * Fully isolated — does not share state with any other feature module.
+ * Fully isolated â€” does not share state with any other feature module.
  * All API calls go to /api/automate/*, which is equally isolated.
  *
  * Architecture:
- *   • Left sidebar  — saved workflow list
- *   • Canvas        — infinite canvas with pan (middle-mouse/alt-drag) + zoom (wheel)
- *   • Right palette — draggable node types, click to insert
- *   • Bottom panel  — slides up to show properties of the selected node
- *   • SVG overlay   — bezier connection curves rendered inside canvas-inner
+ *   â€¢ Left sidebar  â€” saved workflow list
+ *   â€¢ Canvas        â€” infinite canvas with pan (middle-mouse/alt-drag) + zoom (wheel)
+ *   â€¢ Right palette â€” draggable node types, click to insert
+ *   â€¢ Bottom panel  â€” slides up to show properties of the selected node
+ *   â€¢ SVG overlay   â€” bezier connection curves rendered inside canvas-inner
  */
 (function () {
     'use strict';
@@ -39,16 +39,16 @@
         { value: 'every_friday',     label: 'Every Friday',             hasParam: false },
         { value: 'every_saturday',   label: 'Every Saturday',           hasParam: false },
         { value: 'every_sunday',     label: 'Every Sunday',             hasParam: false },
-        { value: 'every_weekday',    label: 'Every weekday (Mon–Fri)',   hasParam: false },
-        { value: 'every_weekend',    label: 'Every weekend (Sat–Sun)',   hasParam: false },
+        { value: 'every_weekday',    label: 'Every weekday (Monâ€“Fri)',   hasParam: false },
+        { value: 'every_weekend',    label: 'Every weekend (Satâ€“Sun)',   hasParam: false },
     ];
 
     // State
     let _nodeTypes      = [];   // [{ type, label, category, icon, color, inputs, outputs, properties }]
     let _availModels    = [];   // [{ id, provider_id, provider_name, label, description }]
-    let _modelsBySource = {};   // cache: source-url → model list
+    let _modelsBySource = {};   // cache: source-url â†’ model list
     let _workflows   = [];   // [{ id, name, node_count, updated }]
-    let _active      = null; // { id, name, nodes:[], connections:[] }  — full workflow
+    let _active      = null; // { id, name, nodes:[], connections:[] }  â€” full workflow
     let _selNodeId   = null; // primary selected node id
     let _selNodeIds  = new Set(); // multi-selected node IDs
     let _selConnId   = null; // selected connection id
@@ -62,6 +62,7 @@
     let _zTopNormal  = 50;   // z-index counter for normal raised nodes
     let _zTopPlates  = 2;    // z-index counter for plate raised nodes
     let _placeOffset = 0;    // stagger offset for newly added nodes
+    let _eventsWired = false;// guard for singleton event wiring
     let _view        = { x: 0, y: 0, scale: 1 };
     let _sidebarPage   = 'workflows'; // 'workflows' | 'inspector' | 'results' | 'pubvars'
     let _nodeSelected  = false;       // whether inspector currently shows a node
@@ -248,16 +249,23 @@
         };
 
         // Load data then render
-        Promise.all([_apiFetchNodeTypes(), _apiFetchWorkflows(), _apiFetchModels()]).then(function () {
+        _refreshData();
+
+        if (!_eventsWired) {
+            _wireEvents();
+            _eventsWired = true;
+        }
+        _updateToolbar();
+    }
+
+    function _refreshData() {
+        return Promise.all([_apiFetchNodeTypes(), _apiFetchWorkflows(), _apiFetchModels()]).then(function () {
             _renderPalette(null);
             _renderWfList();
         }).catch(function (err) {
-            console.error('[Automate] Init failed:', err);
+            console.error('[Automate] Load failed:', err);
             _toast('Failed to load Automate data.', true);
         });
-
-        _wireEvents();
-        _updateToolbar();
     }
 
     function _$(id) { return document.getElementById(id); }
@@ -491,7 +499,7 @@
     function _openExamplesModal() {
         _e.examplesGrid.innerHTML =
             '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-muted,#64748b);font-size:0.8rem;">' +
-            '<i class="fas fa-spinner fa-spin"></i> Loading…</div>';
+            '<i class="fas fa-spinner fa-spin"></i> Loadingâ€¦</div>';
         _e.examplesOverlay.style.display = '';
         _apiListExamples().then(function (examples) {
             _e.examplesGrid.innerHTML = '';
@@ -561,18 +569,18 @@
             .then(function (info) {
                 if (!info) return;
 
-                // API key option — only relevant when workflow uses AI / keyed nodes
+                // API key option â€” only relevant when workflow uses AI / keyed nodes
                 if (_e.compileApiKeyRow) {
                     _e.compileApiKeyRow.style.display = info.needs_api_key ? '' : 'none';
                 }
 
-                // Snapshot option — only when workflow has snapshot_search nodes
+                // Snapshot option â€” only when workflow has snapshot_search nodes
                 if (_e.compileSnapshotRow) {
                     _e.compileSnapshotRow.style.display = info.has_snapshot_nodes ? '' : 'none';
                     if (info.has_snapshot_nodes && _e.compileSnapshotDesc && info.snapshot_info && info.snapshot_info.length) {
                         // Build a concise description: "snapshot_name (X KB)" per unique snapshot
                         var parts = info.snapshot_info.map(function (s) {
-                            return '“' + s.snap_name + '” – ' + s.size_display
+                            return 'â€œ' + s.snap_name + 'â€ â€“ ' + s.size_display
                                 + ' (db: ' + s.db + ')';
                         });
                         _e.compileSnapshotDesc.textContent =
@@ -581,7 +589,7 @@
                     }
                 }
             })
-            .catch(function () { /* silently ignore — options stay hidden */ });
+            .catch(function () { /* silently ignore â€” options stay hidden */ });
     }
 
     function _closeCompileModal() {
@@ -598,8 +606,8 @@
         if (_e.compileStatus) {
             _e.compileStatus.style.display = '';
             _e.compileStatusText.textContent = includePkgs
-                ? 'Compiling and downloading packages (may take a minute)…'
-                : 'Compiling…';
+                ? 'Compiling and downloading packages (may take a minute)â€¦'
+                : 'Compilingâ€¦';
         }
         if (_e.compileBtn) _e.compileBtn.disabled = true;
         if (_e.compileWarn) _e.compileWarn.style.display = 'none';
@@ -761,7 +769,7 @@
     /**
      * Returns a Set of node IDs that would be executed if triggerId fires.
      * Phase 1: forward BFS from triggerId.
-     * Phase 2: forward BFS from every OTHER trigger → "other territory".
+     * Phase 2: forward BFS from every OTHER trigger â†’ "other territory".
      * Phase 3: backward BFS from phase-1 set, skipping trigger nodes and
      *          anything in other territory.
      */
@@ -796,7 +804,7 @@
         // Phase 1
         var forward = forwardBFS([triggerId]);
 
-        // Phase 2 — other territory
+        // Phase 2 â€” other territory
         var otherTerritory = new Set();
         allTriggers.forEach(function (t) {
             if (t !== triggerId) {
@@ -804,7 +812,7 @@
             }
         });
 
-        // Phase 3 — backward, blocked by triggers + other territory
+        // Phase 3 â€” backward, blocked by triggers + other territory
         var triggerSet = new Set(allTriggers);
         var blocked    = new Set([...triggerSet, ...otherTerritory]);
         var reachable  = new Set(forward);
@@ -904,8 +912,8 @@
         }
 
         // Determine which triggers to run:
-        // • specific trigger selected → run just that one (preserve other chains' states)
-        // • "All" selected           → find every trigger.* node and run sequentially
+        // â€¢ specific trigger selected â†’ run just that one (preserve other chains' states)
+        // â€¢ "All" selected           â†’ find every trigger.* node and run sequentially
         var triggerIds;
         if (_selTriggerId) {
             triggerIds = [_selTriggerId];
@@ -913,7 +921,7 @@
             triggerIds = (_active.nodes || [])
                 .filter(function (n) { return n.type && n.type.startsWith('trigger.'); })
                 .map(function (n) { return n.id; });
-            if (!triggerIds.length) triggerIds = [null]; // no trigger nodes → single run
+            if (!triggerIds.length) triggerIds = [null]; // no trigger nodes â†’ single run
         }
 
         // Compute the full set of nodes this run will touch
@@ -926,7 +934,7 @@
             }
         });
 
-        // Reset execution visuals — but ONLY for nodes in the current run's chains,
+        // Reset execution visuals â€” but ONLY for nodes in the current run's chains,
         // so that a single-trigger run doesn't wipe the results of other trigger chains.
         _clearExecState(pendingIds);
         _clearTriggerHighlight();
@@ -937,7 +945,7 @@
 
         // Animate run button
         _e.btnRun.disabled = true;
-        _e.btnRun.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Running…</span>';
+        _e.btnRun.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Runningâ€¦</span>';
 
         try {
             if (triggerIds.length === 1) {
@@ -1017,7 +1025,7 @@
                 try { ev = JSON.parse(line.slice(6)); } catch (_) { continue; }
 
                 if (ev.type === 'node_status') {
-                    // Ignore status events for nodes outside this run's chain —
+                    // Ignore status events for nodes outside this run's chain â€”
                     // they could be "skipped" events for sibling-chain nodes that
                     // would otherwise wipe those nodes' visual state and display output.
                     if (!allowedIds || allowedIds.has(ev.node_id)) {
@@ -1035,7 +1043,7 @@
         return resultData;
     }
 
-    /** Open the execution log panel immediately showing a "Running…" status. */
+    /** Open the execution log panel immediately showing a "Runningâ€¦" status. */
     function _openExecPanelRunning() {
         var panel    = document.getElementById('at-exec-panel');
         var logView  = document.getElementById('at-exec-log-view');
@@ -1045,7 +1053,7 @@
         statusEl.className = 'at-exec-panel-status running';
         var icon = statusEl.querySelector('i');
         if (icon) icon.className = 'fas fa-spinner fa-spin';
-        if (textEl) textEl.textContent = 'Running…';
+        if (textEl) textEl.textContent = 'Runningâ€¦';
         if (logView) logView.innerHTML = '';
         panel.classList.add('at-open');
     }
@@ -1100,11 +1108,11 @@
                 if (state === 'running') {
                     badge.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 } else if (state === 'done') {
-                    badge.textContent = timeStr ? '✓ ' + timeStr : '✓';
+                    badge.textContent = timeStr ? 'âœ“ ' + timeStr : 'âœ“';
                 } else if (state === 'error') {
-                    badge.textContent = timeStr ? '✗ ' + timeStr : '✗';
+                    badge.textContent = timeStr ? 'âœ— ' + timeStr : 'âœ—';
                 } else if (state === 'skipped') {
-                    badge.textContent = '—';
+                    badge.textContent = 'â€”';
                 }
                 var del = hdr.querySelector('[data-del-node]');
                 if (del) hdr.insertBefore(badge, del);
@@ -1130,7 +1138,7 @@
 
         // Apply per-node states + outputs
         Object.keys(statuses).forEach(function (nodeId) {
-            // Skip nodes that belong to sibling chains — don't disturb their state.
+            // Skip nodes that belong to sibling chains â€” don't disturb their state.
             if (allowedIds && !allowedIds.has(nodeId)) return;
             var status = statuses[nodeId];
             var dMs = durations[nodeId];
@@ -1164,7 +1172,7 @@
                 var val = outs._display !== undefined ? outs._display : outs.out;
                 _showDisplayOutput(nodeId, val);
             }
-            // Screenshot / camera_capture — show image preview on the node card
+            // Screenshot / camera_capture â€” show image preview on the node card
             if ((nd.type === 'action.screenshot' || nd.type === 'action.camera_capture') && outs.image) {
                 _showDisplayOutput(nodeId, outs.image);
             }
@@ -1173,7 +1181,7 @@
         // Re-render connections so data flow pulses appear on all wires that carried data!
         _renderConns();
 
-        // Render execution log panel (log only — outputs live in inspector)
+        // Render execution log panel (log only â€” outputs live in inspector)
         _renderExecPanel(data);
 
         // Refresh the Results page if it is currently open
@@ -1199,7 +1207,7 @@
         if (!wrap || !body) return;
         var str = _to_str(val);
         if (str && str.startsWith('data:image/')) {
-            // Image data URI — render as a preview image
+            // Image data URI â€” render as a preview image
             body.innerHTML = '';
             var img = document.createElement('img');
             img.className = 'at-node-result-img';
@@ -1298,7 +1306,7 @@
             item.dataset.wfId = wf.id;
             const nodeCount = wf.node_count || 0;
             const meta = nodeCount + ' node' + (nodeCount !== 1 ? 's' : '') +
-                         (wf.updated ? ' · ' + _relativeTime(wf.updated) : '');
+                         (wf.updated ? ' Â· ' + _relativeTime(wf.updated) : '');
             const isActive = !!wf.active;
 
             item.innerHTML =
@@ -1417,7 +1425,7 @@
     }
 
     function _openWorkflow(id) {
-        // Clicking the already-open workflow just returns to inspector — no reload
+        // Clicking the already-open workflow just returns to inspector â€” no reload
         if (_active && _active.id === id) {
             _showInspector();
             return;
@@ -1995,7 +2003,7 @@
         const origHtml = btnElement.innerHTML;
 
         btnElement.style.opacity = '0.6';
-        btnElement.innerHTML = `<i class="fas fa-spinner fa-spin" style="font-size: 0.75rem;"></i><span>Running…</span>`;
+        btnElement.innerHTML = `<i class="fas fa-spinner fa-spin" style="font-size: 0.75rem;"></i><span>Runningâ€¦</span>`;
 
         // Gather all variables (mapped by name AND node ID)
         const vars = {};
@@ -2014,16 +2022,16 @@
             if (n.type.startsWith('ui.display_')) {
                 const box = _$('disp_' + n.id);
                 if (box) {
-                    box.innerHTML = `<div style="display:flex;align-items:center;gap:6px;color:#06b6d4;font-size:0.75rem;"><i class="fas fa-spinner fa-spin"></i> Running…</div>`;
+                    box.innerHTML = `<div style="display:flex;align-items:center;gap:6px;color:#06b6d4;font-size:0.75rem;"><i class="fas fa-spinner fa-spin"></i> Runningâ€¦</div>`;
                 }
             } else if (n.type === 'ui.custom_html') {
                 const box = _$('disp_' + n.id);
                 if (box) {
                     box.querySelectorAll('.at-html-value').forEach(el => {
-                        el.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Running…`;
+                        el.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Runningâ€¦`;
                     });
                     box.querySelectorAll('.at-text-value').forEach(el => {
-                        el.textContent = `Running…`;
+                        el.textContent = `Runningâ€¦`;
                     });
                 }
             }
@@ -2135,7 +2143,7 @@
             _active.nodes.forEach(n => {
                 if (n.type.startsWith('ui.display_')) {
                     const box = _$('disp_' + n.id);
-                    if (box && box.textContent.includes('Running…')) {
+                    if (box && box.textContent.includes('Runningâ€¦')) {
                         if (n.type === 'ui.display_text') {
                             box.innerHTML = '<span style="color:#475569;font-style:italic;">No output yet</span>';
                         } else {
@@ -2146,12 +2154,12 @@
                     const box = _$('disp_' + n.id);
                     if (box) {
                         box.querySelectorAll('.at-html-value').forEach(el => {
-                            if (el.textContent.includes('Running…')) {
+                            if (el.textContent.includes('Runningâ€¦')) {
                                 el.innerHTML = '<span style="color:#475569;font-style:italic;">No output yet</span>';
                             }
                         });
                         box.querySelectorAll('.at-text-value').forEach(el => {
-                            if (el.textContent.includes('Running…')) {
+                            if (el.textContent.includes('Runningâ€¦')) {
                                 el.textContent = 'No output yet';
                             }
                         });
@@ -2321,23 +2329,23 @@
               '</div>'
             : '';
 
-        // Result panel — hidden until test/execution returns data
+        // Result panel â€” hidden until test/execution returns data
         // Also shown for screenshot / camera_capture so the image preview appears on the node card
         const resultHtml = (isAI || isDisplay || isCapture)
             ? '<div class="at-node-result" data-node-result="' + nd.id + '" style="display:none">' +
               '  <div class="at-node-result-hdr">' +
               '    <span><i class="fas fa-' + (isCapture ? 'image' : 'sparkles') + '"></i> ' +
                        (isCapture ? 'Preview' : 'Result') + '</span>' +
-              '    <button class="at-node-result-close" data-close-result="' + nd.id + '">✕</button>' +
+              '    <button class="at-node-result-close" data-close-result="' + nd.id + '">âœ•</button>' +
               '  </div>' +
               '  <div class="at-node-result-body" data-node-result-body="' + nd.id + '"></div>' +
               '</div>'
             : '';
 
-        // Compact schedule list — shown on the node card for schedule nodes
+        // Compact schedule list â€” shown on the node card for schedule nodes
         const schedHtml = isSchedule ? _buildScheduleCardHtml(nd) : '';
 
-        // Value preview strip — shown on text / number / list input nodes
+        // Value preview strip â€” shown on text / number / list input nodes
         const valuePreviewHtml = (function () {
             if (!isTextInput) return '';
             // Pick the right property key for each input type
@@ -2349,20 +2357,20 @@
             const display = raw.length > 240 ? raw.slice(0, 240) : raw;
             return '<div class="at-node-value-preview' + (empty ? ' at-preview-empty' : '') +
                    '" data-value-preview="' + nd.id + '">' +
-                   (empty ? 'No text set…' : _esc(display)) +
+                   (empty ? 'No text setâ€¦' : _esc(display)) +
                    '</div>';
         }());
 
-        // Global strip — shown on all global.* nodes (always public/exposed)
+        // Global strip â€” shown on all global.* nodes (always public/exposed)
         const globalHtml = (function () {
             if (!isGlobal) return '';
             var paramName = nd.properties['name'] || 'param';
-            var nodeKind  = nd.type.replace('global.', ''); // "text", "number", "database", …
+            var nodeKind  = nd.type.replace('global.', ''); // "text", "number", "database", â€¦
             var rawVal    = nd.properties['value'];
             var defVal    = (rawVal !== undefined && rawVal !== null) ? String(rawVal) : '';
             // For toggle show true/false rather than blank
             if (nd.type === 'global.toggle') defVal = rawVal ? 'true' : 'false';
-            var preview   = defVal.length > 30 ? defVal.slice(0, 30) + '…' : (defVal || '(default)');
+            var preview   = defVal.length > 30 ? defVal.slice(0, 30) + 'â€¦' : (defVal || '(default)');
             return '<div class="at-node-var-strip" data-var-strip="' + nd.id + '">' +
                    '<span class="at-var-badge at-var-badge-global" title="Exposed via API">GLOBAL</span>' +
                    '<span class="at-var-name">$' + _esc(paramName) + '</span>' +
@@ -2371,7 +2379,7 @@
                    '</div>';
         }());
 
-        // Trigger name strip — shown on trigger.* nodes when a name is set
+        // Trigger name strip â€” shown on trigger.* nodes when a name is set
         const trigNameHtml = (function () {
             if (!isTrigger) return '';
             var tName = (nd.properties && nd.properties['name'])
@@ -2421,7 +2429,7 @@
         });
         if (!_active) return;
 
-        // Build a quick node-id → type map for global connection detection
+        // Build a quick node-id â†’ type map for global connection detection
         var _nodeTypeMap = {};
         (_active.nodes || []).forEach(function (n) { _nodeTypeMap[n.id] = n.type || ''; });
 
@@ -2479,7 +2487,7 @@
             pill.className = 'at-flow-pill';
             document.body.appendChild(pill);
         }
-        var display = valStr.length > 55 ? valStr.slice(0, 52) + '…' : valStr;
+        var display = valStr.length > 55 ? valStr.slice(0, 52) + 'â€¦' : valStr;
         pill.innerHTML = '<i class="fas fa-arrow-right"></i><span>' + _esc(display) + '</span>';
         pill.style.display = 'flex';
         pill.style.left = (mx + 12) + 'px';
@@ -2534,9 +2542,9 @@
 
     /**
      * Colour input port dots based on their state:
-     *   green  (.at-port-wired)  — an active wire is providing the value
-     *   blue   (.at-port-valued) — no wire, but property is configured
-     *   grey   (default)         — no wire and no property value
+     *   green  (.at-port-wired)  â€” an active wire is providing the value
+     *   blue   (.at-port-valued) â€” no wire, but property is configured
+     *   grey   (default)         â€” no wire and no property value
      *
      * Output port dots keep the existing .at-connected marker (grey fill).
      */
@@ -2558,7 +2566,7 @@
             );
             if (srcRow) { var d = srcRow.querySelector('.at-port'); if (d) d.classList.add('at-connected'); }
 
-            // '__trigger__' wires target the node body — no input port dot to update
+            // '__trigger__' wires target the node body â€” no input port dot to update
             if (conn.targetPort !== '__trigger__') {
                 wiredInputs.add(conn.targetNodeId + ':' + conn.targetPort);
             }
@@ -2572,10 +2580,10 @@
             if (!dot) return;
 
             if (wiredInputs.has(nodeId + ':' + port)) {
-                // GREEN — live wire
+                // GREEN â€” live wire
                 dot.classList.add('at-port-wired');
             } else {
-                // BLUE — property has a non-empty, non-default value configured
+                // BLUE â€” property has a non-empty, non-default value configured
                 var nd  = _active.nodes.find(function (n) { return n.id === nodeId; });
                 var val = nd && nd.properties[port];
                 var hasVal = val !== undefined && val !== null && val !== '' &&
@@ -3439,7 +3447,7 @@
         if (_sidebarPage === 'pubvars') {
             var clickedNd = _active && _active.nodes.find(function (n) { return n.id === nodeId; });
             if (clickedNd && clickedNd.type && clickedNd.type.startsWith('global.')) {
-                // Stay on pubvars — highlight the matching card and scroll to it
+                // Stay on pubvars â€” highlight the matching card and scroll to it
                 _highlightPubvarCard(nodeId);
                 return;
             }
@@ -3851,7 +3859,7 @@
         _e.inspectorTitle.textContent     = nd.label || td.label;
         _e.inspectorClose.style.display   = '';
 
-        // Clear body (this removes inspectorNone from DOM — that's intentional)
+        // Clear body (this removes inspectorNone from DOM â€” that's intentional)
         _e.inspectorBody.innerHTML = '';
 
         if (!td.properties || td.properties.length === 0) {
@@ -3875,7 +3883,7 @@
                 inputEl.className = 'at-prop-select at-prop-model-select';
                 const loadingOpt = document.createElement('option');
                 loadingOpt.value = '';
-                loadingOpt.textContent = 'Loading models…';
+                loadingOpt.textContent = 'Loading modelsâ€¦';
                 inputEl.appendChild(loadingOpt);
 
                 // Async-populate
@@ -3883,7 +3891,7 @@
                     inputEl.innerHTML = '';
                     const blank = document.createElement('option');
                     blank.value = '';
-                    blank.textContent = prop.placeholder || 'Select model…';
+                    blank.textContent = prop.placeholder || 'Select modelâ€¦';
                     inputEl.appendChild(blank);
                     models.forEach(function (m) {
                         const o = document.createElement('option');
@@ -3910,7 +3918,7 @@
                 inputEl.dataset.dbSelect = '1';
                 const dbLoading = document.createElement('option');
                 dbLoading.value = String(val || 'default');
-                dbLoading.textContent = 'Loading databases…';
+                dbLoading.textContent = 'Loading databasesâ€¦';
                 inputEl.appendChild(dbLoading);
 
                 _apiFetchAethvionDBs().then(function (dbs) {
@@ -3933,7 +3941,7 @@
                 });
 
             } else if (prop.type === 'aethviondb_snap') {
-                // Async-populated snapshot selector — depends on the database property
+                // Async-populated snapshot selector â€” depends on the database property
                 inputEl = document.createElement('select');
                 inputEl.className = 'at-prop-select at-prop-snap-select';
                 inputEl.dataset.snapSelect = '1';
@@ -3964,14 +3972,14 @@
                 inputEl.className = 'at-prop-select at-prop-companion-select';
                 const compLoading = document.createElement('option');
                 compLoading.value = '';
-                compLoading.textContent = 'Loading companions…';
+                compLoading.textContent = 'Loading companionsâ€¦';
                 inputEl.appendChild(compLoading);
 
                 _apiFetchCompanions().then(function (companions) {
                     inputEl.innerHTML = '';
                     const blank = document.createElement('option');
                     blank.value = '';
-                    blank.textContent = prop.placeholder || 'Select companion…';
+                    blank.textContent = prop.placeholder || 'Select companionâ€¦';
                     inputEl.appendChild(blank);
                     companions.forEach(function (c) {
                         const o = document.createElement('option');
@@ -4016,7 +4024,7 @@
                 return; // handled fully above
 
             } else if (prop.type === 'schedule_list') {
-                // Rich schedule editor — build and append, then return early
+                // Rich schedule editor â€” build and append, then return early
                 // Give label full width so it doesn't share a row with the editor
                 const lbl = document.createElement('span');
                 lbl.className = 'at-prop-label';
@@ -4099,7 +4107,7 @@
                             const str   = String(newVal !== undefined ? newVal : '');
                             const empty = !str.trim();
                             const display = str.length > 240 ? str.slice(0, 240) : str;
-                            preview.textContent = empty ? 'No text set…' : display;
+                            preview.textContent = empty ? 'No text setâ€¦' : display;
                             preview.classList.toggle('at-preview-empty', empty);
                         }
                     }
@@ -4113,7 +4121,7 @@
                         var gKind    = nd.type.replace('global.', '');
                         var gDef     = String(nd.properties['value'] !== undefined ? nd.properties['value'] : '');
                         if (nd.type === 'global.toggle') gDef = nd.properties['value'] ? 'true' : 'false';
-                        var gPreview = gDef.length > 30 ? gDef.slice(0, 30) + '…' : (gDef || '(default)');
+                        var gPreview = gDef.length > 30 ? gDef.slice(0, 30) + 'â€¦' : (gDef || '(default)');
                         strip.innerHTML =
                             '<span class="at-var-badge at-var-badge-global">GLOBAL</span>' +
                             '<span class="at-var-name">' + _esc(gName) + '</span>' +
@@ -4144,7 +4152,7 @@
                     if (snapSel) {
                         snapSel.innerHTML = '';
                         const lo = document.createElement('option');
-                        lo.value = ''; lo.textContent = 'Loading…';
+                        lo.value = ''; lo.textContent = 'Loadingâ€¦';
                         snapSel.appendChild(lo);
                         _apiFetchAethvionSnaps(newVal).then(function (snaps) {
                             snapSel.innerHTML = '';
@@ -4189,7 +4197,7 @@
 
                 var browseBtn = document.createElement('button');
                 browseBtn.className = 'at-btn at-prop-browse-btn';
-                browseBtn.title     = prop.picker === 'folder' ? 'Browse for folder…' : 'Browse for file…';
+                browseBtn.title     = prop.picker === 'folder' ? 'Browse for folderâ€¦' : 'Browse for fileâ€¦';
                 browseBtn.innerHTML = prop.picker === 'folder'
                     ? '<i class="fas fa-folder-open"></i>'
                     : '<i class="fas fa-file-arrow-up"></i>';
@@ -4225,7 +4233,7 @@
                 overBadge.className = 'at-prop-overridden-badge';
                 overBadge.innerHTML =
                     '<i class="fas fa-plug-circle-check"></i>' +
-                    'Connected — wired value used at runtime';
+                    'Connected â€” wired value used at runtime';
                 field.appendChild(overBadge);
             }
 
@@ -4243,7 +4251,7 @@
             testRow.innerHTML =
                 '<div class="at-prop-test-input-wrap">' +
                 '  <input type="text" class="at-prop-input at-prop-test-input" ' +
-                '    id="at-prop-test-input-' + nd.id + '" placeholder="Test input (optional)…">' +
+                '    id="at-prop-test-input-' + nd.id + '" placeholder="Test input (optional)â€¦">' +
                 '</div>' +
                 '<button class="at-btn at-btn-accent at-prop-test-btn" data-prop-test-node="' + nd.id + '">' +
                 '  <i class="fas fa-bolt"></i> Test Node' +
@@ -4253,7 +4261,7 @@
     }
 
     function _closeProps() {
-        // Reset inspector to "no node selected" state — keep the panel visible
+        // Reset inspector to "no node selected" state â€” keep the panel visible
         _nodeSelected = false;
         _e.inspectorBody.innerHTML = '';
         _e.inspectorBody.appendChild(_e.inspectorNone);
@@ -4266,7 +4274,7 @@
 
     //  Inspector Results view
 
-    // Called by _showPage('results') — renders results into the shared inspector panel
+    // Called by _showPage('results') â€” renders results into the shared inspector panel
     function _renderResults() {
         // Update inspector header for results mode
         _e.inspectorIcon.style.background = 'rgba(34,211,238,0.12)';
@@ -4283,7 +4291,7 @@
         if (!_lastExecData) {
             var empty = document.createElement('div');
             empty.className = 'at-inspector-none';
-            empty.innerHTML = '<i class="fas fa-chart-bar"></i><span>No results yet — run the workflow first.</span>';
+            empty.innerHTML = '<i class="fas fa-chart-bar"></i><span>No results yet â€” run the workflow first.</span>';
             _e.inspectorBody.appendChild(empty);
             return;
         }
@@ -4355,7 +4363,7 @@
                 });
             });
 
-            // Card hover → highlight canvas node
+            // Card hover â†’ highlight canvas node
             card.addEventListener('mouseenter', function () {
                 var nodeEl = _e.canvasInner.querySelector('.at-node[data-node-id="' + nodeId + '"]');
                 if (nodeEl) nodeEl.classList.add('at-result-hover');
@@ -4376,7 +4384,7 @@
             var ok = _lastExecData.ok !== false;
             empty2.innerHTML = ok
                 ? '<i class="fas fa-circle-check" style="color:#34d399;opacity:1"></i>' +
-                  '<span>Workflow completed — no output data to display.</span>'
+                  '<span>Workflow completed â€” no output data to display.</span>'
                 : '<i class="fas fa-circle-xmark" style="color:#f87171;opacity:1"></i>' +
                   '<span>Workflow had errors. Check the log for details.</span>';
             _e.inspectorBody.appendChild(empty2);
@@ -4505,7 +4513,7 @@
                 var gName    = p['name']  || 'param';
                 var gDef     = String(p['value'] !== undefined ? p['value'] : '');
                 if (nd.type === 'global.toggle') gDef = p['value'] ? 'true' : 'false';
-                var gPreview = gDef.length > 30 ? gDef.slice(0, 30) + '…' : (gDef || '(default)');
+                var gPreview = gDef.length > 30 ? gDef.slice(0, 30) + 'â€¦' : (gDef || '(default)');
                 strip.innerHTML =
                     '<span class="at-var-badge at-var-badge-global">GLOBAL</span>' +
                     '<span class="at-var-name">' + _esc(gName) + '</span>' +
@@ -4589,7 +4597,7 @@
             descInput.type = 'text';
             descInput.className = 'at-pubvar-input';
             descInput.value = p['description'] || '';
-            descInput.placeholder = 'What this parameter does…';
+            descInput.placeholder = 'What this parameter doesâ€¦';
             descInput.addEventListener('input', function () {
                 p['description'] = descInput.value;
                 nd.properties['description'] = descInput.value;
@@ -4640,7 +4648,7 @@
             wrap.style.display = '';
             wrap.classList.add('at-loading');
         }
-        if (body) body.textContent = 'Running…';
+        if (body) body.textContent = 'Runningâ€¦';
 
         // Flash test button
         const testBtns = _e.canvasInner.querySelectorAll('[data-test-node="' + nodeId + '"]');
@@ -4652,12 +4660,12 @@
                 _updateAINodeResult(nodeId, resp.result, true);
                 _toast('Test complete. ' + (resp.model ? '(' + resp.model + ')' : ''));
             } else {
-                if (body) body.textContent = '⚠ ' + (resp.error || 'Unknown error');
+                if (body) body.textContent = 'âš  ' + (resp.error || 'Unknown error');
                 if (wrap) wrap.style.display = '';
                 _toast(resp.error || 'Test failed.', true);
             }
         } catch (e) {
-            if (body) body.textContent = '⚠ ' + e.message;
+            if (body) body.textContent = 'âš  ' + e.message;
             if (wrap) wrap.style.display = '';
             _toast('Test failed: ' + e.message, true);
         } finally {
@@ -4688,7 +4696,7 @@
             return;
         }
 
-        // Trigger connections are completed by clicking a node body, not a port —
+        // Trigger connections are completed by clicking a node body, not a port â€”
         // clicking another output port just restarts, any input port is ignored.
         if (_pending.isTrigger) {
             if (portType === 'output') { _cancelPending(); _handlePortClick(portRow); }
@@ -4744,7 +4752,7 @@
             sourceNodeId: _pending.nodeId,
             sourcePort:   _pending.portName,
             targetNodeId: targetNodeId,
-            targetPort:   '__trigger__',   // sentinel — targets the node body, not a port
+            targetPort:   '__trigger__',   // sentinel â€” targets the node body, not a port
         });
         _cancelPending();
         _renderConns();
@@ -4826,7 +4834,7 @@
     //  New workflow / rename
 
     function _newWorkflow() {
-        // Auto-generate an incremental name — no prompt, straight to the canvas.
+        // Auto-generate an incremental name â€” no prompt, straight to the canvas.
         // Scan existing names for the highest Workflow_N so deletions don't
         // cause collisions (e.g. deleting Workflow_2 still yields Workflow_4 next).
         const re = /^Workflow_(\d+)$/i;
@@ -5049,7 +5057,7 @@
         var parts = [];
         if (entry.date) parts.push(entry.date);
         if (entry.time) parts.push(entry.time);
-        return parts.join(' ') || '—';
+        return parts.join(' ') || 'â€”';
     }
 
     /** Build the compact schedule card HTML for the node card. */
@@ -5057,7 +5065,7 @@
         var schedules = nd.properties['schedules'] || [];
         if (schedules.length === 0) {
             return '<div class="at-node-schedules">' +
-                   '<span class="at-node-sched-none">No schedules — open properties to add</span>' +
+                   '<span class="at-node-sched-none">No schedules â€” open properties to add</span>' +
                    '</div>';
         }
         var items = schedules.map(function (s) {
@@ -5065,7 +5073,7 @@
             return '<div class="at-node-sched-item ' + onCls + '">' +
                    '<i class="fas fa-circle-dot"></i>' +
                    _esc(_ruleLabel(s.rule, s.param)) +
-                   (s.time ? ' · ' + _esc(s.time) : '') +
+                   (s.time ? ' Â· ' + _esc(s.time) : '') +
                    '</div>';
         }).join('');
         return '<div class="at-node-schedules">' + items + '</div>';
@@ -5091,7 +5099,7 @@
         listEl.innerHTML = '';
 
         if (schedules.length === 0) {
-            listEl.innerHTML = '<div class="at-sched-empty">No schedules yet — use the form above to add one.</div>';
+            listEl.innerHTML = '<div class="at-sched-empty">No schedules yet â€” use the form above to add one.</div>';
             return;
         }
 
@@ -5232,7 +5240,7 @@
         form.appendChild(paramWrap);
 
         // Show/hide param input when rule changes
-        // NOTE: must use explicit 'block' — empty string defers to the CSS class which hides it
+        // NOTE: must use explicit 'block' â€” empty string defers to the CSS class which hides it
         function _syncParamVisibility() {
             var r = SCHEDULE_RULES.find(function (x) { return x.value === ruleSelect.value; });
             paramWrap.style.display = (r && r.hasParam) ? 'block' : 'none';
@@ -5315,7 +5323,7 @@
             if (portDir === 'output' && nodeOuts && nodeOuts[portName] !== undefined) {
                 var val = nodeOuts[portName];
                 var vStr = typeof val === 'object' ? JSON.stringify(val) : String(val);
-                if (vStr.length > 90) vStr = vStr.slice(0, 87) + '…';
+                if (vStr.length > 90) vStr = vStr.slice(0, 87) + 'â€¦';
                 dataPreview = 'Output: ' + vStr;
             } else if (portDir === 'input') {
                 var feedConn = _active.connections.find(function (c) {
@@ -5325,7 +5333,7 @@
                     var inVal = _lastExecData.node_outputs[feedConn.sourceNodeId][feedConn.sourcePort];
                     if (inVal !== undefined) {
                         var inStr = typeof inVal === 'object' ? JSON.stringify(inVal) : String(inVal);
-                        if (inStr.length > 90) inStr = inStr.slice(0, 87) + '…';
+                        if (inStr.length > 90) inStr = inStr.slice(0, 87) + 'â€¦';
                         dataPreview = 'Input: ' + inStr;
                     }
                 }
@@ -5560,7 +5568,7 @@
                 navigator.clipboard.writeText(code).then(function () {
                     _toast('Share code copied!');
                 }).catch(function () {
-                    _toast('Copy failed — select the code manually.', true);
+                    _toast('Copy failed â€” select the code manually.', true);
                 });
             });
         }
@@ -5758,7 +5766,7 @@
             _zoom(e.deltaY < 0 ? 1 : -1, e.clientX, e.clientY);
         }, { passive: false });
 
-        // Canvas node hover ↔ inspector result card linking
+        // Canvas node hover â†” inspector result card linking
         _e.canvasInner.addEventListener('mouseover', function (e) {
             if (_sidebarPage !== 'results') return;
             var nodeEl = e.target.closest('.at-node');
@@ -5827,7 +5835,7 @@
                 if (wrap) wrap.style.display = 'none';
                 return;
             }
-            // Node body → select, or complete a trigger connection
+            // Node body â†’ select, or complete a trigger connection
             const nodeEl = e.target.closest('.at-node');
             if (nodeEl) {
                 e.stopPropagation();
@@ -6407,5 +6415,29 @@
             _init();
         }
     });
+
+    // Lifecycle rehydration
+    document.addEventListener('tabChanged', function (e) {
+        if (e.detail && e.detail.tab === 'automate') {
+            if (!_nodeTypes || _nodeTypes.length === 0 || !_workflows || _workflows.length === 0) {
+                _refreshData();
+            }
+        }
+    });
+
+    window.addEventListener('systemReady', function () {
+        const onTab = typeof currentMainTab !== 'undefined' && currentMainTab === 'automate';
+        if (onTab || document.getElementById('at-canvas-inner')) {
+            _refreshData();
+        }
+    });
+
+    if (typeof registerTabInit === 'function') {
+        registerTabInit('automate', function () {
+            if (!_nodeTypes || _nodeTypes.length === 0 || !_workflows || _workflows.length === 0) {
+                _refreshData();
+            }
+        });
+    }
 
 })();
