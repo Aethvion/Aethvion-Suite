@@ -8,13 +8,14 @@ import asyncio
 import os
 import subprocess
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+from pydantic import BaseModel
 
 # Windows window suppression
 CREATE_NO_WINDOW = 0x08000000 if os.name == 'nt' else 0
 from fastapi import APIRouter, HTTPException, Request
 
-from core.utils import get_logger, utcnow_iso, atomic_json_write
+from core.utils import get_logger, utcnow_iso, atomic_json_write, load_json
 from core.utils.model_downloader import ModelDownloader
 from core.utils.registry_utils import ensure_registry_initialized
 from core.utils.paths import (
@@ -150,7 +151,7 @@ async def update_env_key(data: Dict[str, Any], request: Request):
         # Reload into current process environment
         os.environ[key_name] = key_value
 
-        # Reinitialise providers so they pick up the new key immediately —
+        # Reinitialise providers so they pick up the new key immediately â€”
         # no restart required.
         providers_reloaded = False
         if hasattr(request.app.state, 'aether'):
@@ -1050,14 +1051,14 @@ async def get_gpu_status():
         "vram_gb": None,
     }
 
-    # 1 — Register CUDA DLL dirs so llama_cpp can load on Windows
+    # 1 â€” Register CUDA DLL dirs so llama_cpp can load on Windows
     try:
         from core.providers.local_provider import _register_cuda_dll_dirs
         _register_cuda_dll_dirs()
     except Exception:
         pass
 
-    # 2 — Check if CUDA llama-cpp build is active
+    # 2 â€” Check if CUDA llama-cpp build is active
     try:
         import llama_cpp
         result["llama_cpp_installed"] = True
@@ -1067,7 +1068,7 @@ async def get_gpu_status():
     except Exception:
         pass
 
-    # 2 — Detect GPU via nvidia-smi (works on Windows without torch)
+    # 2 â€” Detect GPU via nvidia-smi (works on Windows without torch)
     try:
         proc = subprocess.run(
             ["nvidia-smi",
@@ -1084,7 +1085,7 @@ async def get_gpu_status():
     except Exception:
         pass
 
-    # 3 — Fallback: torch (if nvidia-smi wasn't found / failed)
+    # 3 â€” Fallback: torch (if nvidia-smi wasn't found / failed)
     if not result["cuda_available"]:
         try:
             import torch
@@ -1104,10 +1105,37 @@ from core.utils.paths import SYSTEM_SPECS
 SYSTEM_SPECS_PATH = SYSTEM_SPECS
 
 
+class SystemSpecsOverride(BaseModel):
+    gpu_name: Optional[str] = None
+    vram_gb: Optional[float] = None
+    ram_total_gb: Optional[float] = None
+    cpu_name: Optional[str] = None
+    cuda_available: Optional[bool] = None
+    custom_override: Optional[bool] = True
+
+
 @router.get("/local/system-specs")
-async def get_system_specs():
-    """Detect and cache system hardware specs (CPU, GPU, RAM) to data/system_specs.json."""
+async def get_system_specs(refresh: bool = False, force_redetect: bool = False):
+    """Detect and cache system hardware specs (CPU, GPU, RAM) to config/system_specs.json."""
     import platform as _platform
+
+    # Return cached specs if available and not forcing re-detect
+    if not refresh and not force_redetect and SYSTEM_SPECS_PATH.exists():
+        try:
+            cached = load_json(SYSTEM_SPECS_PATH, default={})
+            if cached and (cached.get("cpu_name") or cached.get("gpu_name")):
+                return cached
+        except Exception:
+            pass
+
+    # If user has a custom override and didn't explicitly force auto-redetection, keep it
+    if SYSTEM_SPECS_PATH.exists() and not force_redetect:
+        try:
+            cached = load_json(SYSTEM_SPECS_PATH, default={})
+            if cached.get("custom_override"):
+                return cached
+        except Exception:
+            pass
 
     specs: dict = {
         "cpu_name": "Unknown",
@@ -1118,6 +1146,7 @@ async def get_system_specs():
         "gpu_name": None,
         "vram_gb": 0.0,
         "cuda_available": False,
+        "custom_override": False,
         "last_updated": utcnow_iso(),
     }
 
@@ -1179,13 +1208,54 @@ async def get_system_specs():
         except Exception:
             pass
 
-    # Save to data/system_specs.json
+    # Save to data/config/system_specs.json
     try:
         atomic_json_write(SYSTEM_SPECS_PATH, specs)
     except Exception as exc:
         logger.warning(f"Could not save system specs: {exc}")
 
     return specs
+
+
+@router.post("/local/system-specs")
+async def save_system_specs(override: SystemSpecsOverride):
+    """Save custom user hardware profile override."""
+    current = {}
+    if SYSTEM_SPECS_PATH.exists():
+        try:
+            current = load_json(SYSTEM_SPECS_PATH, default={})
+        except Exception:
+            current = {}
+
+    if override.gpu_name is not None:
+        current["gpu_name"] = override.gpu_name.strip() or None
+    if override.vram_gb is not None:
+        current["vram_gb"] = round(float(override.vram_gb), 1)
+    if override.ram_total_gb is not None:
+        current["ram_total_gb"] = round(float(override.ram_total_gb), 1)
+    if override.cpu_name is not None:
+        current["cpu_name"] = override.cpu_name.strip() or "Unknown"
+    if override.cuda_available is not None:
+        current["cuda_available"] = bool(override.cuda_available)
+    elif current.get("vram_gb") and float(current.get("vram_gb", 0)) > 0:
+        current["cuda_available"] = True
+
+    current["custom_override"] = bool(override.custom_override)
+    current["last_updated"] = utcnow_iso()
+
+    try:
+        atomic_json_write(SYSTEM_SPECS_PATH, current)
+    except Exception as e:
+        logger.error(f"Failed to save system specs override: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return current
+
+
+@router.post("/local/system-specs/reset")
+async def reset_system_specs():
+    """Clear custom override and re-detect hardware directly from system."""
+    return await get_system_specs(refresh=True, force_redetect=True)
 
 
 class ModelInfoQuery:

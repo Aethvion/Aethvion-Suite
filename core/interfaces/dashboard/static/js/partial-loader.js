@@ -1,5 +1,5 @@
 /**
- * Aethvion Suite — Partial Loader
+ * Aethvion Suite â€” Partial Loader
  *
  * Fetches panel HTML on first activation and injects it into the placeholder div.
  * Every main-tab-panel in index.html is an empty shell with data-partial="name".
@@ -13,7 +13,7 @@
     const FILE_TABS = new Set(['output', 'screenshots', 'camera', 'uploads']);
 
     const _loaded  = new Set();   // panelIds fully injected
-    const _pending = new Map();   // panelId → Promise (in-flight)
+    const _pending = new Map();   // panelId â†’ Promise (in-flight)
     const _loadedScripts = new Set(); // script paths fully loaded
 
     const SCRIPT_MAP = {
@@ -53,11 +53,11 @@
         'ports':            ['/static/js/view-ports.js'],
         'documentation':    ['/static/js/view-documentation.js'],
         'status':           ['/static/js/view-status.js'],
-        'local-models':     ['/static/js/view-models.js'],
-        'image-models':     ['/static/js/view-models.js'],
-        'audio-models':     ['/static/js/view-audio-models.js'],
+        'local-models':     ['/static/js/hardware-profile.js', '/static/js/view-models.js'],
+        'image-models':     ['/static/js/hardware-profile.js', '/static/js/view-models.js'],
+        'audio-models':     ['/static/js/hardware-profile.js', '/static/js/view-audio-models.js'],
         'api-providers':    ['/static/js/view-api-providers.js'],
-        '3d-models':        ['/static/js/view-3d-models.js'],
+        '3d-models':        ['/static/js/hardware-profile.js', '/static/js/view-3d-models.js'],
         '3d-gen':           ['/static/js/particle-sphere.js', '/static/js/mode-3d-gen.js']
     };
 

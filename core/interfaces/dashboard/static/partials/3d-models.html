@@ -15,6 +15,14 @@
                    placeholder="Search 3D models and tools...">
         </div>
         
+        <select id="td-compat-filter" class="lm-filter-select" title="Filter by PC Compatibility">
+            <option value="all">Hardware: All</option>
+            <option value="runnable">Runnable on this PC</option>
+            <option value="gpu">Runs on GPU</option>
+        </select>
+
+        <div id="td-hw-slot" style="margin-left:auto;"></div>
+
         <div class="td-status-chip" style="background: rgba(var(--primary-rgb), 0.1); border: 1px solid rgba(var(--primary-rgb), 0.2); padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
             <span class="td-status-dot online" style="width:8px; height:8px; background:gray; border-radius:50%;"></span>
             <span id="td-engine-status" style="color: #fff; font-weight: 600;">3D Service: Offline</span>
@@ -50,8 +58,11 @@
                         <div class="hub-model-info">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <h3 style="font-size: 1.8rem; margin:0;">Trellis 2 (WIP)</h3>
-                                <div id="trellis2-health-badge" class="hub-status-badge" style="border-color: rgba(255,255,255,0.1); color: var(--text-tertiary); font-size: 0.75rem; padding: 0.4rem 0.8rem;">
-                                    <i class="fas fa-power-off"></i> Model Service is Offline
+                                <div style="display:flex; align-items:center; gap:0.5rem;">
+                                    <span id="trellis2-compat-badge"></span>
+                                    <div id="trellis2-health-badge" class="hub-status-badge" style="border-color: rgba(255,255,255,0.1); color: var(--text-tertiary); font-size: 0.75rem; padding: 0.4rem 0.8rem;">
+                                        <i class="fas fa-power-off"></i> Model Service is Offline
+                                    </div>
                                 </div>
                             </div>
                             <p style="font-size: 1rem; color: var(--text-secondary);">The new standard for high-fidelity 3D reconstruction. Convert a single image into a high-density geometric mesh with verified topology. Optimized for consumer NVIDIA GPUs.</p>
@@ -134,8 +145,11 @@
                         <div class="hub-model-info">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <h3 style="font-size: 1.8rem; margin:0;">TripoSR</h3>
-                                <div id="triposr-health-badge" class="hub-status-badge" style="border-color: rgba(255,255,255,0.1); color: var(--text-tertiary); font-size: 0.75rem; padding: 0.4rem 0.8rem;">
-                                    <i class="fas fa-power-off"></i> Model Service is Offline
+                                <div style="display:flex; align-items:center; gap:0.5rem;">
+                                    <span id="triposr-compat-badge"></span>
+                                    <div id="triposr-health-badge" class="hub-status-badge" style="border-color: rgba(255,255,255,0.1); color: var(--text-tertiary); font-size: 0.75rem; padding: 0.4rem 0.8rem;">
+                                        <i class="fas fa-power-off"></i> Model Service is Offline
+                                    </div>
                                 </div>
                             </div>
                             <p style="font-size: 1rem; color: var(--text-secondary);">Fast and robust 3D reconstruction from single images. Generates high-quality meshes in seconds. More reliable across varying hardware than larger flow-based models.</p>

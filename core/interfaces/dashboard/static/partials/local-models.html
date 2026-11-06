@@ -26,6 +26,14 @@
                    placeholder="Search library by name, tag, or provider...">
         </div>
         
+        <select id="model-compat-filter" class="lm-filter-select" title="Filter by Hardware Compatibility">
+            <option value="all">Hardware: All</option>
+            <option value="runnable">Runnable on this PC</option>
+            <option value="gpu">Runs on GPU</option>
+            <option value="cpu">Runs on CPU</option>
+            <option value="heavy">Too Heavy</option>
+        </select>
+
         <select id="sort-models" class="lm-filter-select">
             <option value="name-asc">Alphabetical (A-Z)</option>
             <option value="params-desc">Parameter Count (High-Low)</option>
@@ -35,6 +43,8 @@
 
         <!-- Hidden but kept for JS compat -->
         <select id="group-models" style="display:none"><option value="none">none</option></select>
+
+        <div id="local-models-hw-slot" style="margin-left:auto;"></div>
 
         <button id="clear-models-filters" class="lm-icon-btn" title="Refresh Filters">
             <i class="fas fa-filter-circle-xmark"></i>
@@ -179,9 +189,14 @@
                 <span class="placeholder-text">Checking hardware specsâ€¦</span>
             </div>
             
-            <button class="hub-action-btn secondary" style="margin-top:1rem; width:100%" onclick="LocalModels.loadSystemSpecs(true)">
-                <i class="fas fa-barcode"></i> Re-scan Hardware
-            </button>
+            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+                <button class="hub-action-btn secondary" style="flex:1;" onclick="LocalModels.openHardwareModal()">
+                    <i class="fas fa-sliders"></i> Customize
+                </button>
+                <button class="hub-action-btn secondary" style="flex:1;" onclick="LocalModels.loadSystemSpecs(true)">
+                    <i class="fas fa-arrows-rotate"></i> Re-detect
+                </button>
+            </div>
         </div>
 
     </div>

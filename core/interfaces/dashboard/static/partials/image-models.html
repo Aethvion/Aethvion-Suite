@@ -23,10 +23,20 @@
         <div class="hub-search-box">
             <i class="fas fa-search"></i>
             <input type="text" id="image-search-input" class="hub-search-input" 
-                   placeholder="Image generation is currently in development..." disabled>
+                   placeholder="Filter image models..." oninput="window.filterImageModels && window.filterImageModels()">
         </div>
+        
+        <select id="image-compat-filter" class="lm-filter-select" title="Filter by PC Compatibility" onchange="window.filterImageModels && window.filterImageModels()">
+            <option value="all">Hardware: All</option>
+            <option value="runnable">Runnable on this PC</option>
+            <option value="gpu">Runs on GPU</option>
+            <option value="cpu">CPU Fallback</option>
+        </select>
+
+        <div id="image-hw-slot" style="margin-left:auto;"></div>
+
         <div class="im-coming-chip">
-            <i class="fas fa-clock"></i> Coming Soon
+            <i class="fas fa-clock"></i> In Development
         </div>
     </div>
 
@@ -47,10 +57,13 @@
         </div>
         <div class="hub-grid">
             <!-- SD 1.5 -->
-            <div class="hub-card" style="--brand-color: #7c3aed; opacity: 0.8;">
+            <div class="hub-card im-card" data-req-vram="4" data-req-ram="8" data-name="Stable Diffusion 1.5" style="--brand-color: #7c3aed; opacity: 0.95;">
                 <div class="hub-card-top">
                     <div class="hub-model-icon"><i class="fas fa-mountain-sun"></i></div>
-                    <span class="hub-status-badge">Roadmap</span>
+                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <span id="im-compat-sd15"></span>
+                        <span class="hub-status-badge">Roadmap</span>
+                    </div>
                 </div>
                 <div class="hub-model-info">
                     <h3>Stable Diffusion 1.5</h3>
@@ -69,10 +82,13 @@
             </div>
 
             <!-- SDXL -->
-            <div class="hub-card" style="--brand-color: #7c3aed; opacity: 0.8;">
+            <div class="hub-card im-card" data-req-vram="8" data-req-ram="16" data-name="SDXL 1.0" style="--brand-color: #7c3aed; opacity: 0.95;">
                 <div class="hub-card-top">
                     <div class="hub-model-icon"><i class="fas fa-expand"></i></div>
-                    <span class="hub-status-badge">Roadmap</span>
+                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <span id="im-compat-sdxl"></span>
+                        <span class="hub-status-badge">Roadmap</span>
+                    </div>
                 </div>
                 <div class="hub-model-info">
                     <h3>SDXL 1.0</h3>
@@ -100,10 +116,13 @@
         </div>
         <div class="hub-grid">
             <!-- Flux Schnell -->
-            <div class="hub-card" style="--brand-color: #06b6d4; border-color: rgba(6, 182, 212, 0.3);">
+            <div class="hub-card im-card" data-req-vram="12" data-req-ram="24" data-name="Flux.1 Schnell" style="--brand-color: #06b6d4; border-color: rgba(6, 182, 212, 0.3);">
                 <div class="hub-card-top">
                     <div class="hub-model-icon"><i class="fas fa-bolt-lightning"></i></div>
-                    <span class="hub-status-badge" style="color:#06b6d4; border-color:#06b6d4;">Priority Support</span>
+                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <span id="im-compat-flux"></span>
+                        <span class="hub-status-badge" style="color:#06b6d4; border-color:#06b6d4;">Priority Support</span>
+                    </div>
                 </div>
                 <div class="hub-model-info">
                     <h3>Flux.1 Schnell</h3>
@@ -123,6 +142,55 @@
         </div>
     </section>
 </div>
+
+<script>
+(function() {
+    function updateImageCompatibility() {
+        if (!window.HardwareProfile) return;
+        const slot = document.getElementById('image-hw-slot');
+        if (slot) window.HardwareProfile.attachToolbarPill(slot);
+
+        const sd15El = document.getElementById('im-compat-sd15');
+        if (sd15El) sd15El.innerHTML = window.HardwareProfile.renderBadge({ name: 'SD 1.5', req_vram_gb: 4, req_ram_gb: 8, type: 'image' });
+
+        const sdxlEl = document.getElementById('im-compat-sdxl');
+        if (sdxlEl) sdxlEl.innerHTML = window.HardwareProfile.renderBadge({ name: 'SDXL 1.0', req_vram_gb: 8, req_ram_gb: 16, type: 'image' });
+
+        const fluxEl = document.getElementById('im-compat-flux');
+        if (fluxEl) fluxEl.innerHTML = window.HardwareProfile.renderBadge({ name: 'Flux.1 Schnell', req_vram_gb: 12, req_ram_gb: 24, type: 'image' });
+
+        filterImageModels();
+    }
+
+    window.filterImageModels = function() {
+        const query = (document.getElementById('image-search-input')?.value || '').toLowerCase().trim();
+        const compatFilter = document.getElementById('image-compat-filter')?.value || 'all';
+
+        document.querySelectorAll('.im-card').forEach(card => {
+            const name = (card.dataset.name || '').toLowerCase();
+            const reqVram = parseFloat(card.dataset.reqVram || 0);
+            const reqRam = parseFloat(card.dataset.reqRam || 0);
+
+            let matchesSearch = !query || name.includes(query);
+            let matchesCompat = true;
+
+            if (compatFilter !== 'all' && window.HardwareProfile) {
+                const c = window.HardwareProfile.evaluate({ name, req_vram_gb: reqVram, req_ram_gb: reqRam, type: 'image' });
+                if (compatFilter === 'runnable') matchesCompat = c.runnable;
+                else if (compatFilter === 'gpu') matchesCompat = (c.status === 'gpu');
+                else if (compatFilter === 'cpu') matchesCompat = (c.status === 'cpu' || c.status === 'partial');
+            }
+
+            card.style.display = (matchesSearch && matchesCompat) ? '' : 'none';
+        });
+    };
+
+    updateImageCompatibility();
+    if (window.HardwareProfile) {
+        window.HardwareProfile.subscribe(updateImageCompatibility);
+    }
+})();
+</script>
 
 <style>
 .im-coming-chip {

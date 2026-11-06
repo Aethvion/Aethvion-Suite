@@ -1,11 +1,11 @@
 /**
- * Aethvion Suite — Audio Models View
+ * Aethvion Suite â€” Audio Models View
  * Manages local TTS/STT models: install, load/unload, generate, voice cloning.
  */
 
 const AudioModels = (() => {
     let _suggested = [];
-    let _statuses  = {};   // model_id → status dict
+    let _statuses  = {};   // model_id â†’ status dict
     let _registered = new Set(); // model_ids registered in model_registry.json
     let _currentTab = 'tts';
     let _cloneModelId = null;
@@ -13,6 +13,7 @@ const AudioModels = (() => {
     let _defaultModel = null;
     let _defaultVoice = null;
     let _search = '';
+    let _compatFilter = 'all';
 
     // Init
     async function init() {
@@ -25,7 +26,27 @@ const AudioModels = (() => {
                 _render();
             };
         }
+
+        const compatEl = document.getElementById('am-compat-filter');
+        if (compatEl) {
+            compatEl.onchange = (e) => {
+                _compatFilter = e.target.value;
+                _render();
+            };
+        }
+
+        const hwSlot = document.getElementById('am-hw-slot');
+        if (hwSlot && window.HardwareProfile) {
+            window.HardwareProfile.attachToolbarPill(hwSlot);
+        }
+
+        if (window.HardwareProfile && !_lifecycleAttached) {
+            _lifecycleAttached = true;
+            window.HardwareProfile.subscribe(() => _render());
+        }
     }
+
+    let _lifecycleAttached = false;
 
     async function refresh() {
         await Promise.all([_loadStatuses(), _loadSuggested()]);
@@ -73,16 +94,25 @@ const AudioModels = (() => {
         return hay.includes(_search);
     }
 
+    function _matchesCompat(m) {
+        if (_compatFilter === 'all' || !window.HardwareProfile) return true;
+        const c = window.HardwareProfile.evaluate({ ...m, type: 'audio' });
+        if (_compatFilter === 'runnable') return c.runnable;
+        if (_compatFilter === 'gpu') return c.status === 'gpu';
+        if (_compatFilter === 'cpu') return c.status === 'cpu';
+        return true;
+    }
+
     function _render() {
         const ttsEl = document.getElementById('am-tts-cards');
         const sttEl = document.getElementById('am-stt-cards');
         if (!ttsEl || !sttEl) return;
 
-        const tts = _suggested.filter(m => m.category === 'tts' && _matchesSearch(m));
-        const stt = _suggested.filter(m => m.category === 'stt' && _matchesSearch(m));
+        const tts = _suggested.filter(m => m.category === 'tts' && _matchesSearch(m) && _matchesCompat(m));
+        const stt = _suggested.filter(m => m.category === 'stt' && _matchesSearch(m) && _matchesCompat(m));
 
-        ttsEl.innerHTML = tts.map(m => _modelCard(m)).join('') || '<p class="empty-state">No TTS models configured.</p>';
-        sttEl.innerHTML = stt.map(m => _modelCard(m)).join('') || '<p class="empty-state">No STT models configured.</p>';
+        ttsEl.innerHTML = tts.map(m => _modelCard(m)).join('') || '<p class="empty-state">No matching TTS models.</p>';
+        sttEl.innerHTML = stt.map(m => _modelCard(m)).join('') || '<p class="empty-state">No matching STT models.</p>';
     }
 
     function _modelCard(m) {
@@ -91,6 +121,8 @@ const AudioModels = (() => {
         const loaded    = status.loaded    || false;
         const device    = status.device    || '—';
 
+        const compatBadge = window.HardwareProfile ? window.HardwareProfile.renderBadge({ ...m, type: 'audio' }) : '';
+
         // Capability badges (compact)
         const capBadges = (m.capabilities || []).map(c =>
             `<span class="hub-tag" style="background:rgba(var(--primary-rgb),0.05); color:var(--primary);">${c.toUpperCase()}</span>`
@@ -98,7 +130,7 @@ const AudioModels = (() => {
 
         // Status pill
         let statusBadge = `<span class="hub-status-badge">Not Installed</span>`;
-        if (installed && loaded)   statusBadge = `<span class="hub-status-badge loaded">Active · ${device}</span>`;
+        if (installed && loaded)   statusBadge = `<span class="hub-status-badge loaded">Active Â· ${device}</span>`;
         else if (installed)        statusBadge = `<span class="hub-status-badge installed">Ready</span>`;
 
         const isDefault = _defaultModel === m.id;
@@ -149,11 +181,14 @@ const AudioModels = (() => {
         <div class="hub-card ${loaded ? 'active' : ''}" id="am-card-${m.id}" style="--brand-color: var(--primary);">
             <div class="hub-card-top">
                 <div class="hub-model-icon"><i class="fas fa-wave-square"></i></div>
-                ${statusBadge}
+                <div style="display:flex; align-items:center; gap:0.4rem;">
+                    ${compatBadge}
+                    ${statusBadge}
+                </div>
             </div>
             
             <div class="hub-model-info">
-                <h3>${m.name} ${m.recommended ? '⭐' : ''}</h3>
+                <h3>${m.name} ${m.recommended ? 'â­' : ''}</h3>
                 <p>${m.description}</p>
             </div>
 
@@ -186,7 +221,7 @@ const AudioModels = (() => {
         return `<div class="am-test-section">
             <label class="am-test-label">Test Voice</label>
             <div class="am-test-row">
-                <textarea id="am-test-text-${m.id}" class="am-test-textarea" rows="2" placeholder="Enter text to speak…">Hello, I am your local AI voice.</textarea>
+                <textarea id="am-test-text-${m.id}" class="am-test-textarea" rows="2" placeholder="Enter text to speakâ€¦">Hello, I am your local AI voice.</textarea>
                 ${voiceOpts ? `<select class="setting-select am-voice-select" id="am-test-voice-${m.id}">${voiceOpts}</select>` : ''}
                 <button class="action-btn accent" onclick="AudioModels.testTTS('${m.id}', this)">
                     <i class="fas fa-play-circle"></i> Speak
@@ -213,7 +248,7 @@ const AudioModels = (() => {
                 ['en-Frank_man.pt',  'Frank (M)'],
                 ['en-Grace_woman.pt','Grace (F)'],
                 ['en-Mike_man.pt',   'Mike (M)'],
-                ['in-Samuel_man.pt', 'Samuel (M · Indian)'],
+                ['in-Samuel_man.pt', 'Samuel (M Â· Indian)'],
             ];
             return voices.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
         }
@@ -266,7 +301,7 @@ const AudioModels = (() => {
                     </div>
                     <div class="hub-model-info">
                         <h3 style="font-size:0.85rem; margin:0;">${v.name}</h3>
-                        <p style="font-size:0.7rem;">${v.language.toUpperCase()} · ${v.gender}</p>
+                        <p style="font-size:0.7rem;">${v.language.toUpperCase()} Â· ${v.gender}</p>
                     </div>
                 </div>
             `).join('');
@@ -291,7 +326,7 @@ const AudioModels = (() => {
             logEl.className = 'am-install-log';
             logEl.innerHTML = `
                 <div class="am-log-header">
-                    <span class="am-log-title"><i class="fas fa-terminal"></i> Installing…</span>
+                    <span class="am-log-title"><i class="fas fa-terminal"></i> Installingâ€¦</span>
                     <span class="am-log-pct">0%</span>
                 </div>
                 <div class="am-log-bar-wrap"><div class="am-log-bar"></div></div>
@@ -305,14 +340,14 @@ const AudioModels = (() => {
         const logOutput = logEl.querySelector('.am-log-output');
 
         // Reset state
-        logTitle.innerHTML = '<i class="fas fa-terminal"></i> Installing…';
+        logTitle.innerHTML = '<i class="fas fa-terminal"></i> Installingâ€¦';
         logPct.textContent = '0%';
         logBar.style.width = '5%';
         logBar.className   = 'am-log-bar';
         logOutput.textContent = '';
 
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Installing…';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Installingâ€¦';
 
         try {
             const resp = await fetch('/api/audio/local/install/stream', {
@@ -357,7 +392,7 @@ const AudioModels = (() => {
                         } else {
                             logBar.classList.add('am-bar-fail');
                             logTitle.innerHTML = '<i class="fas fa-times-circle" style="color:#f87171"></i> Failed';
-                            showNotification('Install failed — see log above', 'error');
+                            showNotification('Install failed â€” see log above', 'error');
                             btn.disabled = false;
                             btn.innerHTML = '<i class="fas fa-redo"></i> Retry';
                         }
@@ -375,7 +410,7 @@ const AudioModels = (() => {
         const sizeEl = document.getElementById(`am-size-${modelId}`);
         const modelSize = sizeEl ? sizeEl.value : 'medium';
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading…';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loadingâ€¦';
         try {
             const r = await fetch('/api/audio/local/models/load', {
                 method: 'POST',
@@ -390,7 +425,7 @@ const AudioModels = (() => {
                 let msg = d.detail || 'Unknown error';
                 // Surface numpy fix hint prominently
                 if (msg.includes('numpy') || msg.includes('binary incompatibility')) {
-                    msg = 'numpy version conflict — run: pip install "numpy<2"';
+                    msg = 'numpy version conflict â€” run: pip install "numpy<2"';
                 }
                 showNotification(`Load failed: ${msg}`, 'error');
                 btn.disabled = false;
@@ -504,7 +539,7 @@ const AudioModels = (() => {
         if (!file) return;
         const resultEl = document.getElementById(`am-stt-result-${modelId}`);
         resultEl.style.display = 'block';
-        resultEl.textContent = 'Transcribing…';
+        resultEl.textContent = 'Transcribingâ€¦';
 
         const reader = new FileReader();
         reader.onload = async (e) => {

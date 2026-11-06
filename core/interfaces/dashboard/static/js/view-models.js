@@ -60,6 +60,25 @@ const LocalModels = {
                     this.loadAll();
                 }
             });
+            if (window.HardwareProfile) {
+                window.HardwareProfile.subscribe((specs) => {
+                    this._systemSpecs = specs;
+                    const row = document.getElementById('system-specs-row');
+                    this._renderSpecsRow(row, specs);
+                    this.renderSuggestedModels();
+                });
+            }
+        }
+
+        const pillSlot = document.getElementById('local-models-hw-slot');
+        if (pillSlot && window.HardwareProfile) {
+            window.HardwareProfile.attachToolbarPill(pillSlot);
+        }
+    },
+
+    openHardwareModal() {
+        if (window.HardwareProfile) {
+            window.HardwareProfile.openModal();
         }
     },
 
@@ -70,6 +89,11 @@ const LocalModels = {
         this.loadOllamaStatus();
         this.loadArenaData();
         this.loadSystemSpecs(false);
+
+        const pillSlot = document.getElementById('local-models-hw-slot');
+        if (pillSlot && window.HardwareProfile) {
+            window.HardwareProfile.attachToolbarPill(pillSlot);
+        }
     },
 
     async loadArenaData() {
@@ -100,6 +124,14 @@ const LocalModels = {
             };
         }
 
+        const compatSelect = document.getElementById('model-compat-filter');
+        if (compatSelect) {
+            compatSelect.onchange = (e) => {
+                this._filters.compat = e.target.value;
+                this.applyFilters();
+            };
+        }
+
         ['sort-models', 'group-models'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.onchange = (e) => {
@@ -113,18 +145,20 @@ const LocalModels = {
         if (clearBtn) {
             clearBtn.onclick = () => {
                 if (searchInput) searchInput.value = '';
-                const sortEl  = document.getElementById('sort-models');
-                const groupEl = document.getElementById('group-models');
-                if (sortEl)  sortEl.value  = 'name-asc';
-                if (groupEl) groupEl.value = 'none';
-                this._filters = { search: '', sort: 'name-asc', group: 'none' };
+                const sortEl   = document.getElementById('sort-models');
+                const groupEl  = document.getElementById('group-models');
+                const compatEl = document.getElementById('model-compat-filter');
+                if (sortEl)   sortEl.value   = 'name-asc';
+                if (groupEl)  groupEl.value  = 'none';
+                if (compatEl) compatEl.value = 'all';
+                this._filters = { search: '', sort: 'name-asc', group: 'none', compat: 'all' };
                 this.applyFilters();
             };
         }
     },
 
     initFilters() {
-        this._filters = { search: '', sort: 'name-asc', group: 'none' };
+        this._filters = { search: '', sort: 'name-asc', group: 'none', compat: 'all' };
     },
 
     applyFilters() {
@@ -339,6 +373,18 @@ const LocalModels = {
             return true;
         });
 
+        // Filter by hardware compatibility
+        if (this._filters.compat && this._filters.compat !== 'all' && window.HardwareProfile) {
+            filtered = filtered.filter(model => {
+                const compat = window.HardwareProfile.evaluate(model);
+                if (this._filters.compat === 'runnable') return compat.runnable;
+                if (this._filters.compat === 'gpu') return compat.status === 'gpu';
+                if (this._filters.compat === 'cpu') return compat.status === 'cpu';
+                if (this._filters.compat === 'heavy') return compat.status === 'heavy';
+                return true;
+            });
+        }
+
         // Sort within each provider section
         filtered.sort((a, b) => {
             let res = 0;
@@ -443,51 +489,25 @@ const LocalModels = {
     },
 
     _getCompatBadge(model) {
-        if (!this._systemSpecs) return '';
-        const vram = this._systemSpecs.vram_gb || 0;
-        const ram  = this._systemSpecs.ram_total_gb || 0;
-
-        // Parse model size in GB from size string like "4.1 GB" or "7B"
-        let sizeGb = 0;
-        const gbMatch = (model.size || '').match(/(\d+\.?\d*)\s*GB/i);
-        const bMatch  = (model.size || '').match(/(\d+\.?\d*)B/i);
-        if (gbMatch)     sizeGb = parseFloat(gbMatch[1]);
-        else if (bMatch) sizeGb = parseFloat(bMatch[1]) * 0.6; // rough Q4 estimate
-
-        if (sizeGb === 0) return '';
-
-        let cls, label, icon;
-        if (vram >= sizeGb * 1.1) {
-            cls = 'compat-great'; label = 'Runs on GPU'; icon = 'fa-bolt';
-        } else if (vram >= sizeGb * 0.6) {
-            cls = 'compat-good';  label = 'Partial GPU';  icon = 'fa-microchip';
-        } else if (ram >= sizeGb * 1.2) {
-            cls = 'compat-ok';    label = 'CPU Only';      icon = 'fa-server';
-        } else {
-            cls = 'compat-heavy'; label = 'Very Heavy';    icon = 'fa-triangle-exclamation';
+        if (window.HardwareProfile) {
+            return window.HardwareProfile.renderBadge(model);
         }
-        return `<span class="compat-badge ${cls}" title="Based on your ${vram}GB VRAM / ${ram}GB RAM"><i class="fas ${icon}"></i> ${label}</span>`;
+        return '';
     },
 
     async loadSystemSpecs(forceRefresh = false) {
         const row = document.getElementById('system-specs-row');
-
-        // Use cached specs if available and not forcing refresh
-        if (this._systemSpecs && !forceRefresh) {
-            this._renderSpecsRow(row, this._systemSpecs);
-            return;
+        if (row && forceRefresh) {
+            row.innerHTML = '<span class="placeholder-text"><i class="fas fa-spinner fa-spin"></i> Detecting hardware…</span>';
         }
 
-        if (row) row.innerHTML = '<span class="placeholder-text"><i class="fas fa-spinner fa-spin"></i> Detecting hardwareâ€¦</span>';
-
         try {
-            const res = await fetch('/api/registry/local/system-specs');
-            if (!res.ok) throw new Error('failed');
-            const specs = await res.json();
-            this._systemSpecs = specs;
-            this._renderSpecsRow(row, specs);
-            // Re-render suggested cards to show compat badges
-            this.renderSuggestedModels();
+            if (window.HardwareProfile) {
+                const specs = await window.HardwareProfile.getSpecs(forceRefresh);
+                this._systemSpecs = specs;
+                this._renderSpecsRow(row, specs);
+                this.renderSuggestedModels();
+            }
         } catch (e) {
             if (row) row.innerHTML = '<span class="placeholder-text">Could not detect hardware</span>';
         }

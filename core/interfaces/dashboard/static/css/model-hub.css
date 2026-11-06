@@ -456,3 +456,189 @@
     pointer-events: none;
     cursor: default;
 }
+
+/* Hardware Compatibility Badges & Toolbars */
+.compat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.22rem 0.6rem;
+    border-radius: 9999px;
+    letter-spacing: 0.3px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.compat-badge.compat-great {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: #34d399;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+}
+
+.compat-badge.compat-good {
+    background: rgba(14, 165, 233, 0.12);
+    border: 1px solid rgba(14, 165, 233, 0.35);
+    color: #38bdf8;
+    box-shadow: 0 0 10px rgba(14, 165, 233, 0.1);
+}
+
+.compat-badge.compat-ok {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #fbbf24;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.1);
+}
+
+.compat-badge.compat-heavy {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #f87171;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.08);
+}
+
+.compat-badge.compat-unknown {
+    background: rgba(148, 163, 184, 0.1);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    color: #94a3b8;
+}
+
+/* Hardware Profile Trigger Pill */
+.hub-hw-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(99, 179, 237, 0.25);
+    border-radius: 9px;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary, #cbd5e1);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+}
+.hub-hw-pill:hover {
+    border-color: var(--primary, #38bdf8);
+    background: rgba(14, 165, 233, 0.1);
+    color: #fff;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.18);
+}
+.hub-hw-pill i {
+    color: var(--primary, #38bdf8);
+}
+.hub-hw-pill .hw-tag-custom {
+    font-size: 0.65rem;
+    background: rgba(168, 85, 247, 0.2);
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    color: #c084fc;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    margin-left: 0.25rem;
+}
+
+/* Hardware Configuration Modal */
+.hw-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(4, 7, 13, 0.78);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.hw-modal-card {
+    background: #0b101b;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    width: 540px;
+    max-width: 92vw;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(14, 165, 233, 0.1);
+    overflow: hidden;
+    animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.hw-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.hw-modal-title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+.hw-modal-title i { color: var(--primary, #38bdf8); }
+.hw-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.hw-modal-close:hover { color: #fff; }
+
+.hw-modal-body {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    max-height: 75vh;
+    overflow-y: auto;
+}
+
+.hw-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.hw-field-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary, #94a3b8);
+}
+.hw-input {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0.65rem 0.9rem;
+    color: #fff;
+    font-size: 0.85rem;
+    outline: none;
+    transition: all 0.2s;
+}
+.hw-input:focus {
+    border-color: var(--primary, #38bdf8);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.15);
+}
+
+.hw-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}

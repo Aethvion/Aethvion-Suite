@@ -31,7 +31,14 @@
                 <i class="fas fa-user-circle"></i> Voice Library
             </button>
         </div>
-        <button class="lm-icon-btn" onclick="AudioModels.refresh()" title="Refresh Registry" style="margin-left:auto;">
+        <select id="am-compat-filter" class="lm-filter-select" title="Filter by PC Compatibility" style="margin-left:auto;">
+            <option value="all">Hardware: All</option>
+            <option value="runnable">Runnable on this PC</option>
+            <option value="gpu">Runs on GPU</option>
+            <option value="cpu">Runs on CPU</option>
+        </select>
+        <div id="am-hw-slot" style="margin-left:0.5rem;"></div>
+        <button class="lm-icon-btn" onclick="AudioModels.refresh()" title="Refresh Registry">
             <i class="fas fa-rotate"></i>
         </button>
     </div>

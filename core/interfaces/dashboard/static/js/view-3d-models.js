@@ -1,5 +1,5 @@
 /**
- * Aethvion Suite — 3D Models View (Unified Models View v14.2)
+ * Aethvion Suite â€” 3D Models View (Unified Models View v14.2)
  * 
  * Handles search, filtering, and interaction for 3D generation models.
  */
@@ -10,15 +10,43 @@
     const View3DModels = {
         init() {
             this.bindEvents();
+            this.initHardwareProfile();
             this.updateStatus();
             this.checkInstallStatus('trellis-2');
             this.checkInstallStatus('triposr');
         },
 
+        initHardwareProfile() {
+            if (window.HardwareProfile) {
+                window.HardwareProfile.attachToolbarPill('td-hw-slot');
+                this.updateHardwareBadges();
+                window.HardwareProfile.subscribe(() => {
+                    this.updateHardwareBadges();
+                    this.filterModels();
+                });
+            }
+            const compatFilter = document.getElementById('td-compat-filter');
+            if (compatFilter) {
+                compatFilter.addEventListener('change', () => this.filterModels());
+            }
+        },
+
+        updateHardwareBadges() {
+            if (!window.HardwareProfile) return;
+            const t2Badge = document.getElementById('trellis2-compat-badge');
+            if (t2Badge) {
+                t2Badge.innerHTML = window.HardwareProfile.renderBadge({ id: 'trellis-2', type: '3d', req_vram_gb: 12 });
+            }
+            const tripoBadge = document.getElementById('triposr-compat-badge');
+            if (tripoBadge) {
+                tripoBadge.innerHTML = window.HardwareProfile.renderBadge({ id: 'triposr', type: '3d', req_vram_gb: 6 });
+            }
+        },
+
         bindEvents() {
             const searchInput = document.getElementById('td-model-search');
             if (searchInput) {
-                searchInput.addEventListener('input', (e) => this.filterModels(e.target.value));
+                searchInput.addEventListener('input', () => this.filterModels());
             }
 
             const refreshBtn = document.getElementById('refresh-3d-models');
@@ -38,12 +66,31 @@
             });
         },
 
-        filterModels(query) {
-            const q = query.toLowerCase();
-            document.querySelectorAll('.hub-card').forEach(card => {
-                const name = card.querySelector('h3').textContent.toLowerCase();
-                const visible = name.includes(q);
-                card.closest('.hub-provider-section').style.display = visible ? 'block' : 'none';
+        filterModels() {
+            const searchInput = document.getElementById('td-model-search');
+            const q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+            const compatVal = (document.getElementById('td-compat-filter')?.value || 'all').toLowerCase();
+
+            const models = [
+                { id: 'trellis-2', name: 'trellis 2', card: document.getElementById('btn-run-trellis2')?.closest('.hub-provider-section') },
+                { id: 'triposr', name: 'triposr', card: document.getElementById('btn-run-triposr')?.closest('.hub-provider-section') }
+            ];
+
+            models.forEach(m => {
+                if (!m.card) return;
+                const matchesQuery = !q || m.name.includes(q);
+
+                let matchesCompat = true;
+                if (compatVal !== 'all' && window.HardwareProfile) {
+                    const evalResult = window.HardwareProfile.evaluate({ id: m.id, type: '3d' });
+                    if (compatVal === 'runnable') {
+                        matchesCompat = evalResult.runnable !== false;
+                    } else if (compatVal === 'gpu') {
+                        matchesCompat = evalResult.status === 'gpu';
+                    }
+                }
+
+                m.card.style.display = (matchesQuery && matchesCompat) ? 'block' : 'none';
             });
         },
 
@@ -138,7 +185,7 @@
                         const vram = data.vram_used > 0
                             ? ` (${data.vram_used.toFixed(1)} / ${data.vram_total.toFixed(1)} GB VRAM)`
                             : '';
-                        badge.innerHTML = `<i class="fas fa-spinner fa-spin" style="color:#fb923c;"></i> Loading VRAM…${vram}`;
+                        badge.innerHTML = `<i class="fas fa-spinner fa-spin" style="color:#fb923c;"></i> Loading VRAMâ€¦${vram}`;
                         badge.style.borderColor = 'rgba(251, 146, 60, 0.4)';
                         badge.style.color = '#fb923c';
                         badge.classList.add('pulse-amber');
@@ -325,7 +372,7 @@
         },
 
         async handleRunModel(modelId) {
-            window.showToast(`Launching ${modelId}…`, 'info');
+            window.showToast(`Launching ${modelId}â€¦`, 'info');
             try {
                 const res = await fetch(`/api/3d/launch/${modelId}`);
                 const data = await res.json();
@@ -353,7 +400,10 @@
     };
 
     document.addEventListener('panelLoaded', (e) => {
-        if (e.detail.tabName === '3d-models') View3DModels.init();
+        if (e.detail && e.detail.tabName === '3d-models') View3DModels.init();
     });
+    if (document.getElementById('td-model-search')) {
+        View3DModels.init();
+    }
     window.View3DModels = View3DModels;
 })();
