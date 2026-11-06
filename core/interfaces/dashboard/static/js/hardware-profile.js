@@ -211,14 +211,19 @@ const HardwareProfile = (() => {
     }
 
     /**
-     * Attach and auto-update toolbar pill in a given container.
+     * Attach and auto-update toolbar pill in a given container (accepts DOM element or string ID).
      */
     function attachToolbarPill(containerEl) {
         if (!containerEl) return;
-        containerEl.innerHTML = renderToolbarPill();
+        const resolve = () => (typeof containerEl === 'string') ? document.getElementById(containerEl) : containerEl;
+        const el = resolve();
+        if (el) {
+            el.innerHTML = renderToolbarPill();
+        }
         subscribe(() => {
-            if (document.body.contains(containerEl)) {
-                containerEl.innerHTML = renderToolbarPill();
+            const target = resolve();
+            if (target && document.body.contains(target)) {
+                target.innerHTML = renderToolbarPill();
             }
         });
     }

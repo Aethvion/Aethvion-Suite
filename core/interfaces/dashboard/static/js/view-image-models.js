@@ -13,6 +13,7 @@
             models: null,
             downloadPollers: {}
         },
+        _eventsBound: false,
 
         init() {
             this.bindEvents();
@@ -22,6 +23,9 @@
         },
 
         bindEvents() {
+            if (this._eventsBound) return;
+            this._eventsBound = true;
+
             // Refresh button
             const refreshBtn = document.getElementById('im-btn-refresh');
             if (refreshBtn) {
@@ -49,7 +53,8 @@
 
         initHardwareProfile() {
             if (window.HardwareProfile) {
-                window.HardwareProfile.attachToolbarPill('image-hw-slot');
+                const slot = document.getElementById('image-hw-slot');
+                window.HardwareProfile.attachToolbarPill(slot || 'image-hw-slot');
                 window.HardwareProfile.subscribe(() => {
                     this.renderCatalogCards();
                 });
