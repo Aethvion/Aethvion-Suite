@@ -2597,52 +2597,51 @@
 }
 
 /* ==========================================================================
-   Spotlight Quick-Add Modal
+   Spotlight Quick-Add Canvas Popover
    ========================================================================== */
 
 .at-spotlight-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(5, 8, 14, 0.72);
-    backdrop-filter: blur(8px);
+    background: transparent;
+    backdrop-filter: none;
     z-index: 1000;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding-top: 14vh;
+    display: none;
+    pointer-events: auto;
 }
 
 .at-spotlight-modal {
-    width: 600px;
-    max-width: 92vw;
-    background: #0a0d14;
-    border: 1px solid rgba(56, 189, 248, 0.35);
-    border-radius: 14px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75), 0 0 24px rgba(56, 189, 248, 0.16);
+    position: fixed;
+    width: 430px;
+    max-width: calc(100vw - 32px);
+    background: #090d16;
+    border: 1px solid rgba(56, 189, 248, 0.38);
+    border-radius: 12px;
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.85), 0 0 20px rgba(56, 189, 248, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    max-height: 72vh;
-    animation: atSpotlightPop 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+    max-height: 440px;
+    animation: atSpotlightPop 0.14s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes atSpotlightPop {
-    from { opacity: 0; transform: scale(0.96) translateY(-8px); }
+    from { opacity: 0; transform: scale(0.95) translateY(-4px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .at-spotlight-input-wrap {
     display: flex;
     align-items: center;
-    padding: 0.95rem 1.2rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    gap: 0.85rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    gap: 0.75rem;
     background: rgba(255, 255, 255, 0.02);
 }
 
 .at-spotlight-search-icon {
     color: #38bdf8;
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     flex-shrink: 0;
 }
 
@@ -2651,7 +2650,7 @@
     background: transparent;
     border: none;
     outline: none;
-    font-size: 1rem;
+    font-size: 0.88rem;
     color: #f8fafc;
     font-family: inherit;
     font-weight: 500;
@@ -2663,7 +2662,7 @@
 }
 
 .at-spotlight-badge {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     color: #64748b;
     flex-shrink: 0;
 }
@@ -2673,18 +2672,18 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 4px;
     padding: 2px 5px;
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     color: #94a3b8;
 }
 
 .at-spotlight-cats {
     display: flex;
     align-items: center;
-    gap: 5px;
-    padding: 0.55rem 1.1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 4px;
+    padding: 0.45rem 0.8rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     overflow-x: auto;
-    background: rgba(0, 0, 0, 0.25);
+    background: rgba(0, 0, 0, 0.28);
     scrollbar-width: none;
 }
 
@@ -2695,9 +2694,9 @@
 .at-spotlight-cat {
     background: transparent;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    padding: 3px 10px;
-    font-size: 0.72rem;
+    border-radius: 14px;
+    padding: 2px 8px;
+    font-size: 0.68rem;
     color: #94a3b8;
     cursor: pointer;
     transition: all 0.12s ease;
@@ -2721,19 +2720,19 @@
 .at-spotlight-list {
     flex: 1;
     overflow-y: auto;
-    padding: 0.6rem 0.8rem;
+    padding: 0.45rem 0.6rem;
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    max-height: 400px;
+    gap: 2px;
+    max-height: 280px;
 }
 
 .at-spotlight-item {
     display: flex;
     align-items: center;
-    gap: 0.85rem;
-    padding: 0.65rem 0.85rem;
-    border-radius: 8px;
+    gap: 0.7rem;
+    padding: 0.48rem 0.65rem;
+    border-radius: 7px;
     cursor: pointer;
     transition: background 0.1s, border-color 0.1s;
     border: 1px solid transparent;
@@ -2745,20 +2744,20 @@
 }
 
 .at-spotlight-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     flex-shrink: 0;
 }
 
 .at-spotlight-item-body {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
     flex: 1;
     min-width: 0;
 }
@@ -2766,26 +2765,26 @@
 .at-spotlight-item-title-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .at-spotlight-item-name {
-    font-size: 0.86rem;
+    font-size: 0.82rem;
     font-weight: 600;
     color: #f1f5f9;
 }
 
 .at-spotlight-item-cat {
-    font-size: 0.64rem;
-    padding: 1px 6px;
-    border-radius: 4px;
+    font-size: 0.6rem;
+    padding: 1px 5px;
+    border-radius: 3px;
     text-transform: uppercase;
     font-weight: 700;
     letter-spacing: 0.04em;
 }
 
 .at-spotlight-item-desc {
-    font-size: 0.74rem;
+    font-size: 0.7rem;
     color: #64748b;
     white-space: nowrap;
     overflow: hidden;
@@ -2796,9 +2795,9 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.55rem 1.1rem;
+    padding: 0.45rem 0.85rem;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
-    font-size: 0.71rem;
+    font-size: 0.68rem;
     color: #64748b;
     background: rgba(0, 0, 0, 0.35);
 }
@@ -2808,7 +2807,7 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 4px;
     padding: 1px 4px;
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     color: #94a3b8;
 }
 

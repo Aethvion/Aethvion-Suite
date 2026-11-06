@@ -2642,7 +2642,7 @@
         let targetScreenX = screenX;
         let targetScreenY = screenY;
 
-        if (targetScreenX === undefined || targetScreenY === undefined) {
+        if (targetScreenX === undefined || targetScreenY === undefined || targetScreenX === null || targetScreenY === null) {
             if (_lastMouseX !== null && _lastMouseY !== null) {
                 targetScreenX = _lastMouseX;
                 targetScreenY = _lastMouseY;
@@ -2656,7 +2656,26 @@
         const canvasY = Math.round(((targetScreenY - rect.top - _view.y) / _view.scale - 40) / 20) * 20;
         _spotlightSpawnCoords = { canvasX, canvasY };
 
-        _e.spotlightOverlay.style.display = 'flex';
+        // Position contextual popover directly at cursor, clamped inside viewport
+        const popW = 430;
+        const popH = 440;
+        const pad  = 16;
+        let posX = targetScreenX + 8;
+        let posY = targetScreenY + 8;
+
+        if (posX + popW > window.innerWidth - pad) {
+            posX = Math.max(pad, targetScreenX - popW - 8);
+        }
+        if (posY + popH > window.innerHeight - pad) {
+            posY = Math.max(pad, targetScreenY - popH - 8);
+        }
+
+        if (_e.spotlightModal) {
+            _e.spotlightModal.style.left = Math.round(posX) + 'px';
+            _e.spotlightModal.style.top  = Math.round(posY) + 'px';
+        }
+
+        _e.spotlightOverlay.style.display = 'block';
         _currentSpotlightCat = 'all';
         if (_e.spotlightCats) {
             _e.spotlightCats.querySelectorAll('.at-spotlight-cat').forEach(function (c) {
@@ -6039,6 +6058,9 @@
 
         // Global mouse move + up
         document.addEventListener('mousemove', function (e) {
+            _lastMouseX = e.clientX;
+            _lastMouseY = e.clientY;
+
             // Mini-map viewport drag
             if (_minimapDragging && _minimapBounds) {
                 const dx = e.clientX - _minimapDragging.startCX;
