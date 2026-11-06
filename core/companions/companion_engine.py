@@ -56,36 +56,74 @@ class CompanionEngine:
         
         if trigger == "startup":
             time_desc = history.time_since_last()
-            instr = prompts.get("startup_instruction", "Welcome back.").replace("{time_desc}", time_desc)
+            instr = prompts.get("startup_instruction", "Welcome back! Check in with the user naturally.").replace("{time_desc}", time_desc)
         else:
-            instr = prompts.get("proactive_instruction", "Hello.")
+            instr = prompts.get("proactive_instruction", "Initiate a friendly, natural conversation with the user based on who you are and what you remember about them.")
 
-        system_prompt = prompts.get("initiate_system", "").format(
-            base_info=json.dumps(mem_data["base_info"], indent=2),
-            memory=json.dumps(mem_data["memory"], indent=2),
-            datetime_ctx=now.strftime("%A, %d %B %Y"),
-            trigger_instruction=instr
-        )
+        raw_init_prompt = prompts.get("initiate_system", "").strip()
+        if raw_init_prompt:
+            try:
+                system_prompt = raw_init_prompt.format(
+                    base_info=json.dumps(mem_data["base_info"], indent=2),
+                    memory=json.dumps(mem_data["memory"], indent=2),
+                    datetime_ctx=now.strftime("%A, %d %B %Y — %H:%M"),
+                    trigger_instruction=instr
+                )
+            except KeyError:
+                system_prompt = raw_init_prompt + f"\n\n{instr}"
+        else:
+            bi = mem_data.get("base_info", {})
+            mem = mem_data.get("memory", {})
+            system_prompt = (
+                f"You are {config.name}, an AI companion.\n"
+                f"Identity: {bi.get('core_identity', config.description)}\n"
+                f"Personality: {bi.get('personality', '')}\n"
+                f"Speech style: {bi.get('speech_style', '')}\n"
+                f"What you know about the user:\n{json.dumps(mem, indent=2)}\n\n"
+                f"Current time: {now.strftime('%A, %d %B %Y — %H:%M')}\n"
+                f"Time since last message: {history.time_since_last()}\n\n"
+                f"Task: {instr}\n"
+                f"Write a short, natural check-in message (1-3 sentences) in character."
+            )
 
-        model = get_preferences_manager().get(config.id, {}).get("model", config.default_model)
+        pref_model = get_preferences_manager().get(config.id, {}).get("model")
+        model = config.default_model or pref_model or "auto"
         pm = get_provider_manager()
-        response = pm.call_with_failover(
+        import asyncio
+        response = await asyncio.to_thread(
+            pm.call_with_failover,
             prompt=system_prompt,
             trace_id=f"{config.id}-init-{uuid.uuid4().hex[:8]}",
             temperature=behavior.get("initiate_temperature", 0.8),
             model=model,
             source=f"{config.id}-initiate"
         )
-        
-        if not response.success: raise HTTPException(status_code=500, detail=response.error)
+
+        if not response.success:
+            raise HTTPException(status_code=500, detail=response.error or "Model call failed")
         content = response.content.strip()
-        history.save_message("assistant", content, utcnow_iso(), 
-                             mood=behavior.get("default_mood", "calm"), 
-                             expression=behavior.get("default_expression", "default"), proactive=True)
+
+        expression = behavior.get("default_expression", "default")
+        mood = behavior.get("default_mood", "calm")
+        exp_match = re.search(r"<expression>(.*?)</expression>", content, re.IGNORECASE)
+        if exp_match:
+            expression = exp_match.group(1).strip().lower()
+        mood_match = re.search(r"<mood>(.*?)</mood>", content, re.IGNORECASE)
+        if mood_match:
+            mood = mood_match.group(1).strip().lower()
+
+        content = re.sub(
+            r"<(?:expression|mood|break)[^>]*>.*?</(?:expression|mood|break)>|<break\s*/?>",
+            " ", content, flags=re.DOTALL | re.IGNORECASE
+        ).strip()
+
+        history.save_message("assistant", content, utcnow_iso(),
+                             mood=mood,
+                             expression=expression, proactive=True)
         return {
             "response": content,
-            "expression": behavior.get("default_expression", "default"),
-            "mood": behavior.get("default_mood", "calm"),
+            "expression": expression,
+            "mood": mood,
             "model": response.model,
             "memory_updated": False
         }
@@ -208,44 +246,55 @@ class CompanionEngine:
                 "\n  - Do NOT write the word break in plain text — always output the tag: <break>"
             )
 
-            model = get_preferences_manager().get(config.id, {}).get("model", config.default_model)
+            pref_model = get_preferences_manager().get(config.id, {}).get("model")
+            model = config.default_model or pref_model
             pm = get_provider_manager()
 
             # Pre-flight validation: catch missing model / API key early
             if not model:
+                err_msg = (
+                    f"No model selected for {config.name}. "
+                    "Please go to Settings → Default Model and choose a model."
+                )
                 yield json.dumps({
                     "type": "error",
-                    "content": (
-                        f"No model selected for {config.name}. "
-                        "Please go to Settings → Companions and choose a model."
-                    ),
+                    "message": err_msg,
+                    "content": err_msg,
                 }) + "\n"
                 return
 
             _target_provider = pm.model_to_provider_map.get(model)
+            if not _target_provider and (model.endswith(".gguf") or model.startswith("local:")):
+                _target_provider = "local"
+            elif not _target_provider and (model.startswith("ollama:") or model.startswith("ollama/")):
+                _target_provider = "ollama"
+
             if _target_provider:
                 from core.providers.provider_manager import ProviderStatus
                 _prov = pm.providers.get(_target_provider)
                 if _prov and _prov.status == ProviderStatus.OFFLINE:
+                    err_msg = (
+                        f"The {_target_provider} provider is offline — "
+                        "its API key may be missing or invalid. "
+                        "Go to Settings → API Keys to configure it."
+                    )
                     yield json.dumps({
                         "type": "error",
-                        "content": (
-                            f"The {_target_provider} provider is offline — "
-                            "its API key may be missing or invalid. "
-                            "Go to Settings → API Keys to configure it."
-                        ),
+                        "message": err_msg,
+                        "content": err_msg,
                     }) + "\n"
                     return
-            elif "/" not in model and model != "auto":
-                # Model not in registry and not an OpenRouter passthrough
+            elif "/" not in model and model != "auto" and not model.startswith("profile:"):
+                # Model not in registry and not an OpenRouter passthrough or profile
+                err_msg = (
+                    f"Model '{model}' is not available. "
+                    "It may belong to a provider with no API key configured, or the local file is missing. "
+                    "Select an active model in Companion Settings."
+                )
                 yield json.dumps({
                     "type": "error",
-                    "content": (
-                        f"Model '{model}' is not available. "
-                        "It may belong to a provider with no API key configured. "
-                        "Go to Settings → API Keys to add the required key, "
-                        "then re-select the model in Settings → Companions."
-                    ),
+                    "message": err_msg,
+                    "content": err_msg,
                 }) + "\n"
                 return
             # end validation

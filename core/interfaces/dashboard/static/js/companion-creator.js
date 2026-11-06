@@ -84,7 +84,10 @@ const CompanionCreator = (() => {
         <div class="cc-pane-identity">
           <div class="cc-pane-avatar" id="cc-pane-avatar">✦</div>
           <div class="cc-pane-meta">
-            <span class="cc-pane-name" id="cc-pane-name"></span>
+            <div class="cc-pane-name-row">
+              <span class="cc-pane-name" id="cc-pane-name"></span>
+              <span class="cc-pane-model-badge hidden" id="cc-pane-model-badge"></span>
+            </div>
             <span class="cc-pane-sub"  id="cc-pane-sub"></span>
           </div>
         </div>
@@ -108,6 +111,30 @@ const CompanionCreator = (() => {
           <div class="cc-portrait-avatar" id="cc-portrait-avatar">✦</div>
           <div class="cc-portrait-name" id="cc-portrait-name"></div>
           <div class="cc-portrait-sub" id="cc-portrait-sub"></div>
+          <div class="cc-portrait-badges" id="cc-portrait-badges">
+            <span class="cc-portrait-pill" id="cc-portrait-mood" title="Current Mood">
+              <i class="fas fa-sparkles"></i> <span id="cc-portrait-mood-text">calm</span>
+            </span>
+            <span class="cc-portrait-pill" id="cc-portrait-expr" title="Current Expression">
+              <i class="fas fa-masks-theater"></i> <span id="cc-portrait-expr-text">default</span>
+            </span>
+          </div>
+          <div class="cc-portrait-status hidden" id="cc-portrait-status">
+            <i class="fas fa-circle-notch fa-spin"></i> <span id="cc-portrait-status-text">Thinking…</span>
+          </div>
+          <div class="cc-portrait-actions">
+            <button type="button" class="cc-btn cc-btn-ghost cc-btn-sm cc-portrait-action-btn" id="cc-checkin-btn" title="Have companion initiate a message">
+              <i class="fas fa-hand-sparkles"></i> Check-in
+            </button>
+            <div class="cc-portrait-subactions">
+              <button type="button" class="cc-icon-btn cc-icon-btn-sm" id="cc-export-chat-btn" title="Export chat transcript (.md)">
+                <i class="fas fa-download"></i>
+              </button>
+              <button type="button" class="cc-icon-btn cc-icon-btn-sm" id="cc-clear-chat-btn" title="Clear conversation messages (keeps long-term memory)">
+                <i class="fas fa-broom"></i>
+              </button>
+            </div>
+          </div>
         </div>
         <!-- Chat column (right) -->
         <div class="cc-chat-col">
@@ -735,16 +762,10 @@ const CompanionCreator = (() => {
             set('cc-dislikes', (fillData.dislikes || []).join('\n'));
             set('cc-accent-color',  fillData.accent_color  || '#6366f1');
             set('cc-avatar-symbol', fillData.avatar_symbol || '✦');
-            // Model — use the shared helper so options match the registry
+            // Model — use the shared helper so options match the registry (including local GGUF models)
             const modelSel = document.getElementById('cc-model');
             const modelVal = fillData.default_model || 'gemini-1.5-flash';
-            if (modelSel) {
-                if (typeof window._populateModelSelect === 'function') {
-                    window._populateModelSelect(modelSel, modelVal);
-                } else {
-                    modelSel.value = modelVal;
-                }
-            }
+            _ensureModelSelectPopulated(modelSel, modelVal);
 
             // Behavior
             const beh = fillData.behavior || {};
@@ -959,7 +980,37 @@ const CompanionCreator = (() => {
         }
     }
 
+    function _ensureModelSelectPopulated(modelSel, modelVal) {
+        if (!modelSel) return;
+        const applySelect = () => {
+            if (typeof window._populateModelSelect === 'function' && window._cachedChatModelOptions) {
+                window._populateModelSelect(modelSel, modelVal);
+                if (modelVal && !modelSel.querySelector(`option[value="${modelVal}"]`)) {
+                    const opt = document.createElement('option');
+                    opt.value = modelVal;
+                    opt.textContent = modelVal;
+                    modelSel.appendChild(opt);
+                    modelSel.value = modelVal;
+                }
+            } else {
+                modelSel.innerHTML = `<option value="${_esc(modelVal)}">${_esc(modelVal)}</option>`;
+                modelSel.value = modelVal;
+            }
+        };
+        if (window._cachedChatModelOptions) {
+            applySelect();
+        } else if (typeof window.loadChatModels === 'function') {
+            applySelect();
+            window.loadChatModels().then(applySelect).catch(() => {});
+        } else {
+            applySelect();
+        }
+    }
+
     // Memory view
+
+    let _lastMemoryData = null;
+    let _memSearchQuery = '';
 
     async function _loadMemory(companionId) {
         const contentEl = document.getElementById('cc-mem-content');
@@ -969,6 +1020,7 @@ const CompanionCreator = (() => {
             const res  = await fetch(`/api/companions/${companionId}/memory`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
+            _lastMemoryData = data;
             _renderMemory(contentEl, data);
         } catch (e) {
             contentEl.innerHTML = `<div class="cc-mem-empty"><i class="fas fa-exclamation-triangle"></i> Could not load memory: ${e.message}</div>`;
@@ -976,7 +1028,7 @@ const CompanionCreator = (() => {
     }
 
     function _esc(s) {
-        return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
     function _renderMemory(el, data) {
@@ -989,10 +1041,15 @@ const CompanionCreator = (() => {
         const lastUpd   = mem.last_updated         || bi.last_updated || null;
         const lastSynth = mem.last_synthesis        || null;
 
-        function section(icon, title, bodyHtml) {
+        const q = (_memSearchQuery || '').trim().toLowerCase();
+
+        function section(icon, title, bodyHtml, actionHtml = '') {
             return `
             <div class="cc-mem-section">
-              <div class="cc-mem-section-hdr"><i class="fas ${icon}"></i>${title}</div>
+              <div class="cc-mem-section-hdr">
+                <div class="cc-mem-section-title"><i class="fas ${icon}"></i>${title}</div>
+                <div class="cc-mem-section-actions">${actionHtml}</div>
+              </div>
               <div class="cc-mem-section-body">${bodyHtml}</div>
             </div>`;
         }
@@ -1000,6 +1057,41 @@ const CompanionCreator = (() => {
         function emptyState(msg) {
             return `<div class="cc-mem-none">${msg}</div>`;
         }
+
+        const uiEntries = Object.entries(userInfo).filter(([k, v]) => {
+            if (!q) return true;
+            const vs = typeof v === 'object' ? JSON.stringify(v) : String(v);
+            return k.toLowerCase().includes(q) || vs.toLowerCase().includes(q);
+        });
+
+        const filteredObs = obs.map((text, idx) => ({ text, idx })).filter(item => {
+            if (!q) return true;
+            return String(item.text).toLowerCase().includes(q);
+        });
+
+        const filteredSynth = synth.map((text, idx) => ({ text, idx })).filter(item => {
+            if (!q) return true;
+            return String(item.text).toLowerCase().includes(q);
+        });
+
+        // Top toolbar: Stats + Search + Synthesize button
+        const toolbarHtml = `
+        <div class="cc-mem-toolbar">
+          <div class="cc-mem-stats">
+            <span class="cc-mem-stat-pill"><i class="fas fa-user-tag"></i> ${Object.keys(userInfo).length} Facts</span>
+            <span class="cc-mem-stat-pill"><i class="fas fa-eye"></i> ${obs.length} Observations</span>
+            <span class="cc-mem-stat-pill"><i class="fas fa-lightbulb"></i> ${synth.length} Insights</span>
+          </div>
+          <div class="cc-mem-toolbar-right">
+            <div class="cc-mem-search-wrap">
+              <i class="fas fa-search"></i>
+              <input type="text" id="cc-mem-search" class="cc-mem-search-input" placeholder="Filter memories…" value="${_esc(_memSearchQuery)}">
+            </div>
+            <button type="button" id="cc-mem-synth-btn" class="cc-btn cc-btn-primary cc-btn-sm" title="Consolidate observations and extract high-level insights using the companion's LLM">
+              <i class="fas fa-wand-magic-sparkles"></i> Synthesize Memory
+            </button>
+          </div>
+        </div>`;
 
         // About (base_info)
         const aboutRows = [
@@ -1024,25 +1116,66 @@ const CompanionCreator = (() => {
         if (dislikes.length)  aboutHtml += `<div class="cc-mem-kv"><span class="cc-mem-key">Dislikes</span><span class="cc-mem-val">${dislikes.map(d => `<span class="cc-mem-tag cc-mem-tag-dislike">${_esc(d)}</span>`).join('')}</span></div>`;
         if (!aboutHtml)       aboutHtml  = emptyState('No identity data yet.');
 
-        // User info
-        const uiEntries = Object.entries(userInfo);
-        const uiHtml = uiEntries.length
-            ? uiEntries.map(([k, v]) => `
-                <div class="cc-mem-kv">
+        // User info (interactive)
+        const addFactFormHtml = `
+            <div class="cc-mem-inline-form hidden" id="cc-mem-fact-form">
+              <input type="text" id="cc-mem-fact-key" class="cc-mem-input cc-mem-input-key" placeholder="Key (e.g. occupation, project)">
+              <input type="text" id="cc-mem-fact-val" class="cc-mem-input cc-mem-input-val" placeholder="Value (e.g. Game Developer)">
+              <button type="button" id="cc-mem-fact-save" class="cc-btn cc-btn-primary cc-btn-sm">Save</button>
+              <button type="button" id="cc-mem-fact-cancel" class="cc-btn cc-btn-ghost cc-btn-sm">Cancel</button>
+            </div>`;
+
+        const uiRowsHtml = uiEntries.length
+            ? uiEntries.map(([k, v]) => {
+                const valStr = typeof v === 'object' ? JSON.stringify(v) : String(v);
+                return `
+                <div class="cc-mem-kv cc-mem-kv-interactive" data-fact-key="${_esc(k)}" data-fact-val="${_esc(valStr)}">
                   <span class="cc-mem-key">${_esc(k)}</span>
-                  <span class="cc-mem-val">${_esc(typeof v === 'object' ? JSON.stringify(v) : v)}</span>
+                  <span class="cc-mem-val">${_esc(valStr)}</span>
+                  <div class="cc-mem-row-actions">
+                    <button type="button" class="cc-mem-act-btn cc-mem-edit-fact" title="Edit fact"><i class="fas fa-pen"></i></button>
+                    <button type="button" class="cc-mem-act-btn cc-mem-del-fact" title="Delete fact"><i class="fas fa-trash"></i></button>
+                  </div>
+                </div>`;
+            }).join('')
+            : emptyState(q ? 'No facts match filter.' : 'Nothing recorded yet — click "+ Add Fact" or keep chatting!');
+
+        const uiHtml = addFactFormHtml + uiRowsHtml;
+
+        // Observations (interactive)
+        const addObsFormHtml = `
+            <div class="cc-mem-inline-form hidden" id="cc-mem-obs-form">
+              <input type="hidden" id="cc-mem-obs-idx" value="">
+              <input type="text" id="cc-mem-obs-text" class="cc-mem-input cc-mem-input-val" placeholder="Observation or note about the user…">
+              <button type="button" id="cc-mem-obs-save" class="cc-btn cc-btn-primary cc-btn-sm">Save</button>
+              <button type="button" id="cc-mem-obs-cancel" class="cc-btn cc-btn-ghost cc-btn-sm">Cancel</button>
+            </div>`;
+
+        const obsRowsHtml = filteredObs.length
+            ? filteredObs.map(({ text, idx }) => `
+                <div class="cc-mem-obs-item cc-mem-obs-interactive" data-obs-idx="${idx}" data-obs-text="${_esc(text)}">
+                  <i class="fas fa-circle-dot"></i>
+                  <span class="cc-mem-obs-text">${_esc(text)}</span>
+                  <div class="cc-mem-row-actions">
+                    <button type="button" class="cc-mem-act-btn cc-mem-edit-obs" title="Edit observation"><i class="fas fa-pen"></i></button>
+                    <button type="button" class="cc-mem-act-btn cc-mem-del-obs" title="Delete observation"><i class="fas fa-trash"></i></button>
+                  </div>
                 </div>`).join('')
-            : emptyState('Nothing recorded yet — keep chatting!');
+            : emptyState(q ? 'No observations match filter.' : 'No observations yet.');
 
-        // Observations
-        const obsHtml = obs.length
-            ? obs.map(o => `<div class="cc-mem-obs-item"><i class="fas fa-circle-dot"></i>${_esc(o)}</div>`).join('')
-            : emptyState('No observations yet.');
+        const obsHtml = addObsFormHtml + obsRowsHtml;
 
-        // Synthesis notes
-        const synthHtml = synth.length
-            ? synth.map(s => `<div class="cc-mem-obs-item cc-mem-synth-item"><i class="fas fa-lightbulb"></i>${_esc(s)}</div>`).join('')
-            : emptyState('No synthesis run yet.');
+        // Synthesis notes (interactive delete)
+        const synthHtml = filteredSynth.length
+            ? filteredSynth.map(({ text, idx }) => `
+                <div class="cc-mem-obs-item cc-mem-synth-item cc-mem-obs-interactive" data-synth-idx="${idx}">
+                  <i class="fas fa-lightbulb"></i>
+                  <span class="cc-mem-obs-text">${_esc(text)}</span>
+                  <div class="cc-mem-row-actions">
+                    <button type="button" class="cc-mem-act-btn cc-mem-del-synth" title="Remove insight"><i class="fas fa-trash"></i></button>
+                  </div>
+                </div>`).join('')
+            : emptyState(q ? 'No insights match filter.' : 'No synthesis run yet — click "Synthesize Memory" above to generate insights.');
 
         // Footer timestamps
         let footer = '';
@@ -1053,27 +1186,226 @@ const CompanionCreator = (() => {
             footer += `</div>`;
         }
 
+        const addFactBtnHtml = `<button type="button" class="cc-btn cc-btn-ghost cc-btn-xs" id="cc-mem-add-fact-btn"><i class="fas fa-plus"></i> Add Fact</button>`;
+        const addObsBtnHtml  = `<button type="button" class="cc-btn cc-btn-ghost cc-btn-xs" id="cc-mem-add-obs-btn"><i class="fas fa-plus"></i> Add Note</button>`;
+
         el.innerHTML =
-            section('fa-id-card',    'Identity',                aboutHtml) +
-            section('fa-user',       'What I know about you',   uiHtml)    +
-            section('fa-eye',        'Recent Observations',     obsHtml)   +
+            toolbarHtml +
+            section('fa-user',       'What I know about you',   uiHtml,  addFactBtnHtml) +
+            section('fa-eye',        'Recent Observations',     obsHtml, addObsBtnHtml)  +
             section('fa-lightbulb',  'Synthesis Notes',         synthHtml) +
+            section('fa-id-card',    'Core Identity',           aboutHtml) +
             footer;
+
+        _bindMemoryEvents(el);
+    }
+
+    function _bindMemoryEvents(el) {
+        if (!el || !_editingId) return;
+
+        // Search filter
+        const searchInput = el.querySelector('#cc-mem-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', e => {
+                _memSearchQuery = e.target.value;
+                const pos = e.target.selectionStart;
+                if (_lastMemoryData) _renderMemory(el, _lastMemoryData);
+                const newInput = el.querySelector('#cc-mem-search');
+                if (newInput) {
+                    newInput.focus();
+                    try { newInput.setSelectionRange(pos, pos); } catch {}
+                }
+            });
+        }
+
+        // Synthesize Memory button
+        el.querySelector('#cc-mem-synth-btn')?.addEventListener('click', async e => {
+            const btn = e.currentTarget;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Synthesizing…';
+            try {
+                const res = await fetch(`${CHAT_API}/${_editingId}/memory/synthesize`, { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+                _lastMemoryData = data;
+                _renderMemory(el, data);
+                if (typeof showToast === 'function') showToast('Memory synthesized & consolidated!', 'success');
+            } catch (err) {
+                if (typeof showToast === 'function') showToast(`Synthesis failed: ${err.message}`, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Synthesize Memory';
+            }
+        });
+
+        // Add / Edit Fact
+        const factForm   = el.querySelector('#cc-mem-fact-form');
+        const factKeyIn  = el.querySelector('#cc-mem-fact-key');
+        const factValIn  = el.querySelector('#cc-mem-fact-val');
+
+        el.querySelector('#cc-mem-add-fact-btn')?.addEventListener('click', () => {
+            if (!factForm) return;
+            factForm.classList.remove('hidden');
+            if (factKeyIn) { factKeyIn.value = ''; factKeyIn.readOnly = false; factKeyIn.focus(); }
+            if (factValIn) factValIn.value = '';
+        });
+
+        el.querySelector('#cc-mem-fact-cancel')?.addEventListener('click', () => {
+            factForm?.classList.add('hidden');
+        });
+
+        const saveFact = async () => {
+            const key = factKeyIn?.value?.trim();
+            const value = factValIn?.value?.trim();
+            if (!key || !value) return;
+            try {
+                const res = await fetch(`${CHAT_API}/${_editingId}/memory/fact`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, value })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+                _lastMemoryData = data;
+                _renderMemory(el, data);
+            } catch (err) {
+                if (typeof showToast === 'function') showToast(`Failed to save fact: ${err.message}`, 'error');
+            }
+        };
+
+        el.querySelector('#cc-mem-fact-save')?.addEventListener('click', saveFact);
+        factValIn?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveFact(); } });
+
+        el.querySelectorAll('.cc-mem-edit-fact').forEach(btn => {
+            btn.addEventListener('click', e => {
+                const row = e.currentTarget.closest('[data-fact-key]');
+                if (!row || !factForm) return;
+                factForm.classList.remove('hidden');
+                if (factKeyIn) { factKeyIn.value = row.dataset.factKey || ''; factKeyIn.readOnly = true; }
+                if (factValIn) { factValIn.value = row.dataset.factVal || ''; factValIn.focus(); }
+            });
+        });
+
+        el.querySelectorAll('.cc-mem-del-fact').forEach(btn => {
+            btn.addEventListener('click', async e => {
+                const row = e.currentTarget.closest('[data-fact-key]');
+                const key = row?.dataset?.factKey;
+                if (!key) return;
+                try {
+                    const res = await fetch(`${CHAT_API}/${_editingId}/memory/fact/${encodeURIComponent(key)}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+                    _lastMemoryData = data;
+                    _renderMemory(el, data);
+                } catch (err) {
+                    if (typeof showToast === 'function') showToast(`Failed to delete fact: ${err.message}`, 'error');
+                }
+            });
+        });
+
+        // Add / Edit Observation
+        const obsForm   = el.querySelector('#cc-mem-obs-form');
+        const obsIdxIn  = el.querySelector('#cc-mem-obs-idx');
+        const obsTextIn = el.querySelector('#cc-mem-obs-text');
+
+        el.querySelector('#cc-mem-add-obs-btn')?.addEventListener('click', () => {
+            if (!obsForm) return;
+            obsForm.classList.remove('hidden');
+            if (obsIdxIn)  obsIdxIn.value = '';
+            if (obsTextIn) { obsTextIn.value = ''; obsTextIn.focus(); }
+        });
+
+        el.querySelector('#cc-mem-obs-cancel')?.addEventListener('click', () => {
+            obsForm?.classList.add('hidden');
+        });
+
+        const saveObs = async () => {
+            const text = obsTextIn?.value?.trim();
+            const idxStr = obsIdxIn?.value ?? '';
+            if (!text) return;
+            try {
+                const isEdit = idxStr !== '';
+                const url = isEdit
+                    ? `${CHAT_API}/${_editingId}/memory/observation/${idxStr}`
+                    : `${CHAT_API}/${_editingId}/memory/observation`;
+                const res = await fetch(url, {
+                    method: isEdit ? 'PUT' : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+                _lastMemoryData = data;
+                _renderMemory(el, data);
+            } catch (err) {
+                if (typeof showToast === 'function') showToast(`Failed to save observation: ${err.message}`, 'error');
+            }
+        };
+
+        el.querySelector('#cc-mem-obs-save')?.addEventListener('click', saveObs);
+        obsTextIn?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveObs(); } });
+
+        el.querySelectorAll('.cc-mem-edit-obs').forEach(btn => {
+            btn.addEventListener('click', e => {
+                const row = e.currentTarget.closest('[data-obs-idx]');
+                if (!row || !obsForm) return;
+                obsForm.classList.remove('hidden');
+                if (obsIdxIn)  obsIdxIn.value  = row.dataset.obsIdx;
+                if (obsTextIn) { obsTextIn.value = row.dataset.obsText || ''; obsTextIn.focus(); }
+            });
+        });
+
+        el.querySelectorAll('.cc-mem-del-obs').forEach(btn => {
+            btn.addEventListener('click', async e => {
+                const row = e.currentTarget.closest('[data-obs-idx]');
+                const idx = row?.dataset?.obsIdx;
+                if (idx === undefined) return;
+                try {
+                    const res = await fetch(`${CHAT_API}/${_editingId}/memory/observation/${idx}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+                    _lastMemoryData = data;
+                    _renderMemory(el, data);
+                } catch (err) {
+                    if (typeof showToast === 'function') showToast(`Failed to delete observation: ${err.message}`, 'error');
+                }
+            });
+        });
+
+        el.querySelectorAll('.cc-mem-del-synth').forEach(btn => {
+            btn.addEventListener('click', async e => {
+                const row = e.currentTarget.closest('[data-synth-idx]');
+                const idx = row?.dataset?.synthIdx;
+                if (idx === undefined) return;
+                try {
+                    const res = await fetch(`${CHAT_API}/${_editingId}/memory/synthesis/${idx}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+                    _lastMemoryData = data;
+                    _renderMemory(el, data);
+                } catch (err) {
+                    if (typeof showToast === 'function') showToast(`Failed to remove insight: ${err.message}`, 'error');
+                }
+            });
+        });
     }
 
     function _updatePaneHeader(data, isBuiltin, isNew = false) {
         const avatarEl   = document.getElementById('cc-pane-avatar');
         const nameEl     = document.getElementById('cc-pane-name');
+        const modelBadge = document.getElementById('cc-pane-model-badge');
         const subEl      = document.getElementById('cc-pane-sub');
         const chatTab    = document.getElementById('cc-ptab-chat');
         const portAvEl   = document.getElementById('cc-portrait-avatar');
         const portNameEl = document.getElementById('cc-portrait-name');
         const portSubEl  = document.getElementById('cc-portrait-sub');
+        const moodTextEl = document.getElementById('cc-portrait-mood-text');
+        const exprTextEl = document.getElementById('cc-portrait-expr-text');
 
         const memoryTab  = document.getElementById('cc-ptab-memory');
         if (isNew || !data) {
             if (avatarEl) { avatarEl.textContent = '✦'; avatarEl.style.background = 'rgba(99,102,241,0.15)'; avatarEl.style.color = '#818cf8'; }
             if (nameEl) nameEl.textContent = 'New Companion';
+            if (modelBadge) modelBadge.classList.add('hidden');
             if (subEl)  subEl.textContent  = 'Fill in the settings below to create';
             if (chatTab)   { chatTab.disabled   = true; chatTab.title   = 'Save the companion first to start chatting'; }
             if (memoryTab) { memoryTab.disabled = true; memoryTab.title = 'Save the companion first to view memory'; }
@@ -1095,13 +1427,33 @@ const CompanionCreator = (() => {
             if (avatarEl) { avatarEl.textContent = data.avatar_symbol || '✦'; avatarEl.style.background = `${color}22`; avatarEl.style.color = color; }
         }
         if (nameEl) nameEl.textContent = data.name || '';
-        if (subEl)  subEl.textContent  = isBuiltin ? 'Built-in' : (data.description || '');
+        if (subEl)  subEl.textContent  = isBuiltin ? `Built-in · ${data.description || ''}` : (data.description || '');
+
+        // Model badge (Local GGUF / Ollama vs Cloud)
+        if (modelBadge) {
+            const m = data.default_model || '';
+            if (m) {
+                const isLocal = m.endsWith('.gguf') || m.startsWith('local:') || m.startsWith('ollama:') || m.startsWith('ollama/');
+                const shortName = m.replace(/\.gguf$/i, '').split('/').pop();
+                modelBadge.className = `cc-pane-model-badge ${isLocal ? 'cc-model-badge-local' : 'cc-model-badge-cloud'}`;
+                modelBadge.innerHTML = isLocal
+                    ? `<i class="fas fa-microchip"></i> Local · ${_esc(shortName)}`
+                    : `<i class="fas fa-cloud"></i> ${_esc(shortName)}`;
+                modelBadge.title = isLocal ? `Running 100% offline on local GPU (${m})` : `Active model: ${m}`;
+            } else {
+                modelBadge.classList.add('hidden');
+            }
+        }
 
         // Portrait panel — priority: expression image > icon > symbol
-        // Use the last remembered expression if it still has an image, otherwise fall back to default
         const exprImgs   = data.expression_images || {};
         const storedExpr = (() => { try { return data.id ? localStorage.getItem(`cc_last_expr_${data.id}`) : null; } catch { return null; } })();
         const defExpr    = (storedExpr && exprImgs[storedExpr]) ? storedExpr : (data.default_expression || 'default');
+        const defMood    = data.behavior?.default_mood || 'calm';
+
+        if (moodTextEl) moodTextEl.textContent = defMood;
+        if (exprTextEl) exprTextEl.textContent = defExpr;
+
         if (data.icon_mode && exprImgs[defExpr] && data.id) {
             const exprUrl = `${API}/${data.id}/expression/${defExpr}?t=${Date.now()}`;
             if (portAvEl) { portAvEl.innerHTML = `<img src="${exprUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:20px">`; portAvEl.style.background = ''; portAvEl.style.color = ''; }
@@ -1111,7 +1463,7 @@ const CompanionCreator = (() => {
             if (portAvEl) { portAvEl.textContent = data.avatar_symbol || '✦'; portAvEl.style.background = `${color}22`; portAvEl.style.color = color; }
         }
         if (portNameEl) portNameEl.textContent = data.name || '';
-        if (portSubEl)  portSubEl.textContent  = isBuiltin ? 'Built-in' : '';
+        if (portSubEl)  portSubEl.textContent  = isBuiltin ? 'Built-in Companion' : 'Custom Companion';
     }
 
     // Chat
@@ -1148,6 +1500,28 @@ const CompanionCreator = (() => {
         }
     }
 
+    function _attachBubbleActions(bubble, rawText) {
+        if (!bubble) return;
+        bubble.dataset.rawText = rawText || '';
+        let actions = bubble.querySelector('.cc-msg-actions');
+        if (!actions) {
+            actions = document.createElement('div');
+            actions.className = 'cc-msg-actions';
+            actions.innerHTML = `
+              <button type="button" class="cc-msg-act-btn cc-msg-copy-btn" title="Copy message"><i class="fas fa-copy"></i></button>
+              <button type="button" class="cc-msg-act-btn cc-msg-regen-btn" title="Regenerate reply"><i class="fas fa-rotate-right"></i></button>
+            `;
+            bubble.appendChild(actions);
+            actions.querySelector('.cc-msg-copy-btn')?.addEventListener('click', () => {
+                navigator.clipboard?.writeText(bubble.dataset.rawText || '');
+                if (typeof showToast === 'function') showToast('Copied to clipboard', 'info');
+            });
+            actions.querySelector('.cc-msg-regen-btn')?.addEventListener('click', () => {
+                _regenerateLastReply();
+            });
+        }
+    }
+
     function _appendMessage(role, text, id = null) {
         const msgsEl = document.getElementById('cc-chat-msgs');
         if (!msgsEl) return null;
@@ -1161,6 +1535,7 @@ const CompanionCreator = (() => {
               <div class="cc-msg-avatar" style="background:${color}22;color:${color}">${symbol}</div>
               <div class="cc-msg-bubble cc-msg-md">${_renderMd(text)}</div>`;
             _applyHighlight(bubble);
+            _attachBubbleActions(bubble, text);
         } else {
             bubble.innerHTML = `<div class="cc-msg-bubble">${_escHtml(text)}</div>`;
         }
@@ -1226,24 +1601,45 @@ const CompanionCreator = (() => {
         );
     }
 
-    async function _sendMessage() {
+    function _setPortraitThinking(thinking, label = 'Thinking…') {
+        const statusEl = document.getElementById('cc-portrait-status');
+        const textEl   = document.getElementById('cc-portrait-status-text');
+        if (!statusEl) return;
+        if (thinking) {
+            if (textEl) textEl.textContent = label;
+            statusEl.classList.remove('hidden');
+        } else {
+            statusEl.classList.add('hidden');
+        }
+    }
+
+    function _updatePortraitMoodAndExpr(mood, expression) {
+        const moodTextEl = document.getElementById('cc-portrait-mood-text');
+        const exprTextEl = document.getElementById('cc-portrait-expr-text');
+        if (mood && moodTextEl) moodTextEl.textContent = mood;
+        if (expression && exprTextEl) exprTextEl.textContent = expression;
+        if (expression) _updatePortraitExpression(expression);
+    }
+
+    async function _sendMessage(overrideMessage = null) {
         if (_chatStreaming) return;
         const input = document.getElementById('cc-chat-input');
-        const message = (input?.value || '').trim();
+        const message = overrideMessage !== null ? overrideMessage : (input?.value || '').trim();
         if (!message || !_editingId) return;
 
-        input.value = '';
-        _autoResizeInput(input);
-
-        // Remove the "start chatting" hint
-        document.getElementById('cc-chat-hint')?.remove();
-
-        // Push user message
-        _appendMessage('user', message);
-        _chatHistory.push({ role: 'user', content: message });
+        if (overrideMessage === null && input) {
+            input.value = '';
+            _autoResizeInput(input);
+            // Remove the "start chatting" hint
+            document.getElementById('cc-chat-hint')?.remove();
+            // Push user message
+            _appendMessage('user', message);
+            _chatHistory.push({ role: 'user', content: message });
+        }
 
         // Streaming lock + disable UI
         _chatStreaming = true;
+        _setPortraitThinking(true, 'Thinking…');
         const sendBtn = document.getElementById('cc-chat-send');
         if (input)   input.disabled   = true;
         if (sendBtn) sendBtn.disabled = true;
@@ -1315,6 +1711,7 @@ const CompanionCreator = (() => {
                             }
 
                         } else if (evt.type === 'tool_start') {
+                            _setPortraitThinking(true, `Using ${evt.tool || 'tool'}…`);
                             // Finalize the first bubble with clean text, then show the indicator
                             const cleanedFirst = _stripToolTags(fullText);
                             if (currentBubbleText) {
@@ -1323,9 +1720,11 @@ const CompanionCreator = (() => {
                                 currentBubbleText.innerHTML = cleanedFirst ? _renderMd(cleanedFirst) : '';
                             }
                             _applyHighlight(currentBubble);
+                            _attachBubbleActions(currentBubble, cleanedFirst);
                             toolIndicator = _makeToolIndicator(evt.tool || 'tool');
 
                         } else if (evt.type === 'tool_response_start') {
+                            _setPortraitThinking(true, 'Replying…');
                             // Remove tool indicator, reset accumulator, open a new bubble
                             toolIndicator?.remove();
                             toolIndicator = null;
@@ -1336,8 +1735,8 @@ const CompanionCreator = (() => {
                         } else if (evt.type === 'final_cleaned' && evt.content) {
                             finalText = evt.content;
 
-                        } else if (evt.type === 'error' && evt.message) {
-                            finalText = evt.message;
+                        } else if (evt.type === 'error' && (evt.message || evt.content)) {
+                            finalText = evt.message || evt.content;
                             if (currentBubbleText) {
                                 currentBubbleText.classList.add('cc-msg-error-text');
                                 currentBubbleText.classList.remove('cc-msg-streaming');
@@ -1346,7 +1745,15 @@ const CompanionCreator = (() => {
                         } else if (evt.type === 'done') {
                             if (evt.content)  finalText  = evt.content;
                             if (evt.parts)    finalParts = evt.parts;
-                            if (evt.expression) _updatePortraitExpression(evt.expression);
+                            _updatePortraitMoodAndExpr(evt.mood, evt.expression);
+                            if (evt.memory_updated) {
+                                const memTab = document.getElementById('cc-ptab-memory');
+                                if (memTab) {
+                                    memTab.classList.add('cc-ptab-pulse');
+                                    setTimeout(() => memTab.classList.remove('cc-ptab-pulse'), 2500);
+                                }
+                                if (typeof showToast === 'function') showToast(`${_activeData?.name || 'Companion'} remembered that`, 'info');
+                            }
                         }
                     } catch { /* non-JSON chunk */ }
                 }
@@ -1366,6 +1773,7 @@ const CompanionCreator = (() => {
                 currentBubbleText.innerHTML = _renderMd(firstPart);
             }
             _applyHighlight(currentBubble);
+            _attachBubbleActions(currentBubble, firstPart);
             _chatHistory.push({ role: 'assistant', content: firstPart });
 
             // Render subsequent <break> parts as new bubbles with natural delays
@@ -1386,9 +1794,88 @@ const CompanionCreator = (() => {
             if (currentBubbleText) { currentBubbleText.textContent = 'Failed to get a response.'; currentBubbleText.classList.add('cc-msg-error-text'); }
         } finally {
             _chatStreaming = false;
+            _setPortraitThinking(false);
             if (input)   { input.disabled   = false; input.focus(); }
             if (sendBtn)   sendBtn.disabled  = false;
             if (msgsEl)    msgsEl.scrollTop  = msgsEl.scrollHeight;
+        }
+    }
+
+    function _regenerateLastReply() {
+        if (_chatStreaming || !_editingId || !_chatHistory.length) return;
+        // Pop trailing assistant messages until the last user message
+        const msgsEl = document.getElementById('cc-chat-msgs');
+        while (_chatHistory.length && _chatHistory[_chatHistory.length - 1].role !== 'user') {
+            _chatHistory.pop();
+            const lastBubble = msgsEl?.querySelector('.cc-msg-companion:last-of-type');
+            if (lastBubble) lastBubble.remove();
+        }
+        const lastUser = _chatHistory[_chatHistory.length - 1];
+        if (!lastUser || lastUser.role !== 'user') return;
+        _sendMessage(lastUser.content);
+    }
+
+    async function _triggerCheckin() {
+        if (_chatStreaming || !_editingId) return;
+        const btn = document.getElementById('cc-checkin-btn');
+        if (btn) btn.disabled = true;
+        _setPortraitThinking(true, 'Checking in…');
+        try {
+            const res = await fetch(`${CHAT_API}/${_editingId}/initiate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ trigger: 'proactive' })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+            if (data.response) {
+                document.getElementById('cc-chat-hint')?.remove();
+                _appendMessage('companion', data.response);
+                _chatHistory.push({ role: 'assistant', content: data.response });
+                _updatePortraitMoodAndExpr(data.mood, data.expression);
+            }
+        } catch (err) {
+            if (typeof showToast === 'function') showToast(`Check-in failed: ${err.message}`, 'error');
+        } finally {
+            _setPortraitThinking(false);
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    function _exportChatTranscript() {
+        if (!_editingId || !_chatHistory.length) {
+            if (typeof showToast === 'function') showToast('No conversation messages to export yet.', 'info');
+            return;
+        }
+        const cName = _activeData?.name || _editingId;
+        const lines = [
+            `# Conversation with ${cName}`,
+            `Exported from Aethvion Suite on ${new Date().toLocaleString()}`,
+            ''
+        ];
+        for (const msg of _chatHistory) {
+            const speaker = msg.role === 'user' ? '**You**' : `**${cName}**`;
+            lines.push(`${speaker}:\n${msg.content}\n`);
+        }
+        const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `${_editingId}_chat_${new Date().toISOString().slice(0, 10)}.md`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    async function _clearChatHistoryOnly() {
+        if (!_editingId) return;
+        if (!confirm(`Clear chat messages with ${_activeData?.name || 'this companion'}? Long-term memory will be kept intact.`)) return;
+        try {
+            const res = await fetch(`${CHAT_API}/${_editingId}/history/clear`, { method: 'POST' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await _loadHistory(_editingId);
+            if (typeof showToast === 'function') showToast('Chat messages cleared (memory preserved).', 'success');
+        } catch (err) {
+            if (typeof showToast === 'function') showToast(`Failed to clear chat: ${err.message}`, 'error');
         }
     }
 
@@ -1702,7 +2189,10 @@ const CompanionCreator = (() => {
         document.getElementById('cc-chat-input')?.addEventListener('keydown', e => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _sendMessage(); }
         });
-        document.getElementById('cc-chat-send')?.addEventListener('click', _sendMessage);
+        document.getElementById('cc-chat-send')?.addEventListener('click', () => _sendMessage());
+        document.getElementById('cc-checkin-btn')?.addEventListener('click', _triggerCheckin);
+        document.getElementById('cc-export-chat-btn')?.addEventListener('click', _exportChatTranscript);
+        document.getElementById('cc-clear-chat-btn')?.addEventListener('click', _clearChatHistoryOnly);
         document.getElementById('cc-delete-btn')?.addEventListener('click', _deleteCompanion);
         document.getElementById('cc-export-btn')?.addEventListener('click', _exportCompanion);
         document.getElementById('cc-form')?.addEventListener('submit', _saveCompanion);

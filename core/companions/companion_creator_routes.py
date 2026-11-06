@@ -614,6 +614,13 @@ async def create_companion(req: CompanionCreateRequest):
         "last_updated": utcnow_iso(),
     })
 
+    try:
+        from core.workspace.preferences_manager import get_preferences_manager
+        if req.default_model:
+            get_preferences_manager().set(f"{companion_id}.model", req.default_model)
+    except Exception:
+        pass
+
     CompanionRegistry.force_reload()
     logger.info(f"Custom companion created: {companion_id} ({req.name})")
     return {
@@ -682,6 +689,13 @@ async def update_companion(companion_id: str, req: CompanionUpdateRequest):
         "dislikes":      req.dislikes,
     })
     atomic_json_write(base_info_path, base_info)
+
+    try:
+        from core.workspace.preferences_manager import get_preferences_manager
+        if req.default_model:
+            get_preferences_manager().set(f"{companion_id}.model", req.default_model)
+    except Exception:
+        pass
 
     CompanionRegistry.force_reload()
     return {"success": True, "id": companion_id, "message": f"'{req.name}' updated successfully."}

@@ -43,6 +43,13 @@ class SpotifyAuthRequest(BaseModel):
     client_secret: str
     redirect_uri: str = "http://localhost:8080/callback"
 
+class MemoryFactRequest(BaseModel):
+    key: str
+    value: str
+
+class MemoryObservationRequest(BaseModel):
+    text: str
+
 def _get_cfg(cid: str):
     if not (cfg := CompanionRegistry.get_companion(cid)):
         raise HTTPException(status_code=404, detail=f"Companion '{cid}' not found")
@@ -60,8 +67,71 @@ async def get_companion_config(companion_id: str):
 @router.get("/{companion_id}/memory")
 async def get_memory(companion_id: str):
     cfg = _get_cfg(companion_id)
-    memory = CompanionMemory(cfg.data_dir, cfg._raw_config.get("personality_defaults", {}))
+    memory = CompanionMemory(cfg.data_dir, cfg._raw_config.get("personality_defaults", {}), cfg.name)
+    memory.initialize()
     return memory.load()
+
+@router.post("/{companion_id}/memory/fact")
+async def set_memory_fact(companion_id: str, req: MemoryFactRequest):
+    if not req.key.strip():
+        raise HTTPException(status_code=400, detail="Fact key cannot be empty.")
+    cfg = _get_cfg(companion_id)
+    memory = CompanionMemory(cfg.data_dir, cfg._raw_config.get("personality_defaults", {}), cfg.name)
+    return memory.set_fact(req.key, req.value)
+
+@router.delete("/{companion_id}/memory/fact/{key}")
+async def delete_memory_fact(companion_id: str, key: str):
+    cfg = _get_cfg(companion_id)
+    memory = CompanionMemory(cfg.data_dir, cfg._raw_config.get("personality_defaults", {}), cfg.name)
+    return memory.delete_fact(key)
+
+@router.post("/{companion_id}/memory/observation")
+async def add_memory_observation(companion_id: str, req: MemoryObservationRequest):
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="Observation text cannot be empty.")
+    cfg = _get_cfg(companion_id)
+    memory = CompanionMemory(cfg.data_dir, cfg._raw_config.get("personality_defaults", {}), cfg.name)
+    return memory.add_observation(req.text)
+
+@router.put("/{companion_id}/memory/observation/{index}")
+async def update_memory_observation(companion_id: str, index: int, req: MemoryObservationRequest):
+    cfg = _get_cfg(companion_id)
+    memory = CompanionMemory(cfg.data_dir, cfg._raw_config.get("personality_defaults", {}), cfg.name)
+    return memory.update_observation(index, req.text)
+
+@router.delete("/{companion_id}/memory/observation/{index}")
+async def delete_memory_observation(companion_id: str, index: int):
+    cfg = _get_cfg(companion_id)
+    memory = CompanionMemory(cfg.data_dir, cfg._raw_config.get("personality_defaults", {}), cfg.name)
+    return memory.delete_observation(index)
+
+@router.delete("/{companion_id}/memory/synthesis/{index}")
+async def delete_memory_synthesis(companion_id: str, index: int):
+    cfg = _get_cfg(companion_id)
+    memory = CompanionMemory(cfg.data_dir, cfg._raw_config.get("personality_defaults", {}), cfg.name)
+    return memory.delete_synthesis_note(index)
+
+@router.post("/{companion_id}/memory/synthesize")
+async def synthesize_memory(companion_id: str):
+    cfg = _get_cfg(companion_id)
+    memory = CompanionMemory(cfg.data_dir, cfg._raw_config.get("personality_defaults", {}), cfg.name)
+    memory.initialize()
+    loaded = memory.load()
+    from core.workspace.preferences_manager import get_preferences_manager
+    pref_model = get_preferences_manager().get(cfg.id, {}).get("model")
+    model = cfg.default_model or pref_model or "auto"
+    try:
+        result = await memory.run_synthesis(loaded.get("base_info", {}), loaded.get("memory", {}), model)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{companion_id}/history/clear")
+async def clear_history_only(companion_id: str):
+    """Clear chat message history while keeping persistent memory intact."""
+    cfg = _get_cfg(companion_id)
+    CompanionHistory(cfg.history_dir, cfg.name).clear()
+    return {"status": "history_cleared"}
 
 @router.get("/{companion_id}/history")
 async def get_history(companion_id: str, offset_days: int = 0, limit_days: int = 3):

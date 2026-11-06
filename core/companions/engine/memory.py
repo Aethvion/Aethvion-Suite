@@ -136,13 +136,77 @@ class CompanionMemory(CompanionComponent):
         self._mem_path.write_text("{}", encoding="utf-8")
         self._info("Dynamic memory reset.")
 
+    # Interactive Memory CRUD
+
+    def _load_mem_only(self) -> dict:
+        self.initialize()
+        try:
+            if self._mem_path.exists():
+                return json.loads(self._mem_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        return {"user_info": {}, "recent_observations": [], "synthesis_notes": []}
+
+    def _save_mem_only(self, mem: dict) -> dict:
+        mem["last_updated"] = utcnow_iso()
+        atomic_json_write(self._mem_path, mem, indent=4)
+        return self.load()
+
+    def set_fact(self, key: str, value: str) -> dict:
+        """Add or update a user_info key-value fact."""
+        mem = self._load_mem_only()
+        mem.setdefault("user_info", {})[key.strip()] = value.strip()
+        self._info(f"Fact set: {key.strip()}")
+        return self._save_mem_only(mem)
+
+    def delete_fact(self, key: str) -> dict:
+        """Delete a user_info fact by key."""
+        mem = self._load_mem_only()
+        mem.get("user_info", {}).pop(key, None)
+        self._info(f"Fact deleted: {key}")
+        return self._save_mem_only(mem)
+
+    def add_observation(self, text: str) -> dict:
+        """Append a new observation note."""
+        mem = self._load_mem_only()
+        obs = mem.setdefault("recent_observations", [])
+        if text.strip():
+            obs.append(text.strip())
+        return self._save_mem_only(mem)
+
+    def update_observation(self, index: int, text: str) -> dict:
+        """Update an existing observation at index."""
+        mem = self._load_mem_only()
+        obs = mem.get("recent_observations", [])
+        if 0 <= index < len(obs) and text.strip():
+            obs[index] = text.strip()
+        return self._save_mem_only(mem)
+
+    def delete_observation(self, index: int) -> dict:
+        """Remove an observation at index."""
+        mem = self._load_mem_only()
+        obs = mem.get("recent_observations", [])
+        if 0 <= index < len(obs):
+            obs.pop(index)
+        return self._save_mem_only(mem)
+
+    def delete_synthesis_note(self, index: int) -> dict:
+        """Remove a synthesis note at index."""
+        mem = self._load_mem_only()
+        notes = mem.get("synthesis_notes", [])
+        if 0 <= index < len(notes):
+            notes.pop(index)
+        return self._save_mem_only(mem)
+
     # Synthesis
 
     async def run_synthesis(self, base_info: dict, memory: dict, model: str) -> dict:
         """
         Trigger a dedicated LLM call to reflect on and consolidate memory.
-        Returns the updated memory dict (also persisted to disk).
+        Returns the full loaded {"base_info": ..., "memory": ...} dict.
+        Raises ValueError on failure so callers can report the reason.
         """
+        import asyncio
         from core.providers.provider_manager import get_provider_manager
 
         prompt = (
@@ -150,48 +214,57 @@ class CompanionMemory(CompanionComponent):
             f"Current identity:\n{json.dumps(base_info, indent=2)}\n\n"
             f"Current memory:\n{json.dumps(memory, indent=2)}\n\n"
             "Tasks:\n"
-            "1. CLEANUP: Remove outdated/redundant observations.\n"
-            "2. REFLECTION: Evolve identity/goals based on recent interactions.\n"
-            "3. SYNTHESIZE: Extract 2-4 key insights about the user.\n\n"
-            "Return ONLY a valid JSON object:\n"
+            "1. CLEANUP: Merge duplicate or outdated observations and organize user facts into user_info.\n"
+            "2. REFLECTION: Keep or subtly refine identity traits based on recent interactions.\n"
+            "3. SYNTHESIZE: Extract 2-5 meaningful, high-level insights about the user into synthesis_notes.\n\n"
+            "Return ONLY a valid JSON object matching this exact schema (no markdown commentary):\n"
             "{\n"
-            '    "base_info": { ...updated identity... },\n'
+            '    "base_info": { ... },\n'
             '    "memory": {\n'
             '        "user_info": { ... },\n'
-            '        "recent_observations": [ ...10 most meaningful... ],\n'
-            '        "synthesis_notes": [ ...2-4 insights... ]\n'
+            '        "recent_observations": [ ... ],\n'
+            '        "synthesis_notes": [ ... ]\n'
             "    }\n"
             "}"
         )
 
-        try:
-            pm = get_provider_manager()
-            resp = pm.call_with_failover(
-                prompt=prompt,
-                trace_id=f"{self._name.lower().replace(' ', '_')}-synthesis-{uuid.uuid4().hex[:8]}",
-                temperature=0.4,
-                model=model,
-                request_type="generation",
-                source=f"{self._name.lower().replace(' ', '_')}-synthesis",
-            )
-            if not resp.success:
-                self._error(f"Synthesis LLM call failed: {resp.error}")
-                return memory
+        pm = get_provider_manager()
+        resp = await asyncio.to_thread(
+            pm.call_with_failover,
+            prompt=prompt,
+            trace_id=f"{self._name.lower().replace(' ', '_')}-synthesis-{uuid.uuid4().hex[:8]}",
+            temperature=0.4,
+            model=model or "auto",
+            request_type="generation",
+            source=f"{self._name.lower().replace(' ', '_')}-synthesis",
+        )
+        if not resp.success:
+            self._error(f"Synthesis LLM call failed: {resp.error}")
+            raise ValueError(resp.error or "Model synthesis call failed")
 
-            raw = resp.content.strip()
-            raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.MULTILINE)
-            raw = re.sub(r"```\s*$", "", raw, flags=re.MULTILINE).strip()
-            data = json.loads(raw)
+        raw = resp.content.strip()
+        raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.MULTILINE)
+        raw = re.sub(r"```\s*$", "", raw, flags=re.MULTILINE).strip()
+        if not raw.startswith("{"):
+            m = re.search(r"(\{[\s\S]*\})", raw)
+            if m:
+                raw = m.group(1)
 
-            if "base_info" in data:
-                atomic_json_write(self._base_path, data["base_info"], indent=4)
-                self._info("Identity updated during synthesis.")
+        data = json.loads(raw)
 
-            synthesized: dict = data.get("memory", {})
-            synthesized["last_synthesis"] = utcnow_iso()
-            atomic_json_write(self._mem_path, synthesized, indent=4)
-            self._info("Memory synthesis complete.")
-            return synthesized
-        except Exception as e:
-            self._error(f"Synthesis failed: {e}")
-            return memory
+        if "base_info" in data and isinstance(data["base_info"], dict):
+            merged_bi = {**base_info, **data["base_info"]}
+            atomic_json_write(self._base_path, merged_bi, indent=4)
+            self._info("Identity updated during synthesis.")
+
+        synthesized: dict = data.get("memory", memory)
+        if not isinstance(synthesized, dict):
+            synthesized = memory
+        synthesized.setdefault("user_info", memory.get("user_info", {}))
+        synthesized.setdefault("recent_observations", memory.get("recent_observations", []))
+        synthesized.setdefault("synthesis_notes", memory.get("synthesis_notes", []))
+        synthesized["last_updated"] = utcnow_iso()
+        synthesized["last_synthesis"] = utcnow_iso()
+        atomic_json_write(self._mem_path, synthesized, indent=4)
+        self._info("Memory synthesis complete.")
+        return self.load()

@@ -555,6 +555,33 @@ async def get_chat_models():
     """
     try:
         registry = _load_registry()
+
+        # Auto-discover any local GGUF models on disk so they appear in all chat/companion selectors
+        if GGUF_DIR.exists():
+            providers = registry.setdefault("providers", {})
+            if "local" not in providers:
+                providers["local"] = {
+                    "name": "Local Models",
+                    "active": True,
+                    "chat_config": {"active": True, "priority": 2},
+                    "agent_config": {"active": True, "priority": 2},
+                    "models": {}
+                }
+            local_models = providers["local"].setdefault("models", {})
+            reg_changed = False
+            for f in GGUF_DIR.glob("*.gguf"):
+                if f.name not in local_models:
+                    local_models[f.name] = {
+                        "input_cost_per_1m_tokens": 0,
+                        "output_cost_per_1m_tokens": 0,
+                        "capabilities": ["CHAT"],
+                        "description": f"Local model: {f.name}",
+                        "local_path": f.name
+                    }
+                    reg_changed = True
+            if reg_changed:
+                _save_registry(registry)
+
         chat_models = []
 
         for provider_name, config in registry.get("providers", {}).items():

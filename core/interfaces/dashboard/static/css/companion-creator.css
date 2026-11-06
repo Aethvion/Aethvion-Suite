@@ -1045,3 +1045,289 @@
     display: flex; gap: 0.3rem; align-items: center;
 }
 .cc-expr-upload-lbl { cursor: pointer; padding: 0.25rem 0.55rem !important; }
+
+/* Header Model Badge & Name Row */
+.cc-pane-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+}
+.cc-pane-model-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.16rem 0.5rem;
+    border-radius: 999px;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+.cc-model-badge-local {
+    background: rgba(16, 185, 129, 0.14);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.cc-model-badge-cloud {
+    background: rgba(99, 102, 241, 0.12);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.28);
+}
+
+/* Portrait Mood / Expression Badges & Quick Actions */
+.cc-portrait-badges {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.35rem;
+    width: 100%;
+    margin-top: 0.15rem;
+}
+.cc-portrait-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    text-transform: capitalize;
+}
+.cc-portrait-pill i {
+    color: var(--accent, #6366f1);
+    font-size: 0.64rem;
+}
+.cc-portrait-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #818cf8;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    padding: 0.24rem 0.65rem;
+    border-radius: 999px;
+}
+.cc-portrait-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+.cc-portrait-action-btn {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.76rem !important;
+}
+.cc-portrait-subactions {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: center;
+}
+.cc-icon-btn-sm {
+    width: 28px;
+    height: 28px;
+    font-size: 0.76rem;
+}
+
+/* Message Bubble Hover Actions */
+.cc-msg {
+    position: relative;
+}
+.cc-msg-actions {
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    align-self: center;
+}
+.cc-msg:hover .cc-msg-actions {
+    opacity: 1;
+}
+.cc-msg-act-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.cc-msg-act-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+/* Memory Tab Pulse when updated */
+@keyframes ccMemPulse {
+    0%, 100% { box-shadow: none; }
+    50% { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.35); color: #34d399; }
+}
+.cc-ptab-pulse {
+    animation: ccMemPulse 0.8s ease-in-out 3;
+}
+
+/* Interactive Memory View Toolbar & Forms */
+.cc-mem-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+.cc-mem-stats {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+.cc-mem-stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid var(--border);
+    padding: 0.24rem 0.6rem;
+    border-radius: 999px;
+}
+.cc-mem-stat-pill i {
+    color: var(--accent, #6366f1);
+    font-size: 0.7rem;
+}
+.cc-mem-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.cc-mem-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.cc-mem-search-wrap i {
+    position: absolute;
+    left: 0.6rem;
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+.cc-mem-search-input {
+    padding: 0.34rem 0.65rem 0.34rem 1.85rem;
+    font-size: 0.78rem;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary, #0b0d14);
+    color: var(--text-primary);
+    width: 180px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.cc-mem-search-input:focus {
+    border-color: var(--accent, #6366f1);
+}
+.cc-mem-section-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.cc-mem-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+.cc-btn-xs {
+    padding: 0.2rem 0.55rem !important;
+    font-size: 0.72rem !important;
+    border-radius: 6px !important;
+}
+.cc-mem-inline-form {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 0.75rem;
+    background: rgba(99, 102, 241, 0.06);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+.cc-mem-input {
+    padding: 0.34rem 0.6rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary, #0b0d14);
+    color: var(--text-primary);
+    outline: none;
+}
+.cc-mem-input:focus {
+    border-color: var(--accent, #6366f1);
+}
+.cc-mem-input-key { width: 150px; }
+.cc-mem-input-val { flex: 1; min-width: 180px; }
+
+.cc-mem-kv-interactive,
+.cc-mem-obs-interactive {
+    position: relative;
+    align-items: center;
+}
+.cc-mem-obs-text {
+    flex: 1;
+}
+.cc-mem-row-actions {
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    margin-left: auto;
+}
+.cc-mem-kv-interactive:hover .cc-mem-row-actions,
+.cc-mem-obs-interactive:hover .cc-mem-row-actions {
+    opacity: 1;
+}
+.cc-mem-act-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.cc-mem-act-btn:hover {
+    color: var(--text-primary);
+    background: rgba(148, 163, 184, 0.12);
+    border-color: var(--border);
+}
+.cc-mem-del-fact:hover,
+.cc-mem-del-obs:hover,
+.cc-mem-del-synth:hover {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.3);
+}
