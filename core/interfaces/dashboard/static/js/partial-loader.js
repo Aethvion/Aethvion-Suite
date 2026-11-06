@@ -54,7 +54,7 @@
         'documentation':    ['/static/js/view-documentation.js'],
         'status':           ['/static/js/view-status.js'],
         'local-models':     ['/static/js/hardware-profile.js', '/static/js/view-models.js'],
-        'image-models':     ['/static/js/hardware-profile.js', '/static/js/view-models.js'],
+        'image-models':     ['/static/js/hardware-profile.js', '/static/js/view-image-models.js'],
         'audio-models':     ['/static/js/hardware-profile.js', '/static/js/view-audio-models.js'],
         'api-providers':    ['/static/js/view-api-providers.js'],
         '3d-models':        ['/static/js/hardware-profile.js', '/static/js/view-3d-models.js'],
