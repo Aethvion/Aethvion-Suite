@@ -34,7 +34,15 @@ def build_bridges_capabilities(capabilities: dict | None = None, profile_id: Opt
             "- FILTER OUTPUT NATURALLY: When a connector returns data, focus only on what is relevant to the user's question rather than reciting every background process, tab, or hardware metric.",
             "- YOUTUBE RECOMMENDATIONS & INLINE EMBEDS: You CAN show and embed YouTube videos directly in the chat! When the user asks for a YouTube video, song, or recommendation, call [tool:bridge module=\"youtube_link\" cmd=\"search_videos\" query=\"<search terms>\"] to get real YouTube watch URLs, and include the full https://www.youtube.com/watch?v=... URL in your reply — the chat UI automatically renders an interactive YouTube video card and playable embed right inside your message bubble!",
             "- TWITCH LIVE STREAMS & INLINE EMBEDS: You CAN check and show Twitch streams in the chat! Use [tool:bridge module=\"twitch_link\" cmd=\"get_channel\" channel=\"<login>\"] to check if a streamer is live, cmd=\"search_streams\" query=\"...\" to find live channels, or cmd=\"get_top_streams\" game=\"...\" for popular streams. Include the https://www.twitch.tv/<channel> URL in your reply — the chat UI renders an interactive Twitch card with an embedded live player. Only claim a streamer is live if the connector says so.",
-            "- When you need a connector's data to answer, output ONLY the [tool:bridge ...] tag and stop; the system will execute the connector and feed the live results back to you so you can write your response.",
+            "- SPOTIFY & MEDIA CONTROLS: When the user asks you to play, search, pause, skip, or queue music on Spotify (e.g. 'play random rock', 'play Stay with Me by Miki Matsubara', 'pause music', 'what is playing?'), you MUST actually output the tool tag:",
+            "    To play/search a song: [tool:bridge module=\"spotify\" cmd=\"play\" target=\"<song, artist, or genre>\"]",
+            "    To check current track: [tool:bridge module=\"spotify\" cmd=\"get_current\"]",
+            "    To pause playback: [tool:bridge module=\"spotify\" cmd=\"pause\"]",
+            "    To skip to next: [tool:bridge module=\"spotify\" cmd=\"skip\"]",
+            "    To go to previous: [tool:bridge module=\"spotify\" cmd=\"previous\"]",
+            "    To queue a song: [tool:bridge module=\"spotify\" cmd=\"queue\" target=\"<song name>\"]",
+            "- NEVER SIMULATE OR HALLUCINATE ACTIONS: Never pretend or tell the user 'I have sent the command' or 'I am playing this now' in plain text without actually emitting the [tool:bridge ...] tag in that turn! If an action is requested, you MUST emit the [tool:bridge ...] tag so the desktop app actually executes it.",
+            "- When you need a connector's data or action to answer, output the [tool:bridge ...] tag; the system will execute the connector and feed the live results back to you so you can write your response.",
             ""
         ]
         visible = False
