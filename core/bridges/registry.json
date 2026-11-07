@@ -317,23 +317,25 @@
         {
             "id": "spotify",
             "name": "Spotify Bridge",
-            "description": "Control playback and get track info from Spotify via OAuth.",
+            "description": "Control playback and get track info from Spotify locally (zero setup) or via cloud OAuth.",
             "module_path": "core.bridges.spotify_bridge",
             "category": "media",
-            "privacy_tier": "cloud_safe",
+            "privacy_tier": "local_sensitive",
             "icon": "fab fa-spotify",
             "slash_command": "/spotify",
             "default_command": "get_current",
             "enabled": true,
-            "requires_auth": true,
-            "is_authorized": false,
+            "requires_auth": false,
+            "is_authorized": true,
             "available_commands": {
                 "get_current": "Get info about the currently playing track",
-                "play": "Start playback (takes 'target' as optional argument)",
+                "play": "Start or resume playback (takes 'target' as optional song, artist, genre, or URI)",
                 "pause": "Pause playback",
-                "skip": "Skip to the next track"
+                "skip": "Skip to the next track",
+                "previous": "Return to the previous track"
             },
             "settings": [
+                "mode",
                 "client_id",
                 "client_secret",
                 "redirect_uri"

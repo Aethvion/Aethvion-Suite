@@ -1,96 +1,320 @@
-import spotipy
-from spotipy.oauth2 import SpotifyOAuth
+import os
+import sys
+import time
+import json
+import urllib.parse
+import subprocess
 from core.utils.paths import APP_BRIDGES
 from core.utils import get_logger
 
-# Setup logging
 logger = get_logger(__name__)
 
-# Constants for auth
+# Constants for OAuth
 TOKEN_CACHE_DIR = APP_BRIDGES / "spotify"
 TOKEN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_PATH = TOKEN_CACHE_DIR / ".cache"
 
-def _get_auth_manager(settings: dict):
-    """Internal helper to get the Spotify auth manager."""
-    return SpotifyOAuth(
-        client_id=settings.get("client_id"),
-        client_secret=settings.get("client_secret"),
-        redirect_uri=settings.get("redirect_uri", "http://localhost:8080/callback"),
-        scope="user-read-currently-playing user-modify-playback-state user-read-playback-state",
-        cache_path=str(CACHE_PATH)
-    )
+# Win32 Media Constants
+WM_APPCOMMAND = 0x0319
+APPCOMMAND_MEDIA_NEXTTRACK = 11
+APPCOMMAND_MEDIA_PREVIOUSTRACK = 12
+APPCOMMAND_MEDIA_STOP = 13
+APPCOMMAND_MEDIA_PLAY_PAUSE = 14
+APPCOMMAND_MEDIA_PLAY = 46
+APPCOMMAND_MEDIA_PAUSE = 47
 
+VK_MEDIA_NEXT_TRACK = 0xB0
+VK_MEDIA_PREV_TRACK = 0xB1
+VK_MEDIA_PLAY_PAUSE = 0xB3
+
+
+class LocalSpotifyController:
+    """Controls Spotify locally on Windows via SMTC, Win32 media messages, and URI protocols."""
+
+    @staticmethod
+    def _is_spotify_process_running() -> bool:
+        """Check if Spotify.exe process is running."""
+        try:
+            res = subprocess.run(
+                ["tasklist", "/FI", "IMAGENAME eq Spotify.exe", "/NH"],
+                capture_output=True,
+                text=True,
+                timeout=3
+            )
+            return "spotify.exe" in res.stdout.lower()
+        except Exception:
+            return False
+
+    @staticmethod
+    def _find_spotify_hwnd():
+        """Locate the top-level Spotify window handle using ctypes."""
+        if sys.platform != "win32":
+            return None
+        import ctypes
+        user32 = ctypes.windll.user32
+        matches = []
+
+        def enum_windows_proc(hwnd, lparam):
+            if user32.IsWindowVisible(hwnd):
+                length = user32.GetWindowTextLengthW(hwnd)
+                if length > 0:
+                    buf = ctypes.create_unicode_buffer(length + 1)
+                    user32.GetWindowTextW(hwnd, buf, length + 1)
+                    title = buf.value
+                    class_buf = ctypes.create_unicode_buffer(256)
+                    user32.GetClassNameW(hwnd, class_buf, 256)
+                    cls_name = class_buf.value
+                    if cls_name == "Chrome_WidgetWin_0" and ("Spotify" in title or " - " in title):
+                        matches.append(hwnd)
+            return True
+
+        WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+        user32.EnumWindows(WNDENUMPROC(enum_windows_proc), 0)
+        return matches[0] if matches else None
+
+    @classmethod
+    def _send_media_command(cls, app_cmd: int, vk_code: int = None):
+        """Send a media command to Spotify or fallback to virtual media keys."""
+        if sys.platform != "win32":
+            return False
+        import ctypes
+        user32 = ctypes.windll.user32
+        hwnd = cls._find_spotify_hwnd()
+        if hwnd:
+            lparam = app_cmd << 16
+            user32.SendMessageW(hwnd, WM_APPCOMMAND, hwnd, lparam)
+            return True
+        elif vk_code:
+            user32.keybd_event(vk_code, 0, 0, 0)
+            time.sleep(0.04)
+            user32.keybd_event(vk_code, 0, 2, 0)
+            return True
+        return False
+
+    @classmethod
+    def get_current(cls) -> str:
+        """Query currently playing track on Spotify via SMTC and window title scanner."""
+        try:
+            from core.bridges.media_sentinel import _get_media_info_powershell
+            info = _get_media_info_powershell()
+            if info:
+                src = (info.get("source") or "").lower()
+                title = info.get("title", "")
+                artist = info.get("artist", "")
+                if "spotify" in src or (title and title != "Spotify"):
+                    if artist:
+                        return f"Currently playing on Spotify (Local): '{title}' by {artist}"
+                    return f"Currently playing on Spotify (Local): '{title}'"
+        except Exception as e:
+            logger.debug(f"Local SMTC scan failed: {e}")
+
+        if cls._is_spotify_process_running():
+            return "Spotify is open on your PC, but playback is currently paused."
+        return "Spotify is not currently running on your PC. You can ask me to play a song or genre to launch it!"
+
+    @classmethod
+    def play(cls, target: str = None) -> str:
+        """Resume playback or search & play a song/genre/URI on local Spotify."""
+        if target:
+            clean_target = target.strip()
+            if clean_target.startswith("spotify:"):
+                uri = clean_target
+            else:
+                uri = f"spotify:search:{urllib.parse.quote(clean_target)}"
+
+            try:
+                os.startfile(uri)
+            except Exception:
+                subprocess.run(["cmd", "/c", "start", uri], shell=True)
+
+            # Wait briefly for Spotify to focus the search result and trigger playback
+            time.sleep(0.4)
+            cls._send_media_command(APPCOMMAND_MEDIA_PLAY_PAUSE, VK_MEDIA_PLAY_PAUSE)
+            return f"Started playing '{clean_target}' on Spotify (Local)."
+        else:
+            if not cls._is_spotify_process_running():
+                try:
+                    os.startfile("spotify:")
+                    time.sleep(0.6)
+                except Exception:
+                    pass
+            cls._send_media_command(APPCOMMAND_MEDIA_PLAY_PAUSE, VK_MEDIA_PLAY_PAUSE)
+            return "Resumed playback on Spotify (Local)."
+
+    @classmethod
+    def pause(cls) -> str:
+        """Pause playback on local Spotify."""
+        cls._send_media_command(APPCOMMAND_MEDIA_PAUSE, VK_MEDIA_PLAY_PAUSE)
+        return "Paused Spotify playback (Local)."
+
+    @classmethod
+    def skip(cls) -> str:
+        """Skip to next track on local Spotify."""
+        cls._send_media_command(APPCOMMAND_MEDIA_NEXTTRACK, VK_MEDIA_NEXT_TRACK)
+        return "Skipped to next track on Spotify (Local)."
+
+    @classmethod
+    def previous(cls) -> str:
+        """Return to previous track on local Spotify."""
+        cls._send_media_command(APPCOMMAND_MEDIA_PREVIOUSTRACK, VK_MEDIA_PREV_TRACK)
+        return "Returned to previous track on Spotify (Local)."
+
+
+class CloudSpotifyController:
+    """Controls Spotify via official Spotipy OAuth Web API."""
+
+    @staticmethod
+    def _get_auth_manager(settings: dict):
+        import spotipy
+        from spotipy.oauth2 import SpotifyOAuth
+        return SpotifyOAuth(
+            client_id=settings.get("client_id"),
+            client_secret=settings.get("client_secret"),
+            redirect_uri=settings.get("redirect_uri", "http://localhost:8080/callback"),
+            scope="user-read-currently-playing user-modify-playback-state user-read-playback-state",
+            cache_path=str(CACHE_PATH)
+        )
+
+    @classmethod
+    def is_authorized(cls, settings: dict) -> bool:
+        if not settings.get("client_id") or not settings.get("client_secret"):
+            return False
+        try:
+            am = cls._get_auth_manager(settings)
+            tok = am.cache_handler.get_cached_token()
+            return bool(tok and am.validate_token(tok))
+        except Exception:
+            return False
+
+    @classmethod
+    def _get_client(cls, settings: dict):
+        import spotipy
+        am = cls._get_auth_manager(settings)
+        if not am.validate_token(am.cache_handler.get_cached_token()):
+            raise Exception("Spotify cloud session expired or not authorized. Please reconnect in settings.")
+        return spotipy.Spotify(auth_manager=am)
+
+    @classmethod
+    def get_current(cls, settings: dict) -> str:
+        sp = cls._get_client(settings)
+        track = sp.current_user_playing_track()
+        if not track or not track.get("item"):
+            return "No track is currently playing on Spotify."
+        item = track["item"]
+        name = item.get("name", "Unknown")
+        artists = ", ".join(a["name"] for a in item.get("artists", []))
+        album = item.get("album", {}).get("name", "")
+        return f"Currently playing on Spotify (Cloud): '{name}' by {artists} (Album: {album})"
+
+    @classmethod
+    def play(cls, settings: dict, target: str = None) -> str:
+        sp = cls._get_client(settings)
+        if target:
+            results = sp.search(q=target, limit=1, type="track")
+            items = results.get("tracks", {}).get("items", [])
+            if items:
+                track_uri = items[0]["uri"]
+                sp.start_playback(uris=[track_uri])
+                return f"Started playing '{items[0]['name']}' on Spotify (Cloud)."
+            return f"Could not find track '{target}' on Spotify Cloud."
+        sp.start_playback()
+        return "Resumed playback on Spotify (Cloud)."
+
+    @classmethod
+    def pause(cls, settings: dict) -> str:
+        sp = cls._get_client(settings)
+        sp.pause_playback()
+        return "Paused Spotify playback (Cloud)."
+
+    @classmethod
+    def skip(cls, settings: dict) -> str:
+        sp = cls._get_client(settings)
+        sp.next_track()
+        return "Skipped to next track on Spotify (Cloud)."
+
+    @classmethod
+    def previous(cls, settings: dict) -> str:
+        sp = cls._get_client(settings)
+        sp.previous_track()
+        return "Returned to previous track on Spotify (Cloud)."
+
+
+def _should_use_cloud(settings: dict) -> bool:
+    mode = str(settings.get("mode", "auto")).lower()
+    if mode == "local":
+        return False
+    if mode == "cloud":
+        return True
+    return CloudSpotifyController.is_authorized(settings)
+
+
+# OAuth entry points for dashboard connector settings
 def get_auth_url(settings: dict) -> str:
     """Returns the authorization URL for the user to visit."""
-    auth_manager = _get_auth_manager(settings)
+    auth_manager = CloudSpotifyController._get_auth_manager(settings)
     return auth_manager.get_authorize_url()
+
 
 def handle_callback(settings: dict, code: str) -> bool:
     """Exchanges the auth code for a token."""
-    auth_manager = _get_auth_manager(settings)
+    auth_manager = CloudSpotifyController._get_auth_manager(settings)
     token_info = auth_manager.get_access_token(code)
     return token_info is not None
 
-def _get_spotify_client(settings: dict):
-    """Returns an authorized spotipy client or raises an error."""
-    auth_manager = _get_auth_manager(settings)
-    if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()):
-        raise Exception("Spotify session expired or not authorized. Please reconnect in settings.")
-    return spotipy.Spotify(auth_manager=auth_manager)
 
-# Standardized Commands
+# Standardized Commands callable by bridge manager and companions
 
 def get_current(args: dict) -> str:
     """Get info about the currently playing track."""
-    try:
-        sp = _get_spotify_client(args.get("settings", {}))
-        track = sp.current_user_playing_track()
-        if not track or not track["item"]:
-            return "No track is currently playing on Spotify."
-        
-        item = track["item"]
-        name = item["name"]
-        artist = item["artists"][0]["name"]
-        album = item["album"]["name"]
-        return f"Currently playing: '{name}' by {artist} (Album: {album})"
-    except Exception as e:
-        return f"Spotify Error: {str(e)}"
+    settings = args.get("settings", {})
+    if _should_use_cloud(settings):
+        try:
+            return CloudSpotifyController.get_current(settings)
+        except Exception as e:
+            logger.debug(f"Cloud get_current failed, falling back to local: {e}")
+    return LocalSpotifyController.get_current()
+
 
 def play(args: dict) -> str:
-    """Start or resume playback."""
-    try:
-        sp = _get_spotify_client(args.get("settings", {}))
-        target = args.get("target")
-        
-        if target:
-            # Simple search for track
-            results = sp.search(q=target, limit=1, type="track")
-            if results["tracks"]["items"]:
-                track_uri = results["tracks"]["items"][0]["uri"]
-                sp.start_playback(uris=[track_uri])
-                return f"Started playing '{results['tracks']['items'][0]['name']}' on Spotify."
-            return f"Could not find track '{target}' on Spotify."
-        
-        sp.start_playback()
-        return "Resumed playback on Spotify."
-    except Exception as e:
-        return f"Spotify Error: {str(e)}"
+    """Start or resume playback (optional 'target' arg)."""
+    settings = args.get("settings", {})
+    target = args.get("target")
+    if _should_use_cloud(settings):
+        try:
+            return CloudSpotifyController.play(settings, target)
+        except Exception as e:
+            logger.debug(f"Cloud play failed, falling back to local: {e}")
+    return LocalSpotifyController.play(target)
+
 
 def pause(args: dict) -> str:
     """Pause playback."""
-    try:
-        sp = _get_spotify_client(args.get("settings", {}))
-        sp.pause_playback()
-        return "Paused Spotify playback."
-    except Exception as e:
-        return f"Spotify Error: {str(e)}"
+    settings = args.get("settings", {})
+    if _should_use_cloud(settings):
+        try:
+            return CloudSpotifyController.pause(settings)
+        except Exception as e:
+            logger.debug(f"Cloud pause failed, falling back to local: {e}")
+    return LocalSpotifyController.pause()
+
 
 def skip(args: dict) -> str:
-    """Skip to the next track."""
-    try:
-        sp = _get_spotify_client(args.get("settings", {}))
-        sp.next_track()
-        return "Skipped to next track on Spotify."
-    except Exception as e:
-        return f"Spotify Error: {str(e)}"
+    """Skip to next track."""
+    settings = args.get("settings", {})
+    if _should_use_cloud(settings):
+        try:
+            return CloudSpotifyController.skip(settings)
+        except Exception as e:
+            logger.debug(f"Cloud skip failed, falling back to local: {e}")
+    return LocalSpotifyController.skip()
+
+
+def previous(args: dict) -> str:
+    """Return to previous track."""
+    settings = args.get("settings", {})
+    if _should_use_cloud(settings):
+        try:
+            return CloudSpotifyController.previous(settings)
+        except Exception as e:
+            logger.debug(f"Cloud previous failed, falling back to local: {e}")
+    return LocalSpotifyController.previous()

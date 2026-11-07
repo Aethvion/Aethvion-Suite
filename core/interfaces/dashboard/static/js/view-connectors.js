@@ -116,8 +116,22 @@ const ConnectorsView = (() => {
                 <div id="cn-settings-drawer-${_esc(mod.id)}" class="cn-row-drawer" style="display:none;">
                     <div class="cn-settings-grid">
                         ${mod.settings.map(sKey => {
-                            const isSecret = /secret|key|token/i.test(sKey);
                             const val = savedVals[sKey] ?? '';
+                            if (sKey === 'mode') {
+                                return `
+                                <div>
+                                    <label class="lm-hf-label" style="font-size:0.68rem;">CONTROL MODE</label>
+                                    <select class="lm-finput cn-setting-input"
+                                            data-mod="${_esc(mod.id)}"
+                                            data-key="mode"
+                                            style="height:32px; font-size:0.78rem;">
+                                        <option value="auto"${val === 'auto' || !val ? ' selected' : ''}>Auto (Local-First, Cloud if configured)</option>
+                                        <option value="local"${val === 'local' ? ' selected' : ''}>Local Only (Zero credentials, PC app)</option>
+                                        <option value="cloud"${val === 'cloud' ? ' selected' : ''}>Cloud API (OAuth, remote devices)</option>
+                                    </select>
+                                </div>`;
+                            }
+                            const isSecret = /secret|key|token/i.test(sKey);
                             return `
                             <div>
                                 <label class="lm-hf-label" style="font-size:0.68rem;">${_esc(sKey.replace(/_/g, ' ').toUpperCase())}</label>
@@ -135,10 +149,10 @@ const ConnectorsView = (() => {
                                     onclick="ConnectorsView.saveSettings('${_esc(mod.id)}')">
                                 <i class="fas fa-save"></i> Save Settings
                             </button>
-                            ${mod.requires_auth ? `
+                            ${(mod.requires_auth || mod.id === 'spotify') ? `
                                 <button class="hub-action-btn" style="height:32px; font-size:0.75rem; padding:0 0.8rem;"
                                         onclick="ConnectorsView.authorizeConnector('${_esc(mod.id)}')">
-                                    <i class="fas fa-key"></i> ${mod.is_authorized ? 'Re-Authorize' : 'Connect OAuth'}
+                                    <i class="fas fa-key"></i> ${mod.is_authorized && mod.requires_auth ? 'Re-Authorize' : 'Connect Cloud OAuth'}
                                 </button>
                             ` : ''}
                         </div>
