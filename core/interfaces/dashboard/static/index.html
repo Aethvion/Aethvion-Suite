@@ -851,6 +851,8 @@
 
     <!-- App Tab System -->
     <script src="/static/js/app-tabs.js?v=__VNUM__" defer></script>
+    <script src="/static/js/slash-autocomplete.js?v=__VNUM__" defer></script>
+    <script src="/static/js/companion-presence.js?v=__VNUM__" defer></script>
 
     <!-- Update Progress Overlay -->
     <div id="self-update-overlay" class="update-overlay">
@@ -919,11 +921,8 @@
     ${panelAvatarHtml}
     <div style="font-size:1.4rem;font-weight:600;color:${color};">${c.name}</div>
     <div style="color:var(--text-secondary);max-width:480px;">${c.description || ''}</div>
-    <div style="color:var(--text-tertiary);font-size:0.85rem;border:1px solid var(--border);border-radius:8px;padding:0.75rem 1.25rem;">
-        Custom companion chat requires a server restart after creation.
-    </div>
-    <button class="settings-open-chat-btn" onclick="if(typeof switchMainTab==='function') switchMainTab('companion-creator')" style="margin-top:0.5rem;">
-        <i class="fas fa-pencil-alt"></i> Edit in Companions
+    <button class="settings-open-chat-btn" onclick="if(window.AethvionCompanionPresence) window.AethvionCompanionPresence.openCompanionInHub('${c.id}'); else if(typeof switchMainTab==='function') switchMainTab('companion-creator');" style="margin-top:0.5rem;">
+        <i class="fas fa-comments"></i> Open in Companions Hub
     </button>
 </div>`;
                         const mainContent = document.querySelector('.main-content') || document.body;

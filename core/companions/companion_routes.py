@@ -3,12 +3,14 @@ core/companions/companion_routes.py
 Unified dynamic router for all Aethvion companions.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
+import json
 import shutil
 from pathlib import Path
 from core.utils.paths import COMPANIONS
+from core.utils import atomic_json_write
 from pydantic import BaseModel
 
 from core.companions.registry import CompanionRegistry
@@ -20,6 +22,13 @@ from core.bridges.bridge_manager import get_registry
 
 router = APIRouter(prefix="/api/companions", tags=["companions"])
 
+_TEXT_EXTENSIONS = {
+    ".txt", ".md", ".py", ".js", ".ts", ".jsx", ".tsx", ".json", ".yaml", ".yml",
+    ".toml", ".ini", ".cfg", ".csv", ".html", ".css", ".scss", ".sql", ".sh",
+    ".ps1", ".bat", ".c", ".cpp", ".h", ".hpp", ".cs", ".rs", ".go", ".java",
+    ".kt", ".rb", ".php", ".xml", ".log", ".env"
+}
+
 class ChatMessage(BaseModel):
     role: str
     content: str
@@ -28,9 +37,16 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: List[ChatMessage]
+    attachments: Optional[List[Dict[str, Any]]] = None
 
 class InitiateRequest(BaseModel):
     trigger: str = "startup"
+
+class QuickConfigRequest(BaseModel):
+    default_model: Optional[str] = None
+    connector_profile: Optional[str] = None
+    auto_speak: Optional[bool] = None
+    proactive_enabled: Optional[bool] = None
 
 class WorkspaceRequest(BaseModel):
     label: str
@@ -63,6 +79,50 @@ async def list_companions():
 async def get_companion_config(companion_id: str):
     """Return the raw JSON config for a companion (used by the universal companion panel)."""
     return _get_cfg(companion_id)._raw_config
+
+@router.patch("/{companion_id}/quick-config")
+async def patch_quick_config(companion_id: str, req: QuickConfigRequest):
+    """Hot-update a companion's active model, connector profile, or voice/proactive toggle from the Chat header."""
+    cfg = _get_cfg(companion_id)
+    override_dir = COMPANIONS / companion_id
+    override_dir.mkdir(parents=True, exist_ok=True)
+    override_file = override_dir / "config.json"
+
+    if override_file.exists():
+        try:
+            raw = json.loads(override_file.read_text(encoding="utf-8"))
+        except Exception:
+            raw = dict(cfg._raw_config)
+    else:
+        raw = dict(cfg._raw_config)
+
+    if req.default_model is not None:
+        raw["default_model"] = req.default_model
+        from core.workspace.preferences_manager import get_preferences_manager
+        pm = get_preferences_manager()
+        cur_pref = pm.get(companion_id, {}) or {}
+        if isinstance(cur_pref, dict):
+            cur_pref["model"] = req.default_model
+            pm.set(companion_id, cur_pref)
+    if req.connector_profile is not None:
+        raw.setdefault("capabilities", {})["connector_profile"] = req.connector_profile
+    if req.auto_speak is not None:
+        raw.setdefault("voice", {})["auto_speak"] = req.auto_speak
+    if req.proactive_enabled is not None:
+        raw.setdefault("capabilities", {})["proactive_enabled"] = req.proactive_enabled
+        from core.workspace.preferences_manager import get_preferences_manager
+        get_preferences_manager().set(f"{companion_id}.proactive_enabled", req.proactive_enabled)
+
+    atomic_json_write(override_file, raw, indent=2)
+    CompanionRegistry.reload()
+    return {
+        "status": "updated",
+        "companion_id": companion_id,
+        "default_model": raw.get("default_model"),
+        "connector_profile": raw.get("capabilities", {}).get("connector_profile", "full_local"),
+        "auto_speak": raw.get("voice", {}).get("auto_speak", False),
+        "proactive_enabled": raw.get("capabilities", {}).get("proactive_enabled", False),
+    }
 
 @router.get("/{companion_id}/memory")
 async def get_memory(companion_id: str):
@@ -146,7 +206,12 @@ async def initiate(companion_id: str, request: InitiateRequest):
 @router.post("/{companion_id}/chat")
 async def chat(companion_id: str, request: ChatRequest):
     return StreamingResponse(
-        CompanionEngine.chat_response(_get_cfg(companion_id), request.message, request.history),
+        CompanionEngine.chat_response(
+            _get_cfg(companion_id),
+            request.message,
+            request.history,
+            attachments=request.attachments
+        ),
         media_type="application/x-ndjson"
     )
 
@@ -175,11 +240,32 @@ async def upload_context(companion_id: str, file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
 
     content_type: str = file.content_type or ""
+    ext = file_path.suffix.lower()
+    is_image = content_type.startswith("image/") or ext in {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+    text_content = ""
+    if not is_image and (content_type.startswith("text/") or ext in _TEXT_EXTENSIONS):
+        try:
+            raw_text = file_path.read_text(encoding="utf-8", errors="replace")
+            text_content = raw_text[:20000]
+        except Exception:
+            text_content = ""
+
     return {
         "filename": safe_name,
         "path": str(file_path),
-        "is_image": content_type.startswith("image/"),
+        "url": f"/api/companions/{companion_id}/uploads/{safe_name}",
+        "is_image": is_image,
+        "text_content": text_content,
     }
+
+@router.get("/{companion_id}/uploads/{filename}")
+async def get_uploaded_file(companion_id: str, filename: str):
+    _get_cfg(companion_id)
+    safe_name = Path(filename).name
+    file_path = COMPANIONS / companion_id / "uploads" / safe_name
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Uploaded file not found")
+    return FileResponse(file_path)
 
 @router.get("/{companion_id}/expressions")
 async def get_expressions(companion_id: str):

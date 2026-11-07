@@ -55,17 +55,34 @@ class CompanionEngine:
         memory.initialize()
         now = datetime.datetime.now()
         mem_data = memory.load()
+        time_desc = history.time_since_last()
         
         if trigger == "startup":
-            time_desc = history.time_since_last()
             instr = prompts.get("startup_instruction", "Welcome back! Check in with the user naturally.").replace("{time_desc}", time_desc)
         else:
-            instr = prompts.get("proactive_instruction", "Initiate a friendly, natural conversation with the user based on who you are, what you remember about them, or what is happening on their PC.")
+            instr = prompts.get("proactive_instruction", "Initiate a friendly, natural conversation with the user based on who you are, what you talked about recently, what you remember about them, or what is happening on their PC.")
 
-        # Ambient PC / Media context for proactive check-ins if permitted by connector_profile
+        # Recent conversation context so proactive messages can follow up on previous topics
+        recent_chat_context = ""
+        try:
+            recent_days = history.load_days(0, 2).get("history", [])
+            recent_msgs = []
+            for day_block in reversed(recent_days):
+                for m in day_block.get("messages", []):
+                    role_lbl = "User" if m.get("role") == "user" else config.name
+                    txt = (m.get("content") or "").strip()
+                    if txt:
+                        recent_msgs.append(f"{role_lbl}: {txt[:240]}")
+            if recent_msgs:
+                recent_chat_context = "\n\nRecent Conversation Snippet (for continuity — follow up naturally or bring up something new):\n" + "\n".join(recent_msgs[-6:])
+        except Exception:
+            pass
+
+        # Ambient PC / Media context for check-ins if permitted by connector_profile
         ambient_context = ""
         connector_profile = capabilities.get("connector_profile", "full_local")
-        if capabilities.get("tools_enabled", True) and trigger != "startup":
+        allow_proactive_tools = get_preferences_manager().get(f"{config.id}.allow_proactive_tools", True)
+        if capabilities.get("tools_enabled", True) or allow_proactive_tools:
             try:
                 from core.bridges import bridge_manager
                 ambient_parts = []
@@ -88,6 +105,13 @@ class CompanionEngine:
             except Exception:
                 pass
 
+        expr_hint = ""
+        if config.expressions:
+            expr_hint = (
+                f"\nAvailable expressions: {', '.join(config.expressions)}. "
+                "Embed <expression>name</expression> and <mood>mood</mood> once in your reply."
+            )
+
         raw_init_prompt = prompts.get("initiate_system", "").strip()
         if raw_init_prompt:
             try:
@@ -96,9 +120,9 @@ class CompanionEngine:
                     memory=json.dumps(mem_data["memory"], indent=2),
                     datetime_ctx=now.strftime("%A, %d %B %Y — %H:%M"),
                     trigger_instruction=instr
-                ) + ambient_context
+                ) + recent_chat_context + ambient_context + expr_hint
             except KeyError:
-                system_prompt = raw_init_prompt + f"\n\n{instr}" + ambient_context
+                system_prompt = raw_init_prompt + f"\n\n{instr}" + recent_chat_context + ambient_context + expr_hint
         else:
             bi = mem_data.get("base_info", {})
             mem = mem_data.get("memory", {})
@@ -109,8 +133,10 @@ class CompanionEngine:
                 f"Speech style: {bi.get('speech_style', '')}\n"
                 f"What you know about the user:\n{json.dumps(mem, indent=2)}\n\n"
                 f"Current time: {now.strftime('%A, %d %B %Y — %H:%M')}\n"
-                f"Time since last message: {history.time_since_last()}"
-                f"{ambient_context}\n\n"
+                f"Time since last message: {time_desc}"
+                f"{recent_chat_context}"
+                f"{ambient_context}"
+                f"{expr_hint}\n\n"
                 f"Task: {instr}\n"
                 f"Write a short, natural check-in message (1-3 sentences) in character."
             )
@@ -131,7 +157,7 @@ class CompanionEngine:
             raise HTTPException(status_code=500, detail=response.error or "Model call failed")
         content = response.content.strip()
 
-        expression = behavior.get("default_expression", "default")
+        expression = raw.get("default_expression") or behavior.get("default_expression", "default")
         mood = behavior.get("default_mood", "calm")
         exp_match = re.search(r"<expression>(.*?)</expression>", content, re.IGNORECASE)
         if exp_match:
@@ -149,6 +175,14 @@ class CompanionEngine:
                              mood=mood,
                              expression=expression, proactive=True)
         return {
+            "companion_id": config.id,
+            "name": config.name,
+            "accent_color": raw.get("accent_color", "#6366f1"),
+            "avatar_symbol": raw.get("avatar_symbol", "✦"),
+            "has_icon": bool(raw.get("has_icon")),
+            "icon_mode": bool(raw.get("icon_mode")),
+            "expression_images": raw.get("expression_images", {}),
+            "voice": raw.get("voice", {}),
             "response": content,
             "expression": expression,
             "mood": mood,
@@ -157,7 +191,12 @@ class CompanionEngine:
         }
 
     @staticmethod
-    async def chat_response(config: CompanionConfig, message: str, chat_history: List[Any]):
+    async def chat_response(
+        config: CompanionConfig,
+        message: str,
+        chat_history: List[Any],
+        attachments: List[Dict[str, Any]] | None = None
+    ):
         try:
             raw = config._raw_config
             behavior = raw.get("behavior", {})
@@ -356,6 +395,30 @@ class CompanionEngine:
                         "Use the real connector output above to answer naturally."
                     )
 
+            # Inject user-uploaded file/image context into effective_prompt
+            user_attachments = []
+            if attachments:
+                att_blocks = []
+                for att in attachments:
+                    fname = att.get("filename") or "attachment"
+                    url = att.get("url") or ""
+                    is_img = bool(att.get("is_image"))
+                    txt = (att.get("text_content") or "").strip()
+                    user_attachments.append({
+                        "filename": fname,
+                        "url": url,
+                        "is_image": is_img,
+                        "type": "image" if is_img else "file"
+                    })
+                    if txt:
+                        att_blocks.append(f"[ATTACHED FILE: {fname}]\n```\n{txt[:16000]}\n```")
+                    elif is_img:
+                        att_blocks.append(f"[ATTACHED IMAGE: {fname} (path: {att.get('path', url)})]")
+                    else:
+                        att_blocks.append(f"[ATTACHED FILE: {fname}]")
+                if att_blocks:
+                    effective_prompt = "\n\n".join(att_blocks) + f"\n\n{effective_prompt}"
+
             full_content = ""
             actual_model = model
 
@@ -492,18 +555,18 @@ class CompanionEngine:
                     mem_up = True
 
             # 6. Extract peripheral attachments (screenshots etc)
-            attachments = list(slash_attachments)
+            assistant_attachments = list(slash_attachments)
             if results:
                 _, tool_attachments = extract_peripheral_captures(results, [])
-                attachments.extend(tool_attachments)
+                assistant_attachments.extend(tool_attachments)
 
             # 7. Persist to history
-            history.save_message("user", message, utcnow_iso())
+            history.save_message("user", message, utcnow_iso(), attachments=user_attachments or None)
             for inter in intermediate_responses:
                 history.save_message("assistant", inter, utcnow_iso(), model=actual_model)
             for part in final_parts:
                 history.save_message("assistant", part, utcnow_iso(),
-                                     model=actual_model, attachments=attachments)
+                                     model=actual_model, attachments=assistant_attachments or None)
 
             # 8. Final event
             yield json.dumps({
@@ -513,7 +576,7 @@ class CompanionEngine:
                 "expression": expression,
                 "mood": mood,
                 "memory_updated": mem_up,
-                "attachments": attachments
+                "attachments": assistant_attachments
             }) + "\n"
         except Exception as e:
             logger.error(f"Chat response error: {e}", exc_info=True)

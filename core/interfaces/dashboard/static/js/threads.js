@@ -1370,7 +1370,8 @@ async function sendMessage() {
                 context_mode: ctxMode,
                 context_window: ctxWin,
                 memory_mode: memMode,
-                internet_search: internetSearch
+                internet_search: internetSearch,
+                connector_profile: window.AethvionSlashAutocomplete?.getResolvedChatProfileId?.() || 'full_local'
             },
             is_incognito: threads[messageThreadId]?.is_incognito || false
         };

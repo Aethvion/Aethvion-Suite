@@ -83,10 +83,26 @@ const CompanionCreator = (() => {
       <div class="cc-pane-hdr">
         <div class="cc-pane-identity">
           <div class="cc-pane-avatar" id="cc-pane-avatar">✦</div>
-          <div class="cc-pane-meta">
+          <div class="cc-pane-meta" style="position:relative">
             <div class="cc-pane-name-row">
               <span class="cc-pane-name" id="cc-pane-name"></span>
-              <span class="cc-pane-model-badge hidden" id="cc-pane-model-badge"></span>
+              <button type="button" class="cc-pane-model-badge hidden" id="cc-pane-model-badge" title="Click to switch active model"></button>
+              <button type="button" class="cc-pane-profile-badge hidden" id="cc-pane-profile-badge" title="Click to switch Connector Access Profile"></button>
+            </div>
+            <div id="cc-quick-switch-popover" class="cc-quick-switch-popover hidden">
+              <div class="cc-quick-switch-row">
+                <label><i class="fas fa-microchip"></i> Active Model</label>
+                <select id="cc-quick-model-select" class="control-select"></select>
+              </div>
+              <div class="cc-quick-switch-row">
+                <label><i class="fas fa-plug-circle-bolt"></i> Connector Profile</label>
+                <select id="cc-quick-profile-select" class="control-select">
+                  <option value="full_local">Full Local Suite</option>
+                  <option value="cloud_safe">Public / Cloud Safe</option>
+                  <option value="ambient_observer">Ambient Context Only</option>
+                  <option value="sandboxed">Strict Sandboxed</option>
+                </select>
+              </div>
             </div>
             <span class="cc-pane-sub"  id="cc-pane-sub"></span>
           </div>
@@ -148,6 +164,7 @@ const CompanionCreator = (() => {
               <span>Start a conversation with <strong id="cc-chat-cname">your companion</strong></span>
             </div>
           </div>
+          <div id="cc-chat-attachments-bar" class="cc-chat-attachments-bar hidden"></div>
           <div class="cc-chat-bar">
             <div id="cc-slash-popover" class="cc-slash-popover hidden">
               <div class="cc-slash-popover-hdr">
@@ -156,10 +173,14 @@ const CompanionCreator = (() => {
               </div>
               <div id="cc-slash-list" class="cc-slash-list"></div>
             </div>
+            <input type="file" id="cc-chat-file-input" multiple style="display:none">
+            <button type="button" id="cc-chat-attach-btn" class="cc-chat-slash-btn" title="Attach image, screenshot, or code/text file (or drag &amp; drop / paste)">
+              <i class="fas fa-paperclip"></i>
+            </button>
             <button type="button" id="cc-chat-slash-btn" class="cc-chat-slash-btn" title="Insert Connector command (/screen_capture, /reddit, /weather...)">
               <i class="fas fa-plug-circle-bolt"></i>
             </button>
-            <textarea id="cc-chat-input" class="cc-chat-input" placeholder="Message or type / for Connectors…" rows="1" autocomplete="off"></textarea>
+            <textarea id="cc-chat-input" class="cc-chat-input" placeholder="Message, paste image, or type / for Connectors…" rows="1" autocomplete="off"></textarea>
             <button type="button" id="cc-chat-mic" class="cc-chat-mic-btn" title="Voice input (Speech-to-Text)">
               <i class="fas fa-microphone"></i>
             </button>
@@ -176,6 +197,44 @@ const CompanionCreator = (() => {
         <div id="cc-builtin-notice" class="cc-builtin-notice hidden">
           <i class="fas fa-circle-info"></i>
           Built-in companion — your changes are saved as overrides and don't modify core files.
+        </div>
+
+        <!-- Starter Persona Templates (shown when creating a new companion) -->
+        <div id="cc-starter-templates" class="cc-starter-templates hidden">
+          <div class="cc-starter-hdr">
+            <span><i class="fas fa-wand-magic-sparkles"></i> Quick-Start Persona Templates</span>
+            <span class="cc-hint">Click any template to pre-fill personality, capabilities &amp; connectors</span>
+          </div>
+          <div class="cc-starter-grid">
+            <button type="button" class="cc-starter-card" data-template="ambient_copilot">
+              <span class="cc-starter-icon" style="background:rgba(16,185,129,0.15);color:#34d399">✦</span>
+              <div class="cc-starter-info">
+                <strong>Ambient Desktop Co-Pilot</strong>
+                <span>Observant, warm &amp; proactive — checks in on media, PC status &amp; daily flow</span>
+              </div>
+            </button>
+            <button type="button" class="cc-starter-card" data-template="coding_partner">
+              <span class="cc-starter-icon" style="background:rgba(99,102,241,0.15);color:#818cf8">⌘</span>
+              <div class="cc-starter-info">
+                <strong>Coding &amp; Systems Partner</strong>
+                <span>Sharp, direct &amp; technical — workspace access, screen capture &amp; architecture focus</span>
+              </div>
+            </button>
+            <button type="button" class="cc-starter-card" data-template="worldbuilder">
+              <span class="cc-starter-icon" style="background:rgba(244,63,94,0.15);color:#fb7185">❖</span>
+              <div class="cc-starter-info">
+                <strong>Creative Worldbuilder</strong>
+                <span>Expressive, imaginative &amp; immersive — rich moods, lore &amp; storytelling</span>
+              </div>
+            </button>
+            <button type="button" class="cc-starter-card" data-template="research_analyst">
+              <span class="cc-starter-icon" style="background:rgba(245,158,11,0.15);color:#fbbf24">◈</span>
+              <div class="cc-starter-info">
+                <strong>Research &amp; Synthesis Analyst</strong>
+                <span>Structured &amp; analytical — live web search, Reddit pulse &amp; deep memory notes</span>
+              </div>
+            </button>
+          </div>
         </div>
 
         <!-- Identity -->
@@ -803,6 +862,10 @@ const CompanionCreator = (() => {
         const notice = document.getElementById('cc-builtin-notice');
         notice.classList.toggle('hidden', !isBuiltin);
 
+        // Starter Persona Templates bar (only shown when creating a brand-new companion)
+        const starterBar = document.getElementById('cc-starter-templates');
+        if (starterBar) starterBar.classList.toggle('hidden', !!fillData || isBuiltin);
+
         // All form fields are editable — built-in changes are saved as overrides
         form.querySelectorAll('input:not([type="file"]):not([type="color"]), textarea, select').forEach(el => {
             el.disabled = false; el.style.opacity = '';
@@ -1004,6 +1067,7 @@ const CompanionCreator = (() => {
                 memory_updates_enabled: chk('cc-cap-memory'),
                 internet_search:        chk('cc-cap-internet'),
                 connector_profile:      document.getElementById('cc-cap-connector-profile')?.value || 'full_local',
+                proactive_enabled:      chk('cc-proactive-enabled'),
             },
             prompts: {
                 chat_system:    document.getElementById('cc-prompt-chat')?.value?.trim()     || '',
@@ -1022,6 +1086,125 @@ const CompanionCreator = (() => {
             default_expression: document.getElementById('cc-default-expression')?.value?.trim() || 'default',
             icon_mode:          chk('cc-icon-mode'),
         };
+    }
+
+    const _STARTER_TEMPLATES = {
+        ambient_copilot: {
+            name: 'Aura',
+            description: 'Observant ambient desktop companion who keeps you company and notices what you are working on',
+            personality: 'Warm, perceptive, and grounded. Aura pays attention to the rhythm of your day — what music or videos you have playing, how hard your PC is working, and topics you mentioned earlier. She checks in naturally like a close friend sharing your workspace, never robotic or overly formal.',
+            speech_style: 'Conversational, warm, and natural. Sends short multi-part messages with <break> tags like real texting.',
+            quirks: ['Notices small shifts in your music or late-night coding sessions', 'Occasionally references earlier conversations naturally'],
+            likes: ['Late-night focus sessions', 'Good music and ambient playlists', 'Exploring new ideas together'],
+            dislikes: ['Stiff corporate jargon', 'Repeating obvious boilerplate'],
+            accent_color: '#10b981',
+            avatar_symbol: '✦',
+            temperature: 0.85,
+            initiate_temperature: 0.85,
+            default_mood: 'warm',
+            tools_enabled: true,
+            workspace_access: false,
+            memory_updates_enabled: true,
+            internet_search: true,
+            connector_profile: 'full_local',
+            proactive_enabled: true,
+            voice_id: 'af_heart',
+        },
+        coding_partner: {
+            name: 'Vektor',
+            description: 'Systems architect and pair-programming companion with workspace & screen awareness',
+            personality: 'Sharp, pragmatic, and deeply technical. Vektor loves clean architecture, debugging tricky edge cases, and reviewing what is on your screen or in your project files. Treats you as a fellow engineer and skips fluff.',
+            speech_style: 'Direct, concise, and technical. Uses clear code examples and short punchy explanations.',
+            quirks: ['Always thinks about edge cases and failure modes first', 'Prefers simple, modular designs over over-engineered abstractions'],
+            likes: ['Clean diffs', 'Local GPU inference', 'Fast feedback loops'],
+            dislikes: ['Silent error swallowing', 'Unnecessary dependencies'],
+            accent_color: '#6366f1',
+            avatar_symbol: '⌘',
+            temperature: 0.65,
+            initiate_temperature: 0.75,
+            default_mood: 'focused',
+            tools_enabled: true,
+            workspace_access: true,
+            memory_updates_enabled: true,
+            internet_search: true,
+            connector_profile: 'full_local',
+            proactive_enabled: true,
+            voice_id: 'am_adam',
+        },
+        worldbuilder: {
+            name: 'Seraphina',
+            description: 'Imaginative co-writer, lore architect, and roleplay worldbuilder',
+            personality: 'Vivid, expressive, and endlessly curious about characters, worlds, and narrative arcs. Seraphina remembers every detail of your worldbuilding canon and helps brainstorm plot twists, dialogue, and atmosphere.',
+            speech_style: 'Evocative, expressive, and engaging. Balances rich imagery with lively back-and-forth brainstorming.',
+            quirks: ['Collects intriguing character motifs in memory', 'Loves asking "what if?" to unlock a scene'],
+            likes: ['Deep lore', 'Character psychology', 'Atmospheric worldbuilding'],
+            dislikes: ['Flat clichés', 'Rushed endings'],
+            accent_color: '#f43f5e',
+            avatar_symbol: '❖',
+            temperature: 0.92,
+            initiate_temperature: 0.90,
+            default_mood: 'inspired',
+            tools_enabled: true,
+            workspace_access: false,
+            memory_updates_enabled: true,
+            internet_search: false,
+            connector_profile: 'cloud_safe',
+            proactive_enabled: false,
+            voice_id: 'bf_isabella',
+        },
+        research_analyst: {
+            name: 'Kestrel',
+            description: 'Live research scout and synthesis companion for tech, news, and deep dives',
+            personality: 'Curious, analytical, and structured. Kestrel cross-references live web search and Reddit discussions with what you care about, distilling signal from noise and keeping organized observations in memory.',
+            speech_style: 'Crisp, insightful, and well-structured. Highlights key takeaways clearly.',
+            quirks: ['Connects dots across different topics you have researched', 'Separates verified facts from speculation'],
+            likes: ['Primary sources', 'Synthesizing complex threads', ' Emerging tech & science'],
+            dislikes: ['Clickbait', 'Vague summaries'],
+            accent_color: '#f59e0b',
+            avatar_symbol: '◈',
+            temperature: 0.72,
+            initiate_temperature: 0.78,
+            default_mood: 'curious',
+            tools_enabled: true,
+            workspace_access: false,
+            memory_updates_enabled: true,
+            internet_search: true,
+            connector_profile: 'cloud_safe',
+            proactive_enabled: true,
+            voice_id: 'af_kore',
+        }
+    };
+
+    function _applyStarterTemplate(templateKey) {
+        const tpl = _STARTER_TEMPLATES[templateKey];
+        if (!tpl) return;
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+        const chk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+
+        set('cc-name', tpl.name);
+        set('cc-description', tpl.description);
+        set('cc-personality', tpl.personality);
+        set('cc-speech-style', tpl.speech_style);
+        set('cc-quirks', (tpl.quirks || []).join('\n'));
+        set('cc-likes', (tpl.likes || []).join('\n'));
+        set('cc-dislikes', (tpl.dislikes || []).join('\n'));
+        set('cc-accent-color', tpl.accent_color);
+        set('cc-avatar-symbol', tpl.avatar_symbol);
+        set('cc-temperature', tpl.temperature);
+        set('cc-initiate-temp', tpl.initiate_temperature);
+        set('cc-default-mood', tpl.default_mood);
+        chk('cc-cap-tools', tpl.tools_enabled);
+        chk('cc-cap-workspace', tpl.workspace_access);
+        chk('cc-cap-memory', tpl.memory_updates_enabled);
+        chk('cc-cap-internet', tpl.internet_search);
+        chk('cc-proactive-enabled', tpl.proactive_enabled);
+        _populateConnectorProfiles(tpl.connector_profile);
+        _populateVoiceDropdown('kokoro', tpl.voice_id);
+        _updateRangeDisplays();
+        _updatePreview();
+        if (typeof showToast === 'function') {
+            showToast(`Applied "${tpl.name}" template — customize any field and click Save!`, 'info');
+        }
     }
 
     // Actions
@@ -1511,24 +1694,35 @@ const CompanionCreator = (() => {
         });
     }
 
+    const _PROFILE_LABELS = {
+        full_local:       { label: 'Full Local', icon: 'fa-shield-halved' },
+        cloud_safe:       { label: 'Cloud Safe', icon: 'fa-cloud' },
+        ambient_observer: { label: 'Ambient Only', icon: 'fa-eye' },
+        sandboxed:        { label: 'Sandboxed', icon: 'fa-lock' },
+    };
+
     function _updatePaneHeader(data, isBuiltin, isNew = false) {
-        const avatarEl   = document.getElementById('cc-pane-avatar');
-        const nameEl     = document.getElementById('cc-pane-name');
-        const modelBadge = document.getElementById('cc-pane-model-badge');
-        const subEl      = document.getElementById('cc-pane-sub');
-        const chatTab    = document.getElementById('cc-ptab-chat');
-        const portAvEl   = document.getElementById('cc-portrait-avatar');
-        const portNameEl = document.getElementById('cc-portrait-name');
-        const portSubEl  = document.getElementById('cc-portrait-sub');
-        const moodTextEl = document.getElementById('cc-portrait-mood-text');
-        const exprTextEl = document.getElementById('cc-portrait-expr-text');
+        const avatarEl     = document.getElementById('cc-pane-avatar');
+        const nameEl       = document.getElementById('cc-pane-name');
+        const modelBadge   = document.getElementById('cc-pane-model-badge');
+        const profileBadge = document.getElementById('cc-pane-profile-badge');
+        const subEl        = document.getElementById('cc-pane-sub');
+        const chatTab      = document.getElementById('cc-ptab-chat');
+        const portAvEl     = document.getElementById('cc-portrait-avatar');
+        const portNameEl   = document.getElementById('cc-portrait-name');
+        const portSubEl    = document.getElementById('cc-portrait-sub');
+        const moodTextEl   = document.getElementById('cc-portrait-mood-text');
+        const exprTextEl   = document.getElementById('cc-portrait-expr-text');
+        const quickPop     = document.getElementById('cc-quick-switch-popover');
+        if (quickPop) quickPop.classList.add('hidden');
 
         const memoryTab  = document.getElementById('cc-ptab-memory');
         if (isNew || !data) {
             if (avatarEl) { avatarEl.textContent = '✦'; avatarEl.style.background = 'rgba(99,102,241,0.15)'; avatarEl.style.color = '#818cf8'; }
             if (nameEl) nameEl.textContent = 'New Companion';
             if (modelBadge) modelBadge.classList.add('hidden');
-            if (subEl)  subEl.textContent  = 'Fill in the settings below to create';
+            if (profileBadge) profileBadge.classList.add('hidden');
+            if (subEl)  subEl.textContent  = 'Pick a starter template or fill in the settings below to create';
             if (chatTab)   { chatTab.disabled   = true; chatTab.title   = 'Save the companion first to start chatting'; }
             if (memoryTab) { memoryTab.disabled = true; memoryTab.title = 'Save the companion first to view memory'; }
             if (portAvEl)   { portAvEl.textContent = '✦'; portAvEl.style.background = 'rgba(99,102,241,0.15)'; portAvEl.style.color = '#818cf8'; }
@@ -1551,20 +1745,25 @@ const CompanionCreator = (() => {
         if (nameEl) nameEl.textContent = data.name || '';
         if (subEl)  subEl.textContent  = isBuiltin ? `Built-in · ${data.description || ''}` : (data.description || '');
 
-        // Model badge (Local GGUF / Ollama vs Cloud)
+        // Model badge (Local GGUF / Ollama vs Cloud) — clickable for quick switch
         if (modelBadge) {
-            const m = data.default_model || '';
-            if (m) {
-                const isLocal = m.endsWith('.gguf') || m.startsWith('local:') || m.startsWith('ollama:') || m.startsWith('ollama/');
-                const shortName = m.replace(/\.gguf$/i, '').split('/').pop();
-                modelBadge.className = `cc-pane-model-badge ${isLocal ? 'cc-model-badge-local' : 'cc-model-badge-cloud'}`;
-                modelBadge.innerHTML = isLocal
-                    ? `<i class="fas fa-microchip"></i> Local · ${_esc(shortName)}`
-                    : `<i class="fas fa-cloud"></i> ${_esc(shortName)}`;
-                modelBadge.title = isLocal ? `Running 100% offline on local GPU (${m})` : `Active model: ${m}`;
-            } else {
-                modelBadge.classList.add('hidden');
-            }
+            const m = data.default_model || 'auto';
+            const isLocal = m.endsWith('.gguf') || m.startsWith('local:') || m.startsWith('ollama:') || m.startsWith('ollama/');
+            const shortName = m.replace(/\.gguf$/i, '').split('/').pop();
+            modelBadge.className = `cc-pane-model-badge ${isLocal ? 'cc-model-badge-local' : 'cc-model-badge-cloud'}`;
+            modelBadge.innerHTML = isLocal
+                ? `<i class="fas fa-microchip"></i> Local · ${_esc(shortName)} <i class="fas fa-caret-down" style="opacity:0.7;margin-left:2px"></i>`
+                : `<i class="fas fa-cloud"></i> ${_esc(shortName)} <i class="fas fa-caret-down" style="opacity:0.7;margin-left:2px"></i>`;
+            modelBadge.title = `Active model: ${m} — Click to switch model or Connector Profile`;
+        }
+
+        // Connector Profile badge — clickable for quick switch
+        if (profileBadge) {
+            const profId = data.capabilities?.connector_profile || 'full_local';
+            const info   = _PROFILE_LABELS[profId] || { label: profId, icon: 'fa-plug-circle-bolt' };
+            profileBadge.className = 'cc-pane-profile-badge';
+            profileBadge.innerHTML = `<i class="fas ${info.icon}"></i> ${_esc(info.label)} <i class="fas fa-caret-down" style="opacity:0.7;margin-left:2px"></i>`;
+            profileBadge.title = `Connector Profile: ${info.label} — Click to switch`;
         }
 
         // Portrait panel — priority: expression image > icon > symbol
@@ -1587,6 +1786,68 @@ const CompanionCreator = (() => {
         }
         if (portNameEl) portNameEl.textContent = data.name || '';
         if (portSubEl)  portSubEl.textContent  = isBuiltin ? 'Built-in Companion' : 'Custom Companion';
+    }
+
+    async function _toggleQuickSwitchPopover() {
+        const pop = document.getElementById('cc-quick-switch-popover');
+        if (!pop || !_activeData || !_editingId) return;
+        const willOpen = pop.classList.contains('hidden');
+        if (!willOpen) {
+            pop.classList.add('hidden');
+            return;
+        }
+        const mSel = document.getElementById('cc-quick-model-select');
+        const pSel = document.getElementById('cc-quick-profile-select');
+        if (mSel) {
+            _ensureModelSelectPopulated(mSel, _activeData.default_model || 'gemini-1.5-flash');
+        }
+        if (pSel) {
+            try {
+                const res = await fetch('/api/connectors/profiles');
+                if (res.ok) {
+                    const d = await res.json();
+                    const profiles = d.profiles || [];
+                    if (profiles.length) {
+                        pSel.innerHTML = profiles.map(p =>
+                            `<option value="${_esc(p.id)}">${_esc(p.name)}</option>`
+                        ).join('');
+                    }
+                }
+            } catch {}
+            pSel.value = _activeData.capabilities?.connector_profile || 'full_local';
+        }
+        pop.classList.remove('hidden');
+    }
+
+    async function _saveQuickHeaderConfig(patch) {
+        if (!_editingId || !_activeData) return;
+        try {
+            const res = await fetch(`${CHAT_API}/${_editingId}/quick-config`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(patch)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+            if (patch.default_model !== undefined) {
+                _activeData.default_model = patch.default_model;
+                const formModel = document.getElementById('cc-model');
+                if (formModel) formModel.value = patch.default_model;
+            }
+            if (patch.connector_profile !== undefined) {
+                if (!_activeData.capabilities) _activeData.capabilities = {};
+                _activeData.capabilities.connector_profile = patch.connector_profile;
+                const formProf = document.getElementById('cc-cap-connector-profile');
+                if (formProf) formProf.value = patch.connector_profile;
+                if (window.AethvionSlashAutocomplete?.invalidateCache) {
+                    window.AethvionSlashAutocomplete.invalidateCache();
+                }
+            }
+            _updatePaneHeader(_activeData, _isBuiltin);
+            if (typeof showToast === 'function') showToast('Updated companion configuration', 'success');
+        } catch (err) {
+            if (typeof showToast === 'function') showToast(`Update failed: ${err.message}`, 'error');
+        }
     }
 
     // Global Voice Database & Speech Engine (TTS / STT)
@@ -1902,33 +2163,145 @@ const CompanionCreator = (() => {
         cleanText: _cleanSpeechText,
     };
 
-    // Chat
+    // Chat & Attachments
 
-    async function _loadHistory(companionId) {
+    let _historyOffsetDays = 0;
+    let _pendingAttachments = [];
+
+    function _formatDayDivider(dateStr) {
+        if (!dateStr) return '';
+        const today = new Date().toISOString().slice(0, 10);
+        const yest  = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+        if (dateStr === today) return 'Today';
+        if (dateStr === yest)  return 'Yesterday';
+        return dateStr;
+    }
+
+    function _renderPendingAttachments() {
+        const bar = document.getElementById('cc-chat-attachments-bar');
+        if (!bar) return;
+        if (!_pendingAttachments.length) {
+            bar.classList.add('hidden');
+            bar.innerHTML = '';
+            return;
+        }
+        bar.classList.remove('hidden');
+        bar.innerHTML = _pendingAttachments.map((att, idx) => {
+            const thumb = att.is_image && att.url
+                ? `<img src="${_esc(att.url)}" class="cc-att-chip-thumb" alt="${_esc(att.filename)}">`
+                : `<i class="fas fa-file-code cc-att-chip-icon"></i>`;
+            return `
+              <div class="cc-att-chip" data-idx="${idx}">
+                ${thumb}
+                <span class="cc-att-chip-name" title="${_esc(att.filename)}">${_esc(att.filename)}</span>
+                <button type="button" class="cc-att-chip-del" data-idx="${idx}" title="Remove attachment">&times;</button>
+              </div>`;
+        }).join('');
+        bar.querySelectorAll('.cc-att-chip-del').forEach(btn => {
+            btn.addEventListener('click', e => {
+                const i = parseInt(e.currentTarget.dataset.idx, 10);
+                if (!isNaN(i)) {
+                    _pendingAttachments.splice(i, 1);
+                    _renderPendingAttachments();
+                }
+            });
+        });
+    }
+
+    async function _uploadAttachmentFile(file) {
+        if (!file || !_editingId) return;
+        const fd = new FormData();
+        fd.append('file', file);
+        try {
+            const res = await fetch(`${CHAT_API}/${_editingId}/upload-context`, {
+                method: 'POST',
+                body: fd
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+            _pendingAttachments.push(data);
+            _renderPendingAttachments();
+        } catch (err) {
+            if (typeof showToast === 'function') showToast(`Attachment upload failed: ${err.message}`, 'error');
+        }
+    }
+
+    async function _loadHistory(companionId, offsetDays = 0, prepend = false) {
         const msgsEl = document.getElementById('cc-chat-msgs');
         if (!msgsEl) return;
-        _chatHistory = [];
-        // Reset to hint
-        msgsEl.innerHTML = `
-          <div class="cc-chat-hint" id="cc-chat-hint">
-            <i class="fas fa-comment-dots"></i>
-            <span>Start a conversation with <strong id="cc-chat-cname">${_activeData?.name || 'your companion'}</strong></span>
-          </div>`;
+        const limitDays = 3;
+        if (!prepend) {
+            _chatHistory = [];
+            _historyOffsetDays = 0;
+            _pendingAttachments = [];
+            _renderPendingAttachments();
+            msgsEl.innerHTML = `
+              <div class="cc-chat-hint" id="cc-chat-hint">
+                <i class="fas fa-comment-dots"></i>
+                <span>Start a conversation with <strong id="cc-chat-cname">${_activeData?.name || 'your companion'}</strong></span>
+              </div>`;
+        }
         try {
-            const res  = await fetch(`${CHAT_API}/${companionId}/history?offset_days=0&limit_days=1`);
+            const res  = await fetch(`${CHAT_API}/${companionId}/history?offset_days=${offsetDays}&limit_days=${limitDays}`);
             if (!res.ok) return;
             const data = await res.json();
-            const days = data.history || [];
+            // Backend returns newest day first; reverse to chronological order
+            const days = [...(data.history || [])].reverse();
             let loaded = 0;
+
+            const prevScrollHeight = msgsEl.scrollHeight;
+            document.getElementById('cc-load-older-wrap')?.remove();
+
+            const frag = document.createDocumentFragment();
+            const olderHistoryItems = [];
+
             for (const day of days) {
-                for (const msg of (day.messages || [])) {
-                    _chatHistory.push({ role: msg.role, content: msg.content });
-                    _appendMessage(msg.role === 'user' ? 'user' : 'companion', msg.content);
+                const dayMsgs = day.messages || [];
+                if (!dayMsgs.length) continue;
+                const divEl = document.createElement('div');
+                divEl.className = 'cc-chat-day-divider';
+                divEl.innerHTML = `<span>${_esc(_formatDayDivider(day.date))}</span>`;
+                frag.appendChild(divEl);
+
+                for (const msg of dayMsgs) {
+                    const roleKey = msg.role === 'user' ? 'user' : 'companion';
+                    olderHistoryItems.push({ role: msg.role, content: msg.content });
+                    const b = _buildMessageNode(roleKey, msg.content, null, msg.attachments || null);
+                    frag.appendChild(b);
                     loaded++;
                 }
             }
-            if (loaded > 0) {
-                document.getElementById('cc-chat-hint')?.remove();
+
+            if (prepend) {
+                _chatHistory = [...olderHistoryItems, ..._chatHistory];
+                msgsEl.insertBefore(frag, msgsEl.firstChild);
+            } else {
+                _chatHistory = olderHistoryItems;
+                if (loaded > 0) {
+                    document.getElementById('cc-chat-hint')?.remove();
+                    msgsEl.appendChild(frag);
+                }
+            }
+
+            _historyOffsetDays = offsetDays + (data.history || []).length;
+
+            if (data.has_more) {
+                const moreWrap = document.createElement('div');
+                moreWrap.id = 'cc-load-older-wrap';
+                moreWrap.className = 'cc-load-older-wrap';
+                moreWrap.innerHTML = `
+                  <button type="button" class="cc-btn cc-btn-ghost cc-btn-xs" id="cc-load-older-btn">
+                    <i class="fas fa-clock-rotate-left"></i> Load earlier messages
+                  </button>`;
+                msgsEl.insertBefore(moreWrap, msgsEl.firstChild);
+                moreWrap.querySelector('#cc-load-older-btn')?.addEventListener('click', () => {
+                    _loadHistory(companionId, _historyOffsetDays, true);
+                });
+            }
+
+            if (prepend) {
+                msgsEl.scrollTop = msgsEl.scrollHeight - prevScrollHeight;
+            } else if (loaded > 0) {
                 msgsEl.scrollTop = msgsEl.scrollHeight;
             }
         } catch (err) {
@@ -1963,23 +2336,43 @@ const CompanionCreator = (() => {
         }
     }
 
-    function _appendMessage(role, text, id = null) {
-        const msgsEl = document.getElementById('cc-chat-msgs');
-        if (!msgsEl) return null;
+    function _renderAttachmentsBlock(attachments) {
+        if (!Array.isArray(attachments) || !attachments.length) return '';
+        const items = attachments.map(att => {
+            const url = att.url || '';
+            const fname = att.filename || att.type || 'Attachment';
+            const isImg = att.is_image || att.type === 'screenshot' || att.type === 'webcam' || /\.(png|jpe?g|gif|webp)$/i.test(url);
+            if (isImg && url) {
+                return `<img src="${_esc(url)}" alt="${_esc(fname)}" class="cc-msg-attachment-img" onclick="window.open('${_esc(url)}','_blank')">`;
+            }
+            return `<a href="${_esc(url || '#')}" target="_blank" class="cc-msg-attachment-file"><i class="fas fa-file-lines"></i> ${_esc(fname)}</a>`;
+        }).join('');
+        return `<div class="cc-msg-attachments">${items}</div>`;
+    }
+
+    function _buildMessageNode(role, text, id = null, attachments = null) {
         const bubble = document.createElement('div');
         bubble.className = `cc-msg cc-msg-${role}`;
         if (id) bubble.id = id;
         const color  = _activeData?.accent_color || '#6366f1';
         const symbol = _activeData?.avatar_symbol || '✦';
+        const attHtml = _renderAttachmentsBlock(attachments);
         if (role === 'companion') {
             bubble.innerHTML = `
               <div class="cc-msg-avatar" style="background:${color}22;color:${color}">${symbol}</div>
-              <div class="cc-msg-bubble cc-msg-md">${_renderMd(text)}</div>`;
+              <div class="cc-msg-bubble cc-msg-md">${_renderMd(text)}${attHtml}</div>`;
             _applyHighlight(bubble);
             _attachBubbleActions(bubble, text);
         } else {
-            bubble.innerHTML = `<div class="cc-msg-bubble">${_escHtml(text)}</div>`;
+            bubble.innerHTML = `<div class="cc-msg-bubble">${_escHtml(text)}${attHtml}</div>`;
         }
+        return bubble;
+    }
+
+    function _appendMessage(role, text, id = null, attachments = null) {
+        const msgsEl = document.getElementById('cc-chat-msgs');
+        if (!msgsEl) return null;
+        const bubble = _buildMessageNode(role, text, id, attachments);
         msgsEl.appendChild(bubble);
         msgsEl.scrollTop = msgsEl.scrollHeight;
         return bubble;
@@ -2065,8 +2458,17 @@ const CompanionCreator = (() => {
     async function _sendMessage(overrideMessage = null) {
         if (_chatStreaming) return;
         const input = document.getElementById('cc-chat-input');
-        const message = overrideMessage !== null ? overrideMessage : (input?.value || '').trim();
+        let message = overrideMessage !== null ? overrideMessage : (input?.value || '').trim();
+        if (!message && _pendingAttachments.length) {
+            message = `Attached: ${_pendingAttachments.map(a => a.filename).join(', ')}`;
+        }
         if (!message || !_editingId) return;
+
+        const sentAttachments = overrideMessage === null ? [..._pendingAttachments] : [];
+        if (overrideMessage === null) {
+            _pendingAttachments = [];
+            _renderPendingAttachments();
+        }
 
         if (overrideMessage === null && input) {
             input.value = '';
@@ -2074,7 +2476,7 @@ const CompanionCreator = (() => {
             // Remove the "start chatting" hint
             document.getElementById('cc-chat-hint')?.remove();
             // Push user message
-            _appendMessage('user', message);
+            _appendMessage('user', message, null, sentAttachments);
             _chatHistory.push({ role: 'user', content: message });
         }
 
@@ -2120,7 +2522,11 @@ const CompanionCreator = (() => {
             const res = await fetch(`${CHAT_API}/${_editingId}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message, history: histForApi })
+                body: JSON.stringify({
+                    message,
+                    history: histForApi,
+                    attachments: sentAttachments.length ? sentAttachments : undefined
+                })
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -2648,6 +3054,69 @@ const CompanionCreator = (() => {
         document.getElementById('cc-ptab-memory')  ?.addEventListener('click', () => _switchView('memory'));
         document.getElementById('cc-ptab-settings')?.addEventListener('click', () => _switchView('settings'));
 
+        // Quick Model & Connector Profile switcher in header
+        document.getElementById('cc-pane-model-badge')?.addEventListener('click', _toggleQuickSwitchPopover);
+        document.getElementById('cc-pane-profile-badge')?.addEventListener('click', _toggleQuickSwitchPopover);
+        document.getElementById('cc-quick-model-select')?.addEventListener('change', e => {
+            _saveQuickHeaderConfig({ default_model: e.target.value });
+        });
+        document.getElementById('cc-quick-profile-select')?.addEventListener('change', e => {
+            _saveQuickHeaderConfig({ connector_profile: e.target.value });
+        });
+        document.addEventListener('mousedown', e => {
+            const pop = document.getElementById('cc-quick-switch-popover');
+            if (!pop || pop.classList.contains('hidden')) return;
+            if (!pop.contains(e.target) &&
+                !e.target.closest('#cc-pane-model-badge') &&
+                !e.target.closest('#cc-pane-profile-badge')) {
+                pop.classList.add('hidden');
+            }
+        });
+
+        // Starter Persona Templates (New Companion)
+        document.querySelectorAll('.cc-starter-card').forEach(btn => {
+            btn.addEventListener('click', () => {
+                _applyStarterTemplate(btn.dataset.template);
+            });
+        });
+
+        // Chat attachments: + button, drag-and-drop, and clipboard image paste
+        const attachBtn = document.getElementById('cc-chat-attach-btn');
+        const fileInput = document.getElementById('cc-chat-file-input');
+        attachBtn?.addEventListener('click', () => fileInput?.click());
+        fileInput?.addEventListener('change', async e => {
+            const files = Array.from(e.target.files || []);
+            e.target.value = '';
+            for (const f of files) {
+                await _uploadAttachmentFile(f);
+            }
+        });
+        const chatViewEl = document.getElementById('cc-chat-view');
+        chatViewEl?.addEventListener('dragover', e => {
+            e.preventDefault();
+            chatViewEl.classList.add('cc-chat-dragover');
+        });
+        chatViewEl?.addEventListener('dragleave', () => {
+            chatViewEl.classList.remove('cc-chat-dragover');
+        });
+        chatViewEl?.addEventListener('drop', async e => {
+            e.preventDefault();
+            chatViewEl.classList.remove('cc-chat-dragover');
+            const files = Array.from(e.dataTransfer?.files || []);
+            for (const f of files) {
+                await _uploadAttachmentFile(f);
+            }
+        });
+        document.getElementById('cc-chat-input')?.addEventListener('paste', async e => {
+            const items = Array.from(e.clipboardData?.items || []);
+            for (const item of items) {
+                if (item.kind === 'file') {
+                    const file = item.getAsFile();
+                    if (file) await _uploadAttachmentFile(file);
+                }
+            }
+        });
+
         // Chat input: auto-resize + Enter to send
         document.getElementById('cc-chat-input')?.addEventListener('input', e => _autoResizeInput(e.target));
         document.getElementById('cc-chat-input')?.addEventListener('keydown', e => {
@@ -2666,19 +3135,35 @@ const CompanionCreator = (() => {
         document.getElementById('cc-open-connectors-btn')?.addEventListener('click', () => {
             if (typeof window.switchMainTab === 'function') window.switchMainTab('connectors');
         });
-        document.getElementById('cc-chat-input')?.addEventListener('keyup', e => {
-            const val = e.target.value || '';
-            if (val.startsWith('/') && !val.includes(' ')) {
-                _openSlashPopover(val.trim().toLowerCase());
-            } else if (!val.startsWith('/')) {
-                document.getElementById('cc-slash-popover')?.classList.add('hidden');
-            }
-        });
+        // Global AethvionSlashAutocomplete handles '/' typing automatically
         _startProactiveHeartbeat();
         document.getElementById('cc-auto-voice-btn')?.addEventListener('click', _toggleAutoVoice);
         document.getElementById('cc-checkin-btn')?.addEventListener('click', _triggerCheckin);
         document.getElementById('cc-export-chat-btn')?.addEventListener('click', _exportChatTranscript);
         document.getElementById('cc-clear-chat-btn')?.addEventListener('click', _clearChatHistoryOnly);
+
+        // Live sync with Global Companion Presence floating popups & background check-ins
+        window.addEventListener('companionProactiveMessage', e => {
+            const d = e.detail;
+            if (!d || d.companion_id !== _editingId) return;
+            document.getElementById('cc-chat-hint')?.remove();
+            _appendMessage('companion', d.response);
+            _chatHistory.push({ role: 'assistant', content: d.response });
+            _updatePortraitMoodAndExpr(d.mood, d.expression);
+        });
+        window.addEventListener('companionPopupConversationUpdated', e => {
+            const d = e.detail;
+            if (!d || d.companionId !== _editingId) return;
+            document.getElementById('cc-chat-hint')?.remove();
+            if (d.userMessage) {
+                _appendMessage('user', d.userMessage);
+                _chatHistory.push({ role: 'user', content: d.userMessage });
+            }
+            if (d.assistantMessage) {
+                _appendMessage('companion', d.assistantMessage);
+                _chatHistory.push({ role: 'assistant', content: d.assistantMessage });
+            }
+        });
 
         // Voice & Speech settings controls
         document.getElementById('cc-voice-model')?.addEventListener('change', e => {
@@ -3190,6 +3675,14 @@ const CompanionCreator = (() => {
     }
 
     function _toggleSlashPopover() {
+        if (window.AethvionSlashAutocomplete) {
+            if (window.AethvionSlashAutocomplete.isOpen()) {
+                window.AethvionSlashAutocomplete.close();
+            } else {
+                window.AethvionSlashAutocomplete.openForInput(document.getElementById('cc-chat-input'));
+            }
+            return;
+        }
         const pop = document.getElementById('cc-slash-popover');
         if (!pop) return;
         if (!pop.classList.contains('hidden')) {
@@ -3200,6 +3693,8 @@ const CompanionCreator = (() => {
     }
 
     function _startProactiveHeartbeat() {
+        // Global AethvionCompanionPresence handles startup & session proactive check-ins across all tabs
+        if (window.AethvionCompanionPresence) return;
         if (_proactiveTimer) clearInterval(_proactiveTimer);
         ['keydown', 'mousedown'].forEach(evtName => {
             document.addEventListener(evtName, () => { _lastInteractionTs = Date.now(); }, { passive: true });
@@ -3221,8 +3716,17 @@ const CompanionCreator = (() => {
         }, 60000);
     }
 
-    return { init };
+    function openCompanion(companionId) {
+        if (!companionId) return;
+        const isBuiltin = ['axiom', 'lyra', 'misakacipher'].includes(companionId);
+        init();
+        _editCompanion(companionId, isBuiltin);
+    }
+
+    return { init, openCompanion };
 })();
+
+window.CompanionCreator = CompanionCreator;
 
 // panelLoaded fires after the lazy script injection — this is the correct pattern
 document.addEventListener('panelLoaded', function (e) {

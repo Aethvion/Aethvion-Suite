@@ -137,6 +137,17 @@
                                         <option value="nomemory">Off</option>
                                     </select>
                                 </div>
+                                <!-- CONNECTORS PROFILE -->
+                                <div class="control-item" title="Connector Access Profile (controls which /slash_commands are permitted)">
+                                    <label><i class="fas fa-plug-circle-bolt" style="color:var(--primary)"></i></label>
+                                    <select id="chat-connector-profile" class="control-select" style="max-width:145px;">
+                                        <option value="auto" selected>Auto (By Model)</option>
+                                        <option value="full_local">Full Local Suite</option>
+                                        <option value="cloud_safe">Public / Cloud Safe</option>
+                                        <option value="ambient_observer">Ambient Context</option>
+                                        <option value="sandboxed">Strict Sandboxed</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -222,13 +233,16 @@
 
                         <div class="chat-interface-wrapper">
                             <textarea id="chat-input" class="chat-input" rows="1"
-                                placeholder="Ask me anything... (e.g., 'Analyze TSLA stock outlook')"
+                                placeholder="Ask anything or type / for Connectors (e.g. /screen_capture, /reddit, /weather)..."
                                 autocomplete="off"></textarea>
 
                             <div class="input-controls">
                                 <div class="controls-left">
                                     <button class="icon-btn add-file-btn" title="Add File" aria-label="Attach file">
                                         <i class="fas fa-plus" aria-hidden="true"></i>
+                                    </button>
+                                    <button type="button" id="chat-slash-btn" class="icon-btn" title="Slash Connectors (/screen_capture, /reddit, /weather...)" onclick="window.AethvionSlashAutocomplete?.openForInput(document.getElementById('chat-input'))">
+                                        <i class="fas fa-plug-circle-bolt" aria-hidden="true"></i>
                                     </button>
                                     <input type="file" id="chat-file-input" style="display:none;" accept="*/*">
 

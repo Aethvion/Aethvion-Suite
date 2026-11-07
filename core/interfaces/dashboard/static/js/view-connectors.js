@@ -32,6 +32,7 @@ const ConnectorsView = (() => {
 
             _renderStats();
             _populateSlashProfileSelect();
+            if (window.AethvionSlashAutocomplete) window.AethvionSlashAutocomplete.invalidateCache();
             _renderConnectors();
             _renderProfiles();
             if (typeof markPanelUpdated === 'function') markPanelUpdated('connectors');
@@ -392,6 +393,7 @@ const ConnectorsView = (() => {
             const card = document.getElementById(`cn-card-${moduleId}`);
             if (card) card.classList.toggle('disabled', !enabled);
             _renderStats();
+            if (window.AethvionSlashAutocomplete) window.AethvionSlashAutocomplete.invalidateCache();
             if (typeof showNotification === 'function') {
                 showNotification(`${mod?.name || moduleId} ${enabled ? 'enabled' : 'disabled'}.`, 'success');
             }
