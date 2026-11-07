@@ -232,19 +232,20 @@
         },
         {
             "id": "youtube_link",
-            "name": "YouTube & Transcript Reader",
-            "description": "Extract video title, channel, description, and full spoken captions/transcript from any YouTube URL without an API key.",
+            "name": "YouTube Search & Transcript Reader",
+            "description": "Search YouTube for videos/music recommendations (with inline chat player embeds) or extract full video metadata & spoken transcripts.",
             "module_path": "core.bridges.youtube_bridge",
             "category": "media",
             "privacy_tier": "cloud_safe",
             "icon": "fab fa-youtube",
             "slash_command": "/youtube",
-            "default_command": "get_video_context",
+            "default_command": "search_videos",
             "enabled": true,
             "requires_auth": false,
             "is_authorized": true,
             "available_commands": {
-                "get_video_context": "Get metadata and full transcript for a YouTube URL or video ID. Args: 'url' (required)."
+                "search_videos": "Search YouTube for videos, songs, or channels and get real watch URLs to embed in chat. Args: 'query' (required), optional 'limit' (int, default 5).",
+                "get_video_context": "Get metadata, description, and full spoken transcript for a specific YouTube URL or video ID. Args: 'url' (required)."
             },
             "settings": []
         },

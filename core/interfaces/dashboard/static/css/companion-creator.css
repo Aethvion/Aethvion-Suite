@@ -1746,3 +1746,140 @@
     color: var(--text-secondary);
     line-height: 1.35;
 }
+
+/* Interactive YouTube Video Cards & Inline Embed Player */
+.cc-yt-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin-top: 0.65rem;
+}
+.cc-yt-card {
+    width: 100%;
+    max-width: 440px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(239, 68, 68, 0.28);
+    background: rgba(15, 23, 42, 0.85);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32);
+}
+.cc-yt-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    cursor: pointer;
+    overflow: hidden;
+}
+.cc-yt-stage-playing {
+    cursor: default;
+}
+.cc-yt-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+.cc-yt-stage:hover .cc-yt-thumb {
+    transform: scale(1.03);
+    filter: brightness(0.82);
+}
+.cc-yt-play-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    background: linear-gradient(180deg, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.52) 100%);
+    pointer-events: none;
+}
+.cc-yt-play-btn {
+    width: 52px;
+    height: 38px;
+    border-radius: 10px;
+    background: #ef4444;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.55);
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+.cc-yt-stage:hover .cc-yt-play-btn {
+    transform: scale(1.08);
+    background: #dc2626;
+}
+.cc-yt-play-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #f8fafc;
+    background: rgba(15, 23, 42, 0.78);
+    padding: 0.18rem 0.55rem;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+}
+.cc-yt-iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+.cc-yt-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.45rem 0.7rem;
+    background: rgba(15, 23, 42, 0.95);
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+.cc-yt-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+}
+.cc-yt-badge i {
+    color: #ef4444;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.cc-yt-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+.cc-yt-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.22rem 0.52rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+    font-size: 0.71rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.cc-yt-action-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.45);
+    color: #fff;
+}
+.cc-yt-open-link i {
+    font-size: 0.65rem;
+}

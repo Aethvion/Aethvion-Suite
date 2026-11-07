@@ -572,6 +572,13 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
             if (key && seen.has(key)) return;
             if (key) seen.add(key);
 
+            if (att.type === 'youtube' || att.video_id) {
+                const vid = att.video_id || '';
+                if (vid && typeof window.__renderAethvionYoutubeCards === 'function') {
+                    items.push(window.__renderAethvionYoutubeCards(`https://www.youtube.com/watch?v=${vid}`));
+                    return;
+                }
+            }
             if (att.is_image || att.type === 'screenshot' || att.type === 'webcam') {
                 let imgUrl = String(att.url || '').replace(/\\/g, '/');
                 if (!imgUrl && att.path) {
@@ -630,11 +637,14 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
             bodyHtml += `<div class="web-search-badge"><i class="fas fa-globe"></i> Web Search</div>`;
         }
         bodyHtml += parsedContent;
+        if (typeof window.__renderAethvionYoutubeCards === 'function') {
+            bodyHtml += window.__renderAethvionYoutubeCards(content);
+        }
 
         const assistantAtts = [
             ...(taskData?.result?.attachments || []),
             ...((taskData?.metadata?.attached_files || []).filter(a => a?.is_connector_capture))
-        ];
+        ].filter(a => !(a?.type === 'youtube' && content && content.includes(a?.video_id || '___')));
         bodyHtml += _buildChatAttachmentsHtml(assistantAtts);
 
         messageContent = `<div class="msg-header">${sourceLabel}</div><div class="message-content">${bodyHtml}</div>`;

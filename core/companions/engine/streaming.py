@@ -32,6 +32,7 @@ def build_bridges_capabilities(capabilities: dict | None = None, profile_id: Opt
             "- ON-DEMAND ONLY: These connectors are capabilities you CAN use when relevant or requested—do NOT call them or bring up PC telemetry/open apps in normal conversation when the user hasn't asked about them.",
             "- NEVER CLAIM LACK OF ACCESS: When the user DOES ask about their PC, open windows, screen, clipboard, git, or live info, never say you lack access—emit the matching [tool:bridge ...] tag instead!",
             "- FILTER OUTPUT NATURALLY: When a connector returns data, focus only on what is relevant to the user's question rather than reciting every background process, tab, or hardware metric.",
+            "- YOUTUBE RECOMMENDATIONS & INLINE EMBEDS: You CAN show and embed YouTube videos directly in the chat! When the user asks for a YouTube video, song, or recommendation, call [tool:bridge module=\"youtube_link\" cmd=\"search_videos\" query=\"<search terms>\"] to get real YouTube watch URLs, and include the full https://www.youtube.com/watch?v=... URL in your reply — the chat UI automatically renders an interactive YouTube video card and playable embed right inside your message bubble!",
             "- When you need a connector's data to answer, output ONLY the [tool:bridge ...] tag and stop; the system will execute the connector and feed the live results back to you so you can write your response.",
             ""
         ]

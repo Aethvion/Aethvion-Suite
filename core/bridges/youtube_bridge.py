@@ -8,6 +8,7 @@ for any YouTube URL or video ID without requiring an API key.
 import html
 import json
 import re
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
@@ -15,15 +16,149 @@ import xml.etree.ElementTree as ET
 def _extract_video_id(text: str) -> str:
     if not text:
         return ""
+    s = text.strip()
     patterns = [
         r"(?:v=|youtu\.be/|youtube\.com/embed/|youtube\.com/shorts/)([A-Za-z0-9_-]{11})",
-        r"\b([A-Za-z0-9_-]{11})\b",
+        r"^([A-Za-z0-9_-]{11})$",
     ]
     for pat in patterns:
-        m = re.search(pat, text)
+        m = re.search(pat, s)
         if m:
             return m.group(1)
     return ""
+
+
+def _walk_video_renderers(node, out: list, max_items: int = 8) -> None:
+    if len(out) >= max_items:
+        return
+    if isinstance(node, dict):
+        if "videoRenderer" in node and isinstance(node["videoRenderer"], dict):
+            vr = node["videoRenderer"]
+            vid = vr.get("videoId", "")
+            if vid and not any(x.get("video_id") == vid for x in out):
+                title = ""
+                t_obj = vr.get("title", {})
+                if isinstance(t_obj.get("runs"), list) and t_obj["runs"]:
+                    title = "".join(r.get("text", "") for r in t_obj["runs"])
+                elif t_obj.get("simpleText"):
+                    title = t_obj["simpleText"]
+
+                channel = ""
+                for ch_key in ("ownerText", "longBylineText", "shortBylineText"):
+                    c_obj = vr.get(ch_key, {})
+                    if isinstance(c_obj.get("runs"), list) and c_obj["runs"]:
+                        channel = c_obj["runs"][0].get("text", "")
+                        if channel:
+                            break
+
+                duration = (
+                    vr.get("lengthText", {}).get("simpleText")
+                    or "Live / Short"
+                )
+                views = (
+                    vr.get("shortViewCountText", {}).get("simpleText")
+                    or vr.get("viewCountText", {}).get("simpleText")
+                    or ""
+                )
+                out.append({
+                    "video_id": vid,
+                    "title": title or vid,
+                    "channel": channel or "Unknown Channel",
+                    "duration": duration,
+                    "views": views,
+                    "url": f"https://www.youtube.com/watch?v={vid}",
+                })
+            return
+        for v in node.values():
+            _walk_video_renderers(v, out, max_items)
+    elif isinstance(node, list):
+        for item in node:
+            _walk_video_renderers(item, out, max_items)
+
+
+def search_videos(args: dict = None) -> str:
+    """Search YouTube for videos/music and return real watch URLs, titles, channels, and durations."""
+    if args is None:
+        args = {}
+    query = str(args.get("query") or args.get("q") or args.get("url") or args.get("video") or "").strip()
+    if not query:
+        return "YouTube Search Error: Provide a 'query' to search on YouTube (e.g. 'Hoshimachi Suisei Stellar Stellar')."
+
+    try:
+        limit = max(1, min(int(args.get("limit") or args.get("count") or 5), 10))
+    except Exception:
+        limit = 5
+
+    try:
+        encoded = urllib.parse.quote_plus(query)
+        url = f"https://www.youtube.com/results?search_query={encoded}"
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+                ),
+                "Accept-Language": "en-US,en;q=0.9",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            page_html = resp.read(1_200_000).decode("utf-8", errors="replace")
+
+        results: list[dict] = []
+        m = re.search(r"ytInitialData\s*=\s*(\{.*?\});\s*</script>", page_html, re.DOTALL)
+        if not m:
+            m = re.search(r"ytInitialData\s*=\s*(\{.*?\});", page_html, re.DOTALL)
+        if m:
+            try:
+                data = json.loads(m.group(1))
+                _walk_video_renderers(data, results, max_items=limit)
+            except Exception:
+                pass
+
+        # Regex fallback if JSON structure changed
+        if not results:
+            for rm in re.finditer(
+                r'"videoRenderer":\{"videoId":"([A-Za-z0-9_-]{11})".*?"title":\{"runs":\[\{"text":"((?:\\.|[^"\\])*)"',
+                page_html,
+            ):
+                vid = rm.group(1)
+                if any(r["video_id"] == vid for r in results):
+                    continue
+                raw_title = rm.group(2).encode("utf-8").decode("unicode_escape", errors="replace")
+                results.append({
+                    "video_id": vid,
+                    "title": raw_title,
+                    "channel": "YouTube",
+                    "duration": "",
+                    "views": "",
+                    "url": f"https://www.youtube.com/watch?v={vid}",
+                })
+                if len(results) >= limit:
+                    break
+
+        if not results:
+            return f"No YouTube videos found for query: '{query}'."
+
+        lines = [
+            f"YouTube Search Results for '{query}':",
+            "(Include the exact https://www.youtube.com/watch?v=... URL in your response to embed the interactive video card & player right in the chat!)",
+            "",
+        ]
+        for idx, item in enumerate(results, 1):
+            meta_parts = [item["channel"]]
+            if item.get("duration"):
+                meta_parts.append(item["duration"])
+            if item.get("views"):
+                meta_parts.append(item["views"])
+            lines.append(
+                f"{idx}. {item['title']}\n"
+                f"   Channel / Info: {' · '.join(meta_parts)}\n"
+                f"   URL: {item['url']}"
+            )
+        return "\n".join(lines)
+    except Exception as e:
+        return f"YouTube Search Error ('{query}'): {e}"
 
 
 def _fetch_transcript_via_pkg(video_id: str) -> str:
@@ -100,7 +235,9 @@ def get_video_context(args: dict = None) -> str:
     raw = str(args.get("url") or args.get("video") or args.get("query") or "").strip()
     vid = _extract_video_id(raw)
     if not vid:
-        return "YouTube Connector Error: Provide a valid YouTube URL (e.g. https://youtu.be/...) or 11-character video ID."
+        if raw:
+            return search_videos({"query": raw, "limit": args.get("limit", 5)})
+        return "YouTube Connector Error: Provide a YouTube URL (e.g. https://youtu.be/...) or a search 'query'."
 
     try:
         meta, caption_text = _fetch_youtube_page_and_captions(vid)

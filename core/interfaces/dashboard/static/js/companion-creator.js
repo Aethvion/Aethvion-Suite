@@ -2348,15 +2348,81 @@ const CompanionCreator = (() => {
         }
     }
 
-    function _renderAttachmentsBlock(attachments) {
+    function _extractYoutubeIds(text) {
+        if (!text) return [];
+        const ids = [];
+        const seen = new Set();
+        const re = /(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:[^"\s<>]*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/gi;
+        let m;
+        while ((m = re.exec(text)) !== null) {
+            const vid = m[1];
+            if (vid && !seen.has(vid)) {
+                seen.add(vid);
+                ids.push(vid);
+            }
+        }
+        return ids.slice(0, 3);
+    }
+
+    function _buildSingleYoutubeCardHtml(vid, title = '') {
+        if (!vid || !/^[A-Za-z0-9_-]{11}$/.test(vid)) return '';
+        const watchUrl = `https://www.youtube.com/watch?v=${vid}`;
+        const thumbUrl = `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+        const safeTitle = title && title !== 'YouTube Video' ? _esc(title) : 'YouTube Video';
+        return `
+          <div class="cc-yt-card" data-yt-id="${vid}">
+            <div class="cc-yt-stage" onclick="window.__playAethvionYt && window.__playAethvionYt(this, '${vid}')">
+              <img src="${thumbUrl}" alt="${safeTitle}" class="cc-yt-thumb" loading="lazy">
+              <div class="cc-yt-play-overlay">
+                <span class="cc-yt-play-btn"><i class="fas fa-play"></i></span>
+                <span class="cc-yt-play-label">Play in Chat</span>
+              </div>
+            </div>
+            <div class="cc-yt-footer">
+              <span class="cc-yt-badge" title="${safeTitle}"><i class="fab fa-youtube"></i> ${safeTitle}</span>
+              <div class="cc-yt-actions">
+                <button type="button" class="cc-yt-action-btn" onclick="window.__playAethvionYt && window.__playAethvionYt(this.closest('.cc-yt-card').querySelector('.cc-yt-stage'), '${vid}')">
+                  <i class="fas fa-circle-play"></i> Embed
+                </button>
+                <a href="${watchUrl}" target="_blank" rel="noopener noreferrer" class="cc-yt-action-btn cc-yt-open-link">
+                  <i class="fas fa-arrow-up-right-from-square"></i> YouTube
+                </a>
+              </div>
+            </div>
+          </div>`;
+    }
+
+    window.__playAethvionYt = function(stageEl, videoId) {
+        if (!stageEl || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return;
+        stageEl.onclick = null;
+        stageEl.classList.add('cc-yt-stage-playing');
+        stageEl.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0" class="cc-yt-iframe" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+    };
+
+    window.__renderAethvionYoutubeCards = function(text, existingIds = null) {
+        const ids = _extractYoutubeIds(text);
+        const filtered = existingIds ? ids.filter(id => !existingIds.has(id)) : ids;
+        if (!filtered.length) return '';
+        if (existingIds) filtered.forEach(id => existingIds.add(id));
+        return `<div class="cc-yt-cards">${filtered.map(vid => _buildSingleYoutubeCardHtml(vid)).join('')}</div>`;
+    };
+
+    function _renderAttachmentsBlock(attachments, textForYtDedup = '') {
         if (!Array.isArray(attachments) || !attachments.length) return '';
         const seen = new Set();
+        const textYtIds = new Set(_extractYoutubeIds(textForYtDedup));
         const items = attachments.map(att => {
             const rawUrl = String(att.url || '').replace(/\\/g, '/');
-            const fname = att.filename || att.type || 'Attachment';
-            const dedupKey = fname + '|' + rawUrl;
+            const fname = att.filename || att.title || att.type || 'Attachment';
+            const dedupKey = (att.video_id || fname) + '|' + rawUrl;
             if (seen.has(dedupKey)) return '';
             seen.add(dedupKey);
+            if (att.type === 'youtube' || att.video_id) {
+                const vid = att.video_id || (_extractYoutubeIds(rawUrl)[0] || '');
+                if (!vid || textYtIds.has(vid)) return '';
+                textYtIds.add(vid);
+                return _buildSingleYoutubeCardHtml(vid, att.title || att.filename || 'YouTube Recommendation');
+            }
             const isImg = att.is_image || att.type === 'screenshot' || att.type === 'webcam' || /\.(png|jpe?g|gif|webp)$/i.test(rawUrl);
             if (isImg && rawUrl) {
                 return `<img src="${_esc(rawUrl)}" alt="${_esc(fname)}" class="cc-msg-attachment-img" onclick="window.open(this.src,'_blank')">`;
@@ -2372,11 +2438,11 @@ const CompanionCreator = (() => {
         if (id) bubble.id = id;
         const color  = _activeData?.accent_color || '#6366f1';
         const symbol = _activeData?.avatar_symbol || '✦';
-        const attHtml = _renderAttachmentsBlock(attachments);
+        const attHtml = _renderAttachmentsBlock(attachments, text);
         if (role === 'companion') {
             bubble.innerHTML = `
               <div class="cc-msg-avatar" style="background:${color}22;color:${color}">${symbol}</div>
-              <div class="cc-msg-bubble cc-msg-md">${_renderMd(text)}${attHtml}</div>`;
+              <div class="cc-msg-bubble cc-msg-md">${_renderMd(text, true)}${attHtml}</div>`;
             _applyHighlight(bubble);
             _attachBubbleActions(bubble, text);
         } else {
@@ -2434,13 +2500,19 @@ const CompanionCreator = (() => {
             .trim();
     }
 
-    // Render companion text as markdown (marked + optional hljs highlight)
-    function _renderMd(text) {
+    // Render companion text as markdown (marked + optional hljs highlight + optional YouTube embeds)
+    function _renderMd(text, includeEmbeds = false) {
         if (!text) return '';
+        let html = '';
         if (typeof marked !== 'undefined' && marked.parse) {
-            try { return marked.parse(text); } catch { /* fall through */ }
+            try { html = marked.parse(text); } catch { html = _escHtml(text); }
+        } else {
+            html = _escHtml(text);
         }
-        return _escHtml(text);
+        if (includeEmbeds && typeof window.__renderAethvionYoutubeCards === 'function') {
+            html += window.__renderAethvionYoutubeCards(text);
+        }
+        return html;
     }
 
     // Run hljs on any code blocks inside a container element
@@ -2632,12 +2704,12 @@ const CompanionCreator = (() => {
             const parts       = finalParts.length > 1 ? finalParts : null;
             const firstPart   = parts ? parts[0] : primaryText;
 
-            // Render the first (or only) part into the current bubble (with any screenshot/file attachments once)
+            // Render the first (or only) part into the current bubble (with any screenshot/file/YouTube attachments once)
             if (currentBubbleText) {
                 currentBubbleText.classList.add('cc-msg-md');
                 currentBubbleText.classList.remove('cc-msg-streaming');
-                const attHtml = _renderAttachmentsBlock(currentBubble?._doneAttachments || null);
-                currentBubbleText.innerHTML = `${_renderMd(firstPart)}${attHtml}`;
+                const attHtml = _renderAttachmentsBlock(currentBubble?._doneAttachments || null, primaryText);
+                currentBubbleText.innerHTML = `${_renderMd(firstPart, true)}${attHtml}`;
             }
             _applyHighlight(currentBubble);
             _attachBubbleActions(currentBubble, firstPart);

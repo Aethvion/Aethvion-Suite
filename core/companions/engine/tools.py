@@ -268,5 +268,30 @@ def extract_peripheral_captures(
                 })
             except Exception as e:
                 logger.error(f"Peripheral capture extraction failed: {e}")
+        elif ("YouTube Search Results for" in res or "YouTube Video:" in res) and "https://www.youtube.com/watch?v=" in res:
+            try:
+                m_vid = re.search(r"https://www\.youtube\.com/watch\?v=([A-Za-z0-9_-]{11})", res)
+                if m_vid:
+                    vid = m_vid.group(1)
+                    title = "YouTube Video"
+                    for line in res.splitlines():
+                        ls = line.strip()
+                        if ls.startswith("1. "):
+                            title = ls[3:].strip()
+                            break
+                        elif ls.startswith("YouTube Video:"):
+                            title = ls.replace("YouTube Video:", "", 1).strip()
+                            break
+                    attachments.append({
+                        "filename": title,
+                        "title": title,
+                        "video_id": vid,
+                        "url": f"https://www.youtube.com/watch?v={vid}",
+                        "is_image": False,
+                        "type": "youtube",
+                        "is_connector_capture": True,
+                    })
+            except Exception as e:
+                logger.debug(f"YouTube attachment extraction skipped: {e}")
 
     return captures, attachments

@@ -366,7 +366,12 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
     elif mod_id == "webpage_reader" and arg_text:
         args["url"] = arg_text
     elif mod_id == "youtube_link" and arg_text:
-        args["url"] = arg_text
+        if "youtube.com/" in arg_text or "youtu.be/" in arg_text or re.match(r"^[A-Za-z0-9_-]{11}$", arg_text.strip()):
+            cmd = "get_video_context"
+            args["url"] = arg_text.strip()
+        else:
+            cmd = "search_videos"
+            args["query"] = arg_text.strip()
     elif mod_id == "companion_tasks":
         if not arg_text or arg_text.lower() in ("list", "show", "tasks", "status"):
             cmd = "list_tasks"
