@@ -265,11 +265,24 @@ async def serve_workspace_file(path: str):
 async def get_workspace_file_content(path: str):
     """Serve the content of a file from the workspace data directory."""
     try:
-        requested_path = Path(path).resolve()
         project_root = Path(__file__).parent.parent.parent.parent.parent.resolve()
         data_parent = (project_root / "data").resolve()
-        
-        if not str(requested_path).startswith(str(data_parent)):
+
+        normalized_input = (path or "").replace("\\", "/")
+        requested_path = Path(normalized_input).resolve()
+
+        # Fallback recovery for legacy history entries where unescaped Windows backslashes were stripped in JS
+        if not requested_path.exists() or not requested_path.resolve().as_posix().lower().startswith(data_parent.as_posix().lower()):
+            import re
+            m = re.search(r"((?:screenshot|webcam)_[0-9_]+\.(?:png|jpg|jpeg|webp))", path or "", re.IGNORECASE)
+            if m:
+                media_root = data_parent / "modes" / "workspaces" / "media"
+                if media_root.exists():
+                    found = next(media_root.rglob(m.group(1)), None)
+                    if found and found.is_file():
+                        requested_path = found.resolve()
+
+        if not requested_path.as_posix().lower().startswith(data_parent.as_posix().lower()):
             logger.warning(f"Unauthorized path access attempt: {path}")
             raise HTTPException(status_code=403, detail="Unauthorized: Path outside of workspace data.")
 

@@ -87,7 +87,9 @@ async def submit_task(request: TaskSubmitRequest):
                             b64_data = base64.b64encode(Path(p_str).read_bytes()).decode("ascii")
                             attached_files.append({
                                 "filename": att.get("filename", "capture.png"),
+                                "url": att.get("url"),
                                 "is_image": True,
+                                "is_connector_capture": True,
                                 "mime_type": att.get("mime_type", "image/png"),
                                 "content": f"data:{att.get('mime_type', 'image/png')};base64,{b64_data}",
                                 "path": p_str

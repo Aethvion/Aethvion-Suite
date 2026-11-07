@@ -2263,10 +2263,22 @@ const CompanionCreator = (() => {
                 divEl.innerHTML = `<span>${_esc(_formatDayDivider(day.date))}</span>`;
                 frag.appendChild(divEl);
 
+                let lastAssistantAttKey = '';
                 for (const msg of dayMsgs) {
                     const roleKey = msg.role === 'user' ? 'user' : 'companion';
                     olderHistoryItems.push({ role: msg.role, content: msg.content });
-                    const b = _buildMessageNode(roleKey, msg.content, null, msg.attachments || null);
+                    let msgAtts = msg.attachments || null;
+                    if (roleKey === 'companion' && Array.isArray(msgAtts) && msgAtts.length) {
+                        const attKey = msgAtts.map(a => a.filename || a.url || '').join('|');
+                        if (attKey && attKey === lastAssistantAttKey) {
+                            msgAtts = null; // Deduplicate attachments across split <break> bubbles
+                        } else {
+                            lastAssistantAttKey = attKey;
+                        }
+                    } else if (roleKey === 'user') {
+                        lastAssistantAttKey = '';
+                    }
+                    const b = _buildMessageNode(roleKey, msg.content, null, msgAtts);
                     frag.appendChild(b);
                     loaded++;
                 }
@@ -2338,16 +2350,20 @@ const CompanionCreator = (() => {
 
     function _renderAttachmentsBlock(attachments) {
         if (!Array.isArray(attachments) || !attachments.length) return '';
+        const seen = new Set();
         const items = attachments.map(att => {
-            const url = att.url || '';
+            const rawUrl = String(att.url || '').replace(/\\/g, '/');
             const fname = att.filename || att.type || 'Attachment';
-            const isImg = att.is_image || att.type === 'screenshot' || att.type === 'webcam' || /\.(png|jpe?g|gif|webp)$/i.test(url);
-            if (isImg && url) {
-                return `<img src="${_esc(url)}" alt="${_esc(fname)}" class="cc-msg-attachment-img" onclick="window.open('${_esc(url)}','_blank')">`;
+            const dedupKey = fname + '|' + rawUrl;
+            if (seen.has(dedupKey)) return '';
+            seen.add(dedupKey);
+            const isImg = att.is_image || att.type === 'screenshot' || att.type === 'webcam' || /\.(png|jpe?g|gif|webp)$/i.test(rawUrl);
+            if (isImg && rawUrl) {
+                return `<img src="${_esc(rawUrl)}" alt="${_esc(fname)}" class="cc-msg-attachment-img" onclick="window.open(this.src,'_blank')">`;
             }
-            return `<a href="${_esc(url || '#')}" target="_blank" class="cc-msg-attachment-file"><i class="fas fa-file-lines"></i> ${_esc(fname)}</a>`;
-        }).join('');
-        return `<div class="cc-msg-attachments">${items}</div>`;
+            return `<a href="${_esc(rawUrl || '#')}" target="_blank" class="cc-msg-attachment-file"><i class="fas fa-file-lines"></i> ${_esc(fname)}</a>`;
+        }).filter(Boolean).join('');
+        return items ? `<div class="cc-msg-attachments">${items}</div>` : '';
     }
 
     function _buildMessageNode(role, text, id = null, attachments = null) {
@@ -2592,20 +2608,8 @@ const CompanionCreator = (() => {
                         } else if (evt.type === 'done') {
                             if (evt.content)  finalText  = evt.content;
                             if (evt.parts)    finalParts = evt.parts;
-                            if (Array.isArray(evt.attachments) && evt.attachments.length && currentBubbleText) {
-                                const attWrap = document.createElement('div');
-                                attWrap.className = 'cc-msg-attachments';
-                                evt.attachments.forEach(att => {
-                                    if (att.url) {
-                                        const img = document.createElement('img');
-                                        img.src = att.url;
-                                        img.alt = att.type || 'Attachment';
-                                        img.className = 'cc-msg-attachment-img';
-                                        img.onclick = () => window.open(att.url, '_blank');
-                                        attWrap.appendChild(img);
-                                    }
-                                });
-                                currentBubble?.appendChild(attWrap);
+                            if (Array.isArray(evt.attachments) && evt.attachments.length && currentBubble) {
+                                currentBubble._doneAttachments = evt.attachments;
                             }
                             _updatePortraitMoodAndExpr(evt.mood, evt.expression);
                             if (evt.memory_updated) {
@@ -2628,11 +2632,12 @@ const CompanionCreator = (() => {
             const parts       = finalParts.length > 1 ? finalParts : null;
             const firstPart   = parts ? parts[0] : primaryText;
 
-            // Render the first (or only) part into the current bubble
+            // Render the first (or only) part into the current bubble (with any screenshot/file attachments once)
             if (currentBubbleText) {
                 currentBubbleText.classList.add('cc-msg-md');
                 currentBubbleText.classList.remove('cc-msg-streaming');
-                currentBubbleText.innerHTML = _renderMd(firstPart);
+                const attHtml = _renderAttachmentsBlock(currentBubble?._doneAttachments || null);
+                currentBubbleText.innerHTML = `${_renderMd(firstPart)}${attHtml}`;
             }
             _applyHighlight(currentBubble);
             _attachBubbleActions(currentBubble, firstPart);

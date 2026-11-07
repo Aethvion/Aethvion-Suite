@@ -255,12 +255,15 @@ def extract_peripheral_captures(
                     "is_peripheral_capture": True,
                     "peripheral_type": tag,
                 })
+                from urllib.parse import quote
+                posix_path = p.resolve().as_posix()
                 attachments.append({
                     "filename": p.name,
-                    "url": f"/api/workspace/files/content?path={media_path}",
+                    "url": f"/api/workspace/files/content?path={quote(posix_path, safe='/:')}",
                     "is_image": True,
                     "mime_type": mime_type,
-                    "path": str(media_path),
+                    "path": posix_path,
+                    "type": tag,
                     "is_peripheral_capture": True,
                 })
             except Exception as e:

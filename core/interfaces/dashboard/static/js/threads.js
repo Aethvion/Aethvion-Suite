@@ -562,27 +562,43 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
         attachments = taskData.metadata.attached_files;
     }
 
-    let messageContent = '';
-    let attachmentsHtml = '';
-    if (attachments && attachments.length > 0) {
-        attachmentsHtml += '<div class="message-attachments" style="margin-top:8px; margin-bottom: 4px; display:flex; flex-wrap:wrap; gap:8px;">';
-        attachments.forEach(att => {
-            if (att.is_image) {
-                let imgUrl = att.url;
+    function _buildChatAttachmentsHtml(attList) {
+        if (!Array.isArray(attList) || !attList.length) return '';
+        const seen = new Set();
+        const items = [];
+        attList.forEach(att => {
+            if (!att) return;
+            const key = att.filename || att.url || att.path || '';
+            if (key && seen.has(key)) return;
+            if (key) seen.add(key);
+
+            if (att.is_image || att.type === 'screenshot' || att.type === 'webcam') {
+                let imgUrl = String(att.url || '').replace(/\\/g, '/');
                 if (!imgUrl && att.path) {
-                    imgUrl = `/api/workspace/files/serve?path=${encodeURIComponent(att.path)}`;
+                    const cleanPath = String(att.path).replace(/\\/g, '/');
+                    imgUrl = `/api/workspace/files/content?path=${encodeURIComponent(cleanPath)}`;
+                }
+                if (!imgUrl && att.content && String(att.content).startsWith('data:image')) {
+                    imgUrl = att.content;
                 }
                 if (imgUrl) {
-                    attachmentsHtml += `<img src="${imgUrl}" class="chat-attached-image" style="max-width:100%; max-height:250px; border-radius:8px; object-fit:contain;">`;
+                    items.push(`<img src="${imgUrl}" class="chat-attached-image" style="max-width:100%; max-height:260px; border-radius:8px; object-fit:contain; cursor:pointer; border:1px solid rgba(148,163,184,0.18);" onclick="window.open(this.src,'_blank')" title="Click to open full size">`);
                 }
             } else if (att.filename) {
-                attachmentsHtml += `<div class="chat-attached-file-pill" style="font-size:0.85em; padding:4px 8px; background:rgba(255,255,255,0.1); border-radius:4px;">📄 ${att.filename}</div>`;
+                items.push(`<div class="chat-attached-file-pill" style="font-size:0.85em; padding:4px 8px; background:rgba(255,255,255,0.1); border-radius:4px;">📄 ${att.filename}</div>`);
             }
         });
-        attachmentsHtml += '</div>';
+        if (!items.length) return '';
+        return `<div class="message-attachments" style="margin-top:8px; margin-bottom:4px; display:flex; flex-wrap:wrap; gap:8px;">${items.join('')}</div>`;
     }
 
+    let messageContent = '';
+
     if (role === 'user') {
+        const userAtts = Array.isArray(attachments)
+            ? attachments.filter(a => !a?.is_connector_capture)
+            : [];
+        const attachmentsHtml = _buildChatAttachmentsHtml(userAtts);
         messageContent = `<div class="message-content">${content}</div>${attachmentsHtml}`;
     } else if (role === 'assistant') {
         let parsedContent = content;
@@ -614,6 +630,12 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
             bodyHtml += `<div class="web-search-badge"><i class="fas fa-globe"></i> Web Search</div>`;
         }
         bodyHtml += parsedContent;
+
+        const assistantAtts = [
+            ...(taskData?.result?.attachments || []),
+            ...((taskData?.metadata?.attached_files || []).filter(a => a?.is_connector_capture))
+        ];
+        bodyHtml += _buildChatAttachmentsHtml(assistantAtts);
 
         messageContent = `<div class="msg-header">${sourceLabel}</div><div class="message-content">${bodyHtml}</div>`;
 

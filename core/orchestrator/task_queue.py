@@ -320,6 +320,7 @@ class TaskWorker:
 
                             _tok_queue = create_token_queue(task.id)
                             _actions_taken: list = []
+                            _captured_attachments: list = []
                             _final_resp_holder: list = [""]
                             _t0 = datetime.now()
 
@@ -394,14 +395,10 @@ class TaskWorker:
                                             _accum_final = _cleaned.strip()
                                             break
 
-                                        # Extract any screenshot/webcam captures so vision models see them & markdown embeds them
+                                        # Extract any screenshot/webcam captures so vision models see them & UI renders them
                                         _cur_images, _att_meta = extract_peripheral_captures(_round_results, _cur_images)
                                         if _att_meta:
-                                            for _am in _att_meta:
-                                                if _am.get("url"):
-                                                    _round_results.append(
-                                                        f"[Visual capture Markdown URL: ![{_am.get('type', 'capture')}]({_am['url']})]"
-                                                    )
+                                            _captured_attachments.extend(_att_meta)
 
                                         # Notify SSE listener to reset pre-tool stream text and prepare for the tool-informed answer
                                         loop.call_soon_threadsafe(
@@ -444,6 +441,7 @@ class TaskWorker:
                                 execution_time=(datetime.now() - _t0).total_seconds(),
                                 success=bool(_full_resp),
                                 model_id=model_id,
+                                media_paths=_captured_attachments,
                             )
                         else:
                             # Standard blocking path (agents/search/images)
@@ -458,6 +456,28 @@ class TaskWorker:
                                 internet_search=internet_search,
                             )
                     
+                    # Collect any connector-captured screenshots/webcam frames for the assistant message
+                    resp_attachments = []
+                    _seen_att_keys = set()
+                    for _af in (attached_files or []):
+                        if isinstance(_af, dict) and _af.get("is_connector_capture"):
+                            _k = _af.get("filename") or _af.get("url") or _af.get("path")
+                            if _k and _k not in _seen_att_keys:
+                                _seen_att_keys.add(_k)
+                                resp_attachments.append({
+                                    "filename": _af.get("filename", "capture.png"),
+                                    "url": _af.get("url"),
+                                    "path": _af.get("path"),
+                                    "is_image": True,
+                                    "is_connector_capture": True,
+                                })
+                    for _mp in (getattr(result, "media_paths", None) or []):
+                        if isinstance(_mp, dict):
+                            _k = _mp.get("filename") or _mp.get("url") or _mp.get("path")
+                            if _k and _k not in _seen_att_keys:
+                                _seen_att_keys.add(_k)
+                                resp_attachments.append(_mp)
+
                     # Convert ExecutionResult to dict
                     result_dict = {
                         'success': result.success,
@@ -467,7 +487,8 @@ class TaskWorker:
                         'memories_queried': result.memories_queried,
                         'execution_time': result.execution_time,
                         'error': result.error,
-                        'model_id': result.model_id
+                        'model_id': result.model_id,
+                        'attachments': resp_attachments,
                     }
 
                     # Attach usage data (models used, tokens, costs) from usage tracker

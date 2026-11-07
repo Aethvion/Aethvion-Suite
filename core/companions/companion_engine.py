@@ -575,19 +575,31 @@ class CompanionEngine:
                     final_parts = [p.strip() for p in final_content.split("\n\n") if p.strip()] or [final_content]
                     mem_up = True
 
-            # 6. Extract peripheral attachments (screenshots etc)
-            assistant_attachments = list(slash_attachments)
+            # 6. Extract peripheral attachments (screenshots etc) and deduplicate
+            raw_assistant_attachments = list(slash_attachments)
             if results:
                 _, tool_attachments = extract_peripheral_captures(results, [])
-                assistant_attachments.extend(tool_attachments)
+                raw_assistant_attachments.extend(tool_attachments)
+            assistant_attachments = []
+            _seen_att = set()
+            for _att in raw_assistant_attachments:
+                _key = _att.get("filename") or _att.get("url") or id(_att)
+                if _key not in _seen_att:
+                    _seen_att.add(_key)
+                    assistant_attachments.append(_att)
 
-            # 7. Persist to history
+            # 7. Persist to history (attach screenshots/files only to the first bubble of a multi-part response)
             history.save_message("user", message, utcnow_iso(), attachments=user_attachments or None)
             for inter in intermediate_responses:
                 history.save_message("assistant", inter, utcnow_iso(), model=actual_model)
-            for part in final_parts:
-                history.save_message("assistant", part, utcnow_iso(),
-                                     model=actual_model, attachments=assistant_attachments or None)
+            for idx, part in enumerate(final_parts):
+                history.save_message(
+                    "assistant",
+                    part,
+                    utcnow_iso(),
+                    model=actual_model,
+                    attachments=(assistant_attachments if idx == 0 and assistant_attachments else None),
+                )
 
             # 8. Final event
             yield json.dumps({

@@ -469,6 +469,15 @@ class MasterOrchestrator:
 
                 cleaned_content, tool_results = await PersonaManager.execute_tools(content)
 
+                if tool_results:
+                    try:
+                        from core.companions.engine.tools import extract_peripheral_captures
+                        images, _att_meta = extract_peripheral_captures(tool_results, list(images or []))
+                        if _att_meta:
+                            media_paths.extend(_att_meta)
+                    except Exception:
+                        pass
+
                 if tool_results and self.step_callback:
                     self.step_callback({
                         "type": "agent_step",
