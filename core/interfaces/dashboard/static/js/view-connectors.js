@@ -458,6 +458,7 @@ const ConnectorsView = (() => {
             else if (moduleId === 'webcam_capture') args.index = parseInt(rawArg, 10) || 0;
             else if (moduleId === 'spotify') args.target = rawArg;
             else if (moduleId === 'webpage_reader' || moduleId === 'youtube_link') args.url = rawArg;
+            else if (moduleId === 'twitch_link') { args.channel = rawArg; args.query = rawArg; }
             else if (moduleId === 'clipboard_link') args.text = rawArg;
             else if (moduleId === 'git_link') args.path = rawArg;
             else if (moduleId === 'process_watcher') args.top_n = parseInt(rawArg, 10) || 8;

@@ -1883,3 +1883,41 @@
 .cc-yt-open-link i {
     font-size: 0.65rem;
 }
+
+/* Twitch variant of the media card */
+.cc-tw-card {
+    border-color: rgba(145, 70, 255, 0.35);
+}
+.cc-tw-stage {
+    background: linear-gradient(135deg, #18181b 0%, #2a1650 100%);
+}
+.cc-tw-play-btn {
+    background: #9146ff;
+    box-shadow: 0 4px 14px rgba(145, 70, 255, 0.55);
+}
+.cc-tw-stage:hover .cc-tw-play-btn {
+    background: #772ce8;
+}
+.cc-tw-badge i {
+    color: #a970ff;
+}
+.cc-tw-action-btn:hover {
+    background: rgba(145, 70, 255, 0.18);
+    border-color: rgba(145, 70, 255, 0.5);
+}
+.cc-tw-status {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 2;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 0.12rem 0.42rem;
+    border-radius: 4px;
+    color: #fff;
+    pointer-events: none;
+}
+.cc-tw-status-live { background: #eb0400; }
+.cc-tw-status-off  { background: rgba(24, 24, 27, 0.85); color: #a1a1aa; }
+.cc-tw-status-vod  { background: #9146ff; }

@@ -250,6 +250,30 @@
             "settings": []
         },
         {
+            "id": "twitch_link",
+            "name": "Twitch Live Streams",
+            "description": "Check if streamers are live, search live channels, and browse top streams by game — with inline Twitch cards and an embedded live player in chat. Add a free Twitch Client ID/Secret for full search & top-stream browsing.",
+            "module_path": "core.bridges.twitch_bridge",
+            "category": "media",
+            "privacy_tier": "cloud_safe",
+            "icon": "fab fa-twitch",
+            "slash_command": "/twitch",
+            "default_command": "get_channel",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "get_channel": "Check whether a streamer is live (title, category, viewers, uptime) or show recent VODs when offline. Args: 'channel' (required, login name or twitch.tv URL).",
+                "search_streams": "Search Twitch channels by name/topic/game (live only by default). Args: 'query' (required), optional 'live_only' (true/false), 'limit' (int).",
+                "get_top_streams": "List the most-watched live streams right now. Optional args: 'game' (e.g. 'Just Chatting', 'Elden Ring'), 'language' (e.g. 'en', 'ja'), 'limit' (int)."
+            },
+            "settings": [
+                "client_id",
+                "client_secret",
+                "default_channel"
+            ]
+        },
+        {
             "id": "reddit",
             "name": "Reddit Connector",
             "description": "Fetch hot posts from subreddits or search discussions across Reddit without requiring an API key.",

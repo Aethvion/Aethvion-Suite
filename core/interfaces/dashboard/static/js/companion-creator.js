@@ -2402,9 +2402,110 @@ const CompanionCreator = (() => {
     window.__renderAethvionYoutubeCards = function(text, existingIds = null) {
         const ids = _extractYoutubeIds(text);
         const filtered = existingIds ? ids.filter(id => !existingIds.has(id)) : ids;
-        if (!filtered.length) return '';
         if (existingIds) filtered.forEach(id => existingIds.add(id));
-        return `<div class="cc-yt-cards">${filtered.map(vid => _buildSingleYoutubeCardHtml(vid)).join('')}</div>`;
+        const ytHtml = filtered.length
+            ? `<div class="cc-yt-cards">${filtered.map(vid => _buildSingleYoutubeCardHtml(vid)).join('')}</div>`
+            : '';
+        const twHtml = typeof window.__renderAethvionTwitchCards === 'function'
+            ? window.__renderAethvionTwitchCards(text, existingIds)
+            : '';
+        return ytHtml + twHtml;
+    };
+
+    // Twitch live channel / VOD cards with inline embedded player
+
+    const _TWITCH_RESERVED = new Set([
+        'directory', 'videos', 'p', 'settings', 'downloads', 'jobs', 'search', 'login', 'signup',
+        'subscriptions', 'inventory', 'wallet', 'drops', 'turbo', 'prime', 'friends', 'messages',
+        'payments', 'store', 'team', 'collections', 'clip', 'clips', 'popout', 'moderator', 'u'
+    ]);
+
+    function _extractTwitchTargets(text) {
+        if (!text) return [];
+        const out = [];
+        const seen = new Set();
+        const vodRe = /(?:https?:\/\/)?(?:www\.|m\.)?twitch\.tv\/videos\/(\d{6,12})/gi;
+        let m;
+        while ((m = vodRe.exec(text)) !== null) {
+            const key = `v:${m[1]}`;
+            if (!seen.has(key)) { seen.add(key); out.push({ kind: 'video', id: m[1] }); }
+        }
+        const chRe = /(?:https?:\/\/)?(?:www\.|m\.)?twitch\.tv\/([A-Za-z0-9_]{2,25})(?![A-Za-z0-9_\/])/gi;
+        while ((m = chRe.exec(text)) !== null) {
+            const login = m[1].toLowerCase();
+            if (_TWITCH_RESERVED.has(login)) continue;
+            const key = `c:${login}`;
+            if (!seen.has(key)) { seen.add(key); out.push({ kind: 'channel', id: login }); }
+        }
+        return out.slice(0, 3);
+    }
+
+    function _buildSingleTwitchCardHtml(target, title = '', isLive = null) {
+        if (!target || !target.id) return '';
+        const isVod = target.kind === 'video';
+        if (isVod ? !/^\d{6,12}$/.test(target.id) : !/^[a-z0-9_]{2,25}$/.test(target.id)) return '';
+        const pageUrl = isVod ? `https://www.twitch.tv/videos/${target.id}` : `https://www.twitch.tv/${target.id}`;
+        const label = _esc(title || (isVod ? `Twitch VOD ${target.id}` : target.id));
+        const thumb = isVod
+            ? ''
+            : `<img src="https://static-cdn.jtvnw.net/previews-ttv/live_user_${target.id}-640x360.jpg?t=${Math.floor(Date.now() / 60000)}" alt="${label}" class="cc-yt-thumb" loading="lazy" onerror="this.style.display='none'">`;
+        const liveBadge = isVod
+            ? '<span class="cc-tw-status cc-tw-status-vod">VOD</span>'
+            : (isLive === false
+                ? '<span class="cc-tw-status cc-tw-status-off">OFFLINE</span>'
+                : (isLive === true ? '<span class="cc-tw-status cc-tw-status-live">LIVE</span>' : ''));
+        return `
+          <div class="cc-yt-card cc-tw-card" data-tw-kind="${target.kind}" data-tw-id="${target.id}">
+            <div class="cc-yt-stage cc-tw-stage" onclick="window.__playAethvionTwitch && window.__playAethvionTwitch(this, '${target.kind}', '${target.id}')">
+              ${thumb}
+              ${liveBadge}
+              <div class="cc-yt-play-overlay">
+                <span class="cc-yt-play-btn cc-tw-play-btn"><i class="fas fa-play"></i></span>
+                <span class="cc-yt-play-label">${isVod ? 'Watch VOD in Chat' : 'Watch Live in Chat'}</span>
+              </div>
+            </div>
+            <div class="cc-yt-footer">
+              <span class="cc-yt-badge cc-tw-badge" title="${label}"><i class="fab fa-twitch"></i> ${label}</span>
+              <div class="cc-yt-actions">
+                <button type="button" class="cc-yt-action-btn cc-tw-action-btn" onclick="window.__playAethvionTwitch && window.__playAethvionTwitch(this.closest('.cc-tw-card').querySelector('.cc-tw-stage'), '${target.kind}', '${target.id}')">
+                  <i class="fas fa-circle-play"></i> Embed
+                </button>
+                <a href="${pageUrl}" target="_blank" rel="noopener noreferrer" class="cc-yt-action-btn cc-tw-action-btn cc-yt-open-link">
+                  <i class="fas fa-arrow-up-right-from-square"></i> Twitch
+                </a>
+              </div>
+            </div>
+          </div>`;
+    }
+
+    window.__playAethvionTwitch = function(stageEl, kind, id) {
+        if (!stageEl) return;
+        const isVod = kind === 'video';
+        if (isVod ? !/^\d{6,12}$/.test(id) : !/^[a-z0-9_]{2,25}$/.test(id)) return;
+        // Twitch embeds require the embedding page's hostname as `parent`
+        const parent = encodeURIComponent(window.location.hostname || 'localhost');
+        const src = isVod
+            ? `https://player.twitch.tv/?video=v${id}&parent=${parent}&autoplay=true`
+            : `https://player.twitch.tv/?channel=${id}&parent=${parent}&autoplay=true&muted=false`;
+        stageEl.onclick = null;
+        stageEl.classList.add('cc-yt-stage-playing');
+        stageEl.innerHTML = `<iframe src="${src}" class="cc-yt-iframe" title="Twitch player" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+    };
+
+    window.__renderAethvionTwitchCards = function(text, existingIds = null) {
+        const targets = _extractTwitchTargets(text).filter(t => !(existingIds && existingIds.has(`tw:${t.kind}:${t.id}`)));
+        if (!targets.length) return '';
+        if (existingIds) targets.forEach(t => existingIds.add(`tw:${t.kind}:${t.id}`));
+        return `<div class="cc-yt-cards">${targets.map(t => _buildSingleTwitchCardHtml(t)).join('')}</div>`;
+    };
+
+    window.__buildAethvionTwitchCard = function(att) {
+        if (!att) return '';
+        const target = att.video_id && /^\d+$/.test(att.video_id)
+            ? { kind: 'video', id: String(att.video_id) }
+            : { kind: 'channel', id: String(att.channel || '').toLowerCase() };
+        const html = _buildSingleTwitchCardHtml(target, att.title || att.filename || '', typeof att.is_live === 'boolean' ? att.is_live : null);
+        return html ? `<div class="cc-yt-cards">${html}</div>` : '';
     };
 
     function _renderAttachmentsBlock(attachments, textForYtDedup = '') {
@@ -2417,6 +2518,11 @@ const CompanionCreator = (() => {
             const dedupKey = (att.video_id || fname) + '|' + rawUrl;
             if (seen.has(dedupKey)) return '';
             seen.add(dedupKey);
+            if (att.type === 'twitch') {
+                const ch = String(att.channel || '').toLowerCase();
+                if (!ch || _extractTwitchTargets(textForYtDedup).some(t => t.id === ch)) return '';
+                return _buildSingleTwitchCardHtml({ kind: 'channel', id: ch }, att.title || att.filename || ch, typeof att.is_live === 'boolean' ? att.is_live : null);
+            }
             if (att.type === 'youtube' || att.video_id) {
                 const vid = att.video_id || (_extractYoutubeIds(rawUrl)[0] || '');
                 if (!vid || textYtIds.has(vid)) return '';

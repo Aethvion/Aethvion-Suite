@@ -572,6 +572,12 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
             if (key && seen.has(key)) return;
             if (key) seen.add(key);
 
+            if (att.type === 'twitch') {
+                if (typeof window.__buildAethvionTwitchCard === 'function') {
+                    items.push(window.__buildAethvionTwitchCard(att));
+                }
+                return;
+            }
             if (att.type === 'youtube' || att.video_id) {
                 const vid = att.video_id || '';
                 if (vid && typeof window.__renderAethvionYoutubeCards === 'function') {
@@ -644,7 +650,8 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
         const assistantAtts = [
             ...(taskData?.result?.attachments || []),
             ...((taskData?.metadata?.attached_files || []).filter(a => a?.is_connector_capture))
-        ].filter(a => !(a?.type === 'youtube' && content && content.includes(a?.video_id || '___')));
+        ].filter(a => !(a?.type === 'youtube' && content && content.includes(a?.video_id || '___')))
+         .filter(a => !(a?.type === 'twitch' && content && a?.channel && content.toLowerCase().includes(`twitch.tv/${String(a.channel).toLowerCase()}`)));
         bodyHtml += _buildChatAttachmentsHtml(assistantAtts);
 
         messageContent = `<div class="msg-header">${sourceLabel}</div><div class="message-content">${bodyHtml}</div>`;

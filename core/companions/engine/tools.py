@@ -293,5 +293,33 @@ def extract_peripheral_captures(
                     })
             except Exception as e:
                 logger.debug(f"YouTube attachment extraction skipped: {e}")
+        elif ("Twitch Channel:" in res or "Twitch Live Channel Search" in res or "Twitch Channel Search" in res
+              or "Top Live Twitch Streams" in res) and "https://www.twitch.tv/" in res:
+            try:
+                m_ch = re.search(r"https://www\.twitch\.tv/([A-Za-z0-9_]{2,25})\b", res)
+                if m_ch:
+                    channel = m_ch.group(1).lower()
+                    title = channel
+                    for line in res.splitlines():
+                        ls = line.strip()
+                        if ls.startswith("Twitch Channel:"):
+                            title = ls.replace("Twitch Channel:", "", 1).strip()
+                            break
+                        if ls.startswith("1. "):
+                            title = ls[3:].strip()
+                            break
+                    is_live = "Status: OFFLINE" not in res
+                    attachments.append({
+                        "filename": title,
+                        "title": title,
+                        "channel": channel,
+                        "url": f"https://www.twitch.tv/{channel}",
+                        "is_image": False,
+                        "type": "twitch",
+                        "is_live": is_live,
+                        "is_connector_capture": True,
+                    })
+            except Exception as e:
+                logger.debug(f"Twitch attachment extraction skipped: {e}")
 
     return captures, attachments

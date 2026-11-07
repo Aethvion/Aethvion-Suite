@@ -303,6 +303,8 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
         slash_map["/todo"] = slash_map["/remind"]
     if "/processes" in slash_map:
         slash_map["/gpu"] = slash_map["/processes"]
+    if "/twitch" in slash_map:
+        slash_map["/ttv"] = slash_map["/twitch"]
 
     tokens = message.strip().split()
     if not tokens:
@@ -371,6 +373,19 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
             args["url"] = arg_text.strip()
         else:
             cmd = "search_videos"
+            args["query"] = arg_text.strip()
+    elif mod_id == "twitch_link" and arg_text:
+        low_arg = arg_text.lower().strip()
+        if low_arg in ("top", "popular", "trending") or low_arg.startswith(("top ", "popular ", "trending ")):
+            cmd = "get_top_streams"
+            rest_game = arg_text.split(None, 1)[1].strip() if len(arg_text.split()) > 1 else ""
+            if rest_game:
+                args["game"] = rest_game
+        elif "twitch.tv/" in low_arg or re.match(r"^@?[A-Za-z0-9_]{2,25}$", arg_text.strip()):
+            cmd = "get_channel"
+            args["channel"] = arg_text.strip()
+        else:
+            cmd = "search_streams"
             args["query"] = arg_text.strip()
     elif mod_id == "companion_tasks":
         if not arg_text or arg_text.lower() in ("list", "show", "tasks", "status"):
