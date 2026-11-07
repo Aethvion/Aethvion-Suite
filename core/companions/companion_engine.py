@@ -593,9 +593,12 @@ class CompanionEngine:
                     if round_att_meta:
                         tool_attachments.extend(round_att_meta)
 
-                    inter_clean = _strip_meta_tags(cleaned_resp)
-                    if inter_clean:
-                        intermediate_responses.append(inter_clean)
+                    # Split by <break> if the companion emitted multiple conversational bubbles before calling a tool
+                    _break_splitter = re.compile(r"\s*<break\s*/?>\s*", re.IGNORECASE)
+                    for raw_inter in _break_splitter.split(cleaned_resp):
+                        inter_clean = _strip_meta_tags(raw_inter)
+                        if inter_clean:
+                            intermediate_responses.append(inter_clean)
 
                     if _round == 0:
                         round_msgs.append({"role": "user",      "content": effective_prompt})
@@ -708,6 +711,7 @@ class CompanionEngine:
                 "type": "done",
                 "content": final_parts[0] if final_parts else final_content,
                 "parts": final_parts if len(final_parts) > 1 else None,
+                "intermediate_parts": intermediate_responses if intermediate_responses else None,
                 "expression": expression,
                 "mood": mood,
                 "memory_updated": mem_up,

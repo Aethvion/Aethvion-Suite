@@ -2753,7 +2753,7 @@ const CompanionCreator = (() => {
 
                         } else if (evt.type === 'tool_start') {
                             _setPortraitThinking(true, `Using ${evt.tool || 'tool'}…`);
-                            // Finalize the first bubble with clean text, then show the indicator
+                            // Finalize the intermediate bubble with clean text, record in history, then show the indicator
                             const cleanedFirst = _stripToolTags(fullText);
                             if (currentBubbleText) {
                                 currentBubbleText.classList.add('cc-msg-md');
@@ -2762,6 +2762,10 @@ const CompanionCreator = (() => {
                             }
                             _applyHighlight(currentBubble);
                             _attachBubbleActions(currentBubble, cleanedFirst);
+                            if (cleanedFirst && !currentBubble._recordedInHistory) {
+                                currentBubble._recordedInHistory = true;
+                                _chatHistory.push({ role: 'assistant', content: cleanedFirst });
+                            }
                             toolIndicator = _makeToolIndicator(evt.tool || 'tool');
 
                         } else if (evt.type === 'tool_response_start') {
