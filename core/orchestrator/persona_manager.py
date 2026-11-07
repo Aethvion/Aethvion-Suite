@@ -59,23 +59,12 @@ class PersonaManager:
         except Exception: return "Some time ago"
 
     @staticmethod
-    def _build_bridges_capabilities() -> str:
+    def _build_bridges_capabilities(profile_id: str = None) -> str:
         try:
-            registry = bridge_manager.get_registry()
-            modules = registry.get("modules", [])
-            if not modules: return ""
-            lines = ["BRIDGE CAPABILITIES — use [tool:bridge module=\"<id>\" cmd=\"<command>\" ...] syntax:"]
-            for mod in modules:
-                mod_id, mod_name, auth = mod.get("id", "?"), mod.get("name", "?"), mod.get("requires_auth", False)
-                is_auth = mod.get("is_authorized", True)
-                commands = mod.get("available_commands", {})
-                auth_note = " [authorized]" if auth and is_auth else (" [NOT AUTHORIZED]" if auth and not is_auth else "")
-                lines.append(f"  Module: {mod_id} ({mod_name}){auth_note}")
-                for cmd, desc in commands.items():
-                    lines.append(f"    → cmd=\"{cmd}\" — {desc}")
-            lines.append("  Example: [tool:bridge module=\"screen_capture\" cmd=\"take_screenshot\"]")
-            return "\n".join(lines)
-        except Exception: return ""
+            from core.companions.engine.streaming import build_bridges_capabilities
+            return build_bridges_capabilities(profile_id=profile_id)
+        except Exception:
+            return ""
 
     @staticmethod
     def build_system_prompt(companion_id: str = "misakacipher", source: str = "dashboard", security_context: str = "", allow_tools: bool = True, internet_search: bool = False) -> str:

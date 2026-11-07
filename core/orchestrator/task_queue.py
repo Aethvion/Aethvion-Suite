@@ -131,6 +131,8 @@ class TaskWorker:
                         settings.update(task_settings)
                     
                     context_prompt = task.prompt
+                    pm_system_prompt = None
+                    connector_profile = (settings or {}).get('connector_profile') or 'full_local'
                     
                     if settings:
                         context_mode = settings.get('context_mode', 'none')
@@ -159,7 +161,6 @@ class TaskWorker:
                                 logger.info(f"[{task.id}] Injected context ({len(history_tasks)//2} turns)")
 
                         # Persistent Memory Preparation
-                        pm_system_prompt = None
                         if settings.get('memory_mode') != 'nomemory':
                             from core.memory.persistent_memory import get_persistent_memory
                             pm = get_persistent_memory()
@@ -181,6 +182,17 @@ class TaskWorker:
                             
                             logger.info(f"[{task.id}] Prepared persistent memory system prompt")
                         # End Persistent Memory Preparation
+
+                    # Inject Global Connector / Bridge Capabilities into Main Chat system prompt
+                    try:
+                        from core.companions.engine.streaming import build_bridges_capabilities
+                        bridges_caps = build_bridges_capabilities(profile_id=connector_profile)
+                        if bridges_caps:
+                            now_str = datetime.now().strftime("%A, %d %B %Y — %H:%M")
+                            conn_sys = f"Current local date/time: {now_str}\n\n{bridges_caps}"
+                            pm_system_prompt = f"{pm_system_prompt}\n\n{conn_sys}" if pm_system_prompt else conn_sys
+                    except Exception as _bc_err:
+                        logger.debug(f"[{task.id}] Connector capabilities injection skipped: {_bc_err}")
 
                     # Folder Context Injection
                     # Folder shared memory and extra context are stored in task
@@ -293,34 +305,125 @@ class TaskWorker:
                         _can_stream = (mode == 'chat_only' and not internet_search and not images)
 
                         if _can_stream:
-                            # Token-streaming path (chat_only, no search, no images)
+                            # Token-streaming path (chat_only, no search, no initial images)
+                            # Supports up to 3 rounds of autonomous [tool:bridge ...] connector calls!
                             from core.orchestrator.chat_token_store import create_token_queue
                             from core.providers.provider_manager import get_provider_manager
                             from core.memory.identity_manager import IdentityManager
                             from core.orchestrator.master_orchestrator import ExecutionResult
+                            from core.companions.engine.tools import (
+                                parse_tool_blocks,
+                                parse_attrs,
+                                _execute_one,
+                                extract_peripheral_captures,
+                            )
 
                             _tok_queue = create_token_queue(task.id)
-                            _response_parts: list = []
+                            _actions_taken: list = []
+                            _final_resp_holder: list = [""]
+                            _t0 = datetime.now()
 
                             def _run_stream():
+                                _pm = get_provider_manager()
+                                _cur_prompt = context_prompt
+                                _cur_images: list = []
+                                _accum_final = ""
                                 try:
-                                    _pm = get_provider_manager()
-                                    for _chunk in _pm.call_with_failover_stream(
-                                        prompt=context_prompt,
-                                        trace_id=task.id,
-                                        system_prompt=pm_system_prompt,
-                                        temperature=0.7,
-                                        model=model_id,
-                                        source=CallSource.CHAT,
-                                    ):
-                                        _response_parts.append(_chunk)
+                                    for _round in range(3):
+                                        _round_parts: list = []
+                                        if _cur_images:
+                                            # If a previous connector round captured an image (e.g. screen_capture / webcam_capture),
+                                            # route via AetherCore so multimodal images are passed to the vision model.
+                                            from core.aether_core import Request as _AetherReq
+                                            _req = _AetherReq(
+                                                prompt=_cur_prompt,
+                                                system_prompt=pm_system_prompt,
+                                                request_type="generation",
+                                                trace_id=task.id if _round == 0 else f"{task.id}-r{_round}",
+                                                metadata={"source": CallSource.CHAT},
+                                                model=model_id,
+                                                images=_cur_images,
+                                            )
+                                            _resp = self.orchestrator.aether.route_request(_req)
+                                            _v_text = (_resp.content or "") if _resp.success else f"Error: {_resp.error}"
+                                            _round_parts.append(_v_text)
+                                            loop.call_soon_threadsafe(
+                                                _tok_queue.put_nowait,
+                                                {"type": "token", "token": _v_text}
+                                            )
+                                        else:
+                                            for _chunk in _pm.call_with_failover_stream(
+                                                prompt=_cur_prompt,
+                                                trace_id=task.id if _round == 0 else f"{task.id}-r{_round}",
+                                                system_prompt=pm_system_prompt,
+                                                temperature=0.7,
+                                                model=model_id,
+                                                source=CallSource.CHAT,
+                                            ):
+                                                _round_parts.append(_chunk)
+                                                loop.call_soon_threadsafe(
+                                                    _tok_queue.put_nowait,
+                                                    {"type": "token", "token": _chunk}
+                                                )
+
+                                        _round_text = "".join(_round_parts)
+                                        _blocks = parse_tool_blocks(_round_text)
+                                        if not _blocks:
+                                            _accum_final = _round_text
+                                            break
+
+                                        # Execute all [tool:...] connector blocks emitted in this round
+                                        _round_results = []
+                                        _cleaned = _round_text
+                                        _called_names = []
+                                        for _s, _e, _raw in reversed(_blocks):
+                                            _inner = _raw[6:-1].strip() if _raw.endswith("]") else _raw[6:].strip()
+                                            _parts = _inner.split(None, 1)
+                                            if not _parts:
+                                                continue
+                                            _tname = _parts[0].lower()
+                                            _attrs = parse_attrs(_parts[1] if len(_parts) > 1 else "")
+                                            _label = f"{_attrs.get('module', _tname)}.{_attrs.get('cmd', '')}".strip(".")
+                                            _called_names.append(_label)
+                                            _actions_taken.append(f"connector:{_label}")
+                                            _res = _execute_one(_tname, _attrs, workspaces=[], profile_id=connector_profile)
+                                            _round_results.append(_res)
+                                            _cleaned = _cleaned.replace(_raw, "")
+
+                                        if not _round_results:
+                                            _accum_final = _cleaned.strip()
+                                            break
+
+                                        # Extract any screenshot/webcam captures so vision models see them & markdown embeds them
+                                        _cur_images, _att_meta = extract_peripheral_captures(_round_results, _cur_images)
+                                        if _att_meta:
+                                            for _am in _att_meta:
+                                                if _am.get("url"):
+                                                    _round_results.append(
+                                                        f"[Visual capture Markdown URL: ![{_am.get('type', 'capture')}]({_am['url']})]"
+                                                    )
+
+                                        # Notify SSE listener to reset pre-tool stream text and prepare for the tool-informed answer
                                         loop.call_soon_threadsafe(
                                             _tok_queue.put_nowait,
-                                            {"type": "token", "token": _chunk}
+                                            {"type": "tool_call", "tools": _called_names}
                                         )
+
+                                        _tool_summary = "\n\n".join(_round_results)
+                                        _cur_prompt = (
+                                            f"{_cur_prompt}\n\n"
+                                            f"Assistant: {_round_text}\n\n"
+                                            f"[LIVE CONNECTOR / TOOL RESULTS — retrieved from user's system]\n"
+                                            f"{_tool_summary}\n"
+                                            f"[END CONNECTOR RESULTS]\n\n"
+                                            "Use the real connector results above to answer the user's request naturally and completely. "
+                                            "Do NOT output any more [tool:...] tags unless another connector call is required."
+                                        )
+                                        _accum_final = _cleaned.strip()
                                 except Exception as _se:
-                                    logger.error(f"[{task.id}] Stream error: {_se}")
+                                    logger.error(f"[{task.id}] Stream error: {_se}", exc_info=True)
                                 finally:
+                                    _final_resp_holder[0] = _accum_final
                                     loop.call_soon_threadsafe(
                                         _tok_queue.put_nowait,
                                         {"type": "done"}
@@ -328,16 +431,17 @@ class TaskWorker:
 
                             await loop.run_in_executor(None, _run_stream)
 
-                            _full_resp = "".join(_response_parts)
+                            _full_resp = _final_resp_holder[0]
                             _full_resp = IdentityManager.extract_and_update(_full_resp)
+                            _actions_taken.append("direct_response")
 
                             result = ExecutionResult(
                                 trace_id=task.id,
                                 response=_full_resp,
-                                actions_taken=["direct_response"],
+                                actions_taken=_actions_taken,
                                 agents_spawned=[],
                                 memories_queried=0,
-                                execution_time=0.0,
+                                execution_time=(datetime.now() - _t0).total_seconds(),
                                 success=bool(_full_resp),
                                 model_id=model_id,
                             )

@@ -1487,17 +1487,18 @@ function streamChatTokens(taskId, threadId) {
         const typist = new SmoothTypist((fullText) => {
             const textEl = streamContent.querySelector('.stream-text');
             if (textEl) {
+                const cleanedText = fullText.replace(/\[tool:[\s\S]*?\]/g, '').trim();
                 const now = Date.now();
                 // Progressive markdown parsing with 50ms throttle to prevent UI lag on large messages
-                if (now - lastMarkdownUpdate > 50 || fullText.length < 100) {
+                if (now - lastMarkdownUpdate > 50 || cleanedText.length < 100) {
                     try {
                         if (typeof marked !== 'undefined') {
-                            textEl.innerHTML = marked.parse(fullText);
+                            textEl.innerHTML = marked.parse(cleanedText);
                         } else {
-                            textEl.textContent = fullText;
+                            textEl.textContent = cleanedText;
                         }
                     } catch (e) {
-                        textEl.textContent = fullText;
+                        textEl.textContent = cleanedText;
                     }
                     lastMarkdownUpdate = now;
                 }
@@ -1578,6 +1579,22 @@ function streamChatTokens(taskId, threadId) {
         }
 
         if (event.type === 'heartbeat') return;
+
+        if (event.type === 'tool_call') {
+            if (!streamBubble) _createBubble();
+            accumulated = '';
+            const typist = _activeStreams[taskId]?.typist;
+            if (typist) {
+                typist.queue = '';
+                typist.displayed = '';
+            }
+            const textEl = streamContent?.querySelector('.stream-text');
+            if (textEl) {
+                const toolNames = Array.isArray(event.tools) ? event.tools.join(', ') : 'connector';
+                textEl.innerHTML = `<div style="font-size:0.78rem; color:#a5b4fc; display:flex; align-items:center; gap:0.45rem; opacity:0.85;"><i class="fas fa-plug-circle-bolt fa-fade"></i> Running connector: <code>${toolNames}</code>…</div>`;
+            }
+            return;
+        }
 
         if (event.type === 'token') {
             if (!streamBubble) _createBubble();

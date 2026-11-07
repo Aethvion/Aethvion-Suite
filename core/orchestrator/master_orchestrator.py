@@ -144,7 +144,7 @@ class MasterOrchestrator:
                 )
                 
                 result.response = IdentityManager.extract_and_update(result.response, companion_id=companion_id)
-            elif source == "chat" and internet_search:
+            elif source == "chat" and (internet_search or mode == "chat_only"):
                 result = await self._execute_neutral_tool_chat(
                     user_message,
                     trace_id,
@@ -152,7 +152,7 @@ class MasterOrchestrator:
                     images,
                     system_prompt,
                     allow_tools=allow_tools,
-                    internet_search=True
+                    internet_search=internet_search
                 )
             else:
                 force_chat = (mode == "chat_only")

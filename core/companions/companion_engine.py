@@ -234,7 +234,8 @@ class CompanionEngine:
                 workspaces = load_workspaces(config.id)
                 workspace_block = build_workspace_block(workspaces)
 
-            system_prompt = prompts.get("chat_system", "").format(
+            raw_chat_system = prompts.get("chat_system", "")
+            system_prompt = raw_chat_system.format(
                 base_info=json.dumps(mem_data["base_info"], indent=2),
                 memory=json.dumps(mem_data["memory"], indent=2),
                 datetime_ctx=datetime.datetime.now().strftime("%A, %d %B %Y — %H:%M"),
@@ -264,6 +265,12 @@ class CompanionEngine:
                     parts.append(f"\n\n{workspace_block}")
                 parts.append(f"\n\nCurrent time: {datetime.datetime.now().strftime('%A, %d %B %Y — %H:%M')}")
                 system_prompt = "".join(parts)
+            else:
+                # Ensure custom prompts that omit {bridges_block} or {workspace_block} still receive them
+                if workspace_block and "{workspace_block}" not in raw_chat_system:
+                    system_prompt += f"\n\n{workspace_block}"
+                if bridges_block and "{bridges_block}" not in raw_chat_system:
+                    system_prompt += f"\n\n{bridges_block}"
 
             # Expression awareness
             expressions = config.expressions or []
