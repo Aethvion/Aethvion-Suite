@@ -332,7 +332,8 @@
                 "play": "Start or resume playback (takes 'target' as optional song, artist, genre, or URI)",
                 "pause": "Pause playback",
                 "skip": "Skip to the next track",
-                "previous": "Return to the previous track"
+                "previous": "Return to the previous track",
+                "queue": "Add a song or artist to the playback queue (takes 'target' as argument)"
             },
             "settings": [
                 "mode",

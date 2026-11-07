@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import json
+import re
 import urllib.parse
 import subprocess
 from core.utils.paths import APP_BRIDGES
@@ -23,9 +24,29 @@ APPCOMMAND_MEDIA_PLAY_PAUSE = 14
 APPCOMMAND_MEDIA_PLAY = 46
 APPCOMMAND_MEDIA_PAUSE = 47
 
+VK_RETURN = 0x0D
 VK_MEDIA_NEXT_TRACK = 0xB0
 VK_MEDIA_PREV_TRACK = 0xB1
 VK_MEDIA_PLAY_PAUSE = 0xB3
+
+
+def _resolve_spotify_track_uri(query: str) -> tuple[str, str]:
+    """Resolve a plain search query to a specific spotify:track:<id> URI via fast web lookup."""
+    try:
+        import requests
+        res = requests.post(
+            "https://html.duckduckgo.com/html/",
+            data={"q": f"site:open.spotify.com/track {query}"},
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+            timeout=3.5
+        )
+        match = re.search(r"open\.spotify\.com/track/([a-zA-Z0-9]+)", res.text)
+        if match:
+            track_id = match.group(1)
+            return f"spotify:track:{track_id}", track_id
+    except Exception as e:
+        logger.debug(f"Track URI resolution failed: {e}")
+    return f"spotify:search:{urllib.parse.quote(query)}", None
 
 
 class LocalSpotifyController:
@@ -35,13 +56,8 @@ class LocalSpotifyController:
     def _is_spotify_process_running() -> bool:
         """Check if Spotify.exe process is running."""
         try:
-            res = subprocess.run(
-                ["tasklist", "/FI", "IMAGENAME eq Spotify.exe", "/NH"],
-                capture_output=True,
-                text=True,
-                timeout=3
-            )
-            return "spotify.exe" in res.stdout.lower()
+            import psutil
+            return any("spotify" in p.info["name"].lower() for p in psutil.process_iter(["name"]))
         except Exception:
             return False
 
@@ -120,16 +136,32 @@ class LocalSpotifyController:
             if clean_target.startswith("spotify:"):
                 uri = clean_target
             else:
-                uri = f"spotify:search:{urllib.parse.quote(clean_target)}"
+                uri, _ = _resolve_spotify_track_uri(clean_target)
+
+            # Check if something is currently playing so we don't accidentally toggle-pause it
+            current_status = cls.get_current()
+            was_playing = "currently playing" in current_status.lower()
 
             try:
                 os.startfile(uri)
             except Exception:
                 subprocess.run(["cmd", "/c", "start", uri], shell=True)
 
-            # Wait briefly for Spotify to focus the search result and trigger playback
+            # Wait briefly for Spotify to navigate to the track
             time.sleep(0.4)
-            cls._send_media_command(APPCOMMAND_MEDIA_PLAY_PAUSE, VK_MEDIA_PLAY_PAUSE)
+
+            # Press Return key to start playing the newly opened track
+            if sys.platform == "win32":
+                import ctypes
+                ctypes.windll.user32.keybd_event(VK_RETURN, 0, 0, 0)
+                time.sleep(0.04)
+                ctypes.windll.user32.keybd_event(VK_RETURN, 0, 2, 0)
+
+            # If playback was paused before, also send play signal
+            if not was_playing:
+                time.sleep(0.15)
+                cls._send_media_command(APPCOMMAND_MEDIA_PLAY_PAUSE, VK_MEDIA_PLAY_PAUSE)
+
             return f"Started playing '{clean_target}' on Spotify (Local)."
         else:
             if not cls._is_spotify_process_running():
@@ -238,6 +270,23 @@ class CloudSpotifyController:
         sp.previous_track()
         return "Returned to previous track on Spotify (Cloud)."
 
+    @classmethod
+    def queue(cls, settings: dict, target: str) -> str:
+        sp = cls._get_client(settings)
+        if target.startswith("spotify:track:"):
+            track_uri = target
+            track_name = target
+        else:
+            results = sp.search(q=target, limit=1, type="track")
+            items = results.get("tracks", {}).get("items", [])
+            if not items:
+                return f"Could not find track '{target}' to add to queue."
+            track_uri = items[0]["uri"]
+            track_name = f"'{items[0]['name']}' by {items[0]['artists'][0]['name']}"
+
+        sp.add_to_queue(uri=track_uri)
+        return f"Added {track_name} to Spotify queue (Cloud)."
+
 
 def _should_use_cloud(settings: dict) -> bool:
     mode = str(settings.get("mode", "auto")).lower()
@@ -318,3 +367,23 @@ def previous(args: dict) -> str:
         except Exception as e:
             logger.debug(f"Cloud previous failed, falling back to local: {e}")
     return LocalSpotifyController.previous()
+
+
+def queue(args: dict) -> str:
+    """Add a track to the Spotify playback queue."""
+    settings = args.get("settings", {})
+    target = args.get("target") or args.get("query")
+    if not target:
+        return "Please specify a song or artist to add to the queue."
+
+    if _should_use_cloud(settings):
+        try:
+            return CloudSpotifyController.queue(settings, target)
+        except Exception as e:
+            logger.debug(f"Cloud queue failed: {e}")
+            return f"Could not add to cloud queue: {e}. (Ensure Spotify is open and active on a device)."
+
+    return (
+        f"Queuing tracks silently in the background while your current music keeps playing requires the Spotify Cloud OAuth connection. "
+        f"In Local Mode, I can play '{target}' right now for you instead!"
+    )
