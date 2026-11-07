@@ -148,9 +148,11 @@
 
 <style>
 .cn-page-wrap {
-    padding: 1.25rem 2rem 2.5rem;
-    max-width: 1600px;
+    padding: 1.25rem 1.75rem 2.5rem;
+    width: 100%;
+    max-width: 1440px;
     margin: 0 auto;
+    box-sizing: border-box;
 }
 .cn-slash-bar {
     display: flex;
@@ -398,17 +400,29 @@
 }
 .cn-profiles-layout {
     display: grid;
-    grid-template-columns: 340px 1fr;
+    grid-template-columns: 320px minmax(0, 1fr);
     gap: 1.25rem;
     align-items: start;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
-@media (max-width: 960px) {
+@media (max-width: 1080px) {
     .cn-profiles-layout { grid-template-columns: 1fr; }
 }
 .cn-profiles-list-col {
     position: sticky;
     top: 0.75rem;
     align-self: start;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.cn-profile-editor-col {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .cn-profiles-cards {
     display: flex;
@@ -417,6 +431,7 @@
     max-height: calc(100vh - 280px);
     overflow-y: auto;
     padding-right: 0.25rem;
+    box-sizing: border-box;
 }
 .cn-prof-item {
     padding: 0.85rem 1rem;
@@ -425,6 +440,7 @@
     border: 1px solid var(--hub-card-border, rgba(255,255,255,0.08));
     cursor: pointer;
     transition: all 0.18s;
+    box-sizing: border-box;
 }
 .cn-prof-item:hover, .cn-prof-item.active {
     border-color: var(--primary);
@@ -438,6 +454,10 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .cn-checklist {
     display: flex;
@@ -445,8 +465,13 @@
     gap: 0.45rem;
     max-height: 380px;
     overflow-y: auto;
+    overflow-x: hidden;
     padding-right: 0.4rem;
     margin-bottom: 0.35rem;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .cn-checklist::-webkit-scrollbar {
     width: 6px;
@@ -475,6 +500,10 @@
     backdrop-filter: blur(8px);
     padding-bottom: 0.35rem;
     z-index: 5;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .cn-check-row {
     display: flex;
@@ -487,6 +516,10 @@
     border: 1px solid rgba(255,255,255,0.06);
     cursor: pointer;
     transition: all 0.15s ease;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .cn-check-row:hover {
     border-color: rgba(99, 102, 241, 0.35);

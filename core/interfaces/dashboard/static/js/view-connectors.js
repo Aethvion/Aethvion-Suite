@@ -296,24 +296,24 @@ const ConnectorsView = (() => {
                 const isSensitive = (m.privacy_tier || 'local_sensitive') === 'local_sensitive';
                 return `
                 <label class="cn-check-row">
-                    <div style="display:flex; align-items:center; gap:0.75rem; min-width:0;">
+                    <div style="display:flex; align-items:center; gap:0.75rem; min-width:0; flex:1; overflow:hidden;">
                         <input type="checkbox" class="cn-prof-conn-cb" value="${_esc(m.id)}"
                                data-tier="${_esc(m.privacy_tier || 'local_sensitive')}"
-                               ${checked ? 'checked' : ''}>
-                        <div class="cn-icon-box" style="width:32px; height:32px; font-size:0.85rem; margin:0;">
+                               ${checked ? 'checked' : ''} style="flex-shrink:0;">
+                        <div class="cn-icon-box" style="width:32px; height:32px; font-size:0.85rem; margin:0; flex-shrink:0;">
                             <i class="${_esc(m.icon || 'fas fa-plug')}"></i>
                         </div>
-                        <div style="min-width:0;">
+                        <div style="min-width:0; flex:1; overflow:hidden;">
                             <div style="font-size:0.84rem; font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:0.45rem;">
-                                <span>${_esc(m.name)}</span>
-                                <code style="font-size:0.72rem; color:var(--primary);">${_esc(m.slash_command || '/' + m.id)}</code>
+                                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${_esc(m.name)}</span>
+                                <code style="font-size:0.72rem; color:var(--primary); flex-shrink:0;">${_esc(m.slash_command || '/' + m.id)}</code>
                             </div>
-                            <div style="font-size:0.74rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            <div style="font-size:0.74rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${_esc(m.description || '')}">
                                 ${_esc(m.description || '')}
                             </div>
                         </div>
                     </div>
-                    <span class="cn-privacy-pill ${isSensitive ? 'local_sensitive' : 'cloud_safe'}">
+                    <span class="cn-privacy-pill ${isSensitive ? 'local_sensitive' : 'cloud_safe'}" style="flex-shrink:0; margin-left:0.5rem;">
                         ${isSensitive ? '🔒 Local / Sensitive' : '🌐 Cloud Safe'}
                     </span>
                 </label>`;
