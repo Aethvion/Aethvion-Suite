@@ -565,6 +565,10 @@ const ConnectorsView = (() => {
         });
         const filtersWrap = document.getElementById('cn-filters-wrap');
         if (filtersWrap) filtersWrap.style.display = tab === 'connectors' ? 'flex' : 'none';
+        const slashBar = document.querySelector('.cn-slash-bar');
+        if (slashBar) slashBar.style.display = tab === 'connectors' ? '' : 'none';
+        const slashOutput = document.getElementById('cn-slash-test-output');
+        if (slashOutput && tab !== 'connectors') slashOutput.style.display = 'none';
         document.querySelectorAll('[data-cntab]').forEach(b => {
             b.classList.toggle('active', b.dataset.cntab === tab);
         });

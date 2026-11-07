@@ -132,7 +132,7 @@
 
                     <div id="cn-prof-connectors-checklist" class="cn-checklist"></div>
 
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.07);">
+                    <div class="cn-editor-footer">
                         <button id="cn-prof-delete-btn" class="hub-action-btn secondary" style="color:#f87171; border-color:rgba(248,113,113,0.3); display:none;" onclick="ConnectorsView.deleteCurrentProfile()">
                             <i class="fas fa-trash"></i> Delete Profile
                         </button>
@@ -148,7 +148,7 @@
 
 <style>
 .cn-page-wrap {
-    padding: 1.5rem 2.25rem 2.5rem;
+    padding: 1.25rem 2rem 2.5rem;
     max-width: 1600px;
     margin: 0 auto;
 }
@@ -398,20 +398,28 @@
 }
 .cn-profiles-layout {
     display: grid;
-    grid-template-columns: 360px 1fr;
+    grid-template-columns: 340px 1fr;
     gap: 1.25rem;
     align-items: start;
 }
-@media (max-width: 920px) {
+@media (max-width: 960px) {
     .cn-profiles-layout { grid-template-columns: 1fr; }
+}
+.cn-profiles-list-col {
+    position: sticky;
+    top: 0.75rem;
+    align-self: start;
 }
 .cn-profiles-cards {
     display: flex;
     flex-direction: column;
     gap: 0.65rem;
+    max-height: calc(100vh - 280px);
+    overflow-y: auto;
+    padding-right: 0.25rem;
 }
 .cn-prof-item {
-    padding: 0.9rem 1rem;
+    padding: 0.85rem 1rem;
     border-radius: 12px;
     background: var(--hub-card-bg, rgba(255,255,255,0.02));
     border: 1px solid var(--hub-card-border, rgba(255,255,255,0.08));
@@ -426,25 +434,62 @@
     background: var(--hub-card-bg, rgba(255,255,255,0.02));
     border: 1px solid var(--hub-card-border, rgba(255,255,255,0.08));
     border-radius: 14px;
-    padding: 1.35rem;
+    padding: 1.25rem 1.35rem 1rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
 }
 .cn-checklist {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.45rem;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 0.4rem;
+    margin-bottom: 0.35rem;
+}
+.cn-checklist::-webkit-scrollbar {
+    width: 6px;
+}
+.cn-checklist::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+}
+.cn-checklist::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.35);
+    border-radius: 4px;
+}
+.cn-checklist::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.6);
+}
+.cn-editor-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    position: sticky;
+    bottom: -1rem;
+    background: var(--hub-card-bg, #0b0f19);
+    backdrop-filter: blur(8px);
+    padding-bottom: 0.35rem;
+    z-index: 5;
 }
 .cn-check-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 0.65rem 0.9rem;
+    padding: 0.55rem 0.85rem;
     border-radius: 10px;
     background: rgba(255,255,255,0.02);
     border: 1px solid rgba(255,255,255,0.06);
     cursor: pointer;
+    transition: all 0.15s ease;
 }
 .cn-check-row:hover {
     border-color: rgba(99, 102, 241, 0.35);
+    background: rgba(99, 102, 241, 0.04);
 }
 </style>
