@@ -1,6 +1,7 @@
 import asyncio
 import subprocess
 import json
+import sys
 from core.utils import get_logger
 
 # Setup logging
@@ -107,11 +108,13 @@ def _get_media_info_powershell() -> dict:
     return "null"
     """
     try:
+        flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
         result = subprocess.run(
             ["powershell", "-NoProfile", "-Command", script],
             capture_output=True,
             text=True,
             encoding="utf-8",
+            creationflags=flags,
             check=True
         )
         output = result.stdout.strip()
@@ -173,8 +176,6 @@ def get_media_info(args: dict) -> str:
 
         # Handle "Artist - Title" splitting for window title fallbacks
         if not artist and " - " in title:
-            # Most window titles are "Artist - Track" or "Track - Artist"
-            # We'll just present it clearly
             return f"Currently playing: {title} (via {source})"
         
         if artist:

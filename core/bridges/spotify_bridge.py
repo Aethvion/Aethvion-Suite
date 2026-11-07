@@ -145,24 +145,14 @@ class LocalSpotifyController:
             try:
                 os.startfile(uri)
             except Exception:
-                subprocess.run(["cmd", "/c", "start", uri], shell=True)
+                flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                subprocess.run(["cmd", "/c", "start", uri], shell=True, creationflags=flags)
 
-            # Wait briefly for Spotify to navigate to the track
-            time.sleep(0.4)
-
-            # Press Return key to start playing the newly opened track
-            if sys.platform == "win32":
-                import ctypes
-                ctypes.windll.user32.keybd_event(VK_RETURN, 0, 0, 0)
-                time.sleep(0.04)
-                ctypes.windll.user32.keybd_event(VK_RETURN, 0, 2, 0)
-
-            # If playback was paused before, also send play signal
-            if not was_playing:
-                time.sleep(0.15)
-                cls._send_media_command(APPCOMMAND_MEDIA_PLAY_PAUSE, VK_MEDIA_PLAY_PAUSE)
-
-            return f"Started playing '{clean_target}' on Spotify (Local)."
+            return (
+                f"Opened '{clean_target}' in Spotify! "
+                f"(In Local Mode, Spotify navigates to the track on your screen. "
+                f"For silent background playback switching and queueing without touching the app, connect Spotify Cloud OAuth in Connector Settings)."
+            )
         else:
             if not cls._is_spotify_process_running():
                 try:
