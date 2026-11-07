@@ -244,6 +244,43 @@ class TaskWorker:
                                 except Exception as e:
                                     logger.error(f"Failed to load attached image '{file_data.get('filename')}': {e}")
 
+                    # Recall most recent screenshot/image from thread history when no new image is attached
+                    if not images and settings and settings.get('context_mode', 'none') in ['full', 'smart'] and thread and thread.task_ids:
+                        try:
+                            from urllib.parse import unquote
+                            prev_ids = [tid for tid in thread.task_ids if tid != task.id][-5:]
+                            for tid in reversed(prev_ids):
+                                prev_t = self.tasks.get(tid)
+                                if not prev_t or prev_t.status != TaskStatus.COMPLETED:
+                                    continue
+                                cand_atts = []
+                                if prev_t.result and prev_t.result.get("attachments"):
+                                    cand_atts.extend(prev_t.result.get("attachments") or [])
+                                if prev_t.metadata and prev_t.metadata.get("attached_files"):
+                                    cand_atts.extend(prev_t.metadata.get("attached_files") or [])
+                                for catt in reversed(cand_atts):
+                                    if not isinstance(catt, dict) or not (catt.get("is_image") or catt.get("type") in ("image", "screenshot", "webcam")):
+                                        continue
+                                    raw_p = catt.get("path") or ""
+                                    if not raw_p and "path=" in (catt.get("url") or ""):
+                                        raw_p = unquote(catt["url"].split("path=", 1)[1].split("&", 1)[0])
+                                    if raw_p and Path(raw_p).is_file():
+                                        p_obj = Path(raw_p)
+                                        ext = p_obj.suffix.lower()
+                                        mime = catt.get("mime_type") or ("image/png" if ext == ".png" else "image/jpeg")
+                                        images.append({"data": p_obj.read_bytes(), "mime_type": mime})
+                                        context_prompt = (
+                                            f"[RECENT THREAD IMAGE STILL ATTACHED: {catt.get('filename', p_obj.name)} — "
+                                            "The screenshot/image from the recent turn is attached directly to this request as vision input. "
+                                            "If the user is asking about that image, inspect the attached image directly and do NOT take a new screenshot.]\n\n"
+                                            f"{context_prompt}"
+                                        )
+                                        break
+                                if images:
+                                    break
+                        except Exception as _rec_err:
+                            logger.debug(f"[{task.id}] Thread image recall skipped: {_rec_err}")
+
                     ws_id = task.metadata.get('workspace_id')
                     if ws_id:
                         # Agent workspace task → run full agent loop

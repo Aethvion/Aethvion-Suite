@@ -22,15 +22,17 @@ def build_bridges_capabilities(capabilities: dict | None = None, profile_id: Opt
         if not modules:
             return ""
         lines = [
-            "CONNECTOR / BRIDGE CAPABILITIES — LIVE REAL-TIME TOOLS:",
-            "You have direct access to the user's PC, desktop environment, and external services via the Aethvion Connectors listed below.",
-            "When the user asks a question or makes a request that can be answered by any of these connectors "
-            "(e.g. what is currently open on their PC, active window, screen content/OCR, clipboard, git status/diff, GPU/processes, hardware telemetry, media playing, weather, web search, webpage URLs, YouTube videos, Reddit, or reminders/tasks), "
-            "you MUST call the connector by outputting its tool tag:",
+            "CONNECTOR / BRIDGE CAPABILITIES — ON-DEMAND REAL-TIME TOOLS:",
+            "You have access to the user's PC, desktop environment, and external services via the Aethvion Connectors listed below.",
+            "When the user asks a question or makes a request that requires live data from any of these connectors "
+            "(e.g. asking what is open on their PC, checking their screen/OCR, clipboard, git status/diff, GPU/processes, hardware telemetry, media playing, weather, web search, webpage URLs, YouTube videos, Reddit, or reminders/tasks), "
+            "call the connector by outputting its tool tag:",
             '  [tool:bridge module="<module_id>" cmd="<command>" <optional_arg>="<value>"]',
-            "CRITICAL RULES FOR CONNECTOR CALLS:",
-            "- NEVER say you do not have access to the user's computer, OS, or real-time data if a connector below provides it. Emit the [tool:bridge ...] tag instead!",
-            "- When you need a connector's data to answer, output ONLY the [tool:bridge ...] tag (you may chain multiple tags if needed) and stop; the system will immediately execute the connector(s) and feed the live results back to you so you can write your final response.",
+            "RULES FOR CONNECTOR USAGE:",
+            "- ON-DEMAND ONLY: These connectors are capabilities you CAN use when relevant or requested—do NOT call them or bring up PC telemetry/open apps in normal conversation when the user hasn't asked about them.",
+            "- NEVER CLAIM LACK OF ACCESS: When the user DOES ask about their PC, open windows, screen, clipboard, git, or live info, never say you lack access—emit the matching [tool:bridge ...] tag instead!",
+            "- FILTER OUTPUT NATURALLY: When a connector returns data, focus only on what is relevant to the user's question rather than reciting every background process, tab, or hardware metric.",
+            "- When you need a connector's data to answer, output ONLY the [tool:bridge ...] tag and stop; the system will execute the connector and feed the live results back to you so you can write your response.",
             ""
         ]
         visible = False

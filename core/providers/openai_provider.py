@@ -70,7 +70,21 @@ class OpenAIProvider(BaseProvider):
                 
                 # If current prompt is different from last user msg, append it.
                 if prompt and (not messages or messages[-1].get('content') != prompt):
-                     final_messages.append({"role": "user", "content": prompt})
+                    final_messages.append({"role": "user", "content": prompt})
+                if images and final_messages and final_messages[-1].get("role") == "user":
+                    import base64
+                    last_txt = final_messages[-1].get("content", "")
+                    content_list = [{"type": "text", "text": last_txt}] if isinstance(last_txt, str) else list(last_txt)
+                    for img in images:
+                        if not img.get("data"):
+                            continue
+                        b64_data = base64.b64encode(img['data']).decode('utf-8')
+                        mime = img.get('mime_type', 'image/jpeg')
+                        content_list.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{mime};base64,{b64_data}"}
+                        })
+                    final_messages[-1] = {**final_messages[-1], "content": content_list}
                 messages = final_messages
             else:
                 messages = []
@@ -181,6 +195,7 @@ class OpenAIProvider(BaseProvider):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
+        images: Optional[List[Dict[str, Any]]] = None,
         messages: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> Iterator[str]:
@@ -190,6 +205,7 @@ class OpenAIProvider(BaseProvider):
             
             # Combine system_prompt
             final_system_prompt = system_prompt or kwargs.pop('system_prompt', None)
+            images = images or kwargs.pop('images', None)
             
             # Build messages
             if messages:
@@ -202,6 +218,20 @@ class OpenAIProvider(BaseProvider):
                 # Append current prompt if it's the new user turn
                 if prompt and (not messages or messages[-1].get('content') != prompt):
                     final_messages.append({"role": "user", "content": prompt})
+                if images and final_messages and final_messages[-1].get("role") == "user":
+                    import base64
+                    last_txt = final_messages[-1].get("content", "")
+                    content_list = [{"type": "text", "text": last_txt}] if isinstance(last_txt, str) else list(last_txt)
+                    for img in images:
+                        if not img.get("data"):
+                            continue
+                        b64_data = base64.b64encode(img['data']).decode('utf-8')
+                        mime = img.get('mime_type', 'image/jpeg')
+                        content_list.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{mime};base64,{b64_data}"}
+                        })
+                    final_messages[-1] = {**final_messages[-1], "content": content_list}
                 messages = final_messages
             else:
                 messages = []
@@ -209,7 +239,21 @@ class OpenAIProvider(BaseProvider):
                     messages.append({"role": "system", "content": final_system_prompt})
                 
                 user_content = prompt or kwargs.get('user_message', '')
-                messages.append({"role": "user", "content": user_content})
+                if images:
+                    import base64
+                    content_list = [{"type": "text", "text": user_content}]
+                    for img in images:
+                        if not img.get("data"):
+                            continue
+                        b64_data = base64.b64encode(img['data']).decode('utf-8')
+                        mime = img.get('mime_type', 'image/jpeg')
+                        content_list.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{mime};base64,{b64_data}"}
+                        })
+                    messages.append({"role": "user", "content": content_list})
+                else:
+                    messages.append({"role": "user", "content": user_content})
             
             # Stream response
             active_model = model if model else self.config.model

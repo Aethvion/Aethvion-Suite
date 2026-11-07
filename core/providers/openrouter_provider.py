@@ -50,17 +50,38 @@ class OpenRouterProvider(BaseProvider):
         active_model = model if model else self.config.model
         try:
             system_prompt = kwargs.pop("system_prompt", None)
+            images = kwargs.pop("images", None)
             kwargs.pop("model", None)
             kwargs.pop("json_mode", None)
 
-            messages = []
+            msg_list: List[Dict[str, Any]] = []
             if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
+                msg_list.append({"role": "system", "content": system_prompt})
+            if messages:
+                msg_list.extend(messages)
+                if prompt and (not messages or messages[-1].get("content") != prompt):
+                    msg_list.append({"role": "user", "content": prompt})
+            else:
+                msg_list.append({"role": "user", "content": prompt})
+
+            if images and msg_list and msg_list[-1].get("role") == "user":
+                import base64
+                last_txt = msg_list[-1].get("content", "")
+                content_list = [{"type": "text", "text": last_txt}] if isinstance(last_txt, str) else list(last_txt)
+                for img in images:
+                    if not img.get("data"):
+                        continue
+                    b64_data = base64.b64encode(img["data"]).decode("utf-8")
+                    mime = img.get("mime_type", "image/jpeg")
+                    content_list.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime};base64,{b64_data}"}
+                    })
+                msg_list[-1] = {**msg_list[-1], "content": content_list}
 
             payload = {
                 "model": active_model,
-                "messages": messages,
+                "messages": msg_list,
                 "temperature": temperature,
                 **kwargs,
             }
@@ -113,10 +134,31 @@ class OpenRouterProvider(BaseProvider):
         active_model = model if model else self.config.model
         try:
             system_prompt = kwargs.pop("system_prompt", None)
+            images = kwargs.pop("images", None)
             msg_list: List[Dict[str, Any]] = []
             if system_prompt:
                 msg_list.append({"role": "system", "content": system_prompt})
-            msg_list.append({"role": "user", "content": prompt})
+            if messages:
+                msg_list.extend(messages)
+                if prompt and (not messages or messages[-1].get("content") != prompt):
+                    msg_list.append({"role": "user", "content": prompt})
+            else:
+                msg_list.append({"role": "user", "content": prompt})
+
+            if images and msg_list and msg_list[-1].get("role") == "user":
+                import base64
+                last_txt = msg_list[-1].get("content", "")
+                content_list = [{"type": "text", "text": last_txt}] if isinstance(last_txt, str) else list(last_txt)
+                for img in images:
+                    if not img.get("data"):
+                        continue
+                    b64_data = base64.b64encode(img["data"]).decode("utf-8")
+                    mime = img.get("mime_type", "image/jpeg")
+                    content_list.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime};base64,{b64_data}"}
+                    })
+                msg_list[-1] = {**msg_list[-1], "content": content_list}
 
             payload = {
                 "model": active_model,

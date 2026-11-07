@@ -121,7 +121,22 @@ class GoogleAIProvider(BaseProvider):
                 
                 # Append current prompt if it's the new user turn
                 if prompt and (not messages or messages[-1].get('content') != prompt):
-                     contents.append(types.Content(role='user', parts=[types.Part.from_text(text=prompt)]))
+                    contents.append(types.Content(role='user', parts=[types.Part.from_text(text=prompt)]))
+                
+                # Attach image parts to the final user turn when images are provided alongside messages
+                if images:
+                    img_parts = [
+                        types.Part.from_bytes(
+                            data=img['data'],
+                            mime_type=img.get('mime_type', 'image/jpeg')
+                        )
+                        for img in images if img.get('data')
+                    ]
+                    if img_parts:
+                        if contents and contents[-1].role == 'user':
+                            contents[-1].parts = img_parts + list(contents[-1].parts)
+                        else:
+                            contents.append(types.Content(role='user', parts=img_parts))
             else:
                 user_content = prompt or kwargs.get('user_message', '')
                 if images:
@@ -256,6 +271,21 @@ class GoogleAIProvider(BaseProvider):
                 # Append current prompt if it's the new user turn
                 if prompt and (not messages or messages[-1].get('content') != prompt):
                     contents.append(types.Content(role='user', parts=[types.Part.from_text(text=prompt)]))
+                
+                # Attach image parts to the final user turn when images are provided alongside messages
+                if images:
+                    img_parts = [
+                        types.Part.from_bytes(
+                            data=img['data'],
+                            mime_type=img.get('mime_type', 'image/jpeg')
+                        )
+                        for img in images if img.get('data')
+                    ]
+                    if img_parts:
+                        if contents and contents[-1].role == 'user':
+                            contents[-1].parts = img_parts + list(contents[-1].parts)
+                        else:
+                            contents.append(types.Content(role='user', parts=img_parts))
             else:
                 user_content = prompt or kwargs.get('user_message', '')
                 if images:

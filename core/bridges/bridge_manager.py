@@ -388,9 +388,10 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
 
     # Extract any screenshot/webcam attachments
     attachments = []
+    captures = []
     try:
         from core.companions.engine.tools import extract_peripheral_captures
-        _, attachments = extract_peripheral_captures(raw_outputs, [])
+        captures, attachments = extract_peripheral_captures(raw_outputs, [])
     except Exception as e:
         logger.warning(f"Failed to extract peripheral captures from slash command: {e}")
 
@@ -399,5 +400,6 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
         "results": triggered_results,
         "raw_outputs": raw_outputs,
         "cleaned_message": remaining_prompt or f"Analyze the result from {matched_mod.get('name', mod_id)}.",
-        "attachments": attachments
+        "attachments": attachments,
+        "captures": captures,
     }

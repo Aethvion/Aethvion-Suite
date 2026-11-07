@@ -62,7 +62,7 @@ class CompanionEngine:
         else:
             instr = prompts.get("proactive_instruction", "Initiate a friendly, natural conversation with the user based on who you are, what you talked about recently, what you remember about them, or what is happening on their PC.")
 
-        # Recent conversation context so proactive messages can follow up on previous topics
+        # Recent conversation context so proactive messages can follow up on previous topics without repeating themselves
         recent_chat_context = ""
         try:
             recent_days = history.load_days(0, 2).get("history", [])
@@ -74,50 +74,31 @@ class CompanionEngine:
                     if txt:
                         recent_msgs.append(f"{role_lbl}: {txt[:240]}")
             if recent_msgs:
-                recent_chat_context = "\n\nRecent Conversation Snippet (for continuity — follow up naturally or bring up something new):\n" + "\n".join(recent_msgs[-6:])
+                recent_chat_context = (
+                    "\n\nRecent Conversation Snippet (for continuity — do NOT repeat observations or questions you already made in your recent messages):\n"
+                    + "\n".join(recent_msgs[-6:])
+                )
         except Exception:
             pass
 
-        # Ambient PC / Media context for check-ins if permitted by connector_profile
-        ambient_context = ""
+        # On-demand tools & restraint rules for proactive check-ins:
+        # Do NOT pre-dump open windows, Spotify, or CPU/RAM telemetry into the prompt,
+        # because pre-injected telemetry causes the model to recite a surveillance status report every time.
         connector_profile = capabilities.get("connector_profile", "full_local")
         allow_proactive_tools = get_preferences_manager().get(f"{config.id}.allow_proactive_tools", True)
-        if capabilities.get("tools_enabled", True) or allow_proactive_tools:
-            try:
-                from core.bridges import bridge_manager
-                ambient_parts = []
-                ok_win, _ = bridge_manager.is_module_allowed("window_focus", connector_profile)
-                if ok_win:
-                    win_info = await asyncio.to_thread(
-                        bridge_manager.call_module, "window_focus", "get_active_window", {"max_windows": 6}, connector_profile
-                    )
-                    if win_info and not win_info.startswith("Bridge"):
-                        ambient_parts.append(win_info)
-                ok_media, _ = bridge_manager.is_module_allowed("media_sentinel", connector_profile)
-                if ok_media:
-                    media_info = await asyncio.to_thread(
-                        bridge_manager.call_module, "media_sentinel", "get_media_info", {}, connector_profile
-                    )
-                    if media_info and "No active media" not in media_info and not media_info.startswith("Bridge"):
-                        ambient_parts.append(f"Currently playing on PC: {media_info}")
-                ok_sys, _ = bridge_manager.is_module_allowed("system_link", connector_profile)
-                if ok_sys:
-                    sys_info = await asyncio.to_thread(
-                        bridge_manager.call_module, "system_link", "get_hardware_telemetry", {}, connector_profile
-                    )
-                    if sys_info and not sys_info.startswith("Bridge"):
-                        ambient_parts.append(f"System telemetry: {sys_info}")
-                ok_tasks, _ = bridge_manager.is_module_allowed("companion_tasks", connector_profile)
-                if ok_tasks:
-                    tasks_info = await asyncio.to_thread(
-                        bridge_manager.call_module, "companion_tasks", "list_tasks", {}, connector_profile
-                    )
-                    if tasks_info and "No active tasks" not in tasks_info and not tasks_info.startswith("Bridge"):
-                        ambient_parts.append(tasks_info)
-                if ambient_parts:
-                    ambient_context = "\n\nLive PC & Co-Working Context (optional — mention naturally only if relevant):\n" + "\n".join(ambient_parts)
-            except Exception:
-                pass
+        proactive_bridges_block = ""
+        if capabilities.get("tools_enabled", True) and allow_proactive_tools:
+            proactive_bridges_block = build_bridges_capabilities(capabilities, profile_id=connector_profile)
+
+        natural_checkin_rules = (
+            "\n\n## Natural Check-In & Restraint Rules (CRITICAL)"
+            "\n- Act like a real human companion or colleague casually saying hi — NOT a system monitor or status reporter."
+            "\n- Keep it brief and effortless: **1 to 2 short sentences maximum**."
+            "\n- **Having access to info ≠ needing to mention it**: Your `Memory` about the user (their name, city, age, past projects) and your `Connectors` are silent background context. Do NOT shoehorn the user's city (e.g. Apeldoorn), age, or stored profile facts into your greeting."
+            "\n- **Never recite system telemetry** (CPU %, RAM usage, disk space) or list multiple open apps/browser tabs/game launchers (Discord, Steam, Riot, etc.) in a check-in."
+            "\n- **Most check-ins should NOT use any connector tools at all** — just follow up naturally on something you talked about, share a casual thought in character, or ask a simple, low-pressure question."
+            "\n- Only if you genuinely want to peek at what the user is working on or listening to right now, you may optionally call ONE connector (`window_focus` or `media_sentinel`), and even then mention **at most one single detail** casually in passing — never a multi-paragraph breakdown."
+        )
 
         expr_hint = ""
         if config.expressions:
@@ -134,9 +115,12 @@ class CompanionEngine:
                     memory=json.dumps(mem_data["memory"], indent=2),
                     datetime_ctx=now.strftime("%A, %d %B %Y — %H:%M"),
                     trigger_instruction=instr
-                ) + recent_chat_context + ambient_context + expr_hint
+                )
             except KeyError:
-                system_prompt = raw_init_prompt + f"\n\n{instr}" + recent_chat_context + ambient_context + expr_hint
+                system_prompt = raw_init_prompt + f"\n\n{instr}"
+            if proactive_bridges_block:
+                system_prompt += f"\n\n{proactive_bridges_block}"
+            system_prompt += recent_chat_context + natural_checkin_rules + expr_hint
         else:
             bi = mem_data.get("base_info", {})
             mem = mem_data.get("memory", {})
@@ -145,23 +129,25 @@ class CompanionEngine:
                 f"Identity: {bi.get('core_identity', config.description)}\n"
                 f"Personality: {bi.get('personality', '')}\n"
                 f"Speech style: {bi.get('speech_style', '')}\n"
-                f"What you know about the user:\n{json.dumps(mem, indent=2)}\n\n"
+                f"What you know about the user (silent background familiarity — do not recite unprompted):\n{json.dumps(mem, indent=2)}\n\n"
                 f"Current time: {now.strftime('%A, %d %B %Y — %H:%M')}\n"
                 f"Time since last message: {time_desc}"
-                f"{recent_chat_context}"
-                f"{ambient_context}"
-                f"{expr_hint}\n\n"
-                f"Task: {instr}\n"
-                f"Write a short, natural check-in message (1-3 sentences) in character."
+                + (f"\n\n{proactive_bridges_block}" if proactive_bridges_block else "")
+                + f"{recent_chat_context}"
+                + f"{natural_checkin_rules}"
+                + f"{expr_hint}\n\n"
+                + f"Task: {instr}\n"
+                + "Write a short, natural check-in message (1–2 sentences) in character."
             )
 
         pref_model = get_preferences_manager().get(config.id, {}).get("model")
         model = config.default_model or pref_model or "auto"
         pm = get_provider_manager()
+        trace_id = f"{config.id}-init-{uuid.uuid4().hex[:8]}"
         response = await asyncio.to_thread(
             pm.call_with_failover,
             prompt=system_prompt,
-            trace_id=f"{config.id}-init-{uuid.uuid4().hex[:8]}",
+            trace_id=trace_id,
             temperature=behavior.get("initiate_temperature", 0.8),
             model=model,
             source=f"{config.id}-initiate"
@@ -170,6 +156,35 @@ class CompanionEngine:
         if not response.success:
             raise HTTPException(status_code=500, detail=response.error or "Model call failed")
         content = response.content.strip()
+
+        # If the companion optionally chose to call a connector tool during check-in, execute 1 round
+        if "[tool:" in content and capabilities.get("tools_enabled", True) and allow_proactive_tools:
+            workspaces = load_workspaces(config.id)
+            round_results: list[str] = []
+            cleaned_resp = content
+            async for tool_event in execute_tools_stream(content, workspaces, profile_id=connector_profile):
+                if tool_event["type"] == "final_cleaned":
+                    cleaned_resp = tool_event["content"]
+                    round_results = tool_event["results"]
+            if round_results:
+                followup_prompt = (
+                    f"{system_prompt}\n\n"
+                    f"[TOOL RESULT]\n" + "\n".join(round_results) + "\n\n"
+                    "Now write your short, casual check-in message (1–2 sentences max). "
+                    "Mention at most ONE natural detail from the result above — do NOT list multiple open apps, tabs, or hardware stats, and do NOT output any [tool:...] tags."
+                )
+                r2 = await asyncio.to_thread(
+                    pm.call_with_failover,
+                    prompt=followup_prompt,
+                    trace_id=f"{trace_id}-r1",
+                    temperature=behavior.get("initiate_temperature", 0.8),
+                    model=model,
+                    source=f"{config.id}-initiate-r1"
+                )
+                if r2.success and r2.content.strip():
+                    content = r2.content.strip()
+                else:
+                    content = cleaned_resp
 
         expression = raw.get("default_expression") or behavior.get("default_expression", "default")
         mood = behavior.get("default_mood", "calm")
@@ -334,6 +349,15 @@ class CompanionEngine:
                 "\n  - Do NOT write the word break in plain text — always output the tag: <break>"
             )
 
+            # Natural presence & context restraint
+            system_prompt += (
+                "\n\n## Natural Presence & Context Restraint (CRITICAL)"
+                "\n- **Having access to info ≠ needing to mention it**: Your `Memory` about the user (their name, city, age, past projects), their `Workspaces`, and your `Connectors` are background capabilities available when needed — NOT a checklist to weave into every reply."
+                "\n- **Silent familiarity**: Know the user's background facts the way a real friend or co-worker does — silently. Never bring up their city (e.g. Apeldoorn), age, or unrelated stored facts unless the conversation is specifically about that topic."
+                "\n- **On-demand connectors only**: Only call a `[tool:bridge ...]` connector when the user's message asks for or genuinely benefits from live PC/web data. Do NOT call connectors or report CPU/RAM/open apps unprompted during normal conversation."
+                "\n- **Human filtering of tool output**: When a connector returns data, share only what directly answers the user's question or fits the moment. Ignore background clutter (like game launchers, unrelated browser tabs, or normal CPU/RAM numbers) unless the user asked for a full breakdown."
+            )
+
             pref_model = get_preferences_manager().get(config.id, {}).get("model")
             model = config.default_model or pref_model
             pm = get_provider_manager()
@@ -388,8 +412,42 @@ class CompanionEngine:
 
             trace_id = f"{config.id}-chat-{uuid.uuid4().hex[:8]}"
 
+            # Helper to load image bytes from an attachment dict (current turn or recent history)
+            def _load_attachment_bytes(att: dict) -> dict | None:
+                try:
+                    from urllib.parse import unquote
+                    raw_path = att.get("path") or ""
+                    url = att.get("url") or ""
+                    if not raw_path and "path=" in url:
+                        raw_path = unquote(url.split("path=", 1)[1].split("&", 1)[0])
+                    if not raw_path and f"/api/companions/{config.id}/uploads/" in url:
+                        fname_part = Path(unquote(url.split("/uploads/", 1)[1].split("?", 1)[0])).name
+                        from core.utils.paths import COMPANIONS
+                        raw_path = str(COMPANIONS / config.id / "uploads" / fname_part)
+                    if not raw_path:
+                        return None
+                    p = Path(raw_path)
+                    if not p.exists() or not p.is_file():
+                        return None
+                    ext = p.suffix.lower()
+                    mime = att.get("mime_type") or (
+                        "image/png" if ext == ".png"
+                        else "image/webp" if ext == ".webp"
+                        else "image/gif" if ext == ".gif"
+                        else "image/jpeg"
+                    )
+                    return {
+                        "data": p.read_bytes(),
+                        "mime_type": mime,
+                        "filename": att.get("filename") or p.name,
+                    }
+                except Exception as _img_err:
+                    logger.debug(f"[{config.id}] Could not load attachment bytes: {_img_err}")
+                    return None
+
             # Check for explicit user /slash_command connector triggers (e.g. /screen_capture, /reddit, /weather)
             slash_attachments = []
+            current_captures: list[dict] = []
             effective_prompt = message
             if "/" in message:
                 from core.bridges import bridge_manager
@@ -406,6 +464,7 @@ class CompanionEngine:
                             "args": {"command": sr.get("command", "")}
                         }) + "\n"
                     slash_attachments = slash_res.get("attachments", [])
+                    current_captures.extend(slash_res.get("captures", []))
                     ctx_blocks = [
                         f"[CONNECTOR RESULT — {sr['name']} ({sr['module_id']}.{sr['command']})]\n{sr['output']}"
                         for sr in slash_res.get("results", [])
@@ -428,17 +487,47 @@ class CompanionEngine:
                     user_attachments.append({
                         "filename": fname,
                         "url": url,
+                        "path": att.get("path", ""),
                         "is_image": is_img,
                         "type": "image" if is_img else "file"
                     })
                     if txt:
                         att_blocks.append(f"[ATTACHED FILE: {fname}]\n```\n{txt[:16000]}\n```")
                     elif is_img:
-                        att_blocks.append(f"[ATTACHED IMAGE: {fname} (path: {att.get('path', url)})]")
+                        img_cap = _load_attachment_bytes(att)
+                        if img_cap:
+                            current_captures.append(img_cap)
+                        att_blocks.append(f"[ATTACHED IMAGE: {fname} — attached as multimodal vision input]")
                     else:
                         att_blocks.append(f"[ATTACHED FILE: {fname}]")
                 if att_blocks:
                     effective_prompt = "\n\n".join(att_blocks) + f"\n\n{effective_prompt}"
+
+            # Recall most recent screenshot/image from recent conversation turns so follow-up questions can see it
+            recalled_captures: list[dict] = []
+            if not current_captures:
+                try:
+                    recent_days = history.load_days(0, 1).get("history", [])
+                    recent_msgs = recent_days[0].get("messages", [])[-8:] if recent_days else []
+                    for h_msg in reversed(recent_msgs):
+                        h_atts = h_msg.get("attachments") or []
+                        for h_att in reversed(h_atts):
+                            if h_att.get("is_image") or h_att.get("type") in ("image", "screenshot", "webcam"):
+                                loaded_img = _load_attachment_bytes(h_att)
+                                if loaded_img:
+                                    recalled_captures.append(loaded_img)
+                                    effective_prompt = (
+                                        f"[RECENT CONVERSATION IMAGE STILL ATTACHED: {loaded_img.get('filename', 'image')} — "
+                                        "The screenshot/image from the recent conversation turn is attached directly to this request as vision input. "
+                                        "If the user is asking about that image, inspect the attached image directly and do NOT take a new screenshot. "
+                                        "Only call screen_capture if the user asks for a new/updated screenshot or a different monitor.]\n\n"
+                                        f"{effective_prompt}"
+                                    )
+                                    break
+                        if recalled_captures:
+                            break
+                except Exception as _rec_err:
+                    logger.debug(f"[{config.id}] Recent image recall skipped: {_rec_err}")
 
             full_content = ""
             actual_model = model
@@ -451,10 +540,12 @@ class CompanionEngine:
                 messages.append({"role": "user" if r == "user" else "assistant", "content": c})
 
             # 1. Stream primary LLM response
+            active_images = current_captures or recalled_captures
             for chunk in pm.call_with_failover_stream(
                 prompt=effective_prompt,
                 system_prompt=system_prompt,
                 messages=messages,
+                images=active_images or None,
                 trace_id=trace_id,
                 temperature=behavior.get("temperature", 0.8),
                 model=model, source=f"{config.id}-chat"
@@ -464,6 +555,7 @@ class CompanionEngine:
 
             # 2. Tool execution loop — up to 3 rounds so chained tool calls resolve
             results_total: list[str] = []
+            tool_attachments: list[dict] = []
             intermediate_responses: list[str] = []
             final_content  = full_content
             current_resp   = full_content
@@ -496,6 +588,11 @@ class CompanionEngine:
 
                     results_total.extend(round_results)
 
+                    # Extract any newly captured screenshot/webcam bytes immediately so the follow-up LLM call can see the image!
+                    current_captures, round_att_meta = extract_peripheral_captures(round_results, current_captures)
+                    if round_att_meta:
+                        tool_attachments.extend(round_att_meta)
+
                     inter_clean = _strip_meta_tags(cleaned_resp)
                     if inter_clean:
                         intermediate_responses.append(inter_clean)
@@ -506,18 +603,26 @@ class CompanionEngine:
                     round_msgs.append({"role": "assistant", "content": current_resp})
 
                     tool_summary   = "\n\n".join(round_results)
+                    vision_note = (
+                        " Any captured screenshot or webcam frame is attached directly to this request as multimodal vision input — "
+                        "inspect the actual image carefully and describe what you genuinely see (never guess or fabricate titles/content)."
+                        if current_captures else ""
+                    )
                     followup_prompt = (
                         f"[TOOL RESULTS — use these to answer]\n{tool_summary}\n\n"
-                        "The results above are real. Answer the user naturally using them. "
+                        "The results above are real. Answer the user naturally and selectively — focus only on what is relevant to their question or the conversation, "
+                        f"and ignore unrelated background processes, tabs, or telemetry noise unless they asked for a full list.{vision_note} "
                         "Do NOT output any [tool:...] calls — your tool use is finished."
                     )
 
                     next_resp = ""
                     yield json.dumps({"type": "tool_response_start"}) + "\n"
+                    round_images = current_captures or recalled_captures
                     for chunk in pm.call_with_failover_stream(
                         prompt=followup_prompt,
                         system_prompt=system_prompt,
                         messages=round_msgs,
+                        images=round_images or None,
                         trace_id=f"{trace_id}-r{_round + 1}",
                         temperature=behavior.get("temperature", 0.8),
                         model=model,
@@ -576,10 +681,7 @@ class CompanionEngine:
                     mem_up = True
 
             # 6. Extract peripheral attachments (screenshots etc) and deduplicate
-            raw_assistant_attachments = list(slash_attachments)
-            if results:
-                _, tool_attachments = extract_peripheral_captures(results, [])
-                raw_assistant_attachments.extend(tool_attachments)
+            raw_assistant_attachments = list(slash_attachments) + list(tool_attachments)
             assistant_attachments = []
             _seen_att = set()
             for _att in raw_assistant_attachments:

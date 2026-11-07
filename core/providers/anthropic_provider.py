@@ -54,6 +54,24 @@ class AnthropicProvider(BaseProvider):
                 active_messages = list(messages)
                 if prompt and (not messages or messages[-1].get('content') != prompt):
                     active_messages.append({"role": "user", "content": prompt})
+                if images and active_messages and active_messages[-1].get("role") == "user":
+                    import base64
+                    last_txt = active_messages[-1].get("content", "")
+                    content_blocks: Any = [{"type": "text", "text": last_txt}] if isinstance(last_txt, str) else list(last_txt)
+                    for img in images:
+                        if not img.get("data"):
+                            continue
+                        b64_data = base64.b64encode(img['data']).decode('utf-8')
+                        mime = img.get('mime_type', 'image/jpeg')
+                        content_blocks.append({
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": mime,
+                                "data": b64_data
+                            }
+                        })
+                    active_messages[-1] = {**active_messages[-1], "content": content_blocks}
             else:
                 if images:
                     import base64
@@ -168,6 +186,24 @@ class AnthropicProvider(BaseProvider):
                 active_messages = list(messages)
                 if prompt and (not messages or messages[-1].get('content') != prompt):
                     active_messages.append({"role": "user", "content": prompt})
+                if images and active_messages and active_messages[-1].get("role") == "user":
+                    import base64
+                    last_txt = active_messages[-1].get("content", "")
+                    content_blocks: Any = [{"type": "text", "text": last_txt}] if isinstance(last_txt, str) else list(last_txt)
+                    for img in images:
+                        if not img.get("data"):
+                            continue
+                        b64_data = base64.b64encode(img['data']).decode('utf-8')
+                        mime = img.get('mime_type', 'image/jpeg')
+                        content_blocks.append({
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": mime,
+                                "data": b64_data
+                            }
+                        })
+                    active_messages[-1] = {**active_messages[-1], "content": content_blocks}
             else:
                 if images:
                     import base64
