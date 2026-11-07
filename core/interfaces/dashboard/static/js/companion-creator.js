@@ -2538,16 +2538,27 @@ const CompanionCreator = (() => {
         return items ? `<div class="cc-msg-attachments">${items}</div>` : '';
     }
 
+    function _renderMsgAvatar() {
+        const color  = _activeData?.accent_color || '#6366f1';
+        const symbol = _activeData?.avatar_symbol || '✦';
+        const name   = _esc(_activeData?.name || 'Companion');
+        const cId    = _activeData?.id || _editingId;
+        if (_activeData?.has_icon && cId) {
+            return `<div class="cc-msg-avatar" style="border-color:${color}55;box-shadow:0 3px 12px ${color}28" title="${name}">
+              <img class="cc-msg-avatar-img" src="${API}/${cId}/icon" alt="${name}" onerror="this.onerror=null;this.parentElement.innerHTML='<span style=\\'color:${color}\\'>${symbol}</span>';">
+            </div>`;
+        }
+        return `<div class="cc-msg-avatar" style="background:${color}22;color:${color};border-color:${color}44;box-shadow:0 3px 12px ${color}1c" title="${name}">${symbol}</div>`;
+    }
+
     function _buildMessageNode(role, text, id = null, attachments = null) {
         const bubble = document.createElement('div');
         bubble.className = `cc-msg cc-msg-${role}`;
         if (id) bubble.id = id;
-        const color  = _activeData?.accent_color || '#6366f1';
-        const symbol = _activeData?.avatar_symbol || '✦';
         const attHtml = _renderAttachmentsBlock(attachments, text);
         if (role === 'companion') {
             bubble.innerHTML = `
-              <div class="cc-msg-avatar" style="background:${color}22;color:${color}">${symbol}</div>
+              ${_renderMsgAvatar()}
               <div class="cc-msg-bubble cc-msg-md">${_renderMd(text, true)}${attHtml}</div>`;
             _applyHighlight(bubble);
             _attachBubbleActions(bubble, text);
@@ -2690,8 +2701,8 @@ const CompanionCreator = (() => {
             const b = document.createElement('div');
             b.className = 'cc-msg cc-msg-companion';
             b.innerHTML = `
-              <div class="cc-msg-avatar" style="background:${color}22;color:${color}">${symbol}</div>
-              <div class="cc-msg-bubble${streaming ? ' cc-msg-streaming' : ''}">…</div>`;
+              ${_renderMsgAvatar()}
+              <div class="cc-msg-bubble cc-msg-md${streaming ? ' cc-msg-streaming' : ''}">…</div>`;
             msgsEl?.appendChild(b);
             if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
             return b;
@@ -2706,9 +2717,48 @@ const CompanionCreator = (() => {
             return el;
         }
 
-        let currentBubble    = _makeBubble(true);
+        let activeBubbles     = [];
+        let currentBubble     = _makeBubble(true);
         let currentBubbleText = currentBubble.querySelector('.cc-msg-bubble');
-        let toolIndicator    = null;
+        activeBubbles.push(currentBubble);
+        let toolIndicator     = null;
+        let rafId             = null;
+        let pendingTextToRender = '';
+
+        function renderStreamText(text) {
+            pendingTextToRender = text;
+            if (!rafId) {
+                rafId = requestAnimationFrame(() => {
+                    rafId = null;
+                    if (!currentBubbleText) return;
+                    const stripped = _stripToolTags(pendingTextToRender);
+                    if (stripped) {
+                        currentBubbleText.innerHTML = _renderMd(stripped) + '<span class="cc-streaming-cursor"></span>';
+                        currentBubbleText.classList.remove('cc-msg-streaming');
+                    }
+                    if (msgsEl) {
+                        const isNearBottom = (msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight) < 160;
+                        if (isNearBottom) msgsEl.scrollTop = msgsEl.scrollHeight;
+                    }
+                });
+            }
+        }
+
+        function flushStreamRender(finalPartText = null) {
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+            if (!currentBubbleText) return;
+            const textToFlush = finalPartText !== null ? finalPartText : pendingTextToRender;
+            const stripped = _stripToolTags(textToFlush);
+            if (stripped) {
+                currentBubbleText.innerHTML = _renderMd(stripped);
+            }
+            currentBubbleText.classList.remove('cc-msg-streaming');
+            const cur = currentBubbleText.querySelector('.cc-streaming-cursor');
+            if (cur) cur.remove();
+        }
 
         const histForApi = _chatHistory.slice(0, -1).map(m => ({ role: m.role, content: m.content }));
 
@@ -2742,18 +2792,28 @@ const CompanionCreator = (() => {
 
                         if (evt.type === 'message' && evt.content) {
                             fullText += evt.content;
-                            if (currentBubbleText) {
-                                // Strip tool call blocks and expression tags from the live display
-                                const displayText = _stripToolTags(fullText);
-                                if (displayText) {
-                                    currentBubbleText.innerHTML = _renderMd(displayText);
-                                    currentBubbleText.classList.remove('cc-msg-streaming');
+                            const splitParts = fullText.split(/<break\s*\/?>/i);
+                            if (splitParts.length > activeBubbles.length && activeBubbles.length < 3) {
+                                // Finalize the previous bubble with clean text
+                                flushStreamRender(splitParts[activeBubbles.length - 1]);
+                                if (currentBubble) {
+                                    _applyHighlight(currentBubble);
                                 }
+                                // Start next bubble smoothly
+                                currentBubble = _makeBubble(true);
+                                currentBubbleText = currentBubble.querySelector('.cc-msg-bubble');
+                                activeBubbles.push(currentBubble);
                             }
+
+                            const activePartIndex = activeBubbles.length - 1;
+                            const currentPartContent = (activePartIndex === 2 && splitParts.length > 3)
+                                ? splitParts.slice(2).join('\n\n')
+                                : (splitParts[activePartIndex] || '');
+                            renderStreamText(currentPartContent);
 
                         } else if (evt.type === 'tool_start') {
                             _setPortraitThinking(true, `Using ${evt.tool || 'tool'}…`);
-                            // Finalize the intermediate bubble with clean text, record in history, then show the indicator
+                            flushStreamRender();
                             const cleanedFirst = _stripToolTags(fullText);
                             if (currentBubbleText) {
                                 currentBubbleText.classList.add('cc-msg-md');
@@ -2770,19 +2830,22 @@ const CompanionCreator = (() => {
 
                         } else if (evt.type === 'tool_response_start') {
                             _setPortraitThinking(true, 'Replying…');
-                            // Remove tool indicator, reset accumulator, open a new bubble
                             toolIndicator?.remove();
                             toolIndicator = null;
                             fullText = '';
+                            activeBubbles     = [];
                             currentBubble     = _makeBubble(true);
                             currentBubbleText = currentBubble.querySelector('.cc-msg-bubble');
+                            activeBubbles.push(currentBubble);
 
                         } else if (evt.type === 'final_cleaned' && evt.content) {
                             finalText = evt.content;
 
                         } else if (evt.type === 'error' && (evt.message || evt.content)) {
+                            flushStreamRender();
                             finalText = evt.message || evt.content;
                             if (currentBubbleText) {
+                                currentBubbleText.textContent = finalText;
                                 currentBubbleText.classList.add('cc-msg-error-text');
                                 currentBubbleText.classList.remove('cc-msg-streaming');
                             }
@@ -2808,45 +2871,48 @@ const CompanionCreator = (() => {
                 if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
             }
 
+            flushStreamRender();
+
             // finalText from server is already cleaned; fullText is the raw stream fallback.
-            // finalParts is set when the companion used <break> to split its response.
             const primaryText = finalText || _stripToolTags(fullText) || '(no response)';
-            const parts       = finalParts.length > 1 ? finalParts : null;
-            const firstPart   = parts ? parts[0] : primaryText;
+            const rawSplit    = fullText.split(/<break\s*\/?>/i).map(p => _stripToolTags(p)).filter(Boolean);
+            const parts       = (finalParts && finalParts.length) ? finalParts : (rawSplit.length > 1 ? rawSplit.slice(0, 3) : [primaryText]);
 
-            // Render the first (or only) part into the current bubble (with any screenshot/file/YouTube attachments once)
-            if (currentBubbleText) {
-                currentBubbleText.classList.add('cc-msg-md');
-                currentBubbleText.classList.remove('cc-msg-streaming');
-                const attHtml = _renderAttachmentsBlock(currentBubble?._doneAttachments || null, primaryText);
-                currentBubbleText.innerHTML = `${_renderMd(firstPart, true)}${attHtml}`;
+            // Finalize each active bubble in place without sudden layout shift or collapsing
+            for (let i = 0; i < activeBubbles.length; i++) {
+                const b = activeBubbles[i];
+                const bText = b.querySelector('.cc-msg-bubble');
+                const partContent = parts[i] || (i === 0 ? primaryText : '');
+                if (bText && partContent) {
+                    bText.classList.add('cc-msg-md');
+                    bText.classList.remove('cc-msg-streaming');
+                    const attHtml = (i === 0) ? _renderAttachmentsBlock(b?._doneAttachments || null, primaryText) : '';
+                    bText.innerHTML = `${_renderMd(partContent, true)}${attHtml}`;
+                }
+                _applyHighlight(b);
+                _attachBubbleActions(b, partContent);
+                _chatHistory.push({ role: 'assistant', content: partContent });
             }
-            _applyHighlight(currentBubble);
-            _attachBubbleActions(currentBubble, firstPart);
-            _chatHistory.push({ role: 'assistant', content: firstPart });
 
-            // Render subsequent <break> parts as new bubbles with natural delays
-            if (parts) {
-                for (let i = 1; i < parts.length; i++) {
-                    ((part, delay) => {
-                        setTimeout(() => {
-                            const nb = _appendMessage('companion', part);
-                            if (nb) _applyHighlight(nb);
-                            _chatHistory.push({ role: 'assistant', content: part });
-                            if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
-                        }, delay);
-                    })(parts[i], i * 420);
+            // If backend produced more parts than activeBubbles, append them cleanly
+            if (parts.length > activeBubbles.length) {
+                for (let i = activeBubbles.length; i < parts.length; i++) {
+                    const nb = _appendMessage('companion', parts[i]);
+                    if (nb) _applyHighlight(nb);
+                    _chatHistory.push({ role: 'assistant', content: parts[i] });
                 }
             }
 
             if (_activeData?.voice?.auto_speak) {
-                const fullSpoken = parts ? parts.join(' ') : firstPart;
+                const fullSpoken = parts.join(' ');
                 _speakText(fullSpoken);
             }
 
         } catch (err) {
+            flushStreamRender();
             if (currentBubbleText) { currentBubbleText.textContent = 'Failed to get a response.'; currentBubbleText.classList.add('cc-msg-error-text'); }
         } finally {
+            if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
             _chatStreaming = false;
             _setPortraitThinking(false);
             if (input)   { input.disabled   = false; input.focus(); }

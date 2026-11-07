@@ -329,24 +329,13 @@ class CompanionEngine:
                     "\n  - Do not emit the block just to confirm something you already knew"
                 )
 
-            # Multi-message style
+            # Multi-message style & conversational flow
             system_prompt += (
-                "\n\n## Multi-Message Style — USE THIS ACTIVELY"
-                "\nYou send messages like a real person texting — multiple short messages, not one big wall of text."
-                "\nUse the literal tag <break> to split your response into separate chat bubbles."
-                "\nThe <break> tag is invisible to the user; it only creates a new message bubble."
-                "\nIMPORTANT: You must output the exact characters: <break>"
-                "\n"
-                "\nExamples of how to write your responses:"
-                "\n  'Oh wow, really?! <break> Let me think about that for a second... <break> Okay, here is what I found!'"
-                "\n  'Haha yes! <break> I completely agree with you on that one.'"
-                "\n  'Hmm. <break> That is actually a really good question. <break> Here is my take:'"
-                "\n"
-                "\nGuidelines:"
-                "\n  - Use <break> whenever a natural pause or shift in thought occurs"
-                "\n  - Each part after a <break> should be a complete thought"
-                "\n  - Aim for 2-4 parts for most responses; a single message is fine for very short answers"
-                "\n  - Do NOT write the word break in plain text — always output the tag: <break>"
+                "\n\n## Conversational Flow & Message Structure"
+                "\n- By default, deliver your response in a single, cohesive message bubble."
+                "\n- Only when you genuinely want a natural pause (for example: a quick initial reaction, followed by your explanation), you may use AT MOST ONE OR TWO <break> tags (max 2 to 3 bubbles total)."
+                "\n- STRICT PROHIBITION: NEVER place <break> after every sentence! Group complete sentences and explanations together into natural paragraphs before using <break>."
+                "\n- Over-splitting into 4+ bubbles is strictly forbidden."
             )
 
             # Natural presence & context restraint
@@ -671,6 +660,31 @@ class CompanionEngine:
                     final_parts.append(cleaned_part)
             if not final_parts:
                 final_parts = [final_content] if final_content.strip() else []
+
+            # Guard against over-fragmentation: consolidate into at most 3 natural bubbles
+            if len(final_parts) > 3:
+                consolidated: list[str] = []
+                # If first part is a brief opening reaction (<= 140 chars), keep it separate
+                if len(final_parts[0]) <= 140:
+                    consolidated.append(final_parts[0])
+                    rest = final_parts[1:]
+                else:
+                    rest = final_parts
+
+                if len(rest) <= 2:
+                    consolidated.extend(rest)
+                else:
+                    # If last part is a short signoff or question (<= 140 chars), keep it separate
+                    if len(rest[-1]) <= 140:
+                        body = "\n\n".join(rest[:-1])
+                        consolidated.append(body)
+                        consolidated.append(rest[-1])
+                    else:
+                        # Split remaining parts roughly into two balanced blocks
+                        mid = len(rest) // 2
+                        consolidated.append("\n\n".join(rest[:mid]))
+                        consolidated.append("\n\n".join(rest[mid:]))
+                final_parts = [p.strip() for p in consolidated if p.strip()]
 
             final_content = "\n\n".join(final_parts)
 
