@@ -2264,6 +2264,7 @@ const CompanionCreator = (() => {
                 frag.appendChild(divEl);
 
                 let lastAssistantAttKey = '';
+                let lastRole = null;
                 for (const msg of dayMsgs) {
                     const roleKey = msg.role === 'user' ? 'user' : 'companion';
                     olderHistoryItems.push({ role: msg.role, content: msg.content });
@@ -2278,7 +2279,9 @@ const CompanionCreator = (() => {
                     } else if (roleKey === 'user') {
                         lastAssistantAttKey = '';
                     }
-                    const b = _buildMessageNode(roleKey, msg.content, null, msgAtts);
+                    const isContinuation = (roleKey === lastRole);
+                    lastRole = roleKey;
+                    const b = _buildMessageNode(roleKey, msg.content, null, msgAtts, isContinuation);
                     frag.appendChild(b);
                     loaded++;
                 }
@@ -2409,7 +2412,10 @@ const CompanionCreator = (() => {
         const twHtml = typeof window.__renderAethvionTwitchCards === 'function'
             ? window.__renderAethvionTwitchCards(text, existingIds)
             : '';
-        return ytHtml + twHtml;
+        const spHtml = typeof window.__renderAethvionSpotifyCards === 'function'
+            ? window.__renderAethvionSpotifyCards(text, existingIds)
+            : '';
+        return ytHtml + twHtml + spHtml;
     };
 
     // Twitch live channel / VOD cards with inline embedded player
@@ -2508,6 +2514,92 @@ const CompanionCreator = (() => {
         return html ? `<div class="cc-yt-cards">${html}</div>` : '';
     };
 
+    // Spotify track / album / playlist / episode cards with inline embedded player
+    function _extractSpotifyTargets(text) {
+        if (!text) return [];
+        const out = [];
+        const seen = new Set();
+
+        // 1. URLs: https://open.spotify.com/(track|album|playlist|episode|show)/([a-zA-Z0-9]+)
+        const urlRe = /(?:https?:\/\/)?open\.spotify\.com\/(track|album|playlist|episode|show)\/([a-zA-Z0-9]+)/gi;
+        let m;
+        while ((m = urlRe.exec(text)) !== null) {
+            const kind = m[1].toLowerCase();
+            const id = m[2];
+            const key = `sp:${kind}:${id}`;
+            if (!seen.has(key)) { seen.add(key); out.push({ kind, id }); }
+        }
+
+        // 2. URIs: spotify:(track|album|playlist|episode|show):([a-zA-Z0-9]+)
+        const uriRe = /spotify:(track|album|playlist|episode|show):([a-zA-Z0-9]+)/gi;
+        while ((m = uriRe.exec(text)) !== null) {
+            const kind = m[1].toLowerCase();
+            const id = m[2];
+            const key = `sp:${kind}:${id}`;
+            if (!seen.has(key)) { seen.add(key); out.push({ kind, id }); }
+        }
+
+        return out.slice(0, 3);
+    }
+
+    function _buildSingleSpotifyCardHtml(target, title = '') {
+        if (!target || !target.id || !target.kind) return '';
+        if (!/^[a-zA-Z0-9]+$/.test(target.id)) return '';
+        const kind = target.kind.toLowerCase();
+        const id = target.id;
+        const pageUrl = `https://open.spotify.com/${kind}/${id}`;
+        const appUri = `spotify:${kind}:${id}`;
+        const typeLabel = kind.charAt(0).toUpperCase() + kind.slice(1);
+        const label = _esc(title || `Spotify ${typeLabel}`);
+        const height = (kind === 'track') ? 152 : 352;
+
+        return `
+          <div class="cc-yt-card cc-sp-card" data-sp-kind="${kind}" data-sp-id="${id}">
+            <div class="cc-sp-stage">
+              <iframe
+                src="https://open.spotify.com/embed/${kind}/${id}?utm_source=generator&theme=0"
+                width="100%"
+                height="${height}"
+                frameBorder="0"
+                allowfullscreen=""
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy"
+                class="cc-sp-iframe"
+                style="border-radius:12px;display:block;">
+              </iframe>
+            </div>
+            <div class="cc-yt-footer cc-sp-footer">
+              <span class="cc-yt-badge cc-sp-badge" title="${label}">
+                <i class="fab fa-spotify" style="color:#1db954;"></i> ${label}
+              </span>
+              <div class="cc-yt-actions">
+                <a href="${pageUrl}" target="_blank" rel="noopener noreferrer" class="cc-yt-action-btn cc-sp-action-btn cc-yt-open-link" title="Open in Spotify Web Player">
+                  <i class="fas fa-arrow-up-right-from-square"></i> Web
+                </a>
+                <a href="${appUri}" class="cc-yt-action-btn cc-sp-action-btn" title="Open in Desktop Spotify App">
+                  <i class="fab fa-spotify"></i> App
+                </a>
+              </div>
+            </div>
+          </div>`;
+    }
+
+    window.__renderAethvionSpotifyCards = function(text, existingIds = null) {
+        const targets = _extractSpotifyTargets(text).filter(t => !(existingIds && existingIds.has(`sp:${t.kind}:${t.id}`)));
+        if (!targets.length) return '';
+        if (existingIds) targets.forEach(t => existingIds.add(`sp:${t.kind}:${t.id}`));
+        return `<div class="cc-yt-cards cc-sp-cards">${targets.map(t => _buildSingleSpotifyCardHtml(t)).join('')}</div>`;
+    };
+
+    window.__buildAethvionSpotifyCard = function(att) {
+        if (!att) return '';
+        const raw = att.spotify_url || att.url || att.track_id || '';
+        const targets = _extractSpotifyTargets(raw);
+        if (!targets.length) return '';
+        const html = _buildSingleSpotifyCardHtml(targets[0], att.title || '');
+        return html ? `<div class="cc-yt-cards cc-sp-cards">${html}</div>` : '';
+    };
+
     function _renderAttachmentsBlock(attachments, textForYtDedup = '') {
         if (!Array.isArray(attachments) || !attachments.length) return '';
         const seen = new Set();
@@ -2518,6 +2610,10 @@ const CompanionCreator = (() => {
             const dedupKey = (att.video_id || fname) + '|' + rawUrl;
             if (seen.has(dedupKey)) return '';
             seen.add(dedupKey);
+            if (att.type === 'spotify' || att.spotify_url || att.track_id) {
+                const spCard = window.__buildAethvionSpotifyCard(att);
+                if (spCard) return spCard;
+            }
             if (att.type === 'twitch') {
                 const ch = String(att.channel || '').toLowerCase();
                 if (!ch || _extractTwitchTargets(textForYtDedup).some(t => t.id === ch)) return '';
@@ -2551,9 +2647,9 @@ const CompanionCreator = (() => {
         return `<div class="cc-msg-avatar" style="background:${color}22;color:${color};border-color:${color}44;box-shadow:0 3px 12px ${color}1c" title="${name}">${symbol}</div>`;
     }
 
-    function _buildMessageNode(role, text, id = null, attachments = null) {
+    function _buildMessageNode(role, text, id = null, attachments = null, isContinuation = false) {
         const bubble = document.createElement('div');
-        bubble.className = `cc-msg cc-msg-${role}`;
+        bubble.className = `cc-msg cc-msg-${role}${isContinuation ? ' cc-msg-continuation' : ''}`;
         if (id) bubble.id = id;
         const attHtml = _renderAttachmentsBlock(attachments, text);
         if (role === 'companion') {
@@ -2568,10 +2664,14 @@ const CompanionCreator = (() => {
         return bubble;
     }
 
-    function _appendMessage(role, text, id = null, attachments = null) {
+    function _appendMessage(role, text, id = null, attachments = null, isContinuation = null) {
         const msgsEl = document.getElementById('cc-chat-msgs');
         if (!msgsEl) return null;
-        const bubble = _buildMessageNode(role, text, id, attachments);
+        if (isContinuation === null) {
+            const lastMsg = msgsEl.querySelector('.cc-msg:last-of-type');
+            isContinuation = Boolean(lastMsg && lastMsg.classList.contains(`cc-msg-${role}`));
+        }
+        const bubble = _buildMessageNode(role, text, id, attachments, isContinuation);
         msgsEl.appendChild(bubble);
         msgsEl.scrollTop = msgsEl.scrollHeight;
         return bubble;
@@ -2697,9 +2797,9 @@ const CompanionCreator = (() => {
         const symbol = _activeData?.avatar_symbol || '✦';
         const msgsEl = document.getElementById('cc-chat-msgs');
 
-        function _makeBubble(streaming = true) {
+        function _makeBubble(streaming = true, isContinuation = false) {
             const b = document.createElement('div');
-            b.className = 'cc-msg cc-msg-companion';
+            b.className = `cc-msg cc-msg-companion${isContinuation ? ' cc-msg-continuation' : ''}`;
             b.innerHTML = `
               ${_renderMsgAvatar()}
               <div class="cc-msg-bubble cc-msg-md${streaming ? ' cc-msg-streaming' : ''}">…</div>`;
@@ -2800,7 +2900,7 @@ const CompanionCreator = (() => {
                                     _applyHighlight(currentBubble);
                                 }
                                 // Start next bubble smoothly
-                                currentBubble = _makeBubble(true);
+                                currentBubble = _makeBubble(true, true);
                                 currentBubbleText = currentBubble.querySelector('.cc-msg-bubble');
                                 activeBubbles.push(currentBubble);
                             }
@@ -2897,7 +2997,7 @@ const CompanionCreator = (() => {
             // If backend produced more parts than activeBubbles, append them cleanly
             if (parts.length > activeBubbles.length) {
                 for (let i = activeBubbles.length; i < parts.length; i++) {
-                    const nb = _appendMessage('companion', parts[i]);
+                    const nb = _appendMessage('companion', parts[i], null, null, true);
                     if (nb) _applyHighlight(nb);
                     _chatHistory.push({ role: 'assistant', content: parts[i] });
                 }

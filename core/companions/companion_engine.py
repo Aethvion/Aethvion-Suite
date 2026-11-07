@@ -588,6 +588,8 @@ class CompanionEngine:
                         inter_clean = _strip_meta_tags(raw_inter)
                         if inter_clean:
                             intermediate_responses.append(inter_clean)
+                    if len(intermediate_responses) > 2:
+                        intermediate_responses = ["\n\n".join(intermediate_responses)]
 
                     if _round == 0:
                         round_msgs.append({"role": "user",      "content": effective_prompt})
@@ -642,6 +644,14 @@ class CompanionEngine:
             if mood_match:
                 mood = mood_match.group(1).strip().lower()
 
+            # 3b. Extract & apply memory updates BEFORE breaking into bubbles
+            mem_up = False
+            if capabilities.get("memory_updates_enabled", True):
+                cleaned_mem_content = memory.update_from_xml(final_content)
+                if cleaned_mem_content != final_content:
+                    final_content = cleaned_mem_content
+                    mem_up = True
+
             # 4. Strip expression/mood content tags — but PRESERVE <break> for splitting below.
             final_content = re.sub(
                 r"<(?:expression|mood)>.*?</(?:expression|mood)>", "",
@@ -687,15 +697,6 @@ class CompanionEngine:
                 final_parts = [p.strip() for p in consolidated if p.strip()]
 
             final_content = "\n\n".join(final_parts)
-
-            # 5. Handle Memory Updates
-            mem_up = False
-            if capabilities.get("memory_updates_enabled", True):
-                cleaned_mem_content = memory.update_from_xml(final_content)
-                if cleaned_mem_content != final_content:
-                    final_content = cleaned_mem_content
-                    final_parts = [p.strip() for p in final_content.split("\n\n") if p.strip()] or [final_content]
-                    mem_up = True
 
             # 6. Extract peripheral attachments (screenshots etc) and deduplicate
             raw_assistant_attachments = list(slash_attachments) + list(tool_attachments)

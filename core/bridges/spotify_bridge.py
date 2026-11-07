@@ -133,14 +133,14 @@ class LocalSpotifyController:
         """Resume playback or search & play a song/genre/URI on local Spotify."""
         if target:
             clean_target = target.strip()
-            if clean_target.startswith("spotify:"):
+            track_id = None
+            if clean_target.startswith("spotify:track:"):
+                uri = clean_target
+                track_id = clean_target.split(":")[-1]
+            elif clean_target.startswith("spotify:"):
                 uri = clean_target
             else:
-                uri, _ = _resolve_spotify_track_uri(clean_target)
-
-            # Check if something is currently playing so we don't accidentally toggle-pause it
-            current_status = cls.get_current()
-            was_playing = "currently playing" in current_status.lower()
+                uri, track_id = _resolve_spotify_track_uri(clean_target)
 
             try:
                 os.startfile(uri)
@@ -148,8 +148,10 @@ class LocalSpotifyController:
                 flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
                 subprocess.run(["cmd", "/c", "start", uri], shell=True, creationflags=flags)
 
+            web_url = f"https://open.spotify.com/track/{track_id}" if track_id else ""
+            embed_ref = f" {web_url}" if web_url else ""
             return (
-                f"Opened '{clean_target}' in Spotify! "
+                f"Opened '{clean_target}' in Spotify!{embed_ref} "
                 f"(In Local Mode, Spotify navigates to the track on your screen. "
                 f"For silent background playback switching and queueing without touching the app, connect Spotify Cloud OAuth in Connector Settings)."
             )
@@ -235,9 +237,14 @@ class CloudSpotifyController:
             results = sp.search(q=target, limit=1, type="track")
             items = results.get("tracks", {}).get("items", [])
             if items:
-                track_uri = items[0]["uri"]
+                track = items[0]
+                track_uri = track["uri"]
                 sp.start_playback(uris=[track_uri])
-                return f"Started playing '{items[0]['name']}' on Spotify (Cloud)."
+                track_url = track.get("external_urls", {}).get("spotify", "")
+                artist_name = track.get("artists", [{}])[0].get("name", "")
+                artist_part = f" by {artist_name}" if artist_name else ""
+                url_part = f" {track_url}" if track_url else ""
+                return f"Started playing '{track['name']}'{artist_part} on Spotify (Cloud):{url_part}"
             return f"Could not find track '{target}' on Spotify Cloud."
         sp.start_playback()
         return "Resumed playback on Spotify (Cloud)."

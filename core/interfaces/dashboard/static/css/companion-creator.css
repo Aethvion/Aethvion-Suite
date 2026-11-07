@@ -515,6 +515,21 @@
     border-radius: 4px 14px 14px 14px; color: var(--text-primary);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
+/* Message Clustering & Continuation */
+.cc-msg-continuation {
+    margin-top: -0.38rem;
+}
+.cc-msg-companion.cc-msg-continuation .cc-msg-avatar {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    box-shadow: none;
+    border-color: transparent;
+    background: transparent;
+}
+.cc-msg-companion.cc-msg-continuation .cc-msg-bubble {
+    border-top-left-radius: 14px;
+}
 .cc-msg-streaming {
     opacity: 1;
     font-style: normal;
@@ -1965,3 +1980,33 @@
 .cc-tw-status-live { background: #eb0400; }
 .cc-tw-status-off  { background: rgba(24, 24, 27, 0.85); color: #a1a1aa; }
 .cc-tw-status-vod  { background: #9146ff; }
+
+/* Spotify variant of the media card */
+.cc-sp-card {
+    border-color: rgba(29, 185, 84, 0.35);
+    background: rgba(18, 18, 18, 0.95);
+    max-width: 480px;
+}
+.cc-sp-card:hover {
+    border-color: rgba(29, 185, 84, 0.6);
+    box-shadow: 0 6px 22px rgba(29, 185, 84, 0.15);
+}
+.cc-sp-stage {
+    width: 100%;
+    background: #121212;
+    overflow: hidden;
+    padding: 0.35rem 0.35rem 0 0.35rem;
+}
+.cc-sp-iframe {
+    width: 100%;
+    border: none;
+    display: block;
+}
+.cc-sp-badge i {
+    color: #1db954;
+}
+.cc-sp-action-btn:hover {
+    background: rgba(29, 185, 84, 0.18);
+    border-color: rgba(29, 185, 84, 0.5);
+    color: #1db954;
+}
