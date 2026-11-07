@@ -14,16 +14,24 @@ DEFAULT_PROFILES = [
     {
         "id": "full_local",
         "name": "Full Local Suite",
-        "description": "Unrestricted access to all system, media, and web connectors. Recommended for local GGUF models and trusted companions.",
+        "description": "Unrestricted access to all system, co-working, media, and web connectors. Recommended for local GGUF models and trusted companions.",
         "privacy_badge": "Local & Cloud",
         "icon": "fas fa-shield-halved",
         "builtin": True,
         "allowed_connectors": [
             "screen_capture",
+            "screen_ocr",
+            "window_focus",
+            "clipboard_link",
+            "git_link",
+            "process_watcher",
             "media_sentinel",
             "system_link",
             "webcam_capture",
+            "companion_tasks",
             "web_search",
+            "webpage_reader",
+            "youtube_link",
             "reddit",
             "weather_link",
             "spotify"
@@ -32,12 +40,15 @@ DEFAULT_PROFILES = [
     {
         "id": "cloud_safe",
         "name": "Public / Cloud Safe",
-        "description": "Blocks local screen, webcam, and PC telemetry connectors so private machine data is never uploaded to cloud APIs.",
+        "description": "Blocks local screen, clipboard, git, webcam, and PC telemetry connectors so private machine data is never uploaded to cloud APIs.",
         "privacy_badge": "Cloud Safe",
         "icon": "fas fa-cloud-shield",
         "builtin": True,
         "allowed_connectors": [
+            "companion_tasks",
             "web_search",
+            "webpage_reader",
+            "youtube_link",
             "reddit",
             "weather_link",
             "spotify"
@@ -46,13 +57,16 @@ DEFAULT_PROFILES = [
     {
         "id": "ambient_observer",
         "name": "Ambient Context Only",
-        "description": "Passive read-only context (now-playing media, PC stats, weather) without screenshots, camera, or active web queries.",
+        "description": "Passive read-only context (active window focus, now-playing media, PC stats, tasks, weather) without screenshots, camera, or active web queries.",
         "privacy_badge": "Passive Only",
         "icon": "fas fa-eye",
         "builtin": True,
         "allowed_connectors": [
+            "window_focus",
+            "process_watcher",
             "media_sentinel",
             "system_link",
+            "companion_tasks",
             "weather_link"
         ]
     },
@@ -79,16 +93,32 @@ def save_registry(registry: dict) -> None:
 
 
 def get_profiles() -> list[dict]:
-    """Load saved Connector Profiles (initializing defaults if missing)."""
+    """Load saved Connector Profiles (initializing defaults and syncing new built-in connectors)."""
     PROFILES_FILE.parent.mkdir(parents=True, exist_ok=True)
     if not PROFILES_FILE.exists():
         atomic_json_write(PROFILES_FILE, {"profiles": DEFAULT_PROFILES})
-        return list(DEFAULT_PROFILES)
+        return [dict(p) for p in DEFAULT_PROFILES]
     data = load_json(PROFILES_FILE, default={"profiles": DEFAULT_PROFILES})
     profiles = data.get("profiles", [])
     if not profiles:
         atomic_json_write(PROFILES_FILE, {"profiles": DEFAULT_PROFILES})
-        return list(DEFAULT_PROFILES)
+        return [dict(p) for p in DEFAULT_PROFILES]
+
+    # Ensure built-in profiles stay synced with newly registered connectors
+    default_map = {dp["id"]: dp for dp in DEFAULT_PROFILES}
+    changed = False
+    for p in profiles:
+        pid = p.get("id")
+        if pid in default_map and p.get("builtin"):
+            expected = default_map[pid]["allowed_connectors"]
+            cur = p.get("allowed_connectors", [])
+            for cid in expected:
+                if cid not in cur:
+                    cur.append(cid)
+                    changed = True
+            p["allowed_connectors"] = cur
+    if changed:
+        atomic_json_write(PROFILES_FILE, {"profiles": profiles})
     return profiles
 
 
@@ -164,7 +194,7 @@ def _inject_saved_settings(module_id: str, args: dict) -> dict:
         pm = get_preferences_manager()
         nexus_cfg = pm.get("nexus", {}).get(module_id, {})
         if isinstance(nexus_cfg, dict):
-            if module_id == "screen_capture" and "monitor" not in merged and nexus_cfg.get("default_monitor") is not None:
+            if module_id in ("screen_capture", "screen_ocr") and "monitor" not in merged and nexus_cfg.get("default_monitor") is not None:
                 merged["monitor"] = nexus_cfg.get("default_monitor")
             elif module_id == "webcam_capture" and "index" not in merged and nexus_cfg.get("default_camera_index") is not None:
                 merged["index"] = nexus_cfg.get("default_camera_index")
@@ -172,6 +202,8 @@ def _inject_saved_settings(module_id: str, args: dict) -> dict:
                 merged["subreddit"] = nexus_cfg.get("default_subreddit")
             elif module_id == "weather_link" and "location" not in merged and nexus_cfg.get("default_location"):
                 merged["location"] = nexus_cfg.get("default_location")
+            elif module_id == "git_link" and "repo_path" not in merged and nexus_cfg.get("default_repo_path"):
+                merged["repo_path"] = nexus_cfg.get("default_repo_path")
             merged.setdefault("settings", nexus_cfg)
     except Exception:
         pass
@@ -238,8 +270,8 @@ def call_module(module_id: str, command: str = "", args: dict = None, profile_id
 
 def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = None) -> dict:
     """
-    Scan user message for connector slash commands (e.g. '/screen_capture can you explain this',
-    '/weather Amsterdam', '/reddit LocalLLaMA', '/media', '/system').
+    Scan user message for connector slash commands (e.g. '/screen_capture', '/ocr', '/window',
+    '/clipboard', '/git', '/processes', '/read_url', '/youtube', '/remind', '/weather', '/reddit').
     Executes matching connectors and returns context + attachments.
     """
     if not message or "/" not in message:
@@ -256,10 +288,21 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
             slash_map[sc] = mod
         slash_map[f"/{mod['id'].lower()}"] = mod
 
-    # Also support common aliases
+    # Friendly aliases
     if "/screen_capture" in slash_map:
         slash_map["/screenshot"] = slash_map["/screen_capture"]
         slash_map["/screen"] = slash_map["/screen_capture"]
+    if "/clipboard" in slash_map:
+        slash_map["/clip"] = slash_map["/clipboard"]
+    if "/read_url" in slash_map:
+        slash_map["/url"] = slash_map["/read_url"]
+    if "/youtube" in slash_map:
+        slash_map["/yt"] = slash_map["/youtube"]
+    if "/remind" in slash_map:
+        slash_map["/tasks"] = slash_map["/remind"]
+        slash_map["/todo"] = slash_map["/remind"]
+    if "/processes" in slash_map:
+        slash_map["/gpu"] = slash_map["/processes"]
 
     tokens = message.strip().split()
     if not tokens:
@@ -299,7 +342,6 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
     if mod_id == "web_search" and arg_text:
         args["query"] = arg_text
     elif mod_id == "weather_link" and arg_text:
-        # If user wrote "/weather Tokyo what should I wear", take first word/phrase if short
         args["location"] = arg_text.split("?")[0].strip()[:40]
     elif mod_id == "reddit" and arg_text:
         first_arg = arg_text.split()[0].lstrip("r/")
@@ -308,11 +350,32 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
         else:
             args["query"] = arg_text
             cmd = "search_reddit"
-    elif mod_id == "screen_capture" and arg_text:
+    elif mod_id in ("screen_capture", "screen_ocr") and arg_text:
         m = re.match(r"^monitor\s*(\d+)\b|^(\d+)\b", arg_text.strip(), re.IGNORECASE)
         if m:
             mon_num = m.group(1) or m.group(2)
             args["monitor"] = int(mon_num)
+    elif mod_id == "git_link" and arg_text:
+        low_arg = arg_text.lower()
+        if "diff" in low_arg or "review" in low_arg or "changes" in low_arg:
+            cmd = "get_diff"
+        elif "log" in low_arg or "commits" in low_arg or "history" in low_arg:
+            cmd = "get_log"
+        else:
+            cmd = "get_status"
+    elif mod_id == "webpage_reader" and arg_text:
+        args["url"] = arg_text
+    elif mod_id == "youtube_link" and arg_text:
+        args["url"] = arg_text
+    elif mod_id == "companion_tasks":
+        if not arg_text or arg_text.lower() in ("list", "show", "tasks", "status"):
+            cmd = "list_tasks"
+        elif arg_text.lower().startswith(("done ", "complete ", "finish ")):
+            cmd = "complete_task"
+            args["text"] = arg_text.split(None, 1)[1] if len(arg_text.split()) > 1 else ""
+        else:
+            cmd = "add_task"
+            args["text"] = arg_text
 
     output = call_module(mod_id, cmd, args, profile_id=profile_id)
     raw_outputs.append(output)

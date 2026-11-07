@@ -24,8 +24,8 @@
             <span>Try Slash Command</span>
         </div>
         <input type="text" id="cn-slash-test-input" class="lm-finput cn-slash-input"
-               value="/system"
-               placeholder="e.g. /screen_capture, /reddit LocalLLaMA, /weather Amsterdam, /media, /system">
+               value="/window"
+               placeholder="e.g. /window, /ocr, /clipboard, /git, /processes, /read_url https://..., /youtube, /remind 15m Take a break">
         <select id="cn-slash-test-profile" class="lm-filter-select" title="Test against Connector Profile"></select>
         <button class="hub-action-btn" onclick="ConnectorsView.runSlashTest(this)">
             <i class="fas fa-bolt"></i> Run Command
@@ -53,6 +53,7 @@
             <select id="cn-cat-filter" class="lm-filter-select" onchange="ConnectorsView.onFilterChange()">
                 <option value="all">Category: All</option>
                 <option value="system">System &amp; Local PC</option>
+                <option value="productivity">Co-Working &amp; Tasks</option>
                 <option value="web">Web &amp; Knowledge</option>
                 <option value="media">Media &amp; Apps</option>
             </select>

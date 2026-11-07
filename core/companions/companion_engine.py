@@ -86,6 +86,13 @@ class CompanionEngine:
             try:
                 from core.bridges import bridge_manager
                 ambient_parts = []
+                ok_win, _ = bridge_manager.is_module_allowed("window_focus", connector_profile)
+                if ok_win:
+                    win_info = await asyncio.to_thread(
+                        bridge_manager.call_module, "window_focus", "get_active_window", {"max_windows": 6}, connector_profile
+                    )
+                    if win_info and not win_info.startswith("Bridge"):
+                        ambient_parts.append(win_info)
                 ok_media, _ = bridge_manager.is_module_allowed("media_sentinel", connector_profile)
                 if ok_media:
                     media_info = await asyncio.to_thread(
@@ -100,8 +107,15 @@ class CompanionEngine:
                     )
                     if sys_info and not sys_info.startswith("Bridge"):
                         ambient_parts.append(f"System telemetry: {sys_info}")
+                ok_tasks, _ = bridge_manager.is_module_allowed("companion_tasks", connector_profile)
+                if ok_tasks:
+                    tasks_info = await asyncio.to_thread(
+                        bridge_manager.call_module, "companion_tasks", "list_tasks", {}, connector_profile
+                    )
+                    if tasks_info and "No active tasks" not in tasks_info and not tasks_info.startswith("Bridge"):
+                        ambient_parts.append(tasks_info)
                 if ambient_parts:
-                    ambient_context = "\n\nLive PC Context (optional — mention naturally only if relevant):\n" + "\n".join(ambient_parts)
+                    ambient_context = "\n\nLive PC & Co-Working Context (optional — mention naturally only if relevant):\n" + "\n".join(ambient_parts)
             except Exception:
                 pass
 

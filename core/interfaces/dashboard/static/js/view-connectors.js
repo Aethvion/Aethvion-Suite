@@ -454,10 +454,17 @@ const ConnectorsView = (() => {
             else if (moduleId === 'reddit') {
                 if (cmd === 'search_reddit') args.query = rawArg;
                 else args.subreddit = rawArg;
-            } else if (moduleId === 'screen_capture') args.monitor = parseInt(rawArg, 10) || 0;
+            } else if (moduleId === 'screen_capture' || moduleId === 'screen_ocr') args.monitor = parseInt(rawArg, 10) || 0;
             else if (moduleId === 'webcam_capture') args.index = parseInt(rawArg, 10) || 0;
             else if (moduleId === 'spotify') args.target = rawArg;
-            else args.query = rawArg;
+            else if (moduleId === 'webpage_reader' || moduleId === 'youtube_link') args.url = rawArg;
+            else if (moduleId === 'clipboard_link') args.text = rawArg;
+            else if (moduleId === 'git_link') args.path = rawArg;
+            else if (moduleId === 'process_watcher') args.top_n = parseInt(rawArg, 10) || 8;
+            else if (moduleId === 'companion_tasks') {
+                if (cmd === 'complete_task') args.id = rawArg;
+                else args.text = rawArg;
+            } else args.query = rawArg;
         }
 
         const origHtml = btn ? btn.innerHTML : '';

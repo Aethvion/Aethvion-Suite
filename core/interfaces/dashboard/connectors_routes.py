@@ -183,3 +183,15 @@ async def delete_connector_profile(profile_id: str):
     updated = [p for p in profiles if p.get("id") != profile_id]
     bridge_manager.save_profiles(updated)
     return {"success": True, "profiles": updated}
+
+
+@router.get("/reminders/due")
+async def get_due_reminders():
+    """Poll and pop any co-working tasks/reminders whose timer has expired."""
+    try:
+        from core.bridges import tasks_bridge
+        due = await asyncio.to_thread(tasks_bridge.pop_due_reminders)
+        return {"due": due}
+    except Exception as e:
+        logger.debug(f"[Connectors] Reminder check error: {e}")
+        return {"due": []}

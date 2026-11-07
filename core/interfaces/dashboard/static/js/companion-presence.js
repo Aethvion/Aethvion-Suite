@@ -593,9 +593,61 @@ window.AethvionCompanionPresence = (() => {
         }, 60000);
     }
 
+    function _startReminderWatcher() {
+        setInterval(async () => {
+            if (_popupStreaming) return;
+            try {
+                const res = await fetch('/api/connectors/reminders/due');
+                if (!res.ok) return;
+                const data = await res.json();
+                const dueList = data?.due || [];
+                if (!dueList.length) return;
+
+                if (!_companions.length) {
+                    try {
+                        const cRes = await fetch(`${CREATOR_API}/all`);
+                        if (cRes.ok) {
+                            const cd = await cRes.json();
+                            _companions = cd.companions || [];
+                        }
+                    } catch {}
+                }
+
+                // Choose last active companion or MisakaCipher/first companion
+                let comp = _companions[0] || { id: 'misakacipher', name: 'MisakaCipher', accent_color: '#6366f1', avatar_symbol: '✦' };
+                try {
+                    const saved = JSON.parse(localStorage.getItem('cc_last_companion') || 'null');
+                    const found = saved?.id && _companions.find(c => c.id === saved.id);
+                    if (found) comp = found;
+                } catch {}
+
+                for (const item of dueList) {
+                    const msg = `⏰ **Co-Working Reminder (#${item.id})**\n\n${item.text}\n\n*(Reply here or use \`/remind done ${item.id}\` when finished!)*`;
+                    if (window.Notifications && typeof window.Notifications.push === 'function') {
+                        window.Notifications.push({
+                            title: `${comp.name || comp.id} — Reminder #${item.id}`,
+                            message: item.text,
+                            source: 'chat',
+                            level: 'info',
+                            target: { tab: 'companion-creator', context: comp.id }
+                        });
+                    }
+                    showPopup({
+                        ...comp,
+                        companion_id: comp.id,
+                        mood: 'attentive',
+                        expression: 'happy',
+                        response: msg
+                    });
+                }
+            } catch {}
+        }, 20000);
+    }
+
     function init() {
         _injectStyles();
         _startGlobalHeartbeat();
+        _startReminderWatcher();
         setTimeout(_evaluateStartupCheckins, 2500);
 
         // Support deep-link navigation from Notifications Center

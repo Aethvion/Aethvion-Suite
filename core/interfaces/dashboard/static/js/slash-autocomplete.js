@@ -29,6 +29,14 @@ window.AethvionSlashAutocomplete = (() => {
 
     const ARG_HINTS = {
         screen_capture: '[optional prompt or monitor #]',
+        screen_ocr: '[optional prompt or monitor #]',
+        window_focus: '[optional question about active app]',
+        clipboard_link: '[optional prompt or "copy: <text>"]',
+        git_link: '[status | diff | log]',
+        process_watcher: '[optional prompt]',
+        webpage_reader: '<https://url> [optional prompt]',
+        youtube_link: '<youtube-url-or-id> [optional prompt]',
+        companion_tasks: '[<15m> <task text> | list | done <id>]',
         webcam_capture: '[optional prompt]',
         reddit: '[subreddit or search query]',
         weather_link: '[city / location]',

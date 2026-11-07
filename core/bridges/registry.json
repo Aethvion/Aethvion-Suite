@@ -21,6 +21,103 @@
             ]
         },
         {
+            "id": "screen_ocr",
+            "name": "Screen OCR & Text Reader",
+            "description": "Capture the active monitor and extract all readable screen text via native Windows OCR so even text-only local models can read your screen.",
+            "module_path": "core.bridges.screen_ocr_bridge",
+            "category": "system",
+            "privacy_tier": "local_sensitive",
+            "icon": "fas fa-expand",
+            "slash_command": "/ocr",
+            "default_command": "extract_screen_text",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "extract_screen_text": "Capture monitor (default 1) and extract all visible text via OCR. Optional arg: 'monitor' (int)."
+            },
+            "settings": [
+                "default_monitor"
+            ]
+        },
+        {
+            "id": "window_focus",
+            "name": "Active Window & App Focus",
+            "description": "Detect the active foreground application, window title, and open workspace windows on your desktop.",
+            "module_path": "core.bridges.window_focus_bridge",
+            "category": "system",
+            "privacy_tier": "local_sensitive",
+            "icon": "fas fa-window-restore",
+            "slash_command": "/window",
+            "default_command": "get_active_window",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "get_active_window": "Get the active foreground window title, process name, and open desktop windows."
+            },
+            "settings": []
+        },
+        {
+            "id": "clipboard_link",
+            "name": "Clipboard Co-Pilot",
+            "description": "Read copied code/errors from your system clipboard or let companions copy snippets straight to your clipboard.",
+            "module_path": "core.bridges.clipboard_bridge",
+            "category": "system",
+            "privacy_tier": "local_sensitive",
+            "icon": "fas fa-clipboard-check",
+            "slash_command": "/clipboard",
+            "default_command": "get_clipboard",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "get_clipboard": "Read the current text content from the system clipboard.",
+                "set_clipboard": "Copy text into the system clipboard. Args: 'text' (required)."
+            },
+            "settings": []
+        },
+        {
+            "id": "git_link",
+            "name": "Git Workspace Inspector",
+            "description": "Inspect Git branch status, modified files, recent commits, and uncommitted code diffs for live co-working and code review.",
+            "module_path": "core.bridges.git_bridge",
+            "category": "system",
+            "privacy_tier": "local_sensitive",
+            "icon": "fab fa-git-alt",
+            "slash_command": "/git",
+            "default_command": "get_status",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "get_status": "Get current branch, modified/untracked files, diff summary, and last 5 commits. Optional arg: 'repo_path'.",
+                "get_diff": "Get uncommitted or staged git diff for code review. Optional args: 'repo_path', 'file', 'staged'.",
+                "get_log": "Get recent commit history. Optional args: 'repo_path', 'count' (default 10)."
+            },
+            "settings": [
+                "default_repo_path"
+            ]
+        },
+        {
+            "id": "process_watcher",
+            "name": "GPU & Process Monitor",
+            "description": "Monitor live NVIDIA GPU load, VRAM usage, temperature, and top CPU/RAM-consuming processes.",
+            "module_path": "core.bridges.process_bridge",
+            "category": "system",
+            "privacy_tier": "local_sensitive",
+            "icon": "fas fa-gauge-high",
+            "slash_command": "/processes",
+            "default_command": "get_gpu_and_processes",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "get_gpu_and_processes": "Get live NVIDIA GPU VRAM/load stats and top memory-consuming processes. Optional arg: 'limit' (int)."
+            },
+            "settings": []
+        },
+        {
             "id": "media_sentinel",
             "name": "Media Sentinel",
             "description": "Read system-wide media playback (SMTC, Spotify, YouTube, Browser) using native Windows hooks.",
@@ -77,6 +174,26 @@
             ]
         },
         {
+            "id": "companion_tasks",
+            "name": "Co-Working Tasks & Timers",
+            "description": "Shared task scratchpad and countdown reminders that trigger a live Companion popup when due.",
+            "module_path": "core.bridges.tasks_bridge",
+            "category": "system",
+            "privacy_tier": "cloud_safe",
+            "icon": "fas fa-bell",
+            "slash_command": "/remind",
+            "default_command": "add_task",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "add_task": "Add a task or timed reminder (e.g. 'in 20m test build'). Args: 'text', optional 'remind_in_minutes' (int).",
+                "list_tasks": "List all active co-working tasks and pending timers.",
+                "complete_task": "Mark a task completed by 'id' or 'text' match."
+            },
+            "settings": []
+        },
+        {
             "id": "web_search",
             "name": "Web Search",
             "description": "Search the internet and return a summary of top results (powered by DuckDuckGo, no API key required).",
@@ -92,6 +209,42 @@
             "capability_gate": "internet_search",
             "available_commands": {
                 "web_search": "Search the web for any query. Takes 'query' (required) and optional 'count' (default 5, max 10) arguments."
+            },
+            "settings": []
+        },
+        {
+            "id": "webpage_reader",
+            "name": "Web Page & Docs Reader",
+            "description": "Fetch any documentation page, article, or URL and extract clean readable text for analysis.",
+            "module_path": "core.bridges.webpage_bridge",
+            "category": "web",
+            "privacy_tier": "cloud_safe",
+            "icon": "fas fa-book-open",
+            "slash_command": "/read_url",
+            "default_command": "read_page",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "read_page": "Read clean text from any URL. Args: 'url' (required), optional 'max_chars' (int)."
+            },
+            "settings": []
+        },
+        {
+            "id": "youtube_link",
+            "name": "YouTube & Transcript Reader",
+            "description": "Extract video title, channel, description, and full spoken captions/transcript from any YouTube URL without an API key.",
+            "module_path": "core.bridges.youtube_bridge",
+            "category": "media",
+            "privacy_tier": "cloud_safe",
+            "icon": "fab fa-youtube",
+            "slash_command": "/youtube",
+            "default_command": "get_video_context",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "get_video_context": "Get metadata and full transcript for a YouTube URL or video ID. Args: 'url' (required)."
             },
             "settings": []
         },
