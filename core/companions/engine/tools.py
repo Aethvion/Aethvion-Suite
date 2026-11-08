@@ -246,7 +246,12 @@ def extract_peripheral_captures(
     captures = list(current_captures)
 
     for res in tool_results:
-        if ("Screenshot captured successfully" in res or "Webcam image captured successfully" in res) and "Saved to: " in res:
+        if (
+            "Screenshot captured successfully" in res
+            or "Webcam image captured successfully" in res
+            or "Visual Memory Snapshot recorded successfully" in res
+            or "Visual Context Comparison ready" in res
+        ) and "Saved to: " in res:
             try:
                 path_line = next(line for line in res.splitlines() if "Saved to: " in line)
                 media_path = path_line.replace("Saved to: ", "").strip()

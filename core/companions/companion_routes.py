@@ -18,6 +18,7 @@ from core.companions.companion_engine import CompanionEngine
 from core.companions.engine.memory import CompanionMemory
 from core.companions.engine.history import CompanionHistory
 from core.companions.engine.scratchpad import CompanionScratchpad
+from core.companions.engine.visual_memory import CompanionVisualMemory
 from core.workspace.workspace_utils import load_workspaces, save_workspaces
 from core.bridges.bridge_manager import get_registry
 
@@ -37,6 +38,27 @@ class ScratchpadAppendRequest(BaseModel):
     text: str
     section: Optional[str] = None
     author: Optional[Dict[str, Any]] = None
+
+class VisualMemoryCreateRequest(BaseModel):
+    title: str
+    category: str = "general"
+    description: Optional[str] = ""
+    key_elements: Optional[List[str]] = None
+    image_path: Optional[str] = None
+    monitor: int = 0
+    tags: Optional[List[str]] = None
+
+class VisualMemoryUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    key_elements: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+
+class VisualMemoryCompareRequest(BaseModel):
+    memory_id: Optional[str] = None
+    query: Optional[str] = None
+    monitor: int = 0
 
 class ChatMessage(BaseModel):
     role: str
@@ -224,6 +246,75 @@ async def clear_scratchpad(companion_id: str):
     cfg = _get_cfg(companion_id)
     sp = CompanionScratchpad(cfg.data_dir, cfg.name)
     return sp.clear(reset_template=True)
+
+# Visual Context Memory Routes
+
+@router.get("/{companion_id}/visual-memory")
+async def get_visual_memories(companion_id: str):
+    """Retrieve all visual context memories for the companion."""
+    cfg = _get_cfg(companion_id)
+    vmem = CompanionVisualMemory(cfg.data_dir, cfg.name)
+    return vmem.load()
+
+@router.post("/{companion_id}/visual-memory")
+async def create_visual_memory(companion_id: str, req: VisualMemoryCreateRequest):
+    """Create or snapshot a new visual memory."""
+    cfg = _get_cfg(companion_id)
+    vmem = CompanionVisualMemory(cfg.data_dir, cfg.name)
+    res = vmem.remember(
+        title=req.title,
+        category=req.category,
+        description=req.description or "",
+        key_elements=req.key_elements,
+        image_path=req.image_path,
+        monitor=req.monitor,
+        tags=req.tags,
+        source="dashboard_ui"
+    )
+    if res.get("error"):
+        raise HTTPException(status_code=500, detail=res["error"])
+    return res
+
+@router.patch("/{companion_id}/visual-memory/{memory_id}")
+async def update_visual_memory(companion_id: str, memory_id: str, req: VisualMemoryUpdateRequest):
+    """Update metadata of an existing visual memory."""
+    cfg = _get_cfg(companion_id)
+    vmem = CompanionVisualMemory(cfg.data_dir, cfg.name)
+    updates = {k: v for k, v in req.dict().items() if v is not None}
+    res = vmem.update(memory_id, updates)
+    if not res:
+        raise HTTPException(status_code=404, detail="Visual memory not found")
+    return {"status": "updated", "memory": res}
+
+@router.delete("/{companion_id}/visual-memory/{memory_id}")
+async def delete_visual_memory(companion_id: str, memory_id: str):
+    """Delete a visual memory and its snapshot image."""
+    cfg = _get_cfg(companion_id)
+    vmem = CompanionVisualMemory(cfg.data_dir, cfg.name)
+    success = vmem.delete(memory_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Visual memory not found")
+    return {"status": "deleted", "id": memory_id}
+
+@router.get("/{companion_id}/visual-memory/snapshots/{filename}")
+async def get_visual_snapshot(companion_id: str, filename: str):
+    """Serve a visual snapshot image file securely."""
+    cfg = _get_cfg(companion_id)
+    safe_name = Path(filename).name
+    file_path = cfg.data_dir / "visual_snapshots" / safe_name
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Snapshot image not found")
+    return FileResponse(file_path, media_type="image/png")
+
+@router.post("/{companion_id}/visual-memory/compare")
+async def compare_visual_memory(companion_id: str, req: VisualMemoryCompareRequest):
+    """Compare the active screen with a past visual memory."""
+    cfg = _get_cfg(companion_id)
+    vmem = CompanionVisualMemory(cfg.data_dir, cfg.name)
+    res = vmem.compare(memory_id=req.memory_id, query=req.query, monitor=req.monitor)
+    if res.get("error"):
+        raise HTTPException(status_code=400, detail=res["error"])
+    return res
 
 @router.post("/{companion_id}/history/clear")
 async def clear_history_only(companion_id: str):

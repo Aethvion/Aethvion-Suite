@@ -41,6 +41,29 @@
             ]
         },
         {
+            "id": "visual_memory",
+            "name": "Visual Context Memory",
+            "description": "Snapshots, remembers, indexes, and compares visual layouts (Unity projects, Blender 3D models, code architectures, UI designs) across days.",
+            "module_path": "core.bridges.visual_memory_bridge",
+            "category": "system",
+            "privacy_tier": "local_sensitive",
+            "icon": "fas fa-eye",
+            "slash_command": "/visual_memory",
+            "default_command": "remember_screen",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "remember_screen": "Capture the active screen/monitor and store it as a long-term visual memory. Args: 'title', 'category' (unity/blender/code/ui/general), 'notes'/'description', 'monitor' (int).",
+                "recall": "Search and recall past visual memories by keyword or category. Args: 'query', 'category', 'limit'.",
+                "compare": "Compare current screen layout with a past visual memory or reference layout. Args: 'query', 'memory_id', 'monitor'.",
+                "list_memories": "List recent visual context memories on file. Args: 'category', 'limit'."
+            },
+            "settings": [
+                "default_monitor"
+            ]
+        },
+        {
             "id": "window_focus",
             "name": "Active Window & App Focus",
             "description": "Detect the active foreground application, window title, and open workspace windows on your desktop.",

@@ -331,6 +331,16 @@ class CompanionEngine:
                     "\n  - Do not emit the block just to confirm something you already knew"
                 )
 
+            # Visual context memory summary
+            try:
+                from core.companions.engine.visual_memory import CompanionVisualMemory
+                vmem = CompanionVisualMemory(config.data_dir, config.name)
+                vmem_summary = vmem.get_recent_summary_for_context(limit=3)
+                if vmem_summary:
+                    system_prompt += f"\n\n## Visual Context Memory (Recent Layouts on File)\n{vmem_summary}"
+            except Exception as _vm_err:
+                logger.debug(f"[{config.id}] Visual memory context injection skipped: {_vm_err}")
+
             # Multi-message style & conversational flow
             system_prompt += (
                 "\n\n## Conversational Flow & Message Structure"
@@ -345,7 +355,7 @@ class CompanionEngine:
                 "\n\n## Natural Presence & Context Restraint (CRITICAL)"
                 "\n- **Having access to info ≠ needing to mention it**: Your `Memory` about the user (their name, city, age, past projects), their `Workspaces`, and your `Connectors` are background capabilities available when needed — NOT a checklist to weave into every reply."
                 "\n- **Silent familiarity**: Know the user's background facts the way a real friend or co-worker does — silently. Never bring up their city (e.g. Apeldoorn), age, or unrelated stored facts unless the conversation is specifically about that topic."
-                "\n- **On-demand connectors & actions**: Only call a `[tool:bridge ...]` connector when the user's message asks for or genuinely benefits from live PC/web data or actions (e.g. playing music, checking windows, searching the web, or recording to the scratchpad). When an action is requested (like playing, pausing, or skipping Spotify, or adding/updating notes on the scratchpad), ALWAYS output the real `[tool:bridge ...]` tag—NEVER roleplay, simulate in text, or output a fake markdown codeblock pretending you updated it without actually emitting the tool tag."
+                "\n- **On-demand connectors & actions**: Only call a `[tool:bridge ...]` connector when the user's message asks for or genuinely benefits from live PC/web data or actions (e.g. playing music, checking windows, searching the web, recording to the scratchpad, or saving/comparing visual memories). When an action is requested (like playing, pausing, or skipping Spotify, adding/updating notes on the scratchpad, or saving/comparing visual memories), ALWAYS output the real `[tool:bridge ...]` tag—NEVER roleplay, simulate in text, or output a fake markdown codeblock pretending you updated it without actually emitting the tool tag."
                 "\n- **Human filtering of tool output**: When a connector returns data, share only what directly answers the user's question or fits the moment. Ignore background clutter (like game launchers, unrelated browser tabs, or normal CPU/RAM numbers) unless the user asked for a full breakdown."
             )
 

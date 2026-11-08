@@ -21,6 +21,7 @@ DEFAULT_PROFILES = [
         "allowed_connectors": [
             "screen_capture",
             "screen_ocr",
+            "visual_memory",
             "window_focus",
             "clipboard_link",
             "git_link",
@@ -197,7 +198,7 @@ def _inject_saved_settings(module_id: str, args: dict) -> dict:
         pm = get_preferences_manager()
         nexus_cfg = pm.get("nexus", {}).get(module_id, {})
         if isinstance(nexus_cfg, dict):
-            if module_id in ("screen_capture", "screen_ocr") and "monitor" not in merged and nexus_cfg.get("default_monitor") is not None:
+            if module_id in ("screen_capture", "screen_ocr", "visual_memory") and "monitor" not in merged and nexus_cfg.get("default_monitor") is not None:
                 merged["monitor"] = nexus_cfg.get("default_monitor")
             elif module_id == "webcam_capture" and "index" not in merged and nexus_cfg.get("default_camera_index") is not None:
                 merged["index"] = nexus_cfg.get("default_camera_index")
@@ -295,6 +296,9 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
     if "/screen_capture" in slash_map:
         slash_map["/screenshot"] = slash_map["/screen_capture"]
         slash_map["/screen"] = slash_map["/screen_capture"]
+    if "/visual_memory" in slash_map:
+        slash_map["/vmem"] = slash_map["/visual_memory"]
+        slash_map["/snapshot"] = slash_map["/visual_memory"]
     if "/clipboard" in slash_map:
         slash_map["/clip"] = slash_map["/clipboard"]
     if "/read_url" in slash_map:
@@ -355,11 +359,13 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
         else:
             args["query"] = arg_text
             cmd = "search_reddit"
-    elif mod_id in ("screen_capture", "screen_ocr") and arg_text:
+    elif mod_id in ("screen_capture", "screen_ocr", "visual_memory") and arg_text:
         m = re.match(r"^monitor\s*(\d+)\b|^(\d+)\b", arg_text.strip(), re.IGNORECASE)
         if m:
             mon_num = m.group(1) or m.group(2)
             args["monitor"] = int(mon_num)
+        elif mod_id == "visual_memory":
+            args["title"] = arg_text
     elif mod_id == "git_link" and arg_text:
         low_arg = arg_text.lower()
         if "diff" in low_arg or "review" in low_arg or "changes" in low_arg:

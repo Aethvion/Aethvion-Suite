@@ -118,6 +118,9 @@ const CompanionCreator = (() => {
           <button class="cc-ptab" id="cc-ptab-scratchpad">
             <i class="fas fa-feather-pointed"></i> Scratchpad
           </button>
+          <button class="cc-ptab" id="cc-ptab-vision">
+            <i class="fas fa-eye"></i> Visual Memory
+          </button>
           <button class="cc-ptab" id="cc-ptab-memory">
             <i class="fas fa-brain"></i> Memory
           </button>
@@ -770,6 +773,71 @@ const CompanionCreator = (() => {
         </div>
       </div>
 
+      <!-- Visual Context Memory view (shown when Vision tab is active) -->
+      <div class="cc-vision-view hidden" id="cc-vision-view">
+        <div class="cc-vision-container">
+          <!-- Toolbar -->
+          <div class="cc-vision-toolbar">
+            <div class="cc-vision-header-info">
+              <div class="cc-vision-title">
+                <i class="fas fa-eye" style="color:#ec4899;"></i>
+                <span>Visual Context Memory</span>
+                <span class="cc-vision-sub" id="cc-vision-sub">with Companion</span>
+              </div>
+              <div class="cc-vision-stats-badge" id="cc-vision-stats-badge">
+                <i class="fas fa-camera"></i>
+                <span id="cc-vision-count">0 snapshots</span>
+              </div>
+            </div>
+            <div class="cc-vision-tools">
+              <select id="cc-vision-monitor-select" class="cc-vision-monitor-select" title="Target monitor to capture">
+                <option value="0">All Monitors (Merged)</option>
+                <option value="1" selected>Monitor 1 (Primary)</option>
+                <option value="2">Monitor 2</option>
+                <option value="3">Monitor 3</option>
+              </select>
+              <select id="cc-vision-cat-select" class="cc-vision-cat-select" title="Layout category">
+                <option value="unity">🎮 Unity Layout</option>
+                <option value="blender">🎨 Blender Model</option>
+                <option value="code">💻 Code Architecture</option>
+                <option value="ui">📐 UI / Design</option>
+                <option value="reference">🖼️ Reference Art</option>
+                <option value="general">🖥️ General Screen</option>
+              </select>
+              <button type="button" class="cc-btn cc-btn-primary cc-btn-xs" id="cc-vision-snap-btn" title="Capture current screen and save to Visual Memory">
+                <i class="fas fa-camera"></i> Remember Screen
+              </button>
+              <button type="button" class="cc-btn cc-btn-ghost cc-btn-xs" id="cc-vision-refresh-btn" title="Refresh visual memories">
+                <i class="fas fa-rotate"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Category Filter Bar -->
+          <div class="cc-vision-filter-bar">
+            <div class="cc-vision-categories" id="cc-vision-categories">
+              <button type="button" class="cc-vision-cat-btn cc-vision-cat-active" data-cat="all">All</button>
+              <button type="button" class="cc-vision-cat-btn" data-cat="unity"><i class="fas fa-cube"></i> Unity</button>
+              <button type="button" class="cc-vision-cat-btn" data-cat="blender"><i class="fas fa-shapes"></i> Blender</button>
+              <button type="button" class="cc-vision-cat-btn" data-cat="code"><i class="fas fa-code"></i> Code</button>
+              <button type="button" class="cc-vision-cat-btn" data-cat="ui"><i class="fas fa-pen-ruler"></i> UI Design</button>
+              <button type="button" class="cc-vision-cat-btn" data-cat="reference"><i class="fas fa-image"></i> Reference</button>
+            </div>
+            <div class="cc-vision-search-wrap">
+              <i class="fas fa-magnifying-glass"></i>
+              <input type="text" id="cc-vision-search-input" placeholder="Search remembered layouts, models, tags..." autocomplete="off">
+            </div>
+          </div>
+
+          <!-- Memory Cards Grid -->
+          <div class="cc-vision-body" id="cc-vision-body">
+            <div class="cc-vision-grid" id="cc-vision-grid">
+              <div class="cc-vision-loading"><i class="fas fa-spinner fa-spin"></i> Loading visual memories…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Memory view (shown when Memory tab is active) -->
       <div class="cc-memory-view hidden" id="cc-memory-view">
         <div class="cc-mem-scroll" id="cc-mem-scroll">
@@ -1335,8 +1403,10 @@ const CompanionCreator = (() => {
         const settingsView   = document.getElementById('cc-settings-view');
         const memoryView     = document.getElementById('cc-memory-view');
         const scratchpadView = document.getElementById('cc-scratchpad-view');
+        const visionView     = document.getElementById('cc-vision-view');
         const chatTab        = document.getElementById('cc-ptab-chat');
         const scratchpadTab  = document.getElementById('cc-ptab-scratchpad');
+        const visionTab      = document.getElementById('cc-ptab-vision');
         const settingsTab    = document.getElementById('cc-ptab-settings');
         const memoryTab      = document.getElementById('cc-ptab-memory');
 
@@ -1345,8 +1415,10 @@ const CompanionCreator = (() => {
         settingsView?.classList.add('hidden');
         memoryView?.classList.add('hidden');
         scratchpadView?.classList.add('hidden');
+        visionView?.classList.add('hidden');
         chatTab?.classList.remove('cc-ptab-active');
         scratchpadTab?.classList.remove('cc-ptab-active');
+        visionTab?.classList.remove('cc-ptab-active');
         settingsTab?.classList.remove('cc-ptab-active');
         memoryTab?.classList.remove('cc-ptab-active');
 
@@ -1357,6 +1429,10 @@ const CompanionCreator = (() => {
             scratchpadView?.classList.remove('hidden');
             scratchpadTab?.classList.add('cc-ptab-active');
             if (_editingId) _loadScratchpad(_editingId);
+        } else if (view === 'vision') {
+            visionView?.classList.remove('hidden');
+            visionTab?.classList.add('cc-ptab-active');
+            if (_editingId) _loadVisualMemory(_editingId);
         } else if (view === 'memory') {
             memoryView?.classList.remove('hidden');
             memoryTab?.classList.add('cc-ptab-active');
@@ -1793,6 +1869,375 @@ const CompanionCreator = (() => {
         quickAddBtn?.addEventListener('click', doAddQuick);
     }
 
+    // ==========================================
+    // Visual Context Memory (Layouts & Models)
+    // ==========================================
+    let _visionCurrentCompanionId = null;
+    let _visionCurrentCategory = 'all';
+    let _visionMemoriesCache = [];
+    let _visionSearchTerm = '';
+    let _visionListenersInitialized = false;
+
+    async function _loadVisualMemory(companionId) {
+        _visionCurrentCompanionId = companionId;
+        const subEl = document.getElementById('cc-vision-sub');
+        if (subEl) {
+            subEl.textContent = `with ${_activeData?.name || 'Companion'}`;
+        }
+        const gridEl = document.getElementById('cc-vision-grid');
+        if (gridEl) {
+            gridEl.innerHTML = '<div class="cc-vision-loading"><i class="fas fa-spinner fa-spin"></i> Loading visual memories…</div>';
+        }
+
+        try {
+            const res = await fetch(`${CHAT_API}/${companionId}/visual-memory`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            _visionMemoriesCache = data.memories || [];
+
+            const countEl = document.getElementById('cc-vision-count');
+            if (countEl) {
+                countEl.textContent = `${_visionMemoriesCache.length} snapshot${_visionMemoriesCache.length === 1 ? '' : 's'}`;
+            }
+
+            _renderVisualMemories();
+        } catch (e) {
+            console.error('[VisualMemory] Failed to load:', e);
+            if (gridEl) {
+                gridEl.innerHTML = `<div class="cc-vision-empty"><i class="fas fa-triangle-exclamation" style="color:#f43f5e;"></i> Failed to load visual memories: ${_escHtml(e.message)}</div>`;
+            }
+        }
+    }
+
+    function _renderVisualMemories() {
+        const gridEl = document.getElementById('cc-vision-grid');
+        if (!gridEl) return;
+
+        let filtered = _visionMemoriesCache.slice();
+        if (_visionCurrentCategory && _visionCurrentCategory !== 'all') {
+            filtered = filtered.filter(m => (m.category || 'general').toLowerCase() === _visionCurrentCategory.toLowerCase());
+        }
+
+        if (_visionSearchTerm.trim()) {
+            const term = _visionSearchTerm.trim().toLowerCase();
+            filtered = filtered.filter(m => {
+                const haystack = `${m.title || ''} ${m.description || ''} ${m.category || ''} ${(m.key_elements || []).join(' ')} ${(m.tags || []).join(' ')}`.toLowerCase();
+                return haystack.includes(term);
+            });
+        }
+
+        if (filtered.length === 0) {
+            const isFilter = _visionCurrentCategory !== 'all' || _visionSearchTerm.trim();
+            gridEl.innerHTML = `
+                <div class="cc-vision-empty">
+                    <i class="fas fa-eye" style="color:#ec4899;font-size:2rem;opacity:0.6;margin-bottom:0.5rem;"></i>
+                    <div style="font-weight:600;color:#f4f4f5;font-size:0.95rem;">${isFilter ? 'No matching visual memories found' : 'No visual memories stored yet'}</div>
+                    <div style="color:#a1a1aa;font-size:0.82rem;max-width:440px;line-height:1.5;margin-top:0.35rem;">
+                        ${isFilter 
+                            ? 'Try selecting "All" categories or clearing your search keywords.' 
+                            : 'Misaka can remember your Unity scene layouts, Blender 3D models, code architecture, and UI wireframes across days so you can compare progress anytime. Click <strong>"Remember Screen"</strong> above or ask her in chat!'}
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        const catIcons = {
+            unity: 'fa-cube',
+            blender: 'fa-shapes',
+            code: 'fa-code',
+            ui: 'fa-pen-ruler',
+            reference: 'fa-image',
+            general: 'fa-desktop'
+        };
+
+        const catColors = {
+            unity: '#6366f1',
+            blender: '#f97316',
+            code: '#3b82f6',
+            ui: '#10b981',
+            reference: '#ec4899',
+            general: '#8b5cf6'
+        };
+
+        let html = '';
+        filtered.forEach(m => {
+            const cat = (m.category || 'general').toLowerCase();
+            const icon = catIcons[cat] || 'fa-eye';
+            const color = catColors[cat] || '#8b5cf6';
+            const title = _escHtml(m.title || 'Untitled Visual Memory');
+            const timeStr = _escHtml(m.human_time || (m.timestamp ? new Date(m.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''));
+            const desc = _escHtml(m.description || 'No description recorded.');
+            const url = m.url || '';
+            const resStr = (m.width && m.height) ? `${m.width}×${m.height}` : '';
+            const elems = Array.isArray(m.key_elements) ? m.key_elements : [];
+
+            let elemsHtml = '';
+            if (elems.length > 0) {
+                elemsHtml = '<div class="cc-vcard-elements">' + 
+                    elems.slice(0, 4).map(e => `<span class="cc-vcard-elem-tag">${_escHtml(e)}</span>`).join('') +
+                    (elems.length > 4 ? `<span class="cc-vcard-elem-more">+${elems.length - 4}</span>` : '') +
+                    '</div>';
+            }
+
+            html += `
+                <div class="cc-vcard" data-id="${_escHtml(m.id)}" style="--card-cat-color:${color};">
+                    <div class="cc-vcard-thumb-wrap" onclick="window._openVisualSnapshotModal('${_esc(url)}', '${_esc(title)}')">
+                        ${url ? `<img src="${_esc(url)}" alt="${title}" loading="lazy" class="cc-vcard-thumb">` : '<div class="cc-vcard-no-img"><i class="fas fa-image"></i></div>'}
+                        <div class="cc-vcard-thumb-overlay"><i class="fas fa-magnifying-glass-plus"></i> View Snapshot</div>
+                        <span class="cc-vcard-badge" style="background:${color}22;border-color:${color}66;color:${color};">
+                            <i class="fas ${icon}"></i> ${cat.toUpperCase()}
+                        </span>
+                        ${resStr ? `<span class="cc-vcard-res">${resStr}</span>` : ''}
+                    </div>
+                    <div class="cc-vcard-body">
+                        <div class="cc-vcard-header">
+                            <h4 class="cc-vcard-title" title="${title}">${title}</h4>
+                            <span class="cc-vcard-time">${timeStr}</span>
+                        </div>
+                        <p class="cc-vcard-desc">${desc}</p>
+                        ${elemsHtml}
+                        <div class="cc-vcard-actions">
+                            <button type="button" class="cc-btn cc-btn-ghost cc-btn-xs cc-vcard-compare-btn" data-id="${_escHtml(m.id)}" title="Compare live screen with this reference layout">
+                                <i class="fas fa-code-compare"></i> Compare
+                            </button>
+                            <button type="button" class="cc-btn cc-btn-ghost cc-btn-xs cc-vcard-edit-btn" data-id="${_escHtml(m.id)}" title="Edit notes">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button type="button" class="cc-btn cc-btn-ghost cc-btn-xs cc-vcard-del-btn" data-id="${_escHtml(m.id)}" title="Delete visual memory">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        gridEl.innerHTML = html;
+
+        // Wire action buttons
+        gridEl.querySelectorAll('.cc-vcard-compare-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _compareVisualMemory(btn.dataset.id);
+            });
+        });
+
+        gridEl.querySelectorAll('.cc-vcard-edit-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _editVisualMemoryNotes(btn.dataset.id);
+            });
+        });
+
+        gridEl.querySelectorAll('.cc-vcard-del-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _deleteVisualMemory(btn.dataset.id);
+            });
+        });
+    }
+
+    async function _takeVisualMemorySnapshot() {
+        const cId = _visionCurrentCompanionId || _editingId;
+        if (!cId) {
+            if (typeof showToast === 'function') showToast('Please select or save a companion first', 'warning');
+            return;
+        }
+
+        const catSelect = document.getElementById('cc-vision-cat-select');
+        const monSelect = document.getElementById('cc-vision-monitor-select');
+        const category = catSelect ? catSelect.value : 'general';
+        const monitor = monSelect ? parseInt(monSelect.value, 10) : 1;
+
+        const defaultTitles = {
+            unity: 'Unity Project Layout',
+            blender: 'Blender 3D Model',
+            code: 'Code Architecture & IDE',
+            ui: 'UI Design Layout',
+            reference: 'Reference Artwork',
+            general: 'Desktop State'
+        };
+
+        const titlePrompt = prompt(`Enter a title for this ${category.toUpperCase()} snapshot:`, defaultTitles[category] || 'Visual Snapshot');
+        if (!titlePrompt || !titlePrompt.trim()) return;
+
+        const notesPrompt = prompt('Any notes or key elements to remember? (Optional, press Enter to skip):', '') || '';
+
+        const snapBtn = document.getElementById('cc-vision-snap-btn');
+        if (snapBtn) {
+            snapBtn.disabled = true;
+            snapBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Snapping…';
+        }
+
+        try {
+            const res = await fetch(`${CHAT_API}/${cId}/visual-memory`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: titlePrompt.trim(),
+                    category: category,
+                    description: notesPrompt.trim(),
+                    monitor: monitor
+                })
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (typeof showToast === 'function') {
+                showToast(`Visual memory "${data.memory?.title || 'Snapshot'}" recorded!`, 'success');
+            }
+            _loadVisualMemory(cId);
+        } catch (e) {
+            console.error('Visual memory capture failed:', e);
+            if (typeof showToast === 'function') showToast(`Failed to capture: ${e.message}`, 'error');
+        } finally {
+            if (snapBtn) {
+                snapBtn.disabled = false;
+                snapBtn.innerHTML = '<i class="fas fa-camera"></i> Remember Screen';
+            }
+        }
+    }
+
+    async function _compareVisualMemory(memId) {
+        const cId = _visionCurrentCompanionId || _editingId;
+        if (!cId || !memId) return;
+
+        const monSelect = document.getElementById('cc-vision-monitor-select');
+        const monitor = monSelect ? parseInt(monSelect.value, 10) : 1;
+
+        if (typeof showToast === 'function') showToast('Comparing current screen with visual memory…', 'info');
+
+        try {
+            const res = await fetch(`${CHAT_API}/${cId}/visual-memory/compare`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ memory_id: memId, monitor: monitor })
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const ref = data.reference_memory || {};
+
+            // Switch to chat view and ask companion to evaluate comparison!
+            _switchView('chat');
+            const chatInput = document.getElementById('cc-chat-input');
+            if (chatInput) {
+                chatInput.value = `How does my current screen look compared to the "${ref.title || 'reference'}" layout from ${ref.human_time || 'before'}? [tool:bridge module="visual_memory" cmd="compare" memory_id="${memId}" monitor="${monitor}"]`;
+                const sendBtn = document.getElementById('cc-chat-send-btn');
+                if (sendBtn) sendBtn.click();
+            }
+        } catch (e) {
+            console.error('Comparison trigger failed:', e);
+            if (typeof showToast === 'function') showToast(`Comparison failed: ${e.message}`, 'error');
+        }
+    }
+
+    async function _editVisualMemoryNotes(memId) {
+        const cId = _visionCurrentCompanionId || _editingId;
+        const memory = _visionMemoriesCache.find(m => m.id === memId);
+        if (!cId || !memory) return;
+
+        const newTitle = prompt('Edit Title:', memory.title || '');
+        if (newTitle === null) return;
+        const newDesc = prompt('Edit Visual Description / Notes:', memory.description || '');
+        if (newDesc === null) return;
+
+        try {
+            const res = await fetch(`${CHAT_API}/${cId}/visual-memory/${memId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: newTitle.trim() || memory.title,
+                    description: newDesc.trim()
+                })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (typeof showToast === 'function') showToast('Visual memory updated', 'success');
+            _loadVisualMemory(cId);
+        } catch (e) {
+            if (typeof showToast === 'function') showToast(`Failed to update: ${e.message}`, 'error');
+        }
+    }
+
+    async function _deleteVisualMemory(memId) {
+        const cId = _visionCurrentCompanionId || _editingId;
+        if (!cId || !memId) return;
+        if (!confirm('Delete this visual memory snapshot? This cannot be undone.')) return;
+
+        try {
+            const res = await fetch(`${CHAT_API}/${cId}/visual-memory/${memId}`, {
+                method: 'DELETE'
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (typeof showToast === 'function') showToast('Visual memory deleted', 'info');
+            _loadVisualMemory(cId);
+        } catch (e) {
+            if (typeof showToast === 'function') showToast(`Failed to delete: ${e.message}`, 'error');
+        }
+    }
+
+    window._openVisualSnapshotModal = function(url, title) {
+        if (!url) return;
+        let modal = document.getElementById('cc-snapshot-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'cc-snapshot-modal';
+            modal.className = 'cc-snapshot-modal';
+            modal.innerHTML = `
+                <div class="cc-snapshot-modal-backdrop" onclick="document.getElementById('cc-snapshot-modal').classList.remove('open')"></div>
+                <div class="cc-snapshot-modal-box">
+                    <div class="cc-snapshot-modal-header">
+                        <span id="cc-snapshot-modal-title">Visual Snapshot</span>
+                        <button type="button" class="cc-snapshot-modal-close" onclick="document.getElementById('cc-snapshot-modal').classList.remove('open')">&times;</button>
+                    </div>
+                    <div class="cc-snapshot-modal-body">
+                        <img id="cc-snapshot-modal-img" src="" alt="Snapshot">
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        document.getElementById('cc-snapshot-modal-title').textContent = title || 'Visual Snapshot';
+        document.getElementById('cc-snapshot-modal-img').src = url;
+        modal.classList.add('open');
+    };
+
+    function _initVisualMemoryListeners() {
+        if (_visionListenersInitialized) return;
+        _visionListenersInitialized = true;
+
+        // Category filter buttons
+        document.querySelectorAll('.cc-vision-cat-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.cc-vision-cat-btn').forEach(b => b.classList.remove('cc-vision-cat-active'));
+                btn.classList.add('cc-vision-cat-active');
+                _visionCurrentCategory = btn.dataset.cat || 'all';
+                _renderVisualMemories();
+            });
+        });
+
+        // Search input
+        const searchInput = document.getElementById('cc-vision-search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                _visionSearchTerm = searchInput.value;
+                _renderVisualMemories();
+            });
+        }
+
+        // Snapshot button
+        document.getElementById('cc-vision-snap-btn')?.addEventListener('click', _takeVisualMemorySnapshot);
+
+        // Refresh button
+        document.getElementById('cc-vision-refresh-btn')?.addEventListener('click', () => {
+            if (_editingId) _loadVisualMemory(_editingId);
+        });
+
+        // Tab click
+        document.getElementById('cc-ptab-vision')?.addEventListener('click', () => _switchView('vision'));
+    }
+
     // Memory view
 
     let _lastMemoryData = null;
@@ -2199,6 +2644,7 @@ const CompanionCreator = (() => {
 
         const memoryTab  = document.getElementById('cc-ptab-memory');
         const spadTab    = document.getElementById('cc-ptab-scratchpad');
+        const visionTab  = document.getElementById('cc-ptab-vision');
         if (isNew || !data) {
             if (avatarEl) { avatarEl.textContent = '✦'; avatarEl.style.background = 'rgba(99,102,241,0.15)'; avatarEl.style.color = '#818cf8'; }
             if (nameEl) nameEl.textContent = 'New Companion';
@@ -2207,6 +2653,7 @@ const CompanionCreator = (() => {
             if (subEl)  subEl.textContent  = 'Pick a starter template or fill in the settings below to create';
             if (chatTab)   { chatTab.disabled   = true; chatTab.title   = 'Save the companion first to start chatting'; }
             if (spadTab)   { spadTab.disabled   = true; spadTab.title   = 'Save the companion first to view scratchpad'; }
+            if (visionTab) { visionTab.disabled = true; visionTab.title = 'Save the companion first to view visual memory'; }
             if (memoryTab) { memoryTab.disabled = true; memoryTab.title = 'Save the companion first to view memory'; }
             if (portAvEl)   { portAvEl.textContent = '✦'; portAvEl.style.background = 'rgba(99,102,241,0.15)'; portAvEl.style.color = '#818cf8'; }
             if (portNameEl) portNameEl.textContent = '';
@@ -2216,6 +2663,7 @@ const CompanionCreator = (() => {
 
         if (chatTab)   { chatTab.disabled   = false; chatTab.title   = ''; }
         if (spadTab)   { spadTab.disabled   = false; spadTab.title   = ''; }
+        if (visionTab) { visionTab.disabled = false; visionTab.title = ''; }
         if (memoryTab) { memoryTab.disabled = false; memoryTab.title = ''; }
         const color = data.accent_color || '#6366f1';
 
@@ -3403,6 +3851,12 @@ const CompanionCreator = (() => {
                                     spadTab.classList.add('cc-ptab-pulse');
                                     setTimeout(() => spadTab.classList.remove('cc-ptab-pulse'), 3000);
                                 }
+                            } else if (evt.tool === 'visual_memory') {
+                                const vTab = document.getElementById('cc-ptab-vision');
+                                if (vTab) {
+                                    vTab.classList.add('cc-ptab-pulse');
+                                    setTimeout(() => vTab.classList.remove('cc-ptab-pulse'), 3000);
+                                }
                             }
                             flushStreamRender();
                             const cleanedFirst = _stripToolTags(fullText);
@@ -3458,6 +3912,9 @@ const CompanionCreator = (() => {
                             }
                             if (!document.getElementById('cc-scratchpad-view')?.classList.contains('hidden') && _editingId) {
                                 _loadScratchpad(_editingId);
+                            }
+                            if (!document.getElementById('cc-vision-view')?.classList.contains('hidden') && _editingId) {
+                                _loadVisualMemory(_editingId);
                             }
                         }
                     } catch { /* non-JSON chunk */ }
@@ -3990,6 +4447,7 @@ const CompanionCreator = (() => {
         document.getElementById('cc-export-chat-btn')?.addEventListener('click', _exportChatTranscript);
         document.getElementById('cc-clear-chat-btn')?.addEventListener('click', _clearChatHistoryOnly);
         _initScratchpadListeners();
+        _initVisualMemoryListeners();
 
         // Live sync with Global Companion Presence floating popups & background check-ins
         window.addEventListener('companionProactiveMessage', e => {
