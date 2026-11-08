@@ -3,6 +3,7 @@ core/companions/companion_routes.py
 Unified dynamic router for all Aethvion companions.
 """
 
+import asyncio
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse, FileResponse
@@ -116,7 +117,7 @@ async def list_companions():
 async def get_due_timers():
     """Poll and pop any companion follow-up timers that have reached due_ts."""
     from core.bridges import companion_timer_bridge
-    due = await asyncio.to_thread(companion_timer_bridge.get_due_timers)
+    due = await asyncio.to_thread(companion_timer_bridge.pop_due_companion_timers)
     return {"due": due}
 
 @router.post("/timers/{timer_id}/trigger")
@@ -140,19 +141,23 @@ async def trigger_due_timer(timer_id: str):
         f"DO NOT greet the user by name or start with 'Hey [Name]'."
     )
     
-    resp = await CompanionEngine.initiate_response(
-        cfg,
-        trigger="timer_followup",
-        instruction=instruction
-    )
-    
-    # Mark timer completed with generated response
-    await asyncio.to_thread(companion_timer_bridge.mark_timer_completed, timer_id, resp.get("response", ""))
-    return {
-        "success": True,
-        "timer": target,
-        "companion": resp
-    }
+    try:
+        resp = await CompanionEngine.initiate_response(
+            cfg,
+            trigger="timer_followup",
+            instruction=instruction
+        )
+        # Mark timer completed with generated response
+        await asyncio.to_thread(companion_timer_bridge.mark_timer_completed, timer_id, resp.get("response", ""))
+        return {
+            "success": True,
+            "timer": target,
+            "companion": resp
+        }
+    except Exception as e:
+        logger.error(f"Error triggering timer {timer_id}: {e}", exc_info=True)
+        await asyncio.to_thread(companion_timer_bridge.mark_timer_completed, timer_id, f"Failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{companion_id}/config")
 async def get_companion_config(companion_id: str):

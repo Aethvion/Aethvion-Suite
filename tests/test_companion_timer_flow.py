@@ -111,7 +111,10 @@ def test_flow_state_summary_and_guidance(tmp_path, monkeypatch):
     assert "Vibe Guidance:" in summary
 
 
-def test_bridge_manager_companion_timer_and_slash():
+def test_bridge_manager_companion_timer_and_slash(tmp_path, monkeypatch):
+    test_file = tmp_path / "companion_timers.json"
+    monkeypatch.setattr(companion_timer_bridge, "TIMERS_FILE", test_file)
+
     # Direct tool call via bridge_manager
     res = bridge_manager.call_module("companion_timer", "set_timer", {
         "companion_id": "misakacipher",
