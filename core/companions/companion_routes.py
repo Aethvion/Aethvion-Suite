@@ -133,10 +133,33 @@ async def trigger_due_timer(timer_id: str):
     cfg = _get_cfg(cid)
     reason = target.get("reason", "Proactive follow-up")
     context = target.get("context", reason)
-    
+
+    import datetime as _dt
+    now = _dt.datetime.now()
+    now_ts = now.timestamp()
+    due_ts = float(target.get("due_ts") or now_ts)
+    delay_sec = now_ts - due_ts
+    now_str = now.strftime("%H:%M")
+
+    if delay_sec > 120:
+        delay_min = max(1, int(delay_sec // 60))
+        timing_note = (
+            f"Ground Truth Clock: The current time is {now_str}. "
+            f"NOTE: This follow-up was originally scheduled for {target.get('due_str', 'earlier')} "
+            f"(about {delay_min} minutes ago) and was delayed by a system hiccup. "
+            f"Do NOT claim or pretend you arrived right on time or that your internal clock was perfect. "
+            f"If acknowledging timing, be honest that you got delayed."
+        )
+    else:
+        timing_note = (
+            f"Ground Truth Clock: The current time is {now_str}. "
+            f"You are checking in on time as scheduled ({target.get('due_str', now_str)})."
+        )
+
     instruction = (
         f"Scheduled Follow-Up Timer Check-In: Topic is '{reason}'. "
         f"Context/Task: {context}. "
+        f"{timing_note} "
         f"Speak directly to the user in character (1-2 sentences) casually following up on this specific matter. "
         f"DO NOT greet the user by name or start with 'Hey [Name]'."
     )

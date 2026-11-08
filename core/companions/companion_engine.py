@@ -137,6 +137,8 @@ class CompanionEngine:
                 )
             except KeyError:
                 system_prompt = raw_init_prompt + f"\n\n{instr}"
+            if "{datetime_ctx}" not in raw_init_prompt:
+                system_prompt += f"\n\nCurrent time: {now.strftime('%A, %d %B %Y — %H:%M')}"
             if proactive_bridges_block:
                 system_prompt += f"\n\n{proactive_bridges_block}"
             system_prompt += flow_context + recent_chat_context + natural_checkin_rules + expr_hint
