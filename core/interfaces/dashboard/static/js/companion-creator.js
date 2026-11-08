@@ -5087,6 +5087,19 @@ const CompanionCreator = (() => {
     // COMPANION GROUP CHAT IMPLEMENTATION
     // =========================================================================
 
+    function _renderGroupAvatar(id, name, symbol, color = '#6366f1', size = 20) {
+        if (!id || id === 'marcel' || id === 'system') {
+            const sym = symbol || (id === 'marcel' ? '👤' : '✦');
+            return `<span class="gc-avatar-fallback" style="display:inline-flex; align-items:center; justify-content:center; width:${size}px; height:${size}px; border-radius:50%; background:${color}22; color:${color}; font-size:${Math.max(10, Math.round(size * 0.62))}px; line-height:1; flex-shrink:0;">${_esc(sym)}</span>`;
+        }
+        return `
+            <span class="gc-msg-avatar-wrap" style="width:${size}px; height:${size}px; border:1px solid ${color}44;">
+                <img src="/api/companion-creator/${encodeURIComponent(id)}/icon" class="gc-msg-avatar-img" alt="${_esc(name || id)}" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-flex';" />
+                <span class="gc-avatar-fallback" style="display:none; width:100%; height:100%; align-items:center; justify-content:center; background:${color}22; color:${color}; font-size:${Math.max(10, Math.round(size * 0.62))}px; line-height:1;">${_esc(symbol || '✦')}</span>
+            </span>
+        `;
+    }
+
     async function _loadGroupChats() {
         const groupEl = document.getElementById('cc-group-list');
         if (!groupEl) return;
@@ -5185,9 +5198,7 @@ const CompanionCreator = (() => {
             membersListEl.innerHTML = allComps.map(c => `
                 <label style="display:flex; align-items:center; gap:0.6rem; padding:0.35rem 0.5rem; border-radius:6px; cursor:pointer; background:rgba(255,255,255,0.02);">
                     <input type="checkbox" value="${_esc(c.id)}" ${c.id === 'misakacipher' ? 'checked' : ''} style="accent-color:var(--primary);" />
-                    <span style="display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:6px; background:${_esc(c.accent_color || '#6366f1')}30; color:${_esc(c.accent_color || '#6366f1')}; font-size:0.8rem;">
-                        ${_esc(c.avatar_symbol || '✦')}
-                    </span>
+                    ${_renderGroupAvatar(c.id, c.name, c.avatar_symbol, c.accent_color || '#6366f1', 22)}
                     <span style="font-weight:600; font-size:0.82rem; color:#f1f5f9;">${_esc(c.name)}</span>
                     <span style="font-size:0.72rem; color:var(--text-secondary); margin-left:auto;">${_esc(c.description || '')}</span>
                 </label>
@@ -5301,7 +5312,7 @@ const CompanionCreator = (() => {
                             const isUser = m.is_user || m.id === 'marcel';
                             return `
                                 <span class="gc-member-chip" style="background:${_esc(m.accent_color)}25; color:${_esc(m.accent_color)}; border-color:${_esc(m.accent_color)}40;" title="${isUser ? 'Marcel (User)' : 'Click to @mention ' + m.name}" onclick="window._groupChatInsertMention('${_esc(m.name)}')">
-                                    <span>${_esc(m.avatar_symbol || '✦')}</span>
+                                    ${_renderGroupAvatar(m.id, m.name, m.avatar_symbol, m.accent_color, 18)}
                                     <span>${_esc(m.name)}</span>
                                     ${!isUser ? `<i class="fas fa-times gc-member-kick-btn" title="Kick from group" onclick="event.stopPropagation(); window._groupChatKickMember('${_esc(group.id)}', '${_esc(m.id)}', '${_esc(m.name)}')"></i>` : ''}
                                 </span>
@@ -5365,7 +5376,8 @@ const CompanionCreator = (() => {
                             <span><i class="fas fa-at"></i> Ping:</span>
                             ${members.filter(m => !m.is_user && m.id !== 'marcel').map(m => `
                                 <button type="button" class="gc-ping-btn" onclick="window._groupChatInsertMention('${_esc(m.name)}')">
-                                    ${_esc(m.avatar_symbol || '✦')} @${_esc(m.name)}
+                                    ${_renderGroupAvatar(m.id, m.name, m.avatar_symbol, m.accent_color, 16)}
+                                    <span>@${_esc(m.name)}</span>
                                 </button>
                             `).join('')}
                         </div>
@@ -5430,7 +5442,7 @@ const CompanionCreator = (() => {
                 <div class="gc-msg-card ${isUser ? 'is-user' : 'is-companion'}" style="${!isUser ? `border-left: 3px solid ${color};` : ''}">
                     <div class="gc-msg-header">
                         <span class="gc-msg-author" style="color:${color};">
-                            <span>${_esc(m.avatar_symbol || '✦')}</span>
+                            ${_renderGroupAvatar(m.author_id, m.author_name, m.avatar_symbol, color, 20)}
                             <span>${_esc(m.author_name || m.author_id)}</span>
                         </span>
                         ${m.mood ? `<span class="gc-msg-badge">${_esc(m.mood)}</span>` : ''}
@@ -5601,7 +5613,7 @@ const CompanionCreator = (() => {
                 <div class="gc-msg-card is-user">
                     <div class="gc-msg-header">
                         <span class="gc-msg-author" style="color:#10b981;">
-                            <span>✦</span>
+                            ${_renderGroupAvatar('marcel', 'Marcel', '👤', '#10b981', 20)}
                             <span>Marcel</span>
                         </span>
                         <span class="gc-msg-time" style="margin-left:auto;">${timeStr}</span>
@@ -5673,7 +5685,7 @@ const CompanionCreator = (() => {
                     <div class="gc-msg-card is-companion" style="border-left: 3px solid ${color};">
                         <div class="gc-msg-header">
                             <span class="gc-msg-author" style="color:${color};">
-                                <span>${_esc(msg.avatar_symbol || '✦')}</span>
+                                ${_renderGroupAvatar(msg.author_id, msg.author_name, msg.avatar_symbol, color, 20)}
                                 <span>${_esc(msg.author_name || msg.author_id)}</span>
                             </span>
                             ${msg.mood ? `<span class="gc-msg-badge">${_esc(msg.mood)}</span>` : ''}
@@ -5748,9 +5760,7 @@ const CompanionCreator = (() => {
                         ${candidates.map(c => `
                             <div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.65rem; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06);">
                                 <div style="display:flex; align-items:center; gap:0.5rem;">
-                                    <span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:7px; background:${_esc(c.accent_color)}25; color:${_esc(c.accent_color)};">
-                                        ${_esc(c.avatar_symbol || '✦')}
-                                    </span>
+                                    ${_renderGroupAvatar(c.id, c.name, c.avatar_symbol, c.accent_color || '#6366f1', 28)}
                                     <div>
                                         <div style="font-size:0.82rem; font-weight:700; color:#f8fafc;">${_esc(c.name)}</div>
                                         <div style="font-size:0.7rem; color:var(--text-secondary);">${_esc(c.description || '')}</div>

@@ -95,10 +95,13 @@ def _execute_one(
     workspaces: list[dict],
     profile_id: str | None = None,
     companion_id: str | None = None,
+    group_id: str | None = None,
 ) -> str:
     """Execute a single tool call synchronously. Called via asyncio.to_thread."""
     if companion_id and "companion_id" not in attrs:
         attrs["companion_id"] = companion_id
+    if group_id and "group_id" not in attrs:
+        attrs["group_id"] = group_id
     try:
         if tool_name == "read_file":
             path = attrs.get("path", "")
@@ -166,12 +169,16 @@ def _execute_one(
         if tool_name == "bridge":
             from core.bridges import bridge_manager
             module_id = attrs.get("module", "")
+            if module_id == "companion_scratchpad":
+                module_id = "scratchpad"
             cmd = attrs.get("cmd", "")
             args = {k: v for k, v in attrs.items() if k not in ("module", "cmd")}
             result = bridge_manager.call_module(module_id, cmd, args, profile_id=profile_id)
             return f"[bridge:{module_id}.{cmd}] {result}"
 
         # bridge auto-route: tool_name matches a registered module id
+        if tool_name == "companion_scratchpad":
+            tool_name = "scratchpad"
         try:
             from core.bridges import bridge_manager
             registry = bridge_manager.get_registry()
@@ -199,6 +206,7 @@ async def execute_tools_stream(
     workspaces: list[dict],
     profile_id: str | None = None,
     companion_id: str | None = None,
+    group_id: str | None = None,
 ) -> AsyncGenerator[dict[str, Any], None]:
     """
     Parse all [tool:...] blocks from content and execute them.
@@ -220,7 +228,7 @@ async def execute_tools_stream(
         attrs = parse_attrs(parts[1] if len(parts) > 1 else "")
 
         yield {"type": "tool_start", "tool": tool_name, "args": attrs}
-        result = await asyncio.to_thread(_execute_one, tool_name, attrs, workspaces, profile_id, companion_id)
+        result = await asyncio.to_thread(_execute_one, tool_name, attrs, workspaces, profile_id, companion_id, group_id)
         results.append(result)
         cleaned = cleaned.replace(raw, "")
 

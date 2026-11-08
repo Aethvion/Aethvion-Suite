@@ -111,3 +111,42 @@ def test_group_chat_lifecycle(tmp_path, monkeypatch):
     deleted = GroupChatEngine.delete_group(gid)
     assert deleted is True
     assert GroupChatEngine.get_group(gid) is None
+
+
+@pytest.mark.asyncio
+async def test_group_scratchpad_tool_execution(tmp_path, monkeypatch):
+    test_groups_dir = tmp_path / "groups"
+    monkeypatch.setattr("core.companions.group_chat_engine.GROUPS_DIR", test_groups_dir)
+    monkeypatch.setattr("core.utils.paths.COMPANION_GROUPS", test_groups_dir)
+
+    group = GroupChatEngine.create_group(
+        title="Myth Busters",
+        companion_ids=["misakacipher"],
+    )
+    gid = group["id"]
+
+    from core.companions.engine.tools import execute_tools_stream
+
+    # Companion generates a scratchpad append WITHOUT specifying group_id in tool tag
+    llm_output = 'I am adding this note! [tool:scratchpad cmd="append" text="Urban Legend: Ghost messages in the network"]'
+
+    events = []
+    async for ev in execute_tools_stream(
+        llm_output,
+        [],
+        profile_id="full_local",
+        companion_id="misakacipher",
+        group_id=gid,
+    ):
+        events.append(ev)
+
+    final = next(ev for ev in events if ev["type"] == "final_cleaned")
+    assert "Urban Legend" not in final["content"]  # Tool tag stripped
+    assert len(final["results"]) == 1
+
+    # Verify note landed in group scratchpad
+    sp = CompanionScratchpad(test_groups_dir / gid, "Group")
+    data = sp.load()
+    assert len(data.get("entries", [])) == 1
+    assert "Urban Legend: Ghost messages in the network" in data["entries"][0]["text"]
+    assert data["entries"][0]["author"]["id"] == "misakacipher"

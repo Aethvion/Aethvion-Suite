@@ -34,6 +34,7 @@ LOGS           = DATA / "logs"
 SYSTEM         = DATA / "system"
 MODES          = DATA / "modes"
 COMPANIONS     = DATA / "companions"   # Top-level — not a mode subdir
+COMPANION_GROUPS = COMPANIONS / "groups"
 DEFAULT_OUTPUT = DATA / "default_output"
 
 # Modes (Tab-specific state & history)

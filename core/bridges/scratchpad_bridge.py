@@ -13,10 +13,9 @@ logger = get_logger(__name__)
 
 def _get_scratchpad(args: Optional[Dict[str, Any]] = None) -> CompanionScratchpad:
     if args and args.get("group_id"):
-        from pathlib import Path
-        project_root = Path(__file__).parent.parent.parent
-        group_dir = project_root / "data" / "companions" / "groups" / str(args["group_id"]).strip()
-        author = str(args.get("author") or args.get("companion_id") or "Group").strip()
+        from core.utils.paths import COMPANION_GROUPS
+        group_dir = COMPANION_GROUPS / str(args["group_id"]).strip()
+        author = args.get("author") or args.get("companion_id") or "Group"
         return CompanionScratchpad(group_dir, author)
 
     cid = (args or {}).get("companion_id")

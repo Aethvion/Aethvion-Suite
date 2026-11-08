@@ -3094,7 +3094,32 @@
     font-weight: 700;
     display: flex;
     align-items: center;
-    gap: 0.3rem;
+    gap: 0.35rem;
+}
+.gc-msg-avatar-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    vertical-align: middle;
+    background: rgba(255, 255, 255, 0.08);
+}
+.gc-msg-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+.gc-avatar-fallback {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    line-height: 1;
+    font-weight: 700;
 }
 .gc-msg-time {
     font-size: 0.68rem;

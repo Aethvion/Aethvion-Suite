@@ -427,7 +427,7 @@ class GroupChatEngine:
             f"- **Address and ping others naturally**: You are encouraged to speak directly to fellow members and use @mentions (e.g. @Lyra, @Axiom, @Marcel) when asking questions, agreeing, building on their ideas, or playfully debating.\n"
             f"- **Respond to your mentions**: If you were asked or mentioned in the recent dialogue, answer directly from your unique perspective and expertise.\n"
             f"- **Add your unique angle**: Don't just repeat what others said. Bring your own distinct background, ideas, and personality into the room.\n"
-            f"- **Collaborative Scratchpad**: To record an idea or mechanic onto our shared group scratchpad, use [tool:bridge module=\"scratchpad\" cmd=\"append\" group_id=\"{group_id}\" text=\"...\"] — it will be recorded into the shared ledger with your author attribution.\n"
+            f"- **Collaborative Scratchpad**: To record an idea, task, or note onto our shared group scratchpad, use [tool:companion_scratchpad cmd=\"append\" text=\"...\"] (or [tool:bridge module=\"scratchpad\" cmd=\"append\" text=\"...\"]) — it will be recorded into the shared group canvas with your author attribution.\n"
             f"- **Keep it conversational**: Deliver your thought in 1 to 2 engaging, natural paragraphs.\n\n"
             f"Recent Group Conversation:\n{conv_transcript}\n\n"
             f"Task: Write your next response in character as {cfg.name}. Address the conversation naturally, pinging fellow members if relevant."
@@ -459,7 +459,7 @@ class GroupChatEngine:
             round_results = []
             cleaned = content
             # Ensure group_id is passed so scratchpad tool operates on this group's scratchpad
-            async for tool_event in execute_tools_stream(content, [], profile_id=connector_profile, companion_id=cfg.id):
+            async for tool_event in execute_tools_stream(content, [], profile_id=connector_profile, companion_id=cfg.id, group_id=group_id):
                 if tool_event["type"] == "final_cleaned":
                     cleaned = tool_event["content"]
                     round_results = tool_event["results"]
