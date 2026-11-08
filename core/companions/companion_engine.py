@@ -9,7 +9,7 @@ import datetime
 import json
 import uuid
 import re
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
 
 from core.companions.registry import CompanionConfig
@@ -43,7 +43,11 @@ def format_time_diff(total_seconds: int, time_context: Dict[str, Any]) -> str:
 
 class CompanionEngine:
     @staticmethod
-    async def initiate_response(config: CompanionConfig, trigger: str = "startup"):
+    async def initiate_response(
+        config: CompanionConfig,
+        trigger: str = "startup",
+        instruction: Optional[str] = None
+    ):
         raw = config._raw_config
         behavior = raw.get("behavior", {})
         capabilities = raw.get("capabilities", {})
@@ -57,8 +61,12 @@ class CompanionEngine:
         mem_data = memory.load()
         time_desc = history.time_since_last()
         
-        if trigger == "startup":
+        if instruction:
+            instr = instruction
+        elif trigger == "startup":
             instr = prompts.get("startup_instruction", "Welcome back! Check in with the user naturally.").replace("{time_desc}", time_desc)
+        elif trigger == "flow_vibe":
+            instr = "Perform a gentle, casual flow-state vibe check based on what the user is working on or whether they need a pause or music. Keep it effortless, 1-2 sentences."
         else:
             instr = prompts.get("proactive_instruction", "Initiate a friendly, natural conversation with the user based on who you are, what you talked about recently, what you remember about them, or what is happening on their PC.")
 
@@ -81,6 +89,16 @@ class CompanionEngine:
         except Exception:
             pass
 
+        # Live flow state & vibe context (compact summary for natural check-ins)
+        flow_context = ""
+        try:
+            from core.bridges.flow_state_bridge import get_flow_state_summary
+            fs = get_flow_state_summary()
+            if fs:
+                flow_context = f"\n\n## Ambient Work & Flow State Context\n{fs}"
+        except Exception as _fe:
+            logger.debug(f"[{config.id}] Flow state context skipped: {_fe}")
+
         # On-demand tools & restraint rules for proactive check-ins:
         # Do NOT pre-dump open windows, Spotify, or CPU/RAM telemetry into the prompt,
         # because pre-injected telemetry causes the model to recite a surveillance status report every time.
@@ -92,12 +110,13 @@ class CompanionEngine:
 
         natural_checkin_rules = (
             "\n\n## Natural Check-In & Restraint Rules (CRITICAL)"
-            "\n- Act like a real human companion or colleague casually saying hi — NOT a system monitor or status reporter."
+            "\n- Act like a real human companion or colleague casually saying hi or checking in — NOT a system monitor or status reporter."
             "\n- Keep it brief and effortless: **1 to 2 short sentences maximum**."
+            "\n- **NO REPETITIVE GREETINGS OR NAME-DROPPING (CRITICAL)**: You are talking directly 1-on-1 with the user in an ongoing chat. Real friends and co-workers do NOT begin routine messages or check-ins by greeting each other with 'Hey [Name]!' or repeating their name in every message. NEVER start your check-in with 'Hey Marcel!' or greeting the user by name. Jump straight into the thought, question, or casual observation without saying their name."
             "\n- **Having access to info ≠ needing to mention it**: Your `Memory` about the user (their name, city, age, past projects) and your `Connectors` are silent background context. Do NOT shoehorn the user's city (e.g. Apeldoorn), age, or stored profile facts into your greeting."
             "\n- **Never recite system telemetry** (CPU %, RAM usage, disk space) or list multiple open apps/browser tabs/game launchers (Discord, Steam, Riot, etc.) in a check-in."
             "\n- **Most check-ins should NOT use any connector tools at all** — just follow up naturally on something you talked about, share a casual thought in character, or ask a simple, low-pressure question."
-            "\n- Only if you genuinely want to peek at what the user is working on or listening to right now, you may optionally call ONE connector (`window_focus` or `media_sentinel`), and even then mention **at most one single detail** casually in passing — never a multi-paragraph breakdown."
+            "\n- Only if you genuinely want to peek at what the user is working on or listening to right now, you may optionally call ONE connector (`window_focus`, `flow_state`, or `media_sentinel`), and even then mention **at most one single detail** casually in passing — never a multi-paragraph breakdown."
         )
 
         expr_hint = ""
@@ -120,7 +139,7 @@ class CompanionEngine:
                 system_prompt = raw_init_prompt + f"\n\n{instr}"
             if proactive_bridges_block:
                 system_prompt += f"\n\n{proactive_bridges_block}"
-            system_prompt += recent_chat_context + natural_checkin_rules + expr_hint
+            system_prompt += flow_context + recent_chat_context + natural_checkin_rules + expr_hint
         else:
             bi = mem_data.get("base_info", {})
             mem = mem_data.get("memory", {})
@@ -133,11 +152,12 @@ class CompanionEngine:
                 f"Current time: {now.strftime('%A, %d %B %Y — %H:%M')}\n"
                 f"Time since last message: {time_desc}"
                 + (f"\n\n{proactive_bridges_block}" if proactive_bridges_block else "")
+                + f"{flow_context}"
                 + f"{recent_chat_context}"
                 + f"{natural_checkin_rules}"
                 + f"{expr_hint}\n\n"
                 + f"Task: {instr}\n"
-                + "Write a short, natural check-in message (1–2 sentences) in character."
+                + "Write a short, natural check-in message (1–2 sentences) in character without greeting the user by name."
             )
 
         pref_model = get_preferences_manager().get(config.id, {}).get("model")
@@ -353,9 +373,10 @@ class CompanionEngine:
             # Natural presence & context restraint
             system_prompt += (
                 "\n\n## Natural Presence & Context Restraint (CRITICAL)"
+                "\n- **NATURAL 1-ON-1 CONVERSATION (NO REPETITIVE NAME-DROPPING)**: You are in an ongoing direct 1-on-1 conversation with the user. In real life, friends and colleagues do NOT address each other by name in routine chat messages (e.g. 'Hey Marcel!', 'Marcel, ...'). NEVER start ordinary replies or messages with the user's name. Speak directly and naturally as you would in an active instant messaging chat. Reserve mentioning their name strictly for rare, significant moments (such as greeting after days apart, or heartfelt emphasis)."
                 "\n- **Having access to info ≠ needing to mention it**: Your `Memory` about the user (their name, city, age, past projects), their `Workspaces`, and your `Connectors` are background capabilities available when needed — NOT a checklist to weave into every reply."
                 "\n- **Silent familiarity**: Know the user's background facts the way a real friend or co-worker does — silently. Never bring up their city (e.g. Apeldoorn), age, or unrelated stored facts unless the conversation is specifically about that topic."
-                "\n- **On-demand connectors & actions**: Only call a `[tool:bridge ...]` connector when the user's message asks for or genuinely benefits from live PC/web data or actions (e.g. playing music, checking windows, searching the web, recording to the scratchpad, or saving/comparing visual memories). When an action is requested (like playing, pausing, or skipping Spotify, adding/updating notes on the scratchpad, or saving/comparing visual memories), ALWAYS output the real `[tool:bridge ...]` tag—NEVER roleplay, simulate in text, or output a fake markdown codeblock pretending you updated it without actually emitting the tool tag."
+                "\n- **On-demand connectors & actions**: Only call a `[tool:bridge ...]` connector when the user's message asks for or genuinely benefits from live PC/web data or actions (e.g. playing music, checking windows, searching the web, recording to the scratchpad, saving/comparing visual memories, scheduling a proactive timer, or checking flow state). When an action is requested (like playing, pausing, or skipping Spotify, adding/updating notes on the scratchpad, saving/comparing visual memories, or scheduling a timer), ALWAYS output the real `[tool:bridge ...]` tag—NEVER roleplay, simulate in text, or output a fake markdown codeblock pretending you updated it without actually emitting the tool tag."
                 "\n- **Human filtering of tool output**: When a connector returns data, share only what directly answers the user's question or fits the moment. Ignore background clutter (like game launchers, unrelated browser tabs, or normal CPU/RAM numbers) unless the user asked for a full breakdown."
             )
 

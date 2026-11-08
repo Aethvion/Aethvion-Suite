@@ -31,6 +31,8 @@ DEFAULT_PROFILES = [
             "webcam_capture",
             "companion_tasks",
             "scratchpad",
+            "companion_timer",
+            "flow_state",
             "web_search",
             "webpage_reader",
             "youtube_link",
@@ -49,6 +51,7 @@ DEFAULT_PROFILES = [
         "allowed_connectors": [
             "companion_tasks",
             "scratchpad",
+            "companion_timer",
             "web_search",
             "webpage_reader",
             "youtube_link",
@@ -71,6 +74,8 @@ DEFAULT_PROFILES = [
             "system_link",
             "companion_tasks",
             "scratchpad",
+            "companion_timer",
+            "flow_state",
             "weather_link"
         ]
     },
@@ -312,6 +317,10 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
         slash_map["/gpu"] = slash_map["/processes"]
     if "/twitch" in slash_map:
         slash_map["/ttv"] = slash_map["/twitch"]
+    if "/timer" in slash_map:
+        slash_map["/followup"] = slash_map["/timer"]
+    if "/vibe" in slash_map:
+        slash_map["/flow"] = slash_map["/vibe"]
 
     tokens = message.strip().split()
     if not tokens:
@@ -405,6 +414,20 @@ def parse_and_execute_slash_commands(message: str, profile_id: Optional[str] = N
         else:
             cmd = "add_task"
             args["text"] = arg_text
+    elif mod_id == "companion_timer":
+        if not arg_text or arg_text.lower() in ("list", "show", "timers", "status"):
+            cmd = "list_timers"
+        elif arg_text.lower().startswith(("cancel ", "remove ", "delete ")):
+            cmd = "cancel_timer"
+            args["id"] = arg_text.split(None, 1)[1] if len(arg_text.split()) > 1 else ""
+        else:
+            cmd = "set_timer"
+            args["text"] = arg_text
+    elif mod_id == "flow_state":
+        if "suggest" in arg_text.lower() or "music" in arg_text.lower():
+            cmd = "suggest_vibe"
+        else:
+            cmd = "get_flow_state"
 
     output = call_module(mod_id, cmd, args, profile_id=profile_id)
     raw_outputs.append(output)

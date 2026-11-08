@@ -239,6 +239,45 @@
             "settings": []
         },
         {
+            "id": "companion_timer",
+            "name": "Companion Proactive Timers & Follow-ups",
+            "description": "Companion-scheduled proactive timers and follow-ups. Schedule check-ins dynamically to follow up after builds, breaks, or tasks.",
+            "module_path": "core.bridges.companion_timer_bridge",
+            "category": "system",
+            "privacy_tier": "cloud_safe",
+            "icon": "fas fa-stopwatch",
+            "slash_command": "/timer",
+            "default_command": "set_timer",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "set_timer": "Schedule a proactive follow-up timer. Args: 'minutes' (float or duration like '5m'), 'reason' (short topic), 'context' (context prompt for the check-in).",
+                "list_timers": "List pending companion follow-up timers.",
+                "cancel_timer": "Cancel a pending timer by 'id'."
+            },
+            "settings": []
+        },
+        {
+            "id": "flow_state",
+            "name": "Flow State & Vibe Manager",
+            "description": "Monitors deep work focus sessions, continuous app activity, and music vibes to guide proactive check-ins and relaxation breaks.",
+            "module_path": "core.bridges.flow_state_bridge",
+            "category": "system",
+            "privacy_tier": "local_sensitive",
+            "icon": "fas fa-wave-square",
+            "slash_command": "/vibe",
+            "default_command": "get_flow_state",
+            "enabled": true,
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "get_flow_state": "Get active window, session focus duration, music vibe, and proactive check-in guidance.",
+                "suggest_vibe": "Get advice on music, breaks, or flow encouragement based on current activity."
+            },
+            "settings": []
+        },
+        {
             "id": "web_search",
             "name": "Web Search",
             "description": "Search the internet and return a summary of top results (powered by DuckDuckGo, no API key required).",

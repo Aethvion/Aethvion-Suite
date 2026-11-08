@@ -72,6 +72,12 @@ class ChatRequest(BaseModel):
 
 class InitiateRequest(BaseModel):
     trigger: str = "startup"
+    instruction: Optional[str] = None
+
+class CompanionTimerRequest(BaseModel):
+    minutes: float = 5.0
+    reason: str = "Proactive check-in"
+    context: Optional[str] = None
 
 class QuickConfigRequest(BaseModel):
     default_model: Optional[str] = None
@@ -105,6 +111,48 @@ def _get_cfg(cid: str):
 @router.get("/list")
 async def list_companions():
     return {"companions": CompanionRegistry.list_companions()}
+
+@router.get("/timers/due")
+async def get_due_timers():
+    """Poll and pop any companion follow-up timers that have reached due_ts."""
+    from core.bridges import companion_timer_bridge
+    due = await asyncio.to_thread(companion_timer_bridge.get_due_timers)
+    return {"due": due}
+
+@router.post("/timers/{timer_id}/trigger")
+async def trigger_due_timer(timer_id: str):
+    """Trigger a due companion timer: generates intelligent in-character follow-up check-in with stored context."""
+    from core.bridges import companion_timer_bridge
+    timers = await asyncio.to_thread(companion_timer_bridge._load_timers)
+    target = next((t for t in timers if t.get("id") == timer_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Timer '{timer_id}' not found")
+    
+    cid = target.get("companion_id", "misakacipher")
+    cfg = _get_cfg(cid)
+    reason = target.get("reason", "Proactive follow-up")
+    context = target.get("context", reason)
+    
+    instruction = (
+        f"Scheduled Follow-Up Timer Check-In: Topic is '{reason}'. "
+        f"Context/Task: {context}. "
+        f"Speak directly to the user in character (1-2 sentences) casually following up on this specific matter. "
+        f"DO NOT greet the user by name or start with 'Hey [Name]'."
+    )
+    
+    resp = await CompanionEngine.initiate_response(
+        cfg,
+        trigger="timer_followup",
+        instruction=instruction
+    )
+    
+    # Mark timer completed with generated response
+    await asyncio.to_thread(companion_timer_bridge.mark_timer_completed, timer_id, resp.get("response", ""))
+    return {
+        "success": True,
+        "timer": target,
+        "companion": resp
+    }
 
 @router.get("/{companion_id}/config")
 async def get_companion_config(companion_id: str):
@@ -331,7 +379,38 @@ async def get_history(companion_id: str, offset_days: int = 0, limit_days: int =
 
 @router.post("/{companion_id}/initiate")
 async def initiate(companion_id: str, request: InitiateRequest):
-    return await CompanionEngine.initiate_response(_get_cfg(companion_id), request.trigger)
+    return await CompanionEngine.initiate_response(
+        _get_cfg(companion_id),
+        trigger=request.trigger,
+        instruction=request.instruction
+    )
+
+@router.get("/{companion_id}/timers")
+async def get_companion_timers(companion_id: str):
+    """List pending proactive follow-up timers for a companion."""
+    from core.bridges import companion_timer_bridge
+    timers = await asyncio.to_thread(companion_timer_bridge._load_timers)
+    pending = [t for t in timers if t.get("companion_id") == companion_id and t.get("status") == "pending"]
+    return {"timers": pending}
+
+@router.post("/{companion_id}/timers")
+async def create_companion_timer(companion_id: str, req: CompanionTimerRequest):
+    """Schedule a proactive timer for this companion."""
+    from core.bridges import companion_timer_bridge
+    msg = await asyncio.to_thread(companion_timer_bridge.set_timer, {
+        "companion_id": companion_id,
+        "minutes": req.minutes,
+        "reason": req.reason,
+        "context": req.context or req.reason
+    })
+    return {"success": True, "message": msg}
+
+@router.delete("/{companion_id}/timers/{timer_id}")
+async def cancel_companion_timer(companion_id: str, timer_id: str):
+    """Cancel a pending proactive timer for this companion."""
+    from core.bridges import companion_timer_bridge
+    msg = await asyncio.to_thread(companion_timer_bridge.cancel_timer, {"id": timer_id})
+    return {"success": True, "message": msg}
 
 @router.post("/{companion_id}/chat")
 async def chat(companion_id: str, request: ChatRequest):

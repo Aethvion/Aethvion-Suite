@@ -644,10 +644,69 @@ window.AethvionCompanionPresence = (() => {
         }, 20000);
     }
 
+    function _startCompanionTimerWatcher() {
+        setInterval(async () => {
+            if (_popupStreaming) return;
+            try {
+                const res = await fetch('/api/companions/timers/due');
+                if (!res.ok) return;
+                const data = await res.json();
+                const dueTimers = data?.due || [];
+                if (!dueTimers.length) return;
+
+                for (const timer of dueTimers) {
+                    try {
+                        const trigRes = await fetch(`/api/companions/timers/${timer.id}/trigger`, {
+                            method: 'POST'
+                        });
+                        if (!trigRes.ok) continue;
+                        const trigData = await trigRes.json();
+                        const compResp = trigData.companion;
+                        if (!compResp || !compResp.response) continue;
+
+                        const cid = compResp.companion_id || timer.companion_id;
+                        const compName = compResp.name || cid;
+
+                        if (window.Notifications && typeof window.Notifications.push === 'function') {
+                            window.Notifications.push({
+                                title: `${compName} — Follow-up`,
+                                message: compResp.response,
+                                source: 'chat',
+                                level: 'info',
+                                target: { tab: 'companion-creator', context: cid }
+                            });
+                        }
+
+                        // Broadcast so open chat panes receive and display the message instantly
+                        window.dispatchEvent(new CustomEvent('companion-proactive-message', {
+                            detail: {
+                                companion_id: cid,
+                                response: compResp.response,
+                                mood: compResp.mood,
+                                expression: compResp.expression
+                            }
+                        }));
+
+                        showPopup({
+                            ...compResp,
+                            companion_id: cid,
+                            mood: compResp.mood || 'attentive',
+                            expression: compResp.expression || 'happy',
+                            response: compResp.response
+                        });
+                    } catch (err) {
+                        console.warn(`[CompanionPresence] Error triggering due timer ${timer.id}:`, err);
+                    }
+                }
+            } catch {}
+        }, 10000);
+    }
+
     function init() {
         _injectStyles();
         _startGlobalHeartbeat();
         _startReminderWatcher();
+        _startCompanionTimerWatcher();
         setTimeout(_evaluateStartupCheckins, 2500);
 
         // Support deep-link navigation from Notifications Center

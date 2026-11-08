@@ -5059,6 +5059,17 @@ const CompanionCreator = (() => {
         _editCompanion(companionId, isBuiltin);
     }
 
+    window.addEventListener('companion-proactive-message', (e) => {
+        const d = e.detail;
+        if (d && d.companion_id && d.companion_id === _editingId) {
+            _appendMessage('companion', d.response);
+            _chatHistory.push({ role: 'assistant', content: d.response });
+            if (d.mood || d.expression) {
+                _updatePortraitMoodAndExpr(d.mood, d.expression);
+            }
+        }
+    });
+
     return { init, openCompanion };
 })();
 
