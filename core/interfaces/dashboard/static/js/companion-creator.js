@@ -170,6 +170,10 @@ const CompanionCreator = (() => {
               <span>Start a conversation with <strong id="cc-chat-cname">your companion</strong></span>
             </div>
           </div>
+          <button type="button" id="cc-scroll-bottom-btn" class="cc-scroll-bottom-btn hidden" title="Jump to present" aria-label="Jump to present">
+            <i class="fas fa-arrow-down"></i>
+            <span>Jump to present</span>
+          </button>
           <div id="cc-chat-attachments-bar" class="cc-chat-attachments-bar hidden"></div>
           <div class="cc-chat-bar">
             <div id="cc-slash-popover" class="cc-slash-popover hidden">
@@ -2236,6 +2240,30 @@ const CompanionCreator = (() => {
 
         // Tab click
         document.getElementById('cc-ptab-vision')?.addEventListener('click', () => _switchView('vision'));
+    }
+
+    function _initCompanionScrollToBottom() {
+        const msgsEl = document.getElementById('cc-chat-msgs');
+        const btn = document.getElementById('cc-scroll-bottom-btn');
+        if (!msgsEl || !btn) return;
+        if (msgsEl._scrollBottomBound) return;
+        msgsEl._scrollBottomBound = true;
+
+        const threshold = 180;
+        const checkScroll = () => {
+            const dist = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight;
+            if (dist > threshold) {
+                btn.classList.remove('hidden');
+            } else {
+                btn.classList.add('hidden');
+            }
+        };
+
+        msgsEl.addEventListener('scroll', checkScroll, { passive: true });
+        btn.addEventListener('click', () => {
+            msgsEl.scrollTo({ top: msgsEl.scrollHeight, behavior: 'smooth' });
+            btn.classList.add('hidden');
+        });
     }
 
     // Memory view
@@ -4448,6 +4476,7 @@ const CompanionCreator = (() => {
         document.getElementById('cc-clear-chat-btn')?.addEventListener('click', _clearChatHistoryOnly);
         _initScratchpadListeners();
         _initVisualMemoryListeners();
+        _initCompanionScrollToBottom();
 
         // Live sync with Global Companion Presence floating popups & background check-ins
         window.addEventListener('companionProactiveMessage', e => {

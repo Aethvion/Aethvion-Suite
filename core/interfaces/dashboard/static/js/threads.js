@@ -2499,6 +2499,7 @@ document.addEventListener('panelLoaded', function(e) {
     if (e.detail && e.detail.panelId === 'chat-panel') {
         _initFolderView();
         _initOverlayToggle();
+        _initChatScrollToBottom();
         if (typeof window.loadChatModels === 'function') {
             window.loadChatModels();
         }
@@ -2509,11 +2510,52 @@ window.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         _initFolderView();
         _initOverlayToggle();
+        _initChatScrollToBottom();
         if (typeof window.loadChatModels === 'function' && document.getElementById('model-select')) {
             window.loadChatModels();
         }
     }, 500);
 });
+
+function _initChatScrollToBottom() {
+    const msgsEl = document.getElementById('chat-messages');
+    let btn = document.getElementById('chat-scroll-bottom-btn');
+    if (!msgsEl) return;
+
+    if (!btn) {
+        btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'chat-scroll-bottom-btn';
+        btn.className = 'chat-scroll-bottom-btn hidden';
+        btn.setAttribute('aria-label', 'Jump to present');
+        btn.setAttribute('title', 'Jump to present');
+        btn.innerHTML = '<i class="fas fa-arrow-down"></i><span>Jump to present</span>';
+        const col = msgsEl.closest('.chat-column') || msgsEl.parentElement;
+        if (col) {
+            col.style.position = 'relative';
+            col.appendChild(btn);
+        }
+    }
+
+    if (msgsEl._scrollBottomBound) return;
+    msgsEl._scrollBottomBound = true;
+
+    const threshold = 180;
+    const checkScroll = () => {
+        const dist = msgsEl.scrollHeight - msgsEl.scrollTop - msgsEl.clientHeight;
+        if (dist > threshold) {
+            btn.classList.remove('hidden');
+        } else {
+            btn.classList.add('hidden');
+        }
+    };
+
+    msgsEl.addEventListener('scroll', checkScroll, { passive: true });
+    btn.addEventListener('click', () => {
+        msgsEl.scrollTo({ top: msgsEl.scrollHeight, behavior: 'smooth' });
+        btn.classList.add('hidden');
+    });
+}
 
 // ── Overlay History Panel ─────────────────────────────────────────────────────
 

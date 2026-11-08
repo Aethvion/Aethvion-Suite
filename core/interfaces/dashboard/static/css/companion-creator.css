@@ -437,6 +437,54 @@
 .cc-chat-col {
     flex: 1; display: flex; flex-direction: column;
     min-height: 0; overflow: hidden;
+    position: relative;
+}
+
+/* Floating "Jump to Present" button in companion chat */
+.cc-scroll-bottom-btn {
+    position: absolute;
+    bottom: 74px;
+    left: 50%;
+    transform: translateX(-50%) translateY(0);
+    z-index: 30;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    background: rgba(20, 20, 28, 0.9);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 12px rgba(99, 102, 241, 0.25);
+    color: #f4f4f5;
+    font-size: 0.74rem;
+    font-weight: 600;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+    opacity: 1;
+    pointer-events: auto;
+}
+.cc-scroll-bottom-btn.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(12px);
+}
+.cc-scroll-bottom-btn:hover {
+    background: rgba(30, 30, 42, 0.95);
+    border-color: rgba(99, 102, 241, 0.7);
+    color: #fff;
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(99, 102, 241, 0.4);
+}
+.cc-scroll-bottom-btn i {
+    color: var(--accent, #818cf8);
+    font-size: 0.74rem;
+    transition: transform 0.15s ease;
+}
+.cc-scroll-bottom-btn:hover i {
+    transform: translateY(1.5px);
 }
 
 /* Message area */
