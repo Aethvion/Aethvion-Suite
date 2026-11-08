@@ -34,12 +34,13 @@ def _get_scratchpad(args: Optional[Dict[str, Any]] = None) -> CompanionScratchpa
 
 
 def read(args: Optional[Dict[str, Any]] = None) -> str:
-    """Read the current shared scratchpad. Optional arg: 'section' (str)."""
+    """Read the current shared scratchpad. Optional args: 'section' (str), 'raw' (bool)."""
     if args is None:
         args = {}
     sp = _get_scratchpad(args)
     data = sp.load()
-    content = data.get("content", "")
+    use_raw = bool(args.get("raw", False))
+    content = data.get("content", "") if use_raw else data.get("plain_text", data.get("content", ""))
     section = args.get("section")
 
     if section and section.strip():
@@ -69,7 +70,10 @@ def read(args: Optional[Dict[str, Any]] = None) -> str:
 def append(args: Optional[Dict[str, Any]] = None) -> str:
     """
     Append a note, idea, or task to the scratchpad.
-    Args: 'text' or 'note' (str, required), optional 'section' (str, e.g. 'Ideas', 'Mechanics', 'Notes').
+    Args:
+        'text' or 'note' (str, required)
+        'section' (str, optional, e.g. 'Ideas', 'Mechanics', 'Notes')
+        'author' (str or dict, optional, e.g. 'marcel', 'misakacipher', or author object)
     """
     if args is None:
         args = {}
@@ -78,8 +82,9 @@ def append(args: Optional[Dict[str, Any]] = None) -> str:
         return "Please provide 'text' to add to the scratchpad."
 
     section = args.get("section")
+    author = args.get("author") or args.get("companion_id")
     sp = _get_scratchpad(args)
-    res = sp.append_note(text, section=section)
+    res = sp.append_note(text, section=section, author=author)
     return res.get("message", f"Added note: '{text}'")
 
 

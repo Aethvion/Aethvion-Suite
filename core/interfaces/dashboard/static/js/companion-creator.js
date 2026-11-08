@@ -708,6 +708,7 @@ const CompanionCreator = (() => {
                 <span>Shared Scratchpad</span>
                 <span class="cc-spad-partner" id="cc-spad-partner">with Companion</span>
               </div>
+              <div class="cc-spad-contributors" id="cc-spad-contributors"></div>
               <div class="cc-spad-status" id="cc-spad-status">
                 <i class="fas fa-circle-check" style="color:#10b981;"></i>
                 <span id="cc-spad-status-text">Ready</span>
@@ -751,6 +752,10 @@ const CompanionCreator = (() => {
 
           <!-- Quick Idea Bar (Bottom) -->
           <div class="cc-spad-quick-bar">
+            <div class="cc-spad-posting-badge" id="cc-spad-posting-badge" title="Posting as Marcel">
+              <span class="cc-spad-posting-dot"></span>
+              <span class="cc-spad-posting-name">Marcel</span>
+            </div>
             <div class="cc-spad-quick-input-wrap">
               <i class="fas fa-lightbulb cc-spad-quick-icon"></i>
               <input type="text" id="cc-spad-quick-input" placeholder="Type a quick idea, mechanic, or task and press Enter..." autocomplete="off">
@@ -1422,11 +1427,32 @@ const CompanionCreator = (() => {
 
             _renderScratchpadPreview(content);
             _populateScratchpadSections(data.sections || []);
+            _renderScratchpadContributors(data.authors || []);
             _updateScratchpadStatus(data.last_modified ? `Saved ${new Date(data.last_modified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Ready', 'saved');
         } catch (e) {
             console.error('[Scratchpad] Failed to load:', e);
             _updateScratchpadStatus('Load failed', 'error');
         }
+    }
+
+    function _renderScratchpadContributors(authors) {
+        const container = document.getElementById('cc-spad-contributors');
+        if (!container) return;
+        if (!Array.isArray(authors) || authors.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+        let html = '';
+        authors.forEach(a => {
+            const name = _escHtml(a.name || 'Author');
+            const role = _escHtml((a.role || 'agent').toUpperCase());
+            const color = a.color || '#6366f1';
+            html += `<div class="cc-spad-contrib-pill" style="--a-color:${color};" title="${name} (${role})">
+                <span class="cc-spad-contrib-dot" style="background:${color};"></span>
+                <span class="cc-spad-contrib-name">${name}</span>
+            </div>`;
+        });
+        container.innerHTML = html;
     }
 
     function _renderScratchpadPreview(markdownText) {
@@ -1455,6 +1481,37 @@ const CompanionCreator = (() => {
         }
 
         previewEl.innerHTML = html;
+
+        // Enhance author pills with colors, hover cards, and colored line accents
+        previewEl.querySelectorAll('.spad-author-pill').forEach(pill => {
+            const color = pill.dataset.color || '#6366f1';
+            const author = pill.dataset.author || 'Author';
+            const role = (pill.dataset.role || 'agent').toUpperCase();
+            const timeRaw = pill.dataset.time || '';
+            let formattedTime = '';
+            if (timeRaw) {
+                try {
+                    const d = new Date(timeRaw);
+                    formattedTime = d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } catch {
+                    formattedTime = timeRaw;
+                }
+            }
+
+            pill.style.setProperty('--pill-color', color);
+            pill.style.borderColor = color + '55';
+            pill.style.backgroundColor = color + '18';
+            pill.style.color = color;
+
+            const li = pill.closest('li');
+            if (li) {
+                li.classList.add('spad-entry-item');
+                li.style.borderLeftColor = color;
+            }
+
+            const tooltipText = `${author} [${role}]${formattedTime ? ' • ' + formattedTime : ''}`;
+            pill.setAttribute('title', tooltipText);
+        });
 
         // Apply interactive checkbox toggling: clicking [ ] or [x] updates the markdown!
         previewEl.querySelectorAll('input[type="checkbox"]').forEach((chk, idx) => {
@@ -1558,6 +1615,9 @@ const CompanionCreator = (() => {
             const data = await res.json();
             _spadLastSavedContent = content;
             _populateScratchpadSections(data.sections || []);
+            if (data.authors) {
+                _renderScratchpadContributors(data.authors);
+            }
             _updateScratchpadStatus(`Saved ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, 'saved');
             if (!silent && typeof showToast === 'function') {
                 showToast('Scratchpad saved', 'success');
@@ -1584,10 +1644,20 @@ const CompanionCreator = (() => {
         if (!cId || !text.trim()) return;
         _updateScratchpadStatus('Adding…', 'saving');
         try {
+            const payload = {
+                text: text.trim(),
+                section: section || undefined,
+                author: {
+                    id: 'marcel',
+                    name: 'Marcel',
+                    role: 'user',
+                    color: '#10b981'
+                }
+            };
             const res = await fetch(`${CHAT_API}/${cId}/scratchpad/append`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text.trim(), section: section || undefined })
+                body: JSON.stringify(payload)
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
@@ -1597,6 +1667,9 @@ const CompanionCreator = (() => {
                 _spadLastSavedContent = data.content;
                 _renderScratchpadPreview(data.content);
                 _populateScratchpadSections(data.sections || []);
+                if (data.authors) {
+                    _renderScratchpadContributors(data.authors);
+                }
             }
             _updateScratchpadStatus(`Saved ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, 'saved');
             if (typeof showToast === 'function') {

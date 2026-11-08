@@ -36,6 +36,7 @@ class ScratchpadSaveRequest(BaseModel):
 class ScratchpadAppendRequest(BaseModel):
     text: str
     section: Optional[str] = None
+    author: Optional[Dict[str, Any]] = None
 
 class ChatMessage(BaseModel):
     role: str
@@ -215,7 +216,7 @@ async def append_scratchpad(companion_id: str, req: ScratchpadAppendRequest):
         raise HTTPException(status_code=400, detail="Note text cannot be empty.")
     cfg = _get_cfg(companion_id)
     sp = CompanionScratchpad(cfg.data_dir, cfg.name)
-    return sp.append_note(req.text, section=req.section)
+    return sp.append_note(req.text, section=req.section, author=req.author)
 
 @router.post("/{companion_id}/scratchpad/clear")
 async def clear_scratchpad(companion_id: str):
