@@ -70,6 +70,7 @@ def _import_remaining_routers():
     _CORE_ROUTES = [
         ("core.companions.companion_routes",            "router", "companion_router"),
         ("core.companions.companion_creator_routes",    "router", "companion_creator_router"),
+        ("core.companions.group_chat_routes",          "router", "group_chat_router"),
         ("core.aethviondb.aethviondb_routes",           "router", "aethviondb_router"),
         ("core.aethviondb.api_v1.router",               "router", "aethviondb_v1_router"),
         ("core.automate.automate_routes",               "router", "automate_router"),

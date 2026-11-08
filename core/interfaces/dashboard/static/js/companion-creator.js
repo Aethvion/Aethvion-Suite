@@ -9,12 +9,18 @@
 const CompanionCreator = (() => {
     const API = '/api/companion-creator';
     const CHAT_API = '/api/companions';
+    const GROUPS_API = '/api/companions/groups';
     let _root = null;
     let _editingId = null;
     let _isBuiltin = false;
     let _activeData = null;   // full companion data for the currently open pane
     let _chatHistory = [];    // [{role, content}] for the current chat session
     let _chatStreaming = false;
+    let _activeGroupId = null;
+    let _activeGroupData = null;
+    let _groupPacingPaused = false;
+    let _groupTurnInProgress = false;
+    let _groupScratchpadOpen = true;
 
     // Shell
 
@@ -58,6 +64,17 @@ const CompanionCreator = (() => {
         <div class="cc-roster-section-label">Your Companions</div>
         <div id="cc-custom-list" class="cc-card-list">
           <div class="cc-card-empty">No companions yet — hit <strong>+</strong> to create one.</div>
+        </div>
+      </div>
+      <div class="cc-roster-section">
+        <div class="cc-roster-section-hdr" style="display:flex; justify-content:space-between; align-items:center; padding: 0.2rem 0.25rem 0.4rem 0.25rem;">
+          <div class="cc-roster-section-label" style="margin:0;">Group Chats</div>
+          <button id="cc-new-group-btn" class="cc-icon-btn cc-icon-btn-primary" title="New Group Chat" style="font-size:0.75rem; padding:2px 7px;">
+            <i class="fas fa-plus"></i>
+          </button>
+        </div>
+        <div id="cc-group-list" class="cc-card-list">
+          <div class="cc-card-empty">No group chats yet.</div>
         </div>
       </div>
     </div>
@@ -853,6 +870,9 @@ const CompanionCreator = (() => {
 
     </div><!-- /.cc-active-pane -->
 
+    <!-- Group Chat Pane (shown when a group chat is selected) -->
+    <div class="cc-group-pane hidden" id="cc-group-pane"></div>
+
   </div><!-- /.cc-detail -->
 
   <!-- Import dialog (fixed overlay, outside layout flow) -->
@@ -931,6 +951,9 @@ const CompanionCreator = (() => {
 
             // Wire up search filter
             _initSearch(all);
+
+            // Load companion group chats into the roster
+            await _loadGroupChats();
 
         } catch (e) {
             if (builtinEl) builtinEl.innerHTML = `<div class="cc-card-empty" style="color:#f87171">Error: ${e.message}</div>`;
@@ -1377,6 +1400,10 @@ const CompanionCreator = (() => {
     // View orchestration
 
     function _selectCompanion(data, isBuiltin) {
+        _activeGroupId = null;
+        document.querySelectorAll('.cc-group-card').forEach(c => c.classList.remove('active'));
+        document.getElementById('cc-group-pane')?.classList.add('hidden');
+
         // Show the active pane and update header
         document.getElementById('cc-empty-state').classList.add('hidden');
         document.getElementById('cc-active-pane').classList.remove('hidden');
@@ -1390,6 +1417,9 @@ const CompanionCreator = (() => {
         _editingId = null;
         _isBuiltin = false;
         _activeData = null;
+        _activeGroupId = null;
+        document.querySelectorAll('.cc-group-card').forEach(c => c.classList.remove('active'));
+        document.getElementById('cc-group-pane')?.classList.add('hidden');
         // Update card active states
         document.querySelectorAll('.cc-companion-card').forEach(c => c.classList.remove('active'));
         // Update pane header for "new companion" mode
@@ -4368,6 +4398,7 @@ const CompanionCreator = (() => {
         // New companion buttons (roster header + empty-state)
         document.getElementById('cc-new-btn')?.addEventListener('click', _startNewCompanion);
         document.getElementById('cc-empty-new-btn')?.addEventListener('click', _startNewCompanion);
+        document.getElementById('cc-new-group-btn')?.addEventListener('click', _openNewGroupModal);
 
         // Cancel — go back to chat if editing an existing companion, else empty state
         document.getElementById('cc-cancel-btn')?.addEventListener('click', () => {
@@ -5052,6 +5083,755 @@ const CompanionCreator = (() => {
         }, 60000);
     }
 
+    // =========================================================================
+    // COMPANION GROUP CHAT IMPLEMENTATION
+    // =========================================================================
+
+    async function _loadGroupChats() {
+        const groupEl = document.getElementById('cc-group-list');
+        if (!groupEl) return;
+        try {
+            const res = await fetch(GROUPS_API);
+            if (!res.ok) return;
+            const d = await res.json();
+            const groups = d.groups || [];
+            if (!groups.length) {
+                groupEl.innerHTML = '<div class="cc-card-empty" style="padding:0.4rem; font-size:0.75rem;">No group chats yet. Hit <strong>+</strong> to start one!</div>';
+                return;
+            }
+            groupEl.innerHTML = groups.map(g => `
+                <div class="cc-group-card ${_activeGroupId === g.id ? 'active' : ''}" data-group-id="${_esc(g.id)}">
+                    <div class="cc-group-avatar" style="background:${_esc(g.accent_color)}25; color:${_esc(g.accent_color)};">
+                        ${_esc(g.avatar_symbol || '🚀')}
+                    </div>
+                    <div class="cc-group-info">
+                        <div class="cc-group-title">${_esc(g.title)}</div>
+                        <div class="cc-group-sub">
+                            <span class="cc-group-members-badge"><i class="fas fa-users"></i> ${g.members ? g.members.length : 0}</span>
+                            <span>${g.message_count || 0} msgs</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            groupEl.querySelectorAll('.cc-group-card').forEach(card => {
+                card.addEventListener('click', () => _openGroupChat(card.dataset.groupId));
+            });
+        } catch (err) {
+            console.warn('[CompanionCreator] Failed to load group chats:', err);
+        }
+    }
+
+    async function _openNewGroupModal() {
+        let modal = document.getElementById('cc-new-group-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'cc-new-group-modal';
+            modal.className = 'cc-snapshot-modal';
+            modal.innerHTML = `
+                <div class="cc-snapshot-modal-backdrop" onclick="document.getElementById('cc-new-group-modal').classList.remove('open')"></div>
+                <div class="cc-snapshot-modal-box" style="max-width:540px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:12px; overflow:hidden;">
+                    <div class="cc-snapshot-modal-header" style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border); padding:0.85rem 1.25rem;">
+                        <span style="font-weight:700; color:#fff; display:flex; align-items:center; gap:0.5rem;">
+                            <i class="fas fa-users-viewfinder" style="color:#a78bfa;"></i> Create Companion Group Chat
+                        </span>
+                        <button type="button" class="cc-snapshot-modal-close" onclick="document.getElementById('cc-new-group-modal').classList.remove('open')">&times;</button>
+                    </div>
+                    <div style="padding:1.25rem; display:flex; flex-direction:column; gap:1rem;">
+                        <div>
+                            <label style="display:block; font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:0.35rem;">Group Title</label>
+                            <input type="text" id="gc-create-title" class="cc-search-input" placeholder="e.g. Game Dev & AI Brainstorm" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:0.5rem 0.75rem; background:rgba(0,0,0,0.3); color:#fff;" />
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:0.35rem;">Topic / Description</label>
+                            <input type="text" id="gc-create-desc" class="cc-search-input" placeholder="What are you working on or brainstorming together?" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:0.5rem 0.75rem; background:rgba(0,0,0,0.3); color:#fff;" />
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+                            <div>
+                                <label style="display:block; font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:0.35rem;">Chat Pacing / Speed</label>
+                                <select id="gc-create-speed" class="control-select" style="width:100%; background:rgba(0,0,0,0.3); border:1px solid var(--border); color:#fff; border-radius:6px; padding:0.45rem;">
+                                    <option value="1.5">⚡ Fast (1.5s delay)</option>
+                                    <option value="3.0" selected>⏱️ Normal (3.0s delay)</option>
+                                    <option value="6.0">☕ Relaxed (6.0s delay)</option>
+                                    <option value="0">✋ Step-by-Step (Manual)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display:block; font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:0.35rem;">Group Icon</label>
+                                <input type="text" id="gc-create-icon" value="🚀" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:0.45rem 0.75rem; background:rgba(0,0,0,0.3); color:#fff; text-align:center; font-size:1.1rem;" />
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:0.35rem;">Select Companion Members</label>
+                            <div id="gc-create-members-list" style="max-height:160px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:0.5rem; background:rgba(0,0,0,0.2); display:flex; flex-direction:column; gap:0.35rem;">
+                                <div class="cc-card-loading"><i class="fas fa-spinner fa-spin"></i> Loading companions...</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem;">
+                            <button type="button" class="cc-btn cc-btn-secondary" onclick="document.getElementById('cc-new-group-modal').classList.remove('open')">Cancel</button>
+                            <button type="button" id="gc-create-submit-btn" class="cc-btn cc-btn-primary"><i class="fas fa-check"></i> Create Group</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        const membersListEl = document.getElementById('gc-create-members-list');
+        try {
+            const res = await fetch(`${API}/all`);
+            const d = await res.json();
+            const allComps = d.companions || [];
+            membersListEl.innerHTML = allComps.map(c => `
+                <label style="display:flex; align-items:center; gap:0.6rem; padding:0.35rem 0.5rem; border-radius:6px; cursor:pointer; background:rgba(255,255,255,0.02);">
+                    <input type="checkbox" value="${_esc(c.id)}" ${c.id === 'misakacipher' ? 'checked' : ''} style="accent-color:var(--primary);" />
+                    <span style="display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:6px; background:${_esc(c.accent_color || '#6366f1')}30; color:${_esc(c.accent_color || '#6366f1')}; font-size:0.8rem;">
+                        ${_esc(c.avatar_symbol || '✦')}
+                    </span>
+                    <span style="font-weight:600; font-size:0.82rem; color:#f1f5f9;">${_esc(c.name)}</span>
+                    <span style="font-size:0.72rem; color:var(--text-secondary); margin-left:auto;">${_esc(c.description || '')}</span>
+                </label>
+            `).join('');
+        } catch {
+            membersListEl.innerHTML = '<div style="color:#ef4444; font-size:0.78rem;">Failed to load companions.</div>';
+        }
+
+        document.getElementById('gc-create-submit-btn').onclick = async () => {
+            const title = (document.getElementById('gc-create-title').value || '').trim();
+            if (!title) {
+                if (typeof showToast === 'function') showToast('Please enter a group title', 'error');
+                return;
+            }
+            const desc = (document.getElementById('gc-create-desc').value || '').trim();
+            const icon = (document.getElementById('gc-create-icon').value || '🚀').trim();
+            const speed = parseFloat(document.getElementById('gc-create-speed').value) || 3.0;
+            const checkedBoxes = membersListEl.querySelectorAll('input[type="checkbox"]:checked');
+            const compIds = Array.from(checkedBoxes).map(cb => cb.value);
+
+            try {
+                const res = await fetch(GROUPS_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: title,
+                        description: desc,
+                        companion_ids: compIds,
+                        avatar_symbol: icon,
+                        chat_speed_seconds: speed
+                    })
+                });
+                if (!res.ok) throw new Error('Server returned ' + res.status);
+                const d = await res.json();
+                modal.classList.remove('open');
+                await _loadGroupChats();
+                if (d.group?.id) _openGroupChat(d.group.id);
+            } catch (err) {
+                if (typeof showToast === 'function') showToast(`Failed to create group: ${err.message}`, 'error');
+            }
+        };
+
+        modal.classList.add('open');
+    }
+
+    async function _openGroupChat(groupId) {
+        if (!groupId) return;
+        _editingId = null;
+        _activeGroupId = groupId;
+        _groupTurnInProgress = false;
+
+        document.querySelectorAll('.cc-companion-card').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.cc-group-card').forEach(c => c.classList.toggle('active', c.dataset.groupId === groupId));
+
+        document.getElementById('cc-empty-state')?.classList.add('hidden');
+        document.getElementById('cc-active-pane')?.classList.add('hidden');
+        const groupPane = document.getElementById('cc-group-pane');
+        if (!groupPane) return;
+        groupPane.classList.remove('hidden');
+
+        groupPane.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:center; height:100%; color:var(--text-secondary); gap:0.5rem;">
+                <i class="fas fa-spinner fa-spin"></i> Loading group chat...
+            </div>
+        `;
+
+        try {
+            const res = await fetch(`${GROUPS_API}/${groupId}`);
+            if (!res.ok) throw new Error('Failed to load group ' + res.status);
+            const d = await res.json();
+            _activeGroupData = d.group;
+            _renderGroupChat(_activeGroupData);
+        } catch (err) {
+            groupPane.innerHTML = `<div style="padding:2rem; color:#ef4444;">Error: ${err.message}</div>`;
+        }
+    }
+
+    function _formatGroupMessageContent(raw) {
+        if (!raw) return '';
+        let s = _esc(raw);
+        // Highlight @mentions
+        s = s.replace(/@([A-Za-z0-9_]+)/g, '<span class="gc-mention-pill">@$1</span>');
+        return s.replace(/\n/g, '<br>');
+    }
+
+    function _renderGroupChat(group) {
+        const groupPane = document.getElementById('cc-group-pane');
+        if (!groupPane) return;
+
+        const members = group.members || [];
+        const speedSec = group.settings?.chat_speed_seconds ?? 3.0;
+        const entriesCount = group.scratchpad_summary?.entries_count || 0;
+
+        groupPane.innerHTML = `
+            <!-- Header -->
+            <div class="gc-header">
+                <div class="gc-header-left">
+                    <div class="gc-header-avatar" style="background:${_esc(group.accent_color)}25; color:${_esc(group.accent_color)};">
+                        ${_esc(group.avatar_symbol || '🚀')}
+                    </div>
+                    <div>
+                        <div class="gc-header-title">${_esc(group.title)}</div>
+                        <div class="gc-header-desc">${_esc(group.description || 'Shared brainstorming room')}</div>
+                    </div>
+                </div>
+
+                <div class="gc-header-right">
+                    <!-- Members Bar -->
+                    <div class="gc-members-row">
+                        ${members.map(m => {
+                            const isUser = m.is_user || m.id === 'marcel';
+                            return `
+                                <span class="gc-member-chip" style="background:${_esc(m.accent_color)}25; color:${_esc(m.accent_color)}; border-color:${_esc(m.accent_color)}40;" title="${isUser ? 'Marcel (User)' : 'Click to @mention ' + m.name}" onclick="window._groupChatInsertMention('${_esc(m.name)}')">
+                                    <span>${_esc(m.avatar_symbol || '✦')}</span>
+                                    <span>${_esc(m.name)}</span>
+                                    ${!isUser ? `<i class="fas fa-times gc-member-kick-btn" title="Kick from group" onclick="event.stopPropagation(); window._groupChatKickMember('${_esc(group.id)}', '${_esc(m.id)}', '${_esc(m.name)}')"></i>` : ''}
+                                </span>
+                            `;
+                        }).join('')}
+                        <button type="button" class="cc-btn cc-btn-secondary cc-btn-sm" style="padding:2px 7px; font-size:0.72rem; border-radius:10px;" onclick="window._groupChatOpenInviteModal('${_esc(group.id)}')">
+                            <i class="fas fa-user-plus"></i> Invite
+                        </button>
+                    </div>
+
+                    <!-- Pacing Controller -->
+                    <div class="gc-speed-wrap">
+                        <span class="gc-speed-label"><i class="fas fa-gauge-high"></i> Speed:</span>
+                        <select id="gc-pacing-select" class="gc-speed-select">
+                            <option value="1.5" ${speedSec === 1.5 ? 'selected' : ''}>⚡ Fast (1.5s)</option>
+                            <option value="3.0" ${speedSec === 3.0 ? 'selected' : ''}>⏱️ Normal (3s)</option>
+                            <option value="6.0" ${speedSec === 6.0 ? 'selected' : ''}>☕ Relaxed (6s)</option>
+                            <option value="0" ${speedSec === 0 ? 'selected' : ''}>✋ Step-by-Step</option>
+                        </select>
+                    </div>
+
+                    <!-- Pause / Resume Toggle -->
+                    <button type="button" id="gc-pacing-play-btn" class="gc-pause-btn ${_groupPacingPaused ? 'paused' : ''}">
+                        <i class="fas ${_groupPacingPaused ? 'fa-play' : 'fa-pause'}"></i> ${_groupPacingPaused ? 'Resume' : 'Pause'}
+                    </button>
+
+                    <!-- Scratchpad Drawer Toggle -->
+                    <button type="button" id="gc-scratchpad-toggle-btn" class="cc-btn cc-btn-secondary cc-btn-sm" style="display:flex; align-items:center; gap:0.35rem;">
+                        <i class="fas fa-lightbulb" style="color:#f59e0b;"></i>
+                        <span>Scratchpad</span>
+                        <span id="gc-sp-badge" class="cc-group-members-badge">${entriesCount}</span>
+                    </button>
+
+                    <!-- Delete Group Option -->
+                    <button type="button" class="cc-icon-btn" title="Delete Group Chat" style="color:#ef4444;" onclick="window._groupChatDelete('${_esc(group.id)}')">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Body Wrap -->
+            <div class="gc-body-wrap">
+                <!-- Chat Feed Column -->
+                <div class="gc-chat-col">
+                    <div class="gc-msgs-scroll" id="gc-msgs-scroll">
+                        ${_renderGroupHistoryHTML(group.history || [])}
+                    </div>
+
+                    <!-- Floating Jump to Present button -->
+                    <button id="gc-jump-bottom-btn" class="chat-jump-btn hidden" title="Jump to present">
+                        <i class="fas fa-chevron-down"></i> Jump to present
+                    </button>
+
+                    <!-- Typing Indicator -->
+                    <div id="gc-typing-indicator" style="display:none; padding:0.35rem 1rem;"></div>
+
+                    <!-- Input Bar -->
+                    <div class="gc-input-bar">
+                        <!-- Quick Pings Row -->
+                        <div class="gc-pings-row">
+                            <span><i class="fas fa-at"></i> Ping:</span>
+                            ${members.filter(m => !m.is_user && m.id !== 'marcel').map(m => `
+                                <button type="button" class="gc-ping-btn" onclick="window._groupChatInsertMention('${_esc(m.name)}')">
+                                    ${_esc(m.avatar_symbol || '✦')} @${_esc(m.name)}
+                                </button>
+                            `).join('')}
+                        </div>
+
+                        <div class="gc-input-row">
+                            <textarea id="gc-input-textarea" class="gc-textarea" placeholder="Message the group chat... (use @Name to direct a question)"></textarea>
+                            <button type="button" id="gc-converse-btn" class="cc-btn cc-btn-secondary" title="Let companions discuss or bounce thoughts" style="white-space:nowrap;">
+                                <i class="fas fa-comments"></i> Converse
+                            </button>
+                            <button type="button" id="gc-send-btn" class="cc-btn cc-btn-primary" style="padding:0.6rem 1rem;">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Side Scratchpad Drawer -->
+                <div class="gc-scratchpad-drawer ${_groupScratchpadOpen ? '' : 'collapsed'}" id="gc-scratchpad-drawer">
+                    <div class="gc-sp-header">
+                        <span style="display:flex; align-items:center; gap:0.4rem;">
+                            <i class="fas fa-lightbulb" style="color:#f59e0b;"></i> Group Brainstorming Scratchpad
+                        </span>
+                        <div style="display:flex; gap:0.35rem;">
+                            <button type="button" class="cc-btn cc-btn-ghost cc-btn-sm" title="Clear Scratchpad" onclick="window._groupChatClearScratchpad('${_esc(group.id)}')">
+                                <i class="fas fa-trash-can"></i>
+                            </button>
+                            <button type="button" class="cc-btn cc-btn-ghost cc-btn-sm" onclick="document.getElementById('gc-scratchpad-drawer').classList.toggle('collapsed')">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="gc-sp-body" id="gc-sp-body">
+                        ${_renderGroupScratchpadHTML(group.scratchpad_summary?.plain_text || '')}
+                    </div>
+                    <div class="gc-sp-add-form">
+                        <input type="text" id="gc-sp-note-input" class="cc-search-input" placeholder="Add idea to group scratchpad…" style="flex:1; border:1px solid var(--border); border-radius:6px; padding:0.4rem 0.6rem; background:rgba(0,0,0,0.25); color:#fff;" />
+                        <button type="button" id="gc-sp-add-btn" class="cc-btn cc-btn-primary cc-btn-sm">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        _initGroupChatEvents(group);
+        _scrollGroupChatToBottom(true);
+    }
+
+    function _renderGroupHistoryHTML(history) {
+        if (!history || !history.length) {
+            return '<div style="text-align:center; padding:2rem; color:var(--text-secondary); font-size:0.85rem;">No messages yet. Send a message or use @Name to prompt companions!</div>';
+        }
+        return history.map(m => {
+            if (m.author_role === 'system') {
+                return `<div class="gc-system-pill">${_esc(m.content)}</div>`;
+            }
+            const isUser = m.author_role === 'user' || m.author_id === 'marcel';
+            const color = m.accent_color || '#6366f1';
+            const timeStr = m.timestamp ? (new Date(m.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+            return `
+                <div class="gc-msg-card ${isUser ? 'is-user' : 'is-companion'}" style="${!isUser ? `border-left: 3px solid ${color};` : ''}">
+                    <div class="gc-msg-header">
+                        <span class="gc-msg-author" style="color:${color};">
+                            <span>${_esc(m.avatar_symbol || '✦')}</span>
+                            <span>${_esc(m.author_name || m.author_id)}</span>
+                        </span>
+                        ${m.mood ? `<span class="gc-msg-badge">${_esc(m.mood)}</span>` : ''}
+                        <span class="gc-msg-time" style="margin-left:auto;">${timeStr}</span>
+                    </div>
+                    <div class="gc-msg-body">${_formatGroupMessageContent(m.content)}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function _renderGroupScratchpadHTML(rawText) {
+        if (!rawText || !rawText.trim()) {
+            return '<div style="color:var(--text-secondary); font-style:italic; padding:0.5rem 0;">Scratchpad is empty. Add ideas below or companions can append mechanics during chat!</div>';
+        }
+        // Basic line-by-line renderer with bold headings
+        const lines = rawText.split('\n');
+        return lines.map(line => {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('# ')) return `<h3 style="color:#f8fafc; font-size:0.95rem; margin:0.6rem 0 0.3rem 0;">${_esc(trimmed.slice(2))}</h3>`;
+            if (trimmed.startsWith('## ')) return `<h4 style="color:#a78bfa; font-size:0.86rem; margin:0.5rem 0 0.25rem 0;">${_esc(trimmed.slice(3))}</h4>`;
+            if (trimmed.startsWith('### ')) return `<h5 style="color:#cbd5e1; font-size:0.8rem; margin:0.4rem 0 0.2rem 0;">${_esc(trimmed.slice(4))}</h5>`;
+            if (trimmed.startsWith('- ')) return `<div style="padding-left:0.5rem; margin:0.2rem 0;">• ${_esc(trimmed.slice(2))}</div>`;
+            return trimmed ? `<div>${_esc(trimmed)}</div>` : '<div style="height:0.4rem;"></div>';
+        }).join('');
+    }
+
+    function _initGroupChatEvents(group) {
+        const msgsScroll = document.getElementById('gc-msgs-scroll');
+        const jumpBtn = document.getElementById('gc-jump-bottom-btn');
+        const textarea = document.getElementById('gc-input-textarea');
+        const sendBtn = document.getElementById('gc-send-btn');
+        const converseBtn = document.getElementById('gc-converse-btn');
+        const pacingSelect = document.getElementById('gc-pacing-select');
+        const playBtn = document.getElementById('gc-pacing-play-btn');
+        const scratchpadToggleBtn = document.getElementById('gc-scratchpad-toggle-btn');
+        const spAddBtn = document.getElementById('gc-sp-add-btn');
+        const spNoteInput = document.getElementById('gc-sp-note-input');
+
+        // Pacing select change
+        pacingSelect?.addEventListener('change', async () => {
+            const speed = parseFloat(pacingSelect.value) || 0;
+            if (_activeGroupData) _activeGroupData.settings.chat_speed_seconds = speed;
+            try {
+                await fetch(`${GROUPS_API}/${group.id}/settings`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_speed_seconds: speed })
+                });
+            } catch {}
+        });
+
+        // Play/Pause button
+        playBtn?.addEventListener('click', () => {
+            _groupPacingPaused = !_groupPacingPaused;
+            playBtn.classList.toggle('paused', _groupPacingPaused);
+            playBtn.innerHTML = `<i class="fas ${_groupPacingPaused ? 'fa-play' : 'fa-pause'}"></i> ${_groupPacingPaused ? 'Resume' : 'Pause'}`;
+        });
+
+        // Scratchpad toggle
+        scratchpadToggleBtn?.addEventListener('click', () => {
+            const drawer = document.getElementById('gc-scratchpad-drawer');
+            if (drawer) {
+                drawer.classList.toggle('collapsed');
+                _groupScratchpadOpen = !drawer.classList.contains('collapsed');
+            }
+        });
+
+        // Scratchpad Add note
+        const submitSpNote = async () => {
+            const text = (spNoteInput?.value || '').trim();
+            if (!text) return;
+            spNoteInput.value = '';
+            try {
+                const res = await fetch(`${GROUPS_API}/${group.id}/scratchpad/append`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text, author: 'Marcel', section: 'Ideas' })
+                });
+                if (res.ok) {
+                    await _refreshGroupScratchpad(group.id);
+                }
+            } catch {}
+        };
+        spAddBtn?.addEventListener('click', submitSpNote);
+        spNoteInput?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); submitSpNote(); }
+        });
+
+        // Textarea auto-resize & Enter-to-send
+        textarea?.addEventListener('input', () => {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(120, textarea.scrollHeight) + 'px';
+        });
+        textarea?.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                _sendGroupUserMessage();
+            }
+        });
+
+        sendBtn?.addEventListener('click', _sendGroupUserMessage);
+
+        // Converse button triggers next companion turn
+        converseBtn?.addEventListener('click', () => {
+            if (_groupTurnInProgress) return;
+            const companions = (group.members || []).filter(m => !m.is_user && m.id !== 'marcel');
+            if (!companions.length) return;
+            _orchestrateCompanionTurns([companions[0].id]);
+        });
+
+        // Jump button
+        msgsScroll?.addEventListener('scroll', () => {
+            const dist = msgsScroll.scrollHeight - msgsScroll.scrollTop - msgsScroll.clientHeight;
+            if (jumpBtn) jumpBtn.classList.toggle('hidden', dist < 120);
+        });
+        jumpBtn?.addEventListener('click', () => _scrollGroupChatToBottom(false));
+    }
+
+    function _scrollGroupChatToBottom(immediate = false) {
+        const msgsScroll = document.getElementById('gc-msgs-scroll');
+        if (!msgsScroll) return;
+        if (immediate) {
+            msgsScroll.scrollTop = msgsScroll.scrollHeight;
+        } else {
+            msgsScroll.scrollTo({ top: msgsScroll.scrollHeight, behavior: 'smooth' });
+        }
+    }
+
+    async function _refreshGroupScratchpad(groupId) {
+        try {
+            const res = await fetch(`${GROUPS_API}/${groupId}/scratchpad`);
+            if (!res.ok) return;
+            const d = await res.json();
+            const sp = d.scratchpad || {};
+            const pt = sp.plain_text || sp.content || '';
+            const spBody = document.getElementById('gc-sp-body');
+            if (spBody) spBody.innerHTML = _renderGroupScratchpadHTML(pt);
+            const badge = document.getElementById('gc-sp-badge');
+            if (badge) badge.textContent = sp.entries ? sp.entries.length : 0;
+        } catch {}
+    }
+
+    async function _sendGroupUserMessage() {
+        const textarea = document.getElementById('gc-input-textarea');
+        if (!textarea) return;
+        const text = textarea.value.trim();
+        if (!text || !_activeGroupId) return;
+        textarea.value = '';
+        textarea.style.height = 'auto';
+
+        const msgsScroll = document.getElementById('gc-msgs-scroll');
+
+        try {
+            const res = await fetch(`${GROUPS_API}/${_activeGroupId}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: text })
+            });
+            if (!res.ok) throw new Error('Failed to post message');
+            const data = await res.json();
+            const userMsg = data.message;
+            const mentioned = data.mentioned_companions || [];
+
+            // Append message card
+            const timeStr = userMsg.timestamp ? (new Date(userMsg.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            const msgHtml = `
+                <div class="gc-msg-card is-user">
+                    <div class="gc-msg-header">
+                        <span class="gc-msg-author" style="color:#10b981;">
+                            <span>✦</span>
+                            <span>Marcel</span>
+                        </span>
+                        <span class="gc-msg-time" style="margin-left:auto;">${timeStr}</span>
+                    </div>
+                    <div class="gc-msg-body">${_formatGroupMessageContent(userMsg.content)}</div>
+                </div>
+            `;
+            if (msgsScroll) {
+                msgsScroll.insertAdjacentHTML('beforeend', msgHtml);
+                _scrollGroupChatToBottom();
+            }
+
+            // Start companion response orchestration
+            _orchestrateCompanionTurns(mentioned);
+
+        } catch (err) {
+            if (typeof showToast === 'function') showToast(`Failed to send: ${err.message}`, 'error');
+        }
+    }
+
+    async function _orchestrateCompanionTurns(candidates = [], turnDepth = 0) {
+        if (!_activeGroupId || _groupPacingPaused || turnDepth >= 4) return;
+        if (_groupTurnInProgress) return;
+
+        const group = _activeGroupData;
+        if (!group) return;
+        const companions = (group.members || []).filter(m => !m.is_user && m.id !== 'marcel');
+        if (!companions.length) return;
+
+        // Choose next candidate: first from mentions, otherwise pick one companion
+        let targetCid = candidates.length ? candidates[0] : null;
+        if (!targetCid) {
+            targetCid = companions[Math.floor(Math.random() * companions.length)].id;
+        }
+
+        const compMember = companions.find(c => c.id === targetCid) || companions[0];
+        _groupTurnInProgress = true;
+
+        const typingEl = document.getElementById('gc-typing-indicator');
+        if (typingEl) {
+            typingEl.style.display = 'block';
+            typingEl.innerHTML = `<span class="gc-typing-pill"><i class="fas fa-circle-notch fa-spin"></i> ${compMember.name} is thinking...</span>`;
+            _scrollGroupChatToBottom();
+        }
+
+        const speedSec = parseFloat(group.settings?.chat_speed_seconds ?? 3.0);
+        if (speedSec > 0) {
+            await new Promise(r => setTimeout(r, Math.max(800, speedSec * 1000)));
+        }
+
+        try {
+            const res = await fetch(`${GROUPS_API}/${_activeGroupId}/turn`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ companion_id: compMember.id, reason: 'conversation' })
+            });
+            if (!res.ok) throw new Error('Turn failed: ' + res.status);
+            const data = await res.json();
+            const msg = data.message;
+            const nextPinged = data.next_pinged_companions || [];
+
+            if (typingEl) typingEl.style.display = 'none';
+
+            const msgsScroll = document.getElementById('gc-msgs-scroll');
+            if (msgsScroll && msg) {
+                const color = msg.accent_color || '#6366f1';
+                const timeStr = msg.timestamp ? (new Date(msg.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                const msgHtml = `
+                    <div class="gc-msg-card is-companion" style="border-left: 3px solid ${color};">
+                        <div class="gc-msg-header">
+                            <span class="gc-msg-author" style="color:${color};">
+                                <span>${_esc(msg.avatar_symbol || '✦')}</span>
+                                <span>${_esc(msg.author_name || msg.author_id)}</span>
+                            </span>
+                            ${msg.mood ? `<span class="gc-msg-badge">${_esc(msg.mood)}</span>` : ''}
+                            <span class="gc-msg-time" style="margin-left:auto;">${timeStr}</span>
+                        </div>
+                        <div class="gc-msg-body">${_formatGroupMessageContent(msg.content)}</div>
+                    </div>
+                `;
+                msgsScroll.insertAdjacentHTML('beforeend', msgHtml);
+                _scrollGroupChatToBottom();
+            }
+
+            // Also refresh group scratchpad in case the companion added a note
+            await _refreshGroupScratchpad(_activeGroupId);
+
+            _groupTurnInProgress = false;
+
+            // If another companion was pinged and pacing is active, continue turn loop!
+            if (nextPinged.length && !_groupPacingPaused && speedSec > 0) {
+                _orchestrateCompanionTurns(nextPinged, turnDepth + 1);
+            }
+
+        } catch (err) {
+            if (typingEl) typingEl.style.display = 'none';
+            _groupTurnInProgress = false;
+            console.warn('[CompanionGroupChat] Turn error:', err);
+        }
+    }
+
+    // Window helpers for group chat interactions
+    window._groupChatInsertMention = function(name) {
+        const textarea = document.getElementById('gc-input-textarea');
+        if (!textarea) return;
+        const mention = `@${name} `;
+        if (!textarea.value.includes(mention)) {
+            textarea.value = textarea.value.trim() ? `${textarea.value.trim()} ${mention}` : mention;
+        }
+        textarea.focus();
+    };
+
+    window._groupChatOpenInviteModal = async function(groupId) {
+        try {
+            const allRes = await fetch(`${API}/all`);
+            const allData = await allRes.json();
+            const allComps = allData.companions || [];
+
+            const group = _activeGroupData;
+            const existingIds = (group?.members || []).map(m => m.id);
+            const candidates = allComps.filter(c => !existingIds.includes(c.id));
+
+            if (!candidates.length) {
+                if (typeof showToast === 'function') showToast('All available companions are already in this group!', 'info');
+                return;
+            }
+
+            let modal = document.getElementById('cc-invite-group-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'cc-invite-group-modal';
+                modal.className = 'cc-snapshot-modal';
+                document.body.appendChild(modal);
+            }
+
+            modal.innerHTML = `
+                <div class="cc-snapshot-modal-backdrop" onclick="document.getElementById('cc-invite-group-modal').classList.remove('open')"></div>
+                <div class="cc-snapshot-modal-box" style="max-width:440px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:12px; overflow:hidden;">
+                    <div class="cc-snapshot-modal-header" style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border); padding:0.85rem 1.25rem;">
+                        <span style="font-weight:700; color:#fff;"><i class="fas fa-user-plus"></i> Invite Companion to Group</span>
+                        <button type="button" class="cc-snapshot-modal-close" onclick="document.getElementById('cc-invite-group-modal').classList.remove('open')">&times;</button>
+                    </div>
+                    <div style="padding:1rem; display:flex; flex-direction:column; gap:0.5rem; max-height:280px; overflow-y:auto;">
+                        ${candidates.map(c => `
+                            <div style="display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.65rem; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06);">
+                                <div style="display:flex; align-items:center; gap:0.5rem;">
+                                    <span style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:7px; background:${_esc(c.accent_color)}25; color:${_esc(c.accent_color)};">
+                                        ${_esc(c.avatar_symbol || '✦')}
+                                    </span>
+                                    <div>
+                                        <div style="font-size:0.82rem; font-weight:700; color:#f8fafc;">${_esc(c.name)}</div>
+                                        <div style="font-size:0.7rem; color:var(--text-secondary);">${_esc(c.description || '')}</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="cc-btn cc-btn-primary cc-btn-sm" onclick="window._groupChatSubmitInvite('${_esc(groupId)}', '${_esc(c.id)}')">
+                                    <i class="fas fa-plus"></i> Invite
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            modal.classList.add('open');
+        } catch (err) {
+            if (typeof showToast === 'function') showToast(`Invite failed: ${err.message}`, 'error');
+        }
+    };
+
+    window._groupChatSubmitInvite = async function(groupId, companionId) {
+        document.getElementById('cc-invite-group-modal')?.classList.remove('open');
+        try {
+            const res = await fetch(`${GROUPS_API}/${groupId}/members/invite`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ companion_id: companionId })
+            });
+            if (!res.ok) throw new Error('Invite failed');
+            const d = await res.json();
+            _activeGroupData = d.group;
+            _renderGroupChat(_activeGroupData);
+            _loadGroupChats();
+            if (typeof showToast === 'function') showToast('Companion invited to group!', 'success');
+        } catch (err) {
+            if (typeof showToast === 'function') showToast(`Invite failed: ${err.message}`, 'error');
+        }
+    };
+
+    window._groupChatKickMember = async function(groupId, companionId, name) {
+        if (!confirm(`Are you sure you want to remove ${name} from this group chat?`)) return;
+        try {
+            const res = await fetch(`${GROUPS_API}/${groupId}/members/kick`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ companion_id: companionId })
+            });
+            if (!res.ok) throw new Error('Kick failed');
+            const d = await res.json();
+            _activeGroupData = d.group;
+            _renderGroupChat(_activeGroupData);
+            _loadGroupChats();
+            if (typeof showToast === 'function') showToast(`${name} removed from group`, 'info');
+        } catch (err) {
+            if (typeof showToast === 'function') showToast(`Failed to remove member: ${err.message}`, 'error');
+        }
+    };
+
+    window._groupChatClearScratchpad = async function(groupId) {
+        if (!confirm('Reset the group brainstorming scratchpad back to the template?')) return;
+        try {
+            await fetch(`${GROUPS_API}/${groupId}/scratchpad/clear`, { method: 'POST' });
+            await _refreshGroupScratchpad(groupId);
+            if (typeof showToast === 'function') showToast('Group scratchpad reset', 'info');
+        } catch {}
+    };
+
+    window._groupChatDelete = async function(groupId) {
+        if (!confirm('Are you sure you want to delete this group chat?')) return;
+        try {
+            await fetch(`${GROUPS_API}/${groupId}`, { method: 'DELETE' });
+            _activeGroupId = null;
+            _activeGroupData = null;
+            document.getElementById('cc-group-pane')?.classList.add('hidden');
+            document.getElementById('cc-empty-state')?.classList.remove('hidden');
+            await _loadGroupChats();
+            if (typeof showToast === 'function') showToast('Group chat deleted', 'info');
+        } catch (err) {
+            if (typeof showToast === 'function') showToast(`Delete failed: ${err.message}`, 'error');
+        }
+    };
+
     function openCompanion(companionId) {
         if (!companionId) return;
         const isBuiltin = ['axiom', 'lyra', 'misakacipher'].includes(companionId);
@@ -5070,7 +5850,7 @@ const CompanionCreator = (() => {
         }
     });
 
-    return { init, openCompanion };
+    return { init, openCompanion, openGroupChat: _openGroupChat };
 })();
 
 window.CompanionCreator = CompanionCreator;
