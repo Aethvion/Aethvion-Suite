@@ -16,14 +16,14 @@ def _get_scratchpad(args: Optional[Dict[str, Any]] = None) -> CompanionScratchpa
     if not cid:
         try:
             from core.companions.registry import CompanionRegistry
-            comps = CompanionRegistry.get_all()
-            cid = next(iter(comps.keys()), "misakacipher") if comps else "misakacipher"
+            comps = CompanionRegistry.list_companions()
+            cid = comps[0].id if comps else "misakacipher"
         except Exception:
             cid = "misakacipher"
 
     try:
         from core.companions.registry import CompanionRegistry
-        cfg = CompanionRegistry.get(cid)
+        cfg = CompanionRegistry.get_companion(cid)
         if cfg:
             return CompanionScratchpad(cfg.data_dir, cfg.name)
     except Exception:

@@ -122,7 +122,7 @@ async def patch_quick_config(companion_id: str, req: QuickConfigRequest):
         get_preferences_manager().set(f"{companion_id}.proactive_enabled", req.proactive_enabled)
 
     atomic_json_write(override_file, raw, indent=2)
-    CompanionRegistry.reload()
+    CompanionRegistry.force_reload()
     return {
         "status": "updated",
         "companion_id": companion_id,

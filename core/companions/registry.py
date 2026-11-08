@@ -44,7 +44,7 @@ class CompanionConfig:
             route_prefix=data.get("route_prefix", f"/api/{cid}"),
             call_source=data.get("call_source", cid),
             prefs_key=data.get("prefs_key", cid),
-            default_model=data["default_model"],
+            default_model=data.get("default_model", "auto"),
             default_expression=data.get("default_expression", "default"),
             moods=data.get("moods", ["calm"]),
             expressions=data.get("expressions", ["default"]),
@@ -104,6 +104,11 @@ class CompanionRegistry:
         """Force a fresh scan of all companion directories — no server restart needed."""
         cls._loaded = False
         cls.load_all()
+
+    # Aliases
+    get = get_companion
+    get_all = list_companions
+    reload = force_reload
 
 def get_companion(companion_id: str) -> Optional[CompanionConfig]:
     """Helper for backward compatibility where needed."""
